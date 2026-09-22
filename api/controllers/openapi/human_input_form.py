@@ -13,7 +13,7 @@ from werkzeug.exceptions import BadRequest
 from controllers.common.human_input import stringify_form_default_values
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Kind, endpoint, op_of
+from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._files import end_read_transaction, merge_files
 from controllers.openapi._hints import attach_stream_hints
@@ -95,6 +95,12 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         op="run.form.get",
         kind=Kind.OBJECT,
         summary="Read a human-input form",
+        examples=(
+            Example(
+                title="Read the form a paused run is waiting on",
+                input={"app_id": "<app_id>", "form_token": "<form_token>"},
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),
@@ -123,6 +129,27 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         op="run.form.submit",
         kind=Kind.OBJECT,
         summary="Submit a human-input form",
+        examples=(
+            Example(
+                title="Approve a paused run with a written comment",
+                input={
+                    "app_id": "<app_id>",
+                    "form_token": "<form_token>",
+                    "action": "approve",
+                    "inputs": {"comment": "Looks good"},
+                },
+            ),
+            Example(
+                title="Submit a form answer that includes a local file",
+                input={
+                    "app_id": "<app_id>",
+                    "form_token": "<form_token>",
+                    "action": "submit",
+                    "inputs": {},
+                    "files": {"evidence": "./scan.png"},
+                },
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),

@@ -13,7 +13,7 @@ from controllers.common.app_access import AppAccessFilter, resolve_app_access_fi
 from controllers.common.fields import Parameters
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Kind, endpoint
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
 from controllers.openapi._models import (
     SUPPORTED_APP_TYPES,
@@ -106,6 +106,13 @@ class AppDescribeApi(Resource):
         op="console_app.describe",
         kind=Kind.OBJECT,
         summary="App detail, parameters and runtime input_schema",
+        examples=(
+            Example(title="Describe an app: info, parameters and input_schema", input={"app_id": "<app_id>"}),
+            Example(
+                title="Only the runtime input_schema of an app",
+                input={"app_id": "<app_id>", "fields": "input_schema"},
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckAppApiEnabled(),
@@ -127,6 +134,13 @@ class AppListApi(Resource):
         op="console_app.list",
         kind=Kind.LIST,
         summary="List apps in a workspace",
+        examples=(
+            Example(title="List apps in the pinned workspace, first page", input={"page": 1, "limit": 20}),
+            Example(
+                title="Find workflow apps whose name contains a word",
+                input={"mode": "workflow", "name": "summary"},
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.APPS_READ),

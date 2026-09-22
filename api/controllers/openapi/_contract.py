@@ -32,10 +32,10 @@ from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
+from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Example, Kind
 from enums import DeploymentEdition
 
-__all__ = ["Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
+__all__ = ["Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 
@@ -156,6 +156,7 @@ def endpoint(
     edition: frozenset[DeploymentEdition] | None = None,
     internal: bool = False,
     deprecated: bool = False,
+    examples: Sequence[Example] = (),
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
     serialisation — auth, then ``accepts``, then ``returns``. Exposes
@@ -170,7 +171,8 @@ def endpoint(
 
     ``op``/``kind``/``summary`` feed the catalog (see ``_catalog.py``); ``internal``
     hides the op from the CLI's default listing; ``deprecated`` marks it as kept
-    for compatibility only.
+    for compatibility only; ``examples`` are complete inputs the catalog shows
+    next to the schema.
     """
     requirements = tuple(requirements)
     for requirement in requirements:
@@ -180,7 +182,14 @@ def endpoint(
         requirements=requirements,
         edition=edition,
         catalog=CatalogMeta(
-            op=op, kind=kind, summary=summary, query=query, body=body, internal=internal, deprecated=deprecated
+            op=op,
+            kind=kind,
+            summary=summary,
+            query=query,
+            body=body,
+            internal=internal,
+            deprecated=deprecated,
+            examples=tuple(examples),
         ),
     )
     return_specs = _normalize_returns(returns)

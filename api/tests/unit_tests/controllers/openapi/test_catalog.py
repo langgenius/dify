@@ -7,6 +7,7 @@ from collections.abc import Iterator
 import pytest
 from flask import Flask
 from flask_restx.model import ModelBase
+from jsonschema import Draft202012Validator
 
 from configs import dify_config
 from controllers.common.fields import EventStreamResponse
@@ -27,6 +28,8 @@ from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 OP_ID_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
 MAX_DEPTH = 4
 _UNCATALOGUED_PREFIX = "/openapi/v1/oauth/"
+# The client fills these from its own context (the workspace pin), so examples leave them out.
+_CLIENT_CONTEXT = frozenset({"workspace_id"})
 _UNCATALOGUED = {
     "/openapi/v1/",
     "/openapi/v1/openapi.json",
@@ -95,7 +98,7 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
 
 def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -> None:
     chat = ops["console_app.chat.run"]
-    assert set(chat) == {"summary", "method", "path", "kind", "input", "bind", "internal", "deprecated"}
+    assert set(chat) == {"summary", "method", "path", "kind", "input", "bind", "internal", "deprecated", "examples"}
     assert (chat["method"], chat["path"], chat["kind"]) == (
         "POST",
         "/openapi/v1/apps/{app_id}/chat:run",
@@ -140,6 +143,22 @@ def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, CatalogOp])
     desc = ops["console_app.chat.run"]["input"]["properties"]["inputs"]["description"]
     assert "console_app.describe" in desc
     assert "input_schema" in desc
+
+
+def test_every_op_carries_examples_that_pass_its_input_schema(ops: dict[str, CatalogOp]) -> None:
+    assert [op for op, e in ops.items() if not e["examples"]] == []
+    bad = []
+    for op, e in ops.items():
+        schema = {
+            **e["input"],
+            "required": [name for name in e["input"]["required"] if name not in _CLIENT_CONTEXT],
+            "additionalProperties": False,
+        }
+        validator = Draft202012Validator(schema)
+        for example in e["examples"]:
+            assert example["title"].strip(), op
+            bad.extend((op, example["title"], err.message) for err in validator.iter_errors(example["input"]))
+    assert bad == []
 
 
 def test_catalog_route_serves_canonical_bytes_and_every_response_carries_the_fingerprint(app: Flask) -> None:

@@ -19,7 +19,7 @@ from werkzeug.exceptions import NotFound, UnprocessableEntity
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Kind, endpoint
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -56,6 +56,13 @@ class OpenApiWorkflowEventsApi(Resource):
         op="run.events",
         kind=Kind.SSE,
         summary="Stream the events of a workflow run",
+        examples=(
+            Example(title="Follow the events of a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),
+            Example(
+                title="Keep the stream open across a human-input pause",
+                input={"app_id": "<app_id>", "task_id": "<task_id>", "continue_on_pause": True},
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),

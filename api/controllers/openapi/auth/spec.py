@@ -8,6 +8,7 @@ still described in one place while each reader has its own object.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -29,11 +30,20 @@ class Kind(StrEnum):
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class Example:
+    """One complete input for an op, shown by the CLI next to the schema."""
+
+    title: str
+    input: Mapping[str, Any]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class CatalogMeta:
     """What the catalog (`_catalog.py`) says about a route; the router never reads it.
 
     `internal` hides the op from the CLI's default listing; `deprecated` marks it
-    as kept for compatibility only.
+    as kept for compatibility only. `examples` ride into the catalog as complete
+    inputs; a catalog test checks each one against the op's input schema.
     """
 
     op: str
@@ -43,6 +53,7 @@ class CatalogMeta:
     body: type[BaseModel] | None = None
     internal: bool = False
     deprecated: bool = False
+    examples: tuple[Example, ...] = ()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

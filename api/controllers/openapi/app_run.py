@@ -24,7 +24,7 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._contract import Kind, endpoint
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._files import end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
@@ -230,6 +230,7 @@ class _RunRoute:
     payload: type[RunPayloadBase]
     modes: tuple[AppMode, ...]
     hints: tuple[HintLayer, ...] = ()
+    examples: tuple[Example, ...] = ()
 
 
 _RUN_ROUTES: Final = (
@@ -241,6 +242,20 @@ _RUN_ROUTES: Final = (
         payload=WorkflowRunPayload,
         modes=(AppMode.WORKFLOW,),
         hints=(_form_layer,),
+        examples=(
+            Example(
+                title="Run a workflow with two variables",
+                input={"app_id": "<app_id>", "inputs": {"topic": "quarterly report", "language": "en"}},
+            ),
+            Example(
+                title="Run a workflow with a local file variable",
+                input={"app_id": "<app_id>", "inputs": {}, "files": {"document": "./report.pdf"}},
+            ),
+            Example(
+                title="Run a pinned published workflow version",
+                input={"app_id": "<app_id>", "inputs": {}, "workflow_id": "<workflow_id>"},
+            ),
+        ),
     ),
     _RunRoute(
         resource="ChatRunApi",
@@ -250,6 +265,30 @@ _RUN_ROUTES: Final = (
         payload=ChatRunPayload,
         modes=(AppMode.CHAT, AppMode.AGENT_CHAT),
         hints=(_reply_layer,),
+        examples=(
+            Example(
+                title="Start a new conversation",
+                input={"app_id": "<app_id>", "query": "Summarise the latest release", "inputs": {}},
+            ),
+            Example(
+                title="Reply in an existing conversation",
+                input={
+                    "app_id": "<app_id>",
+                    "query": "Make it shorter",
+                    "inputs": {},
+                    "conversation_id": "<conversation_id>",
+                },
+            ),
+            Example(
+                title="Ask about a local file attached to the message",
+                input={
+                    "app_id": "<app_id>",
+                    "query": "What is in this file?",
+                    "inputs": {},
+                    "attachments": ["./report.pdf"],
+                },
+            ),
+        ),
     ),
     _RunRoute(
         resource="AdvancedChatRunApi",
@@ -259,6 +298,21 @@ _RUN_ROUTES: Final = (
         payload=AdvancedChatRunPayload,
         modes=(AppMode.ADVANCED_CHAT,),
         hints=(_reply_layer, _form_layer),
+        examples=(
+            Example(
+                title="Start a new conversation",
+                input={"app_id": "<app_id>", "query": "Summarise the latest release", "inputs": {}},
+            ),
+            Example(
+                title="Reply in an existing conversation",
+                input={
+                    "app_id": "<app_id>",
+                    "query": "Make it shorter",
+                    "inputs": {},
+                    "conversation_id": "<conversation_id>",
+                },
+            ),
+        ),
     ),
     _RunRoute(
         resource="CompletionRunApi",
@@ -267,6 +321,16 @@ _RUN_ROUTES: Final = (
         summary="Run a completion app; streams message events",
         payload=CompletionRunPayload,
         modes=(AppMode.COMPLETION,),
+        examples=(
+            Example(
+                title="Run a completion app with its variables",
+                input={"app_id": "<app_id>", "inputs": {"text": "The quick brown fox"}},
+            ),
+            Example(
+                title="Run a completion app with prompt text",
+                input={"app_id": "<app_id>", "inputs": {}, "query": "Write a haiku about the sea"},
+            ),
+        ),
     ),
 )
 
@@ -278,6 +342,7 @@ def _run_api(route: _RunRoute) -> type[Resource]:
         summary=route.summary,
         requirements=_RUN_GUARDS,
         body=route.payload,
+        examples=route.examples,
         returns=_STREAM_RESULT,
     )
     def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
@@ -300,6 +365,7 @@ class AppRunTaskStopApi(Resource):
         op="run.stop",
         kind=Kind.OBJECT,
         summary="Stop a running task",
+        examples=(Example(title="Stop a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),),
         requirements=_RUN_GUARDS,
         returns=(200, TaskStopResponse, "Task stopped"),
     )

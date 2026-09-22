@@ -141,6 +141,7 @@ def build_catalog(app: Flask) -> dict[str, Any]:
             "bind": derive_bind(method=verb, path_params=path_params, schema=schema),
             "internal": meta.internal,
             "deprecated": meta.deprecated,
+            "examples": [{"title": example.title, "input": dict(example.input)} for example in meta.examples],
         }
     return {"ops": ops}
 

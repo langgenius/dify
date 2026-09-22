@@ -5,7 +5,7 @@ from __future__ import annotations
 from flask_restx import Resource
 
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Kind, endpoint
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._files import end_read_transaction, upload
 from controllers.openapi._models import FileUploadPayload
 from controllers.openapi.auth.context import Context
@@ -38,6 +38,9 @@ class AppFileUploadApi(Resource):
         op="console_app.file.upload",
         kind=Kind.OBJECT,
         summary="Upload a file and get a file id for later runs",
+        examples=(
+            Example(title="Upload a local PDF and get a file id", input={"app_id": "<app_id>", "file": "./report.pdf"}),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),

@@ -10,7 +10,7 @@ from __future__ import annotations
 from flask_restx import Resource
 
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Kind, endpoint
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
     AppDescribeQuery,
     AppDescribeResponse,
@@ -44,6 +44,7 @@ class PermittedExternalAppsListApi(Resource):
         op="console_app.external.list",
         kind=Kind.LIST,
         summary="List apps an external SSO subject may run",
+        examples=(Example(title="List the apps this SSO subject may run, first page", input={"page": 1, "limit": 20}),),
         requirements=(
             CheckSubject(allowed=(ExternalSsoSubject,)),
             CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
@@ -101,6 +102,7 @@ class PermittedExternalAppDescribeApi(Resource):
         op="console_app.external.describe",
         kind=Kind.OBJECT,
         summary="External-subject app detail",
+        examples=(Example(title="Describe a permitted app with its input_schema", input={"app_id": "<app_id>"}),),
         requirements=(
             CheckSubject(allowed=(ExternalSsoSubject,)),
             CheckAppApiEnabled(),
