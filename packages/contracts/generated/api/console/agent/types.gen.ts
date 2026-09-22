@@ -366,6 +366,7 @@ export type AgentPublishResponse = {
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   active_config_snapshot_id: string
   draft?: AgentConfigDraftSummaryResponse | null
+  publication_kind: 'first' | 'update'
   result: string
 }
 
