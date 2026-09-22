@@ -1,10 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Inter } from 'next/font/google'
 import { useTranslation } from 'react-i18next'
 import BrandingFooter from './branding-footer'
-
-const formFont = Inter({ subsets: ['latin'], display: 'swap' })
 
 type FormStatusCardProps = {
   iconClassName: string
@@ -26,12 +23,7 @@ const FormStatusCard = ({
   const { t } = useTranslation()
 
   return (
-    <div
-      className={cn(
-        'flex size-full flex-col items-center justify-center p-8 pb-32',
-        formFont.className,
-      )}
-    >
+    <div className="flex size-full flex-col items-center justify-center p-8 pb-32">
       <div className="w-full max-w-160">
         <div className="relative flex min-h-80 flex-col gap-4 rounded-[20px] bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:border-t before:border-divider-subtle">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
