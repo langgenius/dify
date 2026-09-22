@@ -105,6 +105,7 @@ __all__ = [
     "model_config_error_text",
     "needs_upload_inputs",
     "note_repair_error",
+    "note_unknown_outcome",
     "perform_revert",
     "repair_is_repeating",
     "run_finished_without_output",
