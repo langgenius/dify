@@ -36,13 +36,15 @@ export function matchDataSource(
   list: RagPipelineDatasourceProviderResponse[],
   data: { plugin_unique_identifier?: string; plugin_id?: string; provider_name?: string },
 ): RagPipelineDatasourceProviderResponse | undefined {
-  return list.find(
-    (item) =>
-      (data.plugin_unique_identifier &&
-        item.plugin_unique_identifier === data.plugin_unique_identifier) ||
-      (data.plugin_id && item.plugin_id === data.plugin_id) ||
-      (data.provider_name && item.provider === data.provider_name),
-  )
+  if (data.plugin_unique_identifier) {
+    const installedVersion = list.find(
+      (item) => item.plugin_unique_identifier === data.plugin_unique_identifier,
+    )
+    if (installedVersion) return installedVersion
+  }
+  if (data.plugin_id) return list.find((item) => item.plugin_id === data.plugin_id)
+  if (data.plugin_unique_identifier) return undefined
+  return list.find((item) => item.provider === data.provider_name)
 }
 
 type PluginInstallCheckContext = {

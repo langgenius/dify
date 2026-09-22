@@ -1,12 +1,12 @@
 'use client'
-import type { PluginDetail } from '../types'
+import type { ReadmePanelState } from './store'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { ReadmePanelContent } from './content'
 
 type ReadmeDialogProps = {
-  detail: PluginDetail
+  detail: ReadmePanelState['detail']
   open: boolean
   onOpenChange: (open: boolean) => void
   triggerId?: string

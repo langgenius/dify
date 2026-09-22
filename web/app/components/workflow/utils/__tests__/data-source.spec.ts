@@ -87,3 +87,27 @@ it('finds a saved provider without version metadata and leaves missing datasourc
       .dataSourceInputsSchema,
   ).toEqual([])
 })
+
+it('uses the saved plugin authorization and parameter schema when providers share a name', () => {
+  const official = createDatasourceProvider({ is_authorized: true })
+  official.declaration.datasources![0]!.parameters = [
+    { ...parameter('string', ''), name: 'official_input' },
+  ]
+  const fork = createDatasourceProvider({
+    plugin_id: 'acme/file',
+    plugin_unique_identifier: 'acme/file:1.0.0',
+    is_authorized: false,
+  })
+  fork.declaration.datasources![0]!.parameters = [
+    { ...parameter('string', ''), name: 'fork_input' },
+  ]
+  const result = getDataSourceCheckParams(
+    { ...node, provider_type: 'online_document' },
+    [fork, official],
+    'en_US',
+  )
+  expect(result.notAuthed).toBe(false)
+  expect(result.dataSourceInputsSchema).toEqual([
+    { label: 'Parameter', variable: 'official_input', required: true },
+  ])
+})

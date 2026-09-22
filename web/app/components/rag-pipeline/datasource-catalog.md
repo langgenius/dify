@@ -77,3 +77,16 @@ presentations narrow supported properties, types, descriptions, and enums at the
 point of use. Unknown or boolean schema nodes do not justify changing backend
 JSON-schema semantics or asserting an LLM editor schema. LLM schema editing keeps
 its own contract.
+
+## Provider identity and Readme
+
+Saved nodes resolve an exact installed identifier first, then the same plugin ID
+when its installed version has changed. Provider-name fallback is only for saved
+nodes without either plugin identity; another plugin with the same provider name
+must not supply authorization, parameters, outputs, or installation status.
+
+The workflow Readme entry passes the raw catalog provider through the Readme
+session. Its header reads `declaration.identity` and has no installed-plugin
+management actions. Full installed-plugin details retain their own header.
+Catalog providers are not cast to `PluginDetail`, and no synthetic installation
+fields are added to make that presentation work.

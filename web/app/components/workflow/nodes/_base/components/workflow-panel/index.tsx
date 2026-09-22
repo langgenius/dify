@@ -408,13 +408,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   )
 
   const readmeEntranceComponent = useMemo(() => {
+    if (data.type === BlockEnum.DataSource)
+      return currentDataSource ? (
+        <ReadmeEntrance pluginDetail={currentDataSource} className="mt-auto" />
+      ) : null
+
     let pluginDetail
     switch (data.type) {
       case BlockEnum.Tool:
         pluginDetail = currToolCollection
-        break
-      case BlockEnum.DataSource:
-        pluginDetail = currentDataSource
         break
       case BlockEnum.TriggerPlugin:
         pluginDetail = currentTriggerPlugin
