@@ -171,7 +171,6 @@ catalog:
   eslint-plugin-antfu: 3.2.3
   eslint-plugin-better-tailwindcss: 4.7.0
   eslint-plugin-command: 4.0.0
-  eslint-plugin-erasable-syntax-only: 0.7.1
   eslint-plugin-jsdoc: 64.5.2
   eslint-plugin-jsonc: 3.4.2
   eslint-plugin-markdown-preferences: 0.42.0

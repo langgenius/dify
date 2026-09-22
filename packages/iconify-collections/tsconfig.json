@@ -1,0 +1,4 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "include": ["scripts/**/*.ts"]
+}
