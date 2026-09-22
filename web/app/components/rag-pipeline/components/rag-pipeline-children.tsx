@@ -1,7 +1,6 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { memo, useState } from 'react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
-import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
 import { usePanelInteractions } from '@/app/components/workflow/hooks/use-panel-interactions'
@@ -9,6 +8,7 @@ import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import { useStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useRagPipelineSearch } from '../hooks/use-rag-pipeline-search'
+import PipelineExportConfirmModal from './export-confirm-modal'
 import RagPipelinePanel from './panel'
 import PublishToast from './publish-toast'
 import RagPipelineHeader from './rag-pipeline-header'
@@ -41,7 +41,7 @@ const RagPipelineChildren = () => {
         />
       )}
       {canImportExportDSL && secretEnvList.length > 0 && (
-        <DSLExportConfirmModal
+        <PipelineExportConfirmModal
           envList={secretEnvList}
           onConfirm={handleExportDSL!}
           onClose={() => setSecretEnvList([])}

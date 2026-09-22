@@ -72,8 +72,8 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
-  DSLExportConfirmContent: ({
+vi.mock('@/app/components/app/export-confirm-modal', () => ({
+  AppExportConfirmContent: ({
     onConfirm,
     onClose,
   }: {
@@ -218,7 +218,7 @@ describe('AppInfoModals', () => {
     })
   })
 
-  it('should render DSLExportConfirmModal when secretEnvList is not empty', async () => {
+  it('should render AppExportConfirmModal when secretEnvList is not empty', async () => {
     await act(async () => {
       render(
         <AppInfoModals
@@ -241,7 +241,7 @@ describe('AppInfoModals', () => {
     })
   })
 
-  it('should not render DSLExportConfirmModal when secretEnvList is empty', async () => {
+  it('should not render AppExportConfirmModal when secretEnvList is empty', async () => {
     await act(async () => {
       render(<AppInfoModals {...defaultProps} activeModal={null} />)
     })
@@ -337,7 +337,7 @@ describe('AppInfoModals', () => {
     expect(defaultProps.exportCheck).toHaveBeenCalledTimes(1)
   })
 
-  it('should call setSecretEnvList with empty array when closing DSLExportConfirmModal', async () => {
+  it('should call setSecretEnvList with empty array when closing AppExportConfirmModal', async () => {
     const user = userEvent.setup()
     await act(async () => {
       render(

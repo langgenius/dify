@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -140,11 +141,18 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         (isPackage || (fileContent && validateDSLContent(fileContent, appDetail.mode)))
       ) {
         setLoading(true)
-        const response = await consoleClient.apps.imports.post({
-          body: isPackage
-            ? { file: currentFile, app_id: appDetail.id }
-            : { mode: DSLImportMode.YAML_CONTENT, yaml_content: fileContent, app_id: appDetail.id },
-        })
+        const response = await consoleClient.apps.imports.post(
+          {
+            body: isPackage
+              ? { file: currentFile, app_id: appDetail.id }
+              : {
+                  mode: DSLImportMode.YAML_CONTENT,
+                  yaml_content: fileContent,
+                  app_id: appDetail.id,
+                },
+          },
+          { context: { silent: true } },
+        )
         const { id, status, app_id, imported_dsl_version, current_dsl_version, warnings } = response
 
         if (isImportCompleted(status)) {
@@ -153,14 +161,22 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           handlePendingImport(id, imported_dsl_version, current_dsl_version)
         } else {
           setLoading(false)
-          toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
+          toast.error(
+            t(($) => $['common.importFailure'], { ns: 'workflow' }),
+            { description: response.error || undefined },
+          )
         }
       } else if (fileContent) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
       }
-    } catch {
+    } catch (error) {
       setLoading(false)
-      toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
+      toast.error(
+        t(($) => $['common.importFailure'], { ns: 'workflow' }),
+        {
+          description: await getAppTransferErrorMessage(error),
+        },
+      )
     }
     isCreatingRef.current = false
   }, [currentFile, fileContent, t, appDetail, handleCompletedImport, handlePendingImport])
@@ -168,9 +184,12 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
   const onUpdateDSLConfirm: MouseEventHandler = async () => {
     try {
       if (!importId) return
-      const response = await consoleClient.apps.imports.byImportId.confirm.post({
-        params: { import_id: importId },
-      })
+      const response = await consoleClient.apps.imports.byImportId.confirm.post(
+        {
+          params: { import_id: importId },
+        },
+        { context: { silent: true } },
+      )
 
       const { status, app_id, warnings } = response
 
@@ -178,11 +197,19 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         await handleCompletedImport(status, app_id, warnings)
       } else if (status === DSLImportStatus.FAILED) {
         setLoading(false)
-        toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
+        toast.error(
+          t(($) => $['common.importFailure'], { ns: 'workflow' }),
+          { description: response.error || undefined },
+        )
       }
-    } catch {
+    } catch (error) {
       setLoading(false)
-      toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
+      toast.error(
+        t(($) => $['common.importFailure'], { ns: 'workflow' }),
+        {
+          description: await getAppTransferErrorMessage(error),
+        },
+      )
     }
   }
 
@@ -229,7 +256,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           </div>
           <div>
             <div className="pt-2 system-md-semibold text-text-primary">
-              {t(($) => $['common.chooseDSL'], { ns: 'workflow' })}
+              {t(($) => $.chooseAppFile, { ns: 'app' })}
             </div>
             <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
               <Uploader

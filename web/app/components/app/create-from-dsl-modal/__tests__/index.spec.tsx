@@ -928,7 +928,9 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.FAILED,
       error: 'Invalid YAML format',
     })
-    mockImportDSL.mockRejectedValueOnce(new Error('boom'))
+    mockImportDSL.mockRejectedValueOnce(
+      Response.json({ message: 'Package checksum mismatch' }, { status: 400 }),
+    )
 
     const { rerender } = render(
       <CreateFromDSLModal
@@ -942,7 +944,10 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(getCreateButton())
     })
-    expect(toastMocks.error).toHaveBeenCalledWith('Invalid YAML format')
+    expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(/newApp\.appCreateFailed/),
+      { description: 'Invalid YAML format' },
+    )
 
     rerender(
       <CreateFromDSLModal
@@ -959,6 +964,7 @@ describe('CreateFromDSLModal', () => {
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
     expect(toastMocks.error).toHaveBeenLastCalledWith(
       expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/),
+      { description: 'Package checksum mismatch' },
     )
   })
 
@@ -1002,7 +1008,10 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!)
     })
-    expect(toastMocks.error).toHaveBeenCalledWith('Confirm failed')
+    expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(/newApp\.appCreateFailed/),
+      { description: 'Confirm failed' },
+    )
 
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!)
@@ -1010,6 +1019,7 @@ describe('CreateFromDSLModal', () => {
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
     expect(toastMocks.error).toHaveBeenLastCalledWith(
       expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/),
+      { description: 'boom' },
     )
   })
 })

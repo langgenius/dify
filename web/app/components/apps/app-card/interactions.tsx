@@ -72,12 +72,9 @@ const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-m
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
 })
-const DSLExportConfirmModal = dynamic(
-  () => import('@/app/components/workflow/dsl-export-confirm-modal'),
-  {
-    ssr: false,
-  },
-)
+const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
+  ssr: false,
+})
 
 const OPERATIONS_MENU_POPUP_CLASS_NAME = 'min-w-[216px]'
 const APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE = new Set<AppPartial['mode']>([
@@ -208,7 +205,7 @@ function AppCardOperationsMenuItems({
           onClick={(event) => handleMenuAction(event, onExport)}
         >
           <span className="system-sm-regular text-text-secondary">
-            {t(($) => $.export, { ns: 'app' })}
+            {t(($) => $.exportApp, { ns: 'app' })}
           </span>
         </MenuItem>
       )}
@@ -743,7 +740,7 @@ export function AppCardInteractions({
         </AlertDialogContent>
       </AlertDialog>
       {secretEnvList.length > 0 && (
-        <DSLExportConfirmModal
+        <AppExportConfirmModal
           envList={secretEnvList}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}

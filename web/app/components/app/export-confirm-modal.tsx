@@ -5,6 +5,7 @@ import {
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -13,22 +14,22 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type DSLExportConfirmModalProps = {
+type AppExportConfirmModalProps = {
   envList: Array<{ name: string; value: unknown }>
   onConfirm: (state: boolean) => void | Promise<void>
   onClose: () => void
 }
 
-type DSLExportConfirmContentProps = DSLExportConfirmModalProps & {
+type AppExportConfirmContentProps = AppExportConfirmModalProps & {
   onExportingChange?: (isExporting: boolean) => void
 }
 
-export const DSLExportConfirmContent = ({
+export const AppExportConfirmContent = ({
   envList = [],
   onConfirm,
   onClose,
   onExportingChange,
-}: DSLExportConfirmContentProps) => {
+}: AppExportConfirmContentProps) => {
   const { t } = useTranslation()
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
@@ -50,11 +51,14 @@ export const DSLExportConfirmContent = ({
   }, [exportSecrets, isExporting, onClose, onConfirm, onExportingChange])
 
   return (
-    <AlertDialogContent className="w-120 max-w-120">
+    <AlertDialogContent className="w-120">
       <div className="px-6 pt-6">
-        <AlertDialogTitle className="pb-6 title-2xl-semi-bold text-text-primary">
-          {t(($) => $['env.export.title'], { ns: 'workflow' })}
+        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(($) => $['exportSecret.title'], { ns: 'app' })}
         </AlertDialogTitle>
+        <AlertDialogDescription className="mt-2 mb-6 system-sm-regular text-text-secondary">
+          {t(($) => $['exportSecret.description'], { ns: 'app' })}
+        </AlertDialogDescription>
         <div className="relative">
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
@@ -139,8 +143,8 @@ export const DSLExportConfirmContent = ({
             {isExporting
               ? t(($) => $['operation.exporting'], { ns: 'common' })
               : exportSecrets
-                ? t(($) => $['env.export.export'], { ns: 'workflow' })
-                : t(($) => $['env.export.ignore'], { ns: 'workflow' })}
+                ? t(($) => $['exportSecret.title'], { ns: 'app' })
+                : t(($) => $.exportApp, { ns: 'app' })}
           </span>
         </AlertDialogConfirmButton>
       </AlertDialogActions>
@@ -148,7 +152,7 @@ export const DSLExportConfirmContent = ({
   )
 }
 
-const DSLExportConfirmModal = (props: DSLExportConfirmModalProps) => {
+const AppExportConfirmModal = (props: AppExportConfirmModalProps) => {
   const { envList, onClose } = props
   const [isExporting, setIsExporting] = useState(false)
   const isDialogOpen = envList.length > 0
@@ -164,9 +168,9 @@ const DSLExportConfirmModal = (props: DSLExportConfirmModalProps) => {
 
   return (
     <AlertDialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-      <DSLExportConfirmContent {...props} onExportingChange={setIsExporting} />
+      <AppExportConfirmContent {...props} onExportingChange={setIsExporting} />
     </AlertDialog>
   )
 }
 
-export default DSLExportConfirmModal
+export default AppExportConfirmModal

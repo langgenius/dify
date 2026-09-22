@@ -18,7 +18,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-u
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { DSLExportConfirmContent } from '@/app/components/workflow/dsl-export-confirm-modal'
+import { AppExportConfirmContent } from '@/app/components/app/export-confirm-modal'
 import dynamic from '@/next/dynamic'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
@@ -200,7 +200,7 @@ const AppInfoModals = ({
       )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
         {exportDialogMode === 'secret' ? (
-          <DSLExportConfirmContent
+          <AppExportConfirmContent
             envList={secretEnvList}
             onConfirm={onExport}
             onClose={() => setSecretEnvList([])}

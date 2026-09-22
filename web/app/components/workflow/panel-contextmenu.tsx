@@ -158,7 +158,7 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
               className="justify-between gap-4 px-3 text-text-secondary"
               onClick={() => exportCheck?.()}
             >
-              {t(($) => $.export, { ns: 'app' })}
+              {t(($) => $.exportApp, { ns: 'app' })}
             </ContextMenuItem>
             {!shouldHideImportApp && (
               <ContextMenuItem

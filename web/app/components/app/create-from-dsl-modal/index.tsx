@@ -34,6 +34,7 @@ import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
+import { getAppTransferErrorMessage } from '../transfer-error'
 import DSLConfirmModal from './dsl-confirm-modal'
 import DSLImportWarningDescription from './dsl-import-warning-description'
 import { CreateFromDSLModalTab } from './types'
@@ -99,7 +100,7 @@ function CreateFromDSLModal({
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions(),
+    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
   )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
@@ -124,7 +125,9 @@ function CreateFromDSLModal({
     },
   })
   const confirmImportMutation = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -210,7 +213,12 @@ function CreateFromDSLModal({
       return
     }
 
-    toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    toast.error(
+      t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+      {
+        description: response.error || undefined,
+      },
+    )
   }
 
   const handleSubmit = async (values: ImportFormValues) => {
@@ -229,8 +237,13 @@ function CreateFromDSLModal({
 
       const response = await importMutation.mutateAsync(source)
       await handleImportResponse(response)
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        {
+          description: await getAppTransferErrorMessage(error),
+        },
+      )
     }
   }
 
@@ -248,9 +261,19 @@ function CreateFromDSLModal({
       }
 
       if (response.status === 'failed')
-        toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+        toast.error(
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          {
+            description: response.error || undefined,
+          },
+        )
+    } catch (error) {
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        {
+          description: await getAppTransferErrorMessage(error),
+        },
+      )
     }
   }
 

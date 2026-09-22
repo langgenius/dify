@@ -31,7 +31,7 @@ vi.mock('@/app/notifications', () => ({
 const mockEmit = vi.fn()
 const mockDoSyncWorkflowDraft = vi.fn()
 const mockExportAppConfig = vi.fn()
-const mockFetchWorkflowDraft = vi.fn()
+const mockFetchEnvironmentVariables = vi.fn()
 const mockDownloadBlob = vi.fn()
 
 let appStoreState: {
@@ -61,12 +61,19 @@ vi.mock('../use-nodes-sync-draft', () => ({
 
 vi.mock('@/service/console', () => ({
   consoleClient: {
-    apps: { byAppId: { export: { get: (...args: unknown[]) => mockExportAppConfig(...args) } } },
+    apps: {
+      byAppId: {
+        export: { get: (...args: unknown[]) => mockExportAppConfig(...args) },
+        workflows: {
+          draft: {
+            environmentVariables: {
+              get: (...args: unknown[]) => mockFetchEnvironmentVariables(...args),
+            },
+          },
+        },
+      },
+    },
   },
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
 vi.mock('@/utils/download', () => ({
@@ -92,7 +99,7 @@ describe('useDSLByCanEdit', () => {
     }
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     mockExportAppConfig.mockResolvedValue({ data: 'yaml-content' })
-    mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [] })
+    mockFetchEnvironmentVariables.mockResolvedValue({ items: [] })
   })
 
   it('downloads the default package bytes and forwards the selected workflow version', async () => {
@@ -119,7 +126,10 @@ describe('useDSLByCanEdit', () => {
       await result.current.exportCheck()
     })
 
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
+    expect(mockFetchEnvironmentVariables).toHaveBeenCalledWith(
+      { params: { app_id: 'app-1' } },
+      { context: { silent: true } },
+    )
     expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
     expect(mockExportAppConfig).toHaveBeenCalledWith(
       {
@@ -183,7 +193,7 @@ workflow:
 
   it('should emit DSL_EXPORT_CHECK when secret environment variables exist', async () => {
     const secretVars = [{ id: 'env-1', value_type: 'secret', value: 'secret-token' }]
-    mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: secretVars })
+    mockFetchEnvironmentVariables.mockResolvedValue({ items: secretVars })
 
     const { result } = renderHook(() => useDSLByCanEdit(true))
 
@@ -210,14 +220,16 @@ workflow:
       await result.current.handleExportDSL()
     })
 
-    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockFetchEnvironmentVariables).not.toHaveBeenCalled()
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockExportAppConfig).not.toHaveBeenCalled()
     expect(mockEmit).not.toHaveBeenCalled()
   })
 
   it('should notify when export fails', async () => {
-    mockExportAppConfig.mockRejectedValue(new Error('export failed'))
+    mockExportAppConfig.mockRejectedValue(
+      new Response(JSON.stringify({ message: 'Package contains unusable Skill' }), { status: 500 }),
+    )
 
     const { result } = renderHook(() => useDSLByCanEdit(true))
 
@@ -228,13 +240,14 @@ workflow:
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
-        message: 'app.exportFailed',
+        message: 'app.exportAppFailed',
+        description: 'Package contains unusable Skill',
       })
     })
   })
 
   it('should notify when exportCheck cannot load the workflow draft', async () => {
-    mockFetchWorkflowDraft.mockRejectedValue(new Error('draft fetch failed'))
+    mockFetchEnvironmentVariables.mockRejectedValue(new Error('draft fetch failed'))
 
     const { result } = renderHook(() => useDSLByCanEdit(true))
 
@@ -245,7 +258,8 @@ workflow:
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
-        message: 'app.exportFailed',
+        message: 'app.exportAppFailed',
+        description: 'draft fetch failed',
       })
     })
     expect(mockExportAppConfig).not.toHaveBeenCalled()
