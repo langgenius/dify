@@ -290,8 +290,8 @@ def assess_capability_gap(model, plan_items: list[str], options: list[ResourceOp
 
 
 # Which plan step a resource kind covers, by the node vocabulary the planner
-# writes its steps in (see _DIFY_NODE_VOCABULARY). Matched case-insensitively
-# as substrings because steps mix scripts ("tool节点：...").
+# writes its steps in (see _DIFY_NODE_VOCABULARY). Matched case-insensitively,
+# as a whole word/phrase, because steps mix scripts ("tool节点：...").
 _STEP_KEYWORDS_BY_KIND: dict[str, tuple[str, ...]] = {
     "model": ("llm", "question-classifier", "parameter-extractor"),
     "knowledge": ("knowledge-retrieval", "knowledge"),
@@ -299,16 +299,27 @@ _STEP_KEYWORDS_BY_KIND: dict[str, tuple[str, ...]] = {
 }
 
 
+def _term_in_step(item: str, term: str) -> bool:
+    """Whether ``term`` names ``item``: case-insensitive, and bounded on both
+    sides by a non-ASCII-alphanumeric character (or the string edge) so
+    "tool" doesn't match inside "toolkit" and "llm" doesn't match inside
+    "fulfillment". CJK characters, hyphens, colons and punctuation all count
+    as boundaries, so "llm节点" and "tool节点" still match.
+    """
+    if not term:
+        return False
+    pattern = rf"(?<![a-z0-9]){re.escape(term.lower())}(?![a-z0-9])"
+    return re.search(pattern, item.lower()) is not None
+
+
 def _covering_step(plan_items: list[str], kind: str, label: str) -> int:
     """Index of the first step a resource covers: one naming the resource's
     label, else one naming its kind's node type; ``-1`` when none does."""
-    lowered = [item.lower() for item in plan_items]
-    needle = label.lower()
-    for index, item in enumerate(lowered):
-        if needle and needle in item:
+    for index, item in enumerate(plan_items):
+        if _term_in_step(item, label):
             return index
-    for index, item in enumerate(lowered):
-        if any(keyword in item for keyword in _STEP_KEYWORDS_BY_KIND.get(kind, ())):
+    for index, item in enumerate(plan_items):
+        if any(_term_in_step(item, keyword) for keyword in _STEP_KEYWORDS_BY_KIND.get(kind, ())):
             return index
     return -1
 

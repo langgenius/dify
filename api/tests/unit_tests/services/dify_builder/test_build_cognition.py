@@ -376,6 +376,30 @@ def test_bind_resources_cleans_an_old_aggregate_suffix_before_rebinding(monkeypa
     assert out[2] == "end node: return output"
 
 
+def test_covering_step_tool_keyword_does_not_match_a_toolkit_substring():
+    # "toolkit" contains "tool" as a raw substring -- a plugin must not bind
+    # there when an actual tool step exists further down the plan.
+    plan = ["code node: build a toolkit summary string", "tool node: send a slack notification"]
+
+    assert build._covering_step(plan, "plugin", "Slack Notifier") == 1
+
+
+def test_covering_step_llm_keyword_does_not_match_a_fulfillment_substring():
+    # "fulfillment" contains "llm" as a raw substring -- a model must not
+    # bind there; with no real "llm"/"question-classifier"/
+    # "parameter-extractor" step present, this falls through to -1 (the
+    # caller's fallback then applies).
+    plan = ["step: order fulfillment notes", "end node: wrap up"]
+
+    assert build._covering_step(plan, "model", "GPT-5") == -1
+
+
+def test_covering_step_still_matches_llm_in_cjk_step_text():
+    plan = ["start节点：输入", "llm节点：总结", "end节点：输出"]
+
+    assert build._covering_step(plan, "model", "Some Model") == 1
+
+
 def test_learn_from_build_degrades_to_generic():
     assert isinstance(build.learn_from_build(None, "g", {}, ["p"], ["n"]), str)
 
