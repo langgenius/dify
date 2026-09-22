@@ -33,7 +33,6 @@ from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
-from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 from ._world import (
@@ -235,7 +234,7 @@ def test_a_refused_sso_request_never_creates_an_end_user(
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     persist(sqlite_session, make_app(enable_api=enable_api), make_tenant())
     monkeypatch.setattr(MOUNT, never_reached)
-    monkeypatch.setattr(EndUserService, "get_or_create_end_user_by_type", never_reached)
+    monkeypatch.setattr("controllers.openapi.auth.subjects.application_services", never_reached)
     subject = sso_subject()
     ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
