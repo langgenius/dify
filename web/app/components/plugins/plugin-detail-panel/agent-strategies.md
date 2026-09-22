@@ -32,10 +32,10 @@ values. Required defaults of `0` and `false` are valid too. Workflow validation
 follows that rule. Editing may temporarily contain an empty input; do not force a
 default back into every keystroke or lose the existing field's clearing behavior.
 
-Strategy selection resolves the selected provider and strategy from the fetched
-contract. Reusing the tool list for display does not make its callback payload
-the owner of the strategy's output schema or plugin metadata. Workflow state
-keeps the complete newly selected strategy information. Saved nodes can lack a
+Strategy selection passes the fetched provider and strategy directly to the
+agent-owned list. Only presentation helpers such as alphabetical grouping are
+shared with other provider catalogs. Workflow state keeps the selected strategy's
+output schema and the provider's plugin metadata without a Tool DTO intermediary. Saved nodes can lack a
 plugin installation identifier; they still display and edit their selected
 provider/strategy. Only installation and version-switch actions require that
 identifier.
@@ -45,7 +45,7 @@ identifier.
 | Call site                | Decision                                                                                                                                                 |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Plugin detail            | Query the selected provider using its generated route input; disable the query when the provider is absent. Inherit normal query retries.                |
-| Strategy selector        | Query the generated provider list while mounted; project only the fields needed for the shared list's display.                                           |
+| Strategy selector        | Query the generated provider list while mounted; pass raw providers to the agent-owned list for display and selection.                                   |
 | Workflow checklist       | Use the same provider list cache when checking installed strategies.                                                                                     |
 | Agent node configuration | Query provider detail only when a provider is selected. Keep `retry: false` here because the error state participates in the node's installation status. |
 
