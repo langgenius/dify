@@ -245,6 +245,125 @@ def test_create_node_carries_a_container_start_markers_reactflow_type():
     assert node["parentId"] == "iter1"
 
 
+# ---- node-type defaults at the create chokepoint ----------------------------
+
+
+def test_create_node_fills_a_required_field_the_caller_left_out():
+    """An LLM writes only the fields it was thinking about.
+    ``TemplateTransformNodeData.variables`` is required with no default, so the
+    draft preflight refused the WHOLE repair batch that created this node."""
+    graph = {"nodes": [], "edges": []}
+
+    out, _changed = apply_create_node(
+        graph, "template-transform", {"title": "Excellent", "template": "excellent"}, node_id="n1"
+    )
+
+    data = out["nodes"][0]["data"]
+    assert data["variables"] == []
+    assert data["template"] == "excellent"
+    assert data["title"] == "Excellent"
+
+
+def test_create_node_never_overwrites_a_value_the_caller_supplied():
+    """Defaults merge UNDER the config: the caller's value always wins."""
+    supplied = [{"variable": "score", "value_selector": ["node1", "score"]}]
+    graph = {"nodes": [], "edges": []}
+
+    out, _changed = apply_create_node(
+        graph, "template-transform", {"template": "{{ score }}", "variables": supplied}, node_id="n1"
+    )
+
+    assert out["nodes"][0]["data"]["variables"] == supplied
+
+
+def test_create_node_defaults_do_not_alias_the_registry():
+    """Two nodes created from the same default must not share one list."""
+    graph = {"nodes": [], "edges": []}
+
+    graph, _ = apply_create_node(graph, "template-transform", {"template": "a"}, node_id="n1")
+    graph, _ = apply_create_node(graph, "template-transform", {"template": "b"}, node_id="n2")
+    graph["nodes"][0]["data"]["variables"].append({"variable": "mutated", "value_selector": ["x"]})
+
+    assert graph["nodes"][1]["data"]["variables"] == []
+
+
+def test_create_node_leaves_a_generator_shaped_config_untouched():
+    """Build's configs come from the generator and already spell every field
+    out. Filling missing keys must not perturb one of them."""
+    generator_config = {
+        "title": "LLM",
+        "desc": "",
+        "selected": False,
+        "model": {
+            "provider": "langgenius/openai/openai",
+            "name": "gpt-4o",
+            "mode": "chat",
+            "completion_params": {"temperature": 0.2},
+        },
+        "prompt_template": [{"role": "system", "text": "You are helpful.", "id": "p1"}],
+        "context": {"enabled": True, "variable_selector": ["node1", "text"]},
+        "vision": {"enabled": True, "configs": {"detail": "high"}},
+    }
+    graph = {"nodes": [], "edges": []}
+
+    out, _changed = apply_create_node(graph, "llm", copy.deepcopy(generator_config), node_id="n1")
+
+    data = out["nodes"][0]["data"]
+    assert {k: v for k, v in data.items() if k != "type"} == generator_config
+    assert data["type"] == "llm"
+
+
+def test_create_node_adds_nothing_for_a_node_type_with_no_registered_defaults():
+    """An unregistered type must contribute no defaults, not abort the edit."""
+    graph = {"nodes": [], "edges": []}
+
+    out, _changed = apply_create_node(graph, "iteration", {"title": "Loop over"}, node_id="n1")
+
+    assert out["nodes"][0]["data"] == {
+        "type": "iteration",
+        "title": "Loop over",
+        "desc": "",
+        "selected": False,
+    }
+
+
+def test_insert_between_fills_required_fields_too():
+    """``insert_between`` builds its node through the same chokepoint."""
+    graph = {
+        "nodes": [{"id": "a", "data": {"type": "start"}}, {"id": "b", "data": {"type": "end"}}],
+        "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
+    }
+
+    out, changed = apply_insert_between(
+        graph, {"source": "a", "target": "b"}, "code", {"code": "print(1)"}, node_id="n1"
+    )
+
+    assert changed == ["n1"]
+    data = next(n for n in out["nodes"] if n["id"] == "n1")["data"]
+    assert data["outputs"] == {}
+    assert data["variables"] == []
+    assert data["code_language"] == "python3"
+    assert data["code"] == "print(1)"
+
+
+def test_filter_applicable_dry_run_sees_the_same_defaults_the_port_will_write():
+    """The dry run and the live apply must agree, or a create the dry run
+    accepts is a create the preflight refuses."""
+    intents = [
+        MutationIntent(
+            op="create_node",
+            args={"node_type": "template-transform", "node_id": "n1", "config": {"template": "x"}},
+        )
+    ]
+
+    applicable, rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents)
+
+    assert rejected == []
+    assert applicable == intents
+    dry_run, _ = graph_ops.apply_create_node({"nodes": [], "edges": []}, **intents[0].args)
+    assert dry_run["nodes"][0]["data"]["variables"] == []
+
+
 # ---- apply_delete_node ------------------------------------------------------
 
 
