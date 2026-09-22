@@ -807,14 +807,22 @@ describe('supported access points and binding permission', () => {
     },
   )
 
+  it('asks editors to contact an owner or admin when no policies exist', async () => {
+    const user = userEvent.setup()
+    renderEntry({ plan: 'professional', role: 'editor' })
+    await user.click(getChip())
+
+    expect(screen.getByText('Ask a workspace owner or admin to create one.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add IP Policy' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /(?:Manage|View) IP policies/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('lets editors select and save an existing policy without allowing policy creation', async () => {
     const user = userEvent.setup()
-    const { unmount } = renderEntry({ plan: 'professional', role: 'editor' })
-    await user.click(getChip())
-    expect(screen.queryByRole('button', { name: 'Add IP Policy' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Manage IP policies' }))
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
-    unmount()
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
       async (input, init) =>
         metadataResponse(new Request(input, init)) ??
@@ -830,6 +838,10 @@ describe('supported access points and binding permission', () => {
         role: 'editor',
         groups: [createNetworkAccessGroupFixture()],
       })
+      await user.click(getChip())
+      expect(screen.queryByRole('button', { name: 'Add IP Policy' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'View IP policies' }))
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
       await user.click(getChip())
       await user.click(screen.getByRole('option', { name: /Internal Network/ }))
       await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -847,89 +859,97 @@ describe('supported access points and binding permission', () => {
     }
   })
 
-  it('preserves selected scopes and versions when pausing and resuming a binding', async () => {
-    const user = userEvent.setup()
-    const availableAccessPoints = ['webapp', 'service_api', 'mcp'] as const
-    let binding = createBinding({ access_points: ['webapp', 'mcp'] })
-    const payloads: unknown[] = []
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-      const request = new Request(input, init)
-      const metadata = metadataResponse(request)
-      if (metadata) return metadata
-      if (request.url.endsWith('/workspaces/current/network-access-groups'))
+  it.each(['owner', 'admin', 'editor'] as const)(
+    'lets %s pause and resume while preserving scopes and versions',
+    async (role) => {
+      const user = userEvent.setup()
+      const availableAccessPoints = ['webapp', 'service_api', 'mcp'] as const
+      let binding = createBinding({ access_points: ['webapp', 'mcp'] })
+      const payloads: unknown[] = []
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const request = new Request(input, init)
+        const metadata = metadataResponse(request)
+        if (metadata) return metadata
+        if (request.url.endsWith('/workspaces/current/network-access-groups'))
+          return Response.json({
+            tenant_id: 'workspace-1',
+            entitled: true,
+            groups: [createNetworkAccessGroupFixture()],
+          })
+        if (request.method === 'PUT') {
+          const payload = await request.json()
+          payloads.push(payload)
+          binding = createBinding({ ...payload, version: binding.version + 1 })
+          return Response.json({
+            binding,
+            available_access_points: availableAccessPoints,
+            effective_enabled: binding.enabled,
+          })
+        }
         return Response.json({
           tenant_id: 'workspace-1',
+          app_id: 'app-1',
           entitled: true,
-          groups: [createNetworkAccessGroupFixture()],
-        })
-      if (request.method === 'PUT') {
-        const payload = await request.json()
-        payloads.push(payload)
-        binding = createBinding({ ...payload, version: binding.version + 1 })
-        return Response.json({
           binding,
           available_access_points: availableAccessPoints,
           effective_enabled: binding.enabled,
         })
+      })
+      try {
+        renderEntry({
+          plan: 'professional',
+          role,
+          groups: [createNetworkAccessGroupFixture()],
+          binding,
+        })
+        await user.click(getChip())
+        await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+        expect(
+          screen.getByRole('alertdialog', { name: 'Turn off IP access control?' }),
+        ).toHaveAccessibleDescription(
+          'All access points will be reachable from any IP address. Your configuration will be kept.',
+        )
+        expect(payloads).toHaveLength(0)
+        await user.click(screen.getByRole('button', { name: 'Turn off' }))
+        await waitFor(() =>
+          expect(payloads).toEqual([
+            {
+              enabled: false,
+              group_id: 'group-1',
+              access_points: ['webapp', 'mcp'],
+              expected_version: 2,
+            },
+          ]),
+        )
+        await waitFor(() =>
+          expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
+        )
+        expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).not.toBeChecked()
+        expect(
+          screen.getByText('Paused — Internal Network is configured but not enforcing'),
+        ).toBeInTheDocument()
+        expect(within(getChip()).getByText('Pause')).toBeInTheDocument()
+        expect(screen.queryByText(/Protecting/)).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+        await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+        await waitFor(() => expect(payloads).toHaveLength(2))
+        expect(payloads[1]).toEqual({
+          enabled: true,
+          group_id: 'group-1',
+          access_points: ['webapp', 'mcp'],
+          expected_version: 3,
+        })
+        await waitFor(() => expect(within(getChip()).getByText('2 of 3')).toBeInTheDocument())
+        expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+        await waitFor(() =>
+          expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
+        )
+      } finally {
+        fetchSpy.mockRestore()
       }
-      return Response.json({
-        tenant_id: 'workspace-1',
-        app_id: 'app-1',
-        entitled: true,
-        binding,
-        available_access_points: availableAccessPoints,
-        effective_enabled: binding.enabled,
-      })
-    })
-    try {
-      renderEntry({ plan: 'professional', groups: [createNetworkAccessGroupFixture()], binding })
-      await user.click(getChip())
-      await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
-      expect(
-        screen.getByRole('alertdialog', { name: 'Turn off IP access control?' }),
-      ).toHaveAccessibleDescription(
-        'All access points will be reachable from any IP address. Your configuration will be kept.',
-      )
-      expect(payloads).toHaveLength(0)
-      await user.click(screen.getByRole('button', { name: 'Turn off' }))
-      await waitFor(() =>
-        expect(payloads).toEqual([
-          {
-            enabled: false,
-            group_id: 'group-1',
-            access_points: ['webapp', 'mcp'],
-            expected_version: 2,
-          },
-        ]),
-      )
-      await waitFor(() =>
-        expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
-      )
-      expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).not.toBeChecked()
-      expect(
-        screen.getByText('Paused — Internal Network is configured but not enforcing'),
-      ).toBeInTheDocument()
-      expect(within(getChip()).getByText('Pause')).toBeInTheDocument()
-      expect(screen.queryByText(/Protecting/)).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
-      await waitFor(() => expect(payloads).toHaveLength(2))
-      expect(payloads[1]).toEqual({
-        enabled: true,
-        group_id: 'group-1',
-        access_points: ['webapp', 'mcp'],
-        expected_version: 3,
-      })
-      await waitFor(() => expect(within(getChip()).getByText('2 of 3')).toBeInTheDocument())
-      expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-      await waitFor(() =>
-        expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
-      )
-    } finally {
-      fetchSpy.mockRestore()
-    }
-  })
+    },
+  )
 
   it('shows a paid read-only binding without a downgrade or editing controls', async () => {
     const user = userEvent.setup()

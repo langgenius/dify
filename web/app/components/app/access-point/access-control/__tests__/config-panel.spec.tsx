@@ -152,15 +152,30 @@ describe('AccessControlConfigPanel', () => {
     },
   )
 
-  it.each([{ canManagePolicies: false }, { readOnly: true }])(
+  it.each([
+    { canManagePolicies: false, manageLabel: 'View IP policies' },
+    { readOnly: true, manageLabel: 'Manage IP policies' },
+  ])(
     'keeps policy creation unavailable without edit permission: %j',
-    (permissions) => {
+    ({ manageLabel, ...permissions }) => {
       render(<PanelHarness {...permissions} />)
 
       expect(screen.queryByRole('button', { name: 'Add IP Policy' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Manage IP policies' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: manageLabel })).toBeEnabled()
     },
   )
+
+  it('lets editors open the read-only policy list with a View IP policies tooltip', async () => {
+    const user = userEvent.setup()
+    const onManagePolicies = vi.fn()
+    render(<PanelHarness canManagePolicies={false} onManagePolicies={onManagePolicies} />)
+
+    const viewPolicies = screen.getByRole('button', { name: 'View IP policies' })
+    await user.hover(viewPolicies)
+    expect(await screen.findByText('View IP policies')).toBeInTheDocument()
+    await user.click(viewPolicies)
+    expect(onManagePolicies).toHaveBeenCalledOnce()
+  })
 
   it('requires access points when editing a paused policy', () => {
     render(

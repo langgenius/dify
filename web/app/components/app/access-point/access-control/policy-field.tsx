@@ -56,7 +56,9 @@ export function AccessControlPolicyField({
   const selectLabel = t(($) => $['studio.accessControl.ipPolicy'], { ns: 'deployments' })
   const placeholder = t(($) => $['studio.accessControl.selectPolicy'], { ns: 'deployments' })
   const canCreatePolicy = canManagePolicies && !readOnly
-  const manageLabel = t(($) => $['studio.accessControl.manageIpPolicies'], { ns: 'deployments' })
+  const manageLabel = canManagePolicies
+    ? t(($) => $['studio.accessControl.manageIpPolicies'], { ns: 'deployments' })
+    : t(($) => $['studio.accessControl.viewIpPolicies'], { ns: 'deployments' })
   const manageButton = (
     <Tooltip>
       <TooltipTrigger
@@ -74,17 +76,19 @@ export function AccessControlPolicyField({
     return (
       <div className="flex w-full flex-col items-center gap-3 overflow-hidden rounded-lg border border-dashed border-divider-regular px-4 py-5">
         <p className="w-full text-center system-sm-medium text-text-secondary">
-          {t(($) => $['studio.accessControl.emptyPoliciesTitle'], { ns: 'deployments' })}
+          {canManagePolicies
+            ? t(($) => $['studio.accessControl.emptyPoliciesTitle'], { ns: 'deployments' })
+            : t(($) => $['studio.accessControl.emptyPoliciesReadOnly'], { ns: 'deployments' })}
         </p>
         {canCreatePolicy ? (
           <Button type="button" variant="secondary-accent" onClick={onCreatePolicy}>
             {t(($) => $['studio.accessControl.createIpPolicy'], { ns: 'deployments' })}
           </Button>
-        ) : (
+        ) : canManagePolicies ? (
           <Button type="button" variant="secondary" onClick={onManagePolicies}>
-            {t(($) => $['studio.accessControl.manageIpPolicies'], { ns: 'deployments' })}
+            {manageLabel}
           </Button>
-        )}
+        ) : null}
       </div>
     )
   }

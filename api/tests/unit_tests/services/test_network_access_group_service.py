@@ -84,12 +84,21 @@ def _harness(*, role: str | None = "owner", paid: bool = True, app_mode: str = "
     )
 
 
-@pytest.mark.parametrize("role", ["normal", None])
-def test_reads_reject_non_privileged_persisted_roles_before_control_plane(role: str | None) -> None:
+@pytest.mark.parametrize("role", ["normal", "dataset_operator", None])
+@pytest.mark.parametrize(
+    "read",
+    [
+        pytest.param(lambda service: service.list_groups(_context()), id="list"),
+        pytest.param(lambda service: service.get_group(_context(), group_id=GROUP_ID), id="detail"),
+    ],
+)
+def test_reads_reject_non_privileged_persisted_roles_before_control_plane(
+    role: str | None, read: Callable[[NetworkAccessGroupService], object]
+) -> None:
     harness = _harness(role=role)
 
     with pytest.raises(NetworkAccessGroupAccessDeniedError):
-        harness.service.list_groups(_context())
+        read(harness.service)
 
     harness.memberships.get_role_for_account.assert_called_once_with(
         workspace_id=WORKSPACE_ID,
@@ -145,7 +154,7 @@ Mutation = Callable[[NetworkAccessGroupService, RequestContext], object]
         ),
     ],
 )
-@pytest.mark.parametrize("role", ["normal", None])
+@pytest.mark.parametrize("role", ["normal", "dataset_operator", None])
 def test_mutations_reject_non_privileged_persisted_roles_before_control_plane(
     role: str | None,
     mutation: Mutation,
@@ -217,8 +226,9 @@ def test_policy_mutations_reject_editor_before_control_plane(mutation: Mutation)
     assert harness.control_plane.method_calls == []
 
 
-def test_app_binding_get_and_put_allow_editor() -> None:
-    harness = _harness(role="editor")
+@pytest.mark.parametrize("role", ["owner", "admin", "editor"])
+def test_app_binding_get_and_put_allow_privileged_roles(role: str) -> None:
+    harness = _harness(role=role)
     harness.control_plane.get_app_binding.return_value = {"entitled": True, "binding": None}
     harness.control_plane.update_app_binding.return_value = {
         "effective_enabled": True,
@@ -259,8 +269,9 @@ def test_app_binding_get_and_put_allow_editor() -> None:
         ),
     ],
 )
-def test_app_binding_rejects_normal_role_before_app_lookup(operation: Mutation) -> None:
-    harness = _harness(role="normal")
+@pytest.mark.parametrize("role", ["normal", "dataset_operator", None])
+def test_app_binding_rejects_disallowed_roles_before_app_lookup(operation: Mutation, role: str | None) -> None:
+    harness = _harness(role=role)
 
     with pytest.raises(NetworkAccessGroupAccessDeniedError):
         operation(harness.service, _context())
@@ -283,8 +294,9 @@ def test_mutation_does_not_repeat_http_paid_plan_admission() -> None:
     harness.entitlement.is_paid_plan.assert_not_called()
 
 
-def test_public_use_cases_forward_workspace_actor_and_request_parameters() -> None:
-    harness = _harness()
+@pytest.mark.parametrize("role", ["owner", "admin"])
+def test_public_use_cases_forward_workspace_actor_and_request_parameters(role: str) -> None:
+    harness = _harness(role=role)
     harness.control_plane.list_groups.return_value = {"entitled": True, "groups": list[object]()}
     harness.control_plane.create_group.return_value = {"group": {"id": GROUP_ID}}
     harness.control_plane.get_group.return_value = {"group": {"id": GROUP_ID}}
@@ -706,8 +718,9 @@ def test_current_ip_read_rejects_disallowed_persisted_roles_before_reading_ip(ro
     harness.entitlement.is_paid_plan.assert_not_called()
 
 
-def test_current_ip_check_rejects_role_before_policy_or_ip_lookup() -> None:
-    harness = _harness(role="normal")
+@pytest.mark.parametrize("role", ["normal", "dataset_operator", None])
+def test_current_ip_check_rejects_role_before_policy_or_ip_lookup(role: str | None) -> None:
+    harness = _harness(role=role)
     supplier = MagicMock(return_value="203.0.113.7")
 
     with pytest.raises(NetworkAccessGroupAccessDeniedError):
