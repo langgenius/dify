@@ -8,7 +8,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
     AccountPayload,
     AccountResponse,
@@ -34,6 +34,10 @@ from services.entities.account_entities import AccountSnapshot
 @openapi_ns.route("/account")
 class AccountApi(Resource):
     @endpoint(
+        op="account.get",
+        kind=Kind.OBJECT,
+        summary="Current account",
+        examples=(Example(title="Show the logged-in account and its workspaces", input={}),),
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         returns=(200, AccountResponse, "Account info"),
     )
@@ -57,6 +61,10 @@ class AccountApi(Resource):
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
     @endpoint(
+        op="account.sessions.revoke_current",
+        kind=Kind.OBJECT,
+        summary="Revoke the session behind this token",
+        examples=(Example(title="Log out the session behind this token", input={}),),
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         returns=(200, RevokeResponse, "Session revoked"),
     )
@@ -68,6 +76,10 @@ class AccountSessionsSelfApi(Resource):
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
     @endpoint(
+        op="account.sessions.list",
+        kind=Kind.LIST,
+        summary="List login sessions of the current account",
+        examples=(Example(title="List login sessions, first page", input={"page": 1, "limit": 20}),),
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         query=SessionListQuery,
         returns=(200, SessionListResponse, "Session list"),
@@ -90,6 +102,10 @@ class AccountSessionsApi(Resource):
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
     @endpoint(
+        op="account.sessions.revoke",
+        kind=Kind.OBJECT,
+        summary="Revoke one login session by id",
+        examples=(Example(title="Log out one device by session id", input={"session_id": "<session_id>"}),),
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         returns=(200, RevokeResponse, "Session revoked"),
     )
