@@ -336,6 +336,98 @@ def test_apply_connect_original_graph_untouched():
     assert graph["edges"] == []
 
 
+# ---- apply_connect: branch handles must be ones the node declares ----------
+# (ESQ1-303) An edge on an undeclared handle hangs off nothing and its arm
+# never runs; the run still reports "succeeded". Reject at the write.
+
+_IF_ELSE = {"id": "branch", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}}
+_TARGET = {"id": "a", "data": {"type": "llm"}}
+
+
+def test_apply_connect_accepts_a_declared_branch_handle():
+    graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
+
+    new_graph, _ = apply_connect(graph, "branch", "a", source_handle="false")
+
+    assert new_graph["edges"][0]["sourceHandle"] == "false"
+
+
+def test_apply_connect_rejects_an_undeclared_branch_handle_and_names_the_declared_ones():
+    graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
+
+    with pytest.raises(ValueError, match=r"branch node 'branch' has no handle 'else'.*\['true', 'false'\]"):
+        apply_connect(graph, "branch", "a", source_handle="else")
+
+
+def test_apply_connect_rejects_the_default_handle_on_a_branch_node():
+    graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
+
+    with pytest.raises(ValueError, match="has no handle 'source'"):
+        apply_connect(graph, "branch", "a")
+
+
+def test_apply_connect_still_defaults_the_handle_on_a_plain_node():
+    graph = {"nodes": [{"id": "llm", "data": {"type": "llm"}}, _TARGET], "edges": []}
+
+    new_graph, _ = apply_connect(graph, "llm", "a")
+
+    assert new_graph["edges"][0]["sourceHandle"] == "source"
+
+
+# ---- apply_connect: declared_branch_handles acceptances (Task 4) -----------
+# fail-branch nodes declare "source" (their real success handle, not an
+# invented "success") + "fail-branch"; human-input declares its action ids +
+# the implicit "__timeout" arm. apply_connect must accept a connect on any of
+# these, not just if-else's case ids.
+
+_FAIL_BRANCH_HTTP = {"id": "http1", "data": {"type": "http-request", "error_strategy": "fail-branch"}}
+_HUMAN_INPUT = {
+    "id": "human1",
+    "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "reject"}]},
+}
+
+
+def test_apply_connect_accepts_the_source_handle_on_a_fail_branch_node():
+    graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
+
+    new_graph, _ = apply_connect(graph, "http1", "a", source_handle="source")
+
+    assert new_graph["edges"][0]["sourceHandle"] == "source"
+
+
+def test_apply_connect_accepts_the_default_handle_on_a_fail_branch_node():
+    graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
+
+    new_graph, _ = apply_connect(graph, "http1", "a")
+
+    assert new_graph["edges"][0]["sourceHandle"] == "source"
+
+
+def test_apply_connect_accepts_the_fail_branch_handle_on_a_fail_branch_node():
+    graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
+
+    new_graph, _ = apply_connect(graph, "http1", "a", source_handle="fail-branch")
+
+    assert new_graph["edges"][0]["sourceHandle"] == "fail-branch"
+
+
+def test_apply_connect_accepts_the_timeout_handle_on_a_human_input_node():
+    graph = {"nodes": [_HUMAN_INPUT, _TARGET], "edges": []}
+
+    new_graph, _ = apply_connect(graph, "human1", "a", source_handle="__timeout")
+
+    assert new_graph["edges"][0]["sourceHandle"] == "__timeout"
+
+
+def test_apply_connect_still_accepts_any_handle_on_a_plain_node_type():
+    plain = {"id": "llm1", "data": {"type": "llm"}}
+    graph = {"nodes": [plain, _TARGET], "edges": []}
+
+    new_graph, _ = apply_connect(graph, "llm1", "a", source_handle="whatever")
+
+    assert new_graph["edges"][0]["sourceHandle"] == "whatever"
+
+
 # ---- apply_insert_between -------------------------------------------------------
 
 
