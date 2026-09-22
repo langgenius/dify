@@ -133,8 +133,10 @@ class LlmBuilderAgent:
     def bind_resources(self, plan_items, resource_ids):
         return build.bind_resources(self.model_or_none(), self._tenant_id, plan_items, resource_ids)
 
-    def build_nodes(self, plan_items, resource_ids=None):
-        return build.build_nodes(self._tenant_id, self._model_config, plan_items, resource_ids or ())
+    def build_nodes(self, plan_items, resource_ids=None, *, trusted_text=""):
+        return build.build_nodes(
+            self._tenant_id, self._model_config, plan_items, resource_ids or (), trusted_text=trusted_text
+        )
 
     def learn_from_build(self, goal_text, requirements, plan_items, built_node_ids):
         return build.learn_from_build(
