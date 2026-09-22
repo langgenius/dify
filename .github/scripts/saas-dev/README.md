@@ -121,7 +121,7 @@ script deliberately provides no automatic destructive rollback or queue purge.
 ## Local tests
 
 ```sh
-python3 -m unittest discover -s .github/scripts/saas-dev -p 'test_*.py' -v
+uv run --project api pytest api/tests/unit_tests/commands/test_fix_workflow_queues.py
 ```
 
 Tests use temporary synthetic Compose files and mocked broker responses. They
