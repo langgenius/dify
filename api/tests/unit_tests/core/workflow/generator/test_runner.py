@@ -6040,3 +6040,155 @@ class TestValidateStructureBranchHandlesAndHttpBodies:
 
         assert WorkflowGenerateErrorCode.INVALID_BRANCH_HANDLE == "INVALID_BRANCH_HANDLE"
         assert WorkflowGenerateErrorCode.INVALID_HTTP_BODY == "INVALID_HTTP_BODY"
+
+
+class TestAJsonSchemaArrayIsNotAValueSelector:
+    """Live-verification defect (docs/superpowers/triage/live-verify-2026-09-22/FINDINGS.md).
+
+    The walker read ANY two-element list of strings as a
+    ``["node_id", "variable"]`` selector. Once the llm snippet started teaching
+    structured output, an ordinary JSON Schema reached the walker for the first
+    time, and its ``required: ["content", "speaker_notes"]`` was harvested as a
+    reference to a node called ``content`` -- aborting the whole generation
+    with ``UNKNOWN_NODE_REFERENCE: points at unknown node 'content'``. Arity 2
+    is the entire trigger: one name or three names harvest nothing.
+    ``enum: ["formal", "casual"]`` and ``type: ["string", "null"]`` are exposed
+    the same way, which is why the fix is on the keywords and the
+    ``structured_output`` subtree, not on ``required`` alone.
+    """
+
+    @staticmethod
+    def _llm_with_schema(schema: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "id": "node3",
+            "type": "custom",
+            "position": {"x": 0, "y": 0},
+            "data": {
+                "type": "llm",
+                "title": "Writer",
+                "prompt_template": [{"role": "user", "text": "Write about {{#node1.topic#}}"}],
+                "structured_output_enabled": True,
+                "structured_output": {"schema": schema},
+            },
+        }
+
+    @staticmethod
+    def _refs(node: dict[str, Any]) -> set[tuple[str, str]]:
+        out: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(node["data"], out)
+        return out
+
+    def test_a_two_name_required_array_is_not_a_reference(self):
+        node = self._llm_with_schema(
+            {
+                "type": "object",
+                "properties": {"content": {"type": "string"}, "speaker_notes": {"type": "string"}},
+                "required": ["content", "speaker_notes"],
+            }
+        )
+
+        assert self._refs(node) == {("node1", "topic")}
+
+    def test_a_two_value_enum_is_not_a_reference(self):
+        node = self._llm_with_schema(
+            {"type": "object", "properties": {"tone": {"type": "string", "enum": ["formal", "casual"]}}}
+        )
+
+        assert self._refs(node) == {("node1", "topic")}
+
+    def test_a_two_member_type_union_is_not_a_reference(self):
+        node = self._llm_with_schema({"type": "object", "properties": {"note": {"type": ["string", "null"]}}})
+
+        assert self._refs(node) == {("node1", "topic")}
+
+    def test_the_keywords_are_excluded_wherever_they_appear(self):
+        # Belt and braces: the walker is generic, so the next schema-bearing
+        # node type must not reintroduce this. These are outside any
+        # ``structured_output`` subtree.
+        out: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(
+            {
+                "output_schema": {"required": ["a", "b"], "enum": ["x", "y"], "type": ["string", "null"]},
+                "parameters": [{"schema": {"required": ["p", "q"]}}],
+            },
+            out,
+        )
+
+        assert out == set()
+
+    def test_a_genuine_selector_in_the_same_node_is_still_harvested(self):
+        """THE regression guard. The exclusion must remove the false positive
+        and nothing else -- a real ``[node_id, variable]`` selector sitting
+        beside the schema has to stay visible to the walker, and stay
+        validated. An exclusion that swallowed real references would quietly
+        undo the walker's whole job."""
+        node = self._llm_with_schema(
+            {
+                "type": "object",
+                "properties": {"content": {"type": "string"}, "speaker_notes": {"type": "string"}},
+                "required": ["content", "speaker_notes"],
+            }
+        )
+        node["data"]["vision"] = {"configs": {"variable_selector": ["node2", "image"]}}
+        node["data"]["context"] = {"variable_selector": ["node2", "chunks"]}
+
+        assert self._refs(node) == {("node1", "topic"), ("node2", "image"), ("node2", "chunks")}
+
+        # …and still VALIDATED: pointing at a node that does not exist is
+        # still an error, so the exclusion has not blinded the validator.
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=[node], mode="workflow")
+        assert {e["code"] for e in errors} == {"UNKNOWN_NODE_REFERENCE"}
+        assert {e["node_id"] for e in errors} == {"node1", "node2"}
+
+    def test_the_production_error_string_is_gone_from_a_whole_graph(self):
+        """The byte-for-byte failure from the live run:
+        ``Reference {#bullet_content.speaker_notes#} points at unknown node
+        'bullet_content'``."""
+        llm = self._llm_with_schema(
+            {
+                "type": "object",
+                "properties": {"bullet_content": {"type": "string"}, "speaker_notes": {"type": "string"}},
+                "required": ["bullet_content", "speaker_notes"],
+            }
+        )
+        llm["data"]["prompt_template"] = [{"role": "user", "text": "Write slide {{#node1.topic#}}"}]
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [{"variable": "topic", "label": "Topic", "type": "paragraph"}],
+                        },
+                    },
+                    llm,
+                    {
+                        "id": "node9",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [
+                                {"variable": "r", "value_selector": ["node3", "structured_output", "bullet_content"]}
+                            ],
+                        },
+                    },
+                ],
+                "edges": [
+                    {"id": "e1", "source": "node1", "target": "node3"},
+                    {"id": "e2", "source": "node3", "target": "node9"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 1},
+            },
+        )
+
+        errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
+
+        assert errors == []
+        assert not any("bullet_content" in e["detail"] for e in errors)

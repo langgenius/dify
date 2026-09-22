@@ -1844,11 +1844,24 @@ class WorkflowGenerator:
     # remapping when we defensively sanitize LLM-emitted ids.
     _ID_FIELDS: ClassVar = frozenset({"start_node_id", "iteration_id", "loop_id", "parentId"})
 
-    # ``data`` keys whose value is a plain string list, never a
-    # ``[node_id, var]`` value-selector — so the reference walker must not read
-    # a 2-element one as a selector. ``default`` holds an input's default value;
-    # ``options`` holds select choices; the ``allowed_file_*`` keys hold a file
-    # variable's upload config (types / extensions / methods).
+    # ``data`` keys whose SUBTREE holds no ``[node_id, var]`` value-selector —
+    # so the reference walker must not read a 2-element string list inside one
+    # as a selector. The gate is inherited by everything below the key.
+    #
+    # Node config: ``default`` holds an input's default value; ``options``
+    # holds select choices; the ``allowed_file_*`` keys hold a file variable's
+    # upload config (types / extensions / methods).
+    #
+    # JSON Schema: ``structured_output`` is an llm node's whole schema wrapper,
+    # and ``required`` / ``enum`` / ``type`` are the schema keywords that hold
+    # string arrays. A schema is DATA, never a selector, but the walker is
+    # generic and read ``required: ["content", "speaker_notes"]`` as a
+    # reference to a node called ``content`` — which aborted the entire
+    # generation with UNKNOWN_NODE_REFERENCE. Arity 2 was the whole trigger.
+    # The subtree and the keywords are both listed on purpose: the subtree
+    # covers everything a structured-output schema will ever grow, and the
+    # keywords cover the next schema-bearing node type, whose schema will not
+    # live under ``structured_output`` (a tool's ``output_schema``, say).
     _NON_SELECTOR_LIST_KEYS: ClassVar = frozenset(
         {
             "default",
@@ -1856,6 +1869,10 @@ class WorkflowGenerator:
             "allowed_file_types",
             "allowed_file_extensions",
             "allowed_file_upload_methods",
+            "structured_output",
+            "required",
+            "enum",
+            "type",
         }
     )
 
