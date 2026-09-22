@@ -67,6 +67,8 @@ from core.dify_builder.state import PcState
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "NO_OUTPUT_BODY",
+    "NO_OUTPUT_REPLY",
     "UNKNOWN_TEST_OUTCOME_NOTICE",
     "action_kind",
     "action_string",
@@ -90,11 +92,13 @@ __all__ = [
     "handle_publish",
     "handle_verify",
     "is_input_failure",
+    "last_branch_node_id",
     "merge_known_keys",
     "mint_checkpoint",
     "model_config_error_text",
     "needs_upload_inputs",
     "perform_revert",
+    "run_finished_without_output",
     "start_schema",
     "testdata_form_fields",
     "upload_variable_names",
@@ -109,6 +113,58 @@ __all__ = [
 UNKNOWN_TEST_OUTCOME_NOTICE = (
     "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test."
 )
+
+# A run that reports ``succeeded`` after taking a branch node and reaching no
+# End node produced nothing (ESQ1-303: both if-else edges used undeclared
+# handles, so the engine skipped both arms and finished with outputs={}).
+# Shown instead of "All checks passed"; nothing is diagnosed or repaired
+# because the engine reported no error to diagnose.
+NO_OUTPUT_BODY = (
+    "The run finished but reached no End node, so it produced no output. Check the branch handles "
+    "and the edges after the last node that ran, then edit the canvas, keep the draft, or revert."
+)
+NO_OUTPUT_REPLY = "The test finished without producing any output — see the notice."
+
+# Node statuses that mean "this node ran to completion": the engine's
+# ``WorkflowNodeExecutionStatus.SUCCEEDED`` and the fakes' ``success``.
+_RAN_OK = frozenset({"succeeded", "success"})
+_BRANCH_NODE_TYPES = frozenset({"if-else", "question-classifier", "human-input"})
+
+
+def _branch_node_ids(graph: Graph) -> set[str]:
+    """Nodes that pick one of several outgoing edges at run time: the branch
+    node types, plus any node whose error strategy is ``fail-branch``."""
+    ids: set[str] = set()
+    for node in graph.get("nodes", []):
+        data = node.get("data") or {}
+        if data.get("type") in _BRANCH_NODE_TYPES or data.get("error_strategy") == "fail-branch":
+            ids.add(str(node.get("id") or ""))
+    return ids
+
+
+def last_branch_node_id(graph: Graph, per_node: list[NodeOutput]) -> str:
+    """The last branch node that ran, or "" -- the node to point at when a run
+    routed nowhere."""
+    branch_ids = _branch_node_ids(graph)
+    return next((n.node_id for n in reversed(per_node) if n.node_id in branch_ids and n.status in _RAN_OK), "")
+
+
+def run_finished_without_output(graph: Graph, per_node: list[NodeOutput]) -> bool:
+    """True when a run that reports ``succeeded`` took a branch node and then
+    reached no End node -- i.e. every arm was skipped or dead-ended.
+
+    Deliberately narrow: a run with no branch node that succeeds has reached its
+    End (a linear graph cannot skip it), and a graph with no End node has
+    nothing to require. Both stay green.
+    """
+    end_ids = {str(n.get("id") or "") for n in graph.get("nodes", []) if (n.get("data") or {}).get("type") == "end"}
+    if not end_ids:
+        return False
+    ran = [n for n in per_node if n.status in _RAN_OK]
+    branch_ids = _branch_node_ids(graph)
+    if not any(n.node_id in branch_ids for n in ran):
+        return False
+    return not any(n.node_id in end_ids for n in ran)
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -691,6 +747,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         ],
     )
     progress.activate("fix-prepare-validation")
+    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     inputs: dict[str, Any] = {}
     if fc.test_input_ref != "":
         ti = env.repo.get_test_input(fc.test_input_ref)
@@ -753,6 +810,32 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         run.culprit_node_id = first_failed_node(result.per_node)
 
     fc.verify_run_id = run.id
+    if result.status == "succeeded" and run_finished_without_output(graph, result.per_node):
+        # Took a branch and reached no End: not a pass, and not an engine
+        # error to diagnose. Point at the branch node and let the user decide.
+        run.culprit_node_id = last_branch_node_id(graph, result.per_node)
+        items = append_card(
+            fc,
+            TestResultCard(
+                title="Validation",
+                subtitle="Finished without output",
+                tone="error",
+                stats=[],
+                run_ids=[run.id],
+                dify_run_id=run.dify_run_id,
+            ),
+        )
+        items += append_card(
+            fc, ErrorCard(title="No output produced", body=NO_OUTPUT_BODY, tone="danger", node_id=run.culprit_node_id)
+        )
+        progress.finish()
+        return StepResult(
+            next=PcState.FIX_AWAIT_DECISION,
+            context=fc,
+            items=items,
+            run=run,
+            run_id_sink=[run.id],
+        )
     items = append_card(
         fc,
         TestResultCard(

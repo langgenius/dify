@@ -2432,3 +2432,87 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     # tells the client to fall back to the checkpoint AFTER apply_repair's
     # own per-intent markers, same as production ordering.
     assert [e["event"] for e in events] == ["create_checkpoint", "add_node", "revert_checkpoint"]
+
+
+# The ESQ1-303 shape: start -> if-else -> (two arms) -> end. With both if-else
+# edges on undeclared handles the engine skips both arms, reaches no End, and
+# reports ``succeeded`` with ``outputs={}`` -- which the handler called
+# "All checks passed".
+_BRANCHING_GRAPH = {
+    "nodes": [
+        {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+        {
+            "id": "node2",
+            "data": {"type": "if-else", "title": "Check", "cases": [{"case_id": "true", "conditions": []}]},
+        },
+        {"id": "node3", "data": {"type": "template-transform", "title": "A", "template": "a", "variables": []}},
+        {"id": "node6", "data": {"type": "end", "title": "End", "outputs": []}},
+    ],
+    "edges": [
+        {"source": "node1", "target": "node2", "sourceHandle": "source"},
+        {"source": "node2", "target": "node3", "sourceHandle": "score_equals_60"},
+        {"source": "node3", "target": "node6", "sourceHandle": "source"},
+    ],
+}
+
+
+def _succeeded_run(per_node_ids: list[str]):
+    from core.dify_builder.models import NodeOutput, Run
+
+    def run_draft(*_a, **_k) -> Run:
+        return Run(
+            kind="verify",
+            immutable=True,
+            dify_run_id="run-303",
+            status="succeeded",
+            per_node=[NodeOutput(node_id=i, status="succeeded", outputs={}) for i in per_node_ids],
+        )
+
+    return run_draft
+
+
+def test_a_succeeded_run_that_took_a_branch_and_reached_no_end_is_not_a_pass():
+    """ESQ1-303's silent false pass. The engine reported ``succeeded`` because
+    nothing failed; only node1 and node2 ran. That is not "All checks passed"."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    events: list[dict] = []
+    dify = FakeBuildDifyPort()
+    dify.graph = _BRANCHING_GRAPH
+    dify.run_draft = _succeeded_run(["node1", "node2"])
+    env, _ = _new_env(dify=dify, emit_canvas=events.append)
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+
+    res = handle_test_and_repair(env, Turn(actor=_actor()), s, DifyBuilderContext(test_input_ref="ti-1"))
+
+    assert res.next == PcState.BUILD_AWAIT_REPAIR
+    assert res.context.staged_repair == []  # nothing to diagnose: the engine reported no error
+    test_result = next(i for i in res.items if i.kind == "test_result")
+    assert test_result.payload["subtitle"] == "Finished without output"
+    assert test_result.payload["tone"] == "error"
+    error = next(i for i in res.items if i.kind == "error")
+    assert error.payload["title"] == "No output produced"
+    assert error.payload["node_id"] == "node2"  # the branch node that routed nowhere
+    assert "All checks passed" not in {i.payload.get("subtitle") for i in res.items}
+    assert {"event": "mark_test_error", "dify_run_id": "run-303"} in events
+
+
+def test_a_succeeded_run_that_took_a_branch_and_reached_the_end_is_still_a_pass():
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    dify.graph = _BRANCHING_GRAPH
+    dify.run_draft = _succeeded_run(["node1", "node2", "node3", "node6"])
+    env, _ = _new_env(dify=dify)
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+
+    res = handle_test_and_repair(env, Turn(actor=_actor()), s, DifyBuilderContext(test_input_ref="ti-1"))
+
+    assert res.next == PcState.BUILD_REVIEW
+    assert next(i for i in res.items if i.kind == "test_result").payload["subtitle"] == "All checks passed"
