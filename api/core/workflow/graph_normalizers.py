@@ -230,3 +230,86 @@ def derive_if_else_var_types(nodes: list[Any]) -> list[str]:
         if touched:
             changed.append(str(node.get("id") or ""))
     return changed
+
+
+# ---------------------------------------------------------------------------
+# http-request bodies
+# ---------------------------------------------------------------------------
+
+# graphon's executor (``Executor._require_single_body_item``) sends these body
+# types as ONE rendered item; ``form-data`` / ``x-www-form-urlencoded`` take any
+# number of key/value items and ``none`` takes none.
+_SINGLE_ITEM_BODY_TYPES = frozenset({"json", "raw-text", "binary"})
+
+
+def normalize_http_request_bodies(nodes: list[Any]) -> list[str]:
+    """Fill what graphon's ``BodyData`` model cannot default.
+
+    ``BodyData.type`` is ``Literal["file", "text"]`` with NO default, and the
+    shared builder prompt only ever shows ``"body": {"type": "none", "data": []}``,
+    so the LLM writes ``{key, value}`` items (ESQ1-302) and the graph fails at
+    ``Graph.init``. An item with a non-empty ``file`` selector is a file item;
+    every other item is text. A ``none`` body carries no items. Returns the ids
+    of the nodes that changed.
+    """
+    changed: list[str] = []
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+        data = node.get("data")
+        if not isinstance(data, Mapping) or data.get("type") != "http-request":
+            continue
+        body = data.get("body")
+        if not isinstance(body, MutableMapping):
+            continue
+        items = body.get("data")
+        touched = False
+        if body.get("type") == "none" and items:
+            body["data"] = []
+            touched = True
+        elif isinstance(items, list):
+            for item in items:
+                if not isinstance(item, MutableMapping) or item.get("type") in ("file", "text"):
+                    continue
+                item["type"] = "file" if item.get("file") else "text"
+                touched = True
+        if touched:
+            changed.append(str(node.get("id") or ""))
+    return changed
+
+
+def http_request_body_errors(nodes: list[Any]) -> list[tuple[str, str]]:
+    """``(node_id, detail)`` for every http-request whose body the executor
+    would reject at run time: a json / raw-text / binary body with a number of
+    items other than one.
+
+    Deliberately NOT repaired. Two ``{key, value}`` items under a json body
+    have no single correct collapse: quoting each value breaks a variable whose
+    text is itself JSON (ESQ1-302's ``node3.text``), not quoting breaks plain
+    text with quotes or newlines. Only the author can say which was meant, so
+    the graph is rejected with the node named and regenerated instead.
+    """
+    errors: list[tuple[str, str]] = []
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+        data = node.get("data")
+        if not isinstance(data, Mapping) or data.get("type") != "http-request":
+            continue
+        body = data.get("body")
+        if not isinstance(body, Mapping):
+            continue
+        body_type = str(body.get("type") or "")
+        items = body.get("data")
+        if body_type not in _SINGLE_ITEM_BODY_TYPES or isinstance(items, str):
+            continue
+        count = len(items) if isinstance(items, list) else 0
+        if count != 1:
+            errors.append(
+                (
+                    str(node.get("id") or ""),
+                    f"http-request {body_type} body must have exactly one item (one template "
+                    f"holding the whole payload); node {node.get('id')!r} has {count} items",
+                )
+            )
+    return errors

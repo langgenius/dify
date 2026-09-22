@@ -309,3 +309,141 @@ class TestDeriveIfElseVarTypes:
         assert "varType" not in conds["b"]
         assert "varType" not in conds["c"]
         assert "varType" not in conds["d"]
+
+
+# The http-request node exactly as the ESQ1-302 draft stored it (dev app
+# a26c8d2b, node4): a json body whose two items lack ``type``. graphon's
+# ``BodyData.type: Literal["file", "text"]`` has no default, so Graph.init
+# rejected the node on every test run; and even with ``type`` filled, the
+# executor requires EXACTLY ONE item for json / raw-text / binary bodies.
+ESQ1_302_HTTP_NODE = {
+    "id": "node4",
+    "type": "custom",
+    "data": {
+        "type": "http-request",
+        "title": "Call PPT API",
+        "method": "post",
+        "url": "https://api.example.com/ppt/generate",
+        "authorization": {"config": None, "type": "no-auth"},
+        "headers": "",
+        "params": "",
+        "body": {
+            "type": "json",
+            "data": [
+                {"value": "{{#node3.text#}}", "key": "slides"},
+                {"value": "{{#node1.output_filename#}}", "key": "filename"},
+            ],
+        },
+    },
+}
+
+
+class TestNormalizeHttpRequestBodies:
+    def test_fills_the_missing_item_type_on_the_esq1_302_node(self):
+        from core.workflow.graph_normalizers import normalize_http_request_bodies
+
+        node = copy.deepcopy(ESQ1_302_HTTP_NODE)
+
+        assert normalize_http_request_bodies([node]) == ["node4"]
+        assert [item["type"] for item in node["data"]["body"]["data"]] == ["text", "text"]
+
+    def test_an_item_carrying_a_file_selector_is_a_file_item(self):
+        from core.workflow.graph_normalizers import normalize_http_request_bodies
+
+        node = {
+            "id": "up",
+            "data": {
+                "type": "http-request",
+                "body": {
+                    "type": "form-data",
+                    "data": [{"key": "doc", "file": ["node1", "doc"]}, {"key": "name", "value": "x"}],
+                },
+            },
+        }
+
+        normalize_http_request_bodies([node])
+
+        assert [item["type"] for item in node["data"]["body"]["data"]] == ["file", "text"]
+
+    def test_a_none_body_drops_stray_items(self):
+        from core.workflow.graph_normalizers import normalize_http_request_bodies
+
+        node = {
+            "id": "get",
+            "data": {
+                "type": "http-request",
+                "body": {"type": "none", "data": [{"key": "x", "value": "y"}]},
+            },
+        }
+
+        assert normalize_http_request_bodies([node]) == ["get"]
+        assert node["data"]["body"]["data"] == []
+
+    def test_a_string_body_and_a_clean_body_are_left_alone(self):
+        from core.workflow.graph_normalizers import normalize_http_request_bodies
+
+        nodes = [
+            {
+                "id": "s",
+                "data": {"type": "http-request", "body": {"type": "raw-text", "data": "plain"}},
+            },
+            {
+                "id": "c",
+                "data": {
+                    "type": "http-request",
+                    "body": {"type": "json", "data": [{"type": "text", "key": "", "value": "{}"}]},
+                },
+            },
+            {
+                "id": "llm",
+                "data": {"type": "llm", "body": {"type": "json", "data": [{"key": "x"}]}},
+            },
+        ]
+        before = copy.deepcopy(nodes)
+
+        assert normalize_http_request_bodies(nodes) == []
+        assert nodes == before
+
+
+class TestHttpRequestBodyErrors:
+    """What the normalizer must NOT paper over: a json body with two ``{key,
+    value}`` items has no single correct collapse (quoting breaks JSON-valued
+    variables -- ESQ1-302's ``node3.text`` IS JSON -- and not quoting breaks
+    plain text). The honest answer is a structured rejection naming the node."""
+
+    def test_the_esq1_302_json_body_with_two_items_is_rejected_with_the_node_id(self):
+        from core.workflow.graph_normalizers import http_request_body_errors
+
+        node = copy.deepcopy(ESQ1_302_HTTP_NODE)
+        errors = http_request_body_errors([node])
+
+        assert len(errors) == 1
+        node_id, detail = errors[0]
+        assert node_id == "node4"
+        assert "json body must have exactly one item" in detail
+        assert "2 items" in detail
+
+    def test_raw_text_and_binary_need_exactly_one_item_form_bodies_take_any_number(self):
+        from core.workflow.graph_normalizers import http_request_body_errors
+
+        def node(nid: str, body_type: str, count: int) -> dict:
+            items = [{"type": "text", "key": str(i), "value": "v"} for i in range(count)]
+            return {
+                "id": nid,
+                "data": {
+                    "type": "http-request",
+                    "body": {"type": body_type, "data": items},
+                },
+            }
+
+        nodes = [
+            node("raw0", "raw-text", 0),
+            node("raw1", "raw-text", 1),
+            node("bin2", "binary", 2),
+            node("form0", "form-data", 0),
+            node("form3", "form-data", 3),
+            node("url2", "x-www-form-urlencoded", 2),
+            node("none0", "none", 0),
+        ]
+
+        assert [nid for nid, _ in http_request_body_errors(nodes)] == ["raw0", "bin2"]
