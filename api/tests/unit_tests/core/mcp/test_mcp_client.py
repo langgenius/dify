@@ -247,6 +247,8 @@ class TestMCPClient:
         client._initialize()
 
         assert events[:3] == ["session_closed", "sse_closed", "mcp_opened"]
+        failed_session_context.__exit__.assert_called_once()
+        sse_context.__exit__.assert_called_once()
         assert client._session is live_session
 
     @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
