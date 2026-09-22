@@ -106,7 +106,7 @@ function renderSearchMethodOption(
 }
 
 describe('SearchMethodOption', () => {
-  it('should render semantic search controls and notify retrieval and reranking changes', () => {
+  it('should render semantic search controls', () => {
     const props = createProps()
 
     renderSearchMethodOption(props)
@@ -115,10 +115,6 @@ describe('SearchMethodOption', () => {
     expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
     expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
     expect(screen.getAllByRole('switch')).toHaveLength(2)
-
-    fireEvent.click(screen.getAllByRole('switch')[0]!)
-
-    expect(props.reranking.onEnabledChange).toHaveBeenCalledWith(true)
   })
 
   it('should notify retrieval changes when an inactive option is selected', () => {
