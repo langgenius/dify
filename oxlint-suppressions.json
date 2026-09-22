@@ -4768,7 +4768,7 @@
   },
   "web/service/use-plugins.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 13
+      "count": 11
     },
     "dify/require-disable-directive-description": {
       "count": 1
