@@ -155,11 +155,15 @@ def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
     if not tools:
         return ""
     listing = "\n".join(f"- {t.id} — {t.label}" for t in tools)
+    # "as a separate word": the generator pins a tool only on its id bounded by
+    # non-word characters (tool_catalogue's identifier boundary), and CJK counts
+    # as a word character -- "使用bowenliang123/..." never pins.
     return (
         "\n\n# Installed tools you may name (ready to use)\n"
         "When one of these covers a step, plan that step as a `tool` node and name the tool "
-        "by its id. Plan an `http-request` step only for an endpoint the user actually gave "
-        "you -- never invent one.\n"
+        "by its id -- write the id exactly as listed, as a separate word (with a space on "
+        "each side, even in Chinese or Japanese text). Plan an `http-request` step only for "
+        "an endpoint the user actually gave you -- never invent one.\n"
         f"{listing}"
     )
 
@@ -312,21 +316,43 @@ def _term_in_step(item: str, term: str) -> bool:
     return re.search(pattern, item.lower()) is not None
 
 
-def _covering_step(plan_items: list[str], kind: str, label: str) -> int:
+def _covering_step(plan_items: list[str], kind: str, ref: ResourceRef) -> int:
     """Index of the first step a resource covers: one naming the resource's
-    label, else one naming its kind's node type; ``-1`` when none does."""
-    for index, item in enumerate(plan_items):
-        if _term_in_step(item, label):
-            return index
+    id, else one naming its label, else one naming its kind's node type;
+    ``-1`` when none does.
+
+    The id comes first because the planner is told to name a tool by its id
+    (``_planner_tool_section``): with two tool steps, the "tool" keyword alone
+    would bind both tools to the first of them.
+    """
+    for term in (ref.id, ref.label):
+        for index, item in enumerate(plan_items):
+            if _term_in_step(item, term):
+                return index
     for index, item in enumerate(plan_items):
         if any(_term_in_step(item, keyword) for keyword in _STEP_KEYWORDS_BY_KIND.get(kind, ())):
             return index
     return -1
 
 
+def _bound_name(kind: str, ref: ResourceRef) -> str:
+    """How a bound resource is named in its step's "(using ...)" suffix.
+
+    A tool carries its ``provider/tool`` id in ASCII brackets after the label:
+    the shared generator pins a tool deterministically only on that identifier
+    (``tool_catalogue._find_explicit_tool_keys``), never on the label, and its
+    boundary treats '[' / ']' as non-word characters. A model's label already is
+    its full id, and a dataset is grounded by its name (``_ground``), so those
+    keep the label alone.
+    """
+    return f"{ref.label} [{ref.id}]" if kind == "plugin" else ref.label
+
+
 # A binder-produced suffix, or several stacked from repeated binds, trailing
 # a plan item. Stripped before each bind so a loop-back re-bind reflects only
-# the current selection instead of accumulating every past one.
+# the current selection instead of accumulating every past one. A tool's
+# "[provider/tool]" id sits inside the parentheses and holds no parenthesis
+# itself, so ``[^()]*`` strips it along with the label.
 _TRAILING_USING_SUFFIX = re.compile(r"(\s*\(using [^()]*\))+\s*$")
 
 
@@ -336,7 +362,8 @@ def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: l
     Used to append every label to the LAST step -- in the ESQ1-302 session the
     end-node step read "(using deepseek-v4-flash, Code Interpreter)" while the
     step that needed a tool said nothing. The last step is now only the
-    fallback for a resource no step names.
+    fallback for a resource no step names. A tool is named with its id
+    (``_bound_name``) so the generator pins exactly that tool.
 
     A loop-back (build.review / build.reverted -> re-walk resources ->
     approve_plan) feeds the already-bound plan back in here, so every item's
@@ -355,14 +382,14 @@ def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: l
     if not chosen:
         return stripped
     if not plan_items:
-        return [f"Use {', '.join(r.label for r in chosen)}"]
-    labels_by_step: dict[int, list[str]] = {}
+        return [f"Use {', '.join(_bound_name(kinds[r.id], r) for r in chosen)}"]
+    names_by_step: dict[int, list[str]] = {}
     for ref in chosen:
-        index = _covering_step(stripped, kinds[ref.id], ref.label)
-        labels_by_step.setdefault(index if index >= 0 else len(stripped) - 1, []).append(ref.label)
+        index = _covering_step(stripped, kinds[ref.id], ref)
+        names_by_step.setdefault(index if index >= 0 else len(stripped) - 1, []).append(_bound_name(kinds[ref.id], ref))
     bound = list(stripped)
-    for index, labels in labels_by_step.items():
-        suffix = f" (using {', '.join(labels)})"
+    for index, names in names_by_step.items():
+        suffix = f" (using {', '.join(names)})"
         if suffix not in bound[index]:
             bound[index] = bound[index] + suffix
     return bound
