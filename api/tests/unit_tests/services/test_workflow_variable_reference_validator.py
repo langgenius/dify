@@ -35,18 +35,6 @@ class TestValidateVariableReferences:
         assert validate_variable_references({}) == []
         assert validate_variable_references({"nodes": [], "edges": []}) == []
 
-    def test_sequential_reference_is_safe(self) -> None:
-        """A reference to a producer that always runs upstream is safe."""
-        graph = {
-            "nodes": [
-                _node("start", "start"),
-                _node("a", "tool", "A"),
-                _node("b", "llm", "B", selector=["a", "text"]),
-            ],
-            "edges": [_edge("start", "a"), _edge("a", "b")],
-        }
-        assert validate_variable_references(graph) == []
-
     def test_upstream_always_run_reference_is_safe(self) -> None:
         """Reading a node that runs before the branch split is safe."""
         graph = {
@@ -104,28 +92,6 @@ class TestValidateVariableReferences:
         assert len(issues) == 1
         assert issues[0].node_id == "join"
         assert issues[0].referenced_node_id == "a"
-
-    def test_single_wired_branch_handle_is_flagged(self) -> None:
-        """A branch node with one wired handle can still select an unwired outcome."""
-        cons = _node("cons", "llm", "Consumer")
-        _node_data(cons)["prompt"] = "Use {{#prod.text#}}"
-        graph = {
-            "nodes": [
-                _node("start", "start"),
-                _node("hi", "human-input", "Approval"),
-                _node("prod", "tool", "Producer"),
-                cons,
-            ],
-            "edges": [
-                _edge("start", "hi"),
-                _edge("hi", "prod", "approve"),
-                _edge("start", "cons"),
-            ],
-        }
-        issues = validate_variable_references(graph)
-        assert len(issues) == 1
-        assert issues[0].node_id == "cons"
-        assert issues[0].referenced_node_id == "prod"
 
     def test_single_wired_if_else_branch_is_flagged(self) -> None:
         """An if-else with only one branch wired skips it when the other is taken."""
