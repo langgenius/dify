@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { PromptRole } from '@/models/debug'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
@@ -110,7 +111,8 @@ describe('AdvancedPromptInput', () => {
     vi.clearAllMocks()
   })
 
-  it('should delegate prompt text and role changes to the parent callbacks', () => {
+  it('should delegate prompt text and role changes to the parent callbacks', async () => {
+    const user = userEvent.setup()
     render(
       <ConfigContext.Provider value={createContextValue()}>
         <AdvancedPromptInput
@@ -128,16 +130,15 @@ describe('AdvancedPromptInput', () => {
       </ConfigContext.Provider>,
     )
 
-    fireEvent.click(screen.getByText('change-advanced'))
-    fireEvent.click(screen.getByText('selector:user'))
+    await user.click(screen.getByText('change-advanced'))
+    await user.click(screen.getByText('selector:user'))
     const copyButton = screen.getByRole('button', { name: 'common.operation.copy' })
-    copyButton.focus()
-    fireEvent.click(copyButton)
+    await user.click(copyButton)
     expect(copyButton).toHaveFocus()
     expect(copyButton).toHaveAttribute('aria-disabled', 'true')
-    fireEvent.click(copyButton)
+    await user.keyboard('{Enter} ')
     expect(mockCopy).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByText('delete-prompt'))
+    await user.click(screen.getByText('delete-prompt'))
 
     expect(mockOnChange).toHaveBeenCalledWith('Updated {{new_var}}')
     expect(mockOnTypeChange).toHaveBeenCalledWith('assistant')
