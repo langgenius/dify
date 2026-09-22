@@ -188,6 +188,157 @@ def test_build_nodes_retries_with_corrective_instruction_on_terminal_error():
     assert any(i.op == "create_node" for i in intents)  # the retry's graph was used
 
 
+def test_terminal_retry_instruction_includes_every_error_and_reference_guidance():
+    """The retry must feed back EVERY structured error (not just the first) and,
+    for UNRESOLVED_REFERENCE, name the fix in the generator's own vocabulary --
+    the producing node must declare that exact output name, or the consumer must
+    reference one of the producer's real outputs."""
+    result = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "UNRESOLVED_REFERENCE",
+                "detail": "Reference {#node3.deck#} not declared on node 'node3'",
+                "node_id": "node3",
+            },
+            {
+                "code": "UNKNOWN_TOOL",
+                "detail": "Tool acme/render is not installed for this tenant",
+                "node_id": "node5",
+            },
+        ],
+    }
+
+    instruction = build._terminal_retry_instruction("PLAN TEXT", result)
+
+    # every error's detail and node id -- not just the first
+    assert "Reference {#node3.deck#} not declared on node 'node3'" in instruction
+    assert "node3" in instruction
+    assert "Tool acme/render is not installed for this tenant" in instruction
+    assert "node5" in instruction
+    # error codes are carried too, so the model can see the machine-readable class
+    assert "UNRESOLVED_REFERENCE" in instruction
+    assert "UNKNOWN_TOOL" in instruction
+    # reference-specific guidance in the generator's own vocabulary
+    assert "outputs" in instruction  # code node's outputs map
+    assert "parameters" in instruction  # parameter-extractor's parameters[].name
+    assert "structured" in instruction.lower()  # llm structured output
+    assert "'text'" in instruction  # a schema-less llm's only real output
+    assert "PLAN TEXT" in instruction  # base instruction preserved
+
+
+def test_terminal_retry_instruction_keeps_topology_text_for_a_topology_error():
+    """A pure topology failure (no UNRESOLVED_REFERENCE) still gets the
+    start/end/answer guidance the retry has always carried."""
+    result = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "MISSING_START",
+                "detail": "Workflow must have exactly one 'start' node (found 0)",
+            }
+        ],
+    }
+
+    instruction = build._terminal_retry_instruction("PLAN TEXT", result)
+
+    assert "Workflow must have exactly one 'start' node (found 0)" in instruction
+    assert "'start' node" in instruction
+    assert "'end' node" in instruction
+    assert "answer" in instruction.lower()
+    assert "PLAN TEXT" in instruction
+
+
+def test_build_nodes_retries_twice_then_succeeds_within_budget():
+    """Two corrective retries are allowed (three generations total). A stub
+    that fails on the first two attempts and succeeds on the third must use
+    that third attempt's graph."""
+    unresolved = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "UNRESOLVED_REFERENCE",
+                "detail": "Reference {#node3.deck#} not declared on node 'node3'",
+                "node_id": "node3",
+            }
+        ],
+    }
+    missing_terminal = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [{"code": "MISSING_TERMINAL", "detail": "Workflow must end with at least one 'end' node"}],
+    }
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            side_effect=[unresolved, missing_terminal, _GEN_GRAPH],
+        ) as gen,
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
+        ),
+    ):
+        result = build.build_nodes("t1", {}, ["Say hello and return result"])
+
+    assert gen.call_count == 3
+    assert result.error == ""
+    assert any(i.op == "create_node" for i in result.intents)  # the 3rd attempt's graph was used
+
+
+def test_build_nodes_stops_after_three_attempts_and_reports_every_error():
+    """The retry budget is at most 3 generations total (first + 2 retries). A
+    stub that keeps failing must stop there, and the error card must carry
+    every error of the final attempt, not just the first."""
+    attempt1 = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "UNRESOLVED_REFERENCE",
+                "detail": "Reference {#node3.deck#} not declared on node 'node3'",
+                "node_id": "node3",
+            }
+        ],
+    }
+    attempt2 = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [{"code": "MISSING_TERMINAL", "detail": "Workflow must end with at least one 'end' node"}],
+    }
+    attempt3 = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "UNKNOWN_TOOL",
+                "detail": "Tool acme/render is not installed for this tenant",
+                "node_id": "h",
+            },
+            {"code": "DANGLING_EDGE", "detail": "Edge target node not found: 'e9'"},
+        ],
+    }
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            side_effect=[attempt1, attempt2, attempt3],
+        ) as gen,
+    ):
+        result = build.build_nodes("t1", {}, ["x"])
+
+    assert gen.call_count == 3  # budget respected: no 4th attempt
+    assert result.intents == []
+    # the final attempt's errors are ALL present in the card -- not truncated to the first
+    assert "Tool acme/render is not installed for this tenant" in result.error
+    assert "Edge target node not found: 'e9'" in result.error
+    assert len(result.diagnostics) == 3
+
+
 def test_build_nodes_degrades_to_empty_on_generator_error():
     with (
         patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
@@ -411,8 +562,8 @@ def test_build_nodes_records_structured_diagnostics_for_the_debug_export():
         result = build.build_nodes("t1", {}, ["call the GitHub API and summarize"])
 
     assert result.intents == []
-    # one diagnostic per generation attempt (initial + the single corrective retry)
-    assert len(result.diagnostics) == 2
+    # one diagnostic per generation attempt (initial + up to two corrective retries)
+    assert len(result.diagnostics) == 3
     first = result.diagnostics[0]
     assert first["source"] == "workflow-generator"
     # the same text the server logged as the "%s" of "structural validation failed: %s"
@@ -420,6 +571,7 @@ def test_build_nodes_records_structured_diagnostics_for_the_debug_export():
     assert first["codes"] == ["UNRESOLVED_REFERENCE"]
     assert first["attempt"] == 1
     assert result.diagnostics[1]["attempt"] == 2
+    assert result.diagnostics[2]["attempt"] == 3
     # structured detail survives -- code AND the offending node id
     assert first["errors"][0]["code"] == "UNRESOLVED_REFERENCE"
     assert first["errors"][0]["node_id"] == "node2"
