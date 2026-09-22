@@ -220,6 +220,33 @@ def test_apply_repair_heals_an_authorization_without_type_and_writes(mock_sessio
     assert written["data"]["authorization"]["type"] == "api-key"
 
 
+def test_apply_repair_unwraps_a_nested_parameter_extractor_query_before_the_preflight(mock_session: MagicMock):
+    """Blocker A: a Fix/Edit repair writes a parameter-extractor ``query`` as
+    an array of selector arrays (``[["sys", "query"]]``); graphon's
+    ``ParameterExtractorNodeData.query`` is ``list[str]``, one selector, and
+    ``Graph.init`` always refuses the nested shape. The chokepoint normalizer
+    unwraps the one unambiguous case and the preflight then passes."""
+    config = {
+        "title": "Extract",
+        "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+        "query": [["sys", "query"]],
+        "parameters": [{"name": "topic", "type": "string", "description": "Topic", "required": True}],
+        "reasoning_mode": "prompt",
+    }
+    intents = [
+        MutationIntent(
+            op="create_node", args={"node_type": "parameter-extractor", "node_id": "node5", "config": config}
+        )
+    ]
+
+    result, sync = _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+    assert "node5" in result.changed_nodes
+    _, kwargs = sync.call_args
+    written = next(n for n in kwargs["graph"]["nodes"] if n["id"] == "node5")
+    assert written["data"]["query"] == ["sys", "query"]
+
+
 def test_apply_repair_rejects_a_crashing_node_it_cannot_heal_instead_of_raising_it(mock_session: MagicMock):
     """A shape no normalizer heals (a present but invalid ``type`` also makes
     graphon raise KeyError) is a preflight PROBLEM -- a PreflightError the

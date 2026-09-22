@@ -348,6 +348,58 @@ def http_request_body_errors(nodes: list[Any]) -> list[tuple[str, str]]:
 
 
 # ---------------------------------------------------------------------------
+# parameter-extractor ``query``
+# ---------------------------------------------------------------------------
+
+
+def normalize_parameter_extractor_queries(nodes: list[Any]) -> list[str]:
+    """Unwrap a parameter-extractor ``query`` written as a list holding one
+    selector list.
+
+    graphon's ``ParameterExtractorNodeData.query`` is ``list[str]`` -- ONE
+    selector (``nodes/parameter_extractor/entities.py:112``), the same shape
+    a question-classifier's ``query_variable_selector`` already uses. A
+    ``[["node2", "text"]]`` (an array of selector arrays) is always refused
+    at ``Graph.init``, so this only turns that engine-refused shape into the
+    one it evidently means.
+
+    Only the unambiguous case is healed: a list containing EXACTLY one inner
+    list of strings. Two or more inner lists (``[["a","b"],["c","d"]]``) have
+    no single correct collapse -- which one did the author mean? -- so that
+    is left exactly as written for the validator to reject and regenerate,
+    same as ``http_request_body_errors``' two-item json body. A correct flat
+    ``["node2", "text"]`` and an empty ``[]`` are also left alone. Returns the
+    ids of the nodes that changed.
+
+    The inner list must also be a RESOLVABLE selector -- at least
+    ``[node_id, variable]``. ``[[]]`` and ``[["node2"]]`` would unwrap to a
+    ``list[str]`` the schema accepts, so ``Graph.init`` would stop refusing
+    them, but ``VariablePool.get`` returns ``None`` for any selector shorter
+    than 2 (``runtime/variable_pool.py:211``): the unwrap would trade a loud
+    refusal for a silent run-time break, which is the opposite of what a
+    normalizer is for.
+    """
+    changed: list[str] = []
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+        data = node.get("data")
+        if not isinstance(data, MutableMapping) or data.get("type") != "parameter-extractor":
+            continue
+        query = data.get("query")
+        if (
+            isinstance(query, list)
+            and len(query) == 1
+            and isinstance(query[0], list)
+            and len(query[0]) >= 2
+            and all(isinstance(item, str) for item in query[0])
+        ):
+            data["query"] = query[0]
+            changed.append(str(node.get("id") or ""))
+    return changed
+
+
+# ---------------------------------------------------------------------------
 # Branch edge handles (if-else / question-classifier / human-input / fail-branch)
 # ---------------------------------------------------------------------------
 
