@@ -993,6 +993,54 @@ class TestRepairBranchEdgeHandles:
         assert repair_branch_edge_handles([_legacy_if_else("n")], edges) == []
         assert _handles(edges) == [("a", "true"), ("b", "false")]
 
+    def test_failure_arm_aliases_reach_fail_branch_however_they_are_spelled(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = {"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}
+        for name in ("fail_branch", "failbranch", "Fail Branch", "error_branch", "Error-Branch", "on_fail", "fallback"):
+            edges = _edges("h", [("source", "ok"), (name, "err")])
+            assert repair_branch_edge_handles([node], edges) == [], name
+            assert _handles(edges) == [("ok", "source"), ("err", "fail-branch")], name
+
+    def test_a_branch_type_fail_branch_node_resolves_a_failure_alias_to_fail_branch_not_else(self):
+        # Before: "fallback" was no alias, so with "true" wired the fan-out
+        # rule eliminated it onto the one unused arm it counts -- ELSE.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = _if_else("n", ("true",))
+        node["data"]["error_strategy"] = "fail-branch"
+        edges = _edges("n", [("true", "a"), ("fallback", "b")])
+
+        assert repair_branch_edge_handles([node], edges) == []
+        assert _handles(edges) == [("a", "true"), ("b", "fail-branch")]
+
+    def test_an_unknown_name_on_a_branch_type_node_with_an_unwired_fail_branch_is_not_eliminated(self):
+        # With the fail-branch arm unwired, an unrecognized name is as likely
+        # to be the failure arm as the one free branch arm: fail closed.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = _if_else("n", ("true",))
+        node["data"]["error_strategy"] = "fail-branch"
+        edges = _edges("n", [("true", "a"), ("whatever", "b")])
+
+        unresolved = repair_branch_edge_handles([node], edges)
+
+        assert [u["handle"] for u in unresolved] == ["whatever"]
+        assert _handles(edges) == [("a", "true"), ("b", "whatever")]
+
+    def test_a_branch_type_node_with_its_fail_branch_wired_still_eliminates(self):
+        # Once the fail-branch arm is wired it is on the same footing as the
+        # IF arm, and the pre-existing rule applies: the one unwired branch
+        # arm (ELSE) is the forced home of the unknown name.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        node = _if_else("n", ("true",))
+        node["data"]["error_strategy"] = "fail-branch"
+        edges = _edges("n", [("true", "a"), ("fail-branch", "e"), ("whatever", "b")])
+
+        assert repair_branch_edge_handles([node], edges) == []
+        assert _handles(edges) == [("a", "true"), ("e", "fail-branch"), ("b", "false")]
+
 
 class TestUndeclaredBranchHandles:
     def test_reports_every_edge_whose_handle_the_node_does_not_declare(self):
