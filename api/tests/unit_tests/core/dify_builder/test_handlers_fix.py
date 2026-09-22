@@ -1030,3 +1030,77 @@ def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output():
     assert test_result.payload["subtitle"] == "Finished without output"
     assert test_result.payload["tone"] == "error"
     assert next(i for i in res.items if i.kind == "error").payload["title"] == "No output produced"
+
+
+# ---- dead_end_branch_node_id / run_finished_without_output (fix round 1) --
+
+
+_DEAD_END_GRAPH = {
+    "nodes": [
+        {"id": "node1", "data": {"type": "start"}},
+        {"id": "node2", "data": {"type": "if-else"}},
+        {"id": "node3", "data": {"type": "template-transform"}},
+        {"id": "node6", "data": {"type": "end"}},
+    ],
+    "edges": [
+        {"source": "node1", "target": "node2"},
+        {"source": "node2", "target": "node3"},
+        {"source": "node3", "target": "node6"},
+    ],
+}
+
+
+def test_dead_end_branch_node_id_finds_a_branch_whose_target_never_ran():
+    from core.dify_builder.handlers_fix import dead_end_branch_node_id, run_finished_without_output
+    from core.dify_builder.models import NodeOutput
+
+    per_node = [NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")]
+
+    assert dead_end_branch_node_id(_DEAD_END_GRAPH, per_node) == "node2"
+    assert run_finished_without_output(_DEAD_END_GRAPH, per_node) is True
+
+
+def test_dead_end_branch_node_id_is_empty_once_a_target_shows_up_with_any_status():
+    """A target that appears in per_node -- even failed -- means the engine
+    entered that arm, so the branch did not route nowhere."""
+    from core.dify_builder.handlers_fix import dead_end_branch_node_id, run_finished_without_output
+    from core.dify_builder.models import NodeOutput
+
+    per_node = [
+        NodeOutput(node_id="node1", status="succeeded"),
+        NodeOutput(node_id="node2", status="succeeded"),
+        NodeOutput(node_id="node3", status="failed"),
+    ]
+
+    assert dead_end_branch_node_id(_DEAD_END_GRAPH, per_node) == ""
+    assert run_finished_without_output(_DEAD_END_GRAPH, per_node) is False
+
+
+def test_dead_end_branch_node_id_treats_no_outgoing_edges_as_routing_nowhere():
+    from core.dify_builder.handlers_fix import dead_end_branch_node_id
+    from core.dify_builder.models import NodeOutput
+
+    graph = {
+        "nodes": [
+            {"id": "node1", "data": {"type": "start"}},
+            {"id": "node2", "data": {"type": "if-else"}},
+            {"id": "node6", "data": {"type": "end"}},
+        ],
+        "edges": [{"source": "node1", "target": "node2"}],
+    }
+    per_node = [NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")]
+
+    assert dead_end_branch_node_id(graph, per_node) == "node2"
+
+
+def test_run_finished_without_output_is_false_without_an_end_node():
+    from core.dify_builder.handlers_fix import run_finished_without_output
+    from core.dify_builder.models import NodeOutput
+
+    graph = {
+        "nodes": [{"id": "node1", "data": {"type": "start"}}, {"id": "node2", "data": {"type": "if-else"}}],
+        "edges": [{"source": "node1", "target": "node2"}],
+    }
+    per_node = [NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")]
+
+    assert run_finished_without_output(graph, per_node) is False

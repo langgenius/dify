@@ -76,6 +76,7 @@ __all__ = [
     "append_item",
     "build_change_set",
     "build_form_fields",
+    "dead_end_branch_node_id",
     "decode_checklist_errors",
     "emit_canvas",
     "first_failed_node",
@@ -92,7 +93,6 @@ __all__ = [
     "handle_publish",
     "handle_verify",
     "is_input_failure",
-    "last_branch_node_id",
     "merge_known_keys",
     "mint_checkpoint",
     "model_config_error_text",
@@ -133,38 +133,63 @@ _BRANCH_NODE_TYPES = frozenset({"if-else", "question-classifier", "human-input"}
 
 def _branch_node_ids(graph: Graph) -> set[str]:
     """Nodes that pick one of several outgoing edges at run time: the branch
-    node types, plus any node whose error strategy is ``fail-branch``."""
-    ids: set[str] = set()
-    for node in graph.get("nodes", []):
-        data = node.get("data") or {}
-        if data.get("type") in _BRANCH_NODE_TYPES or data.get("error_strategy") == "fail-branch":
-            ids.add(str(node.get("id") or ""))
-    return ids
+    node types. (Not ``error_strategy == "fail-branch"``: a node that actually
+    took its fail branch reports status ``"exception"``, outside ``_RAN_OK``,
+    so that clause never protected anything -- it only misclassified an
+    ordinary succeeded fail-branch node as a router and false-flagged a
+    perfectly linear success.)"""
+    return {
+        str(node.get("id") or "")
+        for node in graph.get("nodes", [])
+        if (node.get("data") or {}).get("type") in _BRANCH_NODE_TYPES
+    }
 
 
-def last_branch_node_id(graph: Graph, per_node: list[NodeOutput]) -> str:
-    """The last branch node that ran, or "" -- the node to point at when a run
-    routed nowhere."""
+def dead_end_branch_node_id(graph: Graph, per_node: list[NodeOutput]) -> str:
+    """The LAST branch node that ran OK where none of its outgoing edges'
+    targets show up in ``per_node`` at all (any status) -- i.e. the engine
+    skipped every arm (the ESQ1-303 mechanism). Returns "" when no such
+    dead end exists.
+
+    A target that appears in ``per_node`` with ANY status -- even
+    ``"failed"`` -- means the engine did emit a row for that arm, so the
+    branch routed somewhere; only a target with NO row at all means its arm
+    was never entered. A branch node with no outgoing edges counts as
+    routing nowhere (there is nothing it could have reached).
+    """
     branch_ids = _branch_node_ids(graph)
-    return next((n.node_id for n in reversed(per_node) if n.node_id in branch_ids and n.status in _RAN_OK), "")
+    ran_ids = {n.node_id for n in per_node}
+    targets_by_source: dict[str, list[str]] = {}
+    for edge in graph.get("edges", []):
+        source = str(edge.get("source") or "")
+        targets_by_source.setdefault(source, []).append(str(edge.get("target") or ""))
+    for n in reversed(per_node):
+        if n.node_id not in branch_ids or n.status not in _RAN_OK:
+            continue
+        targets = targets_by_source.get(n.node_id, [])
+        if not any(target in ran_ids for target in targets):
+            return n.node_id
+    return ""
 
 
 def run_finished_without_output(graph: Graph, per_node: list[NodeOutput]) -> bool:
-    """True when a run that reports ``succeeded`` took a branch node and then
-    reached no End node -- i.e. every arm was skipped or dead-ended.
+    """True only when: the graph has at least one End node; no End node ran
+    OK; and some branch node ran OK and routed nowhere (see
+    ``dead_end_branch_node_id``) -- the ESQ1-303 mechanism itself, not merely
+    "a branch ran and no End did".
 
-    Deliberately narrow: a run with no branch node that succeeds has reached its
-    End (a linear graph cannot skip it), and a graph with no End node has
-    nothing to require. Both stay green.
+    This is what tells the defect (every arm skipped) apart from a legitimate
+    side-effect-only arm that ran to completion with no End node of its own:
+    that arm's nodes DO show up in ``per_node``, so ``dead_end_branch_node_id``
+    finds no dead end and this stays green. A graph with no End node has
+    nothing to require, so that also stays green.
     """
     end_ids = {str(n.get("id") or "") for n in graph.get("nodes", []) if (n.get("data") or {}).get("type") == "end"}
     if not end_ids:
         return False
-    ran = [n for n in per_node if n.status in _RAN_OK]
-    branch_ids = _branch_node_ids(graph)
-    if not any(n.node_id in branch_ids for n in ran):
+    if any(n.node_id in end_ids and n.status in _RAN_OK for n in per_node):
         return False
-    return not any(n.node_id in end_ids for n in ran)
+    return dead_end_branch_node_id(graph, per_node) != ""
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -811,9 +836,10 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 
     fc.verify_run_id = run.id
     if result.status == "succeeded" and run_finished_without_output(graph, result.per_node):
-        # Took a branch and reached no End: not a pass, and not an engine
-        # error to diagnose. Point at the branch node and let the user decide.
-        run.culprit_node_id = last_branch_node_id(graph, result.per_node)
+        # A branch node ran and every one of its arms was skipped, and no End
+        # node ran either: not a pass, and not an engine error to diagnose.
+        # Point at the branch node and let the user decide.
+        run.culprit_node_id = dead_end_branch_node_id(graph, result.per_node)
         items = append_card(
             fc,
             TestResultCard(
