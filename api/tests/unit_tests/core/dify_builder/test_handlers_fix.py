@@ -1178,3 +1178,11 @@ def test_re_fix_starts_a_fresh_unknown_outcome_count():
 
     third = handle_verify(env, Turn(actor=_actor()), s, re_fixed.context)
     assert third.next == PcState.FIX_AWAIT_TESTDATA
+
+
+def test_the_unknown_outcome_counter_is_exported_with_its_cap():
+    """Build and Edit import note_unknown_outcome from this module, so it is
+    part of the shared surface ``__all__`` declares, next to its cap."""
+    from core.dify_builder import handlers_fix
+
+    assert {"MAX_UNKNOWN_OUTCOMES", "note_unknown_outcome"} <= set(handlers_fix.__all__)
