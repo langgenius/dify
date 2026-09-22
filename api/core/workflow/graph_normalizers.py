@@ -407,10 +407,25 @@ def _effective_handle(handle: Any) -> Any:
     return "source" if handle is None else handle
 
 
+def _if_else_case_ids(data: Mapping[str, Any]) -> list[str]:
+    """The case ids an if-else routes on, mirroring graphon's
+    ``IfElseNodeData.iter_cases``: a node whose ``cases`` is absent or
+    ``None`` is the legacy shape (top-level ``conditions``), which the engine
+    runs as ONE case with id ``"true"`` (and the canvas migrates to
+    ``case_id: "true"``). An explicitly empty ``cases: []`` is not legacy --
+    it has no case at all and always takes the ELSE arm."""
+    cases = data.get("cases")
+    if cases is None:
+        return ["true"]
+    return [str(c["case_id"]) for c in cases or [] if isinstance(c, Mapping) and c.get("case_id")]
+
+
 def declared_branch_handles(node: Mapping[str, Any]) -> list[str]:
     """The source handles ``node`` exposes, in declaration order; ``[]`` for a
     node that has a single ``source`` handle.
 
+    An if-else declares its case ids (``"true"`` for the legacy shape with no
+    ``cases`` -- see ``_if_else_case_ids``) plus the implicit ``"false"`` arm.
     A node with ``error_strategy: "fail-branch"`` gains a ``"fail-branch"``
     arm. Its success path stays on whatever handle the node already routes
     on: graphon's ``NodeRunResult.edge_source_handle`` defaults to
@@ -427,8 +442,7 @@ def declared_branch_handles(node: Mapping[str, Any]) -> list[str]:
     node_type = data.get("type")
     handles: list[str] = []
     if node_type == "if-else":
-        handles = [str(c["case_id"]) for c in data.get("cases") or [] if isinstance(c, Mapping) and c.get("case_id")]
-        handles.append("false")  # the implicit ELSE arm
+        handles = [*_if_else_case_ids(data), "false"]  # + the implicit ELSE arm
     elif node_type == "question-classifier":
         handles = [str(k["id"]) for k in data.get("classes") or [] if isinstance(k, Mapping) and k.get("id")]
     elif node_type == "human-input":
@@ -472,8 +486,8 @@ def _name_aliases(node: Mapping[str, Any], handles: list[str]) -> dict[str, str]
     if node_type == "if-else":
         for alias in _ELSE_ALIASES:
             add(alias, "false")
-        case_count = sum(1 for c in data.get("cases") or [] if isinstance(c, Mapping) and c.get("case_id"))
-        if case_count == 1:  # one case + the implicit ELSE: an IF alias is unambiguous
+        # one case (the legacy shape counts as one) + the implicit ELSE: an IF alias is unambiguous
+        if len(_if_else_case_ids(data)) == 1:
             for alias in _IF_ALIASES:
                 add(alias, handles[0])
     elif node_type == "question-classifier":
