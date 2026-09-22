@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type InputProps = {
   value?: string
@@ -54,7 +53,10 @@ const Input: FC<InputProps> = ({
       />
       {validated && (
         <div className="absolute top-2.5 right-2.5">
-          <CheckCircle className="h-4 w-4 text-[#039855]" />
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-general-check-circle h-4 w-4 text-[#039855]"
+          />
         </div>
       )}
     </div>

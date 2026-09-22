@@ -172,10 +172,6 @@ class Dataset(TypeBase, kw_only=True):
         nullable=False,
     )
 
-    @property
-    def total_documents(self) -> int:
-        return self.get_total_documents(session=db.session())
-
     def get_total_documents(self, *, session: Session) -> int:
         return self.get_document_count(session=session)
 

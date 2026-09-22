@@ -4,7 +4,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
 import { useLocale } from '#i18n'
-import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 import { LanguagesSupported } from '@/i18n/language'
 import { ChunkingMode } from '@/models/datasets'
 
@@ -105,7 +104,7 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
         data={getTemplate()}
       >
         <div className="flex h-4.5 items-center space-x-1 text-xs font-medium text-text-accent">
-          <DownloadIcon className="mr-1 size-3" />
+          <span aria-hidden className="mr-1 i-custom-vender-solid-general-download-02 size-3" />
           {t(($) => $['list.batchModal.template'], { ns: 'datasetDocuments' })}
         </div>
       </CSVDownloader>

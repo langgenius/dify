@@ -176,6 +176,9 @@ catalogs:
     '@base-ui/react':
       specifier: 1.8.0
       version: 1.8.0
+    '@base-ui/utils':
+      specifier: 0.4.0
+      version: 0.4.0
     '@chromatic-com/storybook':
       specifier: 5.3.1
       version: 5.3.1
@@ -260,9 +263,6 @@ catalogs:
     '@remixicon/react':
       specifier: 4.9.0
       version: 4.9.0
-    '@rgrove/parse-xml':
-      specifier: 5.0.0
-      version: 5.0.0
     '@sentry/react':
       specifier: 10.75.0
       version: 10.75.0
@@ -491,9 +491,6 @@ catalogs:
     eslint-plugin-command:
       specifier: 4.0.0
       version: 4.0.0
-    eslint-plugin-erasable-syntax-only:
-      specifier: 0.7.1
-      version: 0.7.1
     eslint-plugin-jsdoc:
       specifier: 64.5.2
       version: 64.5.2
@@ -737,9 +734,6 @@ catalogs:
     tldts:
       specifier: 7.4.13
       version: 7.4.13
-    tsx:
-      specifier: 4.23.13
-      version: 4.23.13
     typescript:
       specifier: npm:@typescript/typescript6@6.0.2
       version: 6.0.2
@@ -867,9 +861,6 @@ importers:
       eslint-plugin-command:
         specifier: 'catalog:'
         version: 4.0.0(@typescript-eslint/typescript-estree@8.70.0(@typescript/typescript6@6.0.2)(supports-color@11.0.0))(@typescript-eslint/utils@8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0))(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))
-      eslint-plugin-erasable-syntax-only:
-        specifier: 'catalog:'
-        version: 0.7.1(@typescript-eslint/parser@8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0))(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       eslint-plugin-jsdoc:
         specifier: 'catalog:'
         version: 64.5.2(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
@@ -1042,9 +1033,6 @@ importers:
       eventsource-parser:
         specifier: 'catalog:'
         version: 4.1.1
-      tsx:
-        specifier: 'catalog:'
-        version: 4.23.13
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1134,6 +1122,9 @@ importers:
 
   packages/dify-ui:
     dependencies:
+      '@base-ui/utils':
+        specifier: 'catalog:'
+        version: 0.4.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       cn:
         specifier: 'catalog:'
         version: 0.3.0
@@ -1234,12 +1225,18 @@ importers:
 
   packages/iconify-collections:
     devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.7
+      '@typescript/native':
+        specifier: 'catalog:'
+        version: typescript@7.0.2
       iconify-import-svg:
         specifier: 'catalog:'
         version: 0.2.0(supports-color@11.0.0)
-      tsx:
-        specifier: 'catalog:'
-        version: 4.23.13
 
   packages/image-resources:
     dependencies:
@@ -1746,9 +1743,6 @@ importers:
       '@langgenius/dify-ui':
         specifier: workspace:*
         version: link:../packages/dify-ui
-      '@rgrove/parse-xml':
-        specifier: 'catalog:'
-        version: 5.0.0
       '@storybook/addon-docs':
         specifier: 'catalog:'
         version: 10.6.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(storybook@10.6.0(@types/react@19.3.0)(react@19.3.0)(vite-plus@0.3.3(@types/node@25.9.7)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(esbuild@0.28.2)(happy-dom@20.14.5)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)))
@@ -1854,9 +1848,6 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
-      tsx:
-        specifier: 'catalog:'
-        version: 4.23.13
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -4184,10 +4175,6 @@ packages:
     resolution: {integrity: sha512-C7c51Nn4yTxXFKvgh2txJFNweaVcfUPQxwEUFw4aWsCmfiBDJsTSwviIF8EcwjQ6k8bPyMWCl1vw4BdxE569Cg==}
     engines: {node: '>= 10'}
 
-  '@rgrove/parse-xml@5.0.0':
-    resolution: {integrity: sha512-SgHFyisNAkS2ZbM8SCriUm1N0bxLiz0POKvpDeAtrnLrXaYG1PawNwu1rSjmE/vcVHbZzYWNgVP6xkep6R4uXg==}
-    engines: {node: '>=22.12.0'}
-
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
 
@@ -5773,10 +5760,6 @@ packages:
   cacheable@2.5.0:
     resolution: {integrity: sha512-60cyAOytib/OzBw1JNSoSV/boK1AtHryDIjvVBk7XbN4ugfkM3+Sry7fEjNgPMGgOjuaZPAp8ruZ0Cxafwyq9g==}
 
-  cached-factory@0.3.0:
-    resolution: {integrity: sha512-8PWf78SYJg9kGpUNlqOlg2iE4nu/iW7FidBVdvEZPy0GJRUyN91X7q0VzX/oyJE6bGrgr/bR0VhcGF87vgeQaw==}
-    engines: {node: '>=18'}
-
   camelize@1.0.1:
     resolution: {integrity: sha512-dU+Tx2fsypxTgtLoE36npi3UqcjSSMNYfkqgmoEhtZrraP5VWq0K7FkWVTYa8eMPtnU/G2txVsfdCJTn9uzpuQ==}
 
@@ -6530,14 +6513,6 @@ packages:
       '@typescript-eslint/typescript-estree': '*'
       '@typescript-eslint/utils': '*'
       eslint: '*'
-
-  eslint-plugin-erasable-syntax-only@0.7.1:
-    resolution: {integrity: sha512-2zpgLgFq/HmIVQU2KNOsuuQdJQAiRdq23xpCamhatbH4ZlzinqXdDmbxGALj7VSiC9GMBHqmu4Cu7KaSqQfNhw==}
-    engines: {node: '>=20.18.0'}
-    peerDependencies:
-      '@typescript-eslint/parser': '>=8'
-      eslint: '>=9'
-      typescript: '>=5'
 
   eslint-plugin-es-x@7.8.0:
     resolution: {integrity: sha512-7Ds8+wAAoV3T+LAKeu39Y5BzXCrGKrcISfgKEqTS4BDN8SFEDQd0S43jiQ8vIa3wUKD07qitZdfzlenSi8/0qQ==}
@@ -11762,8 +11737,6 @@ snapshots:
 
   '@resvg/resvg-wasm@2.4.0': {}
 
-  '@rgrove/parse-xml@5.0.0': {}
-
   '@rolldown/pluginutils@1.0.1': {}
 
   '@rollup/pluginutils@5.4.0':
@@ -13405,8 +13378,6 @@ snapshots:
       keyv: 5.6.0
       qified: 0.10.1
 
-  cached-factory@0.3.0: {}
-
   camelize@1.0.1: {}
 
   caniuse-lite@1.0.30001810: {}
@@ -14152,16 +14123,6 @@ snapshots:
       '@typescript-eslint/typescript-estree': 8.70.0(@typescript/typescript6@6.0.2)(supports-color@11.0.0)
       '@typescript-eslint/utils': 8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       eslint: 10.10.0(jiti@2.7.0)(supports-color@11.0.0)
-
-  eslint-plugin-erasable-syntax-only@0.7.1(@typescript-eslint/parser@8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0))(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0):
-    dependencies:
-      '@typescript-eslint/parser': 8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      '@typescript-eslint/utils': 8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      cached-factory: 0.3.0
-      eslint: 10.10.0(jiti@2.7.0)(supports-color@11.0.0)
-      typescript: '@typescript/typescript6@6.0.2'
-    transitivePeerDependencies:
-      - supports-color
 
   eslint-plugin-es-x@7.8.0(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0)):
     dependencies:
@@ -17431,6 +17392,7 @@ snapshots:
       esbuild: 0.28.2
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   tunnel-agent@0.6.0:
     dependencies:
@@ -18075,7 +18037,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.9.7
       '@vitest/browser-playwright': 4.1.11(@voidzero-dev/vite-plus-core@0.3.3(@types/node@25.9.7)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(typescript@7.0.2)(yaml@2.9.1))(playwright@1.63.0)(vitest@4.1.11)
-      '@vitest/browser-preview': 4.1.11(@voidzero-dev/vite-plus-core@0.3.3(@types/node@25.9.7)(@typescript/typescript6@6.0.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))(vitest@4.1.11)
+      '@vitest/browser-preview': 4.1.11(@voidzero-dev/vite-plus-core@0.3.3(@types/node@25.9.7)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(typescript@7.0.2)(yaml@2.9.1))(vitest@4.1.11)
       '@vitest/coverage-v8': 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       happy-dom: 20.14.5
     transitivePeerDependencies:
@@ -18263,6 +18225,7 @@ time:
   '@amplitude/plugin-session-replay-browser@1.35.1': '2026-09-16T19:27:10.945Z'
   '@axe-core/playwright@4.13.0': '2026-08-11T17:07:40.763Z'
   '@base-ui/react@1.8.0': '2026-09-04T08:52:51.986Z'
+  '@base-ui/utils@0.4.0': '2026-09-04T08:49:31.070Z'
   '@chromatic-com/storybook@5.3.1': '2026-09-02T13:43:27.595Z'
   '@cucumber/cucumber@13.2.1': '2026-08-04T07:20:28.681Z'
   '@egoist/tailwindcss-icons@1.9.2': '2026-01-31T10:48:44.594Z'
@@ -18291,7 +18254,6 @@ time:
   '@orpc/tanstack-query@1.15.1': '2026-09-15T07:09:56.725Z'
   '@playwright/test@1.63.0': '2026-09-04T22:44:00.304Z'
   '@remixicon/react@4.9.0': '2026-01-29T10:53:18.993Z'
-  '@rgrove/parse-xml@5.0.0': '2026-08-30T03:19:42.049Z'
   '@sentry/react@10.75.0': '2026-09-16T14:58:08.681Z'
   '@shadcn/lint@0.1.3': '2026-09-20T18:26:44.252Z'
   '@storybook/addon-a11y@10.6.0': '2026-09-02T13:57:15.272Z'
@@ -18368,7 +18330,6 @@ time:
   eslint-plugin-antfu@3.2.3: '2026-05-11T02:24:38.348Z'
   eslint-plugin-better-tailwindcss@4.7.0: '2026-07-19T13:26:01.366Z'
   eslint-plugin-command@4.0.0: '2026-07-31T04:38:09.766Z'
-  eslint-plugin-erasable-syntax-only@0.7.1: '2026-08-19T04:46:35.017Z'
   eslint-plugin-jsdoc@64.5.2: '2026-09-16T13:00:55.286Z'
   eslint-plugin-jsonc@3.4.2: '2026-08-22T12:13:35.450Z'
   eslint-plugin-markdown-preferences@0.42.0: '2026-07-14T00:58:47.572Z'
@@ -18452,7 +18413,6 @@ time:
   svgo@4.1.0: '2026-08-24T12:10:36.576Z'
   tailwindcss@4.3.3: '2026-07-16T12:03:35.267Z'
   tldts@7.4.13: '2026-09-13T20:59:12.244Z'
-  tsx@4.23.13: '2026-08-30T00:46:16.265Z'
   typescript@7.0.2: '2026-07-08T15:55:18.431Z'
   uglify-js@3.19.3: '2024-08-29T13:49:01.316Z'
   undici@7.29.1: '2026-09-04T14:25:11.648Z'

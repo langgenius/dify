@@ -90,10 +90,7 @@ describe('llm/panel-output-section', () => {
     expect(screen.queryByTestId('structure-output')).not.toBeInTheDocument()
   })
 
-  it('renders the structured output editor and toggles the switch when structured output is enabled', async () => {
-    const user = userEvent.setup()
-    const handleStructureOutputEnableChange = vi.fn()
-
+  it('renders the structured output editor when structured output is enabled', () => {
     render(
       <PanelOutputSection
         readOnly={false}
@@ -110,16 +107,13 @@ describe('llm/panel-output-section', () => {
         isModelSupportStructuredOutput={false}
         structuredOutputCollapsed={false}
         setStructuredOutputCollapsed={vi.fn()}
-        handleStructureOutputEnableChange={handleStructureOutputEnableChange}
+        handleStructureOutputEnableChange={vi.fn()}
         handleStructureOutputChange={vi.fn()}
       />,
     )
 
     expect(screen.getByTestId('structure-output')).toBeInTheDocument()
     expect(mockStructureOutput).toHaveBeenCalled()
-
-    await user.click(screen.getByRole('switch'))
-    expect(handleStructureOutputEnableChange).toHaveBeenCalledWith(false)
   })
   it('opens the model warning with the keyboard without changing structured output', async () => {
     const user = userEvent.setup()

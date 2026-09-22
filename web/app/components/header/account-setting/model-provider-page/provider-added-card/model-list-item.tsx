@@ -9,7 +9,6 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { disableModel, enableModel } from '@/service/common'
@@ -133,7 +132,10 @@ const ModelListItem = ({
           model.load_balancing_enabled &&
           !model.has_invalid_load_balancing_configs && (
             <Badge className="mr-1 h-4.5 w-4.5 items-center justify-center border-text-accent-secondary p-0">
-              <Balance className="size-3 text-text-accent-secondary" />
+              <span
+                aria-hidden
+                className="i-custom-vender-line-financeAndECommerce-balance size-3 text-text-accent-secondary"
+              />
             </Badge>
           )}
         {canConfigureModels &&

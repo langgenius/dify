@@ -21,7 +21,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTheme from '@/hooks/use-theme'
 import { useAllToolProviders } from '@/service/use-tools'
 import { getMarketplaceUrl } from '@/utils/var'
-import { AutoUpdateLine } from '../../../base/icons/src/vender/system'
 import Verified from '../../base/badges/verified'
 import DeprecationNotice from '../../base/deprecation-notice'
 import Icon from '../../card/base/card-icon'
@@ -243,7 +242,10 @@ const DetailHeader = ({
                   render={
                     <div>
                       <Badge className="mr-1 cursor-pointer px-1">
-                        <AutoUpdateLine className="size-3" />
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-system-auto-update-line size-3"
+                        />
                       </Badge>
                     </div>
                   }

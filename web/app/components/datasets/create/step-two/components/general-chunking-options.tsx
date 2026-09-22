@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, MouseEventHandler } from 'react'
 import type {
   PreProcessingRule,
   SummaryIndexSetting as SummaryIndexSettingType,
@@ -49,7 +49,7 @@ type GeneralChunkingOptionsProps = {
   onRuleToggle: (id: string) => void
   onDocFormChange: (form: ChunkingMode) => void
   onDocLanguageChange: (lang: string) => void
-  onPreview: () => void
+  onPreview: MouseEventHandler<HTMLButtonElement>
   onReset: () => void
   // Locale
   locale: string
@@ -113,7 +113,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
       description={t(($) => $['stepTwo.generalTip'], { ns: 'datasetCreation' })}
       isActive={isActive}
-      onSwitched={() => onDocFormChange(ChunkingMode.text)}
+      value={ChunkingMode.text}
       actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
@@ -167,7 +167,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
             {isNonCloudEdition && (
               <>
                 <Separator orientation="horizontal" className="my-4 h-[0.5px] bg-divider-subtle" />
-                <div className="flex items-center py-0.5">
+                <div className="flex flex-wrap items-center gap-y-2 py-0.5">
                   <label
                     className={`flex items-center ${hasCurrentDatasetDocForm ? '' : 'cursor-pointer'}`}
                   >
@@ -207,7 +207,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                       background:
                         'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
                     }}
-                    className="mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
+                    className="mt-2 flex min-h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
                   >
                     <RiAlertFill className="size-4 text-text-warning-secondary" />
                     <span className="system-xs-medium text-text-primary">

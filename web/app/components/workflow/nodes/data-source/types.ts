@@ -9,8 +9,6 @@ export const DataSourceClassification = {
   localFile: 'local_file',
 } as const
 
-export type ToolVarInputs = ResourceVarInputs
-
 export type DataSourceNodeType = CommonNodeType & {
   fileExtensions?: string[]
   plugin_id: string
@@ -18,7 +16,7 @@ export type DataSourceNodeType = CommonNodeType & {
   provider_name: string
   datasource_name: string
   datasource_label: string
-  datasource_parameters: ToolVarInputs
+  datasource_parameters: ResourceVarInputs
   datasource_configurations: Record<string, any>
   plugin_unique_identifier?: string
 }

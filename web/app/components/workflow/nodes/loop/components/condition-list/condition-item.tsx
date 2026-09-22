@@ -1,4 +1,3 @@
-import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
   HandleAddSubVariableCondition,
@@ -8,6 +7,7 @@ import type {
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
 } from '../../types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -25,7 +25,6 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { VarType } from '@/app/components/workflow/types'
 import { ComparisonOperator } from '../../types'
@@ -119,7 +118,7 @@ const ConditionItem = ({
   )
 
   const handleUpdateConditionNumberVarType = useCallback(
-    (numberVarType: NumberVarType) => {
+    (numberVarType: VarKindType) => {
       const newCondition = {
         ...condition,
         numberVarType,
@@ -257,7 +256,10 @@ const ConditionItem = ({
                   {selectedSubVarOption ? (
                     <div className="flex cursor-pointer justify-start">
                       <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
-                        <Variable02 className="size-3.5 shrink-0 text-text-accent" />
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-solid-development-variable-02 size-3.5 shrink-0 text-text-accent"
+                        />
                         <div className="ml-0.5 truncate system-xs-medium">
                           {selectedSubVarOption.name}
                         </div>
@@ -281,7 +283,10 @@ const ConditionItem = ({
                           >
                             <div className="flex h-6 items-center justify-between">
                               <div className="flex h-full items-center">
-                                <Variable02 className="mr-1.25 h-3.5 w-3.5 text-text-accent" />
+                                <span
+                                  aria-hidden
+                                  className="mr-1.25 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 text-text-accent"
+                                />
                                 <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">
                                   {option.name}
                                 </SelectItemText>

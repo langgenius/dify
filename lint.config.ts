@@ -210,7 +210,6 @@ export const lintConfig = {
       name: 'dify',
       specifier: './web/plugins/eslint/index.js',
     },
-    'eslint-plugin-erasable-syntax-only',
     {
       name: 'eslint-comments',
       specifier: '@eslint-community/eslint-plugin-eslint-comments',
@@ -523,10 +522,6 @@ export const lintConfig = {
     'import/no-duplicates': 'error',
     'import/no-mutable-exports': 'error',
     'import/no-named-default': 'error',
-    'erasable-syntax-only/enums': 'error',
-    'erasable-syntax-only/import-aliases': 'error',
-    'erasable-syntax-only/namespaces': 'error',
-    'erasable-syntax-only/parameter-properties': 'error',
     'regexp/confusing-quantifier': 'warn',
     'regexp/control-character-escape': 'error',
     'regexp/match-any': 'error',
@@ -876,11 +871,6 @@ export const lintConfig = {
               height: 'h',
             },
             libraries: [
-              {
-                prefix: 'i-custom-',
-                source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-                name: '^(?<name>.*)$',
-              },
               {
                 source: '^@remixicon/react$',
                 name: '^(?<set>Ri)(?<name>.+)$',
@@ -1377,10 +1367,6 @@ export const lintConfig = {
         'import/no-duplicates': 'off',
         'import/no-mutable-exports': 'off',
         'import/no-named-default': 'off',
-        'erasable-syntax-only/enums': 'off',
-        'erasable-syntax-only/import-aliases': 'off',
-        'erasable-syntax-only/namespaces': 'off',
-        'erasable-syntax-only/parameter-properties': 'off',
         'regexp/confusing-quantifier': 'off',
         'regexp/control-character-escape': 'off',
         'regexp/match-any': 'off',

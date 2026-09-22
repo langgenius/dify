@@ -5,9 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 
@@ -60,9 +57,9 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
             className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
             onClick={() => onChange([])}
           >
-            <XCircle
-              className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
+            <span
               aria-hidden="true"
+              className="i-custom-vender-solid-general-x-circle size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
             />
           </button>
         )}
@@ -85,13 +82,19 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
                 >
                   <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
                   {value.includes(label.name) && (
-                    <Check className="size-4 shrink-0 text-text-accent" aria-hidden="true" />
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-general-check size-4 shrink-0 text-text-accent"
+                    />
                   )}
                 </button>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="size-6 text-text-quaternary" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-financeAndECommerce-tag-03 size-6 text-text-quaternary"
+                  />
                   <div className="text-xs leading-3.5 text-text-tertiary">
                     {t(($) => $['tag.noTag'], { ns: 'common' })}
                   </div>

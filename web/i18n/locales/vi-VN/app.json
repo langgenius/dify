@@ -200,7 +200,6 @@
   "openInExplore": "Mở Web App ở thanh bên",
   "publishApp.notSet": "Chưa đặt",
   "removeOriginal": "Xóa ứng dụng gốc",
-  "structOutput.LLMResponse": "Phản hồi của LLM",
   "structOutput.configure": "Cấu hình",
   "structOutput.modelNotSupported": "Mô hình không được hỗ trợ",
   "structOutput.modelNotSupportedTip": "Mô hình hiện tại không hỗ trợ tính năng này và tự động bị hạ cấp xuống việc tiêm lệnh.",

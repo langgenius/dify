@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { createEnv } from '@t3-oss/env-core'
 import * as z from 'zod'
-import { e2eDir } from './common'
+import { e2eDir } from './common.ts'
 
 const booleanString = z.enum(['0', '1', 'false', 'true'])
 const jsonObjectString = z.string().refine((value) => {

@@ -200,7 +200,6 @@
   "openInExplore": "साइडबार Web App खोलें",
   "publishApp.notSet": "अनुबंधित नहीं किया गया",
   "removeOriginal": "मूल ऐप हटाएँ",
-  "structOutput.LLMResponse": "LLM प्रतिक्रिया",
   "structOutput.configure": "कॉन्फ़िगर करें",
   "structOutput.modelNotSupported": "मॉडल का समर्थन नहीं किया गया",
   "structOutput.modelNotSupportedTip": "वर्तमान मॉडल इस सुविधा का समर्थन नहीं करता है और स्वचालित रूप से प्रॉम्प्ट इंजेक्शन में डाउनग्रेड किया जाता है।",

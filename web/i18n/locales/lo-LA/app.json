@@ -200,7 +200,6 @@
   "openInExplore": "ເປີດເວັບແອັບໃນແຖບດ້ານຂ້າງ",
   "publishApp.notSet": "ບໍ່ໄດ້ຕັ້ງຄ່າ",
   "removeOriginal": "ລຶບແອັບຕົ້ນສະບັບ",
-  "structOutput.LLMResponse": "ການຕອບກັບຈາກ LLM",
   "structOutput.configure": "ຕັ້ງຄ່າ",
   "structOutput.modelNotSupported": "ໂມເດວບໍ່ຮອງຮັບ",
   "structOutput.modelNotSupportedTip": "ໂມເດວປະຈຸບັນບໍ່ຮອງຮັບຄຸນສົມບັດນີ້ ແລະ ຖືກປ່ຽນໄປໃຊ້ prompt injection ແທນໂດຍອັດຕະໂນມັດ.",
