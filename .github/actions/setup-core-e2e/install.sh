@@ -11,21 +11,30 @@ started=$SECONDS
 timing_dir=$(mktemp -d)
 trap 'rm -rf "$timing_dir"' EXIT
 
+time_command() {
+  local phase=$1
+  shift
+  local phase_started=$SECONDS
+  local status=0
+  "$@" || status=$?
+  local elapsed=$((SECONDS - phase_started))
+  echo "$elapsed $status" > "$timing_dir/$phase"
+  printf '[e2e:dependency-timing] phase=%s durationSeconds=%s exitCode=%s\n' "$phase" "$elapsed" "$status"
+  return "$status"
+}
+
 (
-  api_started=$SECONDS
-  uv sync --project api --dev
-  echo "$((SECONDS - api_started))" > "$timing_dir/api"
+  time_command api uv sync --project api --dev
 ) &
 api_pid=$!
 
 (
-  web_started=$SECONDS
-  vp install --frozen-lockfile
-  echo "$((SECONDS - web_started))" > "$timing_dir/web"
-  browser_started=$SECONDS
+  time_command web vp install --frozen-lockfile
   cd e2e
-  vp run "e2e:install:ci:$E2E_INSTALL_BROWSER"
-  echo "$((SECONDS - browser_started))" > "$timing_dir/browser"
+  # Equivalent to install --with-deps, but separates apt/network latency from
+  # the browser download. Keep this branch parallel with Python installation.
+  time_command browser-system pnpm exec playwright install-deps "$E2E_INSTALL_BROWSER"
+  time_command browser-download pnpm exec playwright install --only-shell "$E2E_INSTALL_BROWSER"
 ) &
 web_pid=$!
 
@@ -39,11 +48,12 @@ wait "$web_pid" || web_status=$?
   echo ""
   echo "Parallel install wall time: $((SECONDS - started))s"
   echo ""
-  echo "| Phase | Seconds |"
-  echo "| --- | ---: |"
-  for phase in api web browser; do
+  echo "| Phase | Seconds | Exit code |"
+  echo "| --- | ---: | ---: |"
+  for phase in api web browser-system browser-download; do
     if [[ -f "$timing_dir/$phase" ]]; then
-      echo "| $phase | $(cat "$timing_dir/$phase") |"
+      read -r elapsed status < "$timing_dir/$phase"
+      echo "| $phase | $elapsed | $status |"
     fi
   done
   echo ""

@@ -93,6 +93,11 @@ can emit its completion record.
   pipeline wall time. Dependency installation and artifact waiting retain their
   existing separate summaries.
 
+Dependency preparation records API installation, web installation, browser system
+dependencies, and browser downloads separately, including exit codes on failure.
+System dependencies and browser downloads run sequentially after web installation;
+the API installation remains parallel. Their total wall time is reported separately.
+
 The build job uploads `e2e-build-diagnostics-<attempt>` with full build output,
 compiler-reported durations, cache size, actual primary/matched keys, and timing
 records. Cache restore timing includes Actions step transition overhead.

@@ -25,8 +25,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Test Web build synchronization
-        run: node --test .github/actions/wait-e2e-web-build/wait.test.cjs .github/scripts/e2e-build-diagnostics.test.cjs
+      - name: Test E2E setup and build tooling
+        run: node --test .github/actions/setup-core-e2e/install.test.cjs .github/actions/wait-e2e-web-build/wait.test.cjs .github/scripts/e2e-build-diagnostics.test.cjs
 
       - name: Compute build source hash
         id: build-source
