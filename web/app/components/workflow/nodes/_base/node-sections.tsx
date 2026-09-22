@@ -2,7 +2,8 @@ import type { SelectorParam } from 'i18next'
 import type { ReactElement } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
 type HeaderMetaProps = {
@@ -19,22 +20,28 @@ export type WorkflowTranslator = (
 ) => string
 
 export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: HeaderMetaProps) => {
+  const titleId = useId()
   return (
     <>
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
-        <Tooltip>
-          <TooltipTrigger>
-            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-1.25 py-0.75 system-2xs-medium-uppercase text-text-warning">
-              {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent className="w-45">
-            <div className="font-extrabold">
-              {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
-            </div>
-            {t(($) => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
-          </TooltipContent>
-        </Tooltip>
+        <div className="ml-1 flex items-center gap-1">
+          <span className="rounded-[5px] border border-text-warning px-1.25 py-0.75 system-2xs-medium-uppercase text-text-warning">
+            {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
+          </span>
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['nodes.iteration.parallelModeEnableTitle'], {
+                ns: 'workflow',
+              })}
+            />
+            <InfotipContent aria-labelledby={titleId} className="w-45">
+              <div id={titleId} className="font-semibold text-text-primary">
+                {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
+              </div>
+              {t(($) => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
+            </InfotipContent>
+          </Infotip>
+        </div>
       )}
       {!!(
         data._iterationLength &&

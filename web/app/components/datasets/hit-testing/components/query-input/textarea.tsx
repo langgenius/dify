@@ -3,7 +3,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Corner } from '@/app/components/base/icons/src/vender/solid/shapes'
 
 type TextareaProps = {
   text: string
@@ -27,10 +26,11 @@ const Textarea = ({ text, handleTextChange }: TextareaProps) => {
         placeholder={t(($) => $['input.placeholder'], { ns: 'datasetHitTesting' }) as string}
       />
       <div className="absolute top-0 right-0 flex items-center">
-        <Corner
+        <span
+          aria-hidden
           className={cn(
-            'text-background-section-burn',
-            text.length > 200 && 'text-util-colors-red-red-100',
+            'i-custom-vender-solid-shapes-corner h-5 w-3.25',
+            cn('text-background-section-burn', text.length > 200 && 'text-util-colors-red-red-100'),
           )}
         />
         {text.length > 200 ? (

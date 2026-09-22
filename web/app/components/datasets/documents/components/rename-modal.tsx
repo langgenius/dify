@@ -59,12 +59,12 @@ const RenameModal: FC<Props> = ({ documentId, datasetId, name, onClose, onSaved 
           {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
         </DialogTitle>
         <Form onFormSubmit={() => void handleSave()}>
-          <Field name="documentName" className="mt-6 gap-0">
-            <FieldLabel className="py-0 text-sm leading-5.25 font-medium text-text-primary">
+          <Field name="documentName" className="mt-6">
+            <FieldLabel className="text-sm leading-5.25 font-medium text-text-primary">
               {t(($) => $['list.table.name'], { ns: 'datasetDocuments' })}
             </FieldLabel>
             <Input
-              className="mt-2 h-10"
+              className="h-10"
               value={newName}
               placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
               onValueChange={setNewName}

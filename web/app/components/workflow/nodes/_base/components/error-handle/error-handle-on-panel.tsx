@@ -1,7 +1,7 @@
 import type { DefaultValueForm } from './types'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import {
   Collapse,
@@ -44,8 +44,15 @@ const ErrorHandle = ({ id, data }: ErrorHandleProps) => {
             </CollapseTitle>
             {!!error_strategy && <CollapseIndicator />}
           </CollapseTrigger>
-          <Infotip aria-label={t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}>
-            {t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
+            />
+            <InfotipContent
+              aria-label={t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
+            >
+              {t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
+            </InfotipContent>
           </Infotip>
           <CollapseActions>
             <div className="pr-4">

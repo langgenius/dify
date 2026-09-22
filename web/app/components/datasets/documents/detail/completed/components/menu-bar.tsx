@@ -12,8 +12,8 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { SearchInput } from '@/app/components/base/search-input'
 import DisplayToggle from '../display-toggle'
 import s from '../style.module.css'
@@ -82,7 +82,7 @@ function MenuBar({
         </SelectContent>
       </Select>
       <SearchInput className="w-52!" value={inputValue} onValueChange={onInputChange} />
-      <Divider type="vertical" className="mx-3 h-3.5" />
+      <Separator orientation="vertical" className="mx-3 h-3.5" />
       <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={toggleCollapsed} />
     </div>
   )

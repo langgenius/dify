@@ -1,8 +1,8 @@
 import type { PropsWithChildren } from 'react'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import BasePanel from '../index'
@@ -65,25 +65,6 @@ const mockLastRunState = {
   getExistVarValuesInForms: vi.fn(() => []),
   getFilteredExistVarForms: vi.fn(() => []),
 }
-
-const createDataSourceCollection = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
-  ({
-    id: 'source-1',
-    name: 'Source',
-    author: 'Author',
-    description: { en_US: 'Source description', zh_Hans: 'Source description' },
-    icon: 'source-icon',
-    label: { en_US: 'Source', zh_Hans: 'Source' },
-    type: 'datasource',
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: false,
-    labels: [],
-    plugin_id: 'source-1',
-    tools: [],
-    meta: {} as ToolWithProvider['meta'],
-    ...overrides,
-  }) as ToolWithProvider
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (
@@ -665,7 +646,9 @@ describe('workflow-panel index', () => {
         initialStoreState: {
           nodePanelWidth: 480,
           otherPanelWidth: 200,
-          dataSourceList: [createDataSourceCollection({ is_authorized: false })],
+          dataSourceList: [
+            createDatasourceProvider({ plugin_id: 'source-1', is_authorized: false }),
+          ],
         },
       },
     )

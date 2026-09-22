@@ -14,7 +14,8 @@ import { VarType } from '@/app/components/workflow/types'
 import BranchList from '../../_base/components/branch-list/class-list'
 import { ErrorHandleTypeEnum } from '../../_base/components/error-handle/types'
 
-const filterVar = (variable: Var) => [VarType.string, VarType.number].includes(variable.type)
+const filterVar = (variable: Var) =>
+  variable.type === VarType.string || variable.type === VarType.number
 
 export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
   const { t } = useTranslation()

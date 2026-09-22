@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -21,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { useContext } from 'use-context-selector'
 import { toast } from '@/app/components/app/configuration/toast'
-import { Infotip } from '@/app/components/base/infotip'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
@@ -315,11 +315,14 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         <div className="flex items-center">
           <h2 className="mr-1">{t(($) => $.variableTitle, { ns: 'appDebug' })}</h2>
           {!readonly && (
-            <Infotip
-              aria-label={t(($) => $.variableTip, { ns: 'appDebug' })}
-              popupClassName="w-[180px]"
-            >
-              {t(($) => $.variableTip, { ns: 'appDebug' })}
+            <Infotip>
+              <InfotipTrigger aria-label={t(($) => $.variableTip, { ns: 'appDebug' })} />
+              <InfotipContent
+                aria-label={t(($) => $.variableTip, { ns: 'appDebug' })}
+                className="w-45"
+              >
+                {t(($) => $.variableTip, { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           )}
         </div>

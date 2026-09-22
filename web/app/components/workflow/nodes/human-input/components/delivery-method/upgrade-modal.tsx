@@ -1,9 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { RiMailSendFill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import { UpgradeModal as BaseUpgradeModal } from '@/app/components/base/upgrade-modal'
 import {
@@ -32,7 +30,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     <BaseUpgradeModal
       open={open}
       onOpenChange={onOpenChange}
-      Icon={RiMailSendFill}
+      iconClassName="i-ri-mail-send-fill"
       title={t(($) => $['nodes.humanInput.deliveryMethod.upgradeTip'], { ns: 'workflow' })}
       description={t(($) => $['nodes.humanInput.deliveryMethod.upgradeTipContent'], {
         ns: 'workflow',
@@ -52,9 +50,9 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
               className="h-8 w-23.25"
               onClick={handleUpgrade}
             >
-              <SparklesSoft
+              <span
                 aria-hidden="true"
-                className="flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
               />
               <div className="system-sm-medium">
                 <span className="p-1">

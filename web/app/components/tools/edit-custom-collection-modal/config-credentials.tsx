@@ -14,6 +14,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
@@ -25,7 +26,6 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 
 type Props = Readonly<{
@@ -213,14 +213,21 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                             <label htmlFor={apiKeyHeaderInputId}>
                               {t(($) => $['createTool.authMethod.key'], { ns: 'tools' })}
                             </label>
-                            <Infotip
-                              aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
-                                ns: 'tools',
-                              })}
-                              className="ml-0.5 size-4"
-                              popupClassName="w-[261px] text-text-tertiary"
-                            >
-                              {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
+                            <Infotip>
+                              <InfotipTrigger
+                                aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
+                                  ns: 'tools',
+                                })}
+                                className="ml-0.5"
+                              />
+                              <InfotipContent
+                                aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
+                                  ns: 'tools',
+                                })}
+                                className="w-65.25"
+                              >
+                                {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
+                              </InfotipContent>
                             </Infotip>
                           </div>
                           <Input
@@ -273,16 +280,23 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                             <label htmlFor={apiKeyQueryInputId}>
                               {t(($) => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
                             </label>
-                            <Infotip
-                              aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
-                                ns: 'tools',
-                              })}
-                              className="ml-0.5 size-4"
-                              popupClassName="w-[261px] text-text-tertiary"
-                            >
-                              {t(($) => $['createTool.authMethod.queryParamTooltip'], {
-                                ns: 'tools',
-                              })}
+                            <Infotip>
+                              <InfotipTrigger
+                                aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
+                                  ns: 'tools',
+                                })}
+                                className="ml-0.5"
+                              />
+                              <InfotipContent
+                                aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
+                                  ns: 'tools',
+                                })}
+                                className="w-65.25"
+                              >
+                                {t(($) => $['createTool.authMethod.queryParamTooltip'], {
+                                  ns: 'tools',
+                                })}
+                              </InfotipContent>
                             </Infotip>
                           </div>
                           <Input

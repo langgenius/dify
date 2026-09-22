@@ -1,6 +1,8 @@
 {
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
   "dateFormats.display": "MMMM D, YYYY",
   "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
+  "dateFormats.withSeconds": "DD/MM/YYYY hh:mm:ss A",
   "daysInWeek.Fri": "Vineri",
   "daysInWeek.Mon": "Mon",
   "daysInWeek.Sat": "Sat",

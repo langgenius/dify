@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { Citations } from '@/app/components/base/icons/src/vender/features'
 
 type Props = Readonly<{
   disabled?: boolean
@@ -38,7 +37,10 @@ const Citation = ({ disabled, onChange }: Props) => {
     <FeatureCard
       icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-warning-warning-500 p-1 shadow-xs">
-          <Citations className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-citations size-4 text-text-primary-on-surface"
+          />
         </div>
       }
       title={t(($) => $['feature.citation.title'], { ns: 'appDebug' })}

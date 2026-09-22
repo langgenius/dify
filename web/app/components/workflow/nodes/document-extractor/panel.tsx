@@ -1,13 +1,14 @@
 import type { FC } from 'react'
 import type { DocExtractorNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { LanguagesSupported } from '@/i18n/language'
-import { useFileSupportTypes } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import Split from '../_base/components/split'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -20,7 +21,9 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
   const locale = useLocale()
   const link = useNodeHelpLink(BlockEnum.DocExtractor)
-  const { data: supportFileTypesResponse } = useFileSupportTypes()
+  const { data: supportFileTypesResponse } = useQuery(
+    consoleQuery.files.supportType.get.queryOptions(),
+  )
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []
   const supportTypesShowNames = (() => {
     const extensionMap: { [key: string]: string } = {

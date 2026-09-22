@@ -3,8 +3,8 @@ import type {
   BlockEnum,
   Node,
   NodeDefault,
-  ToolWithProvider,
   ValueSelector,
+  WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { SchemaTypeDefinition } from '@/service/use-common'
@@ -78,7 +78,7 @@ type CommonHooksFnMap = {
   fetchInspectVars: (params: {
     passInVars?: boolean
     vars?: VarInInspect[]
-    passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>
+    passedInAllPluginInfoList?: WorkflowPluginCatalogs
     passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
   }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean

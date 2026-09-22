@@ -5,7 +5,6 @@ import type { CardVariant } from './use-credential-panel-state'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Warning from '@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning'
 import ModelAuthDropdown from './model-auth-dropdown'
 import SystemQuotaCard from './system-quota-card'
 import { useChangeProviderPriority } from './use-change-provider-priority'
@@ -108,7 +107,12 @@ function TextLabel({ variant }: { variant: CardVariant }) {
       <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>
         {t(($) => $[labelKey], { ns: 'common' })}
       </span>
-      {variant === 'credits-fallback' && <Warning className="size-3 shrink-0 text-text-warning" />}
+      {variant === 'credits-fallback' && (
+        <span
+          aria-hidden
+          className="i-custom-vender-line-alertsAndFeedback-warning size-3 shrink-0 text-text-warning"
+        />
+      )}
     </>
   )
 }
@@ -133,7 +137,12 @@ function CredentialStatus({
       >
         {credentialName}
       </span>
-      {showWarning && <Warning className="ml-auto size-3 shrink-0 text-text-warning" />}
+      {showWarning && (
+        <span
+          aria-hidden
+          className="ml-auto i-custom-vender-line-alertsAndFeedback-warning size-3 shrink-0 text-text-warning"
+        />
+      )}
     </>
   )
 }
