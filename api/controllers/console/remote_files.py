@@ -1,3 +1,5 @@
+from typing import overload
+
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -85,13 +87,37 @@ class GetRemoteFileInfo(Resource):
         )
 
 
+@overload
+def upload_remote_file(
+    *,
+    url: str,
+    current_user: Account,
+    resource_tenant_id: str | None = None,
+) -> RemoteFileUploadResult: ...
+
+
+@overload
+def upload_remote_file(
+    *,
+    url: str,
+    current_user: FileUploadActor,
+    resource_tenant_id: str,
+) -> RemoteFileUploadResult: ...
+
+
 def upload_remote_file(
     *,
     url: str,
     current_user: Account | FileUploadActor,
     resource_tenant_id: str | None = None,
 ) -> RemoteFileUploadResult:
-    """Fetch a remote file and persist it under the requested tenant."""
+    """Fetch a remote file and persist it under the requested tenant.
+
+    For Account, resource_tenant_id=None (including when omitted) uses the
+    current workspace; an explicit value takes precedence. FileUploadActor
+    carries no tenant, so resource_tenant_id must be provided explicitly.
+    RemoteFileService enforces this before fetching the remote file.
+    """
     try:
         return application_services().remote_files.upload_from_url(
             url=url,

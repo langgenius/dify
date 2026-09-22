@@ -83,6 +83,17 @@ class FileService:
         source_url: str = "",
         default_file_size_limit: int | None = None,
     ) -> UploadFile:
+        """Persist a file with the given creator and resource tenant.
+
+        For Account or EndUser, tenant_id=None (including when omitted) uses
+        the account's current workspace or the end user's tenant. An explicit
+        tenant_id takes precedence. FileUploadActor carries no tenant, so it
+        requires an explicit tenant_id.
+
+        default_file_size_limit is the non-media limit in MiB; None uses
+        dify_config.UPLOAD_FILE_SIZE_LIMIT, and 0 permits only empty files.
+        Images, video and audio always use their dedicated configured limits.
+        """
         if isinstance(user, FileUploadActor) and tenant_id is None:
             raise TypeError("tenant_id is required when uploading with FileUploadActor")
 
@@ -168,7 +179,12 @@ class FileService:
         source_url: str = "",
         default_file_size_limit: int | None = None,
     ) -> FileUploadResult:
-        """Upload into the explicitly admitted tenant and return detached values."""
+        """Upload into the explicitly admitted tenant and return detached values.
+
+        default_file_size_limit overrides the non-media limit in MiB, including
+        0 for empty files only. None uses dify_config.UPLOAD_FILE_SIZE_LIMIT.
+        Images, video and audio retain their dedicated configured limits.
+        """
         upload_file = self.upload_file(
             filename=filename,
             content=content,
@@ -209,7 +225,13 @@ class FileService:
         extension: str,
         default_file_size_limit: int | None = None,
     ) -> int:
-        """Return the size an extension is allowed, in bytes."""
+        """Return the size an extension is allowed, in bytes.
+
+        default_file_size_limit is a non-media override in MiB. None uses
+        dify_config.UPLOAD_FILE_SIZE_LIMIT; 0 allows only empty files.
+        Images, video and audio use their dedicated limits regardless of this
+        override.
+        """
 
         if extension in IMAGE_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT
