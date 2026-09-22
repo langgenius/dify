@@ -1,9 +1,9 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { zWorkflowOutputRoutes } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
 import * as z from 'zod'
-import { defaultLocale } from '../../../test-env'
+import { defaultLocale } from '../../../test-env.ts'
 
 const fixtureAppIdEnv = 'E2E_AGENT_OUTPUT_ROUTES_PREVIEW_APP_ID'
 const zPreviewGraph = z.object({

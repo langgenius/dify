@@ -1,19 +1,19 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { zWorkflowOutputRoutes } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
 import * as z from 'zod'
-import { createTestApp } from '../../../support/api/apps'
-import { createE2EResourceName } from '../../../support/naming'
+import { createTestApp } from '../../../support/api/apps.ts'
+import { createE2EResourceName } from '../../../support/naming.ts'
 import {
   createConfiguredTestAgent,
   publishAgentWithPublishableDraft,
-} from '../../agent-v2/support/agent'
+} from '../../agent-v2/support/agent.ts'
 import {
   createRoutedAgentNode,
   createRoutedAgentWorkflowDraft,
-} from '../../agent-v2/support/output-routes'
-import { getAgentV2WorkflowNodeData } from '../../agent-v2/support/workflow'
+} from '../../agent-v2/support/output-routes.ts'
+import { getAgentV2WorkflowNodeData } from '../../agent-v2/support/workflow.ts'
 
 const zSnippetInsertionGraph = z.object({
   nodes: z.array(z.object({ id: z.string(), data: z.object({ title: z.string() }) })),
