@@ -37,7 +37,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 )
 
 it('displays the leading asset with its caption and preserves ordinary paragraph content without requesting assets', async () => {
-  render(
+  const { unmount } = render(
     <>
       <PluginParagraph pluginInfo={pluginInfo} node={imageNode('./_assets/caption.png')}>
         <img src="./_assets/caption.png" alt="" />
@@ -53,6 +53,11 @@ it('displays the leading asset with its caption and preserves ordinary paragraph
   expect(screen.getByText('Image caption')).toBeInTheDocument()
   expect(screen.getByText('Ordinary paragraph').tagName).toBe('P')
   expect(request).toHaveBeenCalledOnce()
+  expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+
+  unmount()
+
+  expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:paragraph-image')
 })
 
 it('uses nested image children without issuing a duplicate leading-image request', () => {

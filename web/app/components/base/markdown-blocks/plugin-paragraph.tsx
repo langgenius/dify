@@ -7,11 +7,6 @@ import ImageGallery from '@/app/components/base/image-gallery'
 import { pluginAssetQueryOptions } from './plugin-asset-query'
 import { getMarkdownImageURL, hasImageChild } from './utils'
 
-type HastChildNode = {
-  tagName?: string
-  properties?: { src?: string; [key: string]: unknown }
-}
-
 type PluginParagraphProps = {
   pluginInfo?: SimplePluginInfo
   node?: ExtraProps['node']
@@ -20,10 +15,10 @@ type PluginParagraphProps = {
 
 export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, node, children }) => {
   const { pluginUniqueIdentifier, pluginId } = pluginInfo || {}
-  const childrenNode = node?.children as HastChildNode[] | undefined
+  const childrenNode = node?.children
   const firstChild = childrenNode?.[0]
-  const isImageParagraph = firstChild?.tagName === 'img'
-  const imageSrc = isImageParagraph ? firstChild?.properties?.src : undefined
+  const isImageParagraph = firstChild?.type === 'element' && firstChild.tagName === 'img'
+  const imageSrc = isImageParagraph ? firstChild.properties.src : undefined
 
   const { data: assetData } = useQuery(pluginAssetQueryOptions(imageSrc, pluginUniqueIdentifier))
 

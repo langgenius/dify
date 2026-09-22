@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { PluginImg } from '../plugin-img'
-import { PluginParagraph } from '../plugin-paragraph'
 
 const { request } = vi.hoisted(() => ({ request: vi.fn<() => Promise<Response>>() }))
 vi.mock('@/service/base', () => ({ request }))
@@ -34,71 +33,56 @@ async function pngResponse(width: number, height: number) {
 
 // happy-dom cannot decode an octet-stream asset, or establish that a revoked
 // object URL is unusable. These are the additional browser regression contracts.
-it.each(['image', 'paragraph'] as const)(
-  'decodes %s assets and retires object URLs on source replacement and unmount',
-  async (kind) => {
-    request.mockReset()
-    request.mockImplementation(() => pngResponse(2, 3))
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false, staleTime: 300_000 } },
-    })
-    const revoke = vi.spyOn(URL, 'revokeObjectURL')
-    const pluginInfo = { pluginUniqueIdentifier: 'org/plugin:1@hash', pluginId: 'org/plugin' }
-    const view = (src: string) => (
-      <QueryClientProvider client={queryClient}>
-        {kind === 'image' ? (
-          <PluginImg pluginInfo={pluginInfo} src={src} />
-        ) : (
-          <PluginParagraph
-            pluginInfo={pluginInfo}
-            node={{
-              type: 'element',
-              tagName: 'p',
-              properties: {},
-              children: [{ type: 'element', tagName: 'img', properties: { src }, children: [] }],
-            }}
-          />
-        )}
-      </QueryClientProvider>
-    )
-    const screen = await render(view('_assets/first.png'))
-    try {
-      await expect
-        .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
-        .toMatch(/^blob:/)
-      const firstImage = screen.getByTestId('gallery-image').element()
-      if (!(firstImage instanceof HTMLImageElement)) throw new TypeError('Expected an image')
-      await firstImage.decode()
-      expect([firstImage.naturalWidth, firstImage.naturalHeight]).toEqual([2, 3])
-      const firstUrl = firstImage.src
-      expect(revoke).not.toHaveBeenCalled()
-      request.mockImplementation(() => pngResponse(4, 5))
-      await screen.rerender(view('_assets/second.png'))
-      await expect
-        .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
-        .not.toBe(firstUrl)
-      await expect
-        .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
-        .toMatch(/^blob:/)
-      const secondImage = screen.getByTestId('gallery-image').element()
-      if (!(secondImage instanceof HTMLImageElement)) throw new TypeError('Expected an image')
-      await secondImage.decode()
-      expect([secondImage.naturalWidth, secondImage.naturalHeight]).toEqual([4, 5])
-      expect(revoke).toHaveBeenCalledWith(firstUrl)
-      const secondUrl = secondImage.src
-      await screen.unmount()
-      expect(revoke).toHaveBeenCalledWith(secondUrl)
-      const releasedImage = new Image()
-      releasedImage.src = secondUrl
-      await expect(releasedImage.decode()).rejects.toThrow()
-      expect(request).toHaveBeenCalledTimes(2)
-    } finally {
-      await screen.unmount()
-      queryClient.clear()
-      revoke.mockRestore()
-    }
-  },
-)
+it('decodes binary assets and retires object URLs on source replacement and unmount', async () => {
+  request.mockReset()
+  request.mockImplementation(() => pngResponse(2, 3))
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: 300_000 } },
+  })
+  const revoke = vi.spyOn(URL, 'revokeObjectURL')
+  const pluginInfo = { pluginUniqueIdentifier: 'org/plugin:1@hash', pluginId: 'org/plugin' }
+  const view = (src: string) => (
+    <QueryClientProvider client={queryClient}>
+      <PluginImg pluginInfo={pluginInfo} src={src} />
+    </QueryClientProvider>
+  )
+  const screen = await render(view('_assets/first.png'))
+  try {
+    await expect
+      .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
+      .toMatch(/^blob:/)
+    const firstImage = screen.getByTestId('gallery-image').element()
+    if (!(firstImage instanceof HTMLImageElement)) throw new TypeError('Expected an image')
+    await firstImage.decode()
+    expect([firstImage.naturalWidth, firstImage.naturalHeight]).toEqual([2, 3])
+    const firstUrl = firstImage.src
+    expect(revoke).not.toHaveBeenCalled()
+    request.mockImplementation(() => pngResponse(4, 5))
+    await screen.rerender(view('_assets/second.png'))
+    await expect
+      .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
+      .not.toBe(firstUrl)
+    await expect
+      .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
+      .toMatch(/^blob:/)
+    const secondImage = screen.getByTestId('gallery-image').element()
+    if (!(secondImage instanceof HTMLImageElement)) throw new TypeError('Expected an image')
+    await secondImage.decode()
+    expect([secondImage.naturalWidth, secondImage.naturalHeight]).toEqual([4, 5])
+    expect(revoke).toHaveBeenCalledWith(firstUrl)
+    const secondUrl = secondImage.src
+    await screen.unmount()
+    expect(revoke).toHaveBeenCalledWith(secondUrl)
+    const releasedImage = new Image()
+    releasedImage.src = secondUrl
+    await expect(releasedImage.decode()).rejects.toThrow()
+    expect(request).toHaveBeenCalledTimes(2)
+  } finally {
+    await screen.unmount()
+    queryClient.clear()
+    revoke.mockRestore()
+  }
+})
 
 it('recovers after a malformed asset causes the real gallery to remove its image button', async () => {
   request.mockReset()
