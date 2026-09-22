@@ -1016,6 +1016,8 @@ class EvaluationService:
             raise ValueError(f"Cannot cancel evaluation run in status: {run.status}")
 
         run.status = EvaluationRunStatus.CANCELLED
+        run.execution_token = None
+        run.heartbeat_at = None
         run.completed_at = naive_utc_now()
         celery_task_id = run.celery_task_id
         session.commit()
@@ -1231,6 +1233,8 @@ class EvaluationService:
             if customized_metrics.get("evaluation_workflow_id") != evaluator_app_id:
                 continue
             run.status = EvaluationRunStatus.CANCELLED
+            run.execution_token = None
+            run.heartbeat_at = None
             run.completed_at = naive_utc_now()
             run.error = "The customized evaluator app was deleted."
             tasks_to_stop.append(

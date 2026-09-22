@@ -27,6 +27,8 @@ from libs.datetime_utils import naive_utc_now
 from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunItemStatus, EvaluationRunStatus
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
+    EvaluationRunLease,
+    EvaluationRunOwnershipLostError,
     _apply_judgment,
     _build_missing_result_errors,
     _compute_metrics_summary,
@@ -43,12 +45,18 @@ from tasks.evaluation_task import (
     _resume_retrieval_rows,
     _resume_workflow_rows,
     _stamp_and_merge,
+    _update_run_progress,
     _workflow_task_id,
     reconcile_stale_evaluation_runs,
     run_evaluation,
 )
 
 _NODE_INFO = NodeInfo(node_id="llm-1", type="llm", title="Answer")
+_EXECUTION_TOKEN = "40000000-0000-0000-0000-000000000001"
+
+
+def _lease(run_id: str, token: str = _EXECUTION_TOKEN) -> EvaluationRunLease:
+    return EvaluationRunLease(run_id=run_id, token=token)
 
 
 def test_merge_and_stamp_results_use_dataset_indices() -> None:
@@ -123,6 +131,7 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
         run_data=run_data,
         evaluation_instance=evaluation_instance,
         node_run_result_mapping_list=[{}, {"llm-1": successful_node_result}],
+        lease=_lease(run_data.evaluation_run_id),
     )
 
     assert results[0].index == 10
@@ -172,6 +181,7 @@ def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_
             run_data=run_data,
             evaluation_instance=evaluation_instance,
             node_run_result_mapping_list=[{"llm-1": NodeRunResult(outputs={"text": "answer"})}],
+            lease=_lease(run_data.evaluation_run_id),
         )
 
     persist_results.assert_not_called()
@@ -236,11 +246,11 @@ def test_execute_evaluation_starts_running_lease_before_work(
     )
     execute_running = MagicMock()
     monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
-    maintained_run_ids: list[str] = []
+    maintained_leases: list[EvaluationRunLease] = []
 
     @contextmanager
-    def maintain_heartbeat(evaluation_run_id: str):
-        maintained_run_ids.append(evaluation_run_id)
+    def maintain_heartbeat(lease: EvaluationRunLease):
+        maintained_leases.append(lease)
         yield
 
     monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
@@ -254,18 +264,77 @@ def test_execute_evaluation_starts_running_lease_before_work(
         evaluation_model="",
         input_list=[],
     )
+    lease = _lease(run_id)
 
     with sqlite_session_factory() as session:
-        _execute_evaluation(session, run_data)
+        _execute_evaluation(session, run_data, lease)
 
     with sqlite_session_factory() as session:
         run = session.get(EvaluationRun, run_id)
         assert run is not None
         assert run.status == EvaluationRunStatus.RUNNING
+        assert run.execution_token == lease.token
         assert run.started_at is not None
         assert run.heartbeat_at is not None
-    assert maintained_run_ids == [run_id]
+    assert maintained_leases == [lease]
     execute_running.assert_called_once()
+    assert execute_running.call_args.args[-1] == lease
+
+
+def test_execute_evaluation_does_not_run_duplicate_delivery(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000052"
+    workflow_version_id = "30000000-0000-0000-0000-000000000004"
+    current_lease = _lease(run_id)
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id="30000000-0000-0000-0000-000000000002",
+                target_type="apps",
+                target_id="30000000-0000-0000-0000-000000000003",
+                target_workflow_version_id=workflow_version_id,
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.RUNNING,
+                execution_token=current_lease.token,
+                total_items=0,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+
+    get_instance = MagicMock()
+    execute_running = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task.EvaluationManager.get_evaluation_instance", get_instance)
+    monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type="apps",
+        target_id="30000000-0000-0000-0000-000000000003",
+        target_workflow_version_id=workflow_version_id,
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[],
+    )
+
+    with sqlite_session_factory() as session:
+        _execute_evaluation(
+            session,
+            run_data,
+            _lease(run_id, "40000000-0000-0000-0000-000000000002"),
+        )
+
+    with sqlite_session_factory() as session:
+        run = session.get(EvaluationRun, run_id)
+        assert run is not None
+        assert run.status == EvaluationRunStatus.RUNNING
+        assert run.execution_token == current_lease.token
+    get_instance.assert_not_called()
+    execute_running.assert_not_called()
 
 
 def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
@@ -296,7 +365,17 @@ def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
 
     transient_error = RuntimeError("temporary database outage")
     monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
-    monkeypatch.setattr("tasks.evaluation_task._execute_evaluation", MagicMock(side_effect=transient_error))
+    monkeypatch.setattr(
+        "tasks.evaluation_task.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=MagicMock()),
+    )
+    monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", MagicMock(side_effect=transient_error))
+
+    @contextmanager
+    def maintain_heartbeat(_lease: EvaluationRunLease):
+        yield
+
+    monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
     monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_MAX_RETRIES", 3)
     monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_RETRY_DELAY", 7)
     retry = MagicMock(return_value=Retry("scheduled"))
@@ -323,6 +402,8 @@ def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
         run = session.get(EvaluationRun, run_id)
         assert run is not None
         assert run.status == EvaluationRunStatus.PENDING
+        assert run.execution_token is None
+        assert run.heartbeat_at is None
         assert run.error == "Retry 1/3 scheduled after: temporary database outage"
         assert run.completed_at is None
 
@@ -342,7 +423,7 @@ def test_run_evaluation_does_not_retry_missing_pinned_workflow(
                 target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
                 config_snapshot="{}",
-                status=EvaluationRunStatus.RUNNING,
+                status=EvaluationRunStatus.PENDING,
                 total_items=1,
                 created_by="30000000-0000-0000-0000-000000000006",
             )
@@ -356,9 +437,19 @@ def test_run_evaluation_does_not_retry_missing_pinned_workflow(
 
     monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
     monkeypatch.setattr(
-        "tasks.evaluation_task._execute_evaluation",
+        "tasks.evaluation_task.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=MagicMock()),
+    )
+    monkeypatch.setattr(
+        "tasks.evaluation_task._execute_running_evaluation",
         MagicMock(side_effect=EvaluationWorkflowVersionNotFoundError("Pinned workflow version was deleted.")),
     )
+
+    @contextmanager
+    def maintain_heartbeat(_lease: EvaluationRunLease):
+        yield
+
+    monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
     retry = MagicMock()
     monkeypatch.setattr(run_evaluation, "retry", retry)
     run_data = EvaluationRunData(
@@ -383,6 +474,8 @@ def test_run_evaluation_does_not_retry_missing_pinned_workflow(
         run = session.get(EvaluationRun, run_id)
         assert run is not None
         assert run.status == EvaluationRunStatus.FAILED
+        assert run.execution_token is None
+        assert run.heartbeat_at is None
         assert run.error == "Pinned workflow version was deleted."
 
 
@@ -390,6 +483,7 @@ def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     run_id = "30000000-0000-0000-0000-000000000081"
+    lease = _lease(run_id)
     with sqlite_session_factory() as session:
         session.add(
             EvaluationRun(
@@ -401,6 +495,7 @@ def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
                 config_snapshot="{}",
                 status=EvaluationRunStatus.RUNNING,
+                execution_token=lease.token,
                 total_items=1,
                 created_by="30000000-0000-0000-0000-000000000006",
             )
@@ -408,8 +503,8 @@ def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
         session.commit()
         item = EvaluationDatasetInput(index=7, inputs={"query": "hello"}, expected_output="world")
 
-        _persist_target_checkpoint(session, run_id, item, "30000000-0000-0000-0000-000000000091")
-        _persist_target_checkpoint(session, run_id, item, "30000000-0000-0000-0000-000000000091")
+        _persist_target_checkpoint(session, lease, item, "30000000-0000-0000-0000-000000000091")
+        _persist_target_checkpoint(session, lease, item, "30000000-0000-0000-0000-000000000091")
 
         checkpoints = session.query(EvaluationRunItem).filter_by(evaluation_run_id=run_id).all()
         assert len(checkpoints) == 1
@@ -417,7 +512,7 @@ def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
 
         _persist_results(
             session,
-            run_id,
+            lease,
             [EvaluationItemResult(index=7, actual_output="answer")],
             [item],
         )
@@ -431,11 +526,58 @@ def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
         assert run.failed_items == 0
 
 
+def test_stale_execution_lease_cannot_write_progress_or_row_checkpoint(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000082"
+    current_lease = _lease(run_id)
+    stale_lease = _lease(run_id, "40000000-0000-0000-0000-000000000002")
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id="30000000-0000-0000-0000-000000000002",
+                target_type="apps",
+                target_id="30000000-0000-0000-0000-000000000003",
+                target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.RUNNING,
+                execution_token=current_lease.token,
+                total_items=1,
+                progress_rate=0.2,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+
+    with sqlite_session_factory() as session:
+        with pytest.raises(EvaluationRunOwnershipLostError):
+            _update_run_progress(session, stale_lease, 0.8)
+
+    with sqlite_session_factory() as session:
+        with pytest.raises(EvaluationRunOwnershipLostError):
+            _persist_target_checkpoint(
+                session,
+                stale_lease,
+                EvaluationDatasetInput(index=7, inputs={"query": "hello"}),
+                "30000000-0000-0000-0000-000000000091",
+            )
+
+    with sqlite_session_factory() as session:
+        run = session.get(EvaluationRun, run_id)
+        assert run is not None
+        assert run.execution_token == current_lease.token
+        assert run.progress_rate == 0.2
+        assert session.query(EvaluationRunItem).filter_by(evaluation_run_id=run_id).count() == 0
+
+
 def test_resume_workflow_rows_reuses_target_checkpoint(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     run_id = "30000000-0000-0000-0000-000000000101"
+    lease = _lease(run_id)
     item = EvaluationDatasetInput(index=7, inputs={"query": "hello"})
     with sqlite_session_factory() as session:
         session.add_all(
@@ -449,6 +591,7 @@ def test_resume_workflow_rows_reuses_target_checkpoint(
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
                     config_snapshot="{}",
                     status=EvaluationRunStatus.RUNNING,
+                    execution_token=lease.token,
                     total_items=1,
                     created_by="30000000-0000-0000-0000-000000000006",
                 ),
@@ -481,13 +624,14 @@ def test_resume_workflow_rows_reuses_target_checkpoint(
             input_list=[item],
         )
 
-        _resume_workflow_rows(session, run_data, MagicMock())
+        _resume_workflow_rows(session, run_data, MagicMock(), lease)
 
     execute_targets.assert_not_called()
     query_results.assert_called_once()
     assert execute_runner.call_args.kwargs["node_run_result_mapping_list"] == [node_results]
     assert execute_runner.call_args.kwargs["workflow_run_id_map"] == {7: "30000000-0000-0000-0000-000000000091"}
     assert execute_runner.call_args.kwargs["task_positions"] == [0]
+    assert execute_runner.call_args.kwargs["lease"] == lease
 
 
 def test_resume_retrieval_rows_skips_completed_checkpoint(
@@ -495,6 +639,7 @@ def test_resume_retrieval_rows_skips_completed_checkpoint(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     run_id = "30000000-0000-0000-0000-000000000111"
+    lease = _lease(run_id)
     with sqlite_session_factory() as session:
         session.add_all(
             [
@@ -506,6 +651,7 @@ def test_resume_retrieval_rows_skips_completed_checkpoint(
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
                     config_snapshot="{}",
                     status=EvaluationRunStatus.RUNNING,
+                    execution_token=lease.token,
                     total_items=2,
                     created_by="30000000-0000-0000-0000-000000000006",
                 ),
@@ -536,12 +682,13 @@ def test_resume_retrieval_rows_skips_completed_checkpoint(
             ],
         )
 
-        _resume_retrieval_rows(session, run_data, MagicMock(), "account-1")
+        _resume_retrieval_rows(session, run_data, MagicMock(), "account-1", lease)
 
     execute_retrieval.assert_called_once()
     assert execute_retrieval.call_args.kwargs["input_list"][0].index == 2
     evaluate_retrieval.assert_called_once()
     assert evaluate_retrieval.call_args.kwargs["run_data"].input_list[0].index == 2
+    assert evaluate_retrieval.call_args.kwargs["lease"] == lease
     assert evaluate_retrieval.call_args.kwargs["report_progress"] is False
 
 
@@ -551,12 +698,14 @@ def test_heartbeat_loop_renews_until_run_is_no_longer_running(monkeypatch: pytes
     renew_heartbeat = MagicMock(side_effect=[True, False])
     monkeypatch.setattr("tasks.evaluation_task._renew_evaluation_run_heartbeat", renew_heartbeat)
     monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_HEARTBEAT_INTERVAL", 17)
+    lease = _lease("run-1")
 
-    _renew_evaluation_run_heartbeat_while_running("run-1", stop_event)
+    _renew_evaluation_run_heartbeat_while_running(lease, stop_event)
 
     assert stop_event.wait.call_count == 2
     stop_event.wait.assert_called_with(17)
     assert renew_heartbeat.call_count == 2
+    renew_heartbeat.assert_called_with(lease)
 
 
 def test_renew_evaluation_run_heartbeat_only_updates_running_run(
@@ -566,6 +715,7 @@ def test_renew_evaluation_run_heartbeat_only_updates_running_run(
     now = naive_utc_now()
     running_run_id = "30000000-0000-0000-0000-000000000031"
     completed_run_id = "30000000-0000-0000-0000-000000000041"
+    running_lease = _lease(running_run_id)
     with sqlite_session_factory() as session:
         session.add_all(
             [
@@ -578,6 +728,7 @@ def test_renew_evaluation_run_heartbeat_only_updates_running_run(
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
                     config_snapshot="{}",
                     status=EvaluationRunStatus.RUNNING,
+                    execution_token=running_lease.token,
                     total_items=2,
                     created_by="30000000-0000-0000-0000-000000000006",
                     heartbeat_at=now - timedelta(minutes=10),
@@ -605,8 +756,9 @@ def test_renew_evaluation_run_heartbeat_only_updates_running_run(
 
     monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
 
-    assert _renew_evaluation_run_heartbeat(running_run_id) is True
-    assert _renew_evaluation_run_heartbeat(completed_run_id) is False
+    assert _renew_evaluation_run_heartbeat(running_lease) is True
+    assert _renew_evaluation_run_heartbeat(_lease(running_run_id, "40000000-0000-0000-0000-000000000002")) is False
+    assert _renew_evaluation_run_heartbeat(_lease(completed_run_id)) is False
 
     with sqlite_session_factory() as session:
         running_run = session.get(EvaluationRun, running_run_id)
@@ -635,6 +787,7 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
                     config_snapshot="{}",
                     status=EvaluationRunStatus.RUNNING,
+                    execution_token="40000000-0000-0000-0000-000000000011",
                     total_items=2,
                     celery_task_id="celery-1",
                     created_by="30000000-0000-0000-0000-000000000006",
@@ -666,6 +819,7 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
                     config_snapshot="{}",
                     status=EvaluationRunStatus.RUNNING,
+                    execution_token="40000000-0000-0000-0000-000000000021",
                     total_items=2,
                     celery_task_id="celery-3",
                     created_by="30000000-0000-0000-0000-000000000006",
@@ -695,6 +849,8 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
         run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000001")
         assert run is not None
         assert run.status == EvaluationRunStatus.FAILED
+        assert run.execution_token is None
+        assert run.heartbeat_at is None
         assert "lease" in (run.error or "")
         pending_run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000011")
         assert pending_run is not None
@@ -702,6 +858,7 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
         recently_renewed_run = session.get(EvaluationRun, "30000000-0000-0000-0000-000000000021")
         assert recently_renewed_run is not None
         assert recently_renewed_run.status == EvaluationRunStatus.RUNNING
+        assert recently_renewed_run.execution_token == "40000000-0000-0000-0000-000000000021"
     stop_tasks.assert_called_once_with("30000000-0000-0000-0000-000000000001", 2)
     celery_control.revoke.assert_called_once_with("celery-1", terminate=False)
 
