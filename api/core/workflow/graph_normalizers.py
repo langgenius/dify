@@ -69,12 +69,18 @@ def normalize_condition_value(value: Any, operator: str) -> Any:
     return value
 
 
-def normalize_filter_condition_value(value: Any) -> Any:
+def normalize_filter_condition_value(value: Any, operator: str = "") -> Any:
     """One filter condition ``value`` (list-operator FilterCondition) normalized.
 
     FilterCondition.value is str | Sequence[str] | bool (default ""), NOT None.
     Filtering an array of strings or numbers requires a plain string, not a list.
     Booleans are kept. Numbers become text. Lists get their items normalized.
+
+    ``operator`` is accepted and ignored: it gives this the same
+    ``(value, operator)`` shape as ``normalize_condition_value`` so the
+    conditions walker calls both one way. Unlike a Condition, a scalar under
+    a list operator (``in`` / ``not in`` / ``all of``) is never wrapped in a
+    list here.
     """
     if isinstance(value, bool):
         return value
@@ -91,14 +97,15 @@ def normalize_filter_condition_value(value: Any) -> Any:
 
 def _normalize_conditions(
     conditions: Any,
-    value_normalizer: Callable[[Any, str], Any] | Callable[[Any], Any] = normalize_condition_value,
+    value_normalizer: Callable[[Any, str], Any] = normalize_condition_value,
 ) -> bool:
     """Normalize every ``value`` in a conditions list (recursing into
     ``sub_variable_condition``). Returns True when anything changed.
 
-    The value_normalizer is called with (value, operator) for Condition-like
-    normalizers, or just (value,) for FilterCondition normalizers. Callers
-    must pass the right function for their context.
+    ``value_normalizer`` is called as ``(value, comparison_operator)``:
+    ``normalize_condition_value`` for if-else / loop Conditions,
+    ``normalize_filter_condition_value`` (which ignores the operator) for
+    list-operator FilterConditions. Callers must pass the right one.
     """
     changed = False
     if not isinstance(conditions, list):
@@ -107,12 +114,7 @@ def _normalize_conditions(
         if not isinstance(condition, MutableMapping):
             continue
         if "value" in condition:
-            # Try the normalizer with both signatures (Condition vs FilterCondition)
-            try:
-                new_value = value_normalizer(condition["value"], str(condition.get("comparison_operator") or ""))  # type: ignore
-            except TypeError:
-                # If that fails, try with just the value (FilterCondition path)
-                new_value = value_normalizer(condition["value"])  # type: ignore
+            new_value = value_normalizer(condition["value"], str(condition.get("comparison_operator") or ""))
             if new_value != condition["value"] or type(new_value) is not type(condition["value"]):
                 condition["value"] = new_value
                 changed = True
