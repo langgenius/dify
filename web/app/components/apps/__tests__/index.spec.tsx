@@ -3,8 +3,10 @@ import type {
   RecommendedAppDetailResponse,
   RecommendedAppResponse,
 } from '@dify/contracts/api/console/explore/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { TryAppSelection } from '@/types/try-app'
-import { screen, waitFor, within } from '@testing-library/react'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { consoleQuery } from '@/service/console'
@@ -126,6 +128,8 @@ const completed: Import = {
 }
 let importResponse: Import
 let detailFails: boolean
+const clients = new Set<QueryClient>()
+const features = zGetFeaturesResponse.parse({ apps: { size: 1, limit: 10 } })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -139,14 +143,23 @@ beforeEach(() => {
       return detailFails
         ? Response.json({ message: 'Unavailable' }, { status: 503 })
         : Response.json(detail)
+    if (path === '/features') return Response.json(features)
     if (path === '/apps/imports') return Response.json(importResponse)
     if (path === '/apps/imports/import-1/confirm') return Response.json(completed)
     throw new Error(`Unexpected request: ${url}`)
   })
 })
 
+afterEach(async () => {
+  cleanup()
+  await Promise.all([...clients].map((client) => client.cancelQueries()))
+  for (const client of clients) client.clear()
+  clients.clear()
+})
+
 const setup = ({ cloud = false, permission = true, item = template } = {}) => {
   const queryClient = createConsoleQueryClient()
+  clients.add(queryClient)
   queryClient.setQueryData(
     consoleQuery.explore.apps.learnDify.get.queryKey({ input: { query: { language: 'en-US' } } }),
     { recommended_apps: [item] },
@@ -181,9 +194,14 @@ it('imports fresh canonical detail through the real form and import orchestratio
   await submit(user)
   await waitFor(() => expect(redirect).toHaveBeenCalled())
   expect(
-    request.mock.calls.map(([url]) => new URL(url).pathname.replace('/console/api', '')),
+    request.mock.calls
+      .map(([url]) => new URL(url).pathname.replace('/console/api', ''))
+      .filter((path) => path !== '/features'),
   ).toEqual(['/explore/apps/canonical-template', '/apps/imports'])
-  expect(await request.mock.calls[1]![2].request.json()).toMatchObject({
+  const importRequest = request.mock.calls.find(([url]) =>
+    new URL(url).pathname.endsWith('/apps/imports'),
+  )
+  expect(await importRequest?.[2].request.json()).toMatchObject({
     yaml_content: 'fresh-dsl',
     name: 'Sample App',
     description: '',
@@ -215,7 +233,10 @@ it('handles detail rejection once without import, navigation, or reopening the s
   await submit(user)
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  expect(request).toHaveBeenCalledOnce()
+  const paths = request.mock.calls.map(([url]) => new URL(url).pathname.replace('/console/api', ''))
+  expect(paths.filter((path) => path === '/explore/apps/canonical-template')).toHaveLength(1)
+  expect(paths.some((path) => path.startsWith('/apps/imports'))).toBe(false)
+  expect(toast.error).toHaveBeenCalledOnce()
   expect(redirect).not.toHaveBeenCalled()
   expect(trackCreateApp).not.toHaveBeenCalled()
 })
@@ -237,7 +258,9 @@ it('keeps the pending import confirmation and tracks only after successful confi
   await user.click(within(dialog).getByRole('button', { name: 'app.newApp.Confirm' }))
   await waitFor(() => expect(redirect).toHaveBeenCalled())
   expect(
-    request.mock.calls.map(([url]) => new URL(url).pathname.replace('/console/api', '')),
+    request.mock.calls
+      .map(([url]) => new URL(url).pathname.replace('/console/api', ''))
+      .filter((path) => path !== '/features'),
   ).toEqual(['/explore/apps/canonical-template', '/apps/imports', '/apps/imports/import-1/confirm'])
   expect(trackCreateApp).toHaveBeenCalledWith({
     source: 'studio_template_preview',
