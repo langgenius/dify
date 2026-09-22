@@ -201,9 +201,10 @@ def test_full_fix_flow_request_fix_to_publish_success_on_sql_repo(repo: SqlDifyB
     conv = repo.list_conversation(s.id)
     assert [item.seq for item in conv] == list(range(len(conv)))
     assert conv[0].kind == "run-context"
-    assert any(item.kind == "summary" and item.payload.get("variant") == "context" for item in conv)
+    assert any(item.kind == "assistant_turn" and item.payload.get("reply_text") for item in conv)
     assert any(item.kind == "test_result" for item in conv)
-    assert conv[-1].payload == {"text": "Published the fix"}
+    assert conv[-1].kind == "assistant_turn"
+    assert str(conv[-1].payload["reply_text"]).startswith("Published workflow version ")
 
 
 def test_full_fix_flow_stale_base_version_raises_conflict_on_sql_repo(repo: SqlDifyBuilderRepository) -> None:

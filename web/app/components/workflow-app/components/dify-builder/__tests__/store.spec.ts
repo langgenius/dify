@@ -6,6 +6,7 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
+  difyBuilderLocalUserMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
@@ -19,6 +20,7 @@ import {
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderDraftAtom,
+  difyBuilderHasSessionAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderModelReadonlyAtom,
   difyBuilderRecheckReadyAtom,
@@ -41,13 +43,12 @@ const builderModel = {
 } satisfies NonNullable<SessionView['model']>
 
 const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
-  app_id: 'app-1',
   canvas_read_only: false,
   conversation_last_seq: -1,
   interrupted: false,
+  phase: 'understand',
   run_status: 'complete',
   session_id: 'session-1',
-  state: 'complete',
   version: 1,
   ...overrides,
 })
@@ -113,13 +114,14 @@ describe('Dify Builder store', () => {
       payload: { fields: [], values: {}, variant: 'testdata' as const },
       seq: 1,
     }
+    store.set(difyBuilderConversationAtom, [card])
 
     store.set(
       difyBuilderSessionViewAtom,
       createSessionView({
         active_interaction: {
           action_id: 'provide_testdata',
-          card,
+          card_seq: card.seq,
           valid_at_version: 1,
         },
         version: 2,
@@ -132,7 +134,7 @@ describe('Dify Builder store', () => {
       createSessionView({
         active_interaction: {
           action_id: 'provide_testdata',
-          card,
+          card_seq: card.seq,
           valid_at_version: 2,
         },
         version: 2,
@@ -188,8 +190,6 @@ describe('Dify Builder store', () => {
       store.set(
         difyBuilderSessionViewAtom,
         createSessionView({
-          entry_mode: 'build',
-          state: runStatus === 'waiting_input' ? 'build.goal_analysis' : 'build.plan_approval',
           run_status: runStatus,
         }),
       )
@@ -318,7 +318,7 @@ describe('Dify Builder store', () => {
     store.set(
       difyBuilderSessionViewAtom,
       createSessionView({
-        app_revision: { observed: 'old', current: 'new', conflicted: true },
+        app_revision: { current: 'new', conflicted: true },
         run_status: 'waiting_confirmation',
       }),
     )
@@ -353,10 +353,7 @@ describe('Dify Builder store', () => {
     const store = createStore()
     const runtime = createRuntime(vi.fn(async () => true))
     store.set(difyBuilderRuntimeAtom, runtime)
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
-    )
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
 
     expect(
       await store.set(difyBuilderStartPromptAtom, {
@@ -365,6 +362,35 @@ describe('Dify Builder store', () => {
       }),
     ).toBe(true)
     expect(runtime.session.sendMessage).toHaveBeenCalledWith('Make the change smaller')
+  })
+
+  it('shows a new-session prompt while session creation is in flight', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    let finishStarting!: (started: boolean) => void
+    runtime.session.startBuild = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finishStarting = resolve
+        }),
+    )
+    store.set(difyBuilderRuntimeAtom, runtime)
+
+    const starting = store.set(difyBuilderStartPromptAtom, {
+      text: 'Build an expense assistant',
+      model: builderModel,
+    })
+
+    expect(store.get(difyBuilderLocalUserMessageAtom)).toMatchObject({
+      afterSequence: -1,
+      localId: expect.any(String),
+      sessionId: null,
+      text: 'Build an expense assistant',
+    })
+    expect(store.get(difyBuilderHasSessionAtom)).toBe(true)
+
+    finishStarting(true)
+    expect(await starting).toBe(true)
   })
 
   it('clears the submitted draft immediately and preserves a newer draft while sending', async () => {
@@ -378,10 +404,7 @@ describe('Dify Builder store', () => {
         }),
     )
     store.set(difyBuilderRuntimeAtom, runtime)
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
-    )
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
     store.set(difyBuilderDraftAtom, 'First draft')
 
     const sending = store.set(difyBuilderSendDraftAtom, builderModel)
@@ -401,10 +424,7 @@ describe('Dify Builder store', () => {
     const runtime = createRuntime(vi.fn(async () => true))
     runtime.session.sendMessage = vi.fn(async () => false)
     store.set(difyBuilderRuntimeAtom, runtime)
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
-    )
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
     store.set(difyBuilderDraftAtom, 'Retry this message')
 
     expect(await store.set(difyBuilderSendDraftAtom, builderModel)).toBe(false)
@@ -446,6 +466,7 @@ describe('Dify Builder store', () => {
 
       expect(await sending).toBe(false)
       expect(store.get(difyBuilderDraftAtom)).toBe(newerDraft || 'Build an expense assistant')
+      expect(store.get(difyBuilderLocalUserMessageAtom)).toBeNull()
     },
   )
 

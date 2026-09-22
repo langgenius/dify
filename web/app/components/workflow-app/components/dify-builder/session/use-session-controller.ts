@@ -1,12 +1,12 @@
 'use client'
 
 import type {
-  CanvasEventData,
-  DifyBuilderCommitEventData,
+  DifyBuilderCanvasEventData,
   DifyBuilderStreamEventResponse,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type {
   ChecklistErrorPayload,
+  ConversationItem,
   DifyBuilderSessionController,
   SessionModel,
   SessionView,
@@ -37,32 +37,41 @@ import {
   streamErrorMessage,
   UNEXPECTED_EOF_ERROR,
 } from './errors'
-import { isCompletedView, mergeConversation, projectCommit, projectSessionView } from './projection'
 import {
+  hasConversationRange,
+  isCompletedView,
+  mergeConversation,
+  projectSessionView,
+} from './projection'
+import {
+  difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
   difyBuilderConversationLoadingAtom,
+  difyBuilderLocalUserMessageAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionErrorCodeAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
 } from './state'
-import { createTraceBuffer, readTraceState, readTraceVersion } from './trace-buffer'
+import { createTraceBuffer, readTraceVersion } from './trace-buffer'
 import { useDifyBuilderExecutionProgress } from './use-execution-progress'
 import { useDifyBuilderReasoningBuffer } from './use-reasoning-buffer'
 import { useDifyBuilderStreamingTurnBuffer } from './use-streaming-turn-buffer'
 
 const MAX_RECONCILE_ATTEMPTS = 3
+const COMMAND_FINISHED_UNAVAILABLE_CODE = 'command_finished_unavailable'
 const isActiveRunStatus = (status: SessionView['run_status']) => status === 'processing'
 const isActiveView = (view: SessionView) => isActiveRunStatus(view.run_status) && !view.interrupted
 
 /**
  * Owns the Dify Builder session lifecycle. Live commands render directly from
- * bounded command/state SSE events, durable commits, and paginated JSON
- * history. Token deltas use an isolated frame-buffered atom. GET owns initial
- * restore and repairs any sequence gap left by a dropped commit event.
+ * bounded command lifecycle SSE events and paginated JSON history. Token
+ * deltas use an isolated frame-buffered atom and are promoted into the chat by
+ * the final agent_message frame. command_finished confirms persistence; GET
+ * owns initial restore and missing-sequence recovery only.
  */
 export function useDifyBuilderSessionController(
   prepareCommand?: (saveDraft: boolean, signal: AbortSignal) => Promise<void>,
@@ -70,9 +79,11 @@ export function useDifyBuilderSessionController(
 ): DifyBuilderSessionController {
   const store = useStore()
   const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
+  const setActiveCommand = useSetAtom(difyBuilderActiveCommandAtom)
   const setConversation = useSetAtom(difyBuilderConversationAtom)
   const setConversationHasMore = useSetAtom(difyBuilderConversationHasMoreAtom)
   const setConversationLoading = useSetAtom(difyBuilderConversationLoadingAtom)
+  const setLocalUserMessage = useSetAtom(difyBuilderLocalUserMessageAtom)
   const setRetryableMessage = useSetAtom(difyBuilderRetryableMessageAtom)
   const setView = useSetAtom(difyBuilderSessionViewAtom)
   const setLastError = useSetAtom(difyBuilderSessionLastErrorAtom)
@@ -82,14 +93,14 @@ export function useDifyBuilderSessionController(
   const streamingTurnBuffer = useDifyBuilderStreamingTurnBuffer()
   const abortRef = useRef<AbortController | null>(null)
   const canvasCursorRef = useRef<
-    Pick<CanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'> | undefined
+    | Pick<DifyBuilderCanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'>
+    | undefined
   >(undefined)
   const pendingMessageRef = useRef<{ sessionId: string; text: string; turnId: string } | null>(null)
   const pendingRetestRef = useRef<{
     sessionId: string
     version: number
     appRevision: string
-    state: string
     actionId: string
   } | null>(null)
   const traceRef = useRef(createTraceBuffer())
@@ -136,6 +147,24 @@ export function useDifyBuilderSessionController(
     [setActiveSessionId, setView, store],
   )
 
+  const confirmLocalUserMessage = useCallback(
+    (sessionId: string, items: ConversationItem[]) => {
+      setLocalUserMessage((current) => {
+        if (!current || current.sessionId !== sessionId) return current
+        return items.some(
+          (item) =>
+            item.kind === 'user' &&
+            (current.turnId
+              ? item.payload.turn_id === current.turnId
+              : item.payload.text === current.text),
+        )
+          ? null
+          : current
+      })
+    },
+    [setLocalUserMessage],
+  )
+
   const syncConversation = useCallback(
     async (
       sessionId: string,
@@ -157,6 +186,7 @@ export function useDifyBuilderSessionController(
         if (controller.signal.aborted) return false
         items = page.data.filter((item) => item.seq <= targetLastSeq)
         setConversation(items)
+        confirmLocalUserMessage(sessionId, items)
         setConversationHasMore(page.has_more)
       }
 
@@ -175,67 +205,63 @@ export function useDifyBuilderSessionController(
         items = merged
         lastSeq = nextLastSeq
         setConversation(items)
+        confirmLocalUserMessage(sessionId, boundedPage)
         if (!page.has_more) break
       }
       if (lastSeq >= targetLastSeq) runEvents?.restoreRun(sessionId, items)
       return lastSeq >= targetLastSeq
     },
-    [runEvents, setConversation, setConversationHasMore, store],
+    [confirmLocalUserMessage, runEvents, setConversation, setConversationHasMore, store],
   )
 
-  const applyCommit = useCallback(
-    (commit: DifyBuilderCommitEventData) => {
-      const activeSessionId = store.get(difyBuilderActiveSessionIdAtom)
-      if (activeSessionId && activeSessionId !== commit.session_id) return undefined
+  const syncConversationRange = useCallback(
+    async (
+      sessionId: string,
+      afterSequence: number,
+      targetLastSeq: number,
+      controller: AbortController,
+    ) => {
+      let items = store.get(difyBuilderConversationAtom)
+      let cursor = afterSequence
 
-      const current = store.get(difyBuilderSessionViewAtom)
-      const projected = projectCommit(current, commit)
-      if (!projected) return undefined
-      const conversation = store.get(difyBuilderConversationAtom)
-      const lastSequence = conversation.at(-1)?.seq ?? -1
-      const newSequences = commit.items
-        .map((item) => item.seq)
-        .filter((sequence) => sequence > lastSequence)
-        .sort((left, right) => left - right)
-      let expectedSequence = lastSequence + 1
-      const hasConversationGap = newSequences.some((sequence) => {
-        const hasGap = sequence > expectedSequence
-        expectedSequence = sequence + 1
-        return hasGap
-      })
-      setView(projected)
-      if (!hasConversationGap) {
-        const items = mergeConversation(conversation, commit.items)
+      while (cursor < targetLastSeq) {
+        const sequences = new Set(items.map((item) => item.seq))
+        while (cursor < targetLastSeq && sequences.has(cursor + 1)) cursor += 1
+        if (cursor >= targetLastSeq) break
+
+        const page = await getSessionConversation(
+          sessionId,
+          { after_seq: cursor, limit: 100 },
+          controller.signal,
+        )
+        if (controller.signal.aborted) return false
+        const boundedPage = page.data.filter((item) => item.seq <= targetLastSeq)
+        const merged = mergeConversation(items, boundedPage)
+        const mergedSequences = new Set(merged.map((item) => item.seq))
+        let nextCursor = cursor
+        while (nextCursor < targetLastSeq && mergedSequences.has(nextCursor + 1)) nextCursor += 1
+        if (nextCursor === cursor) return false
+        items = merged
+        cursor = nextCursor
         setConversation(items)
-        runEvents?.restoreRun(commit.session_id, items)
+        confirmLocalUserMessage(sessionId, boundedPage)
       }
-      if (
-        canvasCursorRef.current?.session_id === commit.session_id &&
-        canvasCursorRef.current.at_version <= commit.version
-      )
-        canvasCursorRef.current = undefined
-      executionProgress.clearThroughVersion(commit.session_id, commit.version)
-      reasoningBuffer.clearThroughVersion(commit.session_id, commit.version)
-      streamingTurnBuffer.clearThroughVersion(commit.session_id, commit.version)
-      return hasConversationGap ? newSequences.at(-1) : undefined
+
+      const complete = hasConversationRange(items, afterSequence, targetLastSeq)
+      if (complete) runEvents?.restoreRun(sessionId, items)
+      return complete
     },
-    [
-      executionProgress,
-      reasoningBuffer,
-      runEvents,
-      setConversation,
-      setView,
-      store,
-      streamingTurnBuffer,
-    ],
+    [confirmLocalUserMessage, runEvents, setConversation, store],
   )
 
   const clearSession = useCallback(
     (sessionId: string) => {
       setActiveSessionId((current) => (current === sessionId ? null : current))
+      setActiveCommand((current) => (current?.session_id === sessionId ? null : current))
       setView((current) => (current?.session_id === sessionId ? null : current))
       setConversation([])
       setConversationHasMore(false)
+      setLocalUserMessage(null)
       setRetryableMessage(null)
       executionProgress.clear()
       reasoningBuffer.clear()
@@ -247,8 +273,10 @@ export function useDifyBuilderSessionController(
       reasoningBuffer,
       runEvents,
       setActiveSessionId,
+      setActiveCommand,
       setConversation,
       setConversationHasMore,
+      setLocalUserMessage,
       setRetryableMessage,
       setView,
       streamingTurnBuffer,
@@ -260,7 +288,6 @@ export function useDifyBuilderSessionController(
       events: AsyncIterable<DifyBuilderStreamEventResponse>,
       controller: AbortController,
       initialSessionId?: string,
-      stopWhenNotActive = false,
     ): Promise<SessionStreamOutcome> => {
       const outcome: SessionStreamOutcome = {
         sessionId: initialSessionId,
@@ -275,43 +302,42 @@ export function useDifyBuilderSessionController(
           kind: event.event,
           payload: event.data,
           version: readTraceVersion(event.data),
-          state: readTraceState(event.data),
         })
 
         if (event.event === 'command_started') {
           outcome.sawCommandStarted = true
           outcome.sessionId = event.data.session_id
+          outcome.commandId = event.data.command_id
           outcome.commandStartedVersion = event.data.version
           outcome.observedVersion = Math.max(outcome.observedVersion ?? 0, event.data.version)
-          const { kind: _kind, ...stateView } = event.data
-          const stateApplied = applySessionView(stateView)
-          if (stateApplied) {
-            executionProgress.clear()
-            reasoningBuffer.clear()
-            streamingTurnBuffer.clear()
-          }
-          const historyApplied = await syncConversation(
-            stateView.session_id,
-            stateView.conversation_last_seq,
-            controller,
+          const currentView = store.get(difyBuilderSessionViewAtom)
+          const currentItems =
+            currentView?.session_id === event.data.session_id
+              ? store.get(difyBuilderConversationAtom)
+              : []
+          outcome.conversationStartSeq = currentItems.at(-1)?.seq ?? -1
+          setActiveSessionId(event.data.session_id)
+          setActiveCommand(event.data)
+          setLocalUserMessage((current) =>
+            current?.sessionId === null
+              ? { ...current, sessionId: event.data.session_id }
+              : current,
           )
-          if (stopWhenNotActive && !isActiveView(stateView)) {
-            outcome.terminalEvent = 'state'
-            outcome.terminalInterrupted = stateView.interrupted
-            outcome.terminalRunStatus = stateView.run_status
-            outcome.stateApplied = stateApplied && historyApplied
-            return true
-          }
+          executionProgress.clear()
+          reasoningBuffer.clear()
+          streamingTurnBuffer.clear()
           return false
         }
 
         if (event.event === 'canvas' || event.event === 'workflow') {
           const view = store.get(difyBuilderSessionViewAtom)
+          const activeCommand = store.get(difyBuilderActiveCommandAtom)
           const cursor = canvasCursorRef.current
           if (
             store.get(difyBuilderActiveSessionIdAtom) !== event.data.session_id ||
-            view?.session_id !== event.data.session_id ||
-            view.version >= event.data.at_version ||
+            (view?.session_id === event.data.session_id && view.version >= event.data.at_version) ||
+            (activeCommand?.session_id === event.data.session_id &&
+              activeCommand.version >= event.data.at_version) ||
             (cursor?.session_id === event.data.session_id &&
               (cursor.at_version > event.data.at_version ||
                 (cursor.at_version === event.data.at_version &&
@@ -341,54 +367,113 @@ export function useDifyBuilderSessionController(
           return false
         }
 
-        if (event.event === 'commit') {
+        if (event.event === 'conversation_item_appended') {
+          if (outcome.commandId && event.data.command_id !== outcome.commandId) return false
           outcome.sessionId = event.data.session_id
-          outcome.observedCommitVersion = Math.max(
-            outcome.observedCommitVersion ?? 0,
-            event.data.version,
-          )
-          outcome.observedVersion = Math.max(outcome.observedVersion ?? 0, event.data.version)
-          const missingConversationTarget = applyCommit(event.data)
-          if (missingConversationTarget !== undefined) {
-            await syncConversation(event.data.session_id, missingConversationTarget, controller)
-          }
+          if (store.get(difyBuilderActiveSessionIdAtom) !== event.data.session_id) return false
+          setConversation((current) => mergeConversation(current, [event.data.item]))
+          confirmLocalUserMessage(event.data.session_id, [event.data.item])
           return false
         }
 
         if (event.event === 'agent_message') {
+          if (outcome.commandId && event.data.command_id !== outcome.commandId) return false
           outcome.sessionId = event.data.session_id
-          streamingTurnBuffer.enqueue(event.data)
+          if (!event.data.done) {
+            streamingTurnBuffer.enqueue(event.data)
+            return false
+          }
+
+          const streamedTurn = await streamingTurnBuffer.finish(event.data)
+          if (!streamedTurn) return false
+          const reasoningText = reasoningBuffer.finish(
+            event.data.session_id,
+            event.data.operation_id,
+            event.data.at_version,
+          )
+          const assistantItem: Extract<ConversationItem, { kind: 'assistant_turn' }> = {
+            seq: event.data.seq,
+            at_version: event.data.at_version,
+            kind: 'assistant_turn',
+            payload: {
+              turn_id: event.data.turn_id,
+              execution: event.data.execution ?? { status: 'completed', activities: [] },
+              reasoning_text: reasoningText || undefined,
+              reply_text: streamedTurn.replyText || undefined,
+              cards: event.data.cards ?? [],
+            },
+          }
+          setConversation((current) => mergeConversation(current, [assistantItem]))
+          executionProgress.clearThroughVersion(event.data.session_id, event.data.at_version)
           return false
         }
 
-        if (event.event === 'state') {
-          outcome.terminalEvent = 'state'
+        if (event.event === 'command_finished') {
+          if (outcome.commandId && event.data.command_id !== outcome.commandId) return false
+          outcome.terminalEvent = 'command_finished'
           outcome.sessionId = event.data.session_id
-          const { kind: _kind, ...stateView } = event.data
+          outcome.finishedCommandId = event.data.command_id
+          const {
+            command_id,
+            post_canvas_action_id: postCanvasActionId,
+            ...finishedState
+          } = event.data
+          const stateView: SessionView = { ...finishedState, last_command_id: command_id }
           outcome.observedVersion = Math.max(outcome.observedVersion ?? 0, stateView.version)
           outcome.terminalInterrupted = stateView.interrupted
           outcome.terminalRunStatus = stateView.run_status
           const stateApplied = applySessionView(stateView)
-          if (stateApplied) {
+          setActiveCommand((current) =>
+            current?.session_id === stateView.session_id ? null : current,
+          )
+          if (stateApplied && postCanvasActionId && stateView.app_revision) {
+            pendingRetestRef.current = {
+              sessionId: stateView.session_id,
+              version: stateView.version,
+              appRevision: stateView.app_revision.current,
+              actionId: postCanvasActionId,
+            }
+          }
+          const conversationStartSeq = outcome.conversationStartSeq ?? -1
+          let historyApplied = hasConversationRange(
+            store.get(difyBuilderConversationAtom),
+            conversationStartSeq,
+            stateView.conversation_last_seq,
+          )
+          if (!historyApplied) {
+            historyApplied = await syncConversationRange(
+              stateView.session_id,
+              conversationStartSeq,
+              stateView.conversation_last_seq,
+              controller,
+            )
+          }
+          if (stateApplied && historyApplied) {
             executionProgress.clear()
             reasoningBuffer.clear()
             streamingTurnBuffer.clear()
           }
-          const historyApplied = await syncConversation(
-            stateView.session_id,
-            stateView.conversation_last_seq,
-            controller,
-          )
           outcome.stateApplied = stateApplied && historyApplied
           return true
         }
 
         if (event.event === 'error') {
+          if (
+            outcome.commandId &&
+            event.data.command_id &&
+            event.data.command_id !== outcome.commandId
+          )
+            return false
           outcome.terminalEvent = 'error'
+          outcome.sessionId = event.data.session_id ?? outcome.sessionId
+          outcome.finishedCommandId = event.data.command_id ?? undefined
           outcome.terminalError = streamErrorMessage(event.data)
-          executionProgress.clear()
-          reasoningBuffer.clear()
-          streamingTurnBuffer.clear()
+          outcome.terminalErrorCode = event.data.code ?? undefined
+          setActiveCommand((current) =>
+            !event.data.session_id || current?.session_id === event.data.session_id
+              ? null
+              : current,
+          )
           setLastError(outcome.terminalError)
           return true
         }
@@ -412,14 +497,18 @@ export function useDifyBuilderSessionController(
       return outcome
     },
     [
-      applyCommit,
       applySessionView,
+      confirmLocalUserMessage,
       executionProgress,
       reasoningBuffer,
       runEvents,
+      setActiveCommand,
+      setActiveSessionId,
+      setConversation,
       setLastError,
+      setLocalUserMessage,
       store,
-      syncConversation,
+      syncConversationRange,
       streamingTurnBuffer,
     ],
   )
@@ -433,6 +522,18 @@ export function useDifyBuilderSessionController(
           const view = await getSession(sessionId, controller.signal)
           if (controller.signal.aborted) return latestOutcome
           const stateApplied = applySessionView(view)
+          if (isActiveView(view)) {
+            setActiveCommand({
+              session_id: view.session_id,
+              version: view.version,
+              phase: view.phase,
+              run_status: view.run_status,
+            })
+          } else {
+            setActiveCommand((current) =>
+              current?.session_id === view.session_id ? null : current,
+            )
+          }
           const historyApplied = await syncConversation(
             sessionId,
             view.conversation_last_seq,
@@ -442,17 +543,18 @@ export function useDifyBuilderSessionController(
           latestOutcome = {
             sessionId,
             sawCommandStarted: false,
-            terminalEvent: isActiveView(view) ? null : 'state',
+            terminalEvent: isActiveView(view) ? null : 'command_finished',
             terminalInterrupted: view.interrupted,
             terminalRunStatus: view.run_status,
             observedVersion: view.version,
+            finishedCommandId: view.last_command_id,
             stateApplied: stateApplied && historyApplied,
           }
           if (!isActiveView(view)) return latestOutcome
 
           const events = await getSessionStream(sessionId, controller.signal)
-          latestOutcome = await consumeStream(events, controller, sessionId, true)
-          if (latestOutcome.terminalEvent === 'state') return latestOutcome
+          latestOutcome = await consumeStream(events, controller, sessionId)
+          if (latestOutcome.terminalEvent === 'command_finished') return latestOutcome
         } catch (error) {
           // A reconnect is best-effort. A later attempt may observe the
           // durable state after a worker or transport boundary settles.
@@ -470,7 +572,7 @@ export function useDifyBuilderSessionController(
       }
       return latestOutcome
     },
-    [applySessionView, consumeStream, syncConversation],
+    [applySessionView, consumeStream, setActiveCommand, syncConversation],
   )
 
   const runCommand = useCallback(
@@ -507,10 +609,12 @@ export function useDifyBuilderSessionController(
         if (controller.signal.aborted) return false
         if (startsSession) {
           setActiveSessionId(null)
+          setActiveCommand(null)
           setView(null)
           setConversation([])
           setConversationHasMore(false)
           setConversationLoading(false)
+          setLocalUserMessage((current) => (current?.sessionId === null ? current : null))
           setRetryableMessage(null)
           runEvents?.reset()
           canvasCursorRef.current = undefined
@@ -530,34 +634,33 @@ export function useDifyBuilderSessionController(
         const sessionId = outcome.sessionId ?? knownSessionId
         const reconciledCommandSucceeded = (reconciled?: SessionStreamOutcome) => {
           if (
-            reconciled?.terminalEvent !== 'state' ||
+            reconciled?.terminalEvent !== 'command_finished' ||
             reconciled.stateApplied !== true ||
             reconciled.terminalRunStatus === 'failed' ||
             reconciled.terminalInterrupted === true ||
-            startingVersion === undefined
+            startingVersion === undefined ||
+            !outcome.commandId ||
+            reconciled.finishedCommandId !== outcome.commandId
           )
             return false
 
           const reconciledVersion = reconciled.observedVersion ?? 0
-          if (outcome.observedCommitVersion !== undefined)
-            return (
-              outcome.observedCommitVersion > startingVersion &&
-              reconciledVersion >= outcome.observedCommitVersion
-            )
-
-          // A later GET version on an existing session may belong to another
-          // client. Only a commit observed on this command stream can prove
-          // that this command advanced the durable session.
-          if (!startsSession) return false
-          return reconciledVersion > Math.max(startingVersion, outcome.commandStartedVersion ?? 0)
+          return (
+            reconciledVersion > startingVersion &&
+            reconciledVersion > (outcome.commandStartedVersion ?? startingVersion)
+          )
         }
 
         if (outcome.transportError) {
-          executionProgress.clear()
-          reasoningBuffer.clear()
-          streamingTurnBuffer.clear()
           setLastError(outcome.transportError)
-          const reconciled = sessionId ? await reconcileSession(sessionId, controller) : undefined
+          const reconciled = sessionId
+            ? await reconcileSession(sessionId, controller, true)
+            : undefined
+          if (reconciled?.stateApplied) {
+            executionProgress.clear()
+            reasoningBuffer.clear()
+            streamingTurnBuffer.clear()
+          }
           if (reconciledCommandSucceeded(reconciled)) {
             setLastError('')
             return true
@@ -569,21 +672,44 @@ export function useDifyBuilderSessionController(
         if (outcome.terminalEvent) {
           if (controller.signal.aborted) return false
           if (outcome.terminalEvent === 'error') {
-            if (sessionId) await reconcileSession(sessionId, controller)
+            const reconciled = sessionId
+              ? await reconcileSession(sessionId, controller, true)
+              : undefined
+            if (reconciled?.stateApplied) {
+              executionProgress.clear()
+              reasoningBuffer.clear()
+              streamingTurnBuffer.clear()
+            }
+            if (
+              outcome.terminalErrorCode === COMMAND_FINISHED_UNAVAILABLE_CODE &&
+              reconciledCommandSucceeded(reconciled)
+            ) {
+              setLastError('')
+              return true
+            }
             setLastError(outcome.terminalError || 'Builder command failed.')
             return false
           }
           if (!sessionId) setLastError('Builder stream did not identify its session.')
           if (outcome.terminalRunStatus === 'failed') return false
-          return Boolean(sessionId && outcome.stateApplied)
+          return Boolean(
+            sessionId &&
+            outcome.stateApplied &&
+            outcome.commandId &&
+            outcome.finishedCommandId === outcome.commandId,
+          )
         }
 
         if (expectTerminalEvent) {
-          executionProgress.clear()
-          reasoningBuffer.clear()
-          streamingTurnBuffer.clear()
           setLastError(UNEXPECTED_EOF_ERROR)
-          const reconciled = sessionId ? await reconcileSession(sessionId, controller) : undefined
+          const reconciled = sessionId
+            ? await reconcileSession(sessionId, controller, true)
+            : undefined
+          if (reconciled?.stateApplied) {
+            executionProgress.clear()
+            reasoningBuffer.clear()
+            streamingTurnBuffer.clear()
+          }
           if (reconciledCommandSucceeded(reconciled)) {
             setLastError('')
             return true
@@ -599,9 +725,6 @@ export function useDifyBuilderSessionController(
         return true
       } catch (error) {
         if (controller.signal.aborted) return false
-        executionProgress.clear()
-        reasoningBuffer.clear()
-        streamingTurnBuffer.clear()
         const message = await requestErrorMessage(error)
         const code = await requestErrorCode(error)
         if (controller.signal.aborted) return false
@@ -618,7 +741,15 @@ export function useDifyBuilderSessionController(
           })
         }
         setLastError(message)
-        if (commandStarted && knownSessionId) await reconcileSession(knownSessionId, controller)
+        const reconciled =
+          commandStarted && knownSessionId
+            ? await reconcileSession(knownSessionId, controller, true)
+            : undefined
+        if (reconciled?.stateApplied) {
+          executionProgress.clear()
+          reasoningBuffer.clear()
+          streamingTurnBuffer.clear()
+        }
         if (!controller.signal.aborted) setLastError(message)
         return false
       } finally {
@@ -637,10 +768,12 @@ export function useDifyBuilderSessionController(
       reconcileSession,
       runEvents,
       setActiveSessionId,
+      setActiveCommand,
       setConversation,
       setConversationHasMore,
       setIsBusy,
       setLastError,
+      setLocalUserMessage,
       setRetryableMessage,
       setConversationLoading,
       setView,
@@ -732,6 +865,7 @@ export function useDifyBuilderSessionController(
       reasoningBuffer.clear()
       streamingTurnBuffer.clear()
       setConversationLoading(false)
+      setLocalUserMessage(null)
       setRetryableMessage(null)
       pendingMessageRef.current = null
       const controller = new AbortController()
@@ -748,7 +882,7 @@ export function useDifyBuilderSessionController(
           runEvents?.reset()
         const outcome = await reconcileSession(normalizedSessionId, controller, true)
         if (controller.signal.aborted) return false
-        if (outcome?.terminalEvent === 'state') return outcome.stateApplied === true
+        if (outcome?.terminalEvent === 'command_finished') return outcome.stateApplied === true
         if (outcome?.terminalEvent === 'error') {
           setLastError(outcome.terminalError || 'Builder command failed.')
           return false
@@ -783,6 +917,7 @@ export function useDifyBuilderSessionController(
       setActiveSessionId,
       setIsBusy,
       setLastError,
+      setLocalUserMessage,
       setRetryableMessage,
       setConversationLoading,
       store,
@@ -819,6 +954,7 @@ export function useDifyBuilderSessionController(
         return false
       const merged = mergeConversation(page.data, store.get(difyBuilderConversationAtom))
       setConversation(merged)
+      confirmLocalUserMessage(view.session_id, page.data)
       runEvents?.restoreRun(view.session_id, merged)
       setConversationHasMore(page.has_more)
       return page.data.length > 0
@@ -831,6 +967,7 @@ export function useDifyBuilderSessionController(
       setConversationLoading(false)
     }
   }, [
+    confirmLocalUserMessage,
     runEvents,
     setConversation,
     setConversationHasMore,
@@ -853,9 +990,8 @@ export function useDifyBuilderSessionController(
       !view ||
       view.session_id !== pending.sessionId ||
       view.version !== pending.version ||
-      view.state !== pending.state ||
       view.app_revision?.current !== pending.appRevision ||
-      view.app_revision.conflicted
+      view.app_revision?.conflicted
     ) {
       pendingRetestRef.current = null
       return
@@ -891,15 +1027,6 @@ export function useDifyBuilderSessionController(
     async (actionId: string, payload: Record<string, unknown> = {}) => {
       const view = store.get(difyBuilderSessionViewAtom)
       if (!view || store.get(difyBuilderSessionBusyAtom)) return false
-      const selectedAction = actionId === 'confirm' ? payload.option_id : actionId
-      const approvesRepair =
-        selectedAction === 'approve_plan' || selectedAction === 'approve_repair'
-      const retest =
-        approvesRepair && view.state === 'build.await_repair'
-          ? { state: 'build.execution', actionId: 'run_test' }
-          : approvesRepair && view.state === 'edit.await_repair'
-            ? { state: 'edit.apply_changes', actionId: 'run_affected_tests' }
-            : null
       const succeeded = await runCommand({
         knownSessionId: view.session_id,
         expectTerminalEvent: actionId !== 'update_model',
@@ -917,24 +1044,8 @@ export function useDifyBuilderSessionController(
           payload: { action_id: actionId, payload, base_version: view.version },
         },
       })
-      const applied = store.get(difyBuilderSessionViewAtom)
-      if (
-        succeeded &&
-        retest &&
-        applied?.session_id === view.session_id &&
-        applied.version === view.version + 1 &&
-        applied.state === retest.state &&
-        applied.app_revision
-      ) {
-        pendingRetestRef.current = {
-          ...retest,
-          sessionId: applied.session_id,
-          version: applied.version,
-          appRevision: applied.app_revision.current,
-        }
-        // Also handles a refresh that completed before this command promise resumed.
-        continueRetest()
-      }
+      // Also handles a refresh that completed before this command promise resumed.
+      if (succeeded && pendingRetestRef.current) continueRetest()
       return succeeded
     },
     [continueRetest, runCommand, store],
@@ -960,6 +1071,22 @@ export function useDifyBuilderSessionController(
         sessionId: view.session_id,
         text: normalizedText,
         turnId: clientTurnId,
+      }
+      const userMessageCommitted = store
+        .get(difyBuilderConversationAtom)
+        .some((item) => item.kind === 'user' && item.payload.turn_id === clientTurnId)
+      if (!userMessageCommitted) {
+        setLocalUserMessage((current) =>
+          current?.sessionId === view.session_id && current.turnId === clientTurnId
+            ? current
+            : {
+                afterSequence: view.conversation_last_seq,
+                localId: clientTurnId,
+                sessionId: view.session_id,
+                text: normalizedText,
+                turnId: clientTurnId,
+              },
+        )
       }
       const sent = await runCommand({
         knownSessionId: view.session_id,
@@ -989,7 +1116,7 @@ export function useDifyBuilderSessionController(
       }
       return sent
     },
-    [runCommand, setRetryableMessage, store],
+    [runCommand, setLocalUserMessage, setRetryableMessage, store],
   )
 
   const updateModel = useCallback(
@@ -1005,8 +1132,10 @@ export function useDifyBuilderSessionController(
     reasoningBuffer.clear()
     streamingTurnBuffer.clear()
     pendingMessageRef.current = null
+    setLocalUserMessage(null)
     setRetryableMessage(null)
     setActiveSessionId(null)
+    setActiveCommand(null)
     setConversation([])
     setConversationHasMore(false)
     setConversationLoading(false)
@@ -1022,11 +1151,13 @@ export function useDifyBuilderSessionController(
     reasoningBuffer,
     runEvents,
     setActiveSessionId,
+    setActiveCommand,
     setConversation,
     setConversationHasMore,
     setConversationLoading,
     setIsBusy,
     setLastError,
+    setLocalUserMessage,
     setRetryableMessage,
     setView,
     store,

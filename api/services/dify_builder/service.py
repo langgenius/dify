@@ -28,6 +28,8 @@ from core.dify_builder.contract import (
     NoticeItem,
     OptionInput,
     Phase,
+    PreflightContextCard,
+    PreflightIssue,
     RunContextCard,
     RunStatus,
     SessionModel,
@@ -40,6 +42,7 @@ from core.dify_builder.models import (
     Action,
     Actor,
     ChecklistError,
+    ConversationItem,
     DifyBuilderContext,
     EntryMode,
     Run,
@@ -48,7 +51,6 @@ from core.dify_builder.models import (
 from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
 from services.dify_builder.agent.model_resolver import validate_model_config
-from services.feature_service import FeatureService
 
 __all__ = [
     "AppAccess",
@@ -121,8 +123,6 @@ _PHASE_FOR: dict[PcState, Phase] = {
     PcState.BUILD_AWAIT_REPAIR: Phase.TEST,
     PcState.BUILD_REVIEW: Phase.REVIEW,
     PcState.BUILD_PUBLISH: Phase.PUBLISH,
-    PcState.BUILD_GOVERNANCE_FEEDBACK: Phase.COMPLETE,
-    PcState.BUILD_AWAIT_LEARNING: Phase.COMPLETE,
     PcState.BUILD_COMPLETE: Phase.COMPLETE,
     PcState.BUILD_REVERTED: Phase.PLAN,
     # Edit.
@@ -172,15 +172,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
         UiAction(id="restart", label="Restart from current draft", kind=ActionKind.PRIMARY),
     ],
     # Build (Slice 2). next_state/canvas_event carry the frozen state-map hints.
-    PcState.BUILD_CAPABILITY_CHECK: [
-        UiAction(
-            id="send_goal",
-            label="Send goal",
-            kind=ActionKind.PRIMARY,
-            next_state="build.goal_analysis",
-            canvas_event="reset_build_canvas",
-        ),
-    ],
     PcState.BUILD_GOAL_ANALYSIS: [
         UiAction(
             id="submit_requirements",
@@ -271,10 +262,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     ],
     PcState.BUILD_REVERTED: [
         UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY, next_state="build.initial_plan"),
-    ],
-    PcState.BUILD_AWAIT_LEARNING: [
-        UiAction(id="accept_learning", label="Add to skills", kind=ActionKind.PRIMARY),
-        UiAction(id="skip_learning", label="Skip", kind=ActionKind.SECONDARY),
     ],
     # Edit (Slice 3). next_state/canvas_event carry the frozen state-map hints.
     PcState.EDIT_CAPABILITY_CHECK: [
@@ -393,13 +380,6 @@ def _actions_for(
     if app_revision_conflicted:
         return [UiAction(id="check_recovery", label="Review draft changes", kind=ActionKind.PRIMARY)]
 
-    # Build creation already persists the user's opening goal and dispatches
-    # send_goal internally. Projecting the same action back to the client asks
-    # the user to submit an intent they have just supplied. Keep the action only
-    # for the intentionally supported goal-less/create-from-blank state.
-    if state == PcState.BUILD_CAPABILITY_CHECK and fc is not None and fc.goal_text:
-        return []
-
     return list(_ACTIONS_FOR.get(state, []))
 
 
@@ -478,7 +458,6 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     PcState.FIX_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
     PcState.FIX_AWAIT_DECISION: frozenset({"publish", "keep_draft", "re_fix", "undo"}),
     PcState.CHECKLIST_AWAIT_RECHECK: frozenset({"recheck", "undo"}),
-    PcState.BUILD_CAPABILITY_CHECK: frozenset({"send_goal"}),
     PcState.BUILD_GOAL_ANALYSIS: frozenset({"submit_requirements"}),
     # BUILD_INITIAL_PLAN is a working/pass-through state now (state.py) -- it
     # no longer gates on any action, so it has no entry here, matching every
@@ -489,7 +468,6 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     PcState.BUILD_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
     PcState.BUILD_AWAIT_REPAIR: frozenset({"approve_repair", "keep_draft", "undo"}),
     PcState.BUILD_REVIEW: frozenset({"publish_workflow", "keep_draft", "re_fix", "undo"}),
-    PcState.BUILD_AWAIT_LEARNING: frozenset({"accept_learning", "skip_learning"}),
     PcState.BUILD_REVERTED: frozenset({"re_fix"}),
     PcState.EDIT_CAPABILITY_CHECK: frozenset({"send_edit_goal"}),
     PcState.EDIT_IMPACT_ANALYSIS: frozenset({"submit_edit_rules"}),
@@ -599,7 +577,6 @@ def resolve_submitted_action(action_id: str, payload: dict | None) -> str:
 _WAITING_INPUT_STATES = frozenset(
     {
         PcState.FIX_AWAIT_TESTDATA,
-        PcState.BUILD_CAPABILITY_CHECK,
         PcState.BUILD_GOAL_ANALYSIS,
         PcState.BUILD_AWAIT_TESTDATA,
         PcState.EDIT_CAPABILITY_CHECK,
@@ -812,8 +789,32 @@ class DifyBuilderService:
             entry_mode=entry_mode,
             current_state=state,
         )
-        run_context = RunContextCard(run_id=failed_run_id or "", title="", error_code="", message="", trace_ref="")
-        items = [run_context.to_item(seq=0, at_version=0)]
+        if checklist_errors:
+            issues = [
+                PreflightIssue(
+                    node_id=issue.node_id,
+                    node_type=issue.node_type,
+                    title=issue.title,
+                    messages=list(issue.messages),
+                    unconnected=issue.unconnected,
+                    plugin_missing=issue.plugin_missing,
+                )
+                for issue in checklist_errors
+            ]
+            context_card = PreflightContextCard(
+                node_count=len({issue.node_id for issue in checklist_errors if issue.node_id}),
+                issue_count=len(checklist_errors),
+                issues=issues,
+            )
+        else:
+            context_card = RunContextCard(
+                run_id=failed_run_id or "",
+                title="",
+                error_code="",
+                message="",
+                trace_ref="",
+            )
+        items = [context_card.to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
         if failed_run is not None:
             # Persist the failed-run record BEFORE dispatch so the enqueued
@@ -850,15 +851,22 @@ class DifyBuilderService:
         from services.dify_builder.wiring import stream_advance_frames
 
         session_id, action = self._prepare_fix_session(app_id, actor, failed_run_id, checklist_errors, model_config)
+        initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
-            self.dispatch(session_id, action, actor)
+            command_id = self.dispatch(session_id, action, actor)
             view_dict = asdict(self.get_session_view(session_id, actor))
         except Exception:
             if subscription is not None:
                 subscription.close()
             raise
-        return stream_advance_frames(view_dict, subscription, expect_advance=True)
+        return stream_advance_frames(
+            view_dict,
+            subscription,
+            expect_advance=True,
+            command_id=command_id,
+            initial_items=initial_items,
+        )
 
     def _prepare_build_session(
         self,
@@ -870,16 +878,14 @@ class DifyBuilderService:
     ) -> tuple[str, Action]:
         """Shared setup for ``create_build_session``/``create_build_session_stream``:
         everything through persisting the session up to -- but not including --
-        the ``send_goal`` dispatch."""
+        the internal ``start_build`` dispatch."""
         if not isinstance(goal_text, str) or not (goal_text := goal_text.strip()):
             raise BadRequestError("goal_text is required")
         app_id = self._authorize_app(app_id, actor)
         model_config = self._validate_model_config(actor, model_config)
         app_revision = self._get_app_revision(app_id, actor)
-        policy = FeatureService.get_features(actor.tenant_id).skill_learning_policy
         fc = DifyBuilderContext(
             goal_text=goal_text,
-            skill_learning_policy=policy,
             model_config=model_config,
             last_snapshot_hash=app_revision,
             app_name=self._get_app_name(app_id, actor),
@@ -895,8 +901,7 @@ class DifyBuilderService:
         items = [UserItem(text=goal_text, turn_id=str(uuid4())).to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
         return s.id, Action(
-            kind="send_goal",
-            payload={"text": goal_text},
+            kind="start_build",
             base_version=1,
             base_app_revision=app_revision,
         )
@@ -910,7 +915,7 @@ class DifyBuilderService:
         derive_app_name: bool = False,
     ) -> SessionView:
         """Start a Build session at build.capability_check and dispatch the
-        initial ``send_goal`` (parallels ``create_fix_session``). The goal is
+        initial ``start_build`` command (parallels ``create_fix_session``). The goal is
         seeded as the user's opening bubble; the first advance's
         ``handle_capability_check`` analyzes it into requirements."""
         session_id, action = self._prepare_build_session(app_id, actor, goal_text, model_config, derive_app_name)
@@ -927,19 +932,26 @@ class DifyBuilderService:
         derive_app_name: bool = False,
     ) -> Iterator[str]:
         """Streaming counterpart of ``create_build_session``: subscribes BEFORE
-        dispatching the initial ``send_goal`` advance."""
+        dispatching the initial ``start_build`` advance."""
         from services.dify_builder.wiring import stream_advance_frames
 
         session_id, action = self._prepare_build_session(app_id, actor, goal_text, model_config, derive_app_name)
+        initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
-            self.dispatch(session_id, action, actor)
+            command_id = self.dispatch(session_id, action, actor)
             view_dict = asdict(self.get_session_view(session_id, actor))
         except Exception:
             if subscription is not None:
                 subscription.close()
             raise
-        return stream_advance_frames(view_dict, subscription, expect_advance=True)
+        return stream_advance_frames(
+            view_dict,
+            subscription,
+            expect_advance=True,
+            command_id=command_id,
+            initial_items=initial_items,
+        )
 
     def _prepare_edit_session(
         self,
@@ -1009,15 +1021,22 @@ class DifyBuilderService:
         from services.dify_builder.wiring import stream_advance_frames
 
         session_id, action = self._prepare_edit_session(app_id, actor, goal_text, model_config)
+        initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
-            self.dispatch(session_id, action, actor)
+            command_id = self.dispatch(session_id, action, actor)
             view_dict = asdict(self.get_session_view(session_id, actor))
         except Exception:
             if subscription is not None:
                 subscription.close()
             raise
-        return stream_advance_frames(view_dict, subscription, expect_advance=True)
+        return stream_advance_frames(
+            view_dict,
+            subscription,
+            expect_advance=True,
+            command_id=command_id,
+            initial_items=initial_items,
+        )
 
     def get_session_view(self, session_id: str, actor: Actor) -> SessionView:
         """Return the bounded session projection; history has its own API."""
@@ -1122,14 +1141,19 @@ class DifyBuilderService:
                 current=current_app_revision,
                 conflicted=app_revision_conflicted,
             ),
+            last_command_id=fc.last_command_id,
         )
 
-    def _prepare_action(self, session_id: str, actor: Actor, action: Action) -> tuple[SessionView, bool]:
+    def _prepare_action(
+        self, session_id: str, actor: Actor, action: Action
+    ) -> tuple[SessionView, bool, list[ConversationItem]]:
         """Shared synchronous validation + settle for ``submit_action`` and the
-        streaming submit methods. Returns ``(view, expect_advance)``:
+        streaming submit methods. Returns ``(view, expect_advance, items)``:
         ``expect_advance`` is ``True`` only when the caller must still call
-        ``dispatch`` (this method never dispatches itself, so a streaming
-        caller can subscribe before the advance is enqueued)."""
+        ``dispatch``; ``items`` contains rows committed synchronously before a
+        worker is needed. This method never dispatches itself, so a streaming
+        caller can subscribe before the advance is enqueued."""
+        action.command_id = action.command_id or str(uuid4())
         kind = action.kind.strip() if isinstance(action.kind, str) else ""
         if not kind:
             raise BadRequestError("action kind is required")
@@ -1156,7 +1180,7 @@ class DifyBuilderService:
             client_turn_id = action.payload["client_turn_id"]
             turn_kinds = self._repo.get_conversation_turn_kinds(session_id, client_turn_id)
             if "assistant_turn" in turn_kinds:
-                return self._build_session_view(s, fc), False
+                return self._build_session_view(s, fc), False, []
             if "user" in turn_kinds:
                 action.base_version = s.version
         lifecycle_limited = bool(
@@ -1209,6 +1233,7 @@ class DifyBuilderService:
                 at_version=s.version + 1,
             )
             fc.next_seq += 1
+            fc.last_command_id = action.command_id
             items = [item]
             # This notice is committed directly (not via Runner._commit), so the
             # engine's reply-language localization hook never sees it. Localize it
@@ -1221,12 +1246,12 @@ class DifyBuilderService:
                 localizer = Localizer(LlmBuilderAgent(actor.tenant_id, fc.model_config).model_or_none)
                 items = localizer.localize_items(items, fc.reply_language)
             self._repo.compare_and_advance(session_id, s.version, s.current_state, fc, items)
-            return self.get_session_view(session_id, actor), False
-        return self._build_session_view(s, fc), True
+            return self.get_session_view(session_id, actor), False, items
+        return self._build_session_view(s, fc), True, []
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
         """Port of Go ``SubmitAction``."""
-        view, expect_advance = self._prepare_action(session_id, actor, action)
+        view, expect_advance, _settled_items = self._prepare_action(session_id, actor, action)
         if expect_advance:
             self.dispatch(session_id, action, actor)
         return self.get_session_view(session_id, actor)
@@ -1256,31 +1281,34 @@ class DifyBuilderService:
         """Streaming counterpart of ``submit_action``: performs the same eager
         validation via ``_prepare_action`` (raising before any streaming begins),
         then -- for the dispatch case -- subscribes BEFORE enqueuing the advance
-        so no progress frames are lost, and returns the frame generator."""
+        so no progress frames are lost. Synchronously committed items are sent
+        individually before the terminal projection."""
         from services.dify_builder.wiring import stream_advance_frames
 
-        view, expect_advance = self._prepare_action(session_id, actor, action)
+        view, expect_advance, settled_items = self._prepare_action(session_id, actor, action)
         if not expect_advance:
             # ``message`` (replay of a settled turn) and ``update_model`` both
             # settle synchronously while changing the version, so they must emit
-            # a terminal ``state`` frame carrying the new version -- else a FE
-            # tracking its held version off ``state`` frames stays stale and its
-            # next action 409s.
+            # a terminal ``command_finished`` frame carrying the new version --
+            # otherwise a client keeps a stale held version and its next action
+            # conflicts.
             return stream_advance_frames(
                 asdict(view),
                 None,
                 expect_advance=False,
-                emit_state_when_settled=action.kind in {"message", "update_model"},
+                emit_command_finished_when_settled=action.kind in {"message", "update_model"},
+                command_id=action.command_id,
+                initial_items=settled_items,
             )
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
-            self.dispatch(session_id, action, actor)
+            command_id = self.dispatch(session_id, action, actor)
             view_dict = asdict(view)
         except Exception:
             if subscription is not None:
                 subscription.close()
             raise
-        return stream_advance_frames(view_dict, subscription, expect_advance=True)
+        return stream_advance_frames(view_dict, subscription, expect_advance=True, command_id=command_id)
 
     def submit_message_stream(
         self,
@@ -1302,9 +1330,10 @@ class DifyBuilderService:
             ),
         )
 
-    def dispatch(self, session_id: str, action: Action, actor: Actor) -> None:
+    def dispatch(self, session_id: str, action: Action, actor: Actor) -> str:
         """Port of Go ``dispatch``: acquire-or-busy + enqueue, release on
         enqueue failure."""
+        action.command_id = action.command_id or str(uuid4())
         token = self._session_lock.acquire(session_id)
         if token is None:
             raise BusyError(f"session {session_id} is busy")
@@ -1313,3 +1342,4 @@ class DifyBuilderService:
         except Exception:
             self._session_lock.release(session_id, token)
             raise
+        return action.command_id

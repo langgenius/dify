@@ -10,6 +10,7 @@ import {
   createBuilderQueryClient,
 } from '../../__tests__/model-fixtures'
 import {
+  difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
@@ -20,6 +21,7 @@ import {
 } from '../state'
 import {
   commandStartedEvent,
+  conversationItemEvent,
   conversationPage,
   createControlledEventStream,
   createSessionView,
@@ -140,12 +142,23 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       ).toBe(true)
     })
     expect(store.get(difyBuilderSessionErrorCodeAtom)).toBeNull()
-    expect(store.get(difyBuilderSessionViewAtom)?.app_id).toBe('app-1')
+    expect(store.get(difyBuilderSessionViewAtom)?.session_id).toBe('session-1')
     expect(clientMocks.create).toHaveBeenCalledTimes(2)
   })
 
   it('starts a session through the generated client and consumes typed events', async () => {
     const started = createSessionView()
+    const initial = {
+      seq: 0,
+      at_version: 1,
+      kind: 'run_context' as const,
+      payload: {
+        run_id: 'run-1',
+        error_code: 'failed',
+        title: 'Failed run',
+        message: 'Run failed',
+      },
+    }
     const notice = {
       seq: 1,
       at_version: 2,
@@ -154,24 +167,19 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     }
     const terminal = createSessionView({
       version: 3,
-      state: 'fix.await_approval',
       canvas_read_only: false,
       run_status: 'waiting_input',
       conversation_last_seq: 1,
     })
-    clientMocks.conversation
-      .mockResolvedValueOnce(conversationPage())
-      .mockResolvedValueOnce(conversationPage([notice]))
     clientMocks.create.mockResolvedValue(
       streamOf(
         commandStartedEvent(started),
+        conversationItemEvent(initial),
         {
           event: 'canvas',
           data: {
-            kind: 'canvas',
             session_id: 'session-1',
             operation_id: 'stale-operation',
-            stage_id: 'fix.diagnose',
             at_version: 1,
             revision: 1,
             event: 'focus_workflow',
@@ -180,10 +188,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
         {
           event: 'canvas',
           data: {
-            kind: 'canvas',
             session_id: 'session-1',
             operation_id: 'operation-1',
-            stage_id: 'fix.diagnose',
             at_version: 2,
             revision: 1,
             event: 'add_llm_node',
@@ -193,10 +199,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
         {
           event: 'canvas',
           data: {
-            kind: 'canvas',
             session_id: 'session-1',
             operation_id: 'operation-1',
-            stage_id: 'fix.diagnose',
             at_version: 2,
             revision: 1,
             event: 'add_llm_node',
@@ -206,10 +210,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
         {
           event: 'canvas',
           data: {
-            kind: 'canvas',
             session_id: 'session-1',
             operation_id: 'operation-2',
-            stage_id: 'fix.apply',
             at_version: 3,
             revision: 1,
             event: 'focus_workflow',
@@ -218,16 +220,15 @@ describe('useDifyBuilderSessionController lifecycle', () => {
         {
           event: 'canvas',
           data: {
-            kind: 'canvas',
             session_id: 'session-1',
             operation_id: 'operation-1',
-            stage_id: 'fix.diagnose',
             at_version: 2,
             revision: 2,
             event: 'add_llm_node',
             node_id: 'stale-node',
           },
         },
+        conversationItemEvent(notice),
         stateEvent(terminal),
       ),
     )
@@ -258,20 +259,19 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     )
     expect(onCanvasEvent).toHaveBeenCalledTimes(2)
     expect(onCanvasEvent).toHaveBeenLastCalledWith({
-      kind: 'canvas',
       session_id: 'session-1',
       operation_id: 'operation-2',
-      stage_id: 'fix.apply',
       at_version: 3,
       revision: 1,
       event: 'focus_workflow',
     })
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
-    expect(store.get(difyBuilderConversationAtom)).toEqual([notice])
+    expect(store.get(difyBuilderConversationAtom)).toEqual([initial, notice])
+    expect(clientMocks.conversation).not.toHaveBeenCalled()
     expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
   })
 
-  it('merges commits by sequence and waits for the terminal state', async () => {
+  it('applies durable conversation item events by sequence without a completion GET', async () => {
     const initial = {
       seq: 0,
       at_version: 1,
@@ -287,12 +287,10 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     }
     const terminal = createSessionView({
       version: 2,
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
       conversation_last_seq: 1,
     })
     const stream = createControlledEventStream()
-    clientMocks.conversation.mockResolvedValue(conversationPage([initial]))
     clientMocks.create.mockResolvedValue(stream.iterable)
     const { result, store } = renderSessionHook()
 
@@ -303,37 +301,26 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     await waitFor(() => expect(store.get(difyBuilderSessionBusyAtom)).toBe(true))
     act(() => {
       stream.push(commandStartedEvent(started))
-      stream.push({
-        event: 'commit',
-        data: {
-          kind: 'commit',
-          session_id: 'session-1',
-          operation_id: 'operation-1',
-          stage_id: 'fix.diagnose',
-          at_version: 2,
-          version: 2,
-          state: 'fix.await_approval',
-          settled: true,
-          items: [committed],
-        },
-      })
+      stream.push(conversationItemEvent(initial))
     })
 
-    await waitFor(() => expect(store.get(difyBuilderSessionViewAtom)?.version).toBe(2))
-    expect(store.get(difyBuilderConversationAtom).map((item) => item.seq)).toEqual([0, 1])
+    await waitFor(() => expect(store.get(difyBuilderActiveCommandAtom)?.version).toBe(1))
+    expect(store.get(difyBuilderConversationAtom).map((item) => item.seq)).toEqual([0])
     expect(store.get(difyBuilderSessionBusyAtom)).toBe(true)
 
     await act(async () => {
+      stream.push(conversationItemEvent(committed))
       stream.push(stateEvent(terminal))
       expect(await startPromise).toBe(true)
     })
+    expect(store.get(difyBuilderConversationAtom).map((item) => item.seq)).toEqual([0, 1])
+    expect(clientMocks.conversation).not.toHaveBeenCalled()
     expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
   })
 
   it('accepts command-started-only streams for settle-only actions', async () => {
     const waiting = createSessionView({
       version: 2,
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
     })
     const updated = createSessionView({
@@ -341,7 +328,9 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       version: 3,
       model: { provider: 'openai', name: 'gpt-5' },
     })
-    clientMocks.action.mockResolvedValue(streamOf(commandStartedEvent(updated)))
+    clientMocks.action.mockResolvedValue(
+      streamOf(commandStartedEvent(waiting), stateEvent(updated)),
+    )
     const { result, store } = renderSessionHook()
     act(() => {
       store.set(difyBuilderSessionViewAtom, waiting)
@@ -367,10 +356,9 @@ describe('useDifyBuilderSessionController lifecycle', () => {
   it('reconciles command failures through the generated JSON GET', async () => {
     const waiting = createSessionView({
       version: 2,
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
     })
-    const latest = createSessionView({ ...waiting, version: 3, state: 'fix.await_verify' })
+    const latest = createSessionView({ ...waiting, version: 3 })
     clientMocks.action.mockRejectedValue(
       new Response(JSON.stringify({ code: 'conflict' }), { status: 409 }),
     )
@@ -397,7 +385,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     const started = createSessionView()
     const latest = createSessionView({
       version: 2,
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
     })
     clientMocks.create.mockResolvedValue(streamOf(commandStartedEvent(started)))
@@ -413,10 +400,46 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')
   })
 
+  it('accepts a terminal error when GET confirms the same command durably advanced', async () => {
+    const waiting = createSessionView({
+      version: 2,
+      run_status: 'waiting_input',
+    })
+    const latest = createSessionView({
+      ...waiting,
+      version: 3,
+      last_command_id: 'command-1',
+    })
+    clientMocks.action.mockResolvedValue(
+      streamOf(commandStartedEvent(waiting), {
+        event: 'error',
+        data: {
+          code: 'command_finished_unavailable',
+          message: 'step failed',
+          session_id: waiting.session_id,
+          command_id: 'command-1',
+        },
+      }),
+    )
+    clientMocks.get.mockResolvedValue(latest)
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    })
+
+    await act(async () => {
+      expect(await result.current.runAction('approve_plan')).toBe(true)
+    })
+
+    expect(clientMocks.get).toHaveBeenCalledOnce()
+    expect(store.get(difyBuilderSessionViewAtom)).toEqual(latest)
+    expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')
+  })
+
   it('rejects an unexpected command EOF when reconciliation shows no advance', async () => {
     const started = createSessionView()
     const unchanged = createSessionView({
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
     })
     clientMocks.create.mockResolvedValue(streamOf(commandStartedEvent(started)))
@@ -434,10 +457,13 @@ describe('useDifyBuilderSessionController lifecycle', () => {
   it('does not treat another command version as success after an existing action EOF', async () => {
     const waiting = createSessionView({
       version: 2,
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
     })
-    const advancedByAnotherCommand = createSessionView({ ...waiting, version: 3 })
+    const advancedByAnotherCommand = createSessionView({
+      ...waiting,
+      version: 3,
+      last_command_id: 'another-command',
+    })
     clientMocks.action.mockResolvedValue(streamOf(commandStartedEvent(waiting)))
     clientMocks.get.mockResolvedValue(advancedByAnotherCommand)
     const { result, store } = renderSessionHook()
@@ -459,13 +485,10 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     const terminal = createSessionView({
       ...executing,
       version: 4,
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
     })
     clientMocks.get.mockResolvedValue(executing)
-    clientMocks.stream.mockResolvedValue(
-      streamOf(commandStartedEvent(executing), stateEvent(terminal)),
-    )
+    clientMocks.stream.mockResolvedValue(streamOf(stateEvent(terminal)))
     const { result, store } = renderSessionHook()
 
     await act(async () => {
@@ -493,13 +516,10 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     const terminal = createSessionView({
       ...thinking,
       version: 4,
-      state: 'fix.await_approval',
       run_status: 'waiting_confirmation',
     })
     clientMocks.get.mockResolvedValue(thinking)
-    clientMocks.stream.mockResolvedValue(
-      streamOf(commandStartedEvent(thinking), stateEvent(terminal)),
-    )
+    clientMocks.stream.mockResolvedValue(streamOf(stateEvent(terminal)))
     const { result, store } = renderSessionHook()
 
     await act(async () => {
@@ -519,11 +539,10 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     const waiting = createSessionView({
       ...executing,
       version: 4,
-      state: 'fix.await_approval',
       run_status: 'waiting_input',
     })
     clientMocks.get.mockResolvedValueOnce(executing).mockResolvedValueOnce(waiting)
-    clientMocks.stream.mockResolvedValueOnce(streamOf(commandStartedEvent(executing)))
+    clientMocks.stream.mockResolvedValueOnce(streamOf())
     const { result, store } = renderSessionHook()
 
     await act(async () => {
@@ -538,7 +557,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
   it('retries a transient restore request failure', async () => {
     const waiting = createSessionView({
       session_id: 'session-restored',
-      state: 'fix.await_approval',
       run_status: 'waiting_confirmation',
     })
     clientMocks.get
@@ -560,7 +578,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       actions: [{ id: 'restart', label: 'Restart from current draft', kind: 'primary' }],
       interrupted: true,
       session_id: 'session-restored',
-      state: 'fix.verify',
       run_status: 'processing',
       version: 3,
     })
@@ -608,7 +625,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     const view = createSessionView({
       conversation_last_seq: 2,
       run_status: 'waiting_input',
-      state: 'build.await_testdata',
     })
     clientMocks.get.mockResolvedValue(view)
     clientMocks.conversation
@@ -653,7 +669,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     const view = createSessionView({
       conversation_last_seq: 2,
       run_status: 'waiting_input',
-      state: 'fix.await_approval',
       version: 2,
     })
     clientMocks.get.mockResolvedValue(view)

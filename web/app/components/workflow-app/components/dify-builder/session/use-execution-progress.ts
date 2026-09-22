@@ -1,28 +1,48 @@
 'use client'
 
-import type { ProgressEventData } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type { DifyBuilderProgressEventData } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { DifyBuilderExecutionProgress } from '../types'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import {
+  difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
   difyBuilderExecutionProgressAtom,
   difyBuilderSessionViewAtom,
 } from './state'
 
-const toExecutionProgress = (progress: ProgressEventData): DifyBuilderExecutionProgress => ({
-  sessionId: progress.session_id,
-  operationId: progress.operation_id,
-  stageId: progress.stage_id,
-  atVersion: progress.at_version,
-  revision: progress.revision,
-  execution: {
-    ...progress.execution,
-    activities: [...(progress.execution.activities ?? [])],
-  },
-})
+const reduceExecutionProgress = (
+  current: DifyBuilderExecutionProgress | null,
+  progress: DifyBuilderProgressEventData,
+): DifyBuilderExecutionProgress => {
+  const continuesOperation =
+    current?.sessionId === progress.session_id &&
+    current.operationId === progress.operation_id &&
+    current.atVersion === progress.at_version
+  const activities = continuesOperation ? [...(current.execution.activities ?? [])] : []
 
-/** Owns low-frequency, replaceable execution snapshots separately from SessionView. */
+  const activity = progress.activity
+  if (activity) {
+    const activityIndex = activities.findIndex(
+      (currentActivity) => currentActivity.id === activity.id,
+    )
+    if (activityIndex === -1) activities.push(activity)
+    else activities[activityIndex] = activity
+  }
+
+  return {
+    sessionId: progress.session_id,
+    operationId: progress.operation_id,
+    atVersion: progress.at_version,
+    revision: progress.revision,
+    execution: {
+      status: progress.status,
+      activities,
+    },
+  }
+}
+
+/** Reduces ordered activity deltas separately from the durable SessionView. */
 export const useDifyBuilderExecutionProgress = () => {
   const store = useStore()
   const setExecutionProgress = useSetAtom(difyBuilderExecutionProgressAtom)
@@ -41,12 +61,14 @@ export const useDifyBuilderExecutionProgress = () => {
   )
 
   const enqueue = useCallback(
-    (progress: ProgressEventData) => {
+    (progress: DifyBuilderProgressEventData) => {
       const view = store.get(difyBuilderSessionViewAtom)
+      const activeCommand = store.get(difyBuilderActiveCommandAtom)
       if (
         store.get(difyBuilderActiveSessionIdAtom) !== progress.session_id ||
-        view?.session_id !== progress.session_id ||
-        view.version >= progress.at_version
+        (view?.session_id !== progress.session_id &&
+          activeCommand?.session_id !== progress.session_id) ||
+        (view?.session_id === progress.session_id && view.version >= progress.at_version)
       )
         return
 
@@ -55,7 +77,7 @@ export const useDifyBuilderExecutionProgress = () => {
           return current
         if (current?.operationId === progress.operation_id && current.revision >= progress.revision)
           return current
-        return toExecutionProgress(progress)
+        return reduceExecutionProgress(current, progress)
       })
     },
     [setExecutionProgress, store],

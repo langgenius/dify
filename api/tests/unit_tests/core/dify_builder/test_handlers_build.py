@@ -1,6 +1,9 @@
 """Tests for the Build-flow handlers + build_registry() (Slice 2)."""
 
+import logging
 from datetime import datetime
+
+import pytest
 
 from core.dify_builder.models import (
     Action,
@@ -54,7 +57,7 @@ def _seed_build_session(repo: InMemoryRepository, state: PcState, **fc_kwargs) -
         entry_mode=EntryMode.BUILD,
         current_state=state,
     )
-    fc = DifyBuilderContext(goal_text="Build a quarterly report workflow", **fc_kwargs)
+    fc = DifyBuilderContext(**{"goal_text": "Build a quarterly report workflow", **fc_kwargs})
     repo.create_session(s, fc, [ConversationItem(kind="user", seq=0)])
     return s
 
@@ -86,24 +89,20 @@ def test_capability_check_renders_agent_fields():
     }
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
     fc = DifyBuilderContext(goal_text="triage support tickets")
-    result = handle_capability_check(
-        env, Turn(actor=_actor(), action=Action(kind="send_goal", payload={"text": "triage"})), s, fc
-    )
+    result = handle_capability_check(env, Turn(actor=_actor()), s, fc)
     assert result.context.form_fields == [{"key": "categories", "label": "Categories", "type": "text"}]
     assert result.context.requirements == {"categories": "billing, refunds"}
 
 
-def test_capability_check_send_goal_advances_to_goal_analysis():
+def test_capability_check_automatically_advances_to_goal_analysis():
     from core.dify_builder.handlers_build import build_registry
 
     events: list[dict] = []
     env, repo = _new_env(emit_canvas=events.append)
-    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK, goal_text="Build it")
 
     runner = Runner(env, build_registry())
-    out = runner.advance(
-        s.id, Turn(action=Action(kind="send_goal", payload={"text": "Build it"}, base_version=1), actor=_actor())
-    )
+    out = runner.advance(s.id, Turn(action=Action(kind="start_build", base_version=1), actor=_actor()))
 
     assert out.current_state == PcState.BUILD_GOAL_ANALYSIS
     _, fc = repo.get_session(s.id)
@@ -111,7 +110,7 @@ def test_capability_check_send_goal_advances_to_goal_analysis():
     assert fc.requirements  # analyze_goal populated the requirements
     kinds = [i.kind for i in repo.list_conversation(s.id)]
     assert "form" in kinds
-    assert "challenge" in kinds
+    assert "challenge" not in kinds
     assert "assistant_turn" in kinds
     assert {"event": "reset_build_canvas"} in events
 
@@ -122,11 +121,7 @@ def test_build_registry_maps_capability_check():
     assert build_registry()[PcState.BUILD_CAPABILITY_CHECK] is handle_capability_check
 
 
-def test_a_session_carrying_a_goal_needs_no_send_action():
-    """Task 4: the capability_check gate is on the GOAL, not the action. A
-    session whose composer already carried the goal in (fc.goal_text set at
-    creation) proceeds on ANY turn, even one with no action at all -- only a
-    goal-less (create-from-blank) session still needs send_goal."""
+def test_capability_check_reads_the_goal_persisted_at_session_creation():
     from core.dify_builder.handlers_build import handle_capability_check
 
     env, _ = _new_env()
@@ -139,18 +134,15 @@ def test_a_session_carrying_a_goal_needs_no_send_action():
     assert result.context.goal_text == "Build a quarterly report workflow"
 
 
-def test_a_goal_less_session_still_waits_for_one():
-    """A create-from-blank session (no goal yet) is unaffected: with no
-    action and no goal_text, it must keep waiting at capability_check."""
+def test_capability_check_rejects_a_session_without_a_persisted_goal():
     from core.dify_builder.handlers_build import handle_capability_check
 
     env, _ = _new_env()
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
     fc = DifyBuilderContext(goal_text="")
 
-    result = handle_capability_check(env, Turn(actor=_actor()), s, fc)
-
-    assert result.next == PcState.BUILD_CAPABILITY_CHECK
+    with pytest.raises(ValueError, match="build goal is required"):
+        handle_capability_check(env, Turn(actor=_actor()), s, fc)
 
 
 def test_submitting_requirements_goes_straight_to_resources():
@@ -187,7 +179,6 @@ def test_submitting_requirements_goes_straight_to_resources():
     assert res.context.requirements["audience"] == "board"  # new listed key merged
     assert res.context.requirements["metrics"] == "revenue"  # untouched key survives (not blind-overwrite)
     assert "junk" not in res.context.requirements  # non-listed key excluded
-    assert res.context.plan_version_tag == "v1"
     assert res.context.plan_items  # the plan is still drafted internally
     kinds = [i.kind for i in res.items]
     assert "decision" in kinds
@@ -229,7 +220,7 @@ def test_submitting_requirements_progress_is_one_operation_with_monotonic_revisi
     assert revisions == sorted(revisions), f"revision must be non-decreasing, got {revisions}"
     assert len(revisions) == len(set(revisions)), f"revision must not repeat, got {revisions}"
     # all four progress steps actually fired (review, draft, discover, prepare)
-    activity_ids = {a.id for e in events for a in e.execution.activities}
+    activity_ids = {e.activity.id for e in events if e.activity is not None}
     assert {
         "build-review-requirements",
         "build-draft-plan",
@@ -299,7 +290,7 @@ def test_continue_adjusting_reaches_resources_without_find_resources_action():
     assert "resource_select" in kinds
 
 
-def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v1():
+def test_resource_recommendation_confirm_creates_internal_checkpoint_and_plan():
     from core.dify_builder.handlers_build import handle_resource_recommendation
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -318,18 +309,17 @@ def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v1():
     res = handle_resource_recommendation(env, turn, *repo.get_session(s.id))
 
     assert res.next == PcState.BUILD_PLAN_APPROVAL
-    # Task 3: the only plan card a build emits is now v1 -- the duplicate
-    # "v2" card that used to redisplay the same plan under a second version
-    # number is gone (collapsed into task 2's straight-through path).
-    assert res.context.plan_version_tag == "v1"
     assert res.context.resource_selection == {"resource_ids": ["kb-company"]}
     assert res.context.checkpoint_id
     assert res.context.last_structure_fingerprint != ""
     cp, _snap = repo.get_checkpoint(res.context.checkpoint_id)
     assert cp.session_id == s.id
-    checkpoint_card = next(i for i in res.items if i.kind == "checkpoint")
-    assert checkpoint_card.payload["checkpoint_id"] == res.context.checkpoint_id
-    assert {i.kind for i in res.items} >= {"decision", "plan", "checkpoint", "assistant_turn"}
+    assert not any(i.kind == "checkpoint" for i in res.items)
+    plan = next(i for i in res.items if i.kind == "plan")
+    assert plan.payload["title"] == "Build plan"
+    assert plan.payload["items"] == res.context.plan_items
+    assert "version_tag" not in plan.payload
+    assert {i.kind for i in res.items} == {"decision", "plan", "assistant_turn"}
 
 
 def test_plan_approval_approve_builds_graph_and_reveals_nodes():
@@ -359,9 +349,9 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes():
         "add_llm_node",
         "add_output_node",
     ]
-    change_set = next(i for i in res.items if i.kind == "change_set")
-    assert change_set.payload["scope"] == "structure"
+    assert not any(i.kind in {"change_set", "plan"} for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert "Workflow built on the canvas" in assistant.payload["reply_text"]
     assert len(assistant.payload["execution"]["activities"]) == 3
 
 
@@ -390,8 +380,8 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas():
         "nodes": [{"id": "start", "data": {"type": "start", "title": "Old", "variables": []}}],
         "edges": [],
     }
-    # generation produced nothing, WITH a specific reason (the real generator returns
-    # e.g. "UNRESOLVED_REFERENCE: ..." / a provider error). The error card must carry it.
+    # Generation produced nothing, WITH a specific reason (the real generator returns
+    # e.g. "UNRESOLVED_REFERENCE: ..." / a provider error). The assistant text must carry it.
     env.agent.build_nodes = lambda _plan, _rids=None: BuildNodesResult(
         intents=[], error="UNRESOLVED_REFERENCE: Reference {#node4.x#} not declared"
     )
@@ -402,16 +392,14 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas():
 
     assert res.next == PcState.BUILD_PLAN_APPROVAL  # retryable, NOT advanced to execution
     assert {n["id"] for n in env.dify.graph["nodes"]} == {"start"}  # placeholder kept; nothing deleted/added
-    error = next(i for i in res.items if i.kind == "error")  # honest error surfaced
-    assert "UNRESOLVED_REFERENCE" in error.payload["body"]  # the SPECIFIC reason, not a generic fallback
+    assert not any(i.kind == "error" for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert "UNRESOLVED_REFERENCE" in assistant.payload["reply_text"]
     assert assistant.payload["reply_text"] != "Workflow built on the canvas."  # no false success claim
 
 
-def test_plan_approval_error_card_carries_diagnostics_into_the_item_payload():
-    """Pod logs vanish on restart, so the generator's structured diagnostics must
-    ride in the ErrorCard's item payload -- that payload is what the streamed
-    conversation item (and therefore the exported debug log) preserves."""
+def test_plan_approval_records_diagnostics_in_backend_logs(caplog):
+    """Structured graph-generation diagnostics stay backend-only."""
     from core.dify_builder.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -437,13 +425,12 @@ def test_plan_approval_error_card_carries_diagnostics_into_the_item_payload():
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
 
-    res = handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+    with caplog.at_level(logging.WARNING):
+        res = handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
 
-    error = next(i for i in res.items if i.kind == "error")
-    payload_diag = error.payload["diagnostics"]
-    assert payload_diag == diag  # verbatim: server timestamp, codes and node ids all survive
-    assert payload_diag[0]["errors"][0]["node_id"] == "node2"  # the offending node is identifiable
-    assert payload_diag[0]["at"].endswith("+00:00")  # UTC, so pod logs can be searched around it
+    assert not any(i.kind == "error" for i in res.items)
+    record = next(record for record in caplog.records if record.message == "dify_builder graph generation failed")
+    assert record.diagnostics == diag
 
 
 def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build():
@@ -572,22 +559,18 @@ def test_test_and_repair_pass_goes_to_review_with_real_run():
     assert result.run.status == "succeeded"
     assert result.context.test_input_ref  # inputs generated + persisted
     test_result = next(i for i in result.items if i.kind == "test_result")
-    assert test_result.payload["tone"] == "success"
-    summary = next(i for i in result.items if i.kind == "summary")
-    assert summary.payload["variant"] == "review"
+    assert test_result.payload["status"] == "succeeded"
+    assert test_result.payload["failure_reason"] is None
+    assert not any(i.kind == "summary" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == ["test_result", "summary"]
+    assert assistant.payload["cards"] == ["test_result"]
     names = [e["event"] for e in events]
     assert "mark_test_success" in names
     assert "mark_review_ready" in names
 
 
-def test_a_passing_test_shows_what_the_workflow_produced():
-    """A passing test's card carries what the run actually produced, not just
-    a bare "All checks passed" -- and it must show it even though
-    FakeDifyPort's per-node status spelling ("success") differs from the
-    Run-level one ("succeeded"): status-agnostic, per the terminal-output
-    helper's contract."""
+def test_a_passing_test_does_not_put_outputs_in_the_card():
+    """A successful card reports only success; run details stay out of SSE."""
     from core.dify_builder.handlers_build import handle_test_and_repair
 
     env, _ = _new_env()  # default FakeDifyPort; verify_pass=True by default
@@ -597,16 +580,11 @@ def test_a_passing_test_shows_what_the_workflow_produced():
     result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
     assert result.next == PcState.BUILD_REVIEW
     test_result = next(i for i in result.items if i.kind == "test_result")
-    assert '"result": "42"' in test_result.payload["output"]
+    assert "output" not in test_result.payload
 
 
-def test_a_passing_test_caps_an_oversized_output_with_a_marker():
-    """Node outputs are only truncated upstream at ~100,000 chars per string,
-    so an uncapped render (e.g. a report-generating workflow, the Builder's
-    showcase case) could push hundreds of KB of JSON into the card, the SSE
-    frame, and the localizer walk on every successful build. The card must
-    cap the rendered output instead, with a visible truncation marker."""
-    from core.dify_builder.handlers_build import _MAX_TERMINAL_OUTPUT_CHARS, handle_test_and_repair
+def test_a_passing_test_does_not_expand_the_card_for_oversized_output():
+    from core.dify_builder.handlers_build import handle_test_and_repair
 
     env, _ = _new_env()  # default FakeDifyPort; verify_pass=True by default
     env.dify.run_outputs = {"report": "x" * 50_000}  # far beyond the cap once JSON-rendered
@@ -614,15 +592,11 @@ def test_a_passing_test_caps_an_oversized_output_with_a_marker():
     fc = DifyBuilderContext(built_node_ids=["llm"])
     result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
     test_result = next(i for i in result.items if i.kind == "test_result")
-    output = test_result.payload["output"]
-    assert len(output) < _MAX_TERMINAL_OUTPUT_CHARS + 100  # capped, not the ~50KB payload
-    assert "truncated" in output
+    assert test_result.payload["status"] == "succeeded"
+    assert test_result.payload["failure_reason"] is None
 
 
-def test_a_passing_test_with_no_output_shows_none():
-    """No output produced -> the card's output is "", not a stale/placeholder
-    value -- a passing test that shows nothing is not evidence of anything,
-    but it also mustn't lie about what ran."""
+def test_a_passing_test_with_no_output_has_the_same_minimal_shape():
     from core.dify_builder.handlers_build import handle_test_and_repair
 
     env, _ = _new_env()  # run_outputs defaults to {}
@@ -630,7 +604,8 @@ def test_a_passing_test_with_no_output_shows_none():
     fc = DifyBuilderContext(built_node_ids=["llm"])
     result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
     test_result = next(i for i in result.items if i.kind == "test_result")
-    assert test_result.payload["output"] == ""
+    assert test_result.payload["status"] == "succeeded"
+    assert test_result.payload["failure_reason"] is None
 
 
 def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
@@ -649,17 +624,16 @@ def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
     assert result.run.status == "failed"
     # StubAgent.propose_repair returns a repair -> staged
     assert result.context.staged_repair
-    # card content: a red test_result, an error card carrying the real
-    # diagnosis (StubAgent.diagnose's culprit/root_cause), and a change_set
-    # since a repair was proposed -- the assistant_turn's cards list reflects
-    # exactly that trio.
+    # The card carries only the failed status/reason; diagnosis and proposed
+    # changes are streamed as assistant text.
     test_result = next(i for i in result.items if i.kind == "test_result")
-    assert test_result.payload["tone"] == "error"
-    error_card = next(i for i in result.items if i.kind == "error")
-    assert error_card.payload["body"] == "Output node requires 'metrics'"
-    assert error_card.payload["node_id"] == "output"
+    assert test_result.payload["status"] == "failed"
+    assert test_result.payload["failure_reason"] == "boom"
+    assert not any(i.kind in {"error", "change_set"} for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == ["test_result", "error", "change_set"]
+    assert assistant.payload["cards"] == ["test_result"]
+    assert "Output node requires 'metrics'" in assistant.payload["reply_text"]
+    assert "Proposed fix" in assistant.payload["reply_text"]
     # The canvas event carries the Dify run id so a client can open the
     # failed run on the graph, not just colour the node red.
     assert {"event": "mark_test_error", "dify_run_id": "build-run-1"} in events
@@ -688,9 +662,10 @@ def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate():
     assert result.context.staged_repair == []
     kinds = [i.kind for i in result.items]
     assert "change_set" not in kinds
+    assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == ["test_result", "error"]
-    assert assistant.payload["reply_text"] == "Test failed — no safe automatic fix; edit or keep draft."
+    assert assistant.payload["cards"] == ["test_result"]
+    assert "No safe automatic fix was found" in assistant.payload["reply_text"]
 
 
 def test_test_and_repair_reuses_persisted_inputs_on_retest():
@@ -753,7 +728,8 @@ def test_test_and_repair_input_failure_routes_to_testdata_gate():
     assert "form" in kinds
     assert "change_set" not in kinds  # gate, not repair
     test_result = next(i for i in result.items if i.kind == "test_result")
-    assert test_result.payload["tone"] == "error"
+    assert test_result.payload["status"] == "failed"
+    assert "File variable not found" in test_result.payload["failure_reason"]
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["stage_id"] == "build.test_and_repair"
 
@@ -802,8 +778,9 @@ def test_test_and_repair_model_config_failure_surfaces_without_repair():
     assert result.context.staged_repair == []  # NO node-mutation repair proposed (no thrashing)
     kinds = [i.kind for i in result.items]
     assert "change_set" not in kinds  # no repair change-set offered
-    error = next(i for i in result.items if i.kind == "error")
-    assert "model" in error.payload["body"].lower()  # diagnosis names the model-config issue
+    assert "error" not in kinds
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "model" in assistant.payload["reply_text"].lower()
 
 
 def test_test_and_repair_running_status_is_not_treated_as_failure():
@@ -838,11 +815,12 @@ def test_test_and_repair_running_status_is_not_treated_as_failure():
     assert result.context.staged_repair == []
     assert result.context.diagnosis is None
     kinds = [i.kind for i in result.items]
-    assert "notice" in kinds
+    assert "notice" not in kinds
     assert "test_result" not in kinds  # not labeled pass/fail
     assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == ["notice"]
+    assert assistant.payload["cards"] == []
+    assert "outcome couldn't be determined" in assistant.payload["reply_text"]
 
 
 def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed():
@@ -982,7 +960,7 @@ def test_review_publish_advances_to_publish():
     assert any(i.kind == "decision" for i in res.items)
 
 
-def test_review_keep_draft_skips_publish_to_governance():
+def test_review_keep_draft_completes_without_publish():
     from core.dify_builder.handlers_build import handle_review
 
     events: list[dict] = []
@@ -990,12 +968,14 @@ def test_review_keep_draft_skips_publish_to_governance():
     s = _seed_build_session(repo, PcState.BUILD_REVIEW, built_node_ids=["start", "llm", "end"])
     keep_draft_turn = Turn(action=Action(kind="keep_draft", base_version=1), actor=_actor())
     res = handle_review(env, keep_draft_turn, *repo.get_session(s.id))
-    assert res.next == PcState.BUILD_GOVERNANCE_FEEDBACK
+    assert res.next == PcState.BUILD_COMPLETE
     assert {"event": "cancel_publish"} in events
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert "Kept as a draft" in assistant.payload["reply_text"]
 
 
 def test_review_continue_adjusting_returns_to_initial_plan_with_fresh_plan():
-    """The plan is drafted (fc.plan_items/plan_version_tag) but NOT shown as
+    """The plan is drafted internally but NOT shown as
     a card here: build.initial_plan (next) falls straight through to
     build.resource_recommendation, which shows the ONE plan card for this
     pass (v1, resources bound). Showing it here too would be the same
@@ -1007,7 +987,6 @@ def test_review_continue_adjusting_returns_to_initial_plan_with_fresh_plan():
     re_fix_turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res = handle_review(env, re_fix_turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_INITIAL_PLAN
-    assert res.context.plan_version_tag == "v1"
     assert res.context.plan_items  # drafted internally
     assert not any(i.kind == "plan" for i in res.items)  # not shown yet
     assert any(i.kind == "decision" for i in res.items)
@@ -1024,7 +1003,7 @@ def test_review_revert_records_intent_only():
     assert {"event": "revert_checkpoint"} in events
 
 
-def test_publish_calls_dify_and_advances_to_governance_feedback():
+def test_publish_calls_dify_and_completes_with_text_receipt():
     from core.dify_builder.handlers_build import handle_publish
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -1033,109 +1012,12 @@ def test_publish_calls_dify_and_advances_to_governance_feedback():
     env, repo = _new_env(dify=dify, emit_canvas=events.append)
     s = _seed_build_session(repo, PcState.BUILD_PUBLISH, built_node_ids=["start", "llm", "end"])
     res = handle_publish(env, Turn(actor=_actor()), *repo.get_session(s.id))
-    assert res.next == PcState.BUILD_GOVERNANCE_FEEDBACK
+    assert res.next == PcState.BUILD_COMPLETE
     assert dify.published is True
-    publish = next(i for i in res.items if i.kind == "publish")
-    assert publish.payload["version"] == "1.0"
+    assert not any(i.kind == "publish" for i in res.items)
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert assistant.payload["reply_text"] == "Published workflow version # 1 (live). Build complete."
     assert {"event": "publish_workflow"} in events
-
-
-def test_governance_automatic_learns_and_reaches_complete():
-    from core.dify_builder.handlers_build import handle_governance_feedback
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
-
-    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
-    s = _seed_build_session(
-        repo,
-        PcState.BUILD_GOVERNANCE_FEEDBACK,
-        skill_learning_policy="automatic",
-        built_node_ids=["a", "b"],
-    )
-    res = handle_governance_feedback(env, Turn(actor=_actor()), *repo.get_session(s.id))
-    assert res.next == PcState.BUILD_COMPLETE
-    kinds = [i.kind for i in res.items]
-    assert "build_learning" in kinds
-    assert "summary" in kinds
-    assert "notice" in kinds
-    assert env.agent.learn_calls == 1  # seam called for automatic
-
-
-def test_governance_disabled_skips_and_reaches_complete():
-    from core.dify_builder.handlers_build import handle_governance_feedback
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
-
-    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
-    s = _seed_build_session(
-        repo,
-        PcState.BUILD_GOVERNANCE_FEEDBACK,
-        skill_learning_policy="disabled",
-        built_node_ids=["a"],
-    )
-    res = handle_governance_feedback(env, Turn(actor=_actor()), *repo.get_session(s.id))
-    assert res.next == PcState.BUILD_COMPLETE
-    # build_learning present with state skipped; seam NOT called
-    bl = [i for i in res.items if i.kind == "build_learning"][0]
-    assert bl.payload["state"] == "skipped"
-    assert getattr(env.agent, "learn_calls", 0) == 0
-
-
-def test_governance_ask_rests_at_await_learning_with_pending_card():
-    from core.dify_builder.handlers_build import handle_governance_feedback
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
-
-    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
-    s = _seed_build_session(
-        repo,
-        PcState.BUILD_GOVERNANCE_FEEDBACK,
-        skill_learning_policy="ask",
-        built_node_ids=["a"],
-    )
-    res = handle_governance_feedback(env, Turn(actor=_actor()), *repo.get_session(s.id))
-    assert res.next == PcState.BUILD_AWAIT_LEARNING
-    bl = [i for i in res.items if i.kind == "build_learning"][0]
-    assert bl.payload["policy"] == "ask"
-    assert bl.payload["state"] == "pending"
-    assert getattr(env.agent, "learn_calls", 0) == 0  # not learned until accepted
-
-
-def test_await_learning_accept_learns_and_completes():
-    from core.dify_builder.handlers_build import handle_await_learning
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
-
-    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
-    s = _seed_build_session(
-        repo,
-        PcState.BUILD_AWAIT_LEARNING,
-        skill_learning_policy="ask",
-        built_node_ids=["a"],
-    )
-    res = handle_await_learning(
-        env, Turn(action=Action(kind="accept_learning", base_version=1), actor=_actor()), *repo.get_session(s.id)
-    )
-    assert res.next == PcState.BUILD_COMPLETE
-    kinds = [i.kind for i in res.items]
-    assert "decision" in kinds
-    assert "summary" in kinds
-    assert "notice" in kinds
-    assert env.agent.learn_calls == 1
-
-
-def test_await_learning_skip_completes_without_learning():
-    from core.dify_builder.handlers_build import handle_await_learning
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
-
-    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
-    s = _seed_build_session(
-        repo,
-        PcState.BUILD_AWAIT_LEARNING,
-        skill_learning_policy="ask",
-        built_node_ids=["a"],
-    )
-    res = handle_await_learning(
-        env, Turn(action=Action(kind="skip_learning", base_version=1), actor=_actor()), *repo.get_session(s.id)
-    )
-    assert res.next == PcState.BUILD_COMPLETE
-    assert getattr(env.agent, "learn_calls", 0) == 0
 
 
 def test_reverted_retry_returns_to_initial_plan():
@@ -1151,7 +1033,6 @@ def test_reverted_retry_returns_to_initial_plan():
         env, Turn(action=Action(kind="re_fix", base_version=1), actor=_actor()), *repo.get_session(s.id)
     )
     assert res.next == PcState.BUILD_INITIAL_PLAN
-    assert res.context.plan_version_tag == "v1"
     assert res.context.plan_items  # drafted internally
     assert not any(i.kind == "plan" for i in res.items)  # not shown yet
 
@@ -1216,8 +1097,6 @@ def test_build_registry_covers_all_non_terminal_build_states():
         PcState.BUILD_AWAIT_REPAIR,
         PcState.BUILD_REVIEW,
         PcState.BUILD_PUBLISH,
-        PcState.BUILD_GOVERNANCE_FEEDBACK,
-        PcState.BUILD_AWAIT_LEARNING,
         PcState.BUILD_REVERTED,
     }
     assert PcState.BUILD_COMPLETE not in build_registry()  # terminal: no handler
@@ -1232,8 +1111,8 @@ def test_full_build_flow_goal_to_complete():
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
-    # 1) send_goal -> build.goal_analysis
-    goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
+    # 1) internal start_build -> build.goal_analysis
+    goal_action = Action(kind="start_build", base_version=1)
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_GOAL_ANALYSIS
 
@@ -1273,40 +1152,24 @@ def test_full_build_flow_goal_to_complete():
     )
     assert out.current_state == PcState.BUILD_REVIEW
 
-    # 6) publish_workflow -> build.publish (auto) -> governance_feedback (auto)
-    # -> rests at build.await_learning (default policy "ask")
+    # 6) publish_workflow -> build.publish (auto) -> build.complete.
     publish_action = Action(kind="publish_workflow", base_version=out.version)
     out = runner.advance(s.id, Turn(action=publish_action, actor=_actor()))
-    assert out.current_state == PcState.BUILD_AWAIT_LEARNING
-    assert dify.published is True
-
-    # 7) skip_learning -> build.complete
-    out = runner.advance(s.id, Turn(action=Action(kind="skip_learning", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_COMPLETE
+    assert dify.published is True
 
     # ordered card stream: every Build card kind appears, seq-ordered.
     # No "error" kind here: the live test_and_repair run passes (FakeBuildDifyPort
     # defaults verify_pass=True), so no diagnosis/error card is ever staged.
     items = repo.list_conversation(s.id)
     kinds = [i.kind for i in items]
-    expected_kinds = [
-        "user",
-        "form",
-        "challenge",
-        "plan",
-        "resource_select",
-        "checkpoint",
-        "change_set",
-        "test_result",
-        "summary",
-        "publish",
-    ]
+    expected_kinds = ["user", "form", "plan", "resource_select", "test_result"]
     for expected in expected_kinds:
         assert expected in kinds, f"missing card kind {expected}"
+    assert not ({"challenge", "checkpoint", "change_set", "summary", "publish", "build_learning"} & set(kinds))
     seqs = [i.seq for i in items]
     assert seqs == sorted(seqs)
-    # the final completion summary is present.
-    assert any(i.kind == "summary" and i.payload.get("variant") == "completion" for i in items)
+    assert any(i.kind == "assistant_turn" and "Published workflow version" in i.payload["reply_text"] for i in items)
 
 
 def test_full_build_flow_file_schema_routes_through_testdata_gate_via_fsm():
@@ -1328,7 +1191,7 @@ def test_full_build_flow_file_schema_routes_through_testdata_gate_via_fsm():
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
-    goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
+    goal_action = Action(kind="start_build", base_version=1)
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
@@ -1369,7 +1232,7 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
-    goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
+    goal_action = Action(kind="start_build", base_version=1)
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     # submit_requirements now goes straight to build.resource_recommendation
     # (the decision-free find_resources gate at build.initial_plan is gone).
@@ -1392,9 +1255,6 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     assert out.current_state == PcState.BUILD_REVIEW
 
     out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
-    assert out.current_state == PcState.BUILD_AWAIT_LEARNING  # default policy "ask"
-
-    out = runner.advance(s.id, Turn(action=Action(kind="skip_learning", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_COMPLETE
     assert dify.published is False  # keep_draft skips publish
     assert not any(i.kind == "publish" for i in repo.list_conversation(s.id))
@@ -1420,7 +1280,7 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
-    goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
+    goal_action = Action(kind="start_build", base_version=1)
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     # submit_requirements now goes straight to build.resource_recommendation
     # (the decision-free find_resources gate at build.initial_plan is gone).
@@ -1468,7 +1328,7 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
     # straight-through path shows, not two under different version tags.
     plan_cards_after_confirm = [i for i in repo.list_conversation(s.id) if i.kind == "plan"]
     assert len(plan_cards_after_confirm) == plan_cards_before_loop_back + 1
-    assert plan_cards_after_confirm[-1].payload["version_tag"] == "v1"
+    assert "version_tag" not in plan_cards_after_confirm[-1].payload
 
     # THE re-approve: must not raise ValueError, must reach build.execution,
     # and must not double the graph (idempotent -- everything already exists).
@@ -1640,9 +1500,7 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
-    out = runner.advance(
-        s.id, Turn(action=Action(kind="send_goal", payload={"text": "Build it"}, base_version=1), actor=_actor())
-    )
+    out = runner.advance(s.id, Turn(action=Action(kind="start_build", base_version=1), actor=_actor()))
     # submit_requirements now goes straight to build.resource_recommendation
     # (the decision-free find_resources gate at build.initial_plan is gone).
     out = runner.advance(
@@ -1715,7 +1573,8 @@ def test_recovery_restart_resets_interrupted_step_to_entry_state():
         s.id, Turn(action=Action(kind="recovery_restart", base_version=s.version), actor=_actor())
     )
     reloaded, fc = repo.get_session(s.id)
-    assert reloaded.current_state == entry_state_for(EntryMode.BUILD)  # back at the flow entry
+    assert entry_state_for(EntryMode.BUILD) == PcState.BUILD_CAPABILITY_CHECK
+    assert reloaded.current_state == PcState.BUILD_GOAL_ANALYSIS  # automatic entry step already completed
     assert fc.staged_repair == []  # working fields reset
 
 
@@ -1736,9 +1595,9 @@ def _run_capability_check(agent, *, app_name_auto: bool, rename_app=None):
 
     env, repo = _new_env(agent=agent)
     env.rename_app = rename_app
-    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK, app_name_auto=app_name_auto)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK, goal_text="x", app_name_auto=app_name_auto)
     runner = Runner(env, build_registry())
-    runner.advance(s.id, Turn(action=Action(kind="send_goal", payload={"text": "x"}, base_version=1), actor=_actor()))
+    runner.advance(s.id, Turn(action=Action(kind="start_build", base_version=1), actor=_actor()))
     _session_after, fc = repo.get_session(s.id)
     return fc
 
@@ -1811,54 +1670,6 @@ def test_no_rename_callback_wired_costs_no_model_call():
 
     assert agent.calls == []
     assert fc.app_name_auto is False
-
-
-def _approve_plan(**fc_kwargs):
-    from core.dify_builder.handlers_build import handle_plan_approval
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
-
-    env, repo = _new_env(dify=FakeBuildDifyPort())
-    s = _seed_build_session(
-        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v1", **fc_kwargs
-    )
-    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
-    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
-    return next(i for i in res.items if i.kind == "plan"), res
-
-
-def test_the_built_card_names_the_app():
-    # Spec N4: "Refund approval is ready" -- the app is named here and only here.
-    plan, _res = _approve_plan(app_name="Refund approval")
-
-    assert plan.payload["title"] == "Refund approval is ready"
-
-
-def test_the_built_card_keeps_a_generic_title_when_the_name_is_unknown():
-    plan, _res = _approve_plan()
-
-    assert plan.payload["title"] == "Build plan"
-
-
-def test_the_completion_receipt_never_repeats_the_name():
-    # Spec N4: 记录卡上不出现 -- the name is said once, in the card above.
-    from core.dify_builder.handlers_build import _emit_completion
-
-    fc = DifyBuilderContext(app_name="Refund approval", built_node_ids=["a", "b"])
-    items = _emit_completion(fc)
-
-    assert all("Refund approval" not in str(item.payload) for item in items)
-
-
-def test_the_built_card_title_is_localizable():
-    # The headline is interpolated, so it only survives localization if the
-    # static-string catalog knows the shape.
-    from core.dify_builder import strings
-
-    plan, _res = _approve_plan(app_name="Refund approval")
-    matched = strings.match_template(plan.payload["title"])
-
-    assert matched is not None
-    assert matched[1]["name"] == "Refund approval"
 
 
 class _ResourceAgent(PlaceholderAgent):
@@ -1978,10 +1789,7 @@ def test_a_missing_config_tool_still_lets_the_gap_agent_report_a_gap():
 
 
 def test_the_test_result_card_names_the_dify_run_so_the_canvas_is_reachable_later():
-    """``run_ids`` holds BUILDER run ids, which resolve to nothing outside the
-    engine. Reopening the run on the canvas needs the DIFY run id, and it has
-    to ride the persisted card: the SSE frames that also carry it are gone
-    after a page reload."""
+    """The minimal persisted card keeps the Dify run id for canvas navigation."""
     from core.dify_builder.handlers_build import handle_test_and_repair
 
     env, _ = _new_env()  # default FakeDifyPort; verify_pass=True
@@ -1992,8 +1800,7 @@ def test_the_test_result_card_names_the_dify_run_so_the_canvas_is_reachable_late
 
     card = next(i for i in result.items if i.kind == "test_result")
     assert card.payload["dify_run_id"] == "dify-run-1"
-    # and it is NOT the Builder run id the card already carried
-    assert card.payload["dify_run_id"] not in card.payload["run_ids"]
+    assert "run_ids" not in card.payload
 
 
 def test_await_repair_refuses_to_apply_an_empty_staged_repair():
@@ -2036,9 +1843,10 @@ def test_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session():
     out = handle_await_repair(env, Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor()), s, fc)
 
     assert out.next == PcState.BUILD_AWAIT_REPAIR  # not a dead session
-    error = next(i for i in out.items if i.kind == "error")
-    assert error.payload["title"] == "Couldn't apply the fix"
-    assert "no key 'memory'" in error.payload["body"]
+    assert not any(i.kind == "error" for i in out.items)
+    assistant = next(i for i in out.items if i.kind == "assistant_turn")
+    assert "Couldn't apply the fix" in assistant.payload["reply_text"]
+    assert "no key 'memory'" in assistant.payload["reply_text"]
     assert out.context.staged_repair == []  # engages the empty-repair guard
 
 
@@ -2115,8 +1923,9 @@ def test_test_and_repair_stops_offering_a_repair_through_the_handler():
 
     assert result.next == PcState.BUILD_AWAIT_REPAIR
     assert result.context.staged_repair == []  # cleared -- no repair offered on the 3rd identical failure
-    error = next(i for i in result.items if i.kind == "error")
-    assert error.payload["title"] == "Repeated failure"
+    assert not any(i.kind == "error" for i in result.items)
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "stopped retrying" in assistant.payload["reply_text"]
     # the run still has to be persisted: every sibling exit returns it, and
     # fc.verify_run_id already points at it (a dangling pointer otherwise).
     assert result.run is not None
@@ -2240,8 +2049,9 @@ def test_breaker_fires_through_the_handler_although_diagnoses_are_reworded():
 
     assert fc.repair_attempts >= _MAX_REPEATED_REPAIRS
     assert fc.staged_repair == []  # no fourth repair offered
-    error = next(i for i in result.items if i.kind == "error")
-    assert error.payload["title"] == "Repeated failure"
+    assert not any(i.kind == "error" for i in result.items)
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "stopped retrying" in assistant.payload["reply_text"]
 
 
 def test_breaker_restarts_when_the_engine_failure_actually_changes():
@@ -2310,8 +2120,9 @@ def test_first_build_that_applies_nothing_reports_honestly():
     result = handle_plan_approval(env, Turn(action=Action(kind="approve_repair"), actor=_actor()), s, fc)
 
     assert result.next == PcState.BUILD_PLAN_APPROVAL  # not advanced to execution
-    error = next(i for i in result.items if i.kind == "error")
-    assert "already" in error.payload["body"].lower()
+    assert not any(i.kind == "error" for i in result.items)
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "already" in assistant.payload["reply_text"].lower()
     assert not any(i.kind == "change_set" for i in result.items)  # no "graph built" claim
 
 

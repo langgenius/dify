@@ -5,14 +5,16 @@ Uses a toy two-state registry rather than the real fix-flow handlers
 (handlers land in Task 6/7).
 """
 
+import logging
 from collections.abc import Callable
 from datetime import datetime
 
 import pytest
 
+from core.dify_builder.contract import AgentMessageEventData, ConversationItemAppendedEventData, ExecutionProgress
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
-from core.dify_builder.runner import CommittedTransition, Env, Runner, StepResult
+from core.dify_builder.runner import Env, Runner, StepResult
 from core.dify_builder.state import PcState
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
@@ -73,8 +75,6 @@ def test_advance_commits_each_transition_and_stops_at_waiting():
 
 def test_advance_stale_base_version_raises_conflict_with_nothing_applied():
     env, repo = _new_env()
-    commits: list[CommittedTransition] = []
-    env.emit_commit = commits.append
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
 
@@ -88,13 +88,10 @@ def test_advance_stale_base_version_raises_conflict_with_nothing_applied():
     assert stored.version == 1  # nothing committed
     assert stored.current_state == PcState.FIX_DIAGNOSE
     assert repo.list_conversation(s.id) == []
-    assert commits == []
 
 
-def test_lost_commit_cas_emits_no_committed_transition(monkeypatch: pytest.MonkeyPatch):
+def test_lost_commit_cas_leaves_no_durable_transition(monkeypatch: pytest.MonkeyPatch):
     env, repo = _new_env()
-    commits: list[CommittedTransition] = []
-    env.emit_commit = commits.append
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
 
@@ -109,7 +106,10 @@ def test_lost_commit_cas_emits_no_committed_transition(monkeypatch: pytest.Monke
             Turn(action=Action(kind="request_fix", base_version=1), actor=_actor()),
         )
 
-    assert commits == []
+    stored, _context = repo.get_session(s.id)
+    assert stored.version == 1
+    assert stored.current_state == PcState.FIX_DIAGNOSE
+    assert repo.list_conversation(s.id) == []
 
 
 def test_advance_missing_handler_raises():
@@ -164,10 +164,10 @@ def test_advance_terminal_state_returns_session_unchanged():
 
 def test_message_appends_user_and_assistant_turns_without_advancing_waiting_state():
     env, repo = _new_env()
-    commits: list[CommittedTransition] = []
     messages = []
-    env.emit_commit = commits.append
+    item_events = []
     env.emit_message = messages.append
+    env.emit_item = item_events.append
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(s, DifyBuilderContext(), [])
 
@@ -204,22 +204,89 @@ def test_message_appends_user_and_assistant_turns_without_advancing_waiting_stat
         ),
     ]
     assert [item.at_version for item in items] == [2, 3]
-    assert [(commit.version, commit.state, commit.settled) for commit in commits] == [
-        (2, PcState.FIX_AWAIT_APPROVAL, False),
-        (3, PcState.FIX_AWAIT_APPROVAL, True),
-    ]
-    assert commits[0].operation_id != commits[1].operation_id
-    assert commits[0].items == items[:1]
-    assert commits[1].items == items[1:]
-    assert len(messages) == 1
-    assert messages[0].session_id == s.id
-    assert messages[0].operation_id == commits[-1].operation_id
-    assert messages[0].id == "turn-1"
-    assert messages[0].answer == "reply 1: Make the change smaller"
-    assert messages[0].seq == 1
-    assert messages[0].at_version == 3
-    assert messages[0].revision == 1
-    assert messages[0].stage_id == "fix.await_approval"
+    assert len(messages) == 2
+    delta, finished = messages
+    assert delta.session_id == s.id
+    assert delta.operation_id
+    assert delta.turn_id == "turn-1"
+    assert delta.delta == "reply 1: Make the change smaller"
+    assert delta.seq == 1
+    assert delta.at_version == 3
+    assert delta.revision == 1
+    assert delta.stage_id == "fix.await_approval"
+    assert delta.done is False
+    assert delta.text_bytes == len(delta.delta.encode())
+    assert finished.turn_id == delta.turn_id
+    assert finished.seq == delta.seq
+    assert finished.at_version == delta.at_version
+    assert finished.delta == ""
+    assert finished.done is True
+    assert finished.text_bytes == delta.text_bytes
+    assert finished.revision == 2
+    assert finished.execution is not None
+    assert finished.execution.status == "completed"
+    assert [(event.item.kind, event.item.seq) for event in item_events] == [("user", 0)]
+
+
+def test_deterministic_assistant_copy_streams_in_chunks_and_finishes_before_items():
+    env, repo = _new_env()
+    session = _session()
+    repo.create_session(session, DifyBuilderContext(), [])
+    timeline: list[tuple[str, AgentMessageEventData | ConversationItemAppendedEventData, int]] = []
+
+    def emit_message(event):
+        stored, _context = repo.get_session(session.id)
+        timeline.append(("message", event, stored.version))
+
+    def emit_item(event):
+        stored, _context = repo.get_session(session.id)
+        timeline.append(("item", event, stored.version))
+
+    env.emit_message = emit_message
+    env.emit_item = emit_item
+    reply = "The workflow was updated with a focused validation step."
+
+    def diagnose(stream_env: Env, _turn: Turn, current: Session, fc: DifyBuilderContext) -> StepResult:
+        assistant_items = stream_env.append_assistant_turn(
+            current,
+            fc,
+            reply_text=reply,
+            execution=ExecutionProgress(status="completed"),
+        )
+        notice = ConversationItem(seq=fc.next_seq, kind="notice", payload={"text": "Next item"})
+        fc.next_seq += 1
+        return StepResult(
+            next=PcState.FIX_AWAIT_APPROVAL,
+            context=fc,
+            items=[*assistant_items, notice],
+        )
+
+    Runner(env, {PcState.FIX_DIAGNOSE: diagnose}).advance(
+        session.id,
+        Turn(action=Action(kind="request_fix", base_version=1), actor=_actor()),
+    )
+
+    message_events = [entry[1] for entry in timeline if isinstance(entry[1], AgentMessageEventData)]
+    deltas = [event for event in message_events if not event.done]
+    assert len(deltas) > 1
+    assert "".join(event.delta for event in deltas) == reply
+    assert all(
+        version == 1
+        for _kind, event, version in timeline
+        if isinstance(event, AgentMessageEventData) and not event.done
+    )
+
+    finished = message_events[-1]
+    assert finished.done is True
+    assert finished.delta == ""
+    assert finished.text_bytes == len(reply.encode("utf-8"))
+    assert timeline[-2] == ("message", finished, 2)
+    assert timeline[-1][0] == "item"
+    assert timeline[-1][2] == 2
+
+    items = repo.list_conversation(session.id)
+    assert [item.kind for item in items] == ["assistant_turn", "notice"]
+    assert items[0].payload["reply_text"] == reply
 
 
 def test_message_streams_and_persists_reasoning_independently_from_answer():
@@ -263,10 +330,50 @@ def test_message_streams_and_persists_reasoning_independently_from_answer():
     assert reasoning_events[0].session_id == session.id
 
 
+def test_message_persists_the_streamed_text_without_a_second_localization():
+    class MismatchedAgent(StubAgent):
+        def respond_to_message(self, _state, _context, _history, _graph, _text, on_delta=None):
+            assert on_delta is not None
+            on_delta("Streamed ")
+            on_delta("answer")
+            return "different returned answer"
+
+    def localize(items, _language):
+        for item in items:
+            if item.kind == "assistant_turn":
+                item.payload["reply_text"] = "localized replacement"
+        return items
+
+    env, repo = _new_env()
+    env.agent = MismatchedAgent()
+    env.localize_items = localize
+    messages = []
+    env.emit_message = messages.append
+    session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(session, DifyBuilderContext(reply_language="zh-Hans"), [])
+
+    Runner(env, {}).advance(
+        session.id,
+        Turn(
+            action=Action(
+                kind="message",
+                payload={"text": "Explain", "client_turn_id": "turn-stream"},
+                base_version=1,
+            ),
+            actor=_actor(),
+        ),
+    )
+
+    streamed_text = "".join(message.delta for message in messages if not message.done)
+    assistant = repo.list_conversation(session.id)[-1]
+    assert streamed_text == "Streamed answer"
+    assert assistant.payload["reply_text"] == streamed_text
+    assert messages[-1].done is True
+    assert messages[-1].seq == assistant.seq
+
+
 def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempotent():
     env, repo = _new_env()
-    commits: list[CommittedTransition] = []
-    env.emit_commit = commits.append
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(s, DifyBuilderContext(), [])
     runner = Runner(env, {})
@@ -287,7 +394,7 @@ def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempoten
     replies = [item.payload["reply_text"] for item in repo.list_conversation(s.id) if item.kind == "assistant_turn"]
     assert replies == ["reply 1: First", "reply 3: Second"]
     version_before_retry = out.version
-    commit_count_before_retry = len(commits)
+    items_before_retry = repo.list_conversation(s.id)
 
     # Retrying the same client turn after the assistant half committed is a
     # success even with the original now-stale session version.
@@ -303,7 +410,7 @@ def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempoten
         ),
     )
     assert retried.version == version_before_retry
-    assert len(commits) == commit_count_before_retry
+    assert repo.list_conversation(s.id) == items_before_retry
 
 
 def test_message_cognition_reads_only_bounded_recent_history(monkeypatch: pytest.MonkeyPatch):
@@ -398,14 +505,12 @@ def test_fail_after_message_user_half_commits_against_the_new_head():
     assert failed.current_state == PcState.FAILED
     assert [(item.kind, item.at_version) for item in repo.list_conversation(session.id)] == [
         ("user", 2),
-        ("error", 3),
+        ("assistant_turn", 3),
     ]
 
 
-def test_advance_emits_each_successful_cas_as_an_ordered_commit():
+def test_advance_logs_each_successful_cas_and_persists_ordered_items(caplog: pytest.LogCaptureFixture):
     env, repo = _new_env()
-    commits: list[CommittedTransition] = []
-    env.emit_commit = commits.append
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
 
@@ -420,42 +525,48 @@ def test_advance_emits_each_successful_cas_as_an_ordered_commit():
         return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc, items=[item])
 
     runner = Runner(env, {PcState.FIX_DIAGNOSE: diagnose, PcState.FIX_PROPOSE: propose})
-    runner.advance(s.id, Turn(action=Action(kind="request_fix", base_version=1), actor=_actor()))
+    with caplog.at_level(logging.INFO, logger="core.dify_builder.runner"):
+        runner.advance(
+            s.id,
+            Turn(action=Action(kind="request_fix", base_version=1, command_id="command-1"), actor=_actor()),
+        )
 
-    assert [(commit.version, commit.state, commit.settled) for commit in commits] == [
-        (2, PcState.FIX_PROPOSE, False),
-        (3, PcState.FIX_AWAIT_APPROVAL, True),
-    ]
-    assert [[item.seq for item in commit.items] for commit in commits] == [[0], [1]]
-    assert [[item.at_version for item in commit.items] for commit in commits] == [[2], [3]]
-    assert [commit.at_version for commit in commits] == [2, 3]
-    assert commits[0].operation_id != commits[1].operation_id
-    assert [commit.stage_id for commit in commits] == ["fix.diagnose", "fix.propose"]
-    assert [item.seq for item in repo.list_conversation(s.id)] == [0, 1]
+    transitions = [record for record in caplog.records if record.message == "dify_builder transition committed"]
+    assert [record.version for record in transitions] == [2, 3]
+    assert [record.to_state for record in transitions] == ["fix.propose", "fix.await_approval"]
+    assert [record.settled for record in transitions] == [False, True]
+    assert [record.item_count for record in transitions] == [1, 1]
+    items = repo.list_conversation(s.id)
+    assert [item.seq for item in items] == [0, 1]
+    assert [item.at_version for item in items] == [2, 3]
+    _stored, context = repo.get_session(s.id)
+    assert context.last_command_id == "command-1"
 
 
-def test_stop_and_resume_each_emit_a_settled_commit_without_items():
+def test_stop_and_resume_each_persist_a_settled_transition_without_items():
     env, repo = _new_env()
-    commits: list[CommittedTransition] = []
-    env.emit_commit = commits.append
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
     runner = Runner(env, {})
 
-    stopped = runner.advance(s.id, Turn(action=Action(kind="stop", base_version=1), actor=_actor()))
-    resumed = runner.advance(s.id, Turn(action=Action(kind="resume", base_version=stopped.version), actor=_actor()))
+    stopped = runner.advance(
+        s.id,
+        Turn(action=Action(kind="stop", base_version=1, command_id="stop-1"), actor=_actor()),
+    )
+    resumed = runner.advance(
+        s.id,
+        Turn(action=Action(kind="resume", base_version=stopped.version, command_id="resume-1"), actor=_actor()),
+    )
 
     assert resumed.version == 3
-    assert [(commit.version, commit.state, commit.settled, commit.items) for commit in commits] == [
-        (2, PcState.FIX_DIAGNOSE, True, []),
-        (3, PcState.FIX_DIAGNOSE, True, []),
-    ]
+    assert repo.list_conversation(s.id) == []
+    _stored, context = repo.get_session(s.id)
+    assert context.paused is False
+    assert context.last_command_id == "resume-1"
 
 
-def test_fail_persists_terminal_error_card_and_commit():
+def test_fail_persists_terminal_assistant_message():
     env, repo = _new_env()
-    commits: list[CommittedTransition] = []
-    env.emit_commit = commits.append
     session = _session(current_state=PcState.FIX_PROPOSE)
     repo.create_session(session, DifyBuilderContext(), [])
 
@@ -463,8 +574,10 @@ def test_fail_persists_terminal_error_card_and_commit():
 
     assert failed.current_state == PcState.FAILED
     assert failed.version == 2
-    assert [(item.kind, item.at_version) for item in repo.list_conversation(session.id)] == [("error", 2)]
-    assert [(commit.state, commit.settled) for commit in commits] == [(PcState.FAILED, True)]
+    items = repo.list_conversation(session.id)
+    assert [(item.kind, item.at_version) for item in items] == [("assistant_turn", 2)]
+    assert items[0].payload["execution"]["status"] == "error"
+    assert "Restart from the current draft" in items[0].payload["reply_text"]
 
 
 def test_fail_refuses_to_overwrite_a_newer_non_terminal_session_head():
@@ -491,10 +604,8 @@ def test_fail_refuses_to_overwrite_a_newer_non_terminal_session_head():
     assert repo.list_conversation(session.id) == []
 
 
-def test_recovery_short_path_emits_its_items_as_a_settled_commit(monkeypatch: pytest.MonkeyPatch):
+def test_recovery_short_path_persists_its_items(monkeypatch: pytest.MonkeyPatch):
     env, repo = _new_env()
-    commits: list[CommittedTransition] = []
-    env.emit_commit = commits.append
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(s, DifyBuilderContext(), [])
 
@@ -509,10 +620,10 @@ def test_recovery_short_path_emits_its_items_as_a_settled_commit(monkeypatch: py
         Turn(action=Action(kind="check_recovery", base_version=1), actor=_actor()),
     )
 
-    assert [(commit.version, commit.state, commit.settled) for commit in commits] == [
-        (2, PcState.FIX_AWAIT_APPROVAL, True)
-    ]
-    assert [item.payload for item in commits[0].items] == [{"text": "Recovery checked"}]
+    stored, _context = repo.get_session(s.id)
+    assert stored.version == 2
+    assert stored.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert [item.payload for item in repo.list_conversation(s.id)] == [{"text": "Recovery checked"}]
 
 
 def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequent_steps():

@@ -1026,7 +1026,7 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
         updated_at=None,
     )
     _configure_session_get(mock_session, account=account, app=app)
-    published_workflow = SimpleNamespace(id="new-wf-id")
+    published_workflow = SimpleNamespace(id="new-wf-id", marked_name="", version_number=2)
 
     with (
         patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls,
@@ -1038,7 +1038,7 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
         mock_ws_cls.return_value.publish_workflow.return_value = published_workflow
         mock_naive_utc_now.return_value = "the-now"
 
-        WorkflowServiceDifyPort().publish("app-1", _actor())
+        result = WorkflowServiceDifyPort().publish("app-1", _actor())
 
     mock_ws_cls.return_value.publish_workflow.assert_called_once_with(
         session=mock_session, app_model=app, account=account
@@ -1049,6 +1049,8 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
     # same trail as publishing via the console UI.
     assert app.updated_by == "acc-1"
     assert app.updated_at == "the-now"
+    assert result.version_name == "# 2"
+    assert result.status == "live"
     mock_session.commit.assert_called_once()
 
 

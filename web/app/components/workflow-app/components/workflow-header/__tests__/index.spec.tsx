@@ -84,13 +84,12 @@ describe('WorkflowHeader', () => {
 
   it('should tell the shared header when an existing Builder session can be resumed', () => {
     renderHeader(true, {
-      app_id: 'app-1',
       canvas_read_only: true,
       conversation_last_seq: -1,
       interrupted: true,
+      phase: 'publish',
       run_status: 'processing',
       session_id: 'session-1',
-      state: 'build.publish',
       version: 1,
     })
 

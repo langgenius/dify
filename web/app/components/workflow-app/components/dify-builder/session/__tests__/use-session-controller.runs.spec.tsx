@@ -89,11 +89,7 @@ describe('Builder workflow stream', () => {
       nodeStarted(),
     ])
     await act(async () => {
-      stream.push(
-        stateEvent(
-          createSessionView({ version: 2, run_status: 'waiting_input', state: 'build.review' }),
-        ),
-      )
+      stream.push(stateEvent(createSessionView({ version: 2, run_status: 'waiting_input' })))
       expect(await pending).toBe(true)
     })
     expect(runEvents.finishCommand).toHaveBeenCalledOnce()
@@ -113,18 +109,17 @@ describe('Builder workflow stream', () => {
         {
           event: 'canvas',
           data: {
-            ...workflowEvent(runStarted()),
-            kind: 'canvas',
+            session_id: 'session-1',
+            operation_id: 'op',
+            at_version: 2,
             event: 'mark_test_error',
             revision: 2,
-            dify_run_id: 'dify-run',
           },
         },
         stateEvent(
           createSessionView({
             version: 2,
             run_status: 'waiting_input',
-            state: 'build.await_repair',
           }),
         ),
       ),
@@ -143,9 +138,7 @@ describe('Builder workflow stream', () => {
       streamOf(
         commandStartedEvent(createSessionView()),
         frame(runStarted()),
-        stateEvent(
-          createSessionView({ version: 2, run_status: 'waiting_input', state: 'build.execution' }),
-        ),
+        stateEvent(createSessionView({ version: 2, run_status: 'waiting_input' })),
       ),
     )
     const { result } = renderSessionHook(undefined, runEvents)
@@ -169,7 +162,7 @@ describe('Builder workflow stream', () => {
       )
       mocks.get.mockImplementation(async () => {
         expect(runEvents.onStreamInterrupted).toHaveBeenCalledOnce()
-        return createSessionView({ version: 2, run_status: 'waiting_input', state: 'build.review' })
+        return createSessionView({ version: 2, run_status: 'waiting_input' })
       })
       const { result } = renderSessionHook(undefined, runEvents)
       await act(async () => {
@@ -181,35 +174,35 @@ describe('Builder workflow stream', () => {
   )
 
   it.each([
-    ['build.await_repair', 'build.execution', 'run_test'],
-    ['edit.await_repair', 'edit.apply_changes', 'run_affected_tests'],
+    ['Build', 'run_test'],
+    ['Edit', 'run_affected_tests'],
   ])(
-    'retests %s once, only after its matching graph is applied',
-    async (beforeState, afterState, actionId) => {
+    'retests a %s repair once, only after its matching graph is applied',
+    async (_flow, actionId) => {
       const { result, store } = renderSessionHook(undefined, runEvents)
       const before = createSessionView({
-        state: beforeState,
         phase: 'test',
         run_status: 'waiting_confirmation',
       })
       const after = createSessionView({
-        state: afterState,
         phase: 'modify',
         version: 2,
         run_status: 'waiting_confirmation',
         app_revision: {
           current: 'repaired-revision',
-          observed: 'repaired-revision',
           conflicted: false,
         },
       })
       store.set(difyBuilderSessionViewAtom, before)
       store.set(difyBuilderActiveSessionIdAtom, before.session_id)
       store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: before.session_id, version: 1 })
-      mocks.action.mockResolvedValueOnce(streamOf(commandStartedEvent(before), stateEvent(after)))
       mocks.action.mockResolvedValueOnce(
-        streamOf(stateEvent({ ...after, version: 4, state: 'build.review' })),
+        streamOf(
+          commandStartedEvent(before),
+          stateEvent(after, { post_canvas_action_id: actionId }),
+        ),
       )
+      mocks.action.mockResolvedValueOnce(streamOf(stateEvent({ ...after, version: 4 })))
       await act(async () => {
         expect(await result.current.runAction('confirm', { option_id: 'approve_plan' })).toBe(true)
       })
@@ -250,15 +243,16 @@ describe('Builder workflow stream', () => {
     async (scenario) => {
       const { result, store } = renderSessionHook(undefined, runEvents)
       const before = createSessionView({
-        state: 'build.await_repair',
         phase: 'test',
         run_status: 'waiting_confirmation',
       })
-      const after = { ...before, state: 'build.execution', version: 2 }
+      const after = { ...before, version: 2 }
       store.set(difyBuilderSessionViewAtom, before)
       store.set(difyBuilderActiveSessionIdAtom, before.session_id)
       if (scenario !== 'history') {
-        mocks.action.mockResolvedValueOnce(streamOf(stateEvent(after)))
+        mocks.action.mockResolvedValueOnce(
+          streamOf(stateEvent(after, { post_canvas_action_id: 'run_test' })),
+        )
         await act(async () => {
           await result.current.runAction('approve_plan')
         })
@@ -272,7 +266,7 @@ describe('Builder workflow stream', () => {
             : scenario === 'different-revision'
               ? {
                   ...after,
-                  app_revision: { current: 'other', observed: 'other', conflicted: false },
+                  app_revision: { current: 'other', conflicted: false },
                 }
               : after,
         )

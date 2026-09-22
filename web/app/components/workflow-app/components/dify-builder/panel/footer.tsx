@@ -7,9 +7,12 @@ import {
   difyBuilderCanvasRefreshingAtom,
   difyBuilderErrorAtom,
   difyBuilderInteractionBusyAtom,
+  difyBuilderPhaseAtom,
   difyBuilderRecoveryAtom,
   difyBuilderRetryCanvasRefreshAtom,
+  difyBuilderRunStatusAtom,
 } from '../store'
+import { DifyBuilderStatusBar } from './status-bar'
 
 export const DifyBuilderPanelFooter = () => {
   const { t } = useTranslation()
@@ -17,7 +20,9 @@ export const DifyBuilderPanelFooter = () => {
   const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const error = useAtomValue(difyBuilderErrorAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
+  const phase = useAtomValue(difyBuilderPhaseAtom)
   const recovery = useAtomValue(difyBuilderRecoveryAtom)
+  const runStatus = useAtomValue(difyBuilderRunStatusAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
 
   return (
@@ -51,6 +56,7 @@ export const DifyBuilderPanelFooter = () => {
           </Button>
         </div>
       )}
+      <DifyBuilderStatusBar phase={phase} runStatus={runStatus} />
       <DifyBuilderComposer />
     </footer>
   )

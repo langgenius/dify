@@ -57,6 +57,7 @@ from core.dify_builder.models import (
     MutationIntent,
     NodeEvent,
     NodeOutput,
+    PublishResult,
     Run,
 )
 from extensions.ext_database import db
@@ -437,7 +438,7 @@ class WorkflowServiceDifyPort:
             return map_unknown_run_outcome(recovered, node_execs)
         return map_run_result(recovered, node_execs)
 
-    def publish(self, app_id: str, actor: Actor) -> None:
+    def publish(self, app_id: str, actor: Actor) -> PublishResult:
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
@@ -455,3 +456,7 @@ class WorkflowServiceDifyPort:
             app_in_session.updated_at = naive_utc_now()
 
             session.commit()
+            return PublishResult(
+                version_name=getattr(workflow, "marked_name", None) or f"# {workflow.version_number}",
+                status="live",
+            )

@@ -12,39 +12,80 @@ from services.dify_builder import wiring
 from services.dify_builder.service import AppAccess, SessionView
 
 
-def test_session_view_to_dict_round_trips_fields():
+def test_session_view_to_dict_projects_only_browser_fields():
     view = SessionView(
         session_id="s1",
         app_id="a1",
         version=3,
         state="fix.await_verify",
-        # "waiting-input" (hyphen) is a raw passthrough literal for this
-        # asdict round-trip test, not real service output -- _run_status
-        # never returns this; the real widened value is "waiting_input".
         canvas_read_only=False,
-        run_status="waiting-input",
+        run_status="waiting_input",
         interrupted=False,
         conversation_last_seq=7,
     )
     d = wiring.session_view_to_dict(view)
     assert d == {
         "session_id": "s1",
-        "app_id": "a1",
         "version": 3,
-        "state": "fix.await_verify",
         "canvas_read_only": False,
-        "run_status": "waiting-input",
+        "run_status": "waiting_input",
         "interrupted": False,
         "conversation_last_seq": 7,
-        "entry_mode": "fix",
+        "last_command_id": "",
         "phase": "understand",
         "actions": [],
-        "decision": None,
-        "active_interaction": None,
-        "checkpoint": None,
-        "recovery": None,
-        "model": None,
-        "app_revision": None,
+    }
+
+
+def test_public_session_projection_strips_internal_decision_and_revision_fields():
+    projected = wiring._public_session_view(
+        {
+            "session_id": "s1",
+            "app_id": "a1",
+            "version": 4,
+            "state": "build.goal_analysis",
+            "entry_mode": "build",
+            "canvas_read_only": False,
+            "run_status": "waiting_input",
+            "interrupted": False,
+            "conversation_last_seq": 8,
+            "phase": "clarify",
+            "actions": [
+                {
+                    "id": "submit_requirements",
+                    "label": "Submit",
+                    "kind": "primary",
+                    "next_state": "build.resources",
+                    "canvas_event": "apply_edit_plan",
+                }
+            ],
+            "active_interaction": {
+                "action_id": "submit_requirements",
+                "card": {"seq": 8, "kind": "form", "payload": {}},
+                "valid_at_version": 4,
+            },
+            "app_revision": {"observed": "old", "current": "new", "conflicted": True},
+            "decision": {"default_option_id": "confirm"},
+            "checkpoint": {"id": "checkpoint-1"},
+        },
+        include_last_command_id=False,
+    )
+
+    assert projected == {
+        "session_id": "s1",
+        "version": 4,
+        "canvas_read_only": False,
+        "run_status": "waiting_input",
+        "interrupted": False,
+        "conversation_last_seq": 8,
+        "phase": "clarify",
+        "actions": [{"id": "submit_requirements", "label": "Submit", "kind": "primary"}],
+        "active_interaction": {
+            "action_id": "submit_requirements",
+            "card_seq": 8,
+            "valid_at_version": 4,
+        },
+        "app_revision": {"current": "new", "conflicted": True},
     }
 
 

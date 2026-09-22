@@ -1,7 +1,11 @@
-import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type {
+  DifyBuilderCommandFinishedEventData,
+  DifyBuilderConversationItemAppendedEventData,
+  DifyBuilderStreamEventResponse,
+} from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem, SessionView } from '../types'
 import type { MarkdownProps } from '@/app/components/base/markdown'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -90,22 +94,28 @@ vi.mock('@/app/components/workflow/store', () => ({
 
 const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
   actions: [],
-  app_id: 'app-1',
-  app_revision: { observed: 'hash-1', current: 'hash-1', conflicted: false },
+  app_revision: { current: 'hash-1', conflicted: false },
   canvas_read_only: false,
   active_interaction: null,
   conversation_last_seq: -1,
   interrupted: false,
+  last_command_id: 'command-1',
+  phase: 'clarify',
   run_status: 'waiting_input',
   session_id: 'session-1',
-  state: 'build.await_requirements',
   version: 1,
   ...overrides,
 })
 
 const commandStartedEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
   event: 'command_started',
-  data: { kind: 'command_started', ...view },
+  data: {
+    session_id: view.session_id,
+    command_id: 'command-1',
+    version: view.version,
+    phase: view.phase ?? 'understand',
+    run_status: 'processing',
+  },
 })
 
 const conversationPage = (data: ConversationItem[] = []) => ({
@@ -115,10 +125,77 @@ const conversationPage = (data: ConversationItem[] = []) => ({
   last_seq: data.at(-1)?.seq ?? null,
 })
 
-const stateEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
-  event: 'state',
-  data: { kind: 'state', ...view },
+const stateEvent = (
+  view: SessionView,
+  overrides: Partial<DifyBuilderCommandFinishedEventData> = {},
+): DifyBuilderStreamEventResponse => {
+  const { last_command_id: lastCommandId, ...state } = view
+  return {
+    event: 'command_finished',
+    data: {
+      ...state,
+      command_id: lastCommandId || 'command-1',
+      ...overrides,
+    },
+  }
+}
+
+const conversationItemEvent = (
+  item: DifyBuilderConversationItemAppendedEventData['item'],
+): DifyBuilderStreamEventResponse => ({
+  event: 'conversation_item_appended',
+  data: {
+    session_id: 'session-1',
+    command_id: 'command-1',
+    item,
+  },
 })
+
+const assistantMessageEvents = (
+  item: Extract<ConversationItem, { kind: 'assistant_turn' }>,
+  operationId = item.payload.turn_id,
+): DifyBuilderStreamEventResponse[] => {
+  const text = item.payload.reply_text ?? ''
+  const splitAt = Math.ceil(text.length / 2)
+  const chunks = text ? [text.slice(0, splitAt), text.slice(splitAt)].filter(Boolean) : []
+  let textBytes = 0
+  const events = chunks.map((delta, index): DifyBuilderStreamEventResponse => {
+    textBytes += new TextEncoder().encode(delta).byteLength
+    return {
+      event: 'agent_message',
+      data: {
+        session_id: 'session-1',
+        command_id: 'command-1',
+        operation_id: operationId,
+        turn_id: item.payload.turn_id,
+        delta,
+        seq: item.seq,
+        at_version: item.at_version,
+        revision: index + 1,
+        done: false,
+        text_bytes: textBytes,
+      },
+    }
+  })
+  events.push({
+    event: 'agent_message',
+    data: {
+      session_id: 'session-1',
+      command_id: 'command-1',
+      operation_id: operationId,
+      turn_id: item.payload.turn_id,
+      delta: '',
+      seq: item.seq,
+      at_version: item.at_version,
+      revision: chunks.length + 1,
+      done: true,
+      text_bytes: textBytes,
+      execution: item.payload.execution,
+      cards: item.payload.cards ?? [],
+    },
+  })
+  return events
+}
 
 async function* streamOf(
   ...events: DifyBuilderStreamEventResponse[]
@@ -274,28 +351,31 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       at_version: 4,
       payload: {
         title: 'Support workflow',
-        subtitle: 'Plan v1 ready for approval.',
-        version_tag: 'v1',
         items: ['Find an answer'],
       },
     }
     const goalView = createSessionView({
       version: 2,
-      state: 'build.goal_analysis',
       conversation_last_seq: 0,
-      active_interaction: { action_id: 'submit_requirements', card: form, valid_at_version: 2 },
+      active_interaction: {
+        action_id: 'submit_requirements',
+        card_seq: form.seq,
+        valid_at_version: 2,
+      },
       actions: [{ id: 'submit_requirements', kind: 'primary', label: 'Submit requirements' }],
     })
     const resourceView = createSessionView({
       version: 3,
-      state: 'build.resource_recommendation',
       conversation_last_seq: 1,
-      active_interaction: { action_id: 'confirm_resources', card: resources, valid_at_version: 3 },
+      active_interaction: {
+        action_id: 'confirm_resources',
+        card_seq: resources.seq,
+        valid_at_version: 3,
+      },
       actions: [{ id: 'confirm_resources', kind: 'primary', label: 'Confirm resources' }],
     })
     const planView = createSessionView({
       version: 4,
-      state: 'build.plan_approval',
       conversation_last_seq: 2,
       actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve plan' }],
     })
@@ -317,8 +397,8 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     await waitFor(() => expect(confirm).toBeEnabled())
     expect(screen.queryByRole('heading', { name: 'Support workflow' })).not.toBeInTheDocument()
     await user.click(confirm)
-    expect(await screen.findByText('Plan v1 ready for approval.')).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { name: 'Support workflow' })).toHaveLength(1)
+    expect(screen.queryByText(/\bv1\b/i)).not.toBeInTheDocument()
     expect(mocks.action.mock.calls.map(([request]) => request.body.action_id)).toEqual([
       'submit_requirements',
       'confirm_resources',
@@ -344,9 +424,12 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     }
     const waiting = createSessionView({
       version: 7,
-      state: 'build.await_testdata',
       conversation_last_seq: 0,
-      active_interaction: { action_id: 'provide_testdata', card: form, valid_at_version: 7 },
+      active_interaction: {
+        action_id: 'provide_testdata',
+        card_seq: form.seq,
+        valid_at_version: 7,
+      },
       actions: [{ id: 'provide_testdata', label: 'Run test', kind: 'primary' }],
     })
     mocks.get.mockResolvedValue(waiting)
@@ -387,7 +470,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     }
     const interrupted = createSessionView({
       version: 3,
-      state: 'build.initial_plan',
       run_status: 'processing',
       interrupted: true,
       conversation_last_seq: 0,
@@ -401,7 +483,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         stateEvent(
           createSessionView({
             version: 4,
-            state: 'build.resource_recommendation',
             conversation_last_seq: 0,
             actions: [{ id: 'confirm_resources', kind: 'primary', label: 'Confirm resources' }],
           }),
@@ -438,10 +519,8 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           { id: 'revert', kind: 'destructive', label: 'Revert' },
         ],
         conversation_last_seq: 0,
-        entry_mode: 'build',
         phase: 'modify',
         run_status: 'waiting_confirmation',
-        state: 'build.execution',
         version: 4,
       })
       mocks.get.mockImplementation(async (_input: unknown, { signal }: { signal: AbortSignal }) => {
@@ -457,7 +536,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
             ...waiting,
             actions: [{ id: 'publish_workflow', kind: 'primary', label: 'Publish' }],
             phase: 'review',
-            state: 'build.review',
             version: 5,
           }),
         ),
@@ -502,10 +580,8 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         { id: 'run_test', kind: 'primary', label: 'Run test' },
         { id: 'revert', kind: 'destructive', label: 'Revert' },
       ],
-      entry_mode: 'build',
       phase: 'modify',
       run_status: 'waiting_confirmation',
-      state: 'build.execution',
       version: 4,
     })
     let finishCanceledRequest!: (view: SessionView) => void
@@ -547,10 +623,8 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           { id: 'run_test', kind: 'primary', label: 'Run test' },
           { id: 'revert', kind: 'destructive', label: 'Revert' },
         ],
-        entry_mode: 'build',
         phase: 'modify',
         run_status: 'waiting_confirmation',
-        state: 'build.execution',
         version: 6,
       })
       let finishHistory!: (page: ReturnType<typeof conversationPage>) => void
@@ -590,10 +664,8 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     async (reactStrictMode) => {
       const processing = createSessionView({
         canvas_read_only: true,
-        entry_mode: 'build',
         phase: 'plan',
         run_status: 'processing',
-        state: 'build.plan_approval',
         version: 5,
       })
       const waiting = createSessionView({
@@ -602,10 +674,8 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           { id: 'revert', kind: 'destructive', label: 'Revert' },
         ],
         conversation_last_seq: 0,
-        entry_mode: 'build',
         phase: 'modify',
         run_status: 'waiting_confirmation',
-        state: 'build.execution',
         version: 6,
       })
       const notice: ConversationItem = {
@@ -627,7 +697,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       )
       renderFlow(1, reactStrictMode)
       await waitFor(() => expect(mocks.stream).toHaveBeenCalledOnce())
-      await act(async () => reconnect.push(commandStartedEvent(processing)))
       expect(getComposer()).toBeDisabled()
       expect(mocks.refreshCanvas).not.toHaveBeenCalled()
 
@@ -639,13 +708,13 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           }),
       )
       await act(async () => reconnect.push(stateEvent(waiting)))
-      const runTest = await screen.findByRole('button', { name: 'Run test' })
-      expect(runTest).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Run test' })).toBeDisabled()
       expect(mocks.refreshCanvas).not.toHaveBeenCalled()
 
       await act(async () => finishHistory(conversationPage([notice])))
 
       expect(await screen.findByText(notice.payload.text)).toBeInTheDocument()
+      const runTest = await screen.findByRole('button', { name: 'Run test' })
       await waitFor(() => expect(runTest).toBeEnabled())
       expect(screen.getByRole('button', { name: 'Revert' })).toBeEnabled()
       expect(getComposer()).toBeEnabled()
@@ -661,47 +730,37 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     {
       entryMode: 'build',
       edgeCount: 0,
-      approvalState: 'build.plan_approval',
       appliedState: 'build.execution',
     },
     {
       entryMode: 'edit',
       edgeCount: 1,
-      approvalState: 'edit.plan_approval',
       appliedState: 'edit.apply_changes',
     },
     {
       entryMode: 'fix',
       edgeCount: 0,
-      approvalState: 'fix.await_approval',
       appliedState: 'fix.await_verify',
     },
   ] as const)(
-    'displays $entryMode change sets on commit and after restoring the session',
-    async ({ entryMode, edgeCount, approvalState, appliedState }) => {
+    'streams $entryMode change summaries as text and restores the durable reply',
+    async ({ entryMode, edgeCount, appliedState }) => {
       const waiting = createSessionView({
-        entry_mode: entryMode,
-        state: approvalState,
         version: 2,
         actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve changes' }],
       })
-      const changeSet: ConversationItem = {
+      const changeSummary: ConversationItem = {
         seq: 0,
         at_version: 3,
-        kind: 'change_set',
+        kind: 'assistant_turn',
         payload: {
-          count: 2,
-          changes: ['Update answer configuration', 'Add an approval step'],
-          scope: 'configuration',
-          nodes: [
-            { node_id: 'node3', title: 'Answer' },
-            { node_id: 'node4', title: 'Approval' },
-          ],
+          turn_id: 'apply-1',
+          stage_id: appliedState,
+          execution: { status: 'completed' },
+          reply_text: 'Updated the answer configuration and added an approval step.',
         },
       }
       const applied = createSessionView({
-        entry_mode: entryMode,
-        state: appliedState,
         version: 3,
         conversation_last_seq: 0,
       })
@@ -710,6 +769,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         streamOf(commandStartedEvent(createSessionView()), stateEvent(waiting)),
       )
       mocks.action.mockResolvedValue(actionStream.iterable)
+      mocks.conversation.mockResolvedValue(conversationPage([changeSummary]))
       const user = userEvent.setup()
       const { unmount } = renderFlow(edgeCount)
 
@@ -726,35 +786,16 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
 
       await act(async () => {
         actionStream.push(commandStartedEvent(waiting))
-        actionStream.push({
-          event: 'commit',
-          data: {
-            kind: 'commit',
-            session_id: waiting.session_id,
-            operation_id: 'apply-1',
-            stage_id: appliedState,
-            at_version: 3,
-            version: 3,
-            state: appliedState,
-            settled: true,
-            items: [changeSet],
-          },
-        })
+        for (const event of assistantMessageEvents(changeSummary, 'apply-1'))
+          actionStream.push(event)
       })
 
-      const changes = await screen.findByRole('article', { name: 'workflow.difyBuilder.changes' })
-      const details = within(changes).getByRole('list', {
-        name: 'workflow.difyBuilder.changeDetails',
-      })
-      for (const change of changeSet.payload.changes) {
-        expect(within(details).getByText(change)).toBeInTheDocument()
-      }
-      const targets = within(changes).getByRole('list', {
-        name: 'workflow.difyBuilder.affectedNodes',
-      })
-      expect(within(targets).getByText('Answer')).toBeInTheDocument()
-      expect(within(targets).getByText('node3')).toBeInTheDocument()
-      expect(within(changes).queryByRole('button')).not.toBeInTheDocument()
+      expect(
+        await screen.findByText('Updated the answer configuration and added an approval step.'),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('article', { name: 'workflow.difyBuilder.changes' }),
+      ).not.toBeInTheDocument()
       expect(getComposer()).toBeDisabled()
 
       await act(async () => {
@@ -764,22 +805,13 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       await waitFor(() => expect(getComposer()).toBeEnabled())
 
       mocks.get.mockResolvedValue(applied)
-      mocks.conversation.mockResolvedValue(conversationPage([changeSet]))
+      mocks.conversation.mockResolvedValue(conversationPage([changeSummary]))
       unmount()
       renderFlow(edgeCount)
 
-      const restored = await screen.findByRole('article', { name: 'workflow.difyBuilder.changes' })
-      const restoredDetails = within(restored).getByRole('list', {
-        name: 'workflow.difyBuilder.changeDetails',
-      })
-      for (const change of changeSet.payload.changes) {
-        expect(within(restoredDetails).getByText(change)).toBeInTheDocument()
-      }
-      const restoredTargets = within(restored).getByRole('list', {
-        name: 'workflow.difyBuilder.affectedNodes',
-      })
-      expect(within(restoredTargets).getByText('Answer')).toBeInTheDocument()
-      expect(within(restoredTargets).getByText('node3')).toBeInTheDocument()
+      expect(
+        await screen.findByText('Updated the answer configuration and added an approval step.'),
+      ).toBeInTheDocument()
       expect(mocks.get).toHaveBeenCalledOnce()
       expect(mocks.action).toHaveBeenCalledOnce()
     },
@@ -818,10 +850,9 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         },
       }
       const waiting = createSessionView({
-        state,
         version: 2,
         conversation_last_seq: 0,
-        active_interaction: { action_id: actionId, card: form, valid_at_version: 2 },
+        active_interaction: { action_id: actionId, card_seq: form.seq, valid_at_version: 2 },
         actions: [{ id: actionId, kind: 'primary', label: 'Submit form' }],
       })
       const reply: ConversationItem = {
@@ -839,16 +870,16 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         ...waiting,
         version: 4,
         conversation_last_seq: 2,
-        active_interaction: { action_id: actionId, card: form, valid_at_version: 4 },
+        active_interaction: { action_id: actionId, card_seq: form.seq, valid_at_version: 4 },
       }
       const messageStream = createControlledEventStream()
       mocks.create.mockResolvedValue(
-        streamOf(commandStartedEvent(createSessionView()), stateEvent(waiting)),
+        streamOf(
+          commandStartedEvent(createSessionView()),
+          conversationItemEvent(form),
+          stateEvent(waiting),
+        ),
       )
-      mocks.conversation
-        .mockResolvedValueOnce(conversationPage())
-        .mockResolvedValueOnce(conversationPage([form]))
-        .mockResolvedValueOnce(conversationPage([reply]))
       mocks.message.mockResolvedValue(messageStream.iterable)
       mocks.action.mockResolvedValue(
         streamOf(
@@ -873,35 +904,25 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       await user.type(getComposer(), 'How is the audience used?')
       await user.click(getSendButton())
       await waitFor(() => expect(mocks.message).toHaveBeenCalledOnce())
+      const clientTurnId = mocks.message.mock.calls[0]?.[0].body.client_turn_id
+      expect(clientTurnId).toEqual(expect.any(String))
+      const question: ConversationItem = {
+        seq: 1,
+        at_version: 3,
+        kind: 'user',
+        payload: { turn_id: clientTurnId, text: 'How is the audience used?' },
+      }
       await act(async () => {
         messageStream.push(commandStartedEvent(waiting))
-        messageStream.push({
-          event: 'commit',
-          data: {
-            kind: 'commit',
-            session_id: waiting.session_id,
-            operation_id: 'message-1',
-            stage_id: state,
-            at_version: 3,
-            version: 3,
-            state,
-            settled: false,
-            items: [
-              {
-                seq: 1,
-                at_version: 3,
-                kind: 'user',
-                payload: { turn_id: 'user-1', text: 'How is the audience used?' },
-              },
-            ],
-          },
-        })
+        messageStream.push(conversationItemEvent(question))
+        for (const event of assistantMessageEvents(reply, 'message-1')) messageStream.push(event)
       })
-      await screen.findByText('How is the audience used?')
+      await screen.findByText('The audience determines how to explain the results.')
       expect(screen.getByRole('textbox', { name: 'Audience' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'Submit form' })).toBeDisabled()
 
       await act(async () => messageStream.push(stateEvent(answered)))
+      await screen.findByText('How is the audience used?')
       await screen.findByText('The audience determines how to explain the results.')
       await waitFor(() => expect(screen.getByRole('textbox', { name: 'Audience' })).toBeEnabled())
       expect(screen.getByRole('textbox', { name: 'Audience' })).toHaveValue('Support agents')
@@ -923,7 +944,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     const createStarted = createSessionView({
       canvas_read_only: true,
       run_status: 'processing',
-      state: 'build.goal',
     })
     const planItem: ConversationItem = {
       at_version: 2,
@@ -936,11 +956,16 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       },
       seq: 1,
     }
+    const goalItem: ConversationItem = {
+      at_version: 1,
+      kind: 'user',
+      payload: { text: 'Build a support workflow', turn_id: 'goal-1' },
+      seq: 0,
+    }
     const planReady = createSessionView({
       actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve plan' }],
       conversation_last_seq: 1,
       phase: 'plan',
-      state: 'build.await_plan_approval',
       version: 2,
     })
     const approvedNotice: ConversationItem = {
@@ -953,17 +978,12 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       ...planReady,
       actions: [{ id: 'run_verify', kind: 'primary', label: 'Run verification' }],
       conversation_last_seq: 2,
-      state: 'build.await_verify',
       version: 3,
     })
     const createStream = createControlledEventStream()
     const actionStream = createControlledEventStream()
     mocks.create.mockResolvedValue(createStream.iterable)
     mocks.action.mockResolvedValue(actionStream.iterable)
-    mocks.conversation
-      .mockResolvedValueOnce(conversationPage())
-      .mockResolvedValueOnce(conversationPage([planItem]))
-      .mockResolvedValueOnce(conversationPage([approvedNotice]))
     const user = userEvent.setup()
     renderFlow()
 
@@ -976,6 +996,8 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
 
     await act(async () => {
       createStream.push(commandStartedEvent(createStarted))
+      createStream.push(conversationItemEvent(goalItem))
+      for (const event of assistantMessageEvents(planItem)) createStream.push(event)
       createStream.push(stateEvent(planReady))
     })
 
@@ -989,6 +1011,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
 
     await act(async () => {
       actionStream.push(commandStartedEvent(planReady))
+      actionStream.push(conversationItemEvent(approvedNotice))
       actionStream.push(stateEvent(actionComplete))
     })
 
@@ -1019,13 +1042,12 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       { signal: expect.any(AbortSignal) },
     )
     expect(mocks.get).not.toHaveBeenCalled()
+    expect(mocks.conversation).not.toHaveBeenCalled()
   })
 
   it('selects Edit for a connected canvas and sends the opening goal', async () => {
     const editStarted = createSessionView({
-      entry_mode: 'edit',
       run_status: 'processing',
-      state: 'edit.capability_check',
     })
     const editReply: ConversationItem = {
       at_version: 2,
@@ -1038,18 +1060,24 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       },
       seq: 1,
     }
+    const goalItem: ConversationItem = {
+      at_version: 1,
+      kind: 'user',
+      payload: { text: 'Add an approval step', turn_id: 'goal-edit' },
+      seq: 0,
+    }
     const editReady = createSessionView({
       conversation_last_seq: 1,
-      entry_mode: 'edit',
       phase: 'plan',
-      state: 'edit.await_rules',
       version: 2,
     })
-    mocks.conversation
-      .mockResolvedValueOnce(conversationPage())
-      .mockResolvedValueOnce(conversationPage([editReply]))
     mocks.create.mockResolvedValue(
-      streamOf(commandStartedEvent(editStarted), stateEvent(editReady)),
+      streamOf(
+        commandStartedEvent(editStarted),
+        conversationItemEvent(goalItem),
+        ...assistantMessageEvents(editReply),
+        stateEvent(editReady),
+      ),
     )
     const user = userEvent.setup()
     renderFlow(1)
@@ -1067,14 +1095,13 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       },
     })
     expect(mocks.syncDraft).toHaveBeenCalledOnce()
+    expect(mocks.conversation).not.toHaveBeenCalled()
   })
 
   it('recovers the latest Fix view with JSON GET when the create stream ends early', async () => {
     const fixStarted = createSessionView({
       canvas_read_only: true,
-      entry_mode: 'fix',
       run_status: 'processing',
-      state: 'fix.diagnose',
     })
     const recoveredNotice: ConversationItem = {
       at_version: 2,
@@ -1085,9 +1112,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     const recoveredFix = createSessionView({
       actions: [{ id: 'approve_repair', kind: 'primary', label: 'Approve repair' }],
       conversation_last_seq: 1,
-      entry_mode: 'fix',
       phase: 'plan',
-      state: 'fix.await_approval',
       version: 2,
     })
     mocks.create.mockResolvedValue(streamOf(commandStartedEvent(fixStarted)))
@@ -1131,14 +1156,12 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       actions: [{ id: 'submit_requirements', kind: 'primary', label: 'Submit requirements' }],
       active_interaction: {
         action_id: 'submit_requirements',
-        card: buildForm,
+        card_seq: buildForm.seq,
         valid_at_version: 2,
       },
       conversation_last_seq: 0,
-      entry_mode: 'build',
       phase: 'clarify',
       session_id: 'build-session',
-      state: 'build.goal_analysis',
       version: 2,
     })
     const fixNotice: ConversationItem = {
@@ -1150,11 +1173,9 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     const fix = createSessionView({
       actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve repair' }],
       conversation_last_seq: 0,
-      entry_mode: 'fix',
       phase: 'plan',
       run_status: 'waiting_confirmation',
       session_id: 'fix-session',
-      state: 'fix.await_approval',
       version: 2,
     })
     mocks.get.mockResolvedValueOnce(build).mockResolvedValue(fix)
@@ -1200,7 +1221,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           conversation_last_seq: -1,
           phase: 'understand',
           run_status: 'processing',
-          state: 'fix.diagnose',
           version: 1,
         }),
       )

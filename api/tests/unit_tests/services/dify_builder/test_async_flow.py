@@ -165,9 +165,9 @@ def test_full_fix_flow_create_to_publish_success_eager_async(monkeypatch, repo: 
     assert stored.current_state == PcState.SUCCESS
 
     # the bus received both native workflow events (from provide_testdata -> fix.verify
-    # draft run) and terminal state events across the whole flow.
+    # draft run) and terminal command-finished events across the whole flow.
     assert any(ev.get("kind") == "workflow" for _sid, ev in events)
-    assert any(ev.get("kind") == "state" for _sid, ev in events)
+    assert any(ev.get("kind") == "command_finished" for _sid, ev in events)
 
     # the lock was acquired-then-released on every dispatch, including the
     # final one.
@@ -222,10 +222,10 @@ def test_terminal_state_frame_excludes_conversation_history(monkeypatch, repo: S
 
     # create_fix_session's dispatch runs the task synchronously (eager
     # enqueue), so by the time this returns the task has already published
-    # its terminal `state` frame.
+    # its terminal `command_finished` frame.
     svc.create_fix_session(APP_ID, _actor(), failed_run_id="TR-1")
 
-    state_frames = [ev for _sid, ev in events if ev.get("kind") == "state"]
+    state_frames = [ev for _sid, ev in events if ev.get("kind") == "command_finished"]
     assert len(state_frames) >= 1
     terminal = state_frames[-1]
     assert "conversation" not in terminal

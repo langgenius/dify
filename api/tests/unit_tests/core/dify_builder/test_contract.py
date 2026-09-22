@@ -12,23 +12,20 @@ from core.dify_builder.contract import (
     AssistantTurnItem,
     CanvasEvent,
     CardKind,
-    ChangeSetCard,
     ExecutionActivity,
     ExecutionProgress,
     FormCard,
     FormField,
     Phase,
     PlanCard,
-    PublishCard,
     RequirementsPayload,
     ResourceOption,
     ResourceSelectCard,
     RunStatus,
-    SummaryCard,
     TestResultCard,
-    TestStat,
+    post_canvas_action_id,
 )
-from core.dify_builder.models import ChangedNode, EntryMode
+from core.dify_builder.models import EntryMode
 from core.dify_builder.state import PcState
 from services.dify_builder.service import SessionView, _run_status
 from services.dify_builder.wiring import session_view_to_dict
@@ -47,6 +44,20 @@ def test_recovery_class_members():
         "structural_compatible",
         "structural_invalidating",
     ]
+
+
+@pytest.mark.parametrize(
+    ("state", "action_kind", "expected"),
+    [
+        ("build.await_repair", "approve_plan", "run_test"),
+        ("edit.await_repair", "approve_plan", "run_affected_tests"),
+        ("build.await_repair", "approve_repair", "run_test"),
+        ("fix.await_approval", "approve_repair", None),
+        ("build.await_repair", "cancel", None),
+    ],
+)
+def test_post_canvas_action_is_an_explicit_public_follow_up(state, action_kind, expected):
+    assert post_canvas_action_id(state, action_kind) == expected
 
 
 def test_recovery_ref_fields():
@@ -86,9 +97,7 @@ def test_enums_match_spec():
     assert PcState.EDIT_IMPACT_ANALYSIS.value == "edit.impact_analysis"
 
 
-def test_sessionview_has_new_fields():
-    """SessionView (spec §1) carries entry_mode/phase/actions/checkpoint,
-    and dataclasses.asdict serializes them to snake_case wire keys."""
+def test_session_view_public_projection_excludes_engine_state():
     fix_session_view = SessionView(
         session_id="s1",
         app_id="a1",
@@ -100,10 +109,9 @@ def test_sessionview_has_new_fields():
         conversation_last_seq=-1,
     )
     d = session_view_to_dict(fix_session_view)
-    assert d["entry_mode"] == "fix"
     assert d["phase"] in {p.value for p in Phase}
     assert isinstance(d["actions"], list)
-    assert "checkpoint" in d
+    assert {"app_id", "state", "entry_mode", "decision", "checkpoint"}.isdisjoint(d)
 
 
 def test_run_status_terminal_states():
@@ -127,36 +135,15 @@ def test_card_shapes_round_trip():
     shipped ConversationItem envelope. One representative assertion per
     card family (spec §4.3), plus one typed submit payload (spec §5)."""
 
-    # change_set -- the brief's canonical example.
-    c = ChangeSetCard(
-        count=2, changes=["a", "b"], scope="configuration", nodes=[ChangedNode(node_id="node-1", title="Answer")]
-    )
-    assert c.kind == CardKind.CHANGE_SET
-    assert "kind" not in asdict(c)
-    expected = {
-        "count": 2,
-        "changes": ["a", "b"],
-        "scope": "configuration",
-        "nodes": [{"node_id": "node-1", "title": "Answer"}],
-    }
-    assert asdict(c) == expected
-    item = c.to_item(seq=5, at_version=3)
-    assert item.kind == "change_set"
-    assert item.seq == 5
-    assert item.at_version == 3
-    assert item.payload == expected
-
     # plan
-    plan = PlanCard(title="Build plan", version_tag="v1", items=["Add start node", "Add LLM node"])
+    plan = PlanCard(title="Build plan", items=["Add start node", "Add LLM node"])
     assert plan.kind == CardKind.PLAN
     assert "kind" not in asdict(plan)
     plan_item = plan.to_item(seq=1, at_version=1)
     assert plan_item.kind == "plan"
     assert plan_item.payload == {
         "title": "Build plan",
-        "version_tag": "v1",
         "items": ["Add start node", "Add LLM node"],
-        "subtitle": None,
     }
 
     # form -- with a FormField.
@@ -201,37 +188,20 @@ def test_card_shapes_round_trip():
     rs_item = rs.to_item(seq=3, at_version=1)
     assert rs_item.payload["recommended"][0]["readiness"] == "ready"
 
-    # test_result -- with a TestStat.
+    # test_result -- intentionally minimal.
     tr = TestResultCard(
-        title="Validation passed",
-        subtitle="All checks green",
-        tone="success",
-        stats=[TestStat(value="3/3", label="Runs")],
-        run_ids=["run-1"],
+        status="failed",
+        failure_reason="One node failed",
+        dify_run_id="run-1",
     )
     assert tr.kind == CardKind.TEST_RESULT
     assert "kind" not in asdict(tr)
     tr_item = tr.to_item(seq=4, at_version=2)
-    assert tr_item.payload["stats"] == [{"value": "3/3", "label": "Runs"}]
-
-    # summary
-    summary = SummaryCard(variant="review", title="Pre-publish checklist", items=["4 nodes read", "3 var mappings"])
-    assert summary.kind == CardKind.SUMMARY
-    assert "kind" not in asdict(summary)
-    summary_item = summary.to_item(seq=6, at_version=3)
-    assert summary_item.payload == {
-        "variant": "review",
-        "title": "Pre-publish checklist",
-        "items": ["4 nodes read", "3 var mappings"],
-        "rows": [],
+    assert tr_item.payload == {
+        "status": "failed",
+        "failure_reason": "One node failed",
+        "dify_run_id": "run-1",
     }
-
-    # publish
-    pub = PublishCard(version="v1.0")
-    assert pub.kind == CardKind.PUBLISH
-    assert "kind" not in asdict(pub)
-    pub_item = pub.to_item(seq=7, at_version=4)
-    assert pub_item.payload == {"version": "v1.0", "badge": "live"}
 
     # assistant_turn keeps model reasoning separate from observable execution.
     turn = AssistantTurnItem(
@@ -388,23 +358,30 @@ def test_sse_union_accepts_current_payloads():
 
     view = {
         "session_id": "s1",
-        "app_id": "a1",
         "version": 2,
-        "state": "edit.impact_analysis",
         "canvas_read_only": False,
         "run_status": "waiting_input",
         "interrupted": False,
         "conversation_last_seq": -1,
+        "phase": "clarify",
+        "actions": [],
     }
     events = [
-        {"event": "command_started", "data": {"kind": "command_started", **view}},
+        {
+            "event": "command_started",
+            "data": {
+                "session_id": "s1",
+                "command_id": "command-1",
+                "version": 2,
+                "phase": "clarify",
+                "run_status": "processing",
+            },
+        },
         {
             "event": "workflow",
             "data": {
-                "kind": "workflow",
                 "session_id": "s1",
                 "operation_id": "operation-1",
-                "stage_id": "edit.impact_analysis",
                 "at_version": 3,
                 "revision": 2,
                 "payload": {
@@ -426,10 +403,8 @@ def test_sse_union_accepts_current_payloads():
         {
             "event": "canvas",
             "data": {
-                "kind": "canvas",
                 "session_id": "s1",
                 "operation_id": "operation-1",
-                "stage_id": "edit.impact_analysis",
                 "at_version": 3,
                 "revision": 3,
                 "event": "highlight_edit_target",
@@ -439,74 +414,68 @@ def test_sse_union_accepts_current_payloads():
         {
             "event": "agent_message",
             "data": {
-                "kind": "agent_message",
                 "session_id": "s1",
+                "command_id": "command-1",
                 "operation_id": "operation-1",
-                "id": "message-1",
-                "answer": "Working",
+                "turn_id": "message-1",
+                "delta": "Working",
                 "seq": 1,
                 "at_version": 2,
                 "revision": 1,
-                "stage_id": "edit.impact_analysis",
+                "done": False,
+                "text_bytes": 7,
+            },
+        },
+        {
+            "event": "conversation_item_appended",
+            "data": {
+                "session_id": "s1",
+                "command_id": "command-1",
+                "item": {
+                    "seq": 2,
+                    "at_version": 2,
+                    "kind": "notice",
+                    "payload": {"text": "Plan ready"},
+                },
             },
         },
         {
             "event": "reasoning",
             "data": {
-                "kind": "reasoning",
                 "session_id": "s1",
                 "operation_id": "operation-1",
-                "stage_id": "edit.impact_analysis",
                 "at_version": 3,
                 "revision": 4,
-                "span_id": "analyze-impact",
                 "delta": "The requested change touches the LLM node.",
             },
         },
         {
             "event": "progress",
             "data": {
-                "kind": "progress",
                 "session_id": "s1",
                 "operation_id": "operation-1",
-                "stage_id": "edit.impact_analysis",
                 "at_version": 3,
                 "revision": 1,
-                "execution": {
-                    "status": "running",
-                    "activities": [
-                        {
-                            "id": "edit-analyze-impact",
-                            "label": "Analyze the requested change",
-                            "state": "active",
-                        }
-                    ],
+                "status": "running",
+                "activity": {
+                    "id": "edit-analyze-impact",
+                    "label": "Analyze the requested change",
+                    "state": "active",
                 },
             },
         },
         {
-            "event": "commit",
+            "event": "command_finished",
+            "data": {"command_id": "command-1", **view},
+        },
+        {
+            "event": "error",
             "data": {
-                "kind": "commit",
+                "message": "step failed",
                 "session_id": "s1",
-                "operation_id": "operation-1",
-                "stage_id": "edit.impact_analysis",
-                "at_version": 2,
-                "version": 2,
-                "state": "edit.impact_analysis",
-                "settled": True,
-                "items": [
-                    {
-                        "seq": 0,
-                        "at_version": 2,
-                        "kind": "notice",
-                        "payload": {"text": "Impact analysis ready"},
-                    }
-                ],
+                "command_id": "command-1",
             },
         },
-        {"event": "state", "data": {"kind": "state", **view}},
-        {"event": "error", "data": {"kind": "error", "error": "step failed"}},
     ]
 
     for event in events:
@@ -520,6 +489,34 @@ def test_sse_union_rejects_unknown_event():
 
     with pytest.raises(ValidationError):
         DifyBuilderStreamEventResponse.model_validate({"event": "message", "data": {}})
+
+
+def test_conversation_item_event_rejects_assistant_text():
+    from pydantic import ValidationError
+
+    from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
+
+    with pytest.raises(ValidationError):
+        DifyBuilderStreamEventResponse.model_validate(
+            {
+                "event": "conversation_item_appended",
+                "data": {
+                    "session_id": "s1",
+                    "command_id": "command-1",
+                    "item": {
+                        "seq": 1,
+                        "at_version": 2,
+                        "kind": "assistant_turn",
+                        "payload": {
+                            "turn_id": "turn-1",
+                            "stage_id": "build.plan_approval",
+                            "execution": {"status": "completed"},
+                            "reply_text": "This text belongs to agent_message.",
+                        },
+                    },
+                },
+            }
+        )
 
 
 def test_sample_session_view_validates():
@@ -544,4 +541,6 @@ def test_sample_session_view_validates():
 
     assert view.session_id == "s1"
     assert view.run_status == RunStatus.WAITING_INPUT
-    assert "conversation" not in view.model_dump()
+    dumped = view.model_dump(exclude_none=True)
+    assert "conversation" not in dumped
+    assert {"app_id", "state", "entry_mode", "checkpoint"}.isdisjoint(dumped)

@@ -15,6 +15,7 @@ import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
   difyBuilderConversationLoadingAtom,
+  difyBuilderLocalUserMessageAtom,
 } from './session/state'
 import {
   difyBuilderActionsAtom,
@@ -23,6 +24,7 @@ import {
   difyBuilderHasSessionAtom,
   difyBuilderInteractionAtom,
   difyBuilderInteractionBusyAtom,
+  difyBuilderInteractionRefAtom,
   difyBuilderInterruptedAtom,
   difyBuilderLoadOlderConversationAtom,
   difyBuilderRecheckReadyAtom,
@@ -47,8 +49,10 @@ const DifyBuilderPanel = () => {
   const conversation = useAtomValue(difyBuilderConversationAtom)
   const conversationHasMore = useAtomValue(difyBuilderConversationHasMoreAtom)
   const conversationLoading = useAtomValue(difyBuilderConversationLoadingAtom)
+  const localUserMessage = useAtomValue(difyBuilderLocalUserMessageAtom)
   const hasSession = useAtomValue(difyBuilderHasSessionAtom)
   const interaction = useAtomValue(difyBuilderInteractionAtom)
+  const interactionRef = useAtomValue(difyBuilderInteractionRefAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
@@ -65,8 +69,8 @@ const DifyBuilderPanel = () => {
   )
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinnedToBottomRef = useRef(true)
-  const activeInteractionKey = interaction
-    ? `${sessionId}:${interaction.action_id}:${interaction.card.seq}`
+  const activeInteractionKey = interactionRef
+    ? `${sessionId}:${interactionRef.action_id}:${interactionRef.card_seq}`
     : ''
   const activeFormActionId =
     activeInteraction?.card.kind === 'form' && FORM_ACTION_IDS.has(activeInteraction.action_id)
@@ -80,10 +84,10 @@ const DifyBuilderPanel = () => {
   const actionPayloads = currentActionInteractionState.payloads
   const actionValidity = useMemo(
     () =>
-      interaction && !activeInteraction
-        ? { ...currentActionInteractionState.validity, [interaction.action_id]: false }
+      interactionRef && !activeInteraction
+        ? { ...currentActionInteractionState.validity, [interactionRef.action_id]: false }
         : currentActionInteractionState.validity,
-    [activeInteraction, currentActionInteractionState.validity, interaction],
+    [activeInteraction, currentActionInteractionState.validity, interactionRef],
   )
 
   const scrollToBottomIfPinned = useCallback(() => {
@@ -94,7 +98,13 @@ const DifyBuilderPanel = () => {
 
   useEffect(() => {
     scrollToBottomIfPinned()
-  }, [conversation.length, interactionBusy, scrollToBottomIfPinned, viewVersion])
+  }, [
+    conversation.length,
+    interactionBusy,
+    localUserMessage?.localId,
+    scrollToBottomIfPinned,
+    viewVersion,
+  ])
 
   const handleScroll = useCallback(() => {
     const scrollContainer = scrollRef.current
@@ -235,6 +245,11 @@ const DifyBuilderPanel = () => {
                 activeInteraction={interaction}
                 viewVersion={viewVersion}
                 items={conversation}
+                localUserMessage={
+                  localUserMessage?.sessionId === null || localUserMessage?.sessionId === sessionId
+                    ? localUserMessage
+                    : null
+                }
                 busy={interactionBusy || !canvasReady}
                 interrupted={interrupted}
                 activeFormId={activeFormId}

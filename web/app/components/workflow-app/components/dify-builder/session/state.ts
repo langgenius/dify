@@ -1,7 +1,9 @@
 import type { BuilderErrorCode } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type {
   ConversationItem,
+  DifyBuilderActiveCommand,
   DifyBuilderExecutionProgress,
+  DifyBuilderLocalUserMessage,
   DifyBuilderReasoning,
   DifyBuilderStreamingTurn,
   SessionView,
@@ -15,11 +17,13 @@ export type DifyBuilderRetryableMessage = {
 }
 
 export const difyBuilderSessionViewAtom = atom<SessionView | null>(null)
+export const difyBuilderActiveCommandAtom = atom<DifyBuilderActiveCommand | null>(null)
 // The only session lifecycle value persisted by the browser. SessionView is
 // an in-memory server projection rebuilt from GET on restore and updated by
 // authoritative SSE frames while a command is live.
 export const difyBuilderActiveSessionIdAtom = atom<string | null>(null)
 export const difyBuilderConversationAtom = atom<ConversationItem[]>([])
+export const difyBuilderLocalUserMessageAtom = atom<DifyBuilderLocalUserMessage | null>(null)
 export const difyBuilderConversationHasMoreAtom = atom(false)
 export const difyBuilderConversationLoadingAtom = atom(false)
 export const difyBuilderSessionBusyAtom = atom(false)
@@ -32,8 +36,10 @@ export const difyBuilderStreamingTurnAtom = atom<DifyBuilderStreamingTurn | null
 
 export const difyBuilderSessionScopedAtoms = [
   difyBuilderSessionViewAtom,
+  difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
+  difyBuilderLocalUserMessageAtom,
   difyBuilderConversationHasMoreAtom,
   difyBuilderConversationLoadingAtom,
   difyBuilderSessionBusyAtom,

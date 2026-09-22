@@ -125,10 +125,10 @@ def inmemory_service_factory_raw(repo: SqlDifyBuilderRepository, lock: FakeSessi
 
 
 class _StateSub:
-    """Fake subscription: one terminal ``state`` frame, then closes."""
+    """Fake subscription: one terminal ``command_finished`` frame, then closes."""
 
     def receive(self, timeout=None):  # noqa: ARG002
-        return json.dumps({"kind": "state", "version": 2, "session_id": "sid"}).encode()
+        return json.dumps({"kind": "command_finished", "version": 2, "session_id": "sid"}).encode()
 
     def close(self):
         pass
@@ -163,7 +163,9 @@ def test_create_fix_session_dispatches_request_fix_and_holds_lock(
     assert len(enqueued) == 1
     sid, action, dispatched_actor, token = enqueued[0]
     assert sid == view.session_id
-    assert action == Action(kind="request_fix", base_version=1)
+    assert action.kind == "request_fix"
+    assert action.base_version == 1
+    assert action.command_id
     assert dispatched_actor == actor
     assert token == f"tok-{view.session_id}"
 
@@ -686,12 +688,13 @@ def test_paused_session_can_resume_before_classifying_external_draft_changes(
     assert view.app_revision.conflicted is True
     assert view.actions == []
 
-    _view, expect_advance = service._prepare_action(
+    _view, expect_advance, initial_items = service._prepare_action(
         session.id,
         _actor(),
         Action(kind="resume", base_version=2, base_app_revision=current_revision),
     )
     assert expect_advance is True
+    assert initial_items == []
 
 
 def _seed_free_session(repo: SqlDifyBuilderRepository) -> Session:
@@ -756,9 +759,10 @@ def test_action_authorization_uses_state_specific_permission_tier(
         authorize_app_fn=lambda _actor, _app_id, access: accesses.append(access),
     )
 
-    _view, expect_advance = svc._prepare_action(session.id, _actor(), Action(kind=kind, base_version=1))
+    _view, expect_advance, initial_items = svc._prepare_action(session.id, _actor(), Action(kind=kind, base_version=1))
 
     assert expect_advance is True
+    assert initial_items == []
     assert accesses[0] == AppAccess.EDIT
     assert accesses[-1] == expected_access
 
@@ -822,12 +826,13 @@ def test_internal_action_state_guards(
     enqueued: list[tuple],
 ) -> None:
     waiting = _seed_session_at(repo, PcState.FIX_AWAIT_APPROVAL)
-    _view, expect_advance = service._prepare_action(
+    _view, expect_advance, initial_items = service._prepare_action(
         waiting.id,
         _actor(),
         Action(kind="message", payload={"text": "context", "client_turn_id": "turn-1"}, base_version=1),
     )
     assert expect_advance is True
+    assert initial_items == []
 
     working = _seed_session_at(repo, PcState.FIX_DIAGNOSE)
     for kind, payload in (
@@ -1144,14 +1149,14 @@ def test_submit_action_update_model_rejects_missing_config(
         )
 
 
-def test_submit_action_stream_update_model_emits_terminal_state_frame(
+def test_submit_action_stream_update_model_emits_terminal_command_finished_frame(
     service: DifyBuilderService,
     repo: SqlDifyBuilderRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``update_model`` settles synchronously and bumps the version. The stream
-    MUST emit a terminal ``state`` frame carrying the new version -- otherwise a
-    FE that tracks its held version off ``state`` frames keeps the stale value
+    MUST emit a terminal ``command_finished`` frame carrying the new version -- otherwise a
+    FE that tracks its held version off terminal frames keeps the stale value
     and its next action 409s (regression class from the 409 review)."""
     s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
     model_config = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
@@ -1161,8 +1166,8 @@ def test_submit_action_stream_update_model_emits_terminal_state_frame(
     frames = list(service.submit_action_stream(s.id, _actor(), action))
 
     assert _business_event(frames[0]) == "command_started"
-    state_frames = [f for f in frames if _business_event(f) == "state"]
-    assert state_frames, "update_model must emit a terminal state frame with the new version"
+    state_frames = [f for f in frames if _business_event(f) == "command_finished"]
+    assert state_frames, "update_model must emit a terminal command_finished frame with the new version"
 
 
 def test_submit_action_stream_subscribes_before_dispatch_and_streams(repo: SqlDifyBuilderRepository) -> None:
@@ -1171,7 +1176,7 @@ def test_submit_action_stream_subscribes_before_dispatch_and_streams(repo: SqlDi
 
     class _Sub:
         def receive(self, timeout):  # noqa: ARG002
-            return json.dumps({"kind": "state", "version": 2, "session_id": "sid"}).encode()
+            return json.dumps({"kind": "command_finished", "version": 2, "session_id": "sid"}).encode()
 
         def close(self):
             pass
@@ -1193,7 +1198,7 @@ def test_submit_action_stream_subscribes_before_dispatch_and_streams(repo: SqlDi
 
     assert order == ["subscribe", "enqueue"]  # subscribe strictly before dispatch
     assert _business_event(frames[0]) == "command_started"
-    assert any(_business_event(frame) == "state" for frame in frames)
+    assert any(_business_event(frame) == "command_finished" for frame in frames)
 
 
 def test_submit_action_stream_raises_conflict_before_streaming(repo: SqlDifyBuilderRepository) -> None:
@@ -1239,8 +1244,9 @@ def test_create_build_session_stream_subscribes_before_dispatch(inmemory_service
     assert order == ["subscribe", "enqueue"]
     assert _business_event(frames[0]) == "command_started"
     command_started = json.loads(frames[0].split("data: ", 1)[1])["data"]
-    assert command_started["actions"] == []
-    assert command_started["decision"] is None
+    assert set(command_started) == {"session_id", "command_id", "version", "phase", "run_status"}
+    assert command_started["phase"] == "understand"
+    assert command_started["run_status"] == "processing"
 
 
 def test_invalid_create_streams_raise_before_subscribe(inmemory_service_factory_raw) -> None:
@@ -1282,11 +1288,13 @@ def test_create_edit_session_stream_subscribes_before_initial_goal_dispatch(inme
     )
 
     assert order == ["subscribe", "enqueue"]
-    assert captured_actions == [
-        Action(kind="send_edit_goal", payload={"text": "Tighten risk handling"}, base_version=1)
-    ]
+    assert len(captured_actions) == 1
+    assert captured_actions[0].kind == "send_edit_goal"
+    assert captured_actions[0].payload == {"text": "Tighten risk handling"}
+    assert captured_actions[0].base_version == 1
+    assert captured_actions[0].command_id
     assert _business_event(frames[0]) == "command_started"
-    assert any(_business_event(frame) == "state" for frame in frames)
+    assert any(_business_event(frame) == "command_finished" for frame in frames)
 
 
 @pytest.mark.parametrize(
@@ -1405,7 +1413,7 @@ def test_settled_message_retry_uses_targeted_turn_lookup(
     monkeypatch.setattr(repo, "list_conversation", reject_full_history)
     service = DifyBuilderService(repo, FakeSessionLock(), lambda *_args: None)
 
-    view, expect_advance = service._prepare_action(
+    view, expect_advance, initial_items = service._prepare_action(
         session.id,
         _actor(),
         Action(
@@ -1417,16 +1425,12 @@ def test_settled_message_retry_uses_targeted_turn_lookup(
 
     assert expect_advance is False
     assert view.version == 2
+    assert initial_items == []
 
 
 def test_submit_message_rejects_blank_text(service: DifyBuilderService) -> None:
     with pytest.raises(BadRequestError, match="message text is required"):
         service.submit_message("session-1", _actor(), "   ", base_version=1, client_turn_id="turn-1")
-
-
-def test_actions_for_await_learning() -> None:
-    ids = [a.id for a in service_module._actions_for(PcState.BUILD_AWAIT_LEARNING)]
-    assert ids == ["accept_learning", "skip_learning"]
 
 
 def test_initial_plan_state_offers_no_actions() -> None:
@@ -1439,38 +1443,13 @@ def test_initial_plan_state_offers_no_actions() -> None:
     assert service_module._actions_for(PcState.BUILD_INITIAL_PLAN) == []
 
 
-def test_capability_check_hides_redundant_send_goal_after_goal_is_seeded() -> None:
+def test_capability_check_never_exposes_a_frontend_action() -> None:
     seeded = DifyBuilderContext(goal_text="Build a report workflow")
     assert service_module._actions_for(PcState.BUILD_CAPABILITY_CHECK, seeded) == []
-
-    # Preserve the explicit create-from-blank fallback: only a genuinely
-    # goal-less context still needs a send_goal interaction.
-    goal_less = DifyBuilderContext()
-    assert [action.id for action in service_module._actions_for(PcState.BUILD_CAPABILITY_CHECK, goal_less)] == [
-        "send_goal"
-    ]
+    assert service_module._actions_for(PcState.BUILD_CAPABILITY_CHECK, DifyBuilderContext()) == []
 
 
-def test_create_build_session_stamps_policy(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """``create_build_session`` reads
-    ``FeatureService.get_features(actor.tenant_id).skill_learning_policy`` and
-    stamps it onto ``fc`` at creation. Monkeypatched to a non-default value
-    ("automatic", not the ``DifyBuilderContext`` field default "ask") so this
-    only passes if the value genuinely round-trips through FeatureService --
-    not merely because it matches the field's own default."""
-    from services import feature_service as feature_service_module
-
-    monkeypatch.setattr(feature_service_module.dify_config, "DIFY_BUILDER_SKILL_LEARNING_POLICY", "automatic")
-
-    view = service.create_build_session(APP_ID, _actor(), goal_text="Build a report workflow")
-
-    _session, fc = repo.get_session(view.session_id)
-    assert fc.skill_learning_policy == "automatic"
-
-
-def test_create_build_session_bootstraps_at_capability_check_and_dispatches_send_goal(
+def test_create_build_session_bootstraps_at_capability_check_and_dispatches_start_build(
     service: DifyBuilderService, enqueued: list[tuple]
 ) -> None:
     view = service.create_build_session(APP_ID, _actor(), goal_text="  Build a report workflow  ")
@@ -1478,12 +1457,14 @@ def test_create_build_session_bootstraps_at_capability_check_and_dispatches_send
     assert view.state == "build.capability_check"
     assert view.entry_mode == EntryMode.BUILD
     assert view.version == 1
+    assert view.run_status == "processing"
+    assert view.canvas_read_only is True
     assert view.actions == []
     assert view.decision is None
     assert len(enqueued) == 1
     _sid, action, _actor2, _token = enqueued[0]
-    assert action.kind == "send_goal"
-    assert action.payload == {"text": "Build a report workflow"}
+    assert action.kind == "start_build"
+    assert action.payload == {}
     assert action.base_version == 1
 
 
@@ -1587,7 +1568,6 @@ def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
     # unconditional discovery-on-entry behavior is exercised directly against
     # the handler and end to end in test_handlers_build.py instead.
     handled: dict[PcState, set[str]] = {
-        PcState.BUILD_CAPABILITY_CHECK: {"send_goal"},
         PcState.BUILD_GOAL_ANALYSIS: {"submit_requirements"},
         PcState.BUILD_RESOURCE_RECOMMENDATION: {"confirm_resources"},
         PcState.BUILD_PLAN_APPROVAL: {"approve_repair"},
@@ -1663,7 +1643,10 @@ def test_create_edit_session_seeds_and_dispatches_opening_goal(
     session_id, action, actor, _token = enqueued[0]
     assert session_id == view.session_id
     assert actor == _actor()
-    assert action == Action(kind="send_edit_goal", payload={"text": "Tighten risk handling"}, base_version=1)
+    assert action.kind == "send_edit_goal"
+    assert action.payload == {"text": "Tighten risk handling"}
+    assert action.base_version == 1
+    assert action.command_id
 
 
 def test_edit_apply_changes_actions_and_run_status(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
@@ -1873,7 +1856,7 @@ def test_retry_whose_handler_raises_lands_in_restartable_failed_state(
     advance_mod.advance_session(s.id, action, {"account_id": actor.account_id, "tenant_id": actor.tenant_id}, token)
 
     assert not lock.exists(s.id)
-    state_event = next(ev for _sid, ev in events if ev["kind"] == "state")
+    state_event = next(ev for _sid, ev in events if ev["kind"] == "command_finished")
     assert state_event["state"] == "failed"
     assert state_event["run_status"] == "failed"
     assert [item["id"] for item in state_event["actions"]] == ["restart"]

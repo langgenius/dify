@@ -98,6 +98,7 @@ const renderForm = (
             : variant === 'edit_rules'
               ? 'submit_edit_rules'
               : 'provide_testdata',
+        card_seq: card.seq,
         card,
         valid_at_version: 1,
       }}
@@ -358,6 +359,7 @@ describe('DifyBuilderConversation test data form', () => {
           busy={false}
           activeInteraction={{
             action_id: 'provide_testdata',
+            card_seq: card.seq,
             card,
             valid_at_version: 1,
           }}
@@ -375,7 +377,6 @@ describe('DifyBuilderConversation test data form', () => {
       store.set(difyBuilderExecutionProgressAtom, {
         sessionId: 'session-1',
         operationId: 'operation-1',
-        stageId: 'build.test',
         atVersion: 2,
         revision: 1,
         execution: {
@@ -392,19 +393,19 @@ describe('DifyBuilderConversation test data form', () => {
       store.set(difyBuilderReasoningAtom, {
         sessionId: 'session-1',
         operationId: 'operation-1',
-        stageId: 'build.test',
         atVersion: 2,
         revision: 1,
         text: 'Inspecting the supplied test data.',
       })
       store.set(difyBuilderStreamingTurnAtom, {
         sessionId: 'session-1',
+        commandId: 'command-1',
         operationId: 'operation-1',
         turnId: 'turn-1',
         sequence: 1,
         atVersion: 2,
         revision: 1,
-        stageId: 'build.test',
+        textBytes: 21,
         replyText: 'Checking the workflow',
       })
     })
@@ -481,16 +482,56 @@ describe('DifyBuilderConversation test data form', () => {
     expect(within(log).queryAllByRole('button')).toHaveLength(0)
   })
 
+  it('renders local user text once while the durable message metadata arrives', () => {
+    const localUserMessage = {
+      afterSequence: -1,
+      localId: 'turn-local-1',
+      sessionId: 'session-1',
+      text: 'Show this immediately',
+      turnId: 'turn-local-1',
+    }
+    const props = {
+      viewVersion: 1,
+      busy: true,
+      activeInteraction: null,
+      interrupted: false,
+      onActionPayloadChange: vi.fn(),
+    }
+    const { rerender } = render(
+      <DifyBuilderConversation {...props} items={[]} localUserMessage={localUserMessage} />,
+    )
+
+    expect(screen.getByText(localUserMessage.text)).toBeInTheDocument()
+
+    rerender(
+      <DifyBuilderConversation
+        {...props}
+        items={[
+          {
+            seq: 0,
+            at_version: 2,
+            kind: 'user',
+            payload: { text: localUserMessage.text, turn_id: localUserMessage.turnId },
+          },
+        ]}
+        localUserMessage={localUserMessage}
+      />,
+    )
+
+    expect(screen.getAllByText(localUserMessage.text)).toHaveLength(1)
+  })
+
   it('announces committed messages as a labelled log without putting streaming tokens in it', () => {
     const store = createStore()
     store.set(difyBuilderStreamingTurnAtom, {
       sessionId: 'session-1',
+      commandId: 'command-1',
       operationId: 'operation-1',
       turnId: 'turn-streaming',
       sequence: 1,
       atVersion: 2,
       revision: 1,
-      stageId: 'build.test',
+      textBytes: 15,
       replyText: 'Streaming reply',
     })
 
@@ -540,12 +581,13 @@ describe('DifyBuilderConversation test data form', () => {
     const store = createStore()
     store.set(difyBuilderStreamingTurnAtom, {
       sessionId: 'session-1',
+      commandId: 'command-1',
       operationId: 'operation-1',
       turnId: 'turn-streaming',
       sequence: 1,
       atVersion: 2,
       revision: 1,
-      stageId: 'build.test',
+      textBytes: 15,
       replyText: 'Streaming reply',
     })
 
@@ -596,6 +638,7 @@ describe('DifyBuilderConversation test data form', () => {
           busy={false}
           activeInteraction={{
             action_id: 'confirm_resources',
+            card_seq: resourceCard.seq,
             card: resourceCard,
             valid_at_version: 1,
           }}
@@ -649,6 +692,7 @@ describe('DifyBuilderConversation test data form', () => {
         busy={false}
         activeInteraction={{
           action_id: 'provide_testdata',
+          card_seq: activeCard.seq,
           card: activeCard,
           valid_at_version: 5,
         }}
@@ -715,7 +759,7 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.getByText('The plan is ready.')).toBeInTheDocument()
   })
 
-  it('shows change set text while hiding challenge and checkpoint cards in a committed turn', () => {
+  it('renders change summaries as ordinary assistant text', () => {
     render(
       <DifyBuilderConversation
         viewVersion={1}
@@ -726,43 +770,12 @@ describe('DifyBuilderConversation test data form', () => {
           {
             seq: 0,
             at_version: 2,
-            kind: 'challenge',
-            payload: {
-              title: 'High-impact rules',
-              body: 'Review these rules before applying.',
-              tone: 'warning',
-            },
-          },
-          {
-            seq: 1,
-            at_version: 2,
-            kind: 'change_set',
-            payload: {
-              count: 1,
-              changes: ['Update answer configuration'],
-              scope: 'configuration',
-            },
-          },
-          {
-            seq: 2,
-            at_version: 2,
-            kind: 'checkpoint',
-            payload: {
-              checkpoint_id: 'checkpoint-1',
-              label: 'Pre-edit checkpoint',
-              created_at: '2026-09-04T00:00:00Z',
-            },
-          },
-          {
-            seq: 3,
-            at_version: 2,
             kind: 'assistant_turn',
             payload: {
               turn_id: 'turn-1',
               stage_id: 'edit.impact_analysis',
               execution: { status: 'completed', activities: [] },
-              reply_text: 'The change is ready for review.',
-              cards: ['challenge', 'change_set', 'checkpoint'],
+              reply_text: 'Updated the answer configuration. The change is ready for review.',
             },
           },
         ]}
@@ -770,17 +783,13 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    expect(screen.getByText('The change is ready for review.')).toBeInTheDocument()
-    expect(screen.queryByText('High-impact rules')).not.toBeInTheDocument()
-    expect(screen.queryByText('Review these rules before applying.')).not.toBeInTheDocument()
-    expect(screen.queryByText('configuration')).not.toBeInTheDocument()
-    const changes = screen.getByRole('article', { name: 'workflow.difyBuilder.changes' })
-    expect(within(changes).getByRole('listitem')).toHaveTextContent('Update answer configuration')
-    expect(within(changes).queryByRole('button')).not.toBeInTheDocument()
-    expect(screen.queryByText('Pre-edit checkpoint')).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Updated the answer configuration. The change is ready for review.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('workflow.difyBuilder.changes')).not.toBeInTheDocument()
   })
 
-  it('shows an empty change set without requiring an interaction', () => {
+  it('renders preflight findings with Builder-owned checklist styling', () => {
     render(
       <DifyBuilderConversation
         viewVersion={2}
@@ -791,39 +800,19 @@ describe('DifyBuilderConversation test data form', () => {
           {
             seq: 0,
             at_version: 2,
-            kind: 'change_set',
-            payload: { count: 0, changes: [], scope: 'configuration' },
-          },
-        ]}
-        onActionPayloadChange={vi.fn()}
-      />,
-    )
-
-    const changes = screen.getByRole('article', { name: 'workflow.difyBuilder.changes' })
-    expect(within(changes).getByText('workflow.difyBuilder.noChanges')).toBeInTheDocument()
-    expect(within(changes).queryByRole('list')).not.toBeInTheDocument()
-    expect(within(changes).queryByRole('button')).not.toBeInTheDocument()
-  })
-
-  it('labels target nodes by name and ID without requiring change descriptions', () => {
-    render(
-      <DifyBuilderConversation
-        viewVersion={2}
-        busy={false}
-        activeInteraction={null}
-        interrupted={false}
-        items={[
-          {
-            seq: 0,
-            at_version: 2,
-            kind: 'change_set',
+            kind: 'preflight_context',
             payload: {
-              count: 2,
-              changes: [],
-              scope: 'configuration',
-              nodes: [
-                { node_id: 'node3', title: 'Answer' },
-                { node_id: 'node4', title: '' },
+              issue_count: 1,
+              node_count: 1,
+              issues: [
+                {
+                  node_id: 'answer-1',
+                  node_type: 'answer',
+                  title: 'Answer',
+                  messages: ['Model is required'],
+                  unconnected: true,
+                  plugin_missing: true,
+                },
               ],
             },
           },
@@ -832,44 +821,16 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    const card = screen.getByRole('article', { name: 'workflow.difyBuilder.changes' })
-    const nodes = within(card).getByRole('list', { name: 'workflow.difyBuilder.affectedNodes' })
-    expect(within(nodes).getAllByRole('listitem')).toHaveLength(2)
-    expect(within(nodes).getByText('Answer')).toBeInTheDocument()
-    expect(within(nodes).getByText('node3')).toBeInTheDocument()
-    expect(within(nodes).getByText('node4')).toBeInTheDocument()
-    expect(within(card).queryByText('workflow.difyBuilder.noChanges')).not.toBeInTheDocument()
-    expect(within(card).queryByRole('button')).not.toBeInTheDocument()
-  })
-
-  it('preserves full multiline change text and duplicate entries as plain text', () => {
-    const change = `**Update configuration**\n<link>${'long_configuration_value_'.repeat(30)}</link>`
-    render(
-      <DifyBuilderConversation
-        viewVersion={2}
-        busy={false}
-        activeInteraction={null}
-        interrupted={false}
-        items={[
-          {
-            seq: 0,
-            at_version: 2,
-            kind: 'change_set',
-            payload: { count: 2, changes: [change, change], scope: 'configuration' },
-          },
-        ]}
-        onActionPayloadChange={vi.fn()}
-      />,
-    )
-
-    const changes = screen.getByRole('article', { name: 'workflow.difyBuilder.changes' })
-    const entries = within(changes).getAllByRole('listitem')
-    expect(entries).toHaveLength(2)
-    for (const entry of entries) {
-      expect(within(entry).getByText(change, { normalizer: (value) => value })).toBeInTheDocument()
-    }
-    expect(mocks.markdown).not.toHaveBeenCalled()
-    expect(within(changes).queryByRole('button')).not.toBeInTheDocument()
+    const card = screen.getByRole('article', {
+      name: 'workflow.difyBuilder.cardCategory.checks',
+    })
+    expect(within(card).getByRole('heading', { level: 4, name: 'Answer' })).toBeInTheDocument()
+    expect(within(card).getByText('answer')).toBeInTheDocument()
+    expect(within(card).getByText('Model is required')).toBeInTheDocument()
+    expect(within(card).getByText('workflow.common.needConnectTip')).toBeInTheDocument()
+    expect(
+      within(card).getByText(/^workflow\.nodes\.common\.pluginsNotInstalled/),
+    ).toBeInTheDocument()
   })
 
   it('does not render a Thinking section for execution progress alone', () => {
@@ -877,7 +838,6 @@ describe('DifyBuilderConversation test data form', () => {
     store.set(difyBuilderExecutionProgressAtom, {
       sessionId: 'session-1',
       operationId: 'operation-1',
-      stageId: 'build.test',
       atVersion: 2,
       revision: 1,
       execution: {
@@ -915,7 +875,6 @@ describe('DifyBuilderConversation test data form', () => {
     store.set(difyBuilderExecutionProgressAtom, {
       sessionId: 'session-1',
       operationId: 'operation-1',
-      stageId: 'build.test',
       atVersion: 2,
       revision: 1,
       execution: {
@@ -955,7 +914,6 @@ describe('DifyBuilderConversation test data form', () => {
       store.set(difyBuilderExecutionProgressAtom, {
         sessionId: 'session-1',
         operationId: 'operation-1',
-        stageId: 'build.test',
         atVersion: 2,
         revision: 2,
         execution: {
@@ -970,7 +928,6 @@ describe('DifyBuilderConversation test data form', () => {
               id: 'node:answer',
               label: 'Generate answer',
               state: 'active',
-              kind: 'node',
               parent_id: 'build-run-test',
             },
           ],
@@ -982,7 +939,7 @@ describe('DifyBuilderConversation test data form', () => {
     expect(progressDetails).toHaveAttribute('open')
   })
 
-  it('renders known plan metadata without inferring a status', () => {
+  it('renders a plan title and steps without version metadata', () => {
     render(
       <DifyBuilderConversation
         viewVersion={1}
@@ -996,8 +953,6 @@ describe('DifyBuilderConversation test data form', () => {
             kind: 'plan',
             payload: {
               title: 'Build a support workflow',
-              subtitle: 'Three steps',
-              version_tag: 'v1',
               items: ['Collect the question', 'Generate an answer'],
             },
           },
@@ -1009,8 +964,7 @@ describe('DifyBuilderConversation test data form', () => {
     const heading = screen.getByRole('heading', { level: 3, name: 'Build a support workflow' })
     const card = heading.closest('article')
     expect(card).toHaveTextContent('workflow.difyBuilder.cardCategory.plan')
-    expect(card).toHaveTextContent('Three steps')
-    expect(card).toHaveTextContent('v1')
+    expect(card).not.toHaveTextContent('v1')
     expect(card).toHaveTextContent('Collect the question')
     expect(card?.querySelector('[data-card-status]')).not.toBeInTheDocument()
   })
@@ -1028,9 +982,9 @@ describe('DifyBuilderConversation test data form', () => {
             at_version: 2,
             kind: 'test_result',
             payload: {
-              tone: 'error',
-              title: 'Validation failed',
-              subtitle: 'One node returned an error.',
+              status: 'failed',
+              failure_reason: 'One node returned an error.',
+              dify_run_id: 'run-1',
             },
           },
         ]}
@@ -1038,45 +992,42 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    const heading = screen.getByRole('heading', { level: 3, name: 'Validation failed' })
+    const heading = screen.getByRole('heading', {
+      level: 3,
+      name: 'workflow.common.workflowProcessFailed',
+    })
     const card = heading.closest('article')
     expect(card).toHaveTextContent('workflow.difyBuilder.cardCategory.test')
     expect(card).toHaveTextContent('One node returned an error.')
-    expect(card).toHaveTextContent('common.api.actionFailed')
     expect(card?.querySelector('[data-card-status="failed"]')).toBeInTheDocument()
   })
 
-  it.each(['', '{"result":"<script>42</script>"\n… (truncated)'])(
-    'shows nonempty test output as collapsible plain text: %j',
-    async (output) => {
-      const user = userEvent.setup()
-      render(
-        <DifyBuilderConversation
-          viewVersion={2}
-          busy={false}
-          activeInteraction={null}
-          interrupted={false}
-          items={[
-            {
-              kind: 'test_result',
-              seq: 0,
-              at_version: 2,
-              payload: { tone: 'success', title: 'Test passed', subtitle: '', output },
-            },
-          ]}
-          onActionPayloadChange={vi.fn()}
-        />,
-      )
-      if (!output) {
-        expect(screen.queryByText('workflow.common.output')).not.toBeInTheDocument()
-        return
-      }
-      const details = screen.getByRole('group', { name: 'workflow.common.output' })
-      expect(details).not.toHaveAttribute('open')
-      await user.click(screen.getByText('workflow.common.output'))
-      expect(details).toHaveAttribute('open')
-      expect(screen.getByText(output, { normalizer: (value) => value })).toBeVisible()
-      expect(mocks.markdown).not.toHaveBeenCalled()
-    },
-  )
+  it('renders only the success result indicator for a successful test', () => {
+    render(
+      <DifyBuilderConversation
+        viewVersion={2}
+        busy={false}
+        activeInteraction={null}
+        interrupted={false}
+        items={[
+          {
+            kind: 'test_result',
+            seq: 0,
+            at_version: 2,
+            payload: { status: 'succeeded', dify_run_id: 'run-1' },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+      />,
+    )
+
+    const heading = screen.getByRole('heading', {
+      level: 3,
+      name: 'workflow.common.workflowProcessSucceeded',
+    })
+    const card = heading.closest('article')
+    expect(card?.querySelector('[data-card-status="done"]')).toBeInTheDocument()
+    expect(card).not.toHaveTextContent('run-1')
+    expect(card).not.toHaveTextContent('workflow.common.output')
+  })
 })

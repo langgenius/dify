@@ -137,8 +137,7 @@ class TestInput:
 class ConversationItem:
     seq: int = 0
     kind: str = ""  # user | decision | notice | run_context | preflight_context | assistant_turn | plan
-    # | form | challenge | resource_select | checkpoint | change_set | test_result | error | summary
-    # | publish | build_learning
+    # | form | resource_select | test_result
     payload: dict[str, Any] = field(default_factory=dict)
     at_version: int = 0
 
@@ -222,6 +221,14 @@ class ApplyResult:
 
 
 @dataclass(kw_only=True)
+class PublishResult:
+    """User-visible identity of the workflow version created by publish."""
+
+    version_name: str = ""
+    status: str = "live"
+
+
+@dataclass(kw_only=True)
 class BuildNodesResult:
     """Outcome of ``build_nodes``: the create/connect ``intents`` to apply, plus a
     human-readable ``error`` explaining WHY generation failed when ``intents`` is
@@ -230,10 +237,9 @@ class BuildNodesResult:
 
     intents: list[MutationIntent] = field(default_factory=list)
     error: str = ""
-    # Structured, timestamped breadcrumbs for the exported debug log. Server logs
-    # are lost when the api pod restarts, so each failed generation attempt travels
-    # back here (server UTC ``at``, generator ``code``/``node_id``/``detail``) and is
-    # stamped onto the ErrorCard -> conversation item -> exported trace.
+    # Structured, timestamped breadcrumbs returned to the handler for backend
+    # logging (server UTC ``at``, generator ``code``/``node_id``/``detail``).
+    # They are intentionally not sent to the frontend.
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -301,6 +307,11 @@ class DifyBuilderContext:
     last_structure_fingerprint: str = ""
     recovery_class: str = ""
 
+    # Stable id of the most recent command persisted into this context. It is
+    # returned in SessionView so reconnecting clients can correlate
+    # command_finished without replaying conversation rows over SSE.
+    last_command_id: str = ""
+
     # -- Governance fields (C-2, additive) --
     skill_learning_policy: str = "ask"
 
@@ -313,10 +324,10 @@ class DifyBuilderContext:
 
 @dataclass(kw_only=True)
 class Action:
-    """A user-driven event entering the machine."""
+    """A user-driven event or service-internal command entering the machine."""
 
-    # request_fix | approve_repair | reject_repair | run_verify | provide_testdata |
-    # publish | keep_draft | undo | re_fix | message
+    # start_build (internal) | request_fix | approve_repair | reject_repair |
+    # run_verify | provide_testdata | publish | keep_draft | undo | re_fix | message
     kind: str = ""
     payload: dict[str, Any] = field(default_factory=dict)
     base_version: int = 0
@@ -324,6 +335,9 @@ class Action:
     # Empty means the action does not mutate or otherwise depend on the app
     # draft (for example a free-text conversation turn).
     base_app_revision: str = ""
+    # Server-assigned stable id shared by command_started and
+    # command_finished. It is not accepted from the public request payload.
+    command_id: str = ""
 
 
 @dataclass(kw_only=True)

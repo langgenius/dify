@@ -2,14 +2,46 @@ import type {
   ConversationItem,
   DifyBuilderActionPayloadChange,
   DifyBuilderActionValidityChange,
-  SessionView,
+  DifyBuilderActiveInteraction,
+  DifyBuilderLocalUserMessage,
 } from '../types'
+import type { DifyBuilderConversationGroup } from './group-conversation-items'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ConversationCard } from './conversation-card'
+import { ConversationCard, UserMessage } from './conversation-card'
 import { groupConversationItems } from './group-conversation-items'
 import { StreamingAssistantTurn } from './streaming-assistant-turn'
+
+type ConversationRenderEntry =
+  | DifyBuilderConversationGroup
+  | { type: 'local-user'; message: DifyBuilderLocalUserMessage }
+
+const firstSequence = (group: DifyBuilderConversationGroup) =>
+  group.type === 'standalone' ? group.item.seq : (group.cards[0]?.seq ?? group.turn.seq)
+
+const addLocalUserMessage = (
+  groups: DifyBuilderConversationGroup[],
+  items: ConversationItem[],
+  message?: DifyBuilderLocalUserMessage | null,
+): ConversationRenderEntry[] => {
+  if (
+    !message ||
+    items.some(
+      (item) =>
+        item.kind === 'user' &&
+        (message.turnId
+          ? item.payload.turn_id === message.turnId
+          : item.payload.text === message.text),
+    )
+  )
+    return groups
+
+  const entry: ConversationRenderEntry = { type: 'local-user', message }
+  const insertionIndex = groups.findIndex((group) => firstSequence(group) > message.afterSequence)
+  if (insertionIndex < 0) return [...groups, entry]
+  return [...groups.slice(0, insertionIndex), entry, ...groups.slice(insertionIndex)]
+}
 
 export const DifyBuilderConversation = memo(
   ({
@@ -19,17 +51,19 @@ export const DifyBuilderConversation = memo(
     activeFormId,
     interrupted,
     items,
+    localUserMessage,
     onActionPayloadChange,
     onActionValidityChange,
     onActiveFormSubmit,
     onStreamingContentChange,
   }: {
     busy: boolean
-    activeInteraction: SessionView['active_interaction']
-    viewVersion: SessionView['version']
+    activeInteraction: DifyBuilderActiveInteraction | null
+    viewVersion: number
     activeFormId?: string
     interrupted: boolean
     items: ConversationItem[]
+    localUserMessage?: DifyBuilderLocalUserMessage | null
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
     onActiveFormSubmit?: () => void
@@ -37,6 +71,10 @@ export const DifyBuilderConversation = memo(
   }) => {
     const { t } = useTranslation()
     const groups = useMemo(() => groupConversationItems(items), [items])
+    const entries = useMemo(
+      () => addLocalUserMessage(groups, items, localUserMessage),
+      [groups, items, localUserMessage],
+    )
     const activeCard = activeInteraction?.card
     const interactionIsCurrent = activeInteraction?.valid_at_version === viewVersion
 
@@ -57,9 +95,21 @@ export const DifyBuilderConversation = memo(
           aria-relevant="additions"
           className="flex flex-col gap-3"
         >
-          {groups.map((group) => {
+          {entries.map((group) => {
+            if (group.type === 'local-user') {
+              return <UserMessage key={`user-${group.message.localId}`} text={group.message.text} />
+            }
+
             if (group.type === 'standalone') {
               if (group.item.seq === activeCard?.seq) return null
+              if (group.item.kind === 'user') {
+                return (
+                  <UserMessage
+                    key={`user-${group.item.payload.turn_id}`}
+                    text={group.item.payload.text}
+                  />
+                )
+              }
               return (
                 <ConversationCard
                   key={`${group.item.seq}-${group.item.kind}`}

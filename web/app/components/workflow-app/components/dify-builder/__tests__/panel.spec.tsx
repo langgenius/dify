@@ -38,17 +38,14 @@ const mocks = vi.hoisted(() => ({
 
 const sessionView: SessionView = {
   actions: [{ id: 'approve_plan', label: 'Approve plan', kind: 'primary' }],
-  app_revision: { observed: 'hash-1', current: 'hash-1', conflicted: false },
-  app_id: 'app-1',
+  app_revision: { current: 'hash-1', conflicted: false },
   canvas_read_only: false,
   active_interaction: null,
   conversation_last_seq: 1,
-  entry_mode: 'fix',
   interrupted: false,
   phase: 'plan',
   run_status: 'waiting_input',
   session_id: 'session-1',
-  state: 'fix.await_approval',
   version: 1,
 }
 
@@ -226,17 +223,21 @@ describe('DifyBuilderPanel', () => {
     expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
   })
 
-  it('keeps actions below the conversation and above a text-only composer', async () => {
+  it('keeps actions below the conversation and the phase strip directly above the composer', async () => {
     const user = userEvent.setup()
     renderPanel()
 
     const action = screen.getByRole('button', { name: 'Approve plan' })
     const message = screen.getByText('Fix the workflow')
+    const status = screen.getByRole('status', {
+      name: 'workflow.difyBuilder.status.planning · workflow.difyBuilder.status.waitingForInput',
+    })
     const composer = screen.getByRole('textbox', {
       name: 'workflow.difyBuilder.messagePlaceholder',
     })
     expect(message.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(action.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(action.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(status.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Model selector' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /attach/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /voice|microphone/i })).not.toBeInTheDocument()
@@ -396,8 +397,8 @@ describe('DifyBuilderPanel', () => {
     renderPanel({
       ...sessionView,
       actions: [],
+      phase: 'complete',
       run_status: 'complete',
-      state: 'complete',
     })
 
     const composer = screen.getByRole('textbox', {
@@ -437,12 +438,11 @@ describe('DifyBuilderPanel', () => {
         actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
         active_interaction: {
           action_id: 'provide_testdata',
-          card,
+          card_seq: card.seq,
           valid_at_version: 1,
         },
         conversation_last_seq: 0,
         phase: 'test',
-        state: 'build.await_testdata',
       },
       undefined,
       [card],
@@ -481,12 +481,11 @@ describe('DifyBuilderPanel', () => {
       actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
       active_interaction: {
         action_id: 'provide_testdata',
-        card,
+        card_seq: card.seq,
         valid_at_version: 1,
       },
       conversation_last_seq: 0,
       phase: 'test',
-      state: 'build.await_testdata',
     }
     const { store } = renderPanel(view, undefined, [card])
 
@@ -497,7 +496,7 @@ describe('DifyBuilderPanel', () => {
         version: 2,
         active_interaction: {
           action_id: 'provide_testdata',
-          card: { ...card, payload: { ...card.payload } },
+          card_seq: card.seq,
           valid_at_version: 2,
         },
       })
@@ -533,12 +532,11 @@ describe('DifyBuilderPanel', () => {
         actions: [{ id: 'provide_testdata', label: 'Provide test data', kind: 'primary' }],
         active_interaction: {
           action_id: 'provide_testdata',
-          card,
+          card_seq: card.seq,
           valid_at_version: 1,
         },
         conversation_last_seq: 0,
         phase: 'test',
-        state: 'build.await_testdata',
       },
       undefined,
       [card],
@@ -582,7 +580,7 @@ describe('DifyBuilderPanel', () => {
         ...sessionView,
         active_interaction: {
           action_id: 'submit_requirements',
-          card,
+          card_seq: card.seq,
           valid_at_version: 1,
         },
         conversation_last_seq: 0,
@@ -598,8 +596,6 @@ describe('DifyBuilderPanel', () => {
     renderPanel({
       ...sessionView,
       actions: [{ id: 'recheck', label: 'Re-check', kind: 'primary' }],
-      entry_mode: 'fix_checklist',
-      state: 'checklist.await_recheck',
     })
 
     expect(screen.getByRole('button', { name: 'Re-check' })).toBeDisabled()
@@ -613,7 +609,6 @@ describe('DifyBuilderPanel', () => {
       canvas_read_only: true,
       interrupted: true,
       run_status: 'processing',
-      state: 'build.publish',
     })
 
     expect(

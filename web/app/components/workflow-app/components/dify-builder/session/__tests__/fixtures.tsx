@@ -1,8 +1,11 @@
 import type {
+  DifyBuilderAgentMessageEventData,
+  DifyBuilderCommandFinishedEventData,
+  DifyBuilderConversationItemAppendedEventData,
   DifyBuilderConversationPageResponse,
+  DifyBuilderProgressEventData,
+  DifyBuilderReasoningEventData,
   DifyBuilderStreamEventResponse,
-  ProgressEventData,
-  ReasoningEventData,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ReactNode } from 'react'
 import type { ConversationItem, SessionView } from '../../types'
@@ -12,76 +15,100 @@ import { useDifyBuilderSessionController } from '../use-session-controller'
 
 export const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
   session_id: 'session-1',
-  app_id: 'app-1',
   version: 1,
-  state: 'fix.diagnose',
+  phase: 'understand',
   canvas_read_only: true,
   run_status: 'processing',
   interrupted: false,
+  last_command_id: 'command-1',
   conversation_last_seq: -1,
   active_interaction: null,
-  app_revision: { observed: 'revision-1', current: 'revision-1', conflicted: false },
+  app_revision: { current: 'revision-1', conflicted: false },
   ...overrides,
 })
 
 export const commandStartedEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
   event: 'command_started',
-  data: { kind: 'command_started', ...view },
+  data: {
+    session_id: view.session_id,
+    command_id: 'command-1',
+    version: view.version,
+    phase: view.phase ?? 'understand',
+    run_status: 'processing',
+  },
 })
 
 export const conversationPage = (
   data: ConversationItem[] = [],
   hasMore = false,
 ): DifyBuilderConversationPageResponse => ({
-  data,
+  data: data as DifyBuilderConversationPageResponse['data'],
   has_more: hasMore,
   first_seq: data[0]?.seq ?? null,
   last_seq: data.at(-1)?.seq ?? null,
 })
 
-export const stateEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
-  event: 'state',
-  data: { kind: 'state', ...view },
-})
+export const stateEvent = (
+  view: SessionView,
+  overrides: Partial<DifyBuilderCommandFinishedEventData> = {},
+): DifyBuilderStreamEventResponse => {
+  const { last_command_id: lastCommandId, ...state } = view
+  return {
+    event: 'command_finished',
+    data: {
+      ...state,
+      command_id: lastCommandId || 'command-1',
+      ...overrides,
+    },
+  }
+}
 
 export const agentMessageEvent = (
-  answer: string,
+  delta: string,
   revision = 1,
+  overrides: Partial<DifyBuilderAgentMessageEventData> = {},
 ): DifyBuilderStreamEventResponse => ({
   event: 'agent_message',
   data: {
-    kind: 'agent_message',
     session_id: 'session-1',
+    command_id: 'command-1',
     operation_id: 'operation-1',
-    id: 'turn-1',
-    answer,
+    turn_id: 'turn-1',
+    delta,
     seq: 1,
     at_version: 4,
     revision,
-    stage_id: 'fix.await_approval',
+    done: false,
+    text_bytes: new TextEncoder().encode(delta).byteLength,
+    ...overrides,
+  },
+})
+
+export const conversationItemEvent = (
+  item: DifyBuilderConversationItemAppendedEventData['item'],
+): DifyBuilderStreamEventResponse => ({
+  event: 'conversation_item_appended',
+  data: {
+    session_id: 'session-1',
+    command_id: 'command-1',
+    item,
   },
 })
 
 export const progressEvent = (
-  overrides: Partial<ProgressEventData> = {},
+  overrides: Partial<DifyBuilderProgressEventData> = {},
 ): DifyBuilderStreamEventResponse => ({
   event: 'progress',
   data: {
-    kind: 'progress',
     session_id: 'session-1',
     operation_id: 'operation-1',
-    stage_id: 'fix.verify',
     at_version: 2,
     revision: 1,
-    execution: {
-      status: 'running',
-      activities: [
-        {
-          id: 'fix-run-validation',
-          label: 'Run the repaired workflow',
-          state: 'active',
-        },
-      ],
+    status: 'running',
+    activity: {
+      id: 'fix-run-validation',
+      label: 'Run the repaired workflow',
+      state: 'active',
     },
     ...overrides,
   },
@@ -89,17 +116,14 @@ export const progressEvent = (
 
 export const reasoningEvent = (
   delta: string,
-  overrides: Partial<ReasoningEventData> = {},
+  overrides: Partial<DifyBuilderReasoningEventData> = {},
 ): DifyBuilderStreamEventResponse => ({
   event: 'reasoning',
   data: {
-    kind: 'reasoning',
     session_id: 'session-1',
     operation_id: 'operation-1',
-    stage_id: 'fix.verify',
     at_version: 2,
     revision: 1,
-    span_id: 'diagnose',
     delta,
     ...overrides,
   },

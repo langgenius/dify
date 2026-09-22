@@ -5,39 +5,26 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StringConstraints, model_validator
 
 from core.dify_builder.contract import (
-    Action,
-    AgentMessageEventData,
-    AppRevision,
+    ActionKind,
     AssistantTurnItem,
     BuilderErrorCode,
-    BuildLearningCard,
-    CanvasEventData,
-    ChallengeCard,
-    ChangeSetCard,
-    CheckpointCard,
-    CheckpointRef,
-    Decision,
+    CanvasEvent,
     DecisionItem,
-    ErrorCard,
-    ErrorEventData,
+    ExecutionActivityState,
+    ExecutionProgressStatus,
     FormCard,
     NoticeItem,
     Phase,
     PlanCard,
     PreflightContextCard,
-    ProgressEventData,
-    PublishCard,
-    ReasoningEventData,
     RecoveryRef,
     ResourceSelectCard,
     RunContextCard,
     RunStatus,
     SessionModel,
-    SummaryCard,
     TestResultCard,
     UserItem,
 )
-from core.dify_builder.models import EntryMode
 from fields.base import ResponseModel
 from fields.workflow_stream_fields import WorkflowStreamPayload
 
@@ -172,49 +159,14 @@ class DifyBuilderFormConversationItemResponse(DifyBuilderConversationItemBase):
     payload: FormCard
 
 
-class DifyBuilderChallengeConversationItemResponse(DifyBuilderConversationItemBase):
-    kind: Literal["challenge"]
-    payload: ChallengeCard
-
-
 class DifyBuilderResourceSelectConversationItemResponse(DifyBuilderConversationItemBase):
     kind: Literal["resource_select"]
     payload: ResourceSelectCard
 
 
-class DifyBuilderCheckpointConversationItemResponse(DifyBuilderConversationItemBase):
-    kind: Literal["checkpoint"]
-    payload: CheckpointCard
-
-
-class DifyBuilderChangeSetConversationItemResponse(DifyBuilderConversationItemBase):
-    kind: Literal["change_set"]
-    payload: ChangeSetCard
-
-
 class DifyBuilderTestResultConversationItemResponse(DifyBuilderConversationItemBase):
     kind: Literal["test_result"]
     payload: TestResultCard
-
-
-class DifyBuilderErrorConversationItemResponse(DifyBuilderConversationItemBase):
-    kind: Literal["error"]
-    payload: ErrorCard
-
-
-class DifyBuilderSummaryConversationItemResponse(DifyBuilderConversationItemBase):
-    kind: Literal["summary"]
-    payload: SummaryCard
-
-
-class DifyBuilderPublishConversationItemResponse(DifyBuilderConversationItemBase):
-    kind: Literal["publish"]
-    payload: PublishCard
-
-
-class DifyBuilderBuildLearningConversationItemResponse(DifyBuilderConversationItemBase):
-    kind: Literal["build_learning"]
-    payload: BuildLearningCard
 
 
 DifyBuilderConversationItem = Annotated[
@@ -226,43 +178,62 @@ DifyBuilderConversationItem = Annotated[
     | DifyBuilderAssistantTurnConversationItemResponse
     | DifyBuilderPlanConversationItemResponse
     | DifyBuilderFormConversationItemResponse
-    | DifyBuilderChallengeConversationItemResponse
     | DifyBuilderResourceSelectConversationItemResponse
-    | DifyBuilderCheckpointConversationItemResponse
-    | DifyBuilderChangeSetConversationItemResponse
-    | DifyBuilderTestResultConversationItemResponse
-    | DifyBuilderErrorConversationItemResponse
-    | DifyBuilderSummaryConversationItemResponse
-    | DifyBuilderPublishConversationItemResponse
-    | DifyBuilderBuildLearningConversationItemResponse,
+    | DifyBuilderTestResultConversationItemResponse,
+    Field(discriminator="kind"),
+]
+
+# Live item events intentionally exclude assistant_turn. Assistant text has a
+# dedicated streaming contract with a preallocated sequence; allowing it here
+# would reintroduce a second, conflicting text source for the frontend.
+DifyBuilderAppendedConversationItem = Annotated[
+    DifyBuilderUserConversationItemResponse
+    | DifyBuilderDecisionConversationItemResponse
+    | DifyBuilderNoticeConversationItemResponse
+    | DifyBuilderRunContextConversationItemResponse
+    | DifyBuilderPreflightContextConversationItemResponse
+    | DifyBuilderPlanConversationItemResponse
+    | DifyBuilderFormConversationItemResponse
+    | DifyBuilderResourceSelectConversationItemResponse
+    | DifyBuilderTestResultConversationItemResponse,
     Field(discriminator="kind"),
 ]
 
 
 class DifyBuilderActiveInteractionResponse(ResponseModel):
     action_id: str
-    card: DifyBuilderConversationItem
+    card_seq: int
     valid_at_version: int
 
 
-class DifyBuilderSessionViewResponse(ResponseModel):
+class DifyBuilderActionResponse(ResponseModel):
+    id: str
+    label: str
+    kind: ActionKind
+
+
+class DifyBuilderAppRevisionResponse(ResponseModel):
+    current: str
+    conflicted: bool
+
+
+class DifyBuilderSessionStateResponse(ResponseModel):
     session_id: str
-    app_id: str
     version: int
-    state: str
     canvas_read_only: bool
     run_status: RunStatus
     interrupted: bool
     conversation_last_seq: int
-    entry_mode: EntryMode = EntryMode.FIX
-    phase: Phase = Phase.UNDERSTAND
-    actions: list[Action] = Field(default_factory=list)
-    decision: Decision | None = None
+    phase: Phase
+    actions: list[DifyBuilderActionResponse] = Field(default_factory=list)
     active_interaction: DifyBuilderActiveInteractionResponse | None = None
-    checkpoint: CheckpointRef | None = None
     recovery: RecoveryRef | None = None
     model: SessionModel | None = None
-    app_revision: AppRevision | None = None
+    app_revision: DifyBuilderAppRevisionResponse | None = None
+
+
+class DifyBuilderSessionViewResponse(DifyBuilderSessionStateResponse):
+    last_command_id: str = ""
 
 
 class DifyBuilderConversationPageResponse(ResponseModel):
@@ -272,24 +243,17 @@ class DifyBuilderConversationPageResponse(ResponseModel):
     last_seq: int | None
 
 
-class DifyBuilderCommitEventData(ResponseModel):
+class DifyBuilderCommandFinishedEventData(DifyBuilderSessionStateResponse):
+    command_id: str
+    post_canvas_action_id: str | None = None
+
+
+class DifyBuilderCommandStartedEventData(ResponseModel):
     session_id: str
-    operation_id: str
-    stage_id: str
-    at_version: int
+    command_id: str
     version: int
-    state: str
-    settled: bool
-    items: list[DifyBuilderConversationItem]
-    kind: Literal["commit"] = "commit"
-
-
-class DifyBuilderStateEventData(DifyBuilderSessionViewResponse):
-    kind: Literal["state"] = "state"
-
-
-class DifyBuilderCommandStartedEventData(DifyBuilderSessionViewResponse):
-    kind: Literal["command_started"] = "command_started"
+    phase: Phase
+    run_status: RunStatus
 
 
 class DifyBuilderCommandStartedEventResponse(ResponseModel):
@@ -300,11 +264,9 @@ class DifyBuilderCommandStartedEventResponse(ResponseModel):
 class DifyBuilderWorkflowEventData(ResponseModel):
     session_id: str
     operation_id: str
-    stage_id: str
     at_version: int
     revision: int
     payload: WorkflowStreamPayload
-    kind: Literal["workflow"] = "workflow"
 
 
 class DifyBuilderWorkflowEventResponse(ResponseModel):
@@ -312,39 +274,105 @@ class DifyBuilderWorkflowEventResponse(ResponseModel):
     data: DifyBuilderWorkflowEventData
 
 
+class DifyBuilderCanvasEventData(ResponseModel):
+    session_id: str
+    operation_id: str
+    at_version: int
+    revision: int
+    event: CanvasEvent
+    node_id: str | None = None
+
+
 class DifyBuilderCanvasEventResponse(ResponseModel):
     event: Literal["canvas"]
-    data: CanvasEventData
+    data: DifyBuilderCanvasEventData
+
+
+class DifyBuilderExecutionActivityResponse(ResponseModel):
+    id: str
+    label: str
+    state: ExecutionActivityState
+    parent_id: str | None = None
+
+
+class DifyBuilderExecutionProgressResponse(ResponseModel):
+    status: ExecutionProgressStatus
+    activities: list[DifyBuilderExecutionActivityResponse] = Field(default_factory=list)
+
+
+class DifyBuilderAgentMessageEventData(ResponseModel):
+    session_id: str
+    command_id: str
+    operation_id: str
+    turn_id: str
+    delta: str
+    seq: int
+    at_version: int
+    revision: int
+    done: bool
+    text_bytes: int
+    execution: DifyBuilderExecutionProgressResponse | None = None
+    cards: list[str] = Field(default_factory=list)
 
 
 class DifyBuilderAgentMessageEventResponse(ResponseModel):
     event: Literal["agent_message"]
-    data: AgentMessageEventData
+    data: DifyBuilderAgentMessageEventData
+
+
+class DifyBuilderConversationItemAppendedEventData(ResponseModel):
+    session_id: str
+    command_id: str
+    item: DifyBuilderAppendedConversationItem
+
+
+class DifyBuilderConversationItemAppendedEventResponse(ResponseModel):
+    event: Literal["conversation_item_appended"]
+    data: DifyBuilderConversationItemAppendedEventData
+
+
+class DifyBuilderReasoningEventData(ResponseModel):
+    session_id: str
+    operation_id: str
+    at_version: int
+    revision: int
+    delta: str
 
 
 class DifyBuilderReasoningEventResponse(ResponseModel):
     event: Literal["reasoning"]
-    data: ReasoningEventData
+    data: DifyBuilderReasoningEventData
+
+
+class DifyBuilderProgressEventData(ResponseModel):
+    session_id: str
+    operation_id: str
+    at_version: int
+    revision: int
+    status: ExecutionProgressStatus
+    activity: DifyBuilderExecutionActivityResponse | None
 
 
 class DifyBuilderProgressEventResponse(ResponseModel):
     event: Literal["progress"]
-    data: ProgressEventData
+    data: DifyBuilderProgressEventData
 
 
-class DifyBuilderCommitEventResponse(ResponseModel):
-    event: Literal["commit"]
-    data: DifyBuilderCommitEventData
+class DifyBuilderCommandFinishedEventResponse(ResponseModel):
+    event: Literal["command_finished"]
+    data: DifyBuilderCommandFinishedEventData
 
 
-class DifyBuilderStateEventResponse(ResponseModel):
-    event: Literal["state"]
-    data: DifyBuilderStateEventData
+class DifyBuilderErrorEventData(ResponseModel):
+    session_id: str | None = None
+    command_id: str | None = None
+    code: str | None = None
+    message: str
 
 
 class DifyBuilderErrorEventResponse(ResponseModel):
     event: Literal["error"]
-    data: ErrorEventData
+    data: DifyBuilderErrorEventData
 
 
 class DifyBuilderStreamEventResponse(
@@ -354,10 +382,10 @@ class DifyBuilderStreamEventResponse(
             | DifyBuilderWorkflowEventResponse
             | DifyBuilderCanvasEventResponse
             | DifyBuilderAgentMessageEventResponse
+            | DifyBuilderConversationItemAppendedEventResponse
             | DifyBuilderReasoningEventResponse
             | DifyBuilderProgressEventResponse
-            | DifyBuilderCommitEventResponse
-            | DifyBuilderStateEventResponse
+            | DifyBuilderCommandFinishedEventResponse
             | DifyBuilderErrorEventResponse,
             Field(discriminator="event"),
         ]

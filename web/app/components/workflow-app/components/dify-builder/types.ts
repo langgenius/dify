@@ -2,50 +2,70 @@
 // from the backend OpenAPI document. This file only derives short feature-local
 // aliases and owns client-only values.
 import type {
+  DifyBuilderActionResponse,
+  DifyBuilderCanvasEventData,
   DifyBuilderChecklistErrorPayload,
+  DifyBuilderCommandStartedEventData,
   DifyBuilderConversationPageResponse,
+  DifyBuilderExecutionProgressResponse,
   DifyBuilderSessionViewResponse,
-  Action as GeneratedAction,
-  CanvasEventData as GeneratedCanvasEventData,
-  ExecutionProgress as GeneratedExecutionProgress,
   FormField as GeneratedFormField,
   SessionModel as GeneratedSessionModel,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { TraceSnapshot } from './session/trace-buffer'
 
-export type Action = GeneratedAction
-export type CanvasEventData = GeneratedCanvasEventData
+export type Action = DifyBuilderActionResponse
+export type CanvasEventData = DifyBuilderCanvasEventData
 export type ChecklistErrorPayload = DifyBuilderChecklistErrorPayload
-export type ConversationItem = DifyBuilderConversationPageResponse['data'][number]
+type GeneratedConversationItem = DifyBuilderConversationPageResponse['data'][number]
+type GeneratedAssistantTurn = Extract<GeneratedConversationItem, { kind: 'assistant_turn' }>
+type ClientAssistantTurn = Omit<GeneratedAssistantTurn, 'payload'> & {
+  payload: Omit<GeneratedAssistantTurn['payload'], 'stage_id'> & { stage_id?: string }
+}
+export type ConversationItem =
+  | Exclude<GeneratedConversationItem, { kind: 'assistant_turn' }>
+  | ClientAssistantTurn
+export type DifyBuilderLocalUserMessage = {
+  afterSequence: number
+  localId: string
+  sessionId: string | null
+  text: string
+  turnId?: string
+}
 export type ConversationPage = DifyBuilderConversationPageResponse
 export type FormField = GeneratedFormField
 export type SessionModel = GeneratedSessionModel
 export type SessionView = DifyBuilderSessionViewResponse
+export type DifyBuilderActiveInteraction = NonNullable<SessionView['active_interaction']> & {
+  card: ConversationItem
+}
+export type DifyBuilderActiveCommand = Omit<DifyBuilderCommandStartedEventData, 'command_id'> & {
+  command_id?: string
+}
 
 export type DifyBuilderStreamingTurn = {
   sessionId: string
+  commandId: string
   operationId: string
   turnId: string
   sequence: number
   atVersion: number
   revision: number
-  stageId: string
+  textBytes: number
   replyText: string
 }
 
 export type DifyBuilderExecutionProgress = {
   sessionId: string
   operationId: string
-  stageId: string
   atVersion: number
   revision: number
-  execution: GeneratedExecutionProgress
+  execution: DifyBuilderExecutionProgressResponse
 }
 
 export type DifyBuilderReasoning = {
   sessionId: string
   operationId: string
-  stageId: string
   atVersion: number
   revision: number
   text: string

@@ -1,6 +1,7 @@
 import type {
   Action,
   ChecklistErrorPayload,
+  DifyBuilderActiveInteraction,
   DifyBuilderSessionController,
   SessionModel,
 } from './types'
@@ -8,6 +9,9 @@ import type { DifyBuilderCanvasNode } from './utils'
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
 import {
+  difyBuilderActiveCommandAtom,
+  difyBuilderConversationAtom,
+  difyBuilderLocalUserMessageAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionErrorCodeAtom,
@@ -80,10 +84,21 @@ export const difyBuilderScopedAtoms = [
 ] as const
 
 export const difyBuilderAvailableAtom = atom((get) => get(difyBuilderRuntimeAtom)?.enabled === true)
-export const difyBuilderHasSessionAtom = atom((get) => get(difyBuilderSessionViewAtom) !== null)
-export const difyBuilderInteractionAtom = atom(
+export const difyBuilderHasSessionAtom = atom(
+  (get) =>
+    get(difyBuilderSessionViewAtom) !== null ||
+    get(difyBuilderActiveCommandAtom) !== null ||
+    get(difyBuilderLocalUserMessageAtom) !== null,
+)
+export const difyBuilderInteractionRefAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.active_interaction ?? null,
 )
+export const difyBuilderInteractionAtom = atom<DifyBuilderActiveInteraction | null>((get) => {
+  const interaction = get(difyBuilderInteractionRefAtom)
+  if (!interaction) return null
+  const card = get(difyBuilderConversationAtom).find((item) => item.seq === interaction.card_seq)
+  return card ? { ...interaction, card } : null
+})
 export const difyBuilderActiveInteractionAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   const interaction = get(difyBuilderInteractionAtom)
@@ -102,9 +117,18 @@ export const difyBuilderViewVersionAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.version ?? 0,
 )
 export const difyBuilderSessionIdAtom = atom(
-  (get) => get(difyBuilderSessionViewAtom)?.session_id ?? null,
+  (get) =>
+    get(difyBuilderSessionViewAtom)?.session_id ??
+    get(difyBuilderActiveCommandAtom)?.session_id ??
+    null,
 )
-export const difyBuilderPhaseAtom = atom((get) => get(difyBuilderSessionViewAtom)?.phase)
+export const difyBuilderPhaseAtom = atom(
+  (get) => get(difyBuilderActiveCommandAtom)?.phase ?? get(difyBuilderSessionViewAtom)?.phase,
+)
+export const difyBuilderRunStatusAtom = atom(
+  (get) =>
+    get(difyBuilderActiveCommandAtom)?.run_status ?? get(difyBuilderSessionViewAtom)?.run_status,
+)
 export const DIFY_BUILDER_CANVAS_REFRESH_PHASES = new Set([
   'modify',
   'test',
@@ -123,9 +147,7 @@ export const difyBuilderCanvasReadyAtom = atom((get) => {
 export const difyBuilderSessionModelAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.model ?? null,
 )
-export const difyBuilderRunActiveAtom = atom((get) =>
-  isActiveStatus(get(difyBuilderSessionViewAtom)?.run_status),
-)
+export const difyBuilderRunActiveAtom = atom((get) => isActiveStatus(get(difyBuilderRunStatusAtom)))
 export const difyBuilderInteractionBusyAtom = atom(
   (get) =>
     get(difyBuilderStartFixMutationAtom).isPending ||
@@ -231,14 +253,27 @@ const startDifyBuilderPromptAtom = atom(
     if (!set(prepareDifyBuilderSessionAtom)) return false
 
     const { nodes, edgeCount } = runtime.getCanvasSnapshot()
-    if (shouldStartBuildSession(nodes, edgeCount) && get(difyBuilderDeriveAppNameAtom)) {
-      const started = await runtime.session.startBuild(runtime.appId, prompt, model, true)
-      if (get(difyBuilderSessionViewAtom)) set(difyBuilderDeriveAppNameAtom, false)
-      return started
+    const startsBuild = shouldStartBuildSession(nodes, edgeCount)
+    const deriveAppName = startsBuild && get(difyBuilderDeriveAppNameAtom)
+    const localId = globalThis.crypto.randomUUID()
+    set(difyBuilderLocalUserMessageAtom, {
+      afterSequence: -1,
+      localId,
+      sessionId: null,
+      text: prompt,
+    })
+    const started = await (startsBuild
+      ? deriveAppName
+        ? runtime.session.startBuild(runtime.appId, prompt, model, true)
+        : runtime.session.startBuild(runtime.appId, prompt, model)
+      : runtime.session.startEdit(runtime.appId, prompt, model))
+    if (deriveAppName && get(difyBuilderSessionViewAtom)) set(difyBuilderDeriveAppNameAtom, false)
+    if (!started) {
+      set(difyBuilderLocalUserMessageAtom, (current) =>
+        current?.localId === localId ? null : current,
+      )
     }
-    return shouldStartBuildSession(nodes, edgeCount)
-      ? runtime.session.startBuild(runtime.appId, prompt, model)
-      : runtime.session.startEdit(runtime.appId, prompt, model)
+    return started
   },
 )
 
@@ -375,6 +410,7 @@ export const difyBuilderResetAtom = atom(null, (get, set) => {
   set(difyBuilderSelectedModelAtom, null)
   set(difyBuilderDeriveAppNameAtom, false)
   set(difyBuilderDraftAtom, '')
+  set(difyBuilderLocalUserMessageAtom, null)
   set(difyBuilderRetryableMessageAtom, null)
   set(difyBuilderLocalErrorAtom, '')
   set(difyBuilderChecklistErrorsAtom, [])

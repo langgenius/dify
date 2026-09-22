@@ -85,13 +85,6 @@ def test_state_values_are_verbatim_go_strings():
     assert PcState.FAILED == "failed"
 
 
-def test_build_await_learning_is_waiting():
-    assert PcState.BUILD_AWAIT_LEARNING == "build.await_learning"
-    assert is_waiting(PcState.BUILD_AWAIT_LEARNING) is True
-    assert is_working(PcState.BUILD_AWAIT_LEARNING) is False
-    assert is_terminal(PcState.BUILD_AWAIT_LEARNING) is False
-
-
 def test_edit_publish_is_working_and_edit_complete_is_terminal():
     assert PcState.EDIT_PUBLISH == "edit.publish"
     assert is_working(PcState.EDIT_PUBLISH) is True
@@ -114,3 +107,10 @@ def test_build_initial_plan_is_working_not_waiting():
     assert is_waiting(PcState.BUILD_INITIAL_PLAN) is False
     assert is_terminal(PcState.BUILD_INITIAL_PLAN) is False
     assert canvas_read_only(PcState.BUILD_INITIAL_PLAN) is True
+
+
+def test_build_capability_check_is_an_automatic_working_state():
+    assert is_working(PcState.BUILD_CAPABILITY_CHECK) is True
+    assert is_waiting(PcState.BUILD_CAPABILITY_CHECK) is False
+    assert is_terminal(PcState.BUILD_CAPABILITY_CHECK) is False
+    assert canvas_read_only(PcState.BUILD_CAPABILITY_CHECK) is True

@@ -118,13 +118,6 @@ export const useWorkflowEventDispatch = () => {
         case 'error':
           handleWorkflowFailed(payload.message)
           break
-        case 'tts_message':
-        case 'tts_message_end':
-        case 'message_end':
-        case 'message_file':
-          // The workflow run panel renders files and metrics from node/run
-          // callbacks; chat message metadata and audio need no extra projection.
-          break
         default:
           payload satisfies never
       }

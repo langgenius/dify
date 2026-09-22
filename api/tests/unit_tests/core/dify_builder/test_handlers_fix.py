@@ -7,6 +7,7 @@ cases (``## ---- checklist-fix flow ----``).
 
 from datetime import datetime
 
+from core.dify_builder.contract import PreflightContextCard, PreflightIssue
 from core.dify_builder.handlers_fix import (
     fix_registry,
     handle_apply,
@@ -215,9 +216,10 @@ def test_apply_surfaces_a_stale_intent_instead_of_failing_the_session():
     result = handle_apply(env, Turn(actor=_actor()), s, fc)
 
     assert result.next == PcState.FIX_AWAIT_DECISION
-    error = next(i for i in result.items if i.kind == "error")
-    assert error.payload["title"] == "Couldn't apply the fix"
-    assert "no key 'outputs'" in error.payload["body"]
+    assert not any(i.kind == "error" for i in result.items)
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "Couldn't apply the fix" in assistant.payload["reply_text"]
+    assert "no key 'outputs'" in assistant.payload["reply_text"]
     assert result.context.staged_repair == []
 
 
@@ -251,15 +253,7 @@ def test_apply_without_env_emit_canvas_does_not_error():
     assert out.current_state == PcState.FIX_AWAIT_VERIFY
 
 
-def test_apply_emits_change_set_card_with_fallback_scope_and_changes_when_adapter_omits_them():
-    # NOTE: this assertion already holds against the OLD hardcoded handle_apply
-    # (scope="configuration", changes=changed_nodes) -- Task 8's fallback branch
-    # is *designed* to reproduce that exact old behavior for any adapter (like
-    # FakeDifyPort) that doesn't populate changes/scope, so this is a
-    # same-behavior regression pin, not a red-first TDD test. It stays green
-    # through Step 2 below; the real red/green for Task 8's behavior change
-    # lives in the test_dify_port.py additions above (only WorkflowServiceDifyPort
-    # computes a real diff).
+def test_apply_streams_change_summary_when_adapter_omits_scope_and_changes():
     env, repo = _new_env()
     s = _seed_diagnose_session(repo)
 
@@ -268,13 +262,10 @@ def test_apply_emits_change_set_card_with_fallback_scope_and_changes_when_adapte
     runner.advance(s.id, turn)
 
     items = repo.list_conversation(s.id)
-    change_set_item = next(i for i in items if i.kind == "change_set")
-    # FakeDifyPort's ApplyResult never populates changes/scope (Slice 1's
-    # real diff only exists in WorkflowServiceDifyPort) -- handle_apply must
-    # fall back to changed_nodes / "configuration" so Fix stays green.
-    assert change_set_item.payload["scope"] == "configuration"
-    assert change_set_item.payload["changes"] == ["output"]
-    assert change_set_item.payload["count"] == 1
+    assert not any(i.kind == "change_set" for i in items)
+    assistant = next(i for i in items if i.kind == "assistant_turn" and i.payload["reply_text"].startswith("Applied"))
+    assert "(configuration)" in assistant.payload["reply_text"]
+    assert "output" in assistant.payload["reply_text"]
 
 
 def test_diagnose_records_structure_fingerprint():
@@ -564,10 +555,27 @@ def test_decision_re_fix_loops_back_to_diagnose_and_clears_repair_state():
 
 def _seed_checklist_session(repo: InMemoryRepository, errors: list[ChecklistError]) -> Session:
     s = _session(entry_mode=EntryMode.FIX_CHECKLIST, current_state=PcState.CHECKLIST_DIAGNOSE)
+    issues = [
+        PreflightIssue(
+            node_id=error.node_id,
+            node_type=error.node_type,
+            title=error.title,
+            messages=list(error.messages),
+            unconnected=error.unconnected,
+            plugin_missing=error.plugin_missing,
+        )
+        for error in errors
+    ]
     repo.create_session(
         s,
         DifyBuilderContext(source="checklist", checklist_errors=errors),
-        [ConversationItem(kind="run-context", seq=0)],
+        [
+            PreflightContextCard(
+                node_count=len({issue.node_id for issue in issues}),
+                issue_count=len(issues),
+                issues=issues,
+            ).to_item(seq=0, at_version=0)
+        ],
     )
     return s
 
@@ -598,12 +606,13 @@ def test_checklist_fix_diagnose_to_apply_reaches_await_recheck():
     assert fc.staged_repair
 
     items = repo.list_conversation(s.id)
-    found = False
-    for item in items:
-        if item.kind == "summary" and item.payload.get("variant") == "context":
-            assert "Source: checklist" in item.payload["items"]
-            found = True
-    assert found, "checklist diagnosis must be recorded as a context summary card"
+    preflight = [item for item in items if item.kind == "preflight_context"]
+    assert len(preflight) == 1
+    assert preflight[0].payload["issues"][0]["messages"] == ["missing prompt"]
+    assert not any(item.kind == "summary" for item in items)
+    assert any(
+        item.kind == "assistant_turn" and "Checklist diagnosis complete" in item.payload["reply_text"] for item in items
+    )
 
 
 def test_checklist_fix_recheck_passed_reaches_success_via_publish():
