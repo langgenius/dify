@@ -786,17 +786,61 @@ def test_endpoint_variable_names_finds_a_start_variable_referenced_as_the_whole_
     assert endpoint_variable_names(graph) == {"h_url"}
 
 
-def test_endpoint_variable_names_finds_a_start_variable_embedded_in_a_larger_url():
+def test_endpoint_variable_names_ignores_a_url_template_not_in_host_position():
+    """Review fix round 1 (item 1): a start-variable template appearing LATER
+    in the url (path/query), not at its very start, is an ordinary data
+    input -- e.g. ``https://wttr.in/{{#s.city#}}`` -- not an endpoint the
+    user must supply, so mocking ``city`` must not be blocked. Only a
+    template occupying the HOST position (the url, stripped, STARTS with it)
+    counts; this intentionally narrows the old (Plan 3) behaviour, which
+    collected any embedded reference."""
     from core.dify_builder.handlers_fix import endpoint_variable_names
 
     graph = {
         "nodes": [
-            {"id": "s", "data": {"type": "start", "variables": [{"variable": "path", "type": "text-input"}]}},
-            {"id": "h", "data": {"type": "http-request", "url": "https://x.com/{{#s.path#}}"}},
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "city", "type": "text-input"}]}},
+            {"id": "h", "data": {"type": "http-request", "url": "https://wttr.in/{{#s.city#}}"}},
         ],
         "edges": [],
     }
-    assert endpoint_variable_names(graph) == {"path"}
+    assert endpoint_variable_names(graph) == set()
+
+
+def test_endpoint_variable_names_ignores_non_credential_header_and_param_keys():
+    """Review fix round 1 (item 1): an ordinary data input read via a header
+    or param -- not a secret -- must stay mockable. Before this fix, ANY
+    start-variable template anywhere in headers/params was collected, so a
+    search query or an Accept-Language header was silently dropped from
+    every prefill/mock, and "use mock data" failed for every API-calling
+    app. Only a CREDENTIAL-keyed line counts now."""
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    graph = {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "query", "type": "text-input"},
+                        {"variable": "lang", "type": "text-input"},
+                    ],
+                },
+            },
+            {
+                "id": "h",
+                "data": {
+                    "type": "http-request",
+                    "url": "https://api.acme.com/v1/search",
+                    "headers": "Accept-Language: {{#s.lang#}}",
+                    "params": "q: {{#s.query#}}",
+                    "authorization": {"type": "no-auth", "config": None},
+                },
+            },
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == set()
 
 
 def test_endpoint_variable_names_ignores_a_reference_to_a_non_start_node():

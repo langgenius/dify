@@ -114,6 +114,35 @@ def test_is_credential_key_false_for_empty_key():
     assert us.is_credential_key("") is False
 
 
+# --- Task 3 review fix round 1: is_credential_key moved into core, plus a
+# params-only sibling that also treats a bare "key" as a credential --------
+
+
+def test_is_credential_key_still_importable_after_moving_into_core():
+    """The pure logic now lives in core.dify_builder.credentials (core must
+    not import services); user_supplied re-exports it so this module's own
+    API is unchanged."""
+    from core.dify_builder.credentials import is_credential_key as core_is_credential_key
+
+    assert us.is_credential_key is core_is_credential_key
+
+
+def test_is_credential_param_key_also_treats_a_bare_key_as_a_credential():
+    assert us.is_credential_param_key("key")
+    assert us.is_credential_param_key("KEY")
+    assert us.is_credential_param_key("  key  ")
+
+
+def test_is_credential_param_key_still_excludes_lookalikes():
+    for key in ("cache_key", "key_points", "password_policy", "token_limit"):
+        assert not us.is_credential_param_key(key), key
+
+
+def test_is_credential_param_key_still_true_for_ordinary_credential_keys():
+    for key in ("api_key", "apiKey", "x-api-key", "access_token", "Authorization"):
+        assert us.is_credential_param_key(key), key
+
+
 # --- Fix round 1: url_hosts stops at the first non-URL character ----------
 
 
