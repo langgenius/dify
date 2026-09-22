@@ -997,3 +997,25 @@ def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
     assert res.context.staged_repair == []
     assert next(i for i in res.items if i.kind == "test_result").payload["subtitle"] == "Finished without output"
     assert next(i for i in res.items if i.kind == "error").payload["node_id"] == "node2"
+
+
+def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import Run, TestInput
+    from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
+
+    env, repo = _new_env()
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    )
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(test_input_ref="ti-1")
+
+    first = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+    assert first.next == PcState.EDIT_APPLY_CHANGES
+    second = handle_test_affected_paths(env, Turn(actor=_actor()), s, first.context)
+
+    assert second.next == PcState.EDIT_AWAIT_REPAIR
+    assert second.context.unknown_outcome_count == 2
+    assert next(i for i in second.items if i.kind == "error").payload["title"] == "Test outcome unknown"

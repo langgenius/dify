@@ -235,3 +235,13 @@ def test_repair_loop_fields_default_when_absent():
     out = context_from_dict({})  # an older row with no repair_attempts/last_repair_error keys
     assert out.repair_attempts == 0
     assert out.last_repair_error == ""
+
+
+def test_unknown_outcome_count_round_trips_and_defaults_to_zero():
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext(unknown_outcome_count=2)
+    assert context_from_dict(context_to_dict(fc)).unknown_outcome_count == 2
+    # a context persisted before the field existed
+    assert context_from_dict({}).unknown_outcome_count == 0
