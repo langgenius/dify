@@ -13,6 +13,7 @@ import json
 from typing import Any
 
 from core.dify_builder.models import Graph, MutationIntent
+from core.dify_builder.node_defaults import default_config_or_empty
 from core.workflow.graph_normalizers import declared_branch_handles
 
 MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
@@ -195,6 +196,16 @@ def _build_node(
     generic ``"custom"`` (the default), but iteration/loop start markers carry
     ``"custom-iteration-start"`` / ``"custom-loop-start"`` and the canvas has
     no component for them under ``"custom"`` (React error #130, ESQ1-288).
+
+    ``node_type``'s registered defaults (``core.dify_builder.node_defaults``)
+    are merged UNDER ``config``: a key the caller supplied always wins, and a
+    key it omitted is filled with the value Dify's own editor would have
+    created the node with. Several node types have engine-required fields with
+    no default -- a ``template-transform`` without ``variables`` makes the draft
+    preflight refuse the whole repair batch -- and an LLM writes only the fields
+    it was thinking about. This is the one chokepoint every created node passes
+    through, so it covers Build, Edit and Fix, ``create_node`` and
+    ``insert_between``, and the ``filter_applicable`` dry run alike.
     """
     existing_ids = {n.get("id") for n in graph.get("nodes", [])}
     if node_id is not None:
@@ -204,7 +215,7 @@ def _build_node(
     else:
         new_id = _next_node_id(node_type, existing_ids)
 
-    data = copy.deepcopy(config)
+    data = {**default_config_or_empty(node_type), **copy.deepcopy(config)}
     data["type"] = node_type  # data.type is the real node type -- never overridden by config
     data.setdefault("title", new_id)
     data.setdefault("desc", "")

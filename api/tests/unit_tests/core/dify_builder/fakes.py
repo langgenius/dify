@@ -35,6 +35,7 @@ import threading
 import uuid
 from collections.abc import Callable, Mapping
 
+from core.dify_builder import node_defaults
 from core.dify_builder.contract import ConversationPage
 from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import (
@@ -60,7 +61,6 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
-from services.dify_builder import node_defaults
 from services.dify_builder.graph_ops import (
     apply_connect,
     apply_create_node,
