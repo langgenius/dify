@@ -660,6 +660,36 @@ def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_sessio
     assert result.context.staged_repair == []
 
 
+def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix():
+    """A fix the preflight rejected applied fine; it would leave a draft that
+    fails at Graph.init. Same recovery as a stale intent, true reason."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_edit import handle_await_repair
+
+    env, _ = _new_env()
+
+    def _would_not_start(*_args, **_kwargs):
+        raise DraftWouldNotStartError("the draft would not start: node 'llm' (llm): 1 validation error")
+
+    env.dify.apply_repair = _would_not_start  # type: ignore[method-assign]
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
+    fc = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "code", "value": ""})],
+        test_input_ref="ti-1",
+    )
+
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    error = next(i for i in result.items if i.kind == "error")
+    assert error.payload["title"] == "The workflow can't start"
+    assert error.payload["body"] == (
+        "The proposed fix would leave a workflow that fails before its first node: "
+        "the draft would not start: node 'llm' (llm): 1 validation error"
+    )
+    assert result.context.staged_repair == []
+
+
 def test_edit_await_repair_keep_draft_goes_to_review():
     from core.dify_builder.handlers_edit import handle_await_repair
 
@@ -945,14 +975,16 @@ def test_a_launch_error_frame_is_diagnosed_not_bounced_as_unknown():
 
 def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing():
     """Same preflight rejection as Build's: ``apply_repair`` raises a
-    ``ValueError`` for an edit whose result would fail at Graph.init. The edit
-    session must survive it as a card and stay at the plan gate."""
+    ``DraftWouldNotStartError`` for an edit whose result would fail at
+    Graph.init. The edit session must survive it as a card and stay at the
+    plan gate."""
+    from core.dify_builder.errors import DraftWouldNotStartError
     from core.dify_builder.handlers_edit import handle_plan_approval
 
     dify = FakeEditDifyPort()
 
     def would_not_start(*_a, **_k):
-        raise ValueError("the draft would not start: node 'llm' (llm): 1 validation error for LLMNodeData")
+        raise DraftWouldNotStartError("the draft would not start: node 'llm' (llm): 1 validation error for LLMNodeData")
 
     dify.apply_repair = would_not_start
     env, repo = _new_env(dify=dify)
@@ -971,6 +1003,42 @@ def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing
     error = next(i for i in res.items if i.kind == "error")
     assert error.payload["title"] == "The workflow can't start"
     assert "node 'llm' (llm)" in error.payload["body"]
+
+
+def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot_start():
+    """A graph_ops rejection ("node not found") never reached the startability
+    check -- the edit intents just did not apply. Same recovery as the
+    preflight card (nothing written, plan still approvable), honest reason."""
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    dify = FakeEditDifyPort()
+
+    def does_not_apply(*_a, **_k):
+        raise ValueError("node not found: x")
+
+    dify.apply_repair = does_not_apply
+    env, repo = _new_env(dify=dify)
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        checkpoint_id="cp-1",
+    )
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert res.next == PcState.EDIT_PLAN_APPROVAL
+    assert res.context.staged_repair == []
+    error = next(i for i in res.items if i.kind == "error")
+    assert error.payload["title"] == "Couldn't apply the workflow"
+    assert error.payload["body"] == "The generated workflow couldn't be applied to the draft: node not found: x"
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert assistant.payload["execution"]["status"] == "error"
+    assert assistant.payload["reply_text"] == (
+        "I couldn't apply the change -- see the error above. Adjust it and approve again."
+    )
 
 
 def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
