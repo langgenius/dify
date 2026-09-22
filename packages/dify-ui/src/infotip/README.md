@@ -1,19 +1,11 @@
 # Infotip
 
 Use `Infotip` when an information icon's primary action is opening an explanation. Use
-`Tooltip` for a supplementary visual label on a control with another primary action.
-Text length alone does not determine the component; see [Base UI's infotip guidance].
+`Tooltip` when the trigger already has another primary action and only needs a visual hint.
 
-## Composition and naming
+## Naming
 
-Compose `Infotip`, `InfotipTrigger`, and `InfotipContent` from `@langgenius/dify-ui/infotip`.
-Props derive from Base UI Popover. Trigger owns a native icon button; Content owns the portal
-and hint surface. Base UI owns the dialog role, expanded state, focus, and dismissal.
-
-The icon-only Trigger requires exactly one of `aria-label` or `aria-labelledby` in TypeScript.
-Content keeps Base UI Popup props: its dialog needs a name, but that name can come from an
-associated title rather than an explicit `aria-label`. Visible body text alone [does not name a dialog].
-Prefer a short visible topic owned by the field or section, and keep the explanation in the body:
+Prefer an existing visible topic. It can name both the trigger and the dialog:
 
 ```tsx
 function ProcessingHint() {
@@ -33,20 +25,32 @@ function ProcessingHint() {
 }
 ```
 
-- The trigger's label must exist while closed. If a heading only exists inside the popup,
-  reference it from Content and give Trigger its own short name.
-- Without a suitable visible label, use a short localized `aria-label`. Sharing a short topic
-  between the button and dialog is valid; copying the whole explanation into both is not.
-- Do not extract names from React children, add redundant hidden headings, or automatically
-  describe the popup with its entire body. Links and structured content remain navigable.
-- Callers own wording and valid label references; follow [Accessible names and descriptions].
+If the popup has its own visible heading, use `InfotipTitle`. Base UI wires it to the dialog's
+accessible name:
+
+```tsx
+<Infotip>
+  <InfotipTrigger aria-label="Processing priority" />
+  <InfotipContent>
+    <InfotipTitle render={<h3 />}>Processing priority</InfotipTitle>
+    <p>Priority determines which documents are processed first.</p>
+  </InfotipContent>
+</Infotip>
+```
+
+Use `InfotipDescription` only for a concise description that should be announced with the dialog.
+Do not wrap the whole popup body in it; links and structured content should remain normal children.
+
+A few rules:
+
+- The trigger's name must exist while the popup is closed.
+- Prefer `aria-labelledby` when a suitable visible topic already exists; otherwise use a short localized `aria-label`.
+- Sharing one short topic between the trigger and dialog is valid. Do not copy the full explanation into their accessible names.
+- Do not derive names from React children or automatically describe the dialog with its entire body.
 
 ## Visual ownership
 
-Infotip shares Tooltip's hint surface. Border, background, padding, typography, radius, and
-shadow belong to the primitive. Callers may constrain width and preserve intentional line
-breaks under the lint contract. The trigger supports hover, click, touch, and keyboard access.
+Infotip owns its hint surface, spacing, typography, radius, and shadow. Callers may constrain width
+or preserve intentional line breaks.
 
-[Accessible names and descriptions]: ../../docs/accessible-names-and-descriptions.md
 [Base UI's infotip guidance]: https://base-ui.com/react/components/tooltip#infotips
-[does not name a dialog]: https://www.w3.org/TR/wai-aria-1.2#dialog
