@@ -24,9 +24,13 @@
   },
   "scripts": {
     "check:dimensions": "tsx ./scripts/check-icon-dimensions.ts",
-    "generate": "tsx ./scripts/generate-collections.ts"
+    "generate": "tsx ./scripts/generate-collections.ts",
+    "type-check": "tsc"
   },
   "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "iconify-import-svg": "catalog:",
     "tsx": "catalog:"
   }

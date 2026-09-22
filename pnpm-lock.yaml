@@ -491,9 +491,6 @@ catalogs:
     eslint-plugin-command:
       specifier: 4.0.0
       version: 4.0.0
-    eslint-plugin-erasable-syntax-only:
-      specifier: 0.7.1
-      version: 0.7.1
     eslint-plugin-jsdoc:
       specifier: 64.5.2
       version: 64.5.2
@@ -867,9 +864,6 @@ importers:
       eslint-plugin-command:
         specifier: 'catalog:'
         version: 4.0.0(@typescript-eslint/typescript-estree@8.70.0(@typescript/typescript6@6.0.2)(supports-color@11.0.0))(@typescript-eslint/utils@8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0))(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))
-      eslint-plugin-erasable-syntax-only:
-        specifier: 'catalog:'
-        version: 0.7.1(@typescript-eslint/parser@8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0))(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       eslint-plugin-jsdoc:
         specifier: 'catalog:'
         version: 64.5.2(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
@@ -1237,6 +1231,15 @@ importers:
 
   packages/iconify-collections:
     devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.7
+      '@typescript/native':
+        specifier: 'catalog:'
+        version: typescript@7.0.2
       iconify-import-svg:
         specifier: 'catalog:'
         version: 0.2.0(supports-color@11.0.0)
@@ -5769,10 +5772,6 @@ packages:
   cacheable@2.5.0:
     resolution: {integrity: sha512-60cyAOytib/OzBw1JNSoSV/boK1AtHryDIjvVBk7XbN4ugfkM3+Sry7fEjNgPMGgOjuaZPAp8ruZ0Cxafwyq9g==}
 
-  cached-factory@0.3.0:
-    resolution: {integrity: sha512-8PWf78SYJg9kGpUNlqOlg2iE4nu/iW7FidBVdvEZPy0GJRUyN91X7q0VzX/oyJE6bGrgr/bR0VhcGF87vgeQaw==}
-    engines: {node: '>=18'}
-
   camelize@1.0.1:
     resolution: {integrity: sha512-dU+Tx2fsypxTgtLoE36npi3UqcjSSMNYfkqgmoEhtZrraP5VWq0K7FkWVTYa8eMPtnU/G2txVsfdCJTn9uzpuQ==}
 
@@ -6526,14 +6525,6 @@ packages:
       '@typescript-eslint/typescript-estree': '*'
       '@typescript-eslint/utils': '*'
       eslint: '*'
-
-  eslint-plugin-erasable-syntax-only@0.7.1:
-    resolution: {integrity: sha512-2zpgLgFq/HmIVQU2KNOsuuQdJQAiRdq23xpCamhatbH4ZlzinqXdDmbxGALj7VSiC9GMBHqmu4Cu7KaSqQfNhw==}
-    engines: {node: '>=20.18.0'}
-    peerDependencies:
-      '@typescript-eslint/parser': '>=8'
-      eslint: '>=9'
-      typescript: '>=5'
 
   eslint-plugin-es-x@7.8.0:
     resolution: {integrity: sha512-7Ds8+wAAoV3T+LAKeu39Y5BzXCrGKrcISfgKEqTS4BDN8SFEDQd0S43jiQ8vIa3wUKD07qitZdfzlenSi8/0qQ==}
@@ -13399,8 +13390,6 @@ snapshots:
       keyv: 5.6.0
       qified: 0.10.1
 
-  cached-factory@0.3.0: {}
-
   camelize@1.0.1: {}
 
   caniuse-lite@1.0.30001810: {}
@@ -14146,16 +14135,6 @@ snapshots:
       '@typescript-eslint/typescript-estree': 8.70.0(@typescript/typescript6@6.0.2)(supports-color@11.0.0)
       '@typescript-eslint/utils': 8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       eslint: 10.10.0(jiti@2.7.0)(supports-color@11.0.0)
-
-  eslint-plugin-erasable-syntax-only@0.7.1(@typescript-eslint/parser@8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0))(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0):
-    dependencies:
-      '@typescript-eslint/parser': 8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      '@typescript-eslint/utils': 8.70.0(@typescript/typescript6@6.0.2)(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      cached-factory: 0.3.0
-      eslint: 10.10.0(jiti@2.7.0)(supports-color@11.0.0)
-      typescript: '@typescript/typescript6@6.0.2'
-    transitivePeerDependencies:
-      - supports-color
 
   eslint-plugin-es-x@7.8.0(eslint@10.10.0(jiti@2.7.0)(supports-color@11.0.0)):
     dependencies:
@@ -18362,7 +18341,6 @@ time:
   eslint-plugin-antfu@3.2.3: '2026-05-11T02:24:38.348Z'
   eslint-plugin-better-tailwindcss@4.7.0: '2026-07-19T13:26:01.366Z'
   eslint-plugin-command@4.0.0: '2026-07-31T04:38:09.766Z'
-  eslint-plugin-erasable-syntax-only@0.7.1: '2026-08-19T04:46:35.017Z'
   eslint-plugin-jsdoc@64.5.2: '2026-09-16T13:00:55.286Z'
   eslint-plugin-jsonc@3.4.2: '2026-08-22T12:13:35.450Z'
   eslint-plugin-markdown-preferences@0.42.0: '2026-07-14T00:58:47.572Z'
