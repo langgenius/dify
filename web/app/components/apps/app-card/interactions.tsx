@@ -43,7 +43,6 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
-import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import {
   getStepByStepTourDropdownMenuContentProps,
@@ -592,9 +591,9 @@ export function AppCardInteractions({
                       aria-label={starToggleAccessibleLabel}
                       className="group disabled:opacity-70"
                     >
-                      <StarIcon
+                      <span
                         aria-hidden
-                        className="size-4.5 text-text-tertiary group-data-pressed:text-text-warning-secondary"
+                        className="i-custom-vender-solid-general-star size-4.5 text-text-tertiary group-data-pressed:text-text-warning-secondary"
                       />
                     </IconButton>
                   }

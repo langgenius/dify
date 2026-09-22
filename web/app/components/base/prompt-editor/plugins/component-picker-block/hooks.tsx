@@ -16,11 +16,6 @@ import { $insertNodes } from 'lexical'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
-import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
-import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
-import { MessageClockCircle, Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
-import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 import { VarType } from '@/app/components/workflow/types'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from '../context-block'
 import { $createCustomTextNode } from '../custom-text/node'
@@ -51,7 +46,12 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t(($) => $['promptEditor.context.item.title'], { ns: 'common' })}
-              icon={<File05 className="h-4 w-4 text-[#6938EF]" />}
+              icon={
+                <span
+                  aria-hidden
+                  className="i-custom-vender-solid-files-file-05 h-4 w-4 text-[#6938EF]"
+                />
+              }
               disabled={!contextBlock.selectable}
               isSelected={isSelected}
               onClick={onSelect}
@@ -76,7 +76,12 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t(($) => $['promptEditor.query.item.title'], { ns: 'common' })}
-              icon={<UserEdit02 className="h-4 w-4 text-[#FD853A]" />}
+              icon={
+                <span
+                  aria-hidden
+                  className="i-custom-vender-solid-users-user-edit-02 h-4 w-4 text-[#FD853A]"
+                />
+              }
               disabled={!queryBlock.selectable}
               isSelected={isSelected}
               onClick={onSelect}
@@ -126,7 +131,12 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t(($) => $['promptEditor.history.item.title'], { ns: 'common' })}
-              icon={<MessageClockCircle className="h-4 w-4 text-[#DD2590]" />}
+              icon={
+                <span
+                  aria-hidden
+                  className="i-custom-vender-solid-general-message-clock-circle h-4 w-4 text-[#DD2590]"
+                />
+              }
               disabled={!historyBlock.selectable}
               isSelected={isSelected}
               onClick={onSelect}
@@ -162,7 +172,12 @@ export const useVariableOptions = (
           return (
             <VariableMenuItem
               title={item.value}
-              icon={<BracketsX className="h-3.5 w-3.5 text-text-accent" />}
+              icon={
+                <span
+                  aria-hidden
+                  className="i-custom-vender-line-development-brackets-x h-3.5 w-3.5 text-text-accent"
+                />
+              }
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -190,7 +205,12 @@ export const useVariableOptions = (
         return (
           <VariableMenuItem
             title={t(($) => $['promptEditor.variable.modal.add'], { ns: 'common' })}
-            icon={<BracketsX className="h-3.5 w-3.5 text-text-accent" />}
+            icon={
+              <span
+                aria-hidden
+                className="i-custom-vender-line-development-brackets-x h-3.5 w-3.5 text-text-accent"
+              />
+            }
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}
@@ -266,8 +286,18 @@ export const useExternalToolOptions = (
         return (
           <VariableMenuItem
             title={t(($) => $['promptEditor.variable.modal.addTool'], { ns: 'common' })}
-            icon={<Tool03 className="h-3.5 w-3.5 text-text-accent" />}
-            extraElement={<ArrowUpRight className="size-3 text-text-tertiary" />}
+            icon={
+              <span
+                aria-hidden
+                className="i-custom-vender-solid-general-tool-03 h-3.5 w-3.5 text-text-accent"
+              />
+            }
+            extraElement={
+              <span
+                aria-hidden
+                className="i-custom-vender-line-arrows-arrow-up-right size-3 text-text-tertiary"
+              />
+            }
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}

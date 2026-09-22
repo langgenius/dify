@@ -5,7 +5,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { toast } from '@/app/notifications'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import {
@@ -81,7 +80,10 @@ function SSOAuth({ protocol }: SSOAuthProps) {
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className="size-5 text-text-accent-light-mode-only" />
+      <span
+        aria-hidden
+        className="i-custom-vender-solid-security-lock-01 size-5 text-text-accent-light-mode-only"
+      />
       <span className="truncate">{t(($) => $.withSSO, { ns: 'login' })}</span>
     </Button>
   )

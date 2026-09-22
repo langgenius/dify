@@ -1,7 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { AddChunks } from '@/app/components/base/icons/src/vender/knowledge'
 import { useDocLink } from '@/context/i18n'
 import Line from './line'
 
@@ -21,7 +20,10 @@ const Instruction = ({ className }: InstructionProps) => {
       )}
     >
       <div className="relative flex size-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
-        <AddChunks className="size-5 text-text-accent" />
+        <span
+          aria-hidden
+          className="i-custom-vender-knowledge-add-chunks size-5 text-text-accent"
+        />
         <Line className="absolute -bottom-19 -left-px" type="vertical" />
         <Line className="absolute -right-px -bottom-19" type="vertical" />
         <Line className="absolute -top-px -right-46" type="horizontal" />

@@ -2,7 +2,6 @@ import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/work
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 
 type LoopLogTriggerProps = {
   nodeInfo: NodeTracing
@@ -78,7 +77,10 @@ const LoopLogTrigger = ({ nodeInfo, allExecutions, onShowLoopResultList }: LoopL
       className="flex w-full cursor-pointer items-center self-stretch rounded-lg bg-components-button-tertiary-bg-hover px-3 py-2 inset-ring-0 hover:bg-components-button-tertiary-bg-hover"
       onClick={handleOnShowLoopDetail}
     >
-      <Loop className="size-4 shrink-0 text-components-button-tertiary-text" />
+      <span
+        aria-hidden
+        className="i-custom-vender-workflow-loop size-4 shrink-0 text-components-button-tertiary-text"
+      />
       <div className="flex-1 text-left system-sm-medium text-components-button-tertiary-text">
         {t(($) => $['nodes.loop.loop'], { ns: 'workflow', count: displayLoopCount })}
         {errorCount > 0 && (

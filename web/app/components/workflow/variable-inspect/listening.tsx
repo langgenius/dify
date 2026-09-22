@@ -9,7 +9,6 @@ import copy from 'copy-to-clipboard'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -167,7 +166,8 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
             type={icon.type}
             toolIcon={icon.toolIcon}
             size="md"
-            className="size-10! rounded-xl! [&_svg]:size-7!"
+            className="size-10! rounded-xl!"
+            iconClassName="size-7"
           />
         ))}
       </div>
@@ -212,7 +212,7 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
       )}
       <div>
         <Button size="medium" className="px-3" variant="primary" onClick={onStop}>
-          <StopCircle className="size-4" />
+          <span aria-hidden className="i-custom-vender-line-mediaAndDevices-stop-circle size-4" />
           {t(($) => $['debug.variableInspect.listening.stopButton'], { ns: 'workflow' })}
         </Button>
       </div>

@@ -3,7 +3,6 @@ import type { StartNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import InputVarTypeIcon from '../_base/components/input-var-type-icon'
 
 const i18nPrefix = 'nodes.start'
@@ -23,7 +22,10 @@ const Node: FC<NodeProps<StartNodeType>> = ({ data }) => {
             className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1"
           >
             <div className="flex w-0 grow items-center space-x-1">
-              <Variable02 className="size-3.5 shrink-0 text-text-accent" />
+              <span
+                aria-hidden
+                className="i-custom-vender-solid-development-variable-02 size-3.5 shrink-0 text-text-accent"
+              />
               <span className="w-0 grow truncate system-xs-regular text-text-secondary">
                 {variable.variable}
               </span>

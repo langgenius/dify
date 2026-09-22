@@ -21,8 +21,6 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   useAuth,
@@ -400,7 +398,10 @@ const ModelModal: FC<ModelModalProps> = ({
                 provider.help.url[language] ||
                 provider.help.title?.en_US ||
                 provider.help.url.en_US}
-              <LinkExternal02 className="-mt-0.5 ml-1 inline-block h-3 w-3" />
+              <span
+                aria-hidden
+                className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
+              />
             </a>
           ) : (
             <div />
@@ -429,7 +430,10 @@ const ModelModal: FC<ModelModalProps> = ({
           mode === ModelModalModeEnum.configProviderCredential) && (
           <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
             <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
-              <Lock01 className="mr-1 size-3 text-text-tertiary" />
+              <span
+                aria-hidden
+                className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
+              />
               {t(($) => $['modelProvider.encrypted.front'], { ns: 'common' })}
               <a
                 className="mx-1 text-text-accent"

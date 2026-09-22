@@ -187,6 +187,7 @@
     "type-check": "tsc"
   },
   "dependencies": {
+    "@base-ui/utils": "catalog:",
     "cn": "catalog:"
   },
   "devDependencies": {

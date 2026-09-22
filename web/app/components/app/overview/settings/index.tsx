@@ -606,7 +606,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                                 <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                   <span
                                     aria-hidden="true"
-                                    className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                                    className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
                                   />
                                   <div className="system-xs-medium">
                                     <span className="p-1">
@@ -658,7 +658,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                               <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                 <span
                                   aria-hidden="true"
-                                  className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                                  className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
                                 />
                                 <div className="system-xs-medium">
                                   <span className="p-1">

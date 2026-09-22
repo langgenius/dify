@@ -14,7 +14,6 @@ import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { VarType } from '@/app/components/workflow/types'
@@ -98,7 +97,10 @@ const ConditionNumberInput = ({
               )}
               {!value && (
                 <div className="flex h-6 items-center p-1 text-[13px] text-components-input-text-placeholder">
-                  <Variable02 className="mr-1 size-4 shrink-0" />
+                  <span
+                    aria-hidden
+                    className="mr-1 i-custom-vender-solid-development-variable-02 size-4 shrink-0"
+                  />
                   <div className="w-0 grow truncate">
                     {t(($) => $['nodes.ifElse.selectVariable'], { ns: 'workflow' })}
                   </div>
