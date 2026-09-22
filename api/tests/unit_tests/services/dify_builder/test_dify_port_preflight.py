@@ -162,3 +162,32 @@ def test_apply_repair_fills_http_body_item_types_before_the_preflight(mock_sessi
     assert result.changed_nodes == ["node4"]
     _, kwargs = sync.call_args
     assert kwargs["graph"]["nodes"][1]["data"]["body"]["data"][0]["type"] == "text"
+
+
+def test_apply_repair_counts_a_node_the_chokepoint_normalizer_heals_as_changed(mock_session: MagicMock):
+    """The chokepoint normalizers scan every node in the graph, not just the
+    ones an intent named: a repair that only touches node1's title can still
+    heal an UNTOUCHED node's numeric condition value as a side effect.
+    ``diff_graphs`` already reports that node as changed -- ``changed_nodes``
+    must agree, or the ApplyResult is internally inconsistent."""
+    numeric_cases = [
+        {
+            "case_id": "true",
+            "logical_operator": "and",
+            "conditions": [
+                {"id": "c1", "variable_selector": ["node1", "score"], "comparison_operator": "=", "value": 60}
+            ],
+        }
+    ]
+    untouched = {
+        "id": "node2",
+        "type": "custom",
+        "data": {"type": "if-else", "title": "判断分数", "cases": numeric_cases},
+    }
+    fix_elsewhere = [MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, untouched], "edges": []}, fix_elsewhere)
+
+    assert set(result.changed_nodes) == {"node1", "node2"}
+    _, kwargs = sync.call_args
+    assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] == "60"
