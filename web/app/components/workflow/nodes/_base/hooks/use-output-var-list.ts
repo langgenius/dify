@@ -118,25 +118,11 @@ function useOutputVarList<T>({
 
   const [isShowRemoveVarConfirm, setIsShowRemoveVarConfirm] = useState(false)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
-  const removeVarInNode = useCallback(() => {
-    const varId = nodesWithInspectVars
-      .find((node) => node.nodeId === id)
-      ?.vars.find((varItem) => {
-        return varItem.name === removedVar[1]
-      })?.id
-    if (varId) deleteInspectVar(id, varId)
-    removeUsedVarInNodes(removedVar)
-    setIsShowRemoveVarConfirm(false)
-  }, [deleteInspectVar, id, nodesWithInspectVars, removeUsedVarInNodes, removedVar])
-  const handleRemoveVariable = useCallback(
+  const [removedIndex, setRemovedIndex] = useState(-1)
+
+  const removeOutputVariable = useCallback(
     (index: number) => {
       const key = outputKeyOrders[index]!
-
-      if (isVarUsedInNodes([id, key])) {
-        setIsShowRemoveVarConfirm(true)
-        setRemovedVar([id, key])
-        return
-      }
 
       const newOutputKeyOrders = outputKeyOrders.filter((_, i) => i !== index)
       const newInputs = produce(inputs, (draft: any) => {
@@ -152,6 +138,7 @@ function useOutputVarList<T>({
       })
       setInputs(newInputs)
       onOutputKeyOrdersChange(newOutputKeyOrders)
+
       if (!newOutputKeyOrders.includes(key!)) {
         const varId = nodesWithInspectVars
           .find((node) => node.nodeId === id)
@@ -163,8 +150,6 @@ function useOutputVarList<T>({
     },
     [
       outputKeyOrders,
-      isVarUsedInNodes,
-      id,
       inputs,
       setInputs,
       onOutputKeyOrdersChange,
@@ -172,6 +157,30 @@ function useOutputVarList<T>({
       deleteInspectVar,
       varKey,
     ],
+  )
+
+  const removeVarInNode = useCallback(() => {
+    // The confirmation only covers variables that other nodes still reference,
+    // the row itself has to be removed from this node as well.
+    removeOutputVariable(removedIndex)
+    removeUsedVarInNodes(removedVar)
+    setIsShowRemoveVarConfirm(false)
+  }, [removeOutputVariable, removedIndex, removeUsedVarInNodes, removedVar])
+
+  const handleRemoveVariable = useCallback(
+    (index: number) => {
+      const key = outputKeyOrders[index]!
+
+      if (isVarUsedInNodes([id, key])) {
+        setRemovedIndex(index)
+        setIsShowRemoveVarConfirm(true)
+        setRemovedVar([id, key])
+        return
+      }
+
+      removeOutputVariable(index)
+    },
+    [outputKeyOrders, isVarUsedInNodes, id, removeOutputVariable],
   )
 
   return {
