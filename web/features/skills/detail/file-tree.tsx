@@ -64,7 +64,6 @@ import copy from 'copy-to-clipboard'
 import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
@@ -1143,7 +1142,10 @@ export function FileTree({
                   className="mt-2 flex size-8 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-tertiary shadow-none outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={() => onCollapsedChange(false)}
                 >
-                  <SidebarLeftArrowIcon aria-hidden className="size-4" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-arrows-sidebar-left-arrow size-4"
+                  />
                 </button>
               }
             />
@@ -1284,7 +1286,10 @@ export function FileTree({
                       }
                     }}
                   >
-                    <SidebarLeftArrowIcon aria-hidden className="size-4" />
+                    <span
+                      aria-hidden
+                      className="i-custom-vender-line-arrows-sidebar-left-arrow size-4"
+                    />
                   </button>
                 }
               />

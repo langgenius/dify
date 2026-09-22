@@ -1,5 +1,7 @@
+from collections import OrderedDict
 from http import HTTPStatus
 from importlib import import_module
+from typing import cast
 
 from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
@@ -27,6 +29,11 @@ def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError)
         "message": status.phrase,
         "status": status.value,
     }, status.value
+
+
+# Flask-RESTX dispatches in registration order; the shared Exception handler
+# must not shadow this Console-specific error mapping.
+cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(ActiveWorkspaceRequiredError, last=False)
 
 
 console_ns = Namespace("console", description="Console management API operations", path="/")

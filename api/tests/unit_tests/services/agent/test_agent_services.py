@@ -1143,6 +1143,8 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
         account_id="account-1",
     )
 
+    assert first["publication_kind"] == "first"
+    assert second["publication_kind"] == "update"
     assert first["active_config_snapshot_id"] == "version-2"
     assert second["active_config_snapshot_id"] == "version-3"
     assert published_homes == ["home-1", "home-1"]

@@ -23,6 +23,7 @@ import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
+import { getAgentWebAppUrl } from '../../web-app-access'
 import { useWebAppAccessControl } from './use-web-app-access-control'
 
 const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
@@ -433,14 +434,4 @@ function getSettingsIcon(agent: AgentAppDetailWithSite) {
     icon_background: null,
     icon_url: null,
   }
-}
-
-function getAgentWebAppUrl(agent?: AgentAppDetailWithSite) {
-  const site = agent?.site
-  const token = site?.access_token ?? site?.code
-  if (!token) return ''
-
-  const baseUrl =
-    site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
-  return `${baseUrl.replace(/\/$/, '')}/agent/${token}`
 }

@@ -176,6 +176,9 @@ catalogs:
     '@base-ui/react':
       specifier: 1.8.0
       version: 1.8.0
+    '@base-ui/utils':
+      specifier: 0.4.0
+      version: 0.4.0
     '@chromatic-com/storybook':
       specifier: 5.3.1
       version: 5.3.1
@@ -260,9 +263,6 @@ catalogs:
     '@remixicon/react':
       specifier: 4.9.0
       version: 4.9.0
-    '@rgrove/parse-xml':
-      specifier: 5.0.0
-      version: 5.0.0
     '@sentry/react':
       specifier: 10.75.0
       version: 10.75.0
@@ -1134,6 +1134,9 @@ importers:
 
   packages/dify-ui:
     dependencies:
+      '@base-ui/utils':
+        specifier: 'catalog:'
+        version: 0.4.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       cn:
         specifier: 'catalog:'
         version: 0.3.0
@@ -1746,9 +1749,6 @@ importers:
       '@langgenius/dify-ui':
         specifier: workspace:*
         version: link:../packages/dify-ui
-      '@rgrove/parse-xml':
-        specifier: 'catalog:'
-        version: 5.0.0
       '@storybook/addon-docs':
         specifier: 'catalog:'
         version: 10.6.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(storybook@10.6.0(@types/react@19.3.0)(react@19.3.0)(vite-plus@0.3.3(@types/node@25.9.7)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(esbuild@0.28.2)(happy-dom@20.14.5)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)))
@@ -4183,10 +4183,6 @@ packages:
   '@resvg/resvg-wasm@2.4.0':
     resolution: {integrity: sha512-C7c51Nn4yTxXFKvgh2txJFNweaVcfUPQxwEUFw4aWsCmfiBDJsTSwviIF8EcwjQ6k8bPyMWCl1vw4BdxE569Cg==}
     engines: {node: '>= 10'}
-
-  '@rgrove/parse-xml@5.0.0':
-    resolution: {integrity: sha512-SgHFyisNAkS2ZbM8SCriUm1N0bxLiz0POKvpDeAtrnLrXaYG1PawNwu1rSjmE/vcVHbZzYWNgVP6xkep6R4uXg==}
-    engines: {node: '>=22.12.0'}
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
@@ -11762,8 +11758,6 @@ snapshots:
 
   '@resvg/resvg-wasm@2.4.0': {}
 
-  '@rgrove/parse-xml@5.0.0': {}
-
   '@rolldown/pluginutils@1.0.1': {}
 
   '@rollup/pluginutils@5.4.0':
@@ -18075,7 +18069,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.9.7
       '@vitest/browser-playwright': 4.1.11(@voidzero-dev/vite-plus-core@0.3.3(@types/node@25.9.7)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(typescript@7.0.2)(yaml@2.9.1))(playwright@1.63.0)(vitest@4.1.11)
-      '@vitest/browser-preview': 4.1.11(@voidzero-dev/vite-plus-core@0.3.3(@types/node@25.9.7)(@typescript/typescript6@6.0.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))(vitest@4.1.11)
+      '@vitest/browser-preview': 4.1.11(@voidzero-dev/vite-plus-core@0.3.3(@types/node@25.9.7)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(typescript@7.0.2)(yaml@2.9.1))(vitest@4.1.11)
       '@vitest/coverage-v8': 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       happy-dom: 20.14.5
     transitivePeerDependencies:
@@ -18263,6 +18257,7 @@ time:
   '@amplitude/plugin-session-replay-browser@1.35.1': '2026-09-16T19:27:10.945Z'
   '@axe-core/playwright@4.13.0': '2026-08-11T17:07:40.763Z'
   '@base-ui/react@1.8.0': '2026-09-04T08:52:51.986Z'
+  '@base-ui/utils@0.4.0': '2026-09-04T08:49:31.070Z'
   '@chromatic-com/storybook@5.3.1': '2026-09-02T13:43:27.595Z'
   '@cucumber/cucumber@13.2.1': '2026-08-04T07:20:28.681Z'
   '@egoist/tailwindcss-icons@1.9.2': '2026-01-31T10:48:44.594Z'
@@ -18291,7 +18286,6 @@ time:
   '@orpc/tanstack-query@1.15.1': '2026-09-15T07:09:56.725Z'
   '@playwright/test@1.63.0': '2026-09-04T22:44:00.304Z'
   '@remixicon/react@4.9.0': '2026-01-29T10:53:18.993Z'
-  '@rgrove/parse-xml@5.0.0': '2026-08-30T03:19:42.049Z'
   '@sentry/react@10.75.0': '2026-09-16T14:58:08.681Z'
   '@shadcn/lint@0.1.3': '2026-09-20T18:26:44.252Z'
   '@storybook/addon-a11y@10.6.0': '2026-09-02T13:57:15.272Z'

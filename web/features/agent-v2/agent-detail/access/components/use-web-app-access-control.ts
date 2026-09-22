@@ -7,10 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
-import {
-  useAppWhiteListSubjects,
-  useGetUserCanAccessApp,
-} from '@/service/access-control/use-app-access-control'
+import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
+import { useWebAppAccessPermission } from '../../web-app-access'
 
 const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
@@ -39,15 +37,7 @@ export function useWebAppAccessControl(
   })
   const { canManageAccessPoint: canManage } = getAgentACLCapabilities(agent?.permission_keys)
   const hasAccessControl = Boolean(webAppAuthEnabled && appId && accessMode)
-  const { data: userCanAccessApp, refetch: refetchUserCanAccessApp } = useGetUserCanAccessApp({
-    appId,
-    enabled: Boolean(webAppAuthEnabled && appId),
-  })
-  const accessPermission = {
-    noAccessPermission:
-      webAppAuthEnabled && accessMode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result,
-    refetchUserCanAccessApp,
-  }
+  const accessPermission = useWebAppAccessPermission(agent)
   const { data: accessSubjects } = useAppWhiteListSubjects(
     appId,
     hasAccessControl && canManage && accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS,

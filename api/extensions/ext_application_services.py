@@ -136,7 +136,11 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.app_audio_adapters import AppAudioRuntime
+from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_preview_details_adapters import AppPreviewDetailsRuntime
+from services.app_preview_details_service import AppPreviewDetails
 from services.app_preview_query_service import AppPreviewQueryService
 from services.app_site_service import AppSiteService
 from services.app_statistic_query import AppStatisticQuery
@@ -262,6 +266,7 @@ class ApplicationServices:
     accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
+    app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
     app_statistics: AppStatisticQuery
@@ -293,6 +298,7 @@ class ApplicationServices:
     remote_files: RemoteFileService
     app_tasks: AppTaskControlService
     trial_app_access: TrialAppAccessService
+    app_audio: AppAudio
     trial_app_generation: TrialAppGenerationService
     trial_app_usage: TrialAppUsageRecorder
     workflow_run_archives: WorkflowRunArchiveService
@@ -436,6 +442,7 @@ def build_application_services(
     installation_state = InstallationStateRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    app_preview_repository = AppPreviewQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
     integrations = SQLAlchemyAccountIntegrationRepository(session_factory=database_client)
@@ -626,8 +633,9 @@ def build_application_services(
                 dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
             ),
         ),
+        app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
         app_previews=AppPreviewQueryService(
-            apps=AppPreviewQueryRepository(session_factory=database_client),
+            apps=app_preview_repository,
             is_previewable=recommended_app_queries.is_previewable,
         ),
         app_sites=AppSiteService(
@@ -732,6 +740,7 @@ def build_application_services(
         remote_files=remote_file_service,
         app_tasks=AppTaskControlService(redis_client=redis),
         trial_app_access=TrialAppAccessService(apps=trial_apps),
+        app_audio=AppAudioRuntime(session_factory=database_client),
         trial_app_generation=TrialAppGenerationService(
             runtime=AppGenerateServiceRuntime(session_factory=database_client), usage=trial_apps
         ),

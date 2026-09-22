@@ -224,13 +224,9 @@ vi.mock('../../utils', async () => {
   return {
     ...actual,
     MODEL_PROVIDER_QUOTA_GET_PAID: ['test-openai', 'test-anthropic'],
-    providerIconMap: {
-      'test-openai': ({ className }: { className?: string }) => (
-        <span className={className}>OAI</span>
-      ),
-      'test-anthropic': ({ className }: { className?: string }) => (
-        <span className={className}>ANT</span>
-      ),
+    providerLogoMap: {
+      'test-openai': { iconClassName: 'i-ri-openai-fill' },
+      'test-anthropic': { iconClassName: 'i-custom-public-llm-anthropic-short-light' },
     },
     modelNameMap: {
       'test-openai': 'TestOpenAI',

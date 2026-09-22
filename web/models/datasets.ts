@@ -7,12 +7,6 @@ import type { MetadataFilteringVariableType } from '@/app/components/workflow/no
 import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { SegmentImportStatus } from '@/types/dataset'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import {
-  ExternalKnowledgeBase,
-  General,
-  ParentChild,
-  Qa,
-} from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { PermissionLevel } from './permission'
 
 export const DataSourceType = {
@@ -807,15 +801,12 @@ export type BatchImportResponse = {
   job_status: SegmentImportStatus
 }
 
-export const DOC_FORM_ICON_WITH_BG: Record<
-  ChunkingMode | 'external',
-  React.ComponentType<{ className: string }>
-> = {
-  [ChunkingMode.text]: General,
-  [ChunkingMode.qa]: Qa,
-  [ChunkingMode.parentChild]: ParentChild,
+export const DOC_FORM_ICON_CLASS_WITH_BG: Record<ChunkingMode | 'external', string> = {
+  [ChunkingMode.text]: 'i-custom-public-knowledge-dataset-card-general',
+  [ChunkingMode.qa]: 'i-custom-public-knowledge-dataset-card-qa',
+  [ChunkingMode.parentChild]: 'i-custom-public-knowledge-dataset-card-parent-child',
   // [ChunkingMode.graph]: Graph, // todo: Graph RAG
-  external: ExternalKnowledgeBase,
+  external: 'i-custom-public-knowledge-dataset-card-external-knowledge-base',
 }
 
 type ChunkingModeText = I18nKeysByPrefix<'dataset', 'chunkingMode.'>

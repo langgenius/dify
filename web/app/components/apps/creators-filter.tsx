@@ -160,7 +160,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           <IconButton
             size="sm"
             aria-label={resetLabel}
-            className="absolute top-1/2 right-1 size-5 -translate-y-1/2 text-text-tertiary peer-data-popup-open/creators-trigger:text-text-secondary"
+            className="absolute top-1/2 right-1 -translate-y-1/2 peer-data-popup-open/creators-trigger:text-text-secondary"
             onClick={handleSelectionClear}
           >
             <span aria-hidden className="i-ri-close-circle-fill h-3.5 w-3.5" />

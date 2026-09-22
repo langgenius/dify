@@ -1,10 +1,9 @@
 'use client'
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -32,8 +31,8 @@ type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 type AppListCategory = AppListUrlQuery['category']
 
 type Props = Readonly<{
-  onCreateLearnDify?: (app: App) => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
 }>
 
 export function List({ onCreateLearnDify, onTryLearnDify }: Props) {

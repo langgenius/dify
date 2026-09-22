@@ -8,10 +8,6 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Group } from '@/app/components/base/icons/src/vender/other'
-import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
-import { Github } from '@/app/components/base/icons/src/vender/solid/general'
-import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
@@ -25,7 +21,7 @@ import {
 import { usePluginPageContext } from '../context'
 
 type InstallMethod = {
-  icon: React.ComponentType<{ className?: string }>
+  iconClassName: string
   text: string
   action: string
 }
@@ -91,7 +87,7 @@ const Empty = ({
     const methods: InstallMethod[] = []
     if (enable_marketplace)
       methods.push({
-        icon: MagicBox,
+        iconClassName: 'i-custom-vender-solid-mediaAndDevices-magic-box',
         text: t(($) => $['source.marketplace'], { ns: 'plugin' }),
         action: 'marketplace',
       })
@@ -99,12 +95,12 @@ const Empty = ({
     if (plugin_installation_permission.restrict_to_marketplace_only) return methods
 
     methods.push({
-      icon: Github,
+      iconClassName: 'i-custom-vender-solid-general-github',
       text: t(($) => $['source.github'], { ns: 'plugin' }),
       action: 'github',
     })
     methods.push({
-      icon: FileZip,
+      iconClassName: 'i-custom-vender-solid-files-file-zip',
       text: t(($) => $['source.local'], { ns: 'plugin' }),
       action: 'local',
     })
@@ -138,7 +134,10 @@ const Empty = ({
           <div className="flex flex-col items-center gap-y-3">
             <div className="flex flex-col items-center gap-y-3">
               <div className="relative -z-10 flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-deep bg-components-card-bg shadow-xl shadow-shadow-shadow-5 backdrop-blur-md">
-                <Group className="size-5 text-text-tertiary" />
+                <span
+                  aria-hidden
+                  className="i-custom-vender-other-group size-5 text-text-tertiary"
+                />
                 <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
                 <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
                 <Line className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
@@ -155,7 +154,7 @@ const Empty = ({
                 accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
               />
               <div className="flex w-full flex-col gap-y-1">
-                {installMethods.map(({ icon: Icon, text, action }) => (
+                {installMethods.map(({ iconClassName, text, action }) => (
                   <Button
                     key={action}
                     variant="secondary"
@@ -168,7 +167,10 @@ const Empty = ({
                       else setSelectedAction(action)
                     }}
                   >
-                    <Icon className="size-4 text-components-button-secondary-text" />
+                    <span
+                      aria-hidden
+                      className={cn(iconClassName, 'size-4 text-components-button-secondary-text')}
+                    />
                     <span className="min-w-0 flex-1 truncate text-left">{text}</span>
                   </Button>
                 ))}

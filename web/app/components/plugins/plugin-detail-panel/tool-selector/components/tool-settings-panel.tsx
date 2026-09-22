@@ -5,7 +5,7 @@ import type { ReasoningConfigValue } from './reasoning-config-form'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -20,14 +20,14 @@ type ToolSettingsPanelProps = {
   currType: TabType
   settingsFormSchemas: ToolFormSchema[]
   paramsFormSchemas: ToolFormSchema[]
-  settingsValue: ToolVarInputs
+  settingsValue: ResourceVarInputs
   showTabSlider: boolean
   userSettingsOnly: boolean
   reasoningConfigOnly: boolean
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   onCurrTypeChange: (type: TabType) => void
-  onSettingsFormChange: (v: ToolVarInputs) => void
+  onSettingsFormChange: (v: ResourceVarInputs) => void
   onParamsFormChange: (v: ReasoningConfigValue) => void
 }
 

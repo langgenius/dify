@@ -14,7 +14,6 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import RadioCard from '@/app/components/base/radio-card'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -97,7 +96,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   return (
     <OptionCard
       title={t(($) => $['stepTwo.parentChild'], { ns: 'datasetCreation' })}
-      icon={<ParentChildChunk className="h-5 w-5" />}
+      icon={<span aria-hidden className="i-custom-vender-knowledge-parent-child-chunk h-5 w-5" />}
       effectImg={BlueEffect.src}
       className="text-util-colors-blue-light-blue-light-500"
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"

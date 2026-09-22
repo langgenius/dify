@@ -1,5 +1,5 @@
-import type { ComponentProps } from 'react'
-import type { EndpointListItem, PluginDetail } from '../types'
+import type { EndpointListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { PluginDetail } from '../types'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,124 +12,67 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  addDefaultValue,
-  toolCredentialToFormSchemas,
-} from '@/app/components/tools/utils/to-form-schema'
 import { toast } from '@/app/notifications'
-import {
-  useDeleteEndpoint,
-  useDisableEndpoint,
-  useEnableEndpoint,
-  useUpdateEndpoint,
-} from '@/service/use-endpoints'
+import { consoleQuery } from '@/service/console'
 import EndpointModal from './endpoint-modal'
-import { NAME_FIELD } from './utils'
-
-type EndpointModalFormSchemas = ComponentProps<typeof EndpointModal>['formSchemas']
 
 type Props = Readonly<{
   pluginDetail: PluginDetail
-  data: EndpointListItem
-  handleChange: () => void
+  data: EndpointListItemResponse
 }>
 
-const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
+const EndpointCard = ({ pluginDetail, data }: Props) => {
   const { t } = useTranslation()
-  const [active, setActive] = useState(data.enabled)
   const endpointID = data.id
-
-  // switch
   const [isShowDisableConfirm, { setTrue: showDisableConfirm, setFalse: hideDisableConfirm }] =
     useBoolean(false)
-  const { mutate: enableEndpoint } = useEnableEndpoint({
-    onSuccess: async () => {
-      await handleChange()
-    },
-    onError: () => {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-      setActive(false)
-    },
-  })
-  const { mutate: disableEndpoint } = useDisableEndpoint({
-    onSuccess: async () => {
-      await handleChange()
-      hideDisableConfirm()
-    },
-    onError: () => {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-      setActive(false)
-    },
-  })
-  const handleSwitch = (state: boolean) => {
-    if (state) {
-      setActive(true)
-      enableEndpoint(endpointID)
-    } else {
-      setActive(false)
-      showDisableConfirm()
-    }
-  }
-
-  // delete
   const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
     useBoolean(false)
-  const { mutate: deleteEndpoint } = useDeleteEndpoint({
-    onSuccess: async () => {
-      await handleChange()
-      hideDeleteConfirm()
-    },
-    onError: () => {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-    },
-  })
-
-  // update
   const [
     isShowEndpointModal,
     { setTrue: showEndpointModalConfirm, setFalse: hideEndpointModalConfirm },
   ] = useBoolean(false)
-  const formSchemas = useMemo(() => {
-    return toolCredentialToFormSchemas([NAME_FIELD, ...data.declaration.settings])
-  }, [data.declaration.settings])
-  const formValue = useMemo(() => {
-    const formValue = {
-      name: data.name,
-      ...data.settings,
-    }
-    return addDefaultValue(formValue, formSchemas)
-  }, [data.name, data.settings, formSchemas])
-  const { mutate: updateEndpoint } = useUpdateEndpoint({
-    onSuccess: async () => {
-      await handleChange()
-      hideEndpointModalConfirm()
-    },
-    onError: () => {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-    },
-  })
-  const handleUpdate = (state: Record<string, unknown>) =>
-    updateEndpoint({
-      endpointID,
-      state,
-    })
+  const showSaveError = () => {
+    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+  }
+  const { mutate: enableEndpoint, isPending: isEnabling } = useMutation(
+    consoleQuery.workspaces.current.endpoints.enable.post.mutationOptions({
+      onError: showSaveError,
+    }),
+  )
+  const { mutate: disableEndpoint, isPending: isDisabling } = useMutation(
+    consoleQuery.workspaces.current.endpoints.disable.post.mutationOptions({
+      onSuccess: hideDisableConfirm,
+      onError: showSaveError,
+    }),
+  )
+  const { mutate: deleteEndpoint, isPending: isDeleting } = useMutation(
+    consoleQuery.workspaces.current.endpoints.byId.delete.mutationOptions({
+      onSuccess: hideDeleteConfirm,
+      onError: showSaveError,
+    }),
+  )
+  const { mutate: updateEndpoint, isPending: isUpdating } = useMutation(
+    consoleQuery.workspaces.current.endpoints.byId.patch.mutationOptions({
+      onSuccess: hideEndpointModalConfirm,
+      onError: showSaveError,
+    }),
+  )
+  const handleSwitch = (enabled: boolean) => {
+    if (enabled) enableEndpoint({ body: { endpoint_id: endpointID } })
+    else showDisableConfirm()
+  }
 
   const [isCopied, setIsCopied] = useState(false)
   const handleCopy = (value: string) => {
     copy(value)
     setIsCopied(true)
-  }
-
-  const handleDisableConfirmOpenChange = (open: boolean) => {
-    if (open) return
-
-    hideDisableConfirm()
-    setActive(true)
   }
 
   useEffect(() => {
@@ -169,10 +112,10 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
             </IconButton>
           </div>
         </div>
-        {(data.declaration.endpoints ?? [])
+        {(data.declaration?.endpoints ?? [])
           .filter((endpoint) => !endpoint.hidden)
-          .map((endpoint, index) => (
-            <div key={index} className="flex h-6 items-center">
+          .map((endpoint) => (
+            <div key={`${endpoint.method}:${endpoint.path}`} className="flex h-6 items-center">
               <div className="w-12 shrink-0 system-xs-regular text-text-tertiary">
                 {endpoint.method}
               </div>
@@ -207,21 +150,30 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
           ))}
       </div>
       <div className="flex items-center justify-between p-2 pl-3">
-        {active && (
+        {data.enabled && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600">
             <StatusDot status="success" />
             {t(($) => $['detailPanel.serviceOk'], { ns: 'plugin' })}
           </div>
         )}
-        {!active && (
+        {!data.enabled && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-text-tertiary">
             <StatusDot status="disabled" />
             {t(($) => $['detailPanel.disabled'], { ns: 'plugin' })}
           </div>
         )}
-        <Switch className="ml-3" checked={active} onCheckedChange={handleSwitch} size="sm" />
+        <Switch
+          className="ml-3"
+          checked={data.enabled}
+          onCheckedChange={handleSwitch}
+          disabled={isEnabling || isDisabling}
+          size="sm"
+        />
       </div>
-      <AlertDialog open={isShowDisableConfirm} onOpenChange={handleDisableConfirmOpenChange}>
+      <AlertDialog
+        open={isShowDisableConfirm}
+        onOpenChange={(open) => !open && hideDisableConfirm()}
+      >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
@@ -235,7 +187,10 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={() => disableEndpoint(endpointID)}>
+            <AlertDialogConfirmButton
+              loading={isDisabling}
+              onClick={() => disableEndpoint({ body: { endpoint_id: endpointID } })}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
@@ -255,7 +210,10 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={() => deleteEndpoint(endpointID)}>
+            <AlertDialogConfirmButton
+              loading={isDeleting}
+              onClick={() => deleteEndpoint({ params: { id: endpointID } })}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
@@ -263,10 +221,11 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
       </AlertDialog>
       {isShowEndpointModal && (
         <EndpointModal
-          formSchemas={formSchemas as EndpointModalFormSchemas}
-          defaultValues={formValue}
+          settings={data.declaration?.settings ?? []}
+          defaultValues={{ ...data.settings, name: data.name }}
           onCancel={hideEndpointModalConfirm}
-          onSaved={handleUpdate}
+          onSaved={(body) => updateEndpoint({ params: { id: endpointID }, body })}
+          isPending={isUpdating}
           pluginDetail={pluginDetail}
         />
       )}

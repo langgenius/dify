@@ -13,8 +13,125 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
     experimental_defaults: {
+      rag: {
+        pipelines: {
+          datasourcePlugins: {
+            get: {
+              queryOptions: { staleTime: 0, retry: false },
+            },
+          },
+        },
+      },
       workspaces: {
         current: {
+          plugin: {
+            readme: {
+              get: {
+                queryOptions: {
+                  context: { silent: true },
+                  retry: false,
+                },
+              },
+            },
+            asset: {
+              get: {
+                queryOptions: { context: { silent: true } },
+              },
+            },
+          },
+          endpoints: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, _error, _variables, _result, context) => {
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                    }),
+                  ])
+                },
+              },
+            },
+            byId: {
+              patch: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            enable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            disable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+          },
           skills: {
             bySkillId: {
               delete: {

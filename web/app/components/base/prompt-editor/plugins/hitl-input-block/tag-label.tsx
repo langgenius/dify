@@ -1,9 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiEditLine } from '@remixicon/react'
 import * as React from 'react'
-import { Variable02 } from '../../../icons/src/vender/solid/development'
 
 type Props = Readonly<{
   type: 'edit' | 'variable'
@@ -13,7 +11,8 @@ type Props = Readonly<{
 }>
 
 const TagLabel: FC<Props> = ({ type, children, className, onClick }) => {
-  const Icon = type === 'edit' ? RiEditLine : Variable02
+  const iconClassName =
+    type === 'edit' ? 'i-ri-edit-line' : 'i-custom-vender-solid-development-variable-02'
   return (
     <div
       className={cn(
@@ -22,7 +21,7 @@ const TagLabel: FC<Props> = ({ type, children, className, onClick }) => {
       )}
       onClick={onClick}
     >
-      <Icon className="size-3.5" />
+      <span aria-hidden className={cn(iconClassName, 'size-3.5')} />
       <div className="system-xs-medium">{children}</div>
     </div>
   )

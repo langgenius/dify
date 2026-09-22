@@ -10,18 +10,14 @@ import models.model as model_module
 from controllers.console.explore.error import (
     AppAccessDeniedError,
     TrialAppFeatureDisabledError,
-    TrialAppLimitExceeded,
-    TrialAppNotAllowed,
 )
 from controllers.console.explore.trial_app_admission import trial_feature_enable
 from controllers.console.explore.wraps import (
     InstalledAppResource,
-    TrialAppResource,
     installed_app_required,
-    trial_app_required,
     user_allowed_to_access_app,
 )
-from models import Account, AccountTrialAppRecord, App, InstalledApp, TrialApp
+from models import Account, App, InstalledApp
 from tests.unit_tests.model_factories import make_account, make_app
 
 
@@ -172,76 +168,6 @@ def test_user_allowed_to_access_app_success():
         assert view(installed_app) == "ok"
 
 
-@pytest.mark.parametrize("sqlite_session", [(TrialApp, App, AccountTrialAppRecord)], indirect=True)
-def test_trial_app_required_not_allowed(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-):
-    _bind_database(monkeypatch, sqlite_session)
-
-    @trial_app_required
-    def view(app):
-        return "ok"
-
-    with patch(
-        "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(_account(account_id=str(uuid4())), None),
-    ):
-        with pytest.raises(TrialAppNotAllowed):
-            view(str(uuid4()))
-
-
-@pytest.mark.parametrize("sqlite_session", [(TrialApp, App, AccountTrialAppRecord)], indirect=True)
-def test_trial_app_required_limit_exceeded(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-):
-    account_id = str(uuid4())
-    app = _app()
-    trial_app = TrialApp(app_id=app.id, tenant_id=app.tenant_id, trial_limit=1)
-    record = AccountTrialAppRecord(account_id=account_id, app_id=app.id, count=1)
-    sqlite_session.add_all([app, trial_app, record])
-    sqlite_session.commit()
-    _bind_database(monkeypatch, sqlite_session)
-
-    @trial_app_required
-    def view(app):
-        return "ok"
-
-    with patch(
-        "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(_account(account_id=account_id), None),
-    ):
-        with pytest.raises(TrialAppLimitExceeded):
-            view(app.id)
-
-
-@pytest.mark.parametrize("sqlite_session", [(TrialApp, App, AccountTrialAppRecord)], indirect=True)
-def test_trial_app_required_success(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-):
-    account_id = str(uuid4())
-    app = _app()
-    trial_app = TrialApp(app_id=app.id, tenant_id=app.tenant_id, trial_limit=2)
-    record = AccountTrialAppRecord(account_id=account_id, app_id=app.id, count=1)
-    sqlite_session.add_all([app, trial_app, record])
-    sqlite_session.commit()
-    _bind_database(monkeypatch, sqlite_session)
-
-    @trial_app_required
-    def view(app):
-        return app
-
-    with patch(
-        "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(_account(account_id=account_id), None),
-    ):
-        result = view(app.id)
-
-    assert result.id == app.id
-
-
 def test_trial_feature_enable_disabled() -> None:
     @trial_feature_enable
     def view() -> str:
@@ -274,12 +200,3 @@ def test_trial_feature_enable_enabled() -> None:
 def test_installed_app_resource_decorators():
     decorators = InstalledAppResource.method_decorators
     assert len(decorators) == 4
-
-
-def test_trial_app_resource_decorators():
-    assert TrialAppResource.method_decorators == [
-        trial_app_required,
-        trial_feature_enable,
-        wraps_module.account_initialization_required,
-        wraps_module.login_required,
-    ]

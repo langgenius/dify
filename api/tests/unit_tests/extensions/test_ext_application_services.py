@@ -1,6 +1,7 @@
 """Tests for application-service dependency wiring."""
 
 import json
+from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, patch
@@ -19,7 +20,8 @@ from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
-from models.model import AccountTrialAppRecord, App, DifySetup, TrialApp
+from models.enums import CustomizeTokenStrategy
+from models.model import AccountTrialAppRecord, App, AppModelConfig, DifySetup, Site, TrialApp
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -39,7 +41,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchem
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
-from services import account_forgot_password_service, recommended_app_catalog_gateway
+from services import account_forgot_password_service, audio_provider_gateway, recommended_app_catalog_gateway
 from services.account_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -68,6 +70,7 @@ from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavaila
 from services.app_site_service import AppSiteService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
+from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
@@ -738,6 +741,60 @@ def test_trial_generation_uses_configured_access_runtime_and_usage(
         assert record.count == 1
 
 
+def test_app_audio_uses_the_configured_database_and_app_owner(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        config = AppModelConfig(app_id=app_id, speech_to_text='{"enabled":true}')
+        session.add(config)
+        session.flush()
+        session.add(
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="Trial",
+                mode="chat",
+                app_model_config_id=config.id,
+                enable_site=True,
+                enable_api=False,
+            )
+        )
+        session.add(TrialApp(app_id=app_id, tenant_id=tenant_id))
+
+    def transcribe(*, app: AudioAppRef, content: bytes, end_user: str | None) -> str:
+        assert app == AudioAppRef(app_id=app_id, tenant_id=tenant_id, app_mode="chat")
+        assert content == b"audio"
+        assert end_user is None
+        return "transcript"
+
+    def synthesize(*, app: AudioAppRef, text: str, voice: str | None, end_user: str | None) -> AudioOutput:
+        assert app == AudioAppRef(app_id=app_id, tenant_id=tenant_id, app_mode="chat")
+        assert (text, voice, end_user) == ("read", "voice", None)
+        return AudioOutput(data=b"audio", mime_type="audio/mpeg")
+
+    monkeypatch.setattr(audio_provider_gateway, "speech_to_text", transcribe)
+    monkeypatch.setattr(audio_provider_gateway, "text_to_speech", synthesize)
+    admitted = services.trial_app_access.get_access(app_id=app_id, account_id=account_id)
+    assert services.app_audio.transcript_asr(
+        app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
+        audio=AudioUpload(stream=BytesIO(b"audio"), mime_type="audio/mp3"),
+    ) == {"text": "transcript"}
+    assert services.app_audio.transcript_tts(
+        app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
+        account_id=account_id,
+        text=" read ",
+        voice="voice",
+        message_id=None,
+    ) == AudioOutput(data=b"audio", mime_type="audio/mpeg")
+
+
 def test_app_previews_use_the_configured_catalog_and_app_owner(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -763,6 +820,43 @@ def test_app_previews_use_the_configured_catalog_and_app_owner(
         assert services.app_previews.get_access(app_id=app_id) == AppPreviewRef(app_id=app_id, tenant_id=tenant_id)
         with pytest.raises(AppPreviewUnavailableError, match=other_id):
             services.app_previews.get_access(app_id=other_id)
+
+
+def test_app_preview_details_use_the_configured_database_without_request_globals(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, owner_id, viewer_workspace_id = str(uuid4()), str(uuid4()), str(uuid4())
+    account = Account(name="Preview viewer", email="preview@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                account,
+                App(id=app_id, tenant_id=owner_id, name="Preview", mode="chat", enable_site=True, enable_api=False),
+                Site(
+                    app_id=app_id,
+                    title="Preview site",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.UUID,
+                ),
+            ]
+        )
+
+    detail = services.app_preview_details.get_detail(
+        app=AppPreviewRef(app_id=app_id, tenant_id=owner_id),
+        account_id=account.id,
+        active_workspace_id=viewer_workspace_id,
+    )
+
+    assert detail.id == app_id
+    assert detail.name == "Preview"
+    assert detail.site.title == "Preview site"
+    assert detail.model_config is None
 
 
 def test_build_application_services_adapts_enterprise_webapp_access_mode(

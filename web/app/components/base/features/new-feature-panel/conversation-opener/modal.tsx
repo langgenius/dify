@@ -199,7 +199,7 @@ const OpeningSettingModal = ({
               >
                 <IconButton
                   {...getHandleProps(index)}
-                  className="handle size-6 shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
+                  className="handle shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
                 >
                   <span aria-hidden="true" className="i-ri-draggable size-4 text-text-quaternary" />
                 </IconButton>
