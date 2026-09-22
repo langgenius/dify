@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { memo, useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 
 export type FieldTitleProps = {
   title?: string
@@ -57,8 +57,9 @@ export const FieldTitle = memo(
               />
             )}
             {tooltip && (
-              <Infotip aria-label={tooltip} className="ml-1">
-                {tooltip}
+              <Infotip>
+                <InfotipTrigger aria-label={tooltip} className="ml-1" />
+                <InfotipContent aria-label={tooltip}>{tooltip}</InfotipContent>
               </Infotip>
             )}
           </div>
