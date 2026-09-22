@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Toggle } from '@langgenius/dify-ui/toggle'
+import { RadioItem } from '@langgenius/dify-ui/radio-group'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -24,7 +24,6 @@ type OptionCardProps<T> = {
   effectColor?: EffectColor
   showEffectColor?: boolean
   disabled?: boolean
-  onClick?: (id: T) => void
   children?: ReactNode
   showChildren?: boolean
   ref?: React.Ref<HTMLDivElement>
@@ -41,7 +40,6 @@ const OptionCard = <T,>({
   effectColor,
   showEffectColor,
   disabled,
-  onClick,
   children,
   showChildren,
   ref,
@@ -60,12 +58,9 @@ const OptionCard = <T,>({
         disabled && 'cursor-not-allowed opacity-50',
       )}
     >
-      <Toggle
-        pressed={!!isActive}
-        disabled={disabled || !onClick}
-        onPressedChange={(pressed) => {
-          if (pressed) onClick?.(id)
-        }}
+      <RadioItem<T>
+        value={id}
+        disabled={disabled}
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         className={cn(
@@ -108,7 +103,7 @@ const OptionCard = <T,>({
             </div>
           )}
         </div>
-      </Toggle>
+      </RadioItem>
       {!!(children && showChildren) && (
         <div className="relative rounded-b-xl bg-components-panel-bg p-4">
           <span

@@ -113,7 +113,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
       description={t(($) => $['stepTwo.generalTip'], { ns: 'datasetCreation' })}
       isActive={isActive}
-      onSwitched={() => onDocFormChange(ChunkingMode.text)}
+      value={ChunkingMode.text}
       actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>

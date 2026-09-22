@@ -45,7 +45,6 @@ type ParentChildOptionsProps = {
   isInUpload: boolean
   isNotUploadInEmptyDataset: boolean
   // Actions
-  onDocFormChange: (form: ChunkingMode) => void
   onChunkForContextChange: (mode: ParentMode) => void
   onParentDelimiterChange: (value: string) => void
   onParentMaxLengthChange: (value: number) => void
@@ -65,7 +64,6 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   isActive,
   isInUpload,
   isNotUploadInEmptyDataset,
-  onDocFormChange,
   onChunkForContextChange,
   onParentDelimiterChange,
   onParentMaxLengthChange,
@@ -102,7 +100,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
       description={t(($) => $['stepTwo.parentChildTip'], { ns: 'datasetCreation' })}
       isActive={isActive}
-      onSwitched={() => onDocFormChange(ChunkingMode.parentChild)}
+      value={ChunkingMode.parentChild}
       actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>

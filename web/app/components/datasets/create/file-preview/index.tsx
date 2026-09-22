@@ -2,13 +2,12 @@
 import type { CustomFile as File } from '@/models/datasets'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { cn } from '@langgenius/dify-ui/cn'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { fetchFilePreview } from '@/service/common'
-import { commonQueryKeys } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import s from './index.module.css'
 
 type IProps = {
@@ -19,12 +18,10 @@ type IProps = {
 const FilePreview = ({ file, hidePreview }: IProps) => {
   const { t } = useTranslation()
   const headingId = useId()
-  const fileID = file?.id || ''
+  const fileID = file?.id
   const { data, isPending, isError } = useQuery(
-    queryOptions({
-      queryKey: commonQueryKeys.filePreview(fileID),
-      queryFn: () => fetchFilePreview({ fileID }),
-      enabled: !!fileID,
+    consoleQuery.files.byFileId.preview.get.queryOptions({
+      input: fileID ? { params: { file_id: fileID } } : skipToken,
       retry: false,
     }),
   )

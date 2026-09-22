@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -113,7 +114,12 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="flex flex-col items-stretch gap-2 @min-[552px]/chunkfields:flex-row">
+      <RadioGroup<IndexingType>
+        aria-label={t(($) => $['stepTwo.indexMode'], { ns: 'datasetCreation' })}
+        value={indexType}
+        onValueChange={onIndexTypeChange}
+        className="flex flex-col items-stretch gap-2 @min-[552px]/chunkfields:flex-row"
+      >
         {/* Qualified option */}
         {(!hasSetIndexType || (hasSetIndexType && indexType === IndexingType.QUALIFIED)) && (
           <OptionCard
@@ -141,7 +147,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             icon={<img src={indexMethodIcon.high_quality} alt="" />}
             isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
             disabled={hasSetIndexType}
-            onSwitched={() => onIndexTypeChange(IndexingType.QUALIFIED)}
+            value={IndexingType.QUALIFIED}
           />
         )}
 
@@ -157,10 +163,10 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             icon={<img src={indexMethodIcon.economical} alt="" />}
             isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
             disabled={hasSetIndexType || !!economicalDisabledReason}
-            onSwitched={() => onIndexTypeChange(IndexingType.ECONOMICAL)}
+            value={IndexingType.ECONOMICAL}
           />
         )}
-      </div>
+      </RadioGroup>
 
       {/* High quality tip */}
       {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (

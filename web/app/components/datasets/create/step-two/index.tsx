@@ -3,6 +3,7 @@
 import type { FC, MouseEvent } from 'react'
 import type { StepTwoProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -284,54 +285,60 @@ const StepTwo: FC<StepTwoProps> = ({
         <h1 className="mb-1 system-md-semibold text-text-secondary">
           {t(($) => $['stepTwo.segmentation'], { ns: 'datasetCreation' })}
         </h1>
-        {showGeneralOption && (
-          <GeneralChunkingOptions
-            segmentIdentifier={segmentation.segmentIdentifier}
-            maxChunkLength={segmentation.maxChunkLength}
-            overlap={segmentation.overlap}
-            rules={segmentation.rules}
-            currentDocForm={currentDocForm}
-            docLanguage={docLanguage}
-            isActive={generalChunkingModes.includes(currentDocForm)}
-            isInUpload={isInUpload}
-            isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
-            hasCurrentDatasetDocForm={!!currentDataset?.doc_form}
-            onSegmentIdentifierChange={(value) => segmentation.setSegmentIdentifier(value, true)}
-            onMaxChunkLengthChange={segmentation.setMaxChunkLength}
-            onOverlapChange={segmentation.setOverlap}
-            onRuleToggle={segmentation.toggleRule}
-            onDocFormChange={handleDocFormChange}
-            onDocLanguageChange={setDocLanguage}
-            onPreview={updatePreview}
-            onReset={segmentation.resetToDefaults}
-            locale={locale}
-            showSummaryIndexSetting={showSummaryIndexSetting}
-            summaryIndexSetting={segmentation.summaryIndexSetting}
-            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
-          />
-        )}
-        {showParentChildOption && (
-          <ParentChildOptions
-            parentChildConfig={segmentation.parentChildConfig}
-            rules={segmentation.rules}
-            currentDocForm={currentDocForm}
-            isActive={currentDocForm === ChunkingMode.parentChild}
-            isInUpload={isInUpload}
-            isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
-            onDocFormChange={handleDocFormChange}
-            onChunkForContextChange={segmentation.setChunkForContext}
-            onParentDelimiterChange={(v) => segmentation.updateParentConfig('delimiter', v)}
-            onParentMaxLengthChange={(v) => segmentation.updateParentConfig('maxLength', v)}
-            onChildDelimiterChange={(v) => segmentation.updateChildConfig('delimiter', v)}
-            onChildMaxLengthChange={(v) => segmentation.updateChildConfig('maxLength', v)}
-            onRuleToggle={segmentation.toggleRule}
-            onPreview={updatePreview}
-            onReset={segmentation.resetToDefaults}
-            showSummaryIndexSetting={showSummaryIndexSetting}
-            summaryIndexSetting={segmentation.summaryIndexSetting}
-            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
-          />
-        )}
+        <RadioGroup<ChunkingMode>
+          className="block"
+          aria-label={t(($) => $['stepTwo.segmentation'], { ns: 'datasetCreation' })}
+          value={currentDocForm === ChunkingMode.qa ? ChunkingMode.text : currentDocForm}
+          onValueChange={handleDocFormChange}
+        >
+          {showGeneralOption && (
+            <GeneralChunkingOptions
+              segmentIdentifier={segmentation.segmentIdentifier}
+              maxChunkLength={segmentation.maxChunkLength}
+              overlap={segmentation.overlap}
+              rules={segmentation.rules}
+              currentDocForm={currentDocForm}
+              docLanguage={docLanguage}
+              isActive={generalChunkingModes.includes(currentDocForm)}
+              isInUpload={isInUpload}
+              isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
+              hasCurrentDatasetDocForm={!!currentDataset?.doc_form}
+              onSegmentIdentifierChange={(value) => segmentation.setSegmentIdentifier(value, true)}
+              onMaxChunkLengthChange={segmentation.setMaxChunkLength}
+              onOverlapChange={segmentation.setOverlap}
+              onRuleToggle={segmentation.toggleRule}
+              onDocFormChange={handleDocFormChange}
+              onDocLanguageChange={setDocLanguage}
+              onPreview={updatePreview}
+              onReset={segmentation.resetToDefaults}
+              locale={locale}
+              showSummaryIndexSetting={showSummaryIndexSetting}
+              summaryIndexSetting={segmentation.summaryIndexSetting}
+              onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
+            />
+          )}
+          {showParentChildOption && (
+            <ParentChildOptions
+              parentChildConfig={segmentation.parentChildConfig}
+              rules={segmentation.rules}
+              currentDocForm={currentDocForm}
+              isActive={currentDocForm === ChunkingMode.parentChild}
+              isInUpload={isInUpload}
+              isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
+              onChunkForContextChange={segmentation.setChunkForContext}
+              onParentDelimiterChange={(v) => segmentation.updateParentConfig('delimiter', v)}
+              onParentMaxLengthChange={(v) => segmentation.updateParentConfig('maxLength', v)}
+              onChildDelimiterChange={(v) => segmentation.updateChildConfig('delimiter', v)}
+              onChildMaxLengthChange={(v) => segmentation.updateChildConfig('maxLength', v)}
+              onRuleToggle={segmentation.toggleRule}
+              onPreview={updatePreview}
+              onReset={segmentation.resetToDefaults}
+              showSummaryIndexSetting={showSummaryIndexSetting}
+              summaryIndexSetting={segmentation.summaryIndexSetting}
+              onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
+            />
+          )}
+        </RadioGroup>
         <Separator className="my-5 h-[0.5px]" />
         <IndexingModeSection
           indexType={indexing.indexType}

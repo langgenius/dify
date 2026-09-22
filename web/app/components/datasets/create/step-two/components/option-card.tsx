@@ -1,6 +1,6 @@
 import type { ComponentProps, FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Toggle } from '@langgenius/dify-ui/toggle'
+import { RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useId } from 'react'
 
 const TriangleArrow: FC<ComponentProps<'svg'>> = (props) => (
@@ -85,7 +85,8 @@ const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   )
 }
 
-type OptionCardProps = {
+type OptionCardProps<Value> = {
+  value: Value
   icon: ReactNode
   className?: string
   activeHeaderClassName?: string
@@ -94,12 +95,11 @@ type OptionCardProps = {
   isActive?: boolean
   actions?: ReactNode
   effectImg?: string
-  onSwitched?: () => void
   noHighlight?: boolean
   disabled?: boolean
 } & Omit<ComponentProps<'div'>, 'title' | 'onClick'>
 
-export const OptionCard: FC<OptionCardProps> = ({ ref, ...props }) => {
+export const OptionCard = <Value,>({ ref, ...props }: OptionCardProps<Value>) => {
   const {
     icon,
     className,
@@ -111,7 +111,7 @@ export const OptionCard: FC<OptionCardProps> = ({ ref, ...props }) => {
     activeHeaderClassName,
     style,
     effectImg,
-    onSwitched,
+    value,
     noHighlight,
     disabled,
     ...rest
@@ -134,12 +134,11 @@ export const OptionCard: FC<OptionCardProps> = ({ ref, ...props }) => {
       {...rest}
       ref={ref}
     >
-      <Toggle
-        pressed={!!isActive}
+      <RadioItem<Value>
+        value={value}
+        nativeButton
+        render={<button type="button" />}
         disabled={disabled}
-        onPressedChange={(pressed) => {
-          if (pressed) onSwitched?.()
-        }}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         className="flex w-full min-w-0 rounded-t-xl border-0 bg-transparent p-0 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
@@ -155,7 +154,7 @@ export const OptionCard: FC<OptionCardProps> = ({ ref, ...props }) => {
           effectImg={effectImg}
           disabled={disabled}
         />
-      </Toggle>
+      </RadioItem>
       {/** Body */}
       {!!(isActive && (children || actions)) && (
         <div className="rounded-b-xl bg-components-panel-bg px-4 py-3">

@@ -1,7 +1,7 @@
 import type { ParentChildConfig } from '../../hooks'
 import type { PreProcessingRule } from '@/models/datasets'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -26,7 +26,9 @@ vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
 
 const ns = 'datasetCreation'
 const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'COMMUNITY' } })
+  renderWithConsoleQuery(<RadioGroup aria-label="Chunking mode">{ui}</RadioGroup>, {
+    systemFeatures: { deployment_edition: 'COMMUNITY' },
+  })
 
 const createRules = (): PreProcessingRule[] => [
   { id: 'remove_extra_spaces', enabled: true },
@@ -47,7 +49,6 @@ const defaultProps = {
   isActive: true,
   isInUpload: false,
   isNotUploadInEmptyDataset: false,
-  onDocFormChange: vi.fn(),
   onChunkForContextChange: vi.fn(),
   onParentDelimiterChange: vi.fn(),
   onParentMaxLengthChange: vi.fn(),
@@ -119,19 +120,6 @@ describe('ParentChildOptions', () => {
       render(<ParentChildOptions {...defaultProps} onRuleToggle={onRuleToggle} />)
       fireEvent.click(screen.getByText(`${ns}.stepTwo.removeUrlEmails`))
       expect(onRuleToggle).toHaveBeenCalledWith('remove_urls_emails')
-    })
-
-    it('should call onDocFormChange with parentChild when card switched', async () => {
-      const onDocFormChange = vi.fn()
-      render(
-        <ParentChildOptions {...defaultProps} isActive={false} onDocFormChange={onDocFormChange} />,
-      )
-      const user = userEvent.setup()
-      const card = screen.getByRole('button', { name: `${ns}.stepTwo.parentChild` })
-      expect(card).toHaveAttribute('aria-pressed', 'false')
-      card.focus()
-      await user.keyboard(' ')
-      expect(onDocFormChange).toHaveBeenCalledWith(ChunkingMode.parentChild)
     })
 
     it('should call onChunkForContextChange when full-doc chosen', () => {

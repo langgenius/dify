@@ -2349,6 +2349,32 @@ describe('StepTwo Component', () => {
   }
 
   describe('Rendering', () => {
+    it('switches chunking modes as one radio group without nesting parameter controls in a radio', async () => {
+      const user = userEvent.setup()
+      render(<StepTwo {...defaultStepTwoProps} />)
+      const group = screen.getByRole('radiogroup', { name: 'datasetCreation.stepTwo.segmentation' })
+      const general = within(group).getByRole('radio', { name: 'datasetCreation.stepTwo.general' })
+      const parentChild = within(group).getByRole('radio', {
+        name: 'datasetCreation.stepTwo.parentChild',
+      })
+      expect(general).toBeChecked()
+      expect(general).not.toContainElement(
+        screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' }),
+      )
+      general.focus()
+      await user.keyboard('{ArrowDown}')
+      expect(parentChild).toBeChecked()
+      expect(general).not.toBeChecked()
+      expect(parentChild).not.toContainElement(
+        screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' }),
+      )
+      await user.keyboard(' ')
+      expect(parentChild).toBeChecked()
+      await user.keyboard('{ArrowUp}')
+      expect(general).toBeChecked()
+      expect(parentChild).not.toBeChecked()
+    })
+
     it('should show general chunking options when not in upload', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // Should render the segmentation section

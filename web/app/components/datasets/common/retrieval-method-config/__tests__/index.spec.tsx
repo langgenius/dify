@@ -103,22 +103,28 @@ describe('RetrievalMethodConfig', () => {
     mockIsRerankDefaultModelValid = true
   })
 
-  it('switches retrieval mode with the keyboard and exposes the selected mode', async () => {
+  it('selects one retrieval mode with arrow keys and keeps parameter controls outside radios', async () => {
     const user = userEvent.setup()
-    const onChange = vi.fn()
-    renderComponent({ onChange })
+    const Owner = () => {
+      const [value, setValue] = React.useState(createMockRetrievalConfig())
+      return <RetrievalMethodConfig value={value} onChange={setValue} />
+    }
+    render(<Owner />)
+    const semantic = screen.getByRole('radio', { name: 'dataset.retrieval.semantic_search.title' })
     expect(
-      screen.getByRole('button', { name: 'dataset.retrieval.semantic_search.title' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    const fullText = screen.getByRole('button', {
-      name: 'dataset.retrieval.full_text_search.title',
-    })
-    expect(fullText).toHaveAttribute('aria-pressed', 'false')
-    fullText.focus()
-    await user.keyboard('{Enter}')
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ search_method: RETRIEVE_METHOD.fullText }),
-    )
+      screen.getByRole('radiogroup', { name: 'datasetSettings.form.retrievalSetting.method' }),
+    ).toContainElement(semantic)
+    expect(semantic).toBeChecked()
+    expect(semantic).not.toContainElement(screen.getByRole('button', { name: 'Update Top K' }))
+    semantic.focus()
+    await user.keyboard('{ArrowDown}')
+    const fullText = screen.getByRole('radio', { name: 'dataset.retrieval.full_text_search.title' })
+    expect(fullText).toHaveFocus()
+    expect(fullText).toBeChecked()
+    expect(semantic).not.toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Update Top K' }))
+    expect(fullText).toBeChecked()
+    expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(1)
   })
 
   // Tests for basic rendering
@@ -232,16 +238,16 @@ describe('RetrievalMethodConfig', () => {
       renderComponent({ disabled: true })
 
       // When disabled, clicking should not trigger onChange
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
-      expect(semanticOption).toBeDisabled()
+      expect(semanticOption).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should default disabled to false', () => {
       renderComponent()
 
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
       expect(semanticOption).not.toBeDisabled()
@@ -257,7 +263,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
       fireEvent.click(semanticOption!)
@@ -278,7 +284,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const fullTextOption = screen.getByRole('button', {
+      const fullTextOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.full_text_search.title',
       })
       fireEvent.click(fullTextOption!)
@@ -299,7 +305,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByRole('button', {
+      const hybridOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.hybrid_search.title',
       })
       fireEvent.click(hybridOption!)
@@ -320,7 +326,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
       fireEvent.click(semanticOption!)
@@ -336,7 +342,7 @@ describe('RetrievalMethodConfig', () => {
         disabled: true,
       })
 
-      const fullTextOption = screen.getByRole('button', {
+      const fullTextOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.full_text_search.title',
       })
       fireEvent.click(fullTextOption!)
@@ -377,7 +383,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
       fireEvent.click(semanticOption!)
@@ -407,7 +413,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
       fireEvent.click(semanticOption!)
@@ -434,7 +440,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
       fireEvent.click(semanticOption!)
@@ -459,7 +465,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByRole('button', {
+      const hybridOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.hybrid_search.title',
       })
       fireEvent.click(hybridOption!)
@@ -486,7 +492,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByRole('button', {
+      const hybridOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.hybrid_search.title',
       })
       fireEvent.click(hybridOption!)
@@ -508,7 +514,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByRole('button', {
+      const hybridOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.hybrid_search.title',
       })
       fireEvent.click(hybridOption!)
@@ -551,7 +557,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByRole('button', {
+      const hybridOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.hybrid_search.title',
       })
       fireEvent.click(hybridOption!)
@@ -576,7 +582,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByRole('button', {
+      const hybridOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.hybrid_search.title',
       })
       fireEvent.click(hybridOption!)
@@ -606,7 +612,7 @@ describe('RetrievalMethodConfig', () => {
 
       const { rerender } = render(<RetrievalMethodConfig value={value1} onChange={onChange} />)
 
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
       fireEvent.click(semanticOption!)
@@ -628,7 +634,7 @@ describe('RetrievalMethodConfig', () => {
 
       rerender(<RetrievalMethodConfig value={value} onChange={onChange2} />)
 
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
       fireEvent.click(semanticOption!)
@@ -686,7 +692,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByRole('button', {
+      const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
       fireEvent.click(semanticOption!)
@@ -717,7 +723,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByRole('button', {
+      const hybridOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.hybrid_search.title',
       })
       fireEvent.click(hybridOption!)
@@ -748,7 +754,7 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByRole('button', {
+      const hybridOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.hybrid_search.title',
       })
       fireEvent.click(hybridOption!)
@@ -770,10 +776,10 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const fullTextOption = screen.getByRole('button', {
+      const fullTextOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.full_text_search.title',
       })
-      const hybridOption = screen.getByRole('button', {
+      const hybridOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.hybrid_search.title',
       })
 
@@ -848,15 +854,15 @@ describe('RetrievalMethodConfig', () => {
     describe('disabled prop variations', () => {
       it('should handle disabled=true', () => {
         renderComponent({ disabled: true })
-        const option = screen.getByRole('button', {
+        const option = screen.getByRole('radio', {
           name: 'dataset.retrieval.semantic_search.title',
         })
-        expect(option).toBeDisabled()
+        expect(option).toHaveAttribute('aria-disabled', 'true')
       })
 
       it('should handle disabled=false', () => {
         renderComponent({ disabled: false })
-        const option = screen.getByRole('button', {
+        const option = screen.getByRole('radio', {
           name: 'dataset.retrieval.semantic_search.title',
         })
         expect(option).not.toBeDisabled()
@@ -903,7 +909,7 @@ describe('RetrievalMethodConfig', () => {
       // The hybrid search option should have the recommended badge
       // This is verified by checking the isRecommended prop passed to OptionCard
       const hybridTitle = screen.getByText('dataset.retrieval.hybrid_search.title')
-      const hybridCard = hybridTitle.closest('button')
+      const hybridCard = hybridTitle.closest('[role=radio]')
 
       // Should contain recommended badge from OptionCard
       expect(
