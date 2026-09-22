@@ -888,7 +888,7 @@ class DatasetListApi(Resource):
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         # These legacy fields are response metadata: the query returns all
-        # requested IDs. Keep their integer fallback and echo behavior.
+        # requested IDs without pagination. Keep their integer fallback and echo behavior.
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         ids = request.args.getlist("ids")
@@ -902,7 +902,7 @@ class DatasetListApi(Resource):
 
         response = {
             "data": datasets,
-            "has_more": len(datasets) == limit,
+            "has_more": False,
             "limit": limit,
             "total": len(datasets),
             "page": page,

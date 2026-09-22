@@ -393,7 +393,7 @@ def test_dataset_ids_filter_by_actual_app_owner_without_requiring_binding(harnes
         ("&page=0&limit=0", 0, 0, False),
         ("&page=-2&limit=-1", -2, -1, False),
         ("&page=invalid&limit=invalid", 1, 20, False),
-        ("&page=99&limit=1", 99, 1, True),
+        ("&page=99&limit=1", 99, 1, False),
     ],
 )
 def test_dataset_page_and_limit_are_metadata_without_slicing(
@@ -412,10 +412,11 @@ def test_dataset_page_and_limit_are_metadata_without_slicing(
 
 
 @pytest.mark.parametrize("ids", ["missing", "empty"])
-def test_unmatched_dataset_ids_return_empty_result(harness: _Harness, ids: str) -> None:
-    response = harness.get("datasets", query=f"?ids={uuid4() if ids == 'missing' else ''}")
+@pytest.mark.parametrize("limit", [20, 0])
+def test_unmatched_dataset_ids_return_empty_result(harness: _Harness, ids: str, limit: int) -> None:
+    response = harness.get("datasets", query=f"?ids={uuid4() if ids == 'missing' else ''}&limit={limit}")
     assert response.status_code == 200
-    assert response.get_json() == {"data": [], "has_more": False, "limit": 20, "total": 0, "page": 1}
+    assert response.get_json() == {"data": [], "has_more": False, "limit": limit, "total": 0, "page": 1}
 
 
 def test_dataset_list_requires_ids(harness: _Harness) -> None:
