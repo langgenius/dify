@@ -618,6 +618,8 @@ def build_nodes(
     model_config: dict[str, Any],
     plan_items: list[str],
     resource_ids: Sequence[str] = (),
+    *,
+    trusted_text: str = "",
 ) -> BuildNodesResult:
     try:
         mc = _generator_model_config(tenant_id, model_config)
@@ -660,7 +662,7 @@ def build_nodes(
         # runtime model follows the user's choice.
         grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
         _ground(intents, grounding_mc, tenant_id, plan_items)
-        for node_id in _ground_placeholder_endpoints(intents):
+        for node_id in _ground_placeholder_endpoints(intents, trusted_text=trusted_text):
             logger.info("Dify Builder: http-request %s had a placeholder URL; now read from a start variable", node_id)
         applicable, rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
         if not applicable:
@@ -759,9 +761,9 @@ def _is_placeholder_endpoint(url: str) -> bool:
     return _PLACEHOLDER_URL_RE.search(text) is not None or _is_localhost_host(text)
 
 
-def _ground_placeholder_endpoints(intents: list[MutationIntent]) -> list[str]:
-    """Replace every http-request placeholder URL with a REQUIRED start-node
-    variable and a template reference to it.
+def _ground_placeholder_endpoints(intents: list[MutationIntent], *, trusted_text: str = "") -> list[str]:
+    """Replace every http-request URL the user didn't supply with a REQUIRED
+    start-node variable and a template reference to it.
 
     ESQ1-302 called ``https://api.example.com/ppt/generate``: the model had no
     endpoint, so it invented one, and every test run failed against a host that
@@ -769,7 +771,16 @@ def _ground_placeholder_endpoints(intents: list[MutationIntent]) -> list[str]:
     the user for the real endpoint -- or, when they have none, tells them what
     the step needs. Builder-only; the shared generator's own http-request
     example is ``https://example.com``, so cmd+K keeps its placeholders.
-    Returns the ids of the http-request nodes it re-pointed.
+
+    A URL is grounded when it LOOKS invented (``_is_placeholder_endpoint``) OR,
+    with ``trusted_text`` non-empty, when its host never actually appears in
+    what the user typed (``user_supplied.is_user_supplied_url``) -- a
+    plausible, real-looking host the model invented (S5b:
+    ``api.pptrender.io``) is just as much a fabrication as
+    ``api.example.com``, only harder to spot by shape alone.
+    ``trusted_text == ""`` (no caller-supplied text) keeps exactly today's
+    placeholder-only behaviour. Returns the ids of the http-request nodes it
+    re-pointed.
     """
     start = next((i for i in intents if i.op == "create_node" and i.args.get("node_type") == "start"), None)
     if start is None:
@@ -784,7 +795,9 @@ def _ground_placeholder_endpoints(intents: list[MutationIntent]) -> list[str]:
         if intent.op != "create_node" or intent.args.get("node_type") != "http-request":
             continue
         node_config = dict(intent.args.get("config") or {})
-        if not _is_placeholder_endpoint(str(node_config.get("url") or "")):
+        url = str(node_config.get("url") or "")
+        not_user_supplied = bool(trusted_text) and not user_supplied.is_user_supplied_url(url, trusted_text)
+        if not (_is_placeholder_endpoint(url) or not_user_supplied):
             continue
         node_id = str(intent.args.get("node_id") or "")
         var_name = f"{node_id}_url"

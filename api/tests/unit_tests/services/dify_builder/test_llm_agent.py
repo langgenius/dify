@@ -70,8 +70,8 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         seen["bind_resources"] = (model, tenant_id, plan_items, resource_ids)
         return []
 
-    def mock_build_nodes(tenant_id, model_config, plan_items, resource_ids=()):
-        seen["build_nodes"] = (tenant_id, model_config, plan_items, resource_ids)
+    def mock_build_nodes(tenant_id, model_config, plan_items, resource_ids=(), *, trusted_text=""):
+        seen["build_nodes"] = (tenant_id, model_config, plan_items, resource_ids, trusted_text)
         return []
 
     def mock_learn_from_build(model, goal_text, requirements, plan_items, built_node_ids, _reasoning=None):
@@ -105,7 +105,13 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     assert seen["bind_resources"] == ("MODEL", "t1", ["step"], ["rid"])
 
     agent.build_nodes(["step"])
-    assert seen["build_nodes"] == ("t1", model_config, ["step"], ())
+    assert seen["build_nodes"] == ("t1", model_config, ["step"], (), "")
+
+    # trusted_text forwards through the wrapper unchanged (ESQ1-302/S5b: the
+    # handler threads the user's own goal+requirements text down to
+    # build.build_nodes so it can tell a supplied endpoint from an invented one).
+    agent.build_nodes(["step"], trusted_text="goal text and requirements")
+    assert seen["build_nodes"] == ("t1", model_config, ["step"], (), "goal text and requirements")
 
     agent.learn_from_build("goal", {"x": 1}, ["step"], ["n1"])
     assert seen["learn_from_build"] == ("MODEL", "goal", {"x": 1}, ["step"], ["n1"])

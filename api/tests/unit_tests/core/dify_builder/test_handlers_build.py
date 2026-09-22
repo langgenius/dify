@@ -365,6 +365,46 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes():
     assert len(assistant.payload["execution"]["activities"]) == 3
 
 
+def test_plan_approval_passes_trusted_text_matching_user_supplied_trusted_text_for():
+    """handle_plan_approval threads the user's own text (goal + submitted
+    requirements) through to build_nodes as trusted_text, so
+    _ground_placeholder_endpoints can tell an endpoint the user actually gave
+    from one the model invented (ESQ1-302/S5b). core/dify_builder cannot
+    import services, so the handler builds this string itself -- pinned here
+    byte-identical to services.dify_builder.agent.user_supplied.trusted_text_for
+    on the same input."""
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from services.dify_builder.agent.user_supplied import trusted_text_for
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    class _RecordingAgent(PlaceholderAgent):
+        def __init__(self):
+            self.build_nodes_calls: list[str] = []
+
+        def build_nodes(self, plan_items, resource_ids=None, *, trusted_text=""):
+            self.build_nodes_calls.append(trusted_text)
+            return super().build_nodes(plan_items, resource_ids)
+
+    agent = _RecordingAgent()
+    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=agent)
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_PLAN_APPROVAL,
+        plan_items=["Retrieve", "Summarize"],
+        plan_version_tag="v1",
+        requirements={"endpoint": "", "currency": "USD"},
+    )
+    session, fc = repo.get_session(s.id)
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    handle_plan_approval(env, turn, session, fc)
+
+    assert len(agent.build_nodes_calls) == 1
+    trusted_text = agent.build_nodes_calls[0]
+    assert fc.goal_text in trusted_text
+    assert "USD" in trusted_text
+    assert trusted_text == trusted_text_for(fc.goal_text, fc.requirements)
+
+
 def test_plan_approval_ignores_non_approve_action():
     from core.dify_builder.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
@@ -392,7 +432,7 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas():
     }
     # generation produced nothing, WITH a specific reason (the real generator returns
     # e.g. "UNRESOLVED_REFERENCE: ..." / a provider error). The error card must carry it.
-    env.agent.build_nodes = lambda _plan, _rids=None: BuildNodesResult(
+    env.agent.build_nodes = lambda _plan, _rids=None, *, trusted_text="": BuildNodesResult(  # noqa: ARG005
         intents=[], error="UNRESOLVED_REFERENCE: Reference {#node4.x#} not declared"
     )
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
@@ -431,7 +471,7 @@ def test_plan_approval_error_card_carries_diagnostics_into_the_item_payload():
             "errors": [{"code": "UNRESOLVED_REFERENCE", "detail": "...", "node_id": "node2"}],
         }
     ]
-    env.agent.build_nodes = lambda _plan, _rids=None: BuildNodesResult(
+    env.agent.build_nodes = lambda _plan, _rids=None, *, trusted_text="": BuildNodesResult(  # noqa: ARG005
         intents=[], error="Reference {#node2.response#} not declared on node 'node2'", diagnostics=diag
     )
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
@@ -459,7 +499,7 @@ def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build():
         "edges": [],
     }
     # generator returns a graph whose start id is "node1" (a document variable)
-    env.agent.build_nodes = lambda _plan, _rids=None: BuildNodesResult(
+    env.agent.build_nodes = lambda _plan, _rids=None, *, trusted_text="": BuildNodesResult(  # noqa: ARG005
         intents=[
             MutationIntent(
                 op="create_node",
@@ -503,7 +543,7 @@ def test_plan_approval_survives_generator_reusing_the_deleted_placeholder_start_
         "edges": [],
     }
     # generator reuses the SAME id ("start") for its own start node
-    env.agent.build_nodes = lambda _plan, _rids=None: BuildNodesResult(
+    env.agent.build_nodes = lambda _plan, _rids=None, *, trusted_text="": BuildNodesResult(  # noqa: ARG005
         intents=[
             MutationIntent(
                 op="create_node",
@@ -2499,7 +2539,7 @@ def _stub_agent_building(intents):
     from tests.unit_tests.core.dify_builder.fakes import StubAgent
 
     class _Agent(StubAgent):
-        def build_nodes(self, _plan_items, _resource_ids=None):
+        def build_nodes(self, _plan_items, _resource_ids=None, *, trusted_text=""):  # noqa: ARG002
             return BuildNodesResult(intents=list(intents))
 
     return _Agent()
