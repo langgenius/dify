@@ -292,15 +292,18 @@ class WorkflowServiceDifyPort:
             # The same pure value repairs the generator's postprocess applies
             # (core.workflow.graph_normalizers), for the intents the generator
             # never saw: a Fix/Edit repair that writes a condition value as a
-            # JSON number (ESQ1-285's flip-flop) or an http body item without
-            # ``type``. Must run BEFORE the preflight, which would reject them.
-            # Both scan every node in ``graph``, not just the ones the intents
-            # named, so a node they heal may not be in ``changed_nodes`` yet --
-            # fold their returned ids in (order-preserving, deduped) so it
-            # agrees with ``diff_graphs`` below, which sees the healed node too.
+            # JSON number (ESQ1-285's flip-flop), an http body item without
+            # ``type``, or a parameter-extractor ``query`` written as an array
+            # of selector arrays (Blocker A). Must run BEFORE the preflight,
+            # which would reject them. All scan every node in ``graph``, not
+            # just the ones the intents named, so a node they heal may not be
+            # in ``changed_nodes`` yet -- fold their returned ids in
+            # (order-preserving, deduped) so it agrees with ``diff_graphs``
+            # below, which sees the healed node too.
             healed_ids = [
                 *graph_normalizers.normalize_condition_values(graph.get("nodes", [])),
                 *graph_normalizers.normalize_http_request_bodies(graph.get("nodes", [])),
+                *graph_normalizers.normalize_parameter_extractor_queries(graph.get("nodes", [])),
             ]
             for node_id in healed_ids:
                 if node_id not in changed_nodes:
