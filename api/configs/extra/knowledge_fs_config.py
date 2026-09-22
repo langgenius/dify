@@ -1,6 +1,7 @@
 """Configuration for the optional KnowledgeFS control-plane integration."""
 
 from ipaddress import ip_address
+from typing import Literal
 from urllib.parse import urlsplit
 
 from pydantic import Field, PositiveFloat, PositiveInt, SecretStr, field_validator, model_validator
@@ -9,6 +10,11 @@ from pydantic_settings import BaseSettings
 
 class KnowledgeFSConfig(BaseSettings):
     """Server-only KnowledgeFS connection and rollout settings."""
+
+    KNOWLEDGE_VECTOR_STORAGE: Literal["postgres", "dify"] = Field(
+        default="postgres",
+        description="KnowledgeFS vector storage; enable external cleanup only after the worker rollout.",
+    )
 
     KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED: bool = Field(
         default=False,
