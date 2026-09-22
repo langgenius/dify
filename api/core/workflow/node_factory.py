@@ -414,26 +414,11 @@ class DifyNodeFactory(NodeFactory):
             if node type is unknown, or if no implementation exists for the resolved version
         """
         adapted_node_config = adapt_node_config_for_graph(node_config)
-        try:
-            typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
-            node_id = typed_node_config["id"]
-            node_data = typed_node_config["data"]
-            node_class = self._resolve_node_class(
-                node_type=node_data.type,
-                node_version=str(node_data.version),
-                node_data=node_data,
-            )
-            # Graph configs are initially validated against permissive shared node data.
-            # Re-validate using the resolved node class so workflow-local node schemas
-            # stay explicit and constructors receive the concrete typed payload.
-            resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
-        except ValueError as exc:
-            # pydantic's ValidationError subclasses ValueError. Its message names
-            # only the model class ("... for HttpRequestNodeData"), so a run that
-            # dies at Graph.init could not say WHICH node was wrong (ESQ1-302).
-            # Every workflow start goes through here, so this changes the error
-            # text of every graph-init failure, not only the Builder's.
-            raise _node_config_error(adapted_node_config, exc) from exc
+        node_id, node_data, node_class, resolved_node_data = _validated_node_config(
+            adapted_node_config,
+            resolve_node_class=self._resolve_node_class,
+            validate_resolved_node_data=self._validate_resolved_node_data,
+        )
         node_type = node_data.type
         if node_type == BuiltinNodeTypes.LLM:
             resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
@@ -758,6 +743,52 @@ def _node_config_error(node_config: Mapping[str, Any], exc: Exception) -> ValueE
     return ValueError(f"node {node_id!r} ({node_type or 'unknown type'}): {exc}")
 
 
+def _validated_node_config(
+    adapted_node_config: Mapping[str, Any],
+    *,
+    resolve_node_class: Callable[..., type[Node]] = DifyNodeFactory._resolve_node_class,
+    validate_resolved_node_data: Callable[[type[Node], BaseNodeData], BaseNodeData] = (
+        DifyNodeFactory._validate_resolved_node_data
+    ),
+) -> tuple[str, BaseNodeData, type[Node], BaseNodeData]:
+    """Adapt-shaped node config in, fully validated node out -- the single
+    sequence ``DifyNodeFactory.create_node`` and ``validate_node_config`` both
+    run: shared-shape validation, node-class resolution, then re-validation
+    against the concrete NodeData model the resolved class declares.
+
+    ``validate_node_config``'s whole contract is "whatever raises here would
+    raise at ``Graph.init``", which only holds while the two callers share this
+    one sequence. ``create_node`` passes its own bound ``_resolve_node_class`` /
+    ``_validate_resolved_node_data`` (both ``@staticmethod``s in production, but
+    tests monkeypatch them per-instance); ``validate_node_config`` has no
+    instance, so it defaults to the class's own.
+
+    Returns ``(node_id, shared node_data, resolved node_class, resolved_node_data)``.
+    Raises ``ValueError`` prefixed ``node '<id>' (<type>): ``.
+    """
+    try:
+        typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
+        node_id = typed_node_config["id"]
+        node_data = typed_node_config["data"]
+        node_class = resolve_node_class(
+            node_type=node_data.type,
+            node_version=str(node_data.version),
+            node_data=node_data,
+        )
+        # Graph configs are initially validated against permissive shared node data.
+        # Re-validate using the resolved node class so workflow-local node schemas
+        # stay explicit and constructors receive the concrete typed payload.
+        resolved_node_data = validate_resolved_node_data(node_class, node_data)
+    except ValueError as exc:
+        # pydantic's ValidationError subclasses ValueError. Its message names
+        # only the model class ("... for HttpRequestNodeData"), so a run that
+        # dies at Graph.init could not say WHICH node was wrong (ESQ1-302).
+        # Every workflow start goes through here, so this changes the error
+        # text of every graph-init failure, not only the Builder's.
+        raise _node_config_error(adapted_node_config, exc) from exc
+    return node_id, node_data, node_class, resolved_node_data
+
+
 def validate_node_config(node_config: Mapping[str, Any] | NodeConfigDict) -> BaseNodeData:
     """Validate ONE raw node config exactly as ``DifyNodeFactory.create_node``
     does before constructing the node -- adapt, shared-shape validation,
@@ -769,14 +800,5 @@ def validate_node_config(node_config: Mapping[str, Any] | NodeConfigDict) -> Bas
     node. Raises ``ValueError`` prefixed ``node <id> (<type>):``.
     """
     adapted_node_config = adapt_node_config_for_graph(node_config)
-    try:
-        typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
-        node_data = typed_node_config["data"]
-        node_class = DifyNodeFactory._resolve_node_class(
-            node_type=node_data.type,
-            node_version=str(node_data.version),
-            node_data=node_data,
-        )
-        return DifyNodeFactory._validate_resolved_node_data(node_class, node_data)
-    except ValueError as exc:
-        raise _node_config_error(adapted_node_config, exc) from exc
+    _, _, _, resolved_node_data = _validated_node_config(adapted_node_config)
+    return resolved_node_data
