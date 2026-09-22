@@ -4,6 +4,7 @@ module.exports = async function waitForBuild({
   github,
   context,
   core,
+  runAttempt,
   now = Date.now,
   sleep = delay,
   timeoutMs = 30 * 60 * 1000,
@@ -13,23 +14,9 @@ module.exports = async function waitForBuild({
   core.info('Waiting for core-e2e-web-build in this workflow run')
 
   while (now() - started < timeoutMs) {
-    const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, run)
-    const artifact = artifacts.find((item) => item.name === 'core-e2e-web-build' && !item.expired)
-    if (artifact) {
-      // A failed-job rerun can reuse a successful producer's artifact from this run.
-      // The workflow still requires core-build to succeed, including its post steps.
-      const seconds = Math.round((now() - started) / 1000)
-      core.info(`Web build artifact ready after ${seconds}s`)
-      await core.summary
-        .addHeading('E2E Web build wait')
-        .addRaw(`Artifact wait: ${seconds}s`)
-        .write()
-      return String(artifact.id)
-    }
-
-    const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+    const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
       ...run,
-      filter: 'latest',
+      attempt_number: runAttempt,
     })
     const producer = jobs.find(
       (job) =>
@@ -40,6 +27,35 @@ module.exports = async function waitForBuild({
       throw new Error(
         `Web build finished with ${producer.conclusion} before publishing an artifact`,
       )
+    }
+
+    if (producer && ['in_progress', 'completed'].includes(producer.status)) {
+      const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, run)
+      const upload = producer.steps?.find((step) => step.name === 'Upload Web build')
+      const artifact = artifacts.find((item) => {
+        if (item.expired || !/^core-e2e-web-build-[1-9]\d*$/.test(item.name)) return false
+        if (producer.status === 'in_progress') {
+          // A rebuilding producer must publish this attempt's immutable artifact.
+          return item.name === `core-e2e-web-build-${runAttempt}`
+        }
+        // GitHub relabels reused successful jobs with the current run_attempt.
+        // Their upload step keeps its original timestamps, identifying the artifact
+        // to reuse when only consumers are rerun (including across several attempts).
+        return (
+          upload?.conclusion === 'success' &&
+          item.created_at >= upload.started_at &&
+          item.created_at <= upload.completed_at
+        )
+      })
+      if (artifact) {
+        const seconds = Math.round((now() - started) / 1000)
+        core.info(`Web build artifact ${artifact.name} ready after ${seconds}s`)
+        await core.summary
+          .addHeading('E2E Web build wait')
+          .addRaw(`Artifact wait: ${seconds}s`)
+          .write()
+        return String(artifact.id)
+      }
     }
 
     await sleep(Math.min(10000, timeoutMs - (now() - started)))

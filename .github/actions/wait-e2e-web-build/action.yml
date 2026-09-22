@@ -18,4 +18,4 @@ runs:
         result-encoding: string
         script: |
           const waitForBuild = require(`${process.env.E2E_WAIT_ACTION_PATH}/wait.cjs`)
-          return await waitForBuild({ github, context, core })
+          return await waitForBuild({ github, context, core, runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT) })
