@@ -2,6 +2,7 @@ import type { DefaultValueForm } from './types'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useTranslation } from 'react-i18next'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import {
   Collapse,
   CollapseActions,
@@ -58,6 +59,7 @@ const ErrorHandle = ({ id, data }: ErrorHandleProps) => {
               <ErrorHandleTypeSelector
                 value={error_strategy || ErrorHandleTypeEnum.none}
                 onSelected={handleTypeChange}
+                allowDefaultValue={!hasAgentV2OutputRoutes(data)}
               />
             </div>
           </CollapseActions>
