@@ -9,7 +9,7 @@ import pytest
 from flask import Flask
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound, UnprocessableEntity
 
 import controllers.console.explore.installed_app as module
 import services.installed_app_service as service_module
@@ -127,6 +127,25 @@ def _persist_installed_app(
 
 
 @contextmanager
+def _guarded_handler_context(current_user: Account) -> Generator[None]:
+    """Bypass the console auth guards so a decorated handler can run, as test_extension.py does.
+
+    `@login_required` reads `libs.login`, and `@with_current_user` /
+    `@with_current_tenant_id` read `current_account_with_tenant`. Rebinding both
+    leaves the `@model_validate` decorator under test intact.
+    """
+    with (
+        patch("libs.login.current_user", current_user),
+        patch("libs.login.check_csrf_token", lambda *_, **__: None),
+        patch(
+            "controllers.console.wraps.current_account_with_tenant",
+            lambda: (current_user, current_user.current_tenant.id),  # type: ignore[union-attr]
+        ),
+    ):
+        yield
+
+
+@contextmanager
 def _controller_context(
     database_session: scoped_session[Session],
     *,
@@ -208,7 +227,7 @@ class TestInstalledAppsListApi:
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
         with app.test_request_context("/"), _controller_context(database_session):
-            result = method(api, tenant_id, current_user)
+            result = method(api, module.InstalledAppsListQuery(), tenant_id, current_user)
 
         assert {item["app"]["id"] for item in result["installed_apps"]} == {"chat", "workflow"}
         assert all(item["editable"] is True for item in result["installed_apps"])
@@ -220,7 +239,7 @@ class TestInstalledAppsListApi:
             app.test_request_context("/?app_id=workflow"),
             _controller_context(database_session, role=TenantAccountRole.NORMAL),
         ):
-            filtered = method(api, tenant_id, current_user)
+            filtered = method(api, module.InstalledAppsListQuery(app_id="workflow"), tenant_id, current_user)
         assert [item["app"]["id"] for item in filtered["installed_apps"]] == ["workflow"]
         assert filtered["installed_apps"][0]["editable"] is False
 
@@ -242,7 +261,9 @@ class TestInstalledAppsListApi:
             )
 
         with app.test_request_context("/?name=Sales%25_Q3"), _controller_context(database_session):
-            result = unwrap(module.InstalledAppsListApi().get)(module.InstalledAppsListApi(), tenant_id, current_user)
+            result = unwrap(module.InstalledAppsListApi().get)(
+                module.InstalledAppsListApi(), module.InstalledAppsListQuery(name="Sales%_Q3"), tenant_id, current_user
+            )
 
         assert [item["app"]["id"] for item in result["installed_apps"]] == ["exact"]
 
@@ -273,7 +294,7 @@ class TestInstalledAppsListApi:
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
         with app.test_request_context("/?limit=2"), _controller_context(database_session):
-            first_page = method(api, tenant_id, current_user)
+            first_page = method(api, module.InstalledAppsListQuery(limit=2), tenant_id, current_user)
 
         assert [item["id"] for item in first_page["installed_apps"]] == ["installed-0", "installed-1"]
         assert first_page["has_more"] is True
@@ -285,7 +306,9 @@ class TestInstalledAppsListApi:
             app.test_request_context(f"/?limit=2&cursor={first_page['next_cursor']}"),
             _controller_context(database_session),
         ):
-            second_page = method(api, tenant_id, current_user)
+            second_page = method(
+                api, module.InstalledAppsListQuery(limit=2, cursor=first_page["next_cursor"]), tenant_id, current_user
+            )
         assert [item["id"] for item in second_page["installed_apps"]] == ["installed-2", "installed-3"]
         assert second_page["has_more"] is False
 
@@ -342,7 +365,9 @@ class TestInstalledAppsListApi:
                 side_effect=permission_state,
             ),
         ):
-            result = unwrap(module.InstalledAppsListApi().get)(module.InstalledAppsListApi(), tenant_id, current_user)
+            result = unwrap(module.InstalledAppsListApi().get)(
+                module.InstalledAppsListApi(), module.InstalledAppsListQuery(limit=1), tenant_id, current_user
+            )
 
         assert [item["id"] for item in result["installed_apps"]] == ["installed-allowed-first"]
         assert result["has_more"] is True
@@ -385,13 +410,20 @@ class TestInstalledAppsListApi:
                 return_value={"allowed": True, "denied": False},
             ),
         ):
-            result = unwrap(module.InstalledAppsListApi().get)(module.InstalledAppsListApi(), tenant_id, current_user)
+            result = unwrap(module.InstalledAppsListApi().get)(
+                module.InstalledAppsListApi(), module.InstalledAppsListQuery(), tenant_id, current_user
+            )
 
         assert [item["app"]["id"] for item in result["installed_apps"]] == ["allowed"]
 
     def test_get_rejects_invalid_cursor(self, app: Flask, current_user: Account, tenant_id: str) -> None:
         with app.test_request_context("/?cursor=not-a-cursor"), pytest.raises(BadRequest, match="Invalid cursor"):
-            unwrap(module.InstalledAppsListApi().get)(module.InstalledAppsListApi(), tenant_id, current_user)
+            unwrap(module.InstalledAppsListApi().get)(
+                module.InstalledAppsListApi(),
+                module.InstalledAppsListQuery(cursor="not-a-cursor"),
+                tenant_id,
+                current_user,
+            )
 
     def test_get_rejects_user_without_current_tenant(self, app: Flask, tenant_id: str) -> None:
         current_user = Account(name="No tenant", email="no-tenant@example.com", status=AccountStatus.ACTIVE)
@@ -401,7 +433,45 @@ class TestInstalledAppsListApi:
             app.test_request_context("/"),
             pytest.raises(ValueError, match="current_user.current_tenant must not be None"),
         ):
-            unwrap(module.InstalledAppsListApi().get)(module.InstalledAppsListApi(), tenant_id, current_user)
+            unwrap(module.InstalledAppsListApi().get)(
+                module.InstalledAppsListApi(), module.InstalledAppsListQuery(), tenant_id, current_user
+            )
+
+    def test_get_validates_before_the_handler_body_runs(self, app: Flask, current_user: Account) -> None:
+        """`limit=0` violates the query model's `ge=1`, so the decorator rejects it before any service call."""
+        api = module.InstalledAppsListApi()
+
+        with (
+            app.test_request_context("/?limit=0"),
+            _guarded_handler_context(current_user),
+            pytest.raises(UnprocessableEntity) as exc_info,
+            patch.object(service_module.InstalledAppService, "get_visible_page") as get_visible_page,
+        ):
+            api.get()
+
+        assert exc_info.value.code == 422
+        get_visible_page.assert_not_called()
+
+    def test_get_reads_the_query_string_through_the_decorator(
+        self, app: Flask, current_user: Account, tenant_id: str, database_session: scoped_session[Session]
+    ) -> None:
+        """The decorator sources GET params from `request.args`, so a query string alone reaches the model."""
+        _persist_installed_app(
+            database_session,
+            _persist_app(database_session, app_id="only-app"),
+            tenant_id=tenant_id,
+            installed_app_id="installed-only",
+        )
+
+        api = module.InstalledAppsListApi()
+        with (
+            app.test_request_context("/?limit=1"),
+            _guarded_handler_context(current_user),
+            _controller_context(database_session),
+        ):
+            result = api.get()
+        assert isinstance(result, dict)
+        assert [item["id"] for item in result["installed_apps"]] == ["installed-only"]
 
 
 class TestInstalledAppsCreateApi:

@@ -2,7 +2,6 @@ import base64
 import binascii
 import logging
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, computed_field
 from sqlalchemy import and_, select
@@ -153,8 +152,8 @@ class InstalledAppsListApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[InstalledAppListResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
-        query = InstalledAppsListQuery.model_validate(request.args.to_dict())
+    @model_validate(InstalledAppsListQuery)
+    def get(self, query: InstalledAppsListQuery, current_tenant_id: str, current_user: Account):
         cursor = _decode_installed_app_cursor(query.cursor)
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
