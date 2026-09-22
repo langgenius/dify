@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, MouseEventHandler } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type {
   ParentMode,
@@ -53,7 +53,7 @@ type ParentChildOptionsProps = {
   onChildDelimiterChange: (value: string) => void
   onChildMaxLengthChange: (value: number) => void
   onRuleToggle: (id: string) => void
-  onPreview: () => void
+  onPreview: MouseEventHandler<HTMLButtonElement>
   onReset: () => void
   showSummaryIndexSetting?: boolean
 }
@@ -140,7 +140,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
               title={t(($) => $['stepTwo.paragraph'], { ns: 'datasetCreation' })}
               description={t(($) => $['stepTwo.paragraphTip'], { ns: 'datasetCreation' })}
               chosenConfig={
-                <div className="flex gap-3">
+                <div className="flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
                   <DelimiterInput
                     value={parentChildConfig.parent.delimiter}
                     tooltip={t(($) => $['stepTwo.parentChildDelimiterTip'], {
@@ -175,7 +175,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             </div>
             <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
           </div>
-          <div className="mt-1 flex gap-3">
+          <div className="mt-1 flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
             <DelimiterInput
               value={parentChildConfig.child.delimiter}
               tooltip={t(($) => $['stepTwo.parentChildChunkDelimiterTip'], {

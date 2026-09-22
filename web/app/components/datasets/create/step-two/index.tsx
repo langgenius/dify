@@ -1,10 +1,10 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, MouseEvent } from 'react'
 import type { StepTwoProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/notifications'
@@ -59,6 +59,8 @@ const StepTwo: FC<StepTwoProps> = ({
   const { t } = useTranslation()
   const locale = useLocale()
   const isMobile = useBreakpoints() === MediaType.mobile
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const previewTriggerRef = useRef<HTMLButtonElement | null>(null)
   const currentDataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector((s) => s.mutateDatasetRes)
 
@@ -181,21 +183,26 @@ const StepTwo: FC<StepTwoProps> = ({
     [indexing, segmentation, estimateHook],
   )
 
-  const updatePreview = useCallback(() => {
-    if (
-      segmentation.segmentationType === ProcessMode.general &&
-      segmentation.maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH
-    ) {
-      toast.error(
-        t(($) => $['stepTwo.maxLengthCheck'], {
-          ns: 'datasetCreation',
-          limit: MAXIMUM_CHUNK_TOKEN_LENGTH,
-        }),
-      )
-      return
-    }
-    estimateHook.fetchEstimate()
-  }, [segmentation, t, estimateHook])
+  const updatePreview = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      if (
+        segmentation.segmentationType === ProcessMode.general &&
+        segmentation.maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH
+      ) {
+        toast.error(
+          t(($) => $['stepTwo.maxLengthCheck'], {
+            ns: 'datasetCreation',
+            limit: MAXIMUM_CHUNK_TOKEN_LENGTH,
+          }),
+        )
+        return
+      }
+      previewTriggerRef.current = event.currentTarget
+      setIsPreviewOpen(true)
+      estimateHook.fetchEstimate()
+    },
+    [segmentation, t, estimateHook],
+  )
 
   const handleCreate = useCallback(async () => {
     if (!canCreateDocument) return
@@ -265,13 +272,16 @@ const StepTwo: FC<StepTwoProps> = ({
     isInInit
 
   return (
-    <div className="flex size-full">
+    <div className={cn('flex size-full min-w-0', isMobile && 'flex-col overflow-y-auto')}>
       <div
-        className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}
+        className={cn(
+          '@container/chunkfields relative min-w-0 py-6',
+          isMobile ? 'w-full shrink-0 px-4' : 'h-full w-1/2 overflow-y-auto px-12',
+        )}
       >
-        <div className="mb-1 system-md-semibold text-text-secondary">
+        <h1 className="mb-1 system-md-semibold text-text-secondary">
           {t(($) => $['stepTwo.segmentation'], { ns: 'datasetCreation' })}
-        </div>
+        </h1>
         {showGeneralOption && (
           <GeneralChunkingOptions
             segmentIdentifier={segmentation.segmentIdentifier}
@@ -348,6 +358,9 @@ const StepTwo: FC<StepTwoProps> = ({
       </div>
       <PreviewPanel
         isMobile={isMobile}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        finalFocus={previewTriggerRef}
         dataSourceType={dataSourceType}
         currentDocForm={currentDocForm}
         estimate={estimateHook.estimate}

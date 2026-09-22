@@ -1,5 +1,6 @@
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
@@ -100,6 +101,24 @@ describe('RetrievalMethodConfig', () => {
       model: 'test-rerank-model',
     }
     mockIsRerankDefaultModelValid = true
+  })
+
+  it('switches retrieval mode with the keyboard and exposes the selected mode', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderComponent({ onChange })
+    expect(
+      screen.getByRole('button', { name: 'dataset.retrieval.semantic_search.title' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    const fullText = screen.getByRole('button', {
+      name: 'dataset.retrieval.full_text_search.title',
+    })
+    expect(fullText).toHaveAttribute('aria-pressed', 'false')
+    fullText.focus()
+    await user.keyboard('{Enter}')
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ search_method: RETRIEVE_METHOD.fullText }),
+    )
   })
 
   // Tests for basic rendering
@@ -213,19 +232,19 @@ describe('RetrievalMethodConfig', () => {
       renderComponent({ disabled: true })
 
       // When disabled, clicking should not trigger onChange
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor"]')
-      expect(semanticOption).toHaveClass('cursor-not-allowed')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
+      expect(semanticOption).toBeDisabled()
     })
 
     it('should default disabled to false', () => {
       renderComponent()
 
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor"]')
-      expect(semanticOption).not.toHaveClass('cursor-not-allowed')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
+      expect(semanticOption).not.toBeDisabled()
     })
   })
 
@@ -238,9 +257,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -259,9 +278,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const fullTextOption = screen
-        .getByText('dataset.retrieval.full_text_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const fullTextOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.full_text_search.title',
+      })
       fireEvent.click(fullTextOption!)
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -280,9 +299,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen
-        .getByText('dataset.retrieval.hybrid_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.hybrid_search.title',
+      })
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -301,9 +320,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
       fireEvent.click(semanticOption!)
 
       expect(onChange).not.toHaveBeenCalled()
@@ -317,9 +336,9 @@ describe('RetrievalMethodConfig', () => {
         disabled: true,
       })
 
-      const fullTextOption = screen
-        .getByText('dataset.retrieval.full_text_search.title')
-        .closest('div[class*="cursor"]')
+      const fullTextOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.full_text_search.title',
+      })
       fireEvent.click(fullTextOption!)
 
       expect(onChange).not.toHaveBeenCalled()
@@ -358,9 +377,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -388,9 +407,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -415,9 +434,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -440,9 +459,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen
-        .getByText('dataset.retrieval.hybrid_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.hybrid_search.title',
+      })
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -467,9 +486,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen
-        .getByText('dataset.retrieval.hybrid_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.hybrid_search.title',
+      })
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -489,9 +508,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen
-        .getByText('dataset.retrieval.hybrid_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.hybrid_search.title',
+      })
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -532,9 +551,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen
-        .getByText('dataset.retrieval.hybrid_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.hybrid_search.title',
+      })
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -557,9 +576,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen
-        .getByText('dataset.retrieval.hybrid_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.hybrid_search.title',
+      })
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -587,9 +606,9 @@ describe('RetrievalMethodConfig', () => {
 
       const { rerender } = render(<RetrievalMethodConfig value={value1} onChange={onChange} />)
 
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -609,9 +628,9 @@ describe('RetrievalMethodConfig', () => {
 
       rerender(<RetrievalMethodConfig value={value} onChange={onChange2} />)
 
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
       fireEvent.click(semanticOption!)
 
       expect(onChange1).not.toHaveBeenCalled()
@@ -667,9 +686,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen
-        .getByText('dataset.retrieval.semantic_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.semantic_search.title',
+      })
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -698,9 +717,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen
-        .getByText('dataset.retrieval.hybrid_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.hybrid_search.title',
+      })
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -729,9 +748,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen
-        .getByText('dataset.retrieval.hybrid_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.hybrid_search.title',
+      })
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -751,12 +770,12 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const fullTextOption = screen
-        .getByText('dataset.retrieval.full_text_search.title')
-        .closest('div[class*="cursor-pointer"]')
-      const hybridOption = screen
-        .getByText('dataset.retrieval.hybrid_search.title')
-        .closest('div[class*="cursor-pointer"]')
+      const fullTextOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.full_text_search.title',
+      })
+      const hybridOption = screen.getByRole('button', {
+        name: 'dataset.retrieval.hybrid_search.title',
+      })
 
       // Rapid clicks
       fireEvent.click(fullTextOption!)
@@ -829,18 +848,18 @@ describe('RetrievalMethodConfig', () => {
     describe('disabled prop variations', () => {
       it('should handle disabled=true', () => {
         renderComponent({ disabled: true })
-        const option = screen
-          .getByText('dataset.retrieval.semantic_search.title')
-          .closest('div[class*="cursor"]')
-        expect(option).toHaveClass('cursor-not-allowed')
+        const option = screen.getByRole('button', {
+          name: 'dataset.retrieval.semantic_search.title',
+        })
+        expect(option).toBeDisabled()
       })
 
       it('should handle disabled=false', () => {
         renderComponent({ disabled: false })
-        const option = screen
-          .getByText('dataset.retrieval.semantic_search.title')
-          .closest('div[class*="cursor"]')
-        expect(option).toHaveClass('cursor-pointer')
+        const option = screen.getByRole('button', {
+          name: 'dataset.retrieval.semantic_search.title',
+        })
+        expect(option).not.toBeDisabled()
       })
     })
 
@@ -884,7 +903,7 @@ describe('RetrievalMethodConfig', () => {
       // The hybrid search option should have the recommended badge
       // This is verified by checking the isRecommended prop passed to OptionCard
       const hybridTitle = screen.getByText('dataset.retrieval.hybrid_search.title')
-      const hybridCard = hybridTitle.closest('div[class*="cursor"]')
+      const hybridCard = hybridTitle.closest('button')
 
       // Should contain recommended badge from OptionCard
       expect(

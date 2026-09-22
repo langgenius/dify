@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -41,6 +41,7 @@ const RetrievalParamConfig: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
+  const rerankLabelId = useId()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const isEconomical = type === RETRIEVE_METHOD.keywordSearch
   const isHybridSearch = type === RETRIEVE_METHOD.hybrid
@@ -112,12 +113,13 @@ const RetrievalParamConfig: FC<Props> = ({
   ]
 
   return (
-    <div>
+    <div className="@container/retrieval">
       {!isEconomical && !isHybridSearch && (
         <div>
           <div className="mb-2 flex items-center space-x-2">
             {canToggleRerankModalEnable && (
               <Switch
+                aria-labelledby={rerankLabelId}
                 size="md"
                 checked={value.reranking_enable}
                 onCheckedChange={handleToggleRerankEnable}
@@ -125,7 +127,7 @@ const RetrievalParamConfig: FC<Props> = ({
               />
             )}
             <div className="flex items-center">
-              <span className="mr-0.5 system-sm-semibold text-text-secondary">
+              <span id={rerankLabelId} className="mr-0.5 system-sm-semibold text-text-secondary">
                 {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
               </span>
               <Infotip
@@ -174,7 +176,7 @@ const RetrievalParamConfig: FC<Props> = ({
         </div>
       )}
       {!isHybridSearch && (
-        <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-4')}>
+        <div className={cn(!isEconomical && 'mt-4', 'flex gap-4 @max-[28rem]/retrieval:flex-col')}>
           <TopKItem
             className="grow"
             value={value.top_k}
@@ -220,7 +222,7 @@ const RetrievalParamConfig: FC<Props> = ({
             aria-label={t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
             value={value.reranking_mode}
             onValueChange={handleChangeRerankMode}
-            className="mb-4 flex gap-2"
+            className="mb-4 flex gap-2 @max-[28rem]/retrieval:flex-col"
           >
             {rerankingModeOptions.map((option) => (
               <RadioCard<RerankingModeEnum>
@@ -304,7 +306,9 @@ const RetrievalParamConfig: FC<Props> = ({
               )}
             </>
           )}
-          <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-6')}>
+          <div
+            className={cn(!isEconomical && 'mt-4', 'flex gap-6 @max-[28rem]/retrieval:flex-col')}
+          >
             <TopKItem
               className="grow"
               value={value.top_k}

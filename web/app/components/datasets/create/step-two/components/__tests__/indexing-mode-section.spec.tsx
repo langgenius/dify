@@ -1,6 +1,7 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -202,7 +203,7 @@ describe('IndexingModeSection', () => {
   })
 
   describe('Index Type Switching', () => {
-    it('should call onIndexTypeChange when switching to qualified', () => {
+    it('should call onIndexTypeChange when switching to qualified', async () => {
       const onIndexTypeChange = vi.fn()
       render(
         <IndexingModeSection
@@ -211,19 +212,20 @@ describe('IndexingModeSection', () => {
           onIndexTypeChange={onIndexTypeChange}
         />,
       )
-      const qualifiedCard = screen
-        .getByText(`${ns}.stepTwo.qualified`)
-        .closest('[class*="rounded-xl"]')!
-      fireEvent.click(qualifiedCard)
+      const user = userEvent.setup()
+      const qualifiedCard = screen.getByRole('button', {
+        name: /datasetCreation.stepTwo.qualified/,
+      })
+      qualifiedCard.focus()
+      await user.keyboard('{Enter}')
       expect(onIndexTypeChange).toHaveBeenCalledWith(IndexingType.QUALIFIED)
     })
 
     it('should disable economical when docForm is QA', () => {
       render(<IndexingModeSection {...defaultProps} docForm={ChunkingMode.qa} />)
       // The economical option card should have disabled styling
-      const economicalText = screen.getByText(`${ns}.stepTwo.economical`)
-      const card = economicalText.closest('[class*="rounded-xl"]')
-      expect(card)!.toHaveClass('pointer-events-none')
+      const card = screen.getByRole('button', { name: `${ns}.stepTwo.economical` })
+      expect(card).toBeDisabled()
       expect(screen.getByText(`${ns}.stepTwo.notAvailableForQA`))!.toBeInTheDocument()
     })
 

@@ -1,6 +1,7 @@
 import type { ParentChildConfig } from '../../hooks'
 import type { PreProcessingRule } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -120,13 +121,16 @@ describe('ParentChildOptions', () => {
       expect(onRuleToggle).toHaveBeenCalledWith('remove_urls_emails')
     })
 
-    it('should call onDocFormChange with parentChild when card switched', () => {
+    it('should call onDocFormChange with parentChild when card switched', async () => {
       const onDocFormChange = vi.fn()
       render(
         <ParentChildOptions {...defaultProps} isActive={false} onDocFormChange={onDocFormChange} />,
       )
-      const titleEl = screen.getByText(`${ns}.stepTwo.parentChild`)
-      fireEvent.click(titleEl.closest('[class*="rounded-xl"]')!)
+      const user = userEvent.setup()
+      const card = screen.getByRole('button', { name: `${ns}.stepTwo.parentChild` })
+      expect(card).toHaveAttribute('aria-pressed', 'false')
+      card.focus()
+      await user.keyboard(' ')
       expect(onDocFormChange).toHaveBeenCalledWith(ChunkingMode.parentChild)
     })
 

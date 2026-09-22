@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Arraste e solte arquivos ou pastas, ou",
   "stepOne.uploader.buttonSingleFile": "Arraste e solte um arquivo, ou",
   "stepOne.uploader.change": "Alterar",
+  "stepOne.uploader.completed": "Upload concluído",
   "stepOne.uploader.failed": "Falha no envio",
   "stepOne.uploader.tip": "Suporta {{supportTypes}}. Máximo de {{batchCount}} arquivos por lote e {{size}} MB cada.",
   "stepOne.uploader.tipWithTotalLimit": "Suporta {{supportTypes}}. Máximo de {{batchCount}} arquivos por lote e {{size}} MB cada. Total máximo de {{totalCount}} arquivos.",

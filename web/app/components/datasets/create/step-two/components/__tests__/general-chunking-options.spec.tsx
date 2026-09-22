@@ -1,5 +1,6 @@
 import type { PreProcessingRule } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -111,7 +112,7 @@ describe('GeneralChunkingOptions', () => {
       expect(onRuleToggle).toHaveBeenCalledWith('remove_urls_emails')
     })
 
-    it('should call onDocFormChange with text mode when card switched', () => {
+    it('should call onDocFormChange with text mode when card switched', async () => {
       const onDocFormChange = vi.fn()
       render(
         <GeneralChunkingOptions
@@ -122,8 +123,11 @@ describe('GeneralChunkingOptions', () => {
       )
       // OptionCard fires onSwitched which calls onDocFormChange(ChunkingMode.text)
       // Since isActive=false, clicking the card triggers the switch
-      const titleEl = screen.getByText(`${ns}.stepTwo.general`)
-      fireEvent.click(titleEl.closest('[class*="rounded-xl"]')!)
+      const user = userEvent.setup()
+      const card = screen.getByRole('button', { name: `${ns}.stepTwo.general` })
+      expect(card).toHaveAttribute('aria-pressed', 'false')
+      card.focus()
+      await user.keyboard(' ')
       expect(onDocFormChange).toHaveBeenCalledWith(ChunkingMode.text)
     })
   })

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -47,22 +48,32 @@ const OptionCard = <T,>({
   ref,
 }: OptionCardProps<T>) => {
   const { t } = useTranslation()
+  const titleId = React.useId()
+  const descriptionId = React.useId()
 
   return (
     <div
       ref={ref}
       className={cn(
-        'cursor-pointer overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
+        'min-w-0 overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
         isActive &&
           'border border-components-option-card-option-selected-border ring-[1px] ring-components-option-card-option-selected-border',
         disabled && 'cursor-not-allowed opacity-50',
       )}
-      onClick={() => {
-        if (isActive || disabled) return
-        onClick?.(id)
-      }}
     >
-      <div className={cn('relative flex rounded-t-xl p-2', className)}>
+      <Toggle
+        pressed={!!isActive}
+        disabled={disabled || !onClick}
+        onPressedChange={(pressed) => {
+          if (pressed) onClick?.(id)
+        }}
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
+        className={cn(
+          'relative flex w-full cursor-pointer rounded-t-xl border-0 bg-transparent p-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          className,
+        )}
+      >
         {effectColor && showEffectColor && (
           <div
             className={cn(
@@ -81,18 +92,24 @@ const OptionCard = <T,>({
             {icon}
           </div>
         )}
-        <div className="flex grow flex-col gap-y-0.5 py-px">
+        <div className="flex min-w-0 grow flex-col gap-y-0.5 py-px">
           <div className="flex items-center gap-x-1">
-            <span className="system-sm-medium text-text-secondary">{title}</span>
+            <span id={titleId} className="system-sm-medium text-text-secondary">
+              {title}
+            </span>
             {isRecommended && (
               <Badge className="h-4.5 border-text-accent-secondary text-text-accent-secondary">
                 {t(($) => $['stepTwo.recommend'], { ns: 'datasetCreation' })}
               </Badge>
             )}
           </div>
-          {description && <div className="system-xs-regular text-text-tertiary">{description}</div>}
+          {description && (
+            <div id={descriptionId} className="system-xs-regular text-text-tertiary">
+              {description}
+            </div>
+          )}
         </div>
-      </div>
+      </Toggle>
       {!!(children && showChildren) && (
         <div className="relative rounded-b-xl bg-components-panel-bg p-4">
           <ArrowShape className="absolute -top-2.75 left-3.5 size-4 text-components-panel-bg" />

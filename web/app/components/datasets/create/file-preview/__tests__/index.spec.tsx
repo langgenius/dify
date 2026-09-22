@@ -1,6 +1,15 @@
+import type { ReactElement } from 'react'
 import type { MockedFunction } from 'vite-plus/test'
 import type { CustomFile as File } from '@/models/datasets'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  act,
+  fireEvent,
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { fetchFilePreview } from '@/service/common'
 import FilePreview from '../index'
 
@@ -10,6 +19,15 @@ vi.mock('@/service/common', () => ({
 }))
 
 const mockFetchFilePreview = fetchFilePreview as MockedFunction<typeof fetchFilePreview>
+
+const render = (ui: ReactElement) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
+}
 
 // Factory function to create mock file objects
 const createMockFile = (overrides: Partial<File> = {}): File => {
@@ -61,7 +79,9 @@ describe('FilePreview', () => {
     it('should render file preview header', async () => {
       renderFilePreview()
 
-      expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'datasetCreation.stepOne.filePreview' }),
+      ).toBeInTheDocument()
     })
 
     it('should render close button with XMarkIcon', async () => {
@@ -228,14 +248,47 @@ describe('FilePreview', () => {
       })
     })
 
-    it('should keep the preview header visible when loading fails', async () => {
+    it('announces failure and stops loading when the preview request fails', async () => {
       mockFetchFilePreview.mockRejectedValue(new Error('Network error'))
-
       renderFilePreview()
+      expect(
+        screen.getByRole('region', { name: 'datasetCreation.stepOne.filePreview' }),
+      ).toBeInTheDocument()
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'test-file.txt: common.api.actionFailed',
+        ),
+      )
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    })
 
-      await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
+    it('keeps the latest preview when an earlier file request resolves last', async () => {
+      let resolveFirst!: (value: { content: string }) => void
+      mockFetchFilePreview
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveFirst = resolve
+            }),
+        )
+        .mockResolvedValueOnce({ content: 'Latest preview' })
+      const { rerender } = render(
+        <FilePreview file={createMockFile({ id: 'first' })} hidePreview={vi.fn()} />,
+      )
+      expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+      rerender(
+        <FilePreview
+          file={createMockFile({ id: 'second', name: 'second.txt' })}
+          hidePreview={vi.fn()}
+        />,
+      )
+      expect(await screen.findByText('Latest preview')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('second.txt: common.api.success')
+      await act(async () => {
+        resolveFirst({ content: 'Stale preview' })
       })
+      expect(screen.getByText('Latest preview')).toBeInTheDocument()
+      expect(screen.queryByText('Stale preview')).not.toBeInTheDocument()
     })
 
     it('should handle empty content response', async () => {

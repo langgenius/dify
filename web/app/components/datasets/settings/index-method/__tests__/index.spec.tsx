@@ -70,8 +70,7 @@ describe('IndexMethod', () => {
       )
 
       // Find and click High Quality option
-      const highQualityTitle = screen.getByText(/stepTwo\.qualified/)
-      const card = highQualityTitle.closest('div')?.parentElement?.parentElement?.parentElement
+      const card = screen.getByRole('button', { name: /stepTwo\.qualified/ })
       fireEvent.click(card!)
 
       expect(handleChange).toHaveBeenCalledWith(IndexingType.QUALIFIED)
@@ -89,9 +88,7 @@ describe('IndexMethod', () => {
       )
 
       // Find and click Economy option - use getAllByText and get the first one (title)
-      const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
-      const economyTitle = economyTitles[0]
-      const card = economyTitle!.closest('div')?.parentElement?.parentElement?.parentElement
+      const card = screen.getByRole('button', { name: /form\.indexMethodEconomy$/ })
       fireEvent.click(card!)
 
       expect(handleChange).toHaveBeenCalledWith(IndexingType.ECONOMICAL)
@@ -103,8 +100,7 @@ describe('IndexMethod', () => {
         <IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} onChange={handleChange} />,
       )
 
-      const highQualityTitle = screen.getByText(/stepTwo\.qualified/)
-      const card = highQualityTitle.closest('div')?.parentElement?.parentElement?.parentElement
+      const card = screen.getByRole('button', { name: /stepTwo\.qualified/ })
       fireEvent.click(card!)
 
       expect(handleChange).not.toHaveBeenCalled()
@@ -130,9 +126,7 @@ describe('IndexMethod', () => {
       )
 
       // Try to click Economy option - use getAllByText and get the first one (title)
-      const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
-      const economyTitle = economyTitles[0]
-      const card = economyTitle!.closest('div')?.parentElement?.parentElement?.parentElement
+      const card = screen.getByRole('button', { name: /form\.indexMethodEconomy$/ })
       fireEvent.click(card!)
 
       // Should not call onChange because Economy is disabled when current is QUALIFIED
