@@ -21,7 +21,11 @@ copy of an API response type.
 - The modal owns conversion from provider configuration to the existing form
   schema and from form values to the generated settings payload. It preserves
   `false`, `0`, and empty strings, and separates the name without mutating the
-  submitted object. Optional declarations and nullable localized labels are
+  submitted object. Boolean fields interpret the declaration's string or numeric
+  defaults as boolean form values (`"true"`, `"True"`, `"1"`, and `1` mean true).
+  Missing and null values remain missing; a required empty value still fails validation.
+  An optional empty boolean default means false, as before;
+  other field types retain their original values. Optional declarations and nullable localized labels are
   handled at this display boundary.
 
 When an API shape changes, update its Pydantic owner and regenerate TypeScript,
@@ -39,6 +43,9 @@ or add a frontend compatibility type to hide a contract mismatch.
 | Invalidation scope    | Update/delete/enable/disable only identify an endpoint, so their shared policy cannot safely infer its plugin. All endpoint list inputs are marked stale. Installed plugin IDs and unrelated tools remain untouched. |
 | Failure               | Rejected mutations refresh server state, retain editable form state, and do not close the form or retry the write.                                                                                                   |
 | Local callbacks       | The surface owns toast, confirmation, and closing behavior; shared cache work stays in `query-policies.ts` `onSettled`.                                                                                              |
+
+Pending submit and confirmation actions use the Button loading contract and block
+repeat submissions, including implicit form submission.
 
 Endpoint writes are not atomic across the daemon's database and follow-up work.
 Create can install a record before later encryption fails; update/delete can

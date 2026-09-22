@@ -40,6 +40,88 @@ describe('Endpoint settings form', () => {
     expect(showError).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['true', true],
+    ['True', true],
+    ['1', true],
+    ['false', false],
+    [true, true],
+    [false, false],
+    [1, true],
+    [0, false],
+  ])('renders and submits boolean default %j as %j', async (value, expected) => {
+    const user = userEvent.setup()
+    const onSaved = vi.fn()
+    render(
+      <EndpointModal
+        pluginDetail={mockPluginDetail}
+        onCancel={vi.fn()}
+        onSaved={onSaved}
+        defaultValues={{ name: 'Typed endpoint' }}
+        settings={[{ name: 'enabled', type: 'boolean', required: true, default: value }]}
+      />,
+    )
+    expect(screen.getByRole('radio', { name: expected ? 'True' : 'False' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSaved).toHaveBeenCalledWith({
+      name: 'Typed endpoint',
+      settings: { enabled: expected },
+    })
+  })
+
+  it('interprets an empty optional boolean default as false', async () => {
+    const user = userEvent.setup()
+    const onSaved = vi.fn()
+    render(
+      <EndpointModal
+        pluginDetail={mockPluginDetail}
+        onCancel={vi.fn()}
+        onSaved={onSaved}
+        defaultValues={{ name: 'Optional endpoint' }}
+        settings={[{ name: 'enabled', type: 'boolean', default: '' }]}
+      />,
+    )
+    expect(screen.getByRole('radio', { name: 'False' })).toHaveAttribute('aria-checked', 'true')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSaved).toHaveBeenCalledWith({
+      name: 'Optional endpoint',
+      settings: { enabled: false },
+    })
+  })
+
+  it('preserves a nullable optional boolean and rejects an empty required boolean', async () => {
+    const user = userEvent.setup()
+    const onSaved = vi.fn()
+    const { rerender } = render(
+      <EndpointModal
+        pluginDetail={mockPluginDetail}
+        onCancel={vi.fn()}
+        onSaved={onSaved}
+        defaultValues={{ name: 'Nullable endpoint' }}
+        settings={[{ name: 'enabled', type: 'boolean', default: null }]}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSaved).toHaveBeenCalledWith({ name: 'Nullable endpoint', settings: { enabled: null } })
+    onSaved.mockClear()
+    rerender(
+      <EndpointModal
+        key="required"
+        pluginDetail={mockPluginDetail}
+        onCancel={vi.fn()}
+        onSaved={onSaved}
+        defaultValues={{ name: 'Required endpoint', enabled: '' }}
+        settings={[{ name: 'enabled', type: 'boolean', required: true, default: true }]}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSaved).not.toHaveBeenCalled()
+    expect(showError).toHaveBeenCalled()
+  })
+
   it('preserves explicit clearing and does not mutate edit values', async () => {
     const user = userEvent.setup()
     const onSaved = vi.fn()
@@ -101,16 +183,25 @@ describe('Endpoint settings form', () => {
     expect(screen.getByPlaceholderText('Endpoint Name')).toBeInTheDocument()
   })
 
-  it('disables saving during a pending mutation', () => {
+  it('keeps pending save focusable and blocks click and implicit submissions', async () => {
+    const user = userEvent.setup()
+    const onSaved = vi.fn()
     render(
       <EndpointModal
         pluginDetail={mockPluginDetail}
         onCancel={vi.fn()}
-        onSaved={vi.fn()}
+        onSaved={onSaved}
         settings={[]}
+        defaultValues={{ name: 'Pending endpoint' }}
         isPending
       />,
     )
-    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+    const save = screen.getByRole('button', { name: 'common.operation.save' })
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    expect(save).not.toBeDisabled()
+    await user.click(save)
+    await user.click(screen.getByPlaceholderText('Endpoint Name'))
+    await user.keyboard('{Enter}')
+    expect(onSaved).not.toHaveBeenCalled()
   })
 })

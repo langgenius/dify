@@ -188,7 +188,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              disabled={isDisabling}
+              loading={isDisabling}
               onClick={() => disableEndpoint({ body: { endpoint_id: endpointID } })}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
@@ -211,7 +211,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              disabled={isDeleting}
+              loading={isDeleting}
               onClick={() => deleteEndpoint({ params: { id: endpointID } })}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}

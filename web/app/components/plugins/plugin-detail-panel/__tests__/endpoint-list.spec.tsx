@@ -1,5 +1,5 @@
 import type { EndpointListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -37,6 +37,7 @@ const createEndpoint = (): EndpointListItemResponse => ({
 let endpoints: EndpointListItemResponse[]
 let rejectMutation: boolean
 let failAfterWrite: boolean
+let mutationGate: Promise<void> | undefined
 const mutations: { path: string; method: string; body: unknown }[] = []
 
 const renderEndpoints = () => render(<EndpointList detail={detail} />)
@@ -46,6 +47,7 @@ beforeEach(() => {
   endpoints = [createEndpoint()]
   rejectMutation = false
   failAfterWrite = false
+  mutationGate = undefined
   mutations.length = 0
   request.mockImplementation(
     async (url: string, _init: RequestInit, options: { request: Request }) => {
@@ -54,6 +56,7 @@ beforeEach(() => {
       if (method === 'GET') return Response.json({ endpoints })
       const body: unknown = options.request.body ? await options.request.json() : undefined
       mutations.push({ path, method, body })
+      await mutationGate
       if (rejectMutation && !failAfterWrite)
         return Response.json({ message: 'Failed' }, { status: 500 })
       if (path.endsWith('/enable'))
@@ -166,6 +169,50 @@ describe('Endpoint management', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Endpoint 1')).toBeInTheDocument()
   })
+
+  it.each(['edit', 'disable', 'delete'] as const)(
+    'blocks duplicate %s while pending and retains the failed action for retry',
+    async (action) => {
+      const user = userEvent.setup()
+      let settle: () => void = () => {}
+      mutationGate = new Promise<void>((resolve) => {
+        settle = resolve
+      })
+      rejectMutation = true
+      renderEndpoints()
+      if (action === 'disable') await user.click(await screen.findByRole('switch'))
+      else
+        await user.click(await screen.findByRole('button', { name: `common.operation.${action}` }))
+      const actionName = action === 'edit' ? 'common.operation.save' : 'common.operation.confirm'
+      const submit = screen.getByRole('button', { name: actionName })
+      await user.click(submit)
+      await waitFor(() => expect(submit).toHaveAttribute('aria-disabled', 'true'))
+      expect(submit).toHaveFocus()
+      expect(submit).not.toBeDisabled()
+      await user.click(submit)
+      expect(mutations).toHaveLength(1)
+      await act(async () => {
+        settle()
+      })
+      await waitFor(() => expect(showError).toHaveBeenCalled())
+      expect(screen.getByRole('button', { name: actionName })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      if (action === 'edit')
+        expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Endpoint 1')
+      else expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+      rejectMutation = false
+      await user.click(screen.getByRole('button', { name: actionName }))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole(action === 'edit' ? 'dialog' : 'alertdialog'),
+        ).not.toBeInTheDocument(),
+      )
+      expect(mutations).toHaveLength(2)
+    },
+  )
 
   it('refreshes a committed write after an error while preserving the editable form', async () => {
     const user = userEvent.setup()

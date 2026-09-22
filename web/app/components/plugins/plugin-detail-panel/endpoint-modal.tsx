@@ -105,16 +105,27 @@ const EndpointModal = ({
   const { t } = useTranslation()
   const fields = [NAME_FIELD, ...settings]
   const formSchemas = fields.map(toFormSchema)
-  const [tempCredential, setTempCredential] = React.useState<Record<string, unknown>>(() => ({
-    ...Object.fromEntries(
-      fields
-        .filter((field) => field.default !== undefined)
-        .map((field) => [field.name, field.default]),
-    ),
-    ...defaultValues,
-  }))
+  const [tempCredential, setTempCredential] = React.useState<Record<string, unknown>>(() => {
+    const values: Record<string, unknown> = {
+      ...Object.fromEntries(
+        fields
+          .filter((field) => field.default !== undefined)
+          .map((field) => [field.name, field.default]),
+      ),
+      ...defaultValues,
+    }
+    for (const field of fields) {
+      const value = values[field.name]
+      if (field.type !== 'boolean' || (field.required && value === '')) continue
+      if (typeof value === 'string')
+        values[field.name] = value === 'true' || value === '1' || value === 'True'
+      else if (typeof value === 'number') values[field.name] = value === 1
+    }
+    return values
+  })
 
   const handleSave = () => {
+    if (isPending) return
     for (const field of fields) {
       const value = tempCredential[field.name]
       if (field.required && (value === undefined || value === null || value === '')) {
@@ -205,7 +216,7 @@ const EndpointModal = ({
                     <Button onClick={onCancel}>
                       {t(($) => $['operation.cancel'], { ns: 'common' })}
                     </Button>
-                    <Button variant="primary" type="submit" disabled={isPending}>
+                    <Button variant="primary" type="submit" loading={isPending}>
                       {t(($) => $['operation.save'], { ns: 'common' })}
                     </Button>
                   </div>
