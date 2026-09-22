@@ -35,6 +35,7 @@ from core.dify_builder.contract import (
     TestStat,
 )
 from core.dify_builder.handlers_fix import (
+    MAX_REPEATED_REPAIRS,
     NO_OUTPUT_BODY,
     NO_OUTPUT_REPLY,
     UNKNOWN_OUTCOME_STUCK_BODY,
@@ -47,14 +48,17 @@ from core.dify_builder.handlers_fix import (
     build_form_fields,
     dead_end_branch_node_id,
     emit_canvas,
+    failure_signature,
     first_failed_node,
     is_input_failure,
     launch_error_text,
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
+    note_repair_error,
     note_unknown_outcome,
     perform_revert,
+    repair_is_repeating,
     run_finished_without_output,
     start_schema,
     testdata_form_fields,
@@ -1165,61 +1169,12 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
 
 
-_MAX_REPEATED_REPAIRS = 2
-
-
-def _failure_signature(run: Run) -> str:
-    """A STABLE key for "this is the same failure again", built from the
-    ENGINE's own output: the first failed node's id plus its error text, or the
-    launch error when the run threw before any node ran. Whitespace is
-    collapsed so formatting alone cannot look like a new failure. Returns ""
-    when the run carries nothing identifying -- an unknown failure must never
-    compare equal to another unknown one.
-
-    Deliberately NOT ``diagnosis.root_cause``. That is LLM prose, regenerated
-    on every diagnosis call: in one observed session it was reworded on each of
-    four turns and switched to Chinese on one of them. Keying on it meant
-    ``error == fc.last_repair_error`` could never hold, so ``repair_attempts``
-    reset forever and ``_repair_is_repeating`` was unreachable -- that session
-    burned 9 failed runs and 8 repair approvals with this guard in place.
-    """
-    for node in run.per_node:
-        if node.status == "failed":
-            node_error = " ".join((node.error or "").split())
-            if node.node_id or node_error:
-                return f"{node.node_id}|{node_error}"
-    launch_error = " ".join((run.error or "").split())
-    return f"|{launch_error}" if launch_error else ""
-
-
-def _note_repair_error(fc: DifyBuilderContext, run: Run) -> None:
-    """Record this failure's signature and count CONSECUTIVE repeats of it.
-
-    ``repair_attempts`` is not a global budget: a different failure means the
-    loop is still making progress, however slowly, so the count restarts.
-    The same failure again means the repair that just ran did not address the
-    cause, so the count advances. Call this once per diagnosis, before
-    ``_repair_is_repeating``.
-
-    Takes the ``Run`` rather than a message so the key comes from the engine
-    (see ``_failure_signature``) and not from anything an LLM wrote.
-    """
-    signature = _failure_signature(run)
-    if signature and signature == fc.last_repair_error:
-        fc.repair_attempts += 1
-    else:
-        fc.repair_attempts = 0
-    fc.last_repair_error = signature
-
-
-def _repair_is_repeating(fc: DifyBuilderContext) -> bool:
-    """Has the SAME error now survived ``_MAX_REPEATED_REPAIRS`` repairs?
-
-    Reads the counter ``_note_repair_error`` maintains; the identical error
-    that many times over means the repair agent is aiming at something that
-    isn't the cause, and another round will not find it.
-    """
-    return fc.repair_attempts >= _MAX_REPEATED_REPAIRS
+# The repair breaker is shared with Edit and owned by handlers_fix; these
+# names stay for the existing call sites and tests in this module.
+_MAX_REPEATED_REPAIRS = MAX_REPEATED_REPAIRS
+_failure_signature = failure_signature
+_note_repair_error = note_repair_error
+_repair_is_repeating = repair_is_repeating
 
 
 def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
