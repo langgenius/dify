@@ -82,11 +82,12 @@ _NODE_SNIPPETS: dict[str, str] = {
       * Each placeholder only resolves the variable from its source node —
         it cannot be a Jinja template or call a function.
 
-    Structured output: a schema-less LLM node's only output is "text". To
-    expose extra fields, set "structured_output_enabled": true and
-    "structured_output": {"schema": <json-schema-object>} on the node's
-    data; each schema field then becomes a 3-segment reference
-    {{#<node>.structured_output.<field>#}} — never a flat {{#<node>.<field>#}}.""",
+    Structured output: a schema-less LLM node exposes "text",
+    "reasoning_content" and "usage". To expose extra fields, set
+    "structured_output_enabled": true and "structured_output":
+    {"schema": <json-schema-object>} on the node's data; each schema field
+    then becomes a 3-segment reference {{#<node>.structured_output.<field>#}}
+    — never a flat {{#<node>.<field>#}}.""",
     "knowledge-retrieval": """\
 - knowledge-retrieval:
     {"query_variable_selector": ["<src>", "<var>"],
@@ -213,9 +214,16 @@ _NODE_SNIPPETS: dict[str, str] = {
      "extract_by": {"enabled": false, "serial": "1"},
      "order_by": {"enabled": false, "key": "", "value": "asc"},
      "limit": {"enabled": false, "size": 10}}
-    Enable only the sub-features you need; ``conditions`` reuse the if-else
-    condition shape (key / comparison_operator / value). Outputs: ``result``
-    (the processed array), ``first_record``, ``last_record``.""",
+    Enable only the sub-features you need. Each ``filter_by`` condition has the
+    fields key / comparison_operator / value, and comparison_operator MUST be
+    exactly one of these 16 (verbatim strings — a filter takes FEWER operators
+    than an if-else, and anything outside this list is refused when the
+    workflow starts): "contains", "not contains", "start with", "end with",
+    "is", "is not", "in", "not in", "empty", "not empty", "=", "≠", "<", ">",
+    "≥", "≤". The number comparisons are ALWAYS the unicode forms
+    "≥" / "≤" / "≠", never ">=" / "<=" / "!=".
+    Outputs: ``result`` (the processed array), ``first_record``,
+    ``last_record``.""",
     "assigner": """\
 - assigner  (write to an existing conversation / loop variable):
     {"version": "2",
