@@ -15,7 +15,7 @@ import { MarketplaceSearchAutocomplete } from '../home/marketplace-search-autoco
 type CreatorProfileHeaderProps = {
   actions?: React.ReactNode
   locale: string
-  onSuggestionSelect: (selection: MarketplaceSearchSelection) => void
+  onSuggestionSelect: (selection: MarketplaceSearchSelection) => { preserveQuery: boolean } | void
 }
 
 export default function CreatorProfileHeader({

@@ -10,6 +10,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import usePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { useMarketplaceDetailNavigation } from '@/app/components/plugins/marketplace/use-detail-navigation'
 import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
 import { useLocale } from '@/context/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -35,6 +36,7 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
   const { canInstallPlugin } = usePluginInstallPermission()
   const { org, label } = payload
   const locale = useLocale()
+  const navigation = useMarketplaceDetailNavigation()
 
   // Memoize the marketplace link params to prevent unnecessary re-renders
   const marketplaceLinkParams = useMemo(() => ({ language: locale, theme }), [locale, theme])
@@ -80,7 +82,10 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
           </Button>
         )}
         <a
-          href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)}
+          href={
+            navigation.pluginHref(payload) ??
+            getPluginLinkInMarketplace(payload, marketplaceLinkParams)
+          }
           target="_blank"
           rel="noopener noreferrer"
           className={cn(buttonVariants({ variant: 'secondary' }), 'grow gap-0.5')}

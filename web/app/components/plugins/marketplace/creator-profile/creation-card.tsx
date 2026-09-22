@@ -75,7 +75,13 @@ function CreationCardContent({ creation }: { creation: CreatorCreation }) {
 export default function CreationCard({ creation, action }: CreationCardProps) {
   if (action.type === 'link') {
     return (
-      <Link href={action.href} aria-label={creation.title} className={cardClassName}>
+      <Link
+        href={action.href}
+        target={action.target}
+        rel={action.target === '_blank' ? 'noopener noreferrer' : undefined}
+        aria-label={creation.title}
+        className={cardClassName}
+      >
         <CreationCardContent creation={creation} />
       </Link>
     )
