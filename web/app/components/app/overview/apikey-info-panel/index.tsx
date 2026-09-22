@@ -8,7 +8,6 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -76,7 +75,7 @@ const APIKeyInfoPanel: FC = () => {
         <div className="text-sm font-medium">
           {t(($) => $['apiKeyInfo.setAPIBtn'], { ns: 'appOverview' })}
         </div>
-        <LinkExternal02 className="size-4" />
+        <span aria-hidden className="i-custom-vender-line-general-link-external-02 size-4" />
       </Button>
       {!isCloud && (
         <a
@@ -86,7 +85,7 @@ const APIKeyInfoPanel: FC = () => {
           rel="noopener noreferrer"
         >
           <div>{t(($) => $['apiKeyInfo.tryCloud'], { ns: 'appOverview' })}</div>
-          <LinkExternal02 className="size-3" />
+          <span aria-hidden className="i-custom-vender-line-general-link-external-02 size-3" />
         </a>
       )}
       <div

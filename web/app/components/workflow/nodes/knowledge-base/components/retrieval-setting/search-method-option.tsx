@@ -12,13 +12,6 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import Badge from '@/app/components/base/badge'
-import {
-  OptionCardEffectBlue,
-  OptionCardEffectBlueLight,
-  OptionCardEffectOrange,
-  OptionCardEffectPurple,
-  OptionCardEffectTeal,
-} from '@/app/components/base/icons/src/public/knowledge'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import { HybridSearchModeEnum, RetrievalSearchMethodEnum } from '../../types'
 import RerankingModelSelector from './reranking-model-selector'
@@ -61,11 +54,24 @@ export type SearchMethodOptionProps = {
 }
 
 const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
-  blue: <OptionCardEffectBlue />,
-  'blue-light': <OptionCardEffectBlueLight />,
-  orange: <OptionCardEffectOrange />,
-  purple: <OptionCardEffectPurple />,
-  teal: <OptionCardEffectTeal />,
+  blue: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-blue h-31 w-53.5" />
+  ),
+  'blue-light': (
+    <span
+      aria-hidden
+      className="i-custom-public-knowledge-option-card-effect-blue-light h-18.5 w-53"
+    />
+  ),
+  orange: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-orange h-55 w-55" />
+  ),
+  purple: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-purple h-55 w-55" />
+  ),
+  teal: (
+    <span aria-hidden className="i-custom-public-knowledge-option-card-effect-teal h-23 w-53" />
+  ),
 }
 
 function getWeightedScoreValue(weightedScore?: WeightedScore) {
@@ -116,10 +122,12 @@ function getSearchMethodEffect(effectColor: string | undefined, isActive: boolea
   )
 }
 
-function renderSearchMethodIcon(Icon: Option['icon'], isActive: boolean) {
+function renderSearchMethodIcon(iconClassName: Option['iconClassName'], isActive: boolean) {
   return (
-    <Icon
+    <span
+      aria-hidden
       className={cn(
+        iconClassName,
         'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-purple-purple-600',
         isActive && 'text-util-colors-purple-purple-600',
       )}
@@ -136,7 +144,6 @@ function SearchMethodRadioCard({
 }: SearchMethodRadioCardProps) {
   const { t } = useTranslation()
   const isActive = option.id === searchMethod
-  const Icon = option.icon
 
   return (
     <div
@@ -159,7 +166,7 @@ function SearchMethodRadioCard({
       >
         {getSearchMethodEffect(option.effectColor, isActive)}
         <div className="mr-1 flex h-4.5 w-4.5 shrink-0 items-center justify-center">
-          {renderSearchMethodIcon(Icon, isActive)}
+          {renderSearchMethodIcon(option.iconClassName, isActive)}
         </div>
         <div className="grow py-1 pt-px">
           <div className="flex items-center">

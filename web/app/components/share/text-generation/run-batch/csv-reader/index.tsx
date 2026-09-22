@@ -5,7 +5,6 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVReader } from 'react-papaparse'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 
 type Props = Readonly<{
   onParsed: (data: string[][]) => void
@@ -44,7 +43,7 @@ const CSVReader: FC<Props> = ({ onParsed }) => {
           >
             {acceptedFile ? (
               <div className="flex w-full items-center space-x-2">
-                <CSVIcon className="shrink-0" />
+                <span aria-hidden className="i-custom-public-files-csv h-8.5 w-8 shrink-0" />
                 <div className="flex w-0 grow">
                   <span className="max-w-[calc(100%-30px)] truncate text-text-secondary">
                     {acceptedFile.name.replace(/.csv$/, '')}
@@ -54,7 +53,7 @@ const CSVReader: FC<Props> = ({ onParsed }) => {
               </div>
             ) : (
               <div className="flex w-full items-center justify-center space-x-2">
-                <CSVIcon className="shrink-0" />
+                <span aria-hidden className="i-custom-public-files-csv h-8.5 w-8 shrink-0" />
                 <div className="text-text-tertiary">
                   {t(($) => $['generation.csvUploadTitle'], { ns: 'share' })}
                   <span className="cursor-pointer text-text-accent">

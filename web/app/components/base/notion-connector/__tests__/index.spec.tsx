@@ -5,17 +5,11 @@ import NotionConnector from '../index'
 
 describe('NotionConnector', () => {
   it('should render the layout and actual sub-components (Icons & Button)', () => {
-    const { container } = render(<NotionConnector onSetting={vi.fn()} />)
+    render(<NotionConnector onSetting={vi.fn()} />)
 
     // Verify Title & Tip translations
     expect(screen.getByText('datasetCreation.stepOne.notionSyncTitle')).toBeInTheDocument()
     expect(screen.getByText('datasetCreation.stepOne.notionSyncTip')).toBeInTheDocument()
-
-    const notionWrapper = container.querySelector('.h-12.w-12')
-    const dotsWrapper = container.querySelector('.system-md-semibold')
-
-    expect(notionWrapper?.querySelector('svg')).toBeInTheDocument()
-    expect(dotsWrapper?.querySelector('svg')).toBeInTheDocument()
 
     const button = screen.getByRole('button', {
       name: /datasetcreation.stepone.connect/i,

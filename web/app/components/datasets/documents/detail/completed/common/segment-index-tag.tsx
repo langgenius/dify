@@ -2,7 +2,6 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { Chunk } from '@/app/components/base/icons/src/vender/knowledge'
 
 type ISegmentIndexTagProps = {
   positionId?: string | number
@@ -28,7 +27,13 @@ export const SegmentIndexTag: FC<ISegmentIndexTagProps> = ({
   }, [positionId, labelPrefix])
   return (
     <div className={cn('flex items-center', className)}>
-      <Chunk className={cn('mr-0.5 size-3 p-px text-text-tertiary', iconClassName)} />
+      <span
+        aria-hidden
+        className={cn(
+          'mr-0.5 i-custom-vender-knowledge-chunk size-3 [mask-clip:content-box] [mask-origin:content-box] p-px text-text-tertiary',
+          iconClassName,
+        )}
+      />
       <div className={cn('system-xs-medium text-text-tertiary', labelClassName)}>
         {label || localPositionId}
       </div>

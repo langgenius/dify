@@ -20,8 +20,6 @@ import { useContext } from 'use-context-selector'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
 import AppIcon from '@/app/components/base/app-icon'
-import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
 import {
@@ -216,7 +214,9 @@ const AgentTools: FC = () => {
               )}
             >
               <div className="flex w-0 grow items-center">
-                {item.isDeleted && <DefaultToolIcon className="size-5" />}
+                {item.isDeleted && (
+                  <span aria-hidden className="i-custom-public-other-default-tool-icon size-5" />
+                )}
                 {!item.isDeleted && (
                   <div className={cn((item.notAuthor || !item.enabled) && 'shrink-0 opacity-50')}>
                     {typeof item.icon === 'string' && (
@@ -280,7 +280,10 @@ const AgentTools: FC = () => {
                             type="button"
                             className="mr-1 cursor-pointer rounded-md p-1 outline-hidden hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                           >
-                            <AlertTriangle className="h-4 w-4 text-[#F79009]" />
+                            <span
+                              aria-hidden
+                              className="i-custom-vender-solid-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]"
+                            />
                           </button>
                         }
                       />

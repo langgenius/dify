@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useModalContext } from '@/context/modal-context'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -71,7 +70,10 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({
       >
         {selectedItem ? (
           <span className="flex items-center gap-2 self-stretch rounded-lg p-1">
-            <ApiConnectionMod className="size-4 text-text-secondary" />
+            <span
+              aria-hidden
+              className="i-custom-vender-solid-development-api-connection-mod size-4 text-text-secondary"
+            />
             <span className="flex grow items-center">
               <span className="overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled">
                 {selectedItem.name}
@@ -97,7 +99,10 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({
               onClick={() => handleSelect(item)}
             >
               <span className="flex w-full items-center gap-2 self-stretch rounded-lg p-2 hover:bg-state-base-hover">
-                <ApiConnectionMod className="size-4 text-text-secondary" />
+                <span
+                  aria-hidden
+                  className="i-custom-vender-solid-development-api-connection-mod size-4 text-text-secondary"
+                />
                 <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
                   {item.name}
                 </span>

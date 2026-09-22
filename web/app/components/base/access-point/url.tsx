@@ -119,7 +119,6 @@ export function AccessPointUrl({
       ) : (
         <CopyFeedback
           content={value}
-          className="size-6"
           copyLabel={copyLabel}
           copiedLabel={copiedLabel}
           onCopyError={onCopyError}

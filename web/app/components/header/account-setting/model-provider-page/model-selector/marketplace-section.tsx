@@ -6,7 +6,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { modelNameMap, providerIconMap } from '../utils'
+import { modelNameMap, providerLogoMap } from '../utils'
 
 type MarketplaceSectionProps = {
   marketplaceProviders: ModelProviderQuotaGetPaid[]
@@ -61,7 +61,7 @@ function MarketplaceSection({
         <CollapsiblePanel>
           <ul className="px-1 pb-1">
             {marketplaceProviders.map((key) => {
-              const Icon = providerIconMap[key]
+              const logo = providerLogoMap[key]
               const isInstalling = installingProvider === key
               const installButtonLabelId = `${headingId}-install-${key}`
               const providerNameId = `${headingId}-provider-${key}`
@@ -71,7 +71,21 @@ function MarketplaceSection({
                   className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-3 focus-within:bg-state-base-hover hover:bg-state-base-hover"
                 >
                   <div className="flex flex-1 items-center gap-2 py-0.5">
-                    <Icon aria-hidden="true" className="size-5 shrink-0 rounded-md" />
+                    {'image' in logo ? (
+                      <img
+                        aria-hidden
+                        src={logo.image.src}
+                        width={20}
+                        height={20}
+                        alt=""
+                        className="size-5 shrink-0 rounded-md"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden
+                        className={cn(logo.iconClassName, 'size-5 shrink-0 rounded-md')}
+                      />
+                    )}
                     <span id={providerNameId} className="system-sm-regular text-text-secondary">
                       {modelNameMap[key]}
                     </span>

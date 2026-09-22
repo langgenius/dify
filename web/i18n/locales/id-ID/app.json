@@ -200,7 +200,6 @@
   "openInExplore": "Buka Web App Bilah Samping",
   "publishApp.notSet": "Tidak diatur",
   "removeOriginal": "Menghapus aplikasi asli",
-  "structOutput.LLMResponse": "Tanggapan LLM",
   "structOutput.configure": "Mengkonfigurasi",
   "structOutput.modelNotSupported": "Model tidak didukung",
   "structOutput.modelNotSupportedTip": "Model saat ini tidak mendukung fitur ini dan secara otomatis diturunkan ke injeksi minta.",

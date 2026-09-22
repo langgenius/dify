@@ -2,7 +2,6 @@ import type { VarType } from '@/app/components/workflow/types'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 type ConditionCommonVariableSelectorProps = {
   variables?: { name: string; type: string; value: string }[]
@@ -36,14 +35,20 @@ const ConditionCommonVariableSelector = ({
           <div className="flex h-6 grow cursor-pointer items-center">
             {selected && (
               <div className="inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-1.25 system-xs-medium text-text-secondary shadow-xs">
-                <Variable02 className="mr-1 size-3.5 text-text-accent" />
+                <span
+                  aria-hidden
+                  className="mr-1 i-custom-vender-solid-development-variable-02 size-3.5 text-text-accent"
+                />
                 {selected.value}
               </div>
             )}
             {!selected && (
               <>
                 <div className="flex grow items-center system-sm-regular text-components-input-text-placeholder">
-                  <Variable02 className="mr-1 size-4" />
+                  <span
+                    aria-hidden
+                    className="mr-1 i-custom-vender-solid-development-variable-02 size-4"
+                  />
                   {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.select'], {
                     ns: 'workflow',
                   })}
@@ -71,7 +76,10 @@ const ConditionCommonVariableSelector = ({
               className="flex h-6 cursor-pointer items-center rounded-md px-2 system-xs-medium text-text-secondary hover:bg-state-base-hover"
               onClick={() => handleChange(v.value)}
             >
-              <Variable02 className="mr-1 size-4 text-text-accent" />
+              <span
+                aria-hidden
+                className="mr-1 i-custom-vender-solid-development-variable-02 size-4 text-text-accent"
+              />
               {v.value}
             </div>
           ))}

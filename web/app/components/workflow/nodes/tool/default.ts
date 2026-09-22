@@ -1,8 +1,8 @@
 import type { TFunction } from 'i18next'
-import type { NodeDefault, ToolWithProvider, Var } from '../../types'
+import type { NodeDefault, ToolWithProvider, Var, WorkflowPluginCatalogs } from '../../types'
 import type { ToolNodeType } from './types'
 import { CollectionType } from '@/app/components/tools/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { matchesProviderReference } from '@/utils/provider-reference'
@@ -108,7 +108,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
   },
   getOutputVars(
     payload: ToolNodeType,
-    allPluginInfoList: Record<string, ToolWithProvider[]>,
+    allPluginInfoList: WorkflowPluginCatalogs,
     _ragVars: any,
     { schemaTypeDefinitions } = { schemaTypeDefinitions: [] },
   ) {

@@ -1,32 +1,24 @@
+import type { EndpointProviderDeclarationResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
-import {
-  useCreateEndpoint,
-  useEndpointList,
-  useInvalidateEndpointList,
-} from '@/service/use-endpoints'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { consoleQuery } from '@/service/console'
 import EndpointCard from './endpoint-card'
 import EndpointModal from './endpoint-modal'
-import { NAME_FIELD } from './utils'
 
 type Props = Readonly<{
   detail: PluginDetail
 }>
 
-type EndpointDeclaration = NonNullable<PluginDetail['declaration']['endpoint']>
-
 type EndpointListContentProps = Readonly<{
-  declaration: EndpointDeclaration
+  declaration: EndpointProviderDeclarationResponse
   detail: PluginDetail
 }>
 
@@ -35,33 +27,22 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
   const docLink = useDocLink()
   const pluginUniqueID = detail.plugin_unique_identifier
   const showTopBorder = detail.declaration.tool
-  const { data } = useEndpointList(detail.plugin_id)
-  const invalidateEndpointList = useInvalidateEndpointList()
-  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-
+  const { data } = useQuery(
+    consoleQuery.workspaces.current.endpoints.list.plugin.get.queryOptions({
+      input: { query: { plugin_id: detail.plugin_id, page: 1, page_size: 100 } },
+    }),
+  )
   const [isShowEndpointModal, { setTrue: showEndpointModal, setFalse: hideEndpointModal }] =
     useBoolean(false)
-
-  const formSchemas = useMemo(() => {
-    return toolCredentialToFormSchemas([NAME_FIELD, ...declaration.settings])
-  }, [declaration.settings])
-
-  const { mutate: createEndpoint } = useCreateEndpoint({
-    onSuccess: async () => {
-      await invalidateEndpointList(detail.plugin_id)
-      invalidateInstalledPluginList(detail.declaration.category)
-      hideEndpointModal()
-    },
-    onError: () => {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-    },
-  })
-
-  const handleCreate = (state: Record<string, any>) =>
-    createEndpoint({
-      pluginUniqueID,
-      state,
-    })
+  const showSaveError = () => {
+    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+  }
+  const { mutate: createEndpoint, isPending } = useMutation(
+    consoleQuery.workspaces.current.endpoints.post.mutationOptions({
+      onSuccess: hideEndpointModal,
+      onError: showSaveError,
+    }),
+  )
 
   if (!data) return null
 
@@ -124,22 +105,17 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
       )}
       <div className="flex flex-col gap-2">
         {data.endpoints.map((item) => (
-          <EndpointCard
-            key={item.id}
-            data={item}
-            handleChange={() => {
-              invalidateEndpointList(detail.plugin_id)
-              invalidateInstalledPluginList(detail.declaration.category)
-            }}
-            pluginDetail={detail}
-          />
+          <EndpointCard key={item.id} data={item} pluginDetail={detail} />
         ))}
       </div>
       {isShowEndpointModal && (
         <EndpointModal
-          formSchemas={formSchemas as any}
+          settings={declaration.settings ?? []}
           onCancel={hideEndpointModal}
-          onSaved={handleCreate}
+          onSaved={(body) =>
+            createEndpoint({ body: { ...body, plugin_unique_identifier: pluginUniqueID } })
+          }
+          isPending={isPending}
           pluginDetail={detail}
         />
       )}

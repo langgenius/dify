@@ -1,21 +1,27 @@
 """Preview reads enforce app ownership without adding execution or dataset ACL policy."""
 
-from dataclasses import replace
+import json
+from dataclasses import asdict, replace
 from datetime import datetime
-from typing import Literal
+from typing import Literal, override
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, select, text
+from sqlalchemy import Connection, Engine, ExecutionContext, event, select, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from models.account import Tenant, TenantStatus
+from core.tools.entities.tool_entities import ApiProviderSchemaType
+from graphon.variables import StringVariable
+from models.account import Account, Tenant, TenantStatus
 from models.dataset import Dataset
 from models.enums import CustomizeTokenStrategy
-from models.model import App, AppMode, IconType, Site
+from models.model import App, AppMode, AppModelConfig, IconType, Site
+from models.tools import ApiToolProvider, WorkflowToolProvider
+from models.workflow import Workflow, WorkflowType
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from services.app_definition_query_service import AppSiteConfiguration
+from services.app_preview_details_service import AppPreviewAccount
 from services.app_preview_query_service import AppPreviewDataset, AppPreviewRef
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
@@ -340,3 +346,277 @@ def test_preview_queries_leave_caller_transaction_open_and_uncommitted(
     with sqlite_session_factory() as session:
         assert session.scalar(select(App.name).where(App.id == _APP_ID)) == "Preview"
     assert sqlite_engine.pool.checkedout() == 0
+
+
+@pytest.fixture
+def detail_config(sqlite_session_factory: sessionmaker[Session], preview_ref: AppPreviewRef) -> AppModelConfig:
+    config = AppModelConfig(
+        app_id=preview_ref.app_id,
+        opening_statement="Stored opening",
+        agent_mode=json.dumps(
+            {
+                "enabled": True,
+                "strategy": "react",
+                "tools": [
+                    {
+                        "provider_type": "builtin",
+                        "provider_id": "acme/search/search",
+                        "tool_name": "search",
+                        "tool_parameters": {"api_key": "encrypted-tool-secret"},
+                    }
+                ],
+            }
+        ),
+    )
+    account = Account(name="Viewer", email="preview@example.com")
+    account.id = _CREATOR_ID
+    with sqlite_session_factory.begin() as session:
+        session.add_all([account, config])
+        session.flush()
+        app = session.get(App, preview_ref.app_id)
+        assert app is not None
+        app.app_model_config_id = config.id
+    return config
+
+
+def test_get_detail_returns_read_only_detached_values_before_mode_and_tool_enrichment(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    preview_ref: AppPreviewRef,
+    detail_config: AppModelConfig,
+) -> None:
+    closed: list[Session] = []
+    mutated: list[object] = []
+    writes: list[str] = []
+
+    class TrackedSession(Session):
+        @override
+        def close(self) -> None:
+            mutated.extend(self.new)
+            mutated.extend(self.dirty)
+            mutated.extend(self.deleted)
+            super().close()
+            closed.append(self)
+
+    def record_writes(
+        _connection: Connection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: ExecutionContext,
+        _executemany: bool,
+    ) -> None:
+        if statement.lstrip().split(maxsplit=1)[0].upper() in {"INSERT", "UPDATE", "DELETE"}:
+            writes.append(statement)
+
+    factory: sessionmaker[Session] = sessionmaker(bind=sqlite_engine, class_=TrackedSession, expire_on_commit=False)
+    repository = AppPreviewQueryRepository(session_factory=factory)
+    event.listen(sqlite_engine, "before_cursor_execute", record_writes)
+    try:
+        record = repository.get_detail(app=preview_ref, account_id=_CREATOR_ID)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_writes)
+
+    assert isinstance(sqlite_engine.pool, QueuePool)
+    assert sqlite_engine.pool.checkedout() == 0
+    assert closed
+    assert all(not session.in_transaction() and not session.identity_map for session in closed)
+    assert mutated == []
+    assert writes == []
+    assert record.detail.id == preview_ref.app_id
+    assert record.detail.mode == AppMode.CHAT
+    assert record.detail.site.title == "Preview Site"
+    assert record.detail.model_config is not None
+    assert record.detail.model_config["opening_statement"] == "Stored opening"
+    assert record.detail.model_config["agent_mode"] == json.loads(detail_config.agent_mode or "{}")
+    assert record.detail.deleted_tools == ()
+    assert record.existing_api_provider_ids == frozenset()
+
+    def serialize_date(value: object) -> str:
+        assert isinstance(value, datetime), f"Non-data value escaped repository: {type(value)}"
+        return value.isoformat()
+
+    json.dumps(asdict(record.detail), default=serialize_date)
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(App.mode).where(App.id == preview_ref.app_id)) == AppMode.CHAT
+        assert session.scalar(select(AppModelConfig.agent_mode).where(AppModelConfig.id == detail_config.id)) == (
+            detail_config.agent_mode
+        )
+
+
+def test_get_detail_resolves_only_configured_api_providers_owned_by_app_tenant(
+    sqlite_session_factory: sessionmaker[Session], preview_ref: AppPreviewRef, detail_config: AppModelConfig
+) -> None:
+    owner_provider, viewer_provider, unconfigured_provider = [
+        ApiToolProvider(
+            name=name,
+            icon="icon",
+            schema="{}",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
+            user_id=_CREATOR_ID,
+            tenant_id=tenant_id,
+            description=name,
+            tools_str="[]",
+            credentials_str="{}",
+        )
+        for name, tenant_id in [
+            ("Owner provider", preview_ref.tenant_id),
+            ("Viewer provider", _DECOY_TENANT_ID),
+            ("Unconfigured provider", preview_ref.tenant_id),
+        ]
+    ]
+    with sqlite_session_factory.begin() as session:
+        session.add_all([owner_provider, viewer_provider, unconfigured_provider])
+        config = session.get(AppModelConfig, detail_config.id)
+        assert config is not None
+        config.agent_mode = json.dumps(
+            {
+                "enabled": False,
+                "tools": [
+                    {
+                        "provider_type": "api",
+                        "provider_id": provider_id,
+                        "tool_name": "search",
+                        "tool_parameters": {},
+                    }
+                    for provider_id in [owner_provider.id, viewer_provider.id, owner_provider.id, str(uuid4())]
+                ],
+            }
+        )
+
+    record = AppPreviewQueryRepository(session_factory=sqlite_session_factory).get_detail(
+        app=preview_ref, account_id=_CREATOR_ID
+    )
+
+    assert record.existing_api_provider_ids == frozenset({owner_provider.id})
+    assert record.detail.deleted_tools == ()
+
+
+@pytest.mark.parametrize(
+    "stored_environment",
+    [
+        pytest.param("{invalid-json", id="unparsed-invalid-json"),
+        pytest.param(
+            '{"secret":{"id":"secret","name":"api_key","value_type":"secret",'
+            '"value":"encrypted-workflow-secret","selector":[]}}',
+            id="undecrypted-secret",
+        ),
+    ],
+)
+def test_get_workflow_returns_detached_data_and_raw_environment_after_session_closes(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    preview_ref: AppPreviewRef,
+    stored_environment: str,
+) -> None:
+    author = Account(name="Author", email="author@example.com")
+    author.id = _CREATOR_ID
+    updater = Account(name="Updater", email="updater@example.com")
+    stored_features = json.dumps(
+        {
+            "opening_statement": "Workflow opening",
+            "file_upload": {"image": {"enabled": True, "number_limits": 3, "transfer_methods": ["local_file"]}},
+        }
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add_all([author, updater])
+        session.flush()
+        workflow = Workflow(
+            tenant_id=preview_ref.tenant_id,
+            app_id=preview_ref.app_id,
+            type=WorkflowType.CHAT,
+            version="published",
+            graph='{"nodes":[],"edges":[]}',
+            features=stored_features,
+            created_by=author.id,
+            updated_by=updater.id,
+            marked_name="Release",
+            marked_comment="Preview snapshot",
+        )
+        workflow.created_at = _CREATED_AT
+        workflow.updated_at = _CREATED_AT
+        workflow._environment_variables = stored_environment
+        workflow.conversation_variables = [
+            StringVariable(id="topic", name="topic", value="sqlite", selector=["conversation", "topic"])
+        ]
+        session.add(workflow)
+        session.flush()
+        app = session.get(App, preview_ref.app_id)
+        assert app is not None
+        app.workflow_id = workflow.id
+        session.add(
+            WorkflowToolProvider(
+                name="preview-workflow",
+                label="Preview workflow",
+                icon="icon",
+                app_id=preview_ref.app_id,
+                version="1.0.0",
+                user_id=author.id,
+                tenant_id=preview_ref.tenant_id,
+                description="Workflow provider",
+                parameter_configuration="[]",
+            )
+        )
+
+    closed: list[Session] = []
+    mutated: list[object] = []
+
+    class TrackedSession(Session):
+        @override
+        def close(self) -> None:
+            mutated.extend(self.new)
+            mutated.extend(self.dirty)
+            mutated.extend(self.deleted)
+            super().close()
+            closed.append(self)
+
+    factory: sessionmaker[Session] = sessionmaker(bind=sqlite_engine, class_=TrackedSession, expire_on_commit=False)
+    record = AppPreviewQueryRepository(session_factory=factory).get_workflow(app=preview_ref)
+
+    assert isinstance(sqlite_engine.pool, QueuePool)
+    assert sqlite_engine.pool.checkedout() == 0
+    assert closed
+    assert all(not session.in_transaction() and not session.identity_map for session in closed)
+    assert mutated == []
+    assert record.tenant_id == preview_ref.tenant_id
+    assert record.environment_variables_json == stored_environment
+    result = record.workflow
+    assert result.environment_variables == ()
+    assert result.id == workflow.id
+    assert result.graph == {"nodes": [], "edges": []}
+    assert result.features == {
+        "opening_statement": "Workflow opening",
+        "file_upload": {
+            "enabled": True,
+            "number_limits": 3,
+            "allowed_file_upload_methods": ["local_file"],
+            "allowed_file_types": ["image"],
+            "allowed_file_extensions": [],
+        },
+    }
+    assert result.hash == workflow.unique_hash
+    assert result.version == "published"
+    assert result.marked_name == "Release"
+    assert result.marked_comment == "Preview snapshot"
+    assert result.created_by == AppPreviewAccount(id=author.id, name="Author", email="author@example.com")
+    assert result.updated_by == AppPreviewAccount(id=updater.id, name="Updater", email="updater@example.com")
+    assert result.created_at == _CREATED_AT
+    assert result.updated_at == _CREATED_AT
+    assert result.tool_published is True
+    assert len(result.conversation_variables) == 1
+    assert result.conversation_variables[0]["name"] == "topic"
+    assert result.conversation_variables[0]["value"] == "sqlite"
+    assert result.conversation_variables[0]["value_type"] == "string"
+    assert result.rag_pipeline_variables == ()
+
+    def serialize_date(value: object) -> str:
+        assert isinstance(value, datetime), f"Non-data value escaped repository: {type(value)}"
+        return value.isoformat()
+
+    json.dumps(asdict(record), default=serialize_date)
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Workflow._features).where(Workflow.id == workflow.id)) == stored_features
+        assert (
+            session.scalar(select(Workflow._environment_variables).where(Workflow.id == workflow.id))
+            == stored_environment
+        )

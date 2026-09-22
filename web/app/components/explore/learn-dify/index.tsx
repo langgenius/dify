@@ -1,15 +1,15 @@
 'use client'
 
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useLearnDifyAppList } from '@/service/use-explore'
+import { consoleQuery } from '@/service/console'
 import LearnDifyItem from './item'
 import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from './storage'
 
@@ -20,8 +20,8 @@ type LearnDifyProps = {
   forceVisible?: boolean
   itemLimit?: number
   loadingFallback?: React.ReactNode
-  onCreate?: (app: App) => void
-  onTry?: (params: TryAppSelection) => void
+  onCreate?: (app: RecommendedAppResponse) => void
+  onTry?: (app: RecommendedAppResponse) => void
   showDescription?: boolean
   stepByStepTourTarget?: string
   title?: string
@@ -44,11 +44,18 @@ const LearnDifyContent = ({
   title,
 }: LearnDifyContentProps) => {
   const { t } = useTranslation()
+  const locale = useLocale()
   const [isClosing, setIsClosing] = useState(false)
   const [collapseTransform, setCollapseTransform] = useState<string>()
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const { data: learnDifyItems = [], isLoading } = useLearnDifyAppList()
+  const { data: learnDifyItems = [], isLoading } = useQuery(
+    consoleQuery.explore.apps.learnDify.get.queryOptions({
+      input: { query: { language: locale } },
+      select: (response) =>
+        [...response.recommended_apps].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+    }),
+  )
 
   useEffect(() => {
     return () => {

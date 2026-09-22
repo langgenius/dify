@@ -1,6 +1,7 @@
 import type { Memory, Var } from '../../types'
-import type { ToolVarInputs } from '../tool/types'
 import type { AgentNodeType } from './types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -8,14 +9,14 @@ import {
   generateAgentToolValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { consoleQuery } from '@/service/console'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
-import { useStrategyProviderDetail } from '@/service/use-strategy'
 import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
-import { VarType as VarKindType } from '../../types'
+import { VarType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import useVarList from '../_base/hooks/use-var-list'
-import { VarType } from '../tool/types'
 
 type StrategyStatus = {
   plugin: {
@@ -26,17 +27,26 @@ type StrategyStatus = {
 }
 
 export const useStrategyInfo = (strategyProviderName?: string, strategyName?: string) => {
-  const strategyProvider = useStrategyProviderDetail(strategyProviderName || '', { retry: false })
-  const strategy = strategyProvider.data?.declaration.strategies.find(
+  const strategyProvider = useQuery(
+    consoleQuery.workspaces.current.agentProvider.byProviderName.get.queryOptions({
+      input: strategyProviderName ? { params: { provider_name: strategyProviderName } } : skipToken,
+      retry: false,
+    }),
+  )
+  const strategy = strategyProvider.data?.declaration.strategies?.find(
     (str) => str.identity.name === strategyName,
   )
-  const marketplace = useFetchPluginsInMarketPlaceByIds([strategyProviderName!], {
-    retry: false,
-  })
+  const marketplace = useFetchPluginsInMarketPlaceByIds(
+    strategyProviderName ? [strategyProviderName] : [],
+    {
+      retry: false,
+    },
+  )
   const strategyStatus: StrategyStatus | undefined = useMemo(() => {
-    if (strategyProvider.isLoading || marketplace.isLoading) return undefined
+    if (!strategyProviderName || strategyProvider.isLoading || marketplace.isLoading)
+      return undefined
     const strategyExist = !!strategy
-    const isPluginInstalled = !strategyProvider.isError
+    const isPluginInstalled = strategyProvider.isSuccess
     const isInMarketplace = !!marketplace.data?.data.plugins.at(0)
     return {
       plugin: {
@@ -45,11 +55,19 @@ export const useStrategyInfo = (strategyProviderName?: string, strategyName?: st
       },
       isExistInPlugin: strategyExist,
     }
-  }, [strategy, marketplace, strategyProvider.isError, strategyProvider.isLoading])
+  }, [
+    strategy,
+    strategyProviderName,
+    marketplace,
+    strategyProvider.isSuccess,
+    strategyProvider.isLoading,
+  ])
+  const { refetch: refetchProvider } = strategyProvider
+  const { refetch: refetchMarketplace } = marketplace
   const refetch = useCallback(() => {
-    strategyProvider.refetch()
-    marketplace.refetch()
-  }, [marketplace, strategyProvider])
+    if (!strategyProviderName) return
+    return Promise.all([refetchProvider(), refetchMarketplace()])
+  }, [refetchMarketplace, refetchProvider, strategyProviderName])
   return {
     strategyProvider,
     strategy,
@@ -73,7 +91,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   } = useStrategyInfo(inputs.agent_strategy_provider_name, inputs.agent_strategy_name)
   const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
   const pluginDetail = useCheckInstalled({
-    pluginIds: [pluginId!],
+    pluginIds: pluginId ? [pluginId] : [],
     enabled: Boolean(pluginId),
   })
   const formData = useMemo(() => {
@@ -90,17 +108,17 @@ const useConfig = (id: string, payload: AgentNodeType) => {
 
   const getParamVarType = useCallback(
     (paramName: string) => {
-      const isVariable = currentStrategy?.parameters.some(
+      const isVariable = currentStrategy?.parameters?.some(
         (param) => param.name === paramName && param.type === FormTypeEnum.any,
       )
-      if (isVariable) return VarType.variable
-      return VarType.constant
+      if (isVariable) return VarKindType.variable
+      return VarKindType.constant
     },
     [currentStrategy?.parameters],
   )
 
-  const onFormChange = (value: Record<string, any>) => {
-    const res: ToolVarInputs = {}
+  const onFormChange = (value: Record<string, unknown>) => {
+    const res: ResourceVarInputs = { ...inputs.agent_parameters }
     Object.entries(value).forEach(([key, val]) => {
       res[key] = {
         type: getParamVarType(key),
@@ -140,10 +158,6 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       const schemas = currentStrategy?.parameters || []
       Object.keys(draft.agent_parameters || {}).forEach((key) => {
         const targetSchema = schemas.find((schema) => schema.name === key)
-        if (targetSchema?.type === FormTypeEnum.toolSelector)
-          draft.agent_parameters![key]!.value = formattingToolData(
-            draft.agent_parameters![key]!.value,
-          )
         if (targetSchema?.type === FormTypeEnum.multiToolSelector)
           draft.agent_parameters![key]!.value = draft.agent_parameters![key]!.value.map(
             (tool: any) => formattingToolData(tool),
@@ -164,16 +178,16 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   // vars
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    const supportedVariableTypes: readonly VarKindType[] = [
-      VarKindType.arrayObject,
-      VarKindType.array,
-      VarKindType.number,
-      VarKindType.string,
-      VarKindType.secret,
-      VarKindType.arrayString,
-      VarKindType.arrayNumber,
-      VarKindType.file,
-      VarKindType.arrayFile,
+    const supportedVariableTypes: readonly VarType[] = [
+      VarType.arrayObject,
+      VarType.array,
+      VarType.number,
+      VarType.string,
+      VarType.secret,
+      VarType.arrayString,
+      VarType.arrayNumber,
+      VarType.file,
+      VarType.arrayFile,
     ]
 
     return supportedVariableTypes.includes(varPayload.type)
@@ -187,20 +201,33 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   // single run
 
   const outputSchema = useMemo(() => {
-    const res: any[] = []
-    if (!inputs.output_schema || !inputs.output_schema.properties) return []
-    Object.keys(inputs.output_schema.properties).forEach((outputKey) => {
-      const output = inputs.output_schema.properties[outputKey]
-      res.push({
-        name: outputKey,
+    const properties = inputs.output_schema?.properties
+    if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return []
+    return Object.entries(properties).map(([name, output]: [string, unknown]) => {
+      const schema = output && typeof output === 'object' && !Array.isArray(output) ? output : {}
+      const type =
+        'type' in schema && typeof schema.type === 'string' && schema.type ? schema.type : 'unknown'
+      const items = 'items' in schema ? schema.items : undefined
+      const itemType =
+        items &&
+        typeof items === 'object' &&
+        'type' in items &&
+        typeof items.type === 'string' &&
+        items.type
+          ? items.type
+          : 'unknown'
+      return {
+        name,
         type:
-          output.type === 'array'
-            ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]`
-            : `${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}`,
-        description: output.description,
-      })
+          type === 'array'
+            ? `Array[${itemType.charAt(0).toUpperCase()}${itemType.slice(1)}]`
+            : `${type.charAt(0).toUpperCase()}${type.slice(1)}`,
+        description:
+          'description' in schema && typeof schema.description === 'string'
+            ? schema.description
+            : '',
+      }
     })
-    return res
   }, [inputs.output_schema])
 
   const handleMemoryChange = useCallback(
