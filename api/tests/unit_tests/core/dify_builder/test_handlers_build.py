@@ -1668,6 +1668,139 @@ def test_await_testdata_provided_inputs_used():
     assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"document": {"upload_file_id": "f-1"}}
 
 
+# ---- ESQ1-302: "mock data" must not invent the endpoint ------------------------
+
+
+def _endpoint_graph() -> dict:
+    """What ``_ground_placeholder_endpoints`` leaves of the ESQ1-302 draft: its
+    invented ``https://api.example.com/ppt/generate`` re-pointed at a required
+    start variable."""
+    return {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "type": "text-input", "required": True},
+                        {"variable": "h_url", "type": "text-input", "required": True, "max_length": 2048},
+                    ],
+                },
+            },
+            {"id": "h", "data": {"type": "http-request", "title": "Call PPT API", "url": "{{#s.h_url#}}"}},
+            {"id": "e", "data": {"type": "end", "outputs": []}},
+        ],
+        "edges": [],
+    }
+
+
+def _mock_with_an_invented_endpoint(_schema, _prior):
+    return {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
+
+
+class _EngineRunDraft:
+    """``run_draft`` as the engine behaves on ``_endpoint_graph``: a missing
+    required start variable is rejected at launch
+    (``base_app_generator._validate_inputs``), while ANY supplied URL -- a mocked
+    one included -- is accepted and the http-request node then fails on
+    connection (``ssrf_proxy``'s retry error)."""
+
+    def __init__(self, graph: dict) -> None:
+        start = next(n for n in graph["nodes"] if n["data"]["type"] == "start")
+        self.required = [v["variable"] for v in start["data"]["variables"] if v.get("required")]
+        self.seen_inputs: list[dict] = []
+
+    def __call__(self, _app_id, _actor, inputs, _on_event, **_kw):
+        from core.dify_builder.models import NodeOutput, Run
+
+        self.seen_inputs.append(dict(inputs))
+        for name in self.required:
+            if inputs.get(name) is None:
+                raise ValueError(f"{name} is required in input form")
+        error = f"Reached maximum retries (3) for URL {inputs['h_url']}"
+        return Run(
+            dify_run_id="build-run-1",
+            status="failed",
+            per_node=[NodeOutput(node_id="h", status="failed", error=error)],
+        )
+
+
+def test_await_testdata_mock_leaves_the_endpoint_for_the_form():
+    from core.dify_builder.handlers_build import handle_await_testdata
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = _endpoint_graph()
+    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_AWAIT_TESTDATA)
+
+    result = handle_await_testdata(
+        env,
+        Turn(actor=_actor(), action=Action(kind="provide_testdata", payload={"mode": "mock"})),
+        s,
+        DifyBuilderContext(),
+    )
+
+    assert result.next == PcState.BUILD_TEST_AND_REPAIR
+    assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "quarterly report"}
+
+
+def test_mock_inputs_route_a_missing_endpoint_back_to_the_testdata_gate():
+    """ESQ1-302's repair thrash: "use mock data" invented a URL for the endpoint
+    variable, the engine accepted it, the node failed on connection, and
+    ``is_input_failure`` (rightly) called that a config failure -- so the flow
+    went to the config-repair gate, which cannot fix a host that does not
+    exist. With the endpoint left out, the launch fails on the INPUT and the
+    user is asked for the real URL."""
+    from core.dify_builder.handlers_build import handle_await_testdata, handle_test_and_repair
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = _endpoint_graph()
+    env.dify.run_draft = engine = _EngineRunDraft(env.dify.graph)
+    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_AWAIT_TESTDATA)
+    mocked = handle_await_testdata(
+        env,
+        Turn(actor=_actor(), action=Action(kind="provide_testdata", payload={"mode": "mock"})),
+        s,
+        DifyBuilderContext(built_node_ids=["s", "h", "e"]),
+    )
+
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, mocked.context)
+
+    assert engine.seen_inputs == [{"topic": "quarterly report"}]
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    assert result.run is not None
+    assert "h_url is required in input form" in (result.run.error or "")
+    form = next(i for i in result.items if i.kind == "form")
+    assert "h_url" in [f["key"] for f in form.payload["fields"]]
+
+
+def test_test_and_repair_defensive_mock_leaves_the_endpoint_for_the_form():
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = _endpoint_graph()
+    env.dify.run_draft = engine = _EngineRunDraft(env.dify.graph)
+    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+
+    result = handle_test_and_repair(
+        env, Turn(actor=_actor()), s, DifyBuilderContext(built_node_ids=["s", "h", "e"], test_input_ref="")
+    )
+
+    assert engine.seen_inputs == [{"topic": "quarterly report"}]
+    assert result.run is not None
+    assert env.repo.get_test_input(result.run.inputs_ref).inputs == {"topic": "quarterly report"}
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+
+
 def test_build_await_testdata_is_waiting_and_projected():
     from core.dify_builder.state import PcState, is_waiting
     from services.dify_builder.service import Phase, _actions_for, _phase_for

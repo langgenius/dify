@@ -825,6 +825,78 @@ def test_endpoint_variable_names_empty_when_there_is_no_http_request_node():
     assert endpoint_variable_names(graph) == set()
 
 
+# ---- without_endpoint_values -------------------------------------------------
+
+
+def _endpoint_graph() -> dict:
+    """What ``_ground_placeholder_endpoints`` leaves of the ESQ1-302 draft: its
+    invented ``https://api.example.com/ppt/generate`` re-pointed at a required
+    start variable."""
+    return {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "type": "text-input", "required": True},
+                        {"variable": "h_url", "type": "text-input", "required": True, "max_length": 2048},
+                    ],
+                },
+            },
+            {"id": "h", "data": {"type": "http-request", "title": "Call PPT API", "url": "{{#s.h_url#}}"}},
+        ],
+        "edges": [],
+    }
+
+
+def test_without_endpoint_values_drops_only_the_endpoint_keys():
+    from core.dify_builder.handlers_fix import without_endpoint_values
+
+    inputs = {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
+
+    assert without_endpoint_values(_endpoint_graph(), inputs) == {"topic": "quarterly report"}
+    assert inputs == {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}  # not mutated
+
+
+def test_without_endpoint_values_keeps_everything_when_no_url_reads_a_start_variable():
+    from core.dify_builder.handlers_fix import without_endpoint_values
+
+    graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "topic", "type": "text-input"}]}},
+            {"id": "h", "data": {"type": "http-request", "url": "https://api.openai.com/v1/chat"}},
+        ],
+        "edges": [],
+    }
+
+    assert without_endpoint_values(graph, {"topic": "x"}) == {"topic": "x"}
+
+
+def test_fix_await_testdata_mock_leaves_the_endpoint_for_the_form():
+    """A mocked URL for an endpoint variable is accepted at launch and fails on
+    connection -- a config failure, not an input one, so it feeds the repair
+    loop (ESQ1-302). Dropped, the missing required key is rejected at launch as
+    "... is required in input form" instead."""
+    env, _ = _new_env()
+    env.dify.graph = _endpoint_graph()
+    env.agent.generate_mock_inputs = lambda _schema, _prior: {
+        "topic": "quarterly report",
+        "h_url": "https://api.example.com/ppt/generate",
+    }
+    s = _session(current_state=PcState.FIX_AWAIT_TESTDATA)
+
+    result = handle_await_testdata(
+        env,
+        Turn(actor=_actor(), action=Action(kind="provide_testdata", payload={"mode": "mock"})),
+        s,
+        DifyBuilderContext(),
+    )
+
+    assert result.next == PcState.FIX_VERIFY
+    assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "quarterly report"}
+
+
 # ---- is_input_failure / testdata_form_fields -------------------------------
 
 
