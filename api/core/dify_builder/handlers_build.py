@@ -473,7 +473,14 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     # built nodes (not the Builder's session model). resource_ids were already
     # string-filtered when stored (handle_resource_recommendation).
     selected_resource_ids = list(fc.resource_selection.get("resource_ids") or [])
-    build_result = env.agent.build_nodes(list(fc.plan_items), selected_resource_ids)
+    # The text the user actually typed (goal + the requirements form as they
+    # submitted it) -- core/dify_builder cannot import services, so this is
+    # built inline, matching services.dify_builder.agent.user_supplied's
+    # trusted_text_for byte-for-byte (see test_plan_approval_passes_trusted_
+    # text_matching_user_supplied_trusted_text_for). Lets build_nodes tell an
+    # endpoint the user actually gave from one the model invented (ESQ1-302/S5b).
+    trusted_text = f"{fc.goal_text}\n{json.dumps(dict(fc.requirements), ensure_ascii=False)}"
+    build_result = env.agent.build_nodes(list(fc.plan_items), selected_resource_ids, trusted_text=trusted_text)
     intents = build_result.intents
 
     if not any(intent.op == "create_node" for intent in intents):

@@ -139,47 +139,51 @@ class PlaceholderAgent:
             "Emit the final report",
         ]
 
-    def build_nodes(self, plan_items: list[str], resource_ids: list[str] | None = None) -> BuildNodesResult:
+    def build_nodes(
+        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+    ) -> BuildNodesResult:
         # Start -> Knowledge-Retrieval -> LLM -> End. Creates and connects are
         # interleaved so each connect's endpoints already exist when
         # apply_connect validates them.
-        return BuildNodesResult(intents=[
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": BuiltinNodeTypes.START,
-                    "config": node_defaults.default_config(BuiltinNodeTypes.START),
-                    "node_id": BUILD_START_ID,
-                },
-            ),
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-                    "config": node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
-                    "node_id": BUILD_KNOWLEDGE_ID,
-                },
-            ),
-            MutationIntent(op="connect", args={"from_node": BUILD_START_ID, "to_node": BUILD_KNOWLEDGE_ID}),
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": BuiltinNodeTypes.LLM,
-                    "config": node_defaults.default_config(BuiltinNodeTypes.LLM),
-                    "node_id": BUILD_LLM_ID,
-                },
-            ),
-            MutationIntent(op="connect", args={"from_node": BUILD_KNOWLEDGE_ID, "to_node": BUILD_LLM_ID}),
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": BuiltinNodeTypes.END,
-                    "config": node_defaults.default_config(BuiltinNodeTypes.END),
-                    "node_id": BUILD_END_ID,
-                },
-            ),
-            MutationIntent(op="connect", args={"from_node": BUILD_LLM_ID, "to_node": BUILD_END_ID}),
-        ])
+        return BuildNodesResult(
+            intents=[
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": BuiltinNodeTypes.START,
+                        "config": node_defaults.default_config(BuiltinNodeTypes.START),
+                        "node_id": BUILD_START_ID,
+                    },
+                ),
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                        "config": node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
+                        "node_id": BUILD_KNOWLEDGE_ID,
+                    },
+                ),
+                MutationIntent(op="connect", args={"from_node": BUILD_START_ID, "to_node": BUILD_KNOWLEDGE_ID}),
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": BuiltinNodeTypes.LLM,
+                        "config": node_defaults.default_config(BuiltinNodeTypes.LLM),
+                        "node_id": BUILD_LLM_ID,
+                    },
+                ),
+                MutationIntent(op="connect", args={"from_node": BUILD_KNOWLEDGE_ID, "to_node": BUILD_LLM_ID}),
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": BuiltinNodeTypes.END,
+                        "config": node_defaults.default_config(BuiltinNodeTypes.END),
+                        "node_id": BUILD_END_ID,
+                    },
+                ),
+                MutationIntent(op="connect", args={"from_node": BUILD_LLM_ID, "to_node": BUILD_END_ID}),
+            ]
+        )
 
     def learn_from_build(
         self,

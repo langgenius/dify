@@ -91,7 +91,9 @@ class DifyBuilderAgent(Protocol):
 
     def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]: ...
 
-    def build_nodes(self, plan_items: list[str], resource_ids: list[str] | None = None) -> BuildNodesResult: ...
+    def build_nodes(
+        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+    ) -> BuildNodesResult: ...
 
     def learn_from_build(
         self,

@@ -438,7 +438,7 @@ class StubAgent:
     def bind_resources(self, _plan_items, _resource_ids):
         return []
 
-    def build_nodes(self, _plan_items, _resource_ids=None):
+    def build_nodes(self, _plan_items, _resource_ids=None, *, trusted_text=""):  # noqa: ARG002
         return BuildNodesResult(intents=[])
 
     def learn_from_build(self, _goal_text, _requirements, _plan_items, _built_node_ids):
