@@ -166,3 +166,39 @@ class TestExistingGraphSection:
 
     def test_create_mode_renders_nothing(self):
         assert format_existing_graph_section(None) == ""
+
+
+class TestNodeBuilderHandleContract:
+    """ESQ1-303: the planner names a branch's outgoing handles (rule 12, one LLM
+    call) and the node builder chooses the case / class / action ids (another
+    call). Nothing told the builder the planner had already chosen. It sees the
+    planned edges -- ``format_parallel_plan`` embeds ``edges`` with their
+    ``source_handle`` -- so its snippets now make those handles the contract."""
+
+    def test_if_else_snippet_binds_case_ids_to_the_planned_source_handles(self):
+        prompt = get_node_builder_system_prompt("if-else")
+
+        assert "source_handle" in prompt
+        assert "case_id" in prompt
+        assert '"false"' in prompt  # ELSE is implicit and must never be declared as a case
+        assert "never" in prompt.lower() or "must not" in prompt.lower()
+
+    def test_question_classifier_snippet_binds_class_ids_to_the_planned_source_handles(self):
+        prompt = get_node_builder_system_prompt("question-classifier")
+
+        assert "source_handle" in prompt
+        assert "classes" in prompt
+
+    def test_human_input_snippet_binds_action_ids_to_the_planned_source_handles(self):
+        prompt = get_node_builder_system_prompt("human-input")
+
+        assert "source_handle" in prompt
+        assert "user_actions" in prompt
+
+    def test_the_planned_edges_reach_the_builder_with_their_handles(self):
+        out = format_parallel_plan(
+            [{"id": "node2", "label": "Check", "node_type": "if-else", "purpose": "x"}],
+            [{"source": "node2", "target": "node3", "source_handle": "score_equals_60"}],
+        )
+
+        assert '"source_handle":"score_equals_60"' in out

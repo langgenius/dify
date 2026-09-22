@@ -138,7 +138,14 @@ _NODE_SNIPPETS: dict[str, str] = {
                         "comparison_operator": "is",
                         "value": "<value>"}]}
      ]}
-    Source handle for downstream edges = the case_id ("true" / "false").""",
+    Source handle for downstream edges = the case_id ("true" / "false").
+    HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
+    outgoing ``source_handle`` values. Each declared ``case_id`` (and its
+    ``_targetBranches`` id) MUST be exactly one of those planned
+    ``source_handle`` values. The ELSE arm is implicit: its handle is always
+    "false" and it must never be declared as a case. A planned handle such as
+    "else" / "otherwise" / "default" is the ELSE arm -- do not declare a case
+    for it.""",
     "question-classifier": """\
 - question-classifier:
     {"query_variable_selector": ["<src>", "<var>"],
@@ -149,7 +156,11 @@ _NODE_SNIPPETS: dict[str, str] = {
      "_targetBranches": [{"id": "1", "name": ""}, {"id": "2", "name": ""}],
      "vision": {"enabled": false},
      "instruction": ""}
-    Source handle for downstream edges = the class_id ("1" / "2" / ...).""",
+    Source handle for downstream edges = the class_id ("1" / "2" / ...).
+    HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
+    outgoing ``source_handle`` values. Each class ``id`` (and its
+    ``_targetBranches`` id) MUST be exactly one of those planned
+    ``source_handle`` values, one class per planned handle.""",
     "parameter-extractor": """\
 - parameter-extractor:
     {"query": [["<src>", "<var>"]],          # array of value_selector arrays
@@ -212,7 +223,12 @@ _NODE_SNIPPETS: dict[str, str] = {
                        "button_style": "primary"}],
      "timeout": 3, "timeout_unit": "day"}
     Each ``inputs[].output_variable_name`` is an output variable. Outgoing
-    edges use the matching user-action id as ``sourceHandle``.""",
+    edges use the matching user-action id as ``sourceHandle``.
+    HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
+    outgoing ``source_handle`` values. Each ``user_actions[].id`` MUST be
+    exactly one of those planned ``source_handle`` values, one action per
+    planned handle. The timeout arm is implicit: its handle is always
+    "__timeout" and it must never be declared as a user action.""",
 }
 
 
