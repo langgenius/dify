@@ -4,6 +4,7 @@ import path from 'node:path'
 import { runCleanupTasks } from '../support/cleanup'
 import { assertCucumberScenariosStarted } from '../support/cucumber-messages'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
+import { measurePhase, recordTiming } from '../support/timing'
 import { startWebServer, stopWebServer } from '../support/web-server'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
 import { e2eDir, isMainModule, runCommand } from './common'
@@ -56,22 +57,23 @@ const waitForManagedProcess = async ({
   errorMessage: string
   managedProcess: ManagedProcess
   url: string
-}) => {
-  let waiting = true
-  try {
-    await Promise.race([
-      waitForUrl(url, 180_000, 1_000),
-      waitForUnexpectedProcessExit(managedProcess, () => !waiting),
-    ])
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('exited before becoming ready'))
-      throw error
+}) =>
+  measurePhase(`${managedProcess.label}.ready (includes child startup)`, async () => {
+    let waiting = true
+    try {
+      await Promise.race([
+        waitForUrl(url, 180_000, 1_000),
+        waitForUnexpectedProcessExit(managedProcess, () => !waiting),
+      ])
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('exited before becoming ready'))
+        throw error
 
-    throw new Error(`${errorMessage} See ${managedProcess.logFilePath}.`)
-  } finally {
-    waiting = false
-  }
-}
+      throw new Error(`${errorMessage} See ${managedProcess.logFilePath}.`)
+    } finally {
+      waiting = false
+    }
+  })
 
 const main = async () => {
   const { forwardArgs, full, headed, seed, seedOnly } = parseRunOptions(process.argv.slice(2))
@@ -119,11 +121,11 @@ const main = async () => {
   process.once('SIGTERM', onTerminate)
 
   try {
-    if (full) await resetState()
+    if (full) await measurePhase('runtime.reset', resetState)
 
     if (full) {
       middlewareStarted = true
-      await startMiddleware()
+      await measurePhase('middleware.total (includes pull, up and readiness)', startMiddleware)
     }
 
     if (!seedOnly) await rm(cucumberReportDir, { force: true, recursive: true })
@@ -188,17 +190,20 @@ const main = async () => {
       logFilePath: path.join(logDir, 'cucumber-celery.log'),
     })
 
-    await startWebServer({
-      baseURL,
-      command: process.execPath,
-      args: ['--import', 'tsx', './scripts/setup.ts', 'web'],
-      cwd: e2eDir,
-      logFilePath: path.join(logDir, 'cucumber-web.log'),
-      reuseExistingServer: reuseExistingWebServer,
-      timeoutMs: 300_000,
-    })
+    await measurePhase('web.ready (includes build validation)', () =>
+      startWebServer({
+        baseURL,
+        command: process.execPath,
+        args: ['--import', 'tsx', './scripts/setup.ts', 'web'],
+        cwd: e2eDir,
+        logFilePath: path.join(logDir, 'cucumber-web.log'),
+        reuseExistingServer: reuseExistingWebServer,
+        timeoutMs: 300_000,
+      }),
+    )
 
-    if (seed) await runSeed(seed)
+    if (seed) await measurePhase('seed', () => runSeed(seed))
+    else recordTiming('seed', 0, 'not requested')
 
     if (!seedOnly) {
       const cucumberEnv: NodeJS.ProcessEnv = {
@@ -208,19 +213,24 @@ const main = async () => {
 
       if (full && !hasCustomTags(forwardArgs)) cucumberEnv.E2E_CUCUMBER_TAGS = fullNonExternalTags
 
-      const result = await runCommand({
-        command: process.execPath,
-        args: [
-          '--import',
-          'tsx',
-          './node_modules/@cucumber/cucumber/bin/cucumber.js',
-          '--config',
-          './cucumber.config.ts',
-          ...forwardArgs,
-        ],
-        cwd: e2eDir,
-        env: cucumberEnv,
-      })
+      const result = await measurePhase(
+        'cucumber.total (includes hooks)',
+        () =>
+          runCommand({
+            command: process.execPath,
+            args: [
+              '--import',
+              'tsx',
+              './node_modules/@cucumber/cucumber/bin/cucumber.js',
+              '--config',
+              './cucumber.config.ts',
+              ...forwardArgs,
+            ],
+            cwd: e2eDir,
+            env: cucumberEnv,
+          }),
+        (result) => result.exitCode === 0,
+      )
 
       if (result.exitCode === 0) {
         const messages = await readFile(path.join(cucumberReportDir, 'report.ndjson'), 'utf8')
@@ -232,7 +242,7 @@ const main = async () => {
   } finally {
     process.off('SIGINT', onTerminate)
     process.off('SIGTERM', onTerminate)
-    await cleanup()
+    await measurePhase('runtime.teardown', cleanup)
   }
 }
 

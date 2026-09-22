@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
 
       - name: Test Web build synchronization
-        run: node --test .github/actions/wait-e2e-web-build/wait.test.cjs
+        run: node --test .github/actions/wait-e2e-web-build/wait.test.cjs .github/scripts/e2e-build-diagnostics.test.cjs
 
       - name: Compute build source hash
         id: build-source
@@ -42,6 +42,10 @@ jobs:
           # Browser jobs already save this dependency cache; avoid duplicate uploads.
           cache-save: 'false'
 
+      - name: Start cache restore timer
+        id: cache-timer
+        run: echo "started=$(date +%s%3N)" >> "$GITHUB_OUTPUT"
+
       - name: Restore Next.js build cache
         id: next-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -51,23 +55,30 @@ jobs:
           restore-keys: |
             e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-
 
+      - name: Inspect restored build cache
+        if: ${{ !cancelled() }}
+        env:
+          E2E_CACHE_RESTORE_STARTED: ${{ steps.cache-timer.outputs.started }}
+          E2E_CACHE_HIT: ${{ steps.next-cache.outputs.cache-hit }}
+          E2E_CACHE_PRIMARY_KEY: ${{ steps.next-cache.outputs.cache-primary-key }}
+          E2E_CACHE_MATCHED_KEY: ${{ steps.next-cache.outputs.cache-matched-key }}
+          E2E_BUILD_SOURCE_HASH: ${{ steps.build-source.outputs.hash }}
+        run: node .github/scripts/e2e-build-diagnostics.cjs before
+
       - name: Run E2E support unit tests
         working-directory: ./e2e
         run: vp run test:unit
 
       - name: Build production Web app
+        id: web-build
         working-directory: ./e2e
         env:
           E2E_FORCE_WEB_BUILD: '1'
           CACHE_HIT: ${{ steps.next-cache.outputs.cache-hit || 'false' }}
         run: |
-          started=$SECONDS
-          vp run e2e:web:build
-          {
-            echo "### E2E Web build"
-            echo "Build: $((SECONDS - started))s"
-            echo "Exact cache hit: $CACHE_HIT (false can include a compatible fallback)"
-          } >> "$GITHUB_STEP_SUMMARY"
+          set -o pipefail
+          mkdir -p .logs
+          vp run e2e:web:build 2>&1 | tee .logs/web-build.log
 
       - name: Package Web build
         run: >-
@@ -83,6 +94,24 @@ jobs:
           name: core-e2e-web-build-${{ github.run_attempt }}
           path: e2e-web-build.tar
           if-no-files-found: error
+          retention-days: 7
+
+      # Publish the artifact before diagnostics/cache saving so consumers can start.
+      - name: Record build cache diagnostics
+        if: ${{ !cancelled() }}
+        env:
+          E2E_BUILD_OUTCOME: ${{ steps.web-build.outcome }}
+        run: node .github/scripts/e2e-build-diagnostics.cjs after
+
+      - name: Upload build diagnostics
+        continue-on-error: true
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-build-diagnostics-${{ github.run_attempt }}
+          path: e2e/.logs/*.log
+          include-hidden-files: true
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Save Next.js build cache

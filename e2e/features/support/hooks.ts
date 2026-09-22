@@ -10,6 +10,7 @@ import { chromium, webkit } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
 import { runCleanupTasks, shouldFailForCleanupErrors } from '../../support/cleanup'
 import { getVoiceInputTestMaterialPath } from '../../support/test-materials'
+import { measurePhase, recordTiming } from '../../support/timing'
 import { baseURL, cucumberHeadless, cucumberSlowMo, e2eBrowser } from '../../test-env'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
@@ -104,7 +105,8 @@ Before({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async function (this: DifyWorld, 
     })
 
     console.warn(`[e2e] ${e2eBrowser} session cache bootstrap against ${baseURL}`)
-    await ensureAuthenticatedState(browser, baseURL)
+    const sharedBrowser = browser
+    await measurePhase('auth.bootstrap', () => ensureAuthenticatedState(sharedBrowser, baseURL))
   }
 
   if (!browser) throw new Error('Shared Playwright browser is not available.')
@@ -217,6 +219,7 @@ After(
   async function (this: DifyWorld, { pickle, result }) {
     const elapsedMs = this.scenarioStartedAt ? Date.now() - this.scenarioStartedAt : undefined
     const status = result?.status || Status.UNKNOWN
+    if (elapsedMs !== undefined) recordTiming(`scenario: ${pickle.name}`, elapsedMs, status)
 
     console.warn(
       `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,

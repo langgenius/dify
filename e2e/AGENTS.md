@@ -71,3 +71,42 @@ Validation failures are contract failures. Trace them to the backend schema owne
 - Remove child and referencing resources before owners. Attach cleanup failures to the report instead of swallowing them.
 
 Failures produce screenshots and HTML captures under `cucumber-report/artifacts/`; the HTML and Cucumber Messages reports live under `cucumber-report/`. Backend and frontend startup logs live under `.logs/`. Additional CI lanes preserve their own report and log directories.
+
+## CI Timing And Build Cache Diagnostics
+
+Runtime phases and scenarios emit `[e2e:timing]` JSON records to the console,
+per-process `.logs/timings-<pid>.log` files, and GitHub step summaries. Existing
+E2E log artifacts include these files. Failed phases retain their timing without
+changing the original error. A hard cancellation may interrupt a phase before it
+can emit its completion record.
+
+- `middleware.pull` measures Compose image pulls with the default `missing`
+  policy (including refreshes of `latest`); `middleware.up` starts the pulled
+  images without pulling again. Readiness waits are recorded individually.
+- `api.migrate` is also included in the parent API readiness interval. Web
+  readiness includes build validation and, when needed, a build.
+- `seed` is explicitly marked `not requested` in core runs. Auth bootstrap is
+  measured separately. Scenario timing runs from the end of the Before hook to
+  the diagnostics After hook, excluding auth/bootstrap and later cleanup.
+- `cucumber.total` includes hooks and scenarios; middleware totals include their
+  child phases. Nested timings and concurrent phases must not be summed as
+  pipeline wall time. Dependency installation and artifact waiting retain their
+  existing separate summaries.
+
+The build job uploads `e2e-build-diagnostics-<attempt>` with full build output,
+compiler-reported durations, cache size, actual primary/matched keys, and timing
+records. Cache restore timing includes Actions step transition overhead.
+`.next/cache/dify-e2e-inputs.json` stores the successful build's tracked input
+manifest, Node/Next versions, and a hash of `.env.local`, never its contents.
+A subsequent restore compares added, removed, and changed input paths. Older
+caches have no diagnostic baseline; it becomes available after a successful
+build saves a new cache entry. Failed builds do not replace the baseline.
+
+An Actions cache miss/fallback is distinct from a Next compiler cache miss.
+The existing cache key covers all of `web`, `packages`, E2E scripts, and selected
+CI inputs, including files that may not affect the compiled app. A changed key
+therefore does not prove Next must recompile everything. Compare the matched key,
+input differences, runtime versions, cache sizes, and compiler duration before
+changing cache policy. `E2E_FORCE_WEB_BUILD=1` invokes the build command; it does
+not delete or disable Next's incremental cache. Build-stamp hashes printed by
+`setup.ts` verify artifact reuse and are separate from the Actions cache key.

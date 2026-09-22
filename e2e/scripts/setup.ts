@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { waitForUrl } from '../support/process'
+import { measurePhase, recordTiming } from '../support/timing'
 import {
   apiDir,
   apiEnvExampleFile,
@@ -187,7 +188,7 @@ const waitForDependency = async ({
   console.log(`Waiting for ${description}...`)
 
   try {
-    await wait()
+    await measurePhase(`middleware.ready: ${description}`, wait)
   } catch (error) {
     await printComposeLogs(services)
     throw error
@@ -250,17 +251,22 @@ export const ensureWebBuild = async () => {
     .update('\n')
     .update(sourceHash)
     .digest('hex')
+  console.warn(
+    `[e2e:build-inputs] ${JSON.stringify({ sourceHash, envHash, buildStamp, forced: process.env.E2E_FORCE_WEB_BUILD === '1' })}`,
+  )
   const buildEnv = {
     ...e2eWebEnvOverrides,
   }
 
   if (process.env.E2E_FORCE_WEB_BUILD === '1') {
-    await runCommandOrThrow({
-      command: 'pnpm',
-      args: ['run', 'build'],
-      cwd: webDir,
-      env: buildEnv,
-    })
+    await measurePhase('web.build', () =>
+      runCommandOrThrow({
+        command: 'pnpm',
+        args: ['run', 'build'],
+        cwd: webDir,
+        env: buildEnv,
+      }),
+    )
     await writeFile(webBuildStampPath, `${buildStamp}\n`, 'utf8')
     return
   }
@@ -277,18 +283,21 @@ export const ensureWebBuild = async () => {
 
     if (buildExists && previousBuildStamp === buildStamp) {
       console.log('Reusing existing web build artifact.')
+      recordTiming('web.build', 0, 'artifact reused')
       return
     }
   } catch {
     // Fall through to rebuild when the existing build cannot be verified.
   }
 
-  await runCommandOrThrow({
-    command: 'pnpm',
-    args: ['run', 'build'],
-    cwd: webDir,
-    env: buildEnv,
-  })
+  await measurePhase('web.build', () =>
+    runCommandOrThrow({
+      command: 'pnpm',
+      args: ['run', 'build'],
+      cwd: webDir,
+      env: buildEnv,
+    }),
+  )
   await writeFile(webBuildStampPath, `${buildStamp}\n`, 'utf8')
 }
 
@@ -319,12 +328,14 @@ export const startApi = async () => {
 
   const env = await getApiEnvironment()
 
-  await runCommandOrThrow({
-    command: 'uv',
-    args: ['run', '--project', '.', '--no-sync', 'flask', 'upgrade-db'],
-    cwd: apiDir,
-    env,
-  })
+  await measurePhase('api.migrate', () =>
+    runCommandOrThrow({
+      command: 'uv',
+      args: ['run', '--project', '.', '--no-sync', 'flask', 'upgrade-db'],
+      cwd: apiDir,
+      env,
+    }),
+  )
 
   await runForegroundProcess({
     command: 'uv',
@@ -499,22 +510,24 @@ export const startMiddleware = async () => {
   await ensureFileExists(middlewareEnvFile, middlewareEnvExampleFile)
   await ensureLineInFile(middlewareEnvFile, 'COMPOSE_PROFILES=postgresql,weaviate')
 
+  const services = ['db_postgres', 'redis', 'weaviate', 'sandbox', 'ssrf_proxy', 'plugin_daemon']
+  await measurePhase('middleware.pull', () =>
+    runCommandOrThrow({
+      command: 'docker',
+      args: [...composeArgs, 'pull', '--policy', 'missing', ...services],
+      cwd: dockerDir,
+    }),
+  )
+
   console.log('Starting middleware services...')
-  await runCommandOrThrow({
-    command: 'docker',
-    args: [
-      ...composeArgs,
-      'up',
-      '-d',
-      'db_postgres',
-      'redis',
-      'weaviate',
-      'sandbox',
-      'ssrf_proxy',
-      'plugin_daemon',
-    ],
-    cwd: dockerDir,
-  })
+  await measurePhase('middleware.up', () =>
+    runCommandOrThrow({
+      command: 'docker',
+      // Pulling is measured above, including Compose's special handling of latest.
+      args: [...composeArgs, 'up', '-d', '--pull', 'never', ...services],
+      cwd: dockerDir,
+    }),
+  )
 
   const [postgresContainerId, redisContainerId] = await Promise.all([
     getServiceContainerId('db_postgres'),
