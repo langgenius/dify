@@ -1554,12 +1554,16 @@ class WorkflowGenerator:
         # - if-else ``varType`` (frontend operator hint) is derived only when a
         #   declared start-variable type makes it certain;
         # - http-request body items get the ``type`` BodyData cannot default
-        #   (ESQ1-302), and a ``none`` body drops stray items.
+        #   (ESQ1-302), and a ``none`` body drops stray items;
+        # - a parameter-extractor ``query`` written as an array of selector
+        #   arrays (Blocker A) is unwrapped to the one selector graphon wants.
         for changed_id in graph_normalizers.normalize_condition_values(nodes):
             logger.info("Workflow generator: coerced condition value(s) on node %s to strings", changed_id)
         graph_normalizers.derive_if_else_var_types(nodes)
         for changed_id in graph_normalizers.normalize_http_request_bodies(nodes):
             logger.info("Workflow generator: filled http-request body item type(s) on node %s", changed_id)
+        for changed_id in graph_normalizers.normalize_parameter_extractor_queries(nodes):
+            logger.info("Workflow generator: unwrapped parameter-extractor query selector on node %s", changed_id)
 
         return cast(GraphDict, {"nodes": nodes, "edges": deduped_edges, "viewport": viewport})
 
@@ -1607,10 +1611,16 @@ class WorkflowGenerator:
     ) -> Any:
         """Rewrite query placeholders and selectors at any node-data depth.
 
-        Some node schemas store selectors inside another list, for example a
-        parameter extractor's ``query`` or a variable aggregator's
-        ``variables``. Literal string-list fields opt out so an option list
-        such as ``["sys", "query"]`` is preserved.
+        Some node schemas genuinely store a selector inside another list --
+        a variable aggregator's ``variables`` (graphon: ``list[list[str]]``).
+        A parameter extractor's ``query`` is NOT one of these: graphon wants
+        ``query: list[str]``, one selector, same as a question-classifier's
+        ``query_variable_selector``. This walker still recurses into any
+        list, so a nested ``[["sys", "query"]]`` it is handed comes out
+        still nested (``[[target_node_id, "query"]]``); unwrapping that is
+        ``core.workflow.graph_normalizers.normalize_parameter_extractor_queries``'s
+        job, run later in ``_postprocess_graph``. Literal string-list fields
+        opt out so an option list such as ``["sys", "query"]`` is preserved.
         """
         target_placeholder = f"{{{{#{target_node_id}.query#}}}}"
         if isinstance(value, str):

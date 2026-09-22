@@ -2825,7 +2825,7 @@ class TestWorkflowGeneratorVariableReferences:
                 "type": "if-else",
                 "cases": [{"conditions": [{"variable_selector": ["sys,query"]}]}],
             },
-            {"type": "parameter-extractor", "query": [["sys", "query"]]},
+            {"type": "parameter-extractor", "query": ["sys", "query"]},
             {"type": "variable-aggregator", "variables": [["sys.query"]]},
             {
                 "type": "tool",

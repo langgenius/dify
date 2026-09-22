@@ -1146,3 +1146,77 @@ class TestUndeclaredBranchHandles:
         assert undeclared_branch_handles([node], _edges("h", [(None, "a"), (None, "b")])) == []
         assert undeclared_branch_handles([node], _edges("h", [("source", "a"), (None, "b")])) == []
         assert undeclared_branch_handles([node], _edges("h", [(None, "a"), (None, "b"), ("fail-branch", "e")])) == []
+
+
+class TestNormalizeParameterExtractorQueries:
+    """graphon's ``ParameterExtractorNodeData.query`` is ``list[str]`` -- ONE
+    selector (``nodes/parameter_extractor/entities.py:112``). The generator's
+    node-builder prompt for this node type instead shows an array of selector
+    arrays (Blocker A), which ``Graph.init`` always refuses, so a node written
+    that way never starts. This is the deterministic unwrap for the one
+    unambiguous case; the prompt itself is fixed separately."""
+
+    def test_unwraps_a_single_nested_selector(self):
+        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+
+        node = {"id": "node3", "data": {"type": "parameter-extractor", "query": [["node2", "text"]]}}
+
+        assert normalize_parameter_extractor_queries([node]) == ["node3"]
+        assert node["data"]["query"] == ["node2", "text"]
+
+    def test_an_already_flat_query_is_left_alone(self):
+        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+
+        node = {"id": "node3", "data": {"type": "parameter-extractor", "query": ["node2", "text"]}}
+
+        assert normalize_parameter_extractor_queries([node]) == []
+        assert node["data"]["query"] == ["node2", "text"]
+
+    def test_an_empty_query_is_left_alone(self):
+        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+
+        node = {"id": "node3", "data": {"type": "parameter-extractor", "query": []}}
+
+        assert normalize_parameter_extractor_queries([node]) == []
+        assert node["data"]["query"] == []
+
+    def test_more_than_one_inner_selector_is_ambiguous_and_left_for_the_validator(self):
+        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+
+        node = {"id": "node3", "data": {"type": "parameter-extractor", "query": [["a", "b"], ["c", "d"]]}}
+
+        assert normalize_parameter_extractor_queries([node]) == []
+        assert node["data"]["query"] == [["a", "b"], ["c", "d"]]
+
+    def test_a_non_parameter_extractor_node_is_untouched(self):
+        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+
+        node = {"id": "node3", "data": {"type": "llm", "query": [["node2", "text"]]}}
+
+        assert normalize_parameter_extractor_queries([node]) == []
+        assert node["data"]["query"] == [["node2", "text"]]
+
+    def test_an_empty_inner_selector_is_left_for_the_engine_to_refuse(self):
+        # ``[[]]`` -> ``[]`` would PASS ``ParameterExtractorNodeData`` (a
+        # ``list[str]`` of length 0 is a valid list[str]) and then resolve to
+        # ``None`` at run time: ``VariablePool.get`` returns None for any
+        # selector shorter than 2 (``runtime/variable_pool.py:211``). The
+        # normalizer only turns a graph the engine REFUSES into one it ACCEPTS,
+        # so it must not trade a loud ``Graph.init`` refusal for a silent
+        # run-time break.
+        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+
+        node = {"id": "node3", "data": {"type": "parameter-extractor", "query": [[]]}}
+
+        assert normalize_parameter_extractor_queries([node]) == []
+        assert node["data"]["query"] == [[]]
+
+    def test_a_one_segment_inner_selector_is_left_for_the_engine_to_refuse(self):
+        # Same reason as the empty inner selector: ``["node2"]`` is a valid
+        # ``list[str]`` but ``VariablePool.get`` never resolves it.
+        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+
+        node = {"id": "node3", "data": {"type": "parameter-extractor", "query": [["node2"]]}}
+
+        assert normalize_parameter_extractor_queries([node]) == []
+        assert node["data"]["query"] == [["node2"]]
