@@ -2,19 +2,16 @@
 import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { FC } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
-import { RiApps2Line, RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
-import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
 import UpgradeBtn from '../upgrade-btn'
@@ -100,7 +97,12 @@ const PlanComp: FC<Props> = ({ loc }) => {
                 >
                   <span className="i-ri-graduation-cap-line size-4" aria-hidden="true" />
                   {t(($) => $.useEducationDiscount, { ns: 'education' })}
-                  {isEducationDiscountLoading && <Loading className="animate-spin-slow" />}
+                  {isEducationDiscountLoading && (
+                    <span
+                      aria-hidden
+                      className="i-custom-public-thought-loading h-3 w-3 animate-spin-slow"
+                    />
+                  )}
                 </Button>
               )}
             {isCloudEdition && (
@@ -112,32 +114,32 @@ const PlanComp: FC<Props> = ({ loc }) => {
       {/* Plan detail */}
       <div className="grid grid-cols-3 content-start gap-1 p-2">
         <UsageInfo
-          Icon={RiApps2Line}
+          iconClassName="i-ri-apps-2-line"
           name={t(($) => $['usagePage.buildApps'], { ns: 'billing' })}
           usage={features.apps.size}
           total={parseLimit(features.apps.limit)}
         />
         <UsageInfo
-          Icon={RiGroupLine}
+          iconClassName="i-ri-group-line"
           name={t(($) => $['usagePage.teamMembers'], { ns: 'billing' })}
           usage={features.members.size}
           total={parseLimit(features.members.limit)}
         />
         <UsageInfo
-          Icon={RiBook2Line}
+          iconClassName="i-ri-book-2-line"
           name={t(($) => $['usagePage.documentsUploadQuota'], { ns: 'billing' })}
           usage={features.documents_upload_quota.size}
           total={parseLimit(features.documents_upload_quota.limit)}
         />
         <VectorSpaceInfo />
         <UsageInfo
-          Icon={RiFileEditLine}
+          iconClassName="i-ri-file-edit-line"
           name={t(($) => $['usagePage.annotationQuota'], { ns: 'billing' })}
           usage={features.annotation_quota_limit.size}
           total={parseLimit(features.annotation_quota_limit.limit)}
         />
         <UsageInfo
-          Icon={TriggerAll}
+          iconClassName={'i-custom-vender-workflow-trigger-all'}
           name={t(($) => $['usagePage.triggerEvents'], { ns: 'billing' })}
           usage={features.trigger_event.usage}
           total={triggerEventsLimit}
@@ -145,7 +147,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
           resetInDays={triggerEventsResetInDays}
         />
         <UsageInfo
-          Icon={ApiAggregate}
+          iconClassName={'i-custom-vender-workflow-api-aggregate'}
           name={t(($) => $['plansCommon.apiRateLimit'], { ns: 'billing' })}
           usage={features.api_rate_limit.usage}
           total={apiRateLimit}

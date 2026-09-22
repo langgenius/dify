@@ -1,46 +1,21 @@
-// import { Button } from '@langgenius/dify-ui/button'
-// import { StatusDot } from '@langgenius/dify-ui/status-dot'
-// import ToolItem from '@/app/components/tools/provider/tool-item'
-// import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import * as React from 'react'
-import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
-import { useDataSourceList } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
-  detail: PluginDetail
+  detail: Pick<PluginDetail, 'plugin_id'>
 }>
 
 const ActionList = ({ detail }: Props) => {
   const { t } = useTranslation()
-  // const providerBriefInfo = detail.declaration.datasource?.identity
-  // const providerKey = `${detail.plugin_id}/${providerBriefInfo?.name}`
-  const { data: dataSourceList } = useDataSourceList(true)
-  const provider = useMemo(() => {
-    const result = dataSourceList?.find((collection) => collection.plugin_id === detail.plugin_id)
+  const { data: hasProvider } = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
+      select: (providers) => providers.some((provider) => provider.plugin_id === detail.plugin_id),
+    }),
+  )
 
-    if (result) return transformDataSourceToTool(result)
-  }, [detail.plugin_id, dataSourceList])
-  const data: any = []
-  // const { data } = useBuiltinTools(providerKey)
-
-  // const [showSettingAuth, setShowSettingAuth] = useState(false)
-
-  // const handleCredentialSettingUpdate = () => {
-  //   setShowSettingAuth(false)
-  // }
-
-  // const { mutate: updatePermission, isPending } = useUpdateProviderCredentials({
-  //   onSuccess: handleCredentialSettingUpdate,
-  // })
-
-  // const { mutate: removePermission } = useRemoveProviderCredentials({
-  //   onSuccess: handleCredentialSettingUpdate,
-  // })
-
-  if (!data || !provider) return null
+  if (!hasProvider) return null
 
   return (
     <div className="px-4 pt-2 pb-4">
@@ -48,54 +23,11 @@ const ActionList = ({ detail }: Props) => {
         <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
           {t(($) => $['detailPanel.actionNum'], {
             ns: 'plugin',
-            num: data.length,
-            action: data.length > 1 ? 'actions' : 'action',
+            num: 0,
+            action: 'action',
           })}
-          {/* {provider.is_team_authorization && provider.allow_delete && (
-            <Button
-              variant='secondary'
-              size='small'
-              onClick={() => setShowSettingAuth(true)}
-              disabled={!isCurrentWorkspaceManager}
-            >
-              <StatusDot className='mr-2' status={'success'} />
-              {t('tools.auth.authorized')}
-            </Button>
-          )} */}
         </div>
-        {/* {!provider.is_team_authorization && provider.allow_delete && (
-          <Button
-            variant='primary'
-            className='w-full'
-            onClick={() => setShowSettingAuth(true)}
-            disabled={!isCurrentWorkspaceManager}
-          >{t('workflow.nodes.tool.authorize')}</Button>
-        )} */}
       </div>
-      {/* <div className='flex flex-col gap-2'>
-        {data.map(tool => (
-          <ToolItem
-            key={`${detail.plugin_id}${tool.name}`}
-            disabled={false}
-            collection={provider}
-            tool={tool}
-            isBuiltIn={true}
-            isModel={false}
-          />
-        ))}
-      </div>
-      {showSettingAuth && (
-        <ConfigCredential
-          collection={provider}
-          onCancel={() => setShowSettingAuth(false)}
-          onSaved={async value => updatePermission({
-            providerName: provider.name,
-            credentials: value,
-          })}
-          onRemove={async () => removePermission(provider.name)}
-          isSaving={isPending}
-        />
-      )} */}
     </div>
   )
 }

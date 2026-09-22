@@ -200,7 +200,6 @@
   "openInExplore": "Odpri Web App v stranski vrstici",
   "publishApp.notSet": "Ni nastavljeno",
   "removeOriginal": "Izbriši izvirno aplikacijo",
-  "structOutput.LLMResponse": "LLM odziv",
   "structOutput.configure": "Konfiguriraj",
   "structOutput.modelNotSupported": "Model ni podprt",
   "structOutput.modelNotSupportedTip": "Trenutni model ne podpira te funkcije in se samodejno zniža na vbrizgavanje pozivov.",

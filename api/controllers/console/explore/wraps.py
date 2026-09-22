@@ -6,16 +6,11 @@ from flask_restx import Resource
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
-from controllers.console.explore.error import (
-    AppAccessDeniedError,
-    TrialAppLimitExceeded,
-    TrialAppNotAllowed,
-)
-from controllers.console.explore.trial_app_admission import trial_feature_enable
+from controllers.console.explore.error import AppAccessDeniedError
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
-from models import AccountTrialAppRecord, App, InstalledApp, TrialApp
+from models import InstalledApp
 from services.enterprise.enterprise_service import EnterpriseService
 from services.system_feature_service import SystemFeatureService
 
@@ -72,57 +67,12 @@ def user_allowed_to_access_app[**P, R](view: Callable[Concatenate[InstalledApp, 
     return decorator
 
 
-def trial_app_required[**P, R](view: Callable[Concatenate[App, P], R] | None = None):
-    def decorator(view: Callable[Concatenate[App, P], R]):
-        @wraps(view)
-        def decorated(app_id: str, *args: P.args, **kwargs: P.kwargs):
-            current_user, _ = current_account_with_tenant()
-            session = db.session()
-
-            trial_app = session.scalar(select(TrialApp).where(TrialApp.app_id == str(app_id)).limit(1))
-
-            if trial_app is None:
-                raise TrialAppNotAllowed()
-            app = trial_app.app_with_session(session=session)
-
-            if app is None:
-                raise TrialAppNotAllowed()
-
-            account_trial_app_record = session.scalar(
-                select(AccountTrialAppRecord)
-                .where(AccountTrialAppRecord.account_id == current_user.id, AccountTrialAppRecord.app_id == app_id)
-                .limit(1)
-            )
-            if account_trial_app_record:
-                if account_trial_app_record.count >= trial_app.trial_limit:
-                    raise TrialAppLimitExceeded()
-
-            return view(app, *args, **kwargs)
-
-        return decorated
-
-    if view:
-        return decorator(view)
-    return decorator
-
-
 class InstalledAppResource(Resource):
     # must be reversed if there are multiple decorators
 
     method_decorators = [
         user_allowed_to_access_app,
         installed_app_required,
-        account_initialization_required,
-        login_required,
-    ]
-
-
-class TrialAppResource(Resource):
-    # must be reversed if there are multiple decorators
-
-    method_decorators = [
-        trial_app_required,
-        trial_feature_enable,
         account_initialization_required,
         login_required,
     ]

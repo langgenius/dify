@@ -1,6 +1,14 @@
 'use client'
-import type { FC } from 'react'
-import type { FormSchema } from '../../base/form/types'
+import type {
+  EndpointProviderConfigI18nResponse,
+  EndpointProviderConfigResponse,
+  EndpointUpdatePayload,
+  ProviderConfigType,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  CredentialFormSchema,
+  TypeWithI18N,
+} from '../../header/account-setting/model-provider-page/declarations'
 import type { PluginDetail } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -13,72 +21,126 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { toast } from '@/app/notifications'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { FormTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
 import { ReadmeEntrance } from '../readme-panel/entrance'
 
+const NAME_FIELD = {
+  type: 'text-input',
+  name: 'name',
+  label: {
+    en_US: 'Endpoint Name',
+    zh_Hans: '端点名称',
+    ja_JP: 'エンドポイント名',
+    pt_BR: 'Nome do ponto final',
+  },
+  placeholder: {
+    en_US: 'Endpoint Name',
+    zh_Hans: '端点名称',
+    ja_JP: 'エンドポイント名',
+    pt_BR: 'Nome do ponto final',
+  },
+  required: true,
+  default: '',
+  help: null,
+} satisfies EndpointProviderConfigResponse
+
 type Props = Readonly<{
-  formSchemas: FormSchema[]
-  defaultValues?: any
+  settings: EndpointProviderConfigResponse[]
+  defaultValues?: Record<string, unknown>
   onCancel: () => void
-  onSaved: (value: Record<string, any>) => void
+  onSaved: (value: EndpointUpdatePayload) => void
+  isPending?: boolean
   pluginDetail: PluginDetail
 }>
 
-const extractDefaultValues = (schemas: any[]) => {
-  const result: Record<string, any> = {}
-  for (const field of schemas) {
-    if (field.default !== undefined) result[field.name] = field.default
-  }
-  return result
+const fieldTypes: Record<ProviderConfigType, FormTypeEnum> = {
+  'text-input': FormTypeEnum.textInput,
+  'secret-input': FormTypeEnum.secretInput,
+  select: FormTypeEnum.select,
+  boolean: FormTypeEnum.checkbox,
+  'app-selector': FormTypeEnum.appSelector,
+  'model-selector': FormTypeEnum.modelSelector,
+  'array[tools]': FormTypeEnum.multiToolSelector,
 }
 
-const EndpointModal: FC<Props> = ({
-  formSchemas,
-  defaultValues = {},
+const toFormLabel = (label: EndpointProviderConfigI18nResponse): TypeWithI18N => ({
+  en_US: label.en_US,
+  zh_Hans: label.zh_Hans ?? label.en_US,
+  pt_BR: label.pt_BR ?? label.en_US,
+  ja_JP: label.ja_JP ?? label.en_US,
+})
+
+const toFormSchema = (field: EndpointProviderConfigResponse): CredentialFormSchema => ({
+  name: field.name,
+  variable: field.name,
+  type: fieldTypes[field.type],
+  label: toFormLabel(field.label ?? { en_US: field.name }),
+  required: field.required ?? false,
+  show_on: [],
+  tooltip: field.help ? toFormLabel(field.help) : undefined,
+  placeholder: field.placeholder ? toFormLabel(field.placeholder) : undefined,
+  scope: field.scope ?? undefined,
+  url: field.url ?? undefined,
+  options: (field.options ?? []).map((option) => ({
+    value: option.value,
+    label: toFormLabel(option.label),
+    show_on: [],
+  })),
+})
+
+const EndpointModal = ({
+  settings,
+  defaultValues,
   onCancel,
   onSaved,
+  isPending,
   pluginDetail,
-}) => {
+}: Props) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
-  const initialValues =
-    Object.keys(defaultValues).length > 0 ? defaultValues : extractDefaultValues(formSchemas)
-  const [tempCredential, setTempCredential] = React.useState<any>(initialValues)
+  const fields = [NAME_FIELD, ...settings]
+  const formSchemas = fields.map(toFormSchema)
+  const [tempCredential, setTempCredential] = React.useState<Record<string, unknown>>(() => {
+    const values: Record<string, unknown> = {
+      ...Object.fromEntries(
+        fields
+          .filter((field) => field.default !== undefined)
+          .map((field) => [field.name, field.default]),
+      ),
+      ...defaultValues,
+    }
+    for (const field of fields) {
+      const value = values[field.name]
+      if (field.type !== 'boolean' || (field.required && value === '')) continue
+      if (typeof value === 'string')
+        values[field.name] = value === 'true' || value === '1' || value === 'True'
+      else if (typeof value === 'number') values[field.name] = value === 1
+    }
+    return values
+  })
 
   const handleSave = () => {
-    for (const field of formSchemas) {
-      if (field.required && !tempCredential[field.name]) {
+    if (isPending) return
+    for (const field of fields) {
+      const value = tempCredential[field.name]
+      if (field.required && (value === undefined || value === null || value === '')) {
         toast.error(
           t(($) => $['errorMsg.fieldRequired'], {
             ns: 'common',
-            field:
-              typeof field.label === 'string'
-                ? field.label
-                : getValueFromI18nObject(field.label as Record<string, string>),
+            field: field.label ? getValueFromI18nObject(toFormLabel(field.label)) : field.name,
           }),
         )
         return
       }
     }
-
-    // Fix: Process boolean fields to ensure they are sent as proper boolean values
-    const processedCredential = { ...tempCredential }
-    formSchemas.forEach((field: any) => {
-      if (field.type === 'boolean' && processedCredential[field.name] !== undefined) {
-        const value = processedCredential[field.name]
-        if (typeof value === 'string')
-          processedCredential[field.name] = value === 'true' || value === '1' || value === 'True'
-        else if (typeof value === 'number') processedCredential[field.name] = value === 1
-        else if (typeof value === 'boolean') processedCredential[field.name] = value
-      }
-    })
-
-    onSaved(processedCredential)
+    const { name, ...values } = tempCredential
+    if (typeof name !== 'string' || name.length === 0) return
+    onSaved({ name, settings: values })
   }
 
   return (
@@ -108,7 +170,7 @@ const EndpointModal: FC<Props> = ({
                     aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                     onClick={onCancel}
                   >
-                    <RiCloseLine aria-hidden="true" className="size-4" />
+                    <span aria-hidden className="i-ri-close-line size-4" />
                   </IconButton>
                 </div>
                 <div className="mt-0.5 system-xs-regular text-text-tertiary">
@@ -116,14 +178,20 @@ const EndpointModal: FC<Props> = ({
                 </div>
                 <ReadmeEntrance pluginDetail={pluginDetail} className="px-0 pt-3" />
               </div>
-              <div className="grow overflow-y-auto">
+              <form
+                className="grow overflow-y-auto"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  handleSave()
+                }}
+              >
                 <div className="px-4 py-2">
                   <Form
                     value={tempCredential}
                     onChange={(v) => {
                       setTempCredential(v)
                     }}
-                    formSchemas={formSchemas as any}
+                    formSchemas={formSchemas}
                     isEditMode={true}
                     showOnVariableMap={{}}
                     validating={false}
@@ -137,7 +205,7 @@ const EndpointModal: FC<Props> = ({
                           className="inline-flex items-center body-xs-regular text-text-accent-secondary"
                         >
                           {t(($) => $.howToGet, { ns: 'tools' })}
-                          <RiArrowRightUpLine className="ml-1 size-3" />
+                          <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-3" />
                         </a>
                       ) : null
                     }
@@ -148,12 +216,12 @@ const EndpointModal: FC<Props> = ({
                     <Button onClick={onCancel}>
                       {t(($) => $['operation.cancel'], { ns: 'common' })}
                     </Button>
-                    <Button variant="primary" onClick={handleSave}>
+                    <Button variant="primary" type="submit" loading={isPending}>
                       {t(($) => $['operation.save'], { ns: 'common' })}
                     </Button>
                   </div>
                 </div>
-              </div>
+              </form>
             </DrawerContent>
           </DrawerPopup>
         </DrawerViewport>

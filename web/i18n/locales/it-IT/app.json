@@ -200,7 +200,6 @@
   "openInExplore": "Apri Web App nella barra laterale",
   "publishApp.notSet": "Non impostato",
   "removeOriginal": "Elimina l'app originale",
-  "structOutput.LLMResponse": "LLM Risposta",
   "structOutput.configure": "Configura",
   "structOutput.modelNotSupported": "Modello non supportato",
   "structOutput.modelNotSupportedTip": "Il modello attuale non supporta questa funzione e viene automaticamente downgradato a iniezione di prompt.",
