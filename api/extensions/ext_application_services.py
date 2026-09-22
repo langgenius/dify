@@ -163,6 +163,8 @@ from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
+from services.message_suggested_questions_service import MessageSuggestedQuestions
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -275,6 +277,7 @@ class ApplicationServices:
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
     message_file_previews: MessageFilePreviewService
+    message_suggested_questions: MessageSuggestedQuestions
     plugin_file_uploads: PluginFileUploadService
     tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
@@ -685,6 +688,7 @@ def build_application_services(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,
         ),
+        message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=database_client),
         plugin_file_uploads=PluginFileUploadService(
             owners=SQLAlchemyPluginFileUploadOwnerRepository(session_factory=database_client),
             files=ToolFilePluginUploadGateway(tool_files=ToolFileManager()),

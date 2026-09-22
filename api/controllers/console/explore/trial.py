@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource
@@ -53,7 +54,6 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
@@ -76,7 +76,7 @@ from machinery.context import RequestContext
 from models import Account
 from models.account import TenantStatus
 from models.enums import CreatorUserRole
-from models.model import AppMode, Site
+from models.model import Site
 from models.workflow import Workflow
 from services.account_errors import AccountNotFoundError
 from services.account_service import TenantService
@@ -99,7 +99,7 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.file_service import FileUploadActor
-from services.message_service import MessageService
+from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_service import (
     TrialAppNotChatError,
@@ -609,25 +609,26 @@ class TrialChatApi(Resource):
             raise InternalServerError()
 
 
-class TrialMessageSuggestedQuestionApi(TrialAppResource):
+class TrialMessageSuggestedQuestionApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
-    @with_current_user
-    def get(self, current_user: Account, trial_app, message_id):
-        app_model = trial_app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+    @console_account_admission()
+    @get_trial_app
+    def get(self, request_context: RequestContext, trial_app: TrialAppRef, message_id: UUID) -> dict[str, object]:
+        if trial_app.app_mode not in {"chat", "agent-chat", "advanced-chat"}:
             raise NotChatAppError()
 
-        message_id = str(message_id)
-
         try:
-            questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model,
-                user=current_user,
-                message_id=message_id,
-                invoke_from=InvokeFrom.EXPLORE,
-                session=db.session(),
+            questions = application_services().message_suggested_questions.get_suggested_questions(
+                app_id=trial_app.app_id,
+                app_owner_tenant_id=trial_app.tenant_id,
+                expected_app_mode=trial_app.app_mode,
+                actor=SuggestedQuestionsAccount(account_id=request_context.account_id, invoke_from="explore"),
+                message_id=str(message_id),
             )
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except SuggestedQuestionsActorNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
         except MessageNotExistsError:
             raise NotFound("Message not found")
         except ConversationNotExistsError:
@@ -646,7 +647,7 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-        return {"data": questions}
+        return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
 
 class TrialChatAudioApi(TrialAppResource):

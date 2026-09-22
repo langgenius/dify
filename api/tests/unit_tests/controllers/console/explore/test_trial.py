@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask, request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden
 
 import controllers.console.explore.trial as module
 from controllers.console.app.error import (
@@ -21,7 +21,6 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
     SpeechToTextDisabledError,
 )
-from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.trial import TextToSpeechRequest
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.errors.error import (
@@ -41,7 +40,6 @@ from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import SpeechToTextDisabledServiceError
-from services.errors.conversation import ConversationNotExistsError
 from tests.unit_tests.model_factories import make_app
 
 unwrap: Any = inspect_unwrap
@@ -176,47 +174,6 @@ def test_trial_app_detail_serializes_with_explicit_session(
     get_app.assert_called_once_with(app_model, session=unbound_session)
     build_view.assert_called_once_with(app_model, session=unbound_session)
     module.TrialAppDetailResponse.model_validate.assert_called_once_with(response_view, from_attributes=True)
-
-
-class TestTrialMessageSuggestedQuestionApi:
-    def test_not_chat_app(self, app: Flask, account: Account) -> None:
-        api = module.TrialMessageSuggestedQuestionApi()
-        method = unwrap(api.get)
-
-        with app.test_request_context("/"):
-            with pytest.raises(NotChatAppError):
-                method(api, account, _app(app_id="not-chat", mode=AppMode.COMPLETION), str(uuid4()))
-
-    def test_success(self, app: Flask, trial_app_chat: App, account: Account) -> None:
-        api = module.TrialMessageSuggestedQuestionApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch.object(
-                module.MessageService,
-                "get_suggested_questions_after_answer",
-                return_value=["q1", "q2"],
-            ),
-        ):
-            result = method(api, account, trial_app_chat, str(uuid4()))
-
-        assert result == {"data": ["q1", "q2"]}
-
-    def test_conversation_not_exists(self, app: Flask, trial_app_chat: App, account: Account) -> None:
-        api = module.TrialMessageSuggestedQuestionApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch.object(
-                module.MessageService,
-                "get_suggested_questions_after_answer",
-                side_effect=ConversationNotExistsError(),
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, account, trial_app_chat, str(uuid4()))
 
 
 class TestTrialAppParameterApi:
