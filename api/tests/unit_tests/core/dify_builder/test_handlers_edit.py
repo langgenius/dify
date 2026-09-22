@@ -914,6 +914,71 @@ def test_edit_await_testdata_mock_prepares_and_advances():
     assert result.context.test_input_ref
 
 
+def _endpoint_graph() -> dict:
+    """What ``_ground_placeholder_endpoints`` leaves of the ESQ1-302 draft: its
+    invented ``https://api.example.com/ppt/generate`` re-pointed at a required
+    start variable."""
+    return {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "type": "text-input", "required": True},
+                        {"variable": "h_url", "type": "text-input", "required": True, "max_length": 2048},
+                    ],
+                },
+            },
+            {"id": "h", "data": {"type": "http-request", "title": "Call PPT API", "url": "{{#s.h_url#}}"}},
+            {"id": "e", "data": {"type": "end", "outputs": []}},
+        ],
+        "edges": [],
+    }
+
+
+def _mock_with_an_invented_endpoint(_schema, _prior):
+    return {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
+
+
+def test_edit_await_testdata_mock_leaves_the_endpoint_for_the_form():
+    """A mocked endpoint URL is accepted at launch and fails on connection -- a
+    config failure that feeds the repair loop (ESQ1-302). Left out, the missing
+    required key fails the launch as an input the form then asks for."""
+    from core.dify_builder.handlers_edit import handle_await_testdata
+
+    env, _ = _new_env()
+    env.dify.graph = _endpoint_graph()
+    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_TESTDATA)
+
+    result = handle_await_testdata(
+        env,
+        Turn(actor=_actor(), action=Action(kind="provide_testdata", payload={"mode": "mock"})),
+        s,
+        DifyBuilderContext(),
+    )
+
+    assert result.next == PcState.EDIT_TEST_AFFECTED_PATHS
+    assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "quarterly report"}
+
+
+def test_edit_test_affected_paths_defensive_mock_leaves_the_endpoint_for_the_form():
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+
+    env, _ = _new_env()
+    env.dify.graph = _endpoint_graph()
+    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+
+    result = handle_test_affected_paths(
+        env, Turn(actor=_actor()), s, DifyBuilderContext(edit_target_node_ids=["h"], test_input_ref="")
+    )
+
+    assert env.dify.run_draft_inputs == {"topic": "quarterly report"}
+    assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "quarterly report"}
+
+
 def test_edit_await_testdata_is_waiting_and_projected():
     from core.dify_builder.state import PcState, is_waiting
     from services.dify_builder.service import Phase, _actions_for, _phase_for
