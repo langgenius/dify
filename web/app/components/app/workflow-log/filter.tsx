@@ -61,11 +61,16 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         }}
         onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
         items={[
-          { value: 'all', name: 'All' },
-          { value: 'succeeded', name: 'Success' },
-          { value: 'failed', name: 'Fail' },
-          { value: 'stopped', name: 'Stop' },
-          { value: 'partial-succeeded', name: 'Partial Success' },
+          { value: 'all', name: t(($) => $['status.all'], { ns: 'appLog' }) },
+          { value: 'succeeded', name: t(($) => $['status.succeeded'], { ns: 'appLog' }) },
+          { value: 'failed', name: t(($) => $['status.failed'], { ns: 'appLog' }) },
+          { value: 'stopped', name: t(($) => $['status.stopped'], { ns: 'appLog' }) },
+          {
+            value: 'partial-succeeded',
+            name: t(($) => $['status.partial-succeeded'], { ns: 'appLog' }),
+          },
+          { value: 'running', name: t(($) => $['status.running'], { ns: 'appLog' }) },
+          { value: 'paused', name: t(($) => $['status.paused'], { ns: 'appLog' }) },
         ]}
       />
       <Chip

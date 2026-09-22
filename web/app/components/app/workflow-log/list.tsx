@@ -73,7 +73,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="success" />
-          <span className="text-util-colors-green-green-600">Success</span>
+          <span className="text-util-colors-green-green-600">
+            {t(($) => $['status.succeeded'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -81,7 +83,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="error" />
-          <span className="text-util-colors-red-red-600">Failure</span>
+          <span className="text-util-colors-red-red-600">
+            {t(($) => $['status.failed'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -89,7 +93,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="warning" />
-          <span className="text-util-colors-warning-warning-600">Stop</span>
+          <span className="text-util-colors-warning-warning-600">
+            {t(($) => $['status.stopped'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -97,7 +103,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="warning" />
-          <span className="text-util-colors-warning-warning-600">Pending</span>
+          <span className="text-util-colors-warning-warning-600">
+            {t(($) => $['status.paused'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -105,7 +113,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="normal" />
-          <span className="text-util-colors-blue-light-blue-light-600">Running</span>
+          <span className="text-util-colors-blue-light-blue-light-600">
+            {t(($) => $['status.running'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -113,7 +123,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="success" />
-          <span className="text-util-colors-green-green-600">Partial Success</span>
+          <span className="text-util-colors-green-green-600">
+            {t(($) => $['status.partial-succeeded'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
