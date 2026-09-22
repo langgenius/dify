@@ -99,6 +99,7 @@ jobs:
             e2e:
               - 'api/**'
               - 'e2e/**'
+              - '.github/scripts/e2e-build-diagnostics*.cjs'
               - 'web/**'
               - 'packages/**'
               - 'package.json'

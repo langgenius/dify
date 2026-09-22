@@ -61,14 +61,45 @@ function compareInputs(previous, current) {
   }
 }
 
-function cacheSize(directory) {
-  if (!fs.existsSync(directory)) return 0
-  return fs.readdirSync(directory, { withFileTypes: true }).reduce((total, entry) => {
-    const file = path.join(directory, entry.name)
-    return (
-      total + (entry.isDirectory() ? cacheSize(file) : entry.isFile() ? fs.statSync(file).size : 0)
-    )
-  }, 0)
+function inspectCache(directory) {
+  const groups = new Map()
+  const largestFiles = []
+  let bytes = 0
+  let fileCount = 0
+  const visit = (relativeDirectory) => {
+    for (const entry of fs.readdirSync(path.join(directory, relativeDirectory), {
+      withFileTypes: true,
+    })) {
+      const relativePath = path.join(relativeDirectory, entry.name)
+      if (entry.isDirectory()) {
+        visit(relativePath)
+      } else if (entry.isFile()) {
+        // Do not follow symlinks out of the cache, or read any file contents.
+        const size = fs.statSync(path.join(directory, relativePath)).size
+        const parts = relativePath.split(path.sep)
+        const group =
+          parts.length === 1 ? '.' : parts.slice(0, Math.min(2, parts.length - 1)).join('/')
+        const totals = groups.get(group) || { path: group, bytes: 0, fileCount: 0 }
+        totals.bytes += size
+        totals.fileCount += 1
+        groups.set(group, totals)
+        bytes += size
+        fileCount += 1
+        largestFiles.push({ path: parts.join('/'), bytes: size })
+        largestFiles.sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path))
+        if (largestFiles.length > 20) largestFiles.pop()
+      }
+    }
+  }
+  if (fs.existsSync(directory)) visit('')
+  return {
+    bytes,
+    fileCount,
+    directories: [...groups.values()].sort(
+      (a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path),
+    ),
+    largestFiles,
+  }
 }
 
 function report(entry) {
@@ -101,18 +132,23 @@ function report(entry) {
 function main(mode) {
   fs.mkdirSync(logDir, { recursive: true })
   if (mode === 'before') {
+    const restoreStarted = Number(process.env.E2E_CACHE_RESTORE_STARTED)
+    const restoreDurationMs =
+      Number.isFinite(restoreStarted) && restoreStarted > 0 ? Date.now() - restoreStarted : null
     const current = getInputs()
     const previous = readJson(metadataPath)
     fs.writeFileSync(snapshotPath, JSON.stringify(current))
     const matchedKey = process.env.E2E_CACHE_MATCHED_KEY || null
+    const cache = inspectCache(cacheDir)
     report({
       phase: 'cache.restore',
       // This brackets the restore action and includes step transition overhead.
-      durationMs: Date.now() - Number(process.env.E2E_CACHE_RESTORE_STARTED),
+      durationMs: restoreDurationMs,
       match: process.env.E2E_CACHE_HIT === 'true' ? 'exact' : matchedKey ? 'fallback' : 'miss',
       primaryKey: process.env.E2E_CACHE_PRIMARY_KEY,
       matchedKey,
-      cacheBytes: cacheSize(cacheDir),
+      cacheBytes: cache.bytes,
+      cache,
       node: current.node,
       next: current.next,
       sourceHash: current.sourceHash,
@@ -130,11 +166,13 @@ function main(mode) {
     const compilerDurationMs = compilation
       ? Number(compilation[1]) * { ms: 1, s: 1000, min: 60000 }[compilation[2]]
       : null
+    const cache = inspectCache(cacheDir)
     report({
       phase: 'web.build',
       compilerDurationMs,
       outcome: process.env.E2E_BUILD_OUTCOME,
-      cacheBytes: cacheSize(cacheDir),
+      cacheBytes: cache.bytes,
+      cache,
       // Next reports its compiler duration separately from full build wall time.
       compilerMessages: cleanLog
         .split('\n')
@@ -149,7 +187,7 @@ function main(mode) {
   }
 }
 
-module.exports = { compareInputs }
+module.exports = { compareInputs, inspectCache }
 if (require.main === module) {
   try {
     main(process.argv[2])

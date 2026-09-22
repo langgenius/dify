@@ -4,7 +4,38 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { test } = require('node:test')
-const { compareInputs } = require('./e2e-build-diagnostics.cjs')
+const { compareInputs, inspectCache } = require('./e2e-build-diagnostics.cjs')
+
+test('inventories cache versions without following symlinks and bounds the largest-file report', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-cache-inventory-'))
+  try {
+    const cache = path.join(directory, 'cache')
+    const version = path.join(cache, 'turbopack/version/chunks')
+    fs.mkdirSync(version, { recursive: true })
+    for (let i = 1; i <= 25; i++) fs.writeFileSync(path.join(version, `${i}.sst`), Buffer.alloc(i))
+    fs.writeFileSync(path.join(cache, 'metadata.json'), '{}')
+    fs.writeFileSync(path.join(directory, 'outside'), Buffer.alloc(1000))
+    fs.symlinkSync(path.join(directory, 'outside'), path.join(cache, 'link'))
+    const result = inspectCache(cache)
+    assert.equal(result.bytes, 327)
+    assert.equal(result.fileCount, 26)
+    assert.deepEqual(result.directories, [
+      { path: 'turbopack/version', bytes: 325, fileCount: 25 },
+      { path: '.', bytes: 2, fileCount: 1 },
+    ])
+    assert.equal(result.largestFiles.length, 20)
+    assert.equal(result.largestFiles[0].bytes, 25)
+    assert.equal(result.largestFiles.at(-1).bytes, 6)
+    assert.deepEqual(inspectCache(path.join(directory, 'missing')), {
+      bytes: 0,
+      fileCount: 0,
+      directories: [],
+      largestFiles: [],
+    })
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+})
 
 test('distinguishes missing baselines from identical inputs', () => {
   const inputs = {

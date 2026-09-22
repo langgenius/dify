@@ -96,6 +96,12 @@ can emit its completion record.
 The build job uploads `e2e-build-diagnostics-<attempt>` with full build output,
 compiler-reported durations, cache size, actual primary/matched keys, and timing
 records. Cache restore timing includes Actions step transition overhead.
+The cache inventory groups bytes and file counts by the first two directory
+levels (including Turbopack version directories) and lists the 20 largest files.
+It ignores symlinks and never reads cached file contents. Compare inventories
+before and after compilation to distinguish active compiler data from other
+cache entries before considering pruning. Inventory collection itself is excluded
+from the reported restore interval.
 `.next/cache/dify-e2e-inputs.json` stores the successful build's tracked input
 manifest, Node/Next versions, and a hash of `.env.local`, never its contents.
 A subsequent restore compares added, removed, and changed input paths. Older
