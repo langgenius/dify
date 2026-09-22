@@ -511,3 +511,271 @@ class TestHttpRequestBodyErrors:
         result = normalize_http_request_bodies(nodes)
         assert result == []
         assert nodes == before
+
+
+def _esq1_303_graph() -> dict:
+    return json.loads((_FIXTURES / "esq1_303_draft_graph.json").read_text(encoding="utf-8"))
+
+
+def _if_else(node_id: str, case_ids: tuple[str, ...] = ("true",)) -> dict:
+    return {
+        "id": node_id,
+        "data": {
+            "type": "if-else",
+            "cases": [{"case_id": c, "logical_operator": "and", "conditions": []} for c in case_ids],
+        },
+    }
+
+
+def _edges(source: str, pairs: list[tuple]) -> list[dict]:
+    return [{"source": source, "target": target, "sourceHandle": handle} for handle, target in pairs]
+
+
+def _handles(edges: list[dict]) -> list[tuple]:
+    return [(e["target"], e.get("sourceHandle")) for e in edges]
+
+
+class TestDeclaredBranchHandles:
+    def test_if_else_declares_its_case_ids_plus_the_implicit_else(self):
+        from core.workflow.graph_normalizers import declared_branch_handles
+
+        assert declared_branch_handles(_if_else("n", ("true",))) == ["true", "false"]
+        assert declared_branch_handles(_if_else("n", ("c1", "c2"))) == ["c1", "c2", "false"]
+
+    def test_question_classifier_and_human_input_declare_their_ids(self):
+        from core.workflow.graph_normalizers import declared_branch_handles
+
+        qc = {"id": "q", "data": {"type": "question-classifier", "classes": [{"id": "1", "name": "A"}, {"id": "2"}]}}
+        hi = {"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}
+        assert declared_branch_handles(qc) == ["1", "2"]
+        # human-input always routes an implicit timeout arm too (R1(b)).
+        assert declared_branch_handles(hi) == ["approve", "deny", "__timeout"]
+
+    def test_human_input_declares_its_action_ids_plus_the_implicit_timeout(self):
+        # (i) R1(b): human-input routes an implicit "__timeout" arm
+        # (TIMEOUT_HANDLE, core/workflow/nodes/human_input/constants.py) in
+        # addition to its declared user actions.
+        from core.workflow.graph_normalizers import declared_branch_handles
+
+        hi = {"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}
+        assert declared_branch_handles(hi) == ["approve", "deny", "__timeout"]
+
+    def test_fail_branch_nodes_declare_source_and_fail_branch(self):
+        # R1(a): a fail-branch node's SUCCESS path stays on the handle
+        # graphon actually emits (NodeRunResult.edge_source_handle defaults
+        # to "source"), not an invented "success" handle nothing emits.
+        from core.workflow.graph_normalizers import declared_branch_handles
+
+        node = {"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}
+        assert declared_branch_handles(node) == ["source", "fail-branch"]
+
+    def test_if_else_with_fail_branch_declares_cases_false_and_fail_branch(self):
+        # (iv) a branch-type node with error_strategy fail-branch appends
+        # "fail-branch" to its own declared handles rather than replacing them.
+        from core.workflow.graph_normalizers import declared_branch_handles
+
+        node = _if_else("n", ("c1", "c2"))
+        node["data"]["error_strategy"] = "fail-branch"
+        assert declared_branch_handles(node) == ["c1", "c2", "false", "fail-branch"]
+
+    def test_plain_nodes_declare_nothing(self):
+        from core.workflow.graph_normalizers import declared_branch_handles
+
+        assert declared_branch_handles({"id": "l", "data": {"type": "llm"}}) == []
+
+
+class TestRepairBranchEdgeHandles:
+    """The planner names handles before the node builder picks case ids
+    (ESQ1-303: ``score_equals_60`` / ``else`` against a case named ``true``).
+    Repair only what is forced; leave anything ambiguous for the validator."""
+
+    def test_heals_the_esq1_303_dev_edges_else_alias_pins_the_other_arm(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        graph = _esq1_303_graph()
+
+        unresolved = repair_branch_edge_handles(graph["nodes"], graph["edges"])
+
+        assert unresolved == []
+        by_target = {e["target"]: e["sourceHandle"] for e in graph["edges"] if e["source"] == "node2"}
+        assert by_target == {"node3": "true", "node4": "false"}
+
+    def test_legacy_default_handle_edges_still_take_unused_handles_in_order(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("source", "a"), (None, "b")])
+        assert repair_branch_edge_handles([_if_else("n")], edges) == []
+        assert _handles(edges) == [("a", "true"), ("b", "false")]
+
+    def test_three_default_edges_on_two_handles_stay_untouched(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("source", "a"), ("source", "b"), ("source", "c")])
+        unresolved = repair_branch_edge_handles([_if_else("n")], edges)
+        assert len(unresolved) == 3
+        assert all(h == "source" for _, h in _handles(edges))
+
+    def test_both_edges_unknown_with_no_alias_is_ambiguous_and_untouched(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("pass", "a"), ("fail", "b")])
+        unresolved = repair_branch_edge_handles([_if_else("n")], edges)
+        assert [u["handle"] for u in unresolved] == ["pass", "fail"]
+        assert _handles(edges) == [("a", "pass"), ("b", "fail")]
+
+    def test_a_single_unknown_edge_with_two_free_arms_is_ambiguous(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("maybe", "a")])
+        assert len(repair_branch_edge_handles([_if_else("n")], edges)) == 1
+        assert _handles(edges) == [("a", "maybe")]
+
+    def test_three_case_if_else_with_invented_names_is_ambiguous(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("low", "a"), ("mid", "b"), ("high", "c")])
+        assert len(repair_branch_edge_handles([_if_else("n", ("case1", "case2"))], edges)) == 3
+        assert _handles(edges) == [("a", "low"), ("b", "mid"), ("c", "high")]
+
+    def test_one_exact_plus_else_alias_forces_the_last_unknown_onto_the_last_free_case(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("case1", "a"), ("whatever", "b"), ("else", "c")])
+        assert repair_branch_edge_handles([_if_else("n", ("case1", "case2"))], edges) == []
+        assert _handles(edges) == [("a", "case1"), ("b", "case2"), ("c", "false")]
+
+    def test_an_if_alias_while_true_is_taken_is_a_fan_out_not_the_else_arm(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("true", "a"), ("if", "b")])
+        repair_branch_edge_handles([_if_else("n")], edges)
+        assert _handles(edges) == [("a", "true"), ("b", "true")]
+
+    def test_the_same_unknown_handle_twice_is_one_arm_fanning_out(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = _edges("n", [("false", "a"), ("matched", "b"), ("matched", "c")])
+        assert repair_branch_edge_handles([_if_else("n")], edges) == []
+        assert _handles(edges) == [("a", "false"), ("b", "true"), ("c", "true")]
+
+    def test_question_classifier_matches_class_names_case_and_space_insensitively(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        nodes = [
+            {
+                "id": "q",
+                "data": {
+                    "type": "question-classifier",
+                    "classes": [{"id": "1", "name": "Billing"}, {"id": "2", "name": "Tech Support"}],
+                },
+            }
+        ]
+        edges = _edges("q", [("billing", "a"), ("tech_support", "b")])
+        assert repair_branch_edge_handles(nodes, edges) == []
+        assert _handles(edges) == [("a", "1"), ("b", "2")]
+
+    def test_human_input_matches_action_stems_then_eliminates(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        nodes = [
+            {
+                "id": "h",
+                "data": {
+                    "type": "human-input",
+                    "user_actions": [{"id": "approve", "title": "Approve"}, {"id": "deny", "title": "Deny"}],
+                },
+            }
+        ]
+        edges = _edges("h", [("approved", "a"), ("rejected", "b")])
+        assert repair_branch_edge_handles(nodes, edges) == []
+        assert _handles(edges) == [("a", "approve"), ("b", "deny")]
+
+    def test_a_short_stem_never_matches_by_prefix(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        # "no" is too short a stem to claim "nothing"; both arms are free, so refuse.
+        nodes = [{"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "no"}, {"id": "later"}]}}]
+        edges = _edges("h", [("nothing", "a")])
+        assert len(repair_branch_edge_handles(nodes, edges)) == 1
+
+    def test_alias_trust_documented_limit_a_mislabelled_else_alias_swaps_the_arms(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        # The planner put an ELSE alias on the IF-arm edge and "true" on the
+        # other. Names are trusted as names: this maps "default" -> false. No
+        # handle repair can detect a planner/builder semantic inversion; the
+        # node-builder handle contract (prompt) is what prevents it.
+        edges = _edges("n", [("default", "a"), ("true", "b")])
+        repair_branch_edge_handles([_if_else("n")], edges)
+        assert _handles(edges) == [("a", "false"), ("b", "true")]
+
+    def test_non_branch_nodes_are_untouched(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        edges = [{"source": "llm1", "target": "end", "sourceHandle": "source"}]
+        assert repair_branch_edge_handles([{"id": "llm1", "data": {"type": "llm"}}], edges) == []
+        assert edges[0]["sourceHandle"] == "source"
+
+    def test_fail_branch_node_success_on_source_and_failure_on_fail_branch_is_untouched(self):
+        # (ii) R1(a): the success edge is already on "source" (what graphon
+        # actually emits) and the failure edge on "fail-branch"; both are
+        # exact matches, so nothing is re-homed.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        nodes = [{"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}]
+        edges = _edges("h", [("source", "ok"), ("fail-branch", "err")])
+        assert repair_branch_edge_handles(nodes, edges) == []
+        assert _handles(edges) == [("ok", "source"), ("err", "fail-branch")]
+
+    def test_human_input_timeout_edge_is_untouched(self):
+        # (iii) the implicit "__timeout" arm is a declared handle; an edge
+        # already on it is an exact match and is left alone.
+        from core.workflow.graph_normalizers import repair_branch_edge_handles
+
+        nodes = [{"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}]
+        edges = _edges("h", [("approve", "a"), ("deny", "b"), ("__timeout", "c")])
+        assert repair_branch_edge_handles(nodes, edges) == []
+        assert _handles(edges) == [("a", "approve"), ("b", "deny"), ("c", "__timeout")]
+
+
+class TestUndeclaredBranchHandles:
+    def test_reports_every_edge_whose_handle_the_node_does_not_declare(self):
+        from core.workflow.graph_normalizers import undeclared_branch_handles
+
+        graph = _esq1_303_graph()  # before repair: score_equals_60 / else
+        bad = undeclared_branch_handles(graph["nodes"], graph["edges"])
+
+        assert [(b["node_id"], b["handle"], b["target"]) for b in bad] == [
+            ("node2", "score_equals_60", "node3"),
+            ("node2", "else", "node4"),
+        ]
+        assert bad[0]["declared"] == ["true", "false"]
+
+    def test_default_handles_on_branch_nodes_are_undeclared_too(self):
+        from core.workflow.graph_normalizers import undeclared_branch_handles
+
+        edges = [{"source": "n", "target": "a"}, {"source": "n", "target": "b", "sourceHandle": "source"}]
+        assert [b["handle"] for b in undeclared_branch_handles([_if_else("n")], edges)] == ["source", "source"]
+
+    def test_a_clean_graph_reports_nothing(self):
+        from core.workflow.graph_normalizers import repair_branch_edge_handles, undeclared_branch_handles
+
+        graph = _esq1_303_graph()
+        repair_branch_edge_handles(graph["nodes"], graph["edges"])
+        assert undeclared_branch_handles(graph["nodes"], graph["edges"]) == []
+
+    def test_fail_branch_node_clean_edges_report_nothing(self):
+        # (ii) source + fail-branch is exactly the declared set; nothing to report.
+        from core.workflow.graph_normalizers import undeclared_branch_handles
+
+        nodes = [{"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}]
+        edges = _edges("h", [("source", "ok"), ("fail-branch", "err")])
+        assert undeclared_branch_handles(nodes, edges) == []
+
+    def test_human_input_timeout_edge_is_not_reported(self):
+        # (iii) "__timeout" is declared, so it is not flagged as undeclared.
+        from core.workflow.graph_normalizers import undeclared_branch_handles
+
+        nodes = [{"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}]
+        edges = _edges("h", [("approve", "a"), ("deny", "b"), ("__timeout", "c")])
+        assert undeclared_branch_handles(nodes, edges) == []
