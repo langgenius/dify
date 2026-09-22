@@ -54,6 +54,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         staged_repair=staged_repair,
         repair_attempts=int(d.get("repair_attempts", 0)),
         last_repair_error=d.get("last_repair_error", ""),
+        unknown_outcome_count=int(d.get("unknown_outcome_count", 0)),
         risk=risk,
         change_set=change_set,
         checkpoint_id=d.get("checkpoint_id", ""),

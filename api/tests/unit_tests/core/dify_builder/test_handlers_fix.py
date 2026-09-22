@@ -1104,3 +1104,21 @@ def test_run_finished_without_output_is_false_without_an_end_node():
     per_node = [NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")]
 
     assert run_finished_without_output(graph, per_node) is False
+
+
+def test_a_second_consecutive_unknown_outcome_stops_at_the_fix_decision_gate():
+    from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
+
+    env, _ = _new_env()
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    )
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    first = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+    assert first.next == PcState.FIX_AWAIT_TESTDATA
+    second = handle_verify(env, Turn(actor=_actor()), s, first.context)
+
+    assert second.next == PcState.FIX_AWAIT_DECISION
+    assert second.context.unknown_outcome_count == 2
+    assert next(i for i in second.items if i.kind == "error").payload["title"] == "Test outcome unknown"
