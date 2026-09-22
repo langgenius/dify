@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { DataSourceType } from '@/models/datasets'
@@ -28,15 +28,20 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
     const errorLabel = error || t(($) => $.error, { ns: 'common' })
 
     return (
-      <Infotip
-        aria-label={t(($) => $.error, { ns: 'common' })}
-        iconVariant="warning"
-        iconSize="large"
-        className="text-text-destructive"
-        popupClassName="wrap-anywhere whitespace-pre-wrap"
-        sideOffset={4}
-      >
-        {errorLabel}
+      <Infotip>
+        <InfotipTrigger
+          aria-label={t(($) => $.error, { ns: 'common' })}
+          iconVariant="warning"
+          iconSize="large"
+          className="text-text-destructive"
+        />
+        <InfotipContent
+          aria-label={t(($) => $.error, { ns: 'common' })}
+          className="whitespace-pre-wrap"
+          sideOffset={4}
+        >
+          {errorLabel}
+        </InfotipContent>
       </Infotip>
     )
   }

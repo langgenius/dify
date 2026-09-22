@@ -2,6 +2,7 @@ import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   Select,
   SelectContent,
@@ -14,7 +15,6 @@ import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Infotip } from '@/app/components/base/infotip'
 import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
@@ -184,13 +184,20 @@ export const CreateSubscriptionButton = ({
           ns: 'pluginTrigger',
         }),
         extra: (
-          <Infotip
-            aria-label={t(($) => $['subscription.addType.options.manual.tip'], {
-              ns: 'pluginTrigger',
-            })}
-            className="size-3.5"
-          >
-            {t(($) => $['subscription.addType.options.manual.tip'], { ns: 'pluginTrigger' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['subscription.addType.options.manual.tip'], {
+                ns: 'pluginTrigger',
+              })}
+              className="size-3.5"
+            />
+            <InfotipContent
+              aria-label={t(($) => $['subscription.addType.options.manual.tip'], {
+                ns: 'pluginTrigger',
+              })}
+            >
+              {t(($) => $['subscription.addType.options.manual.tip'], { ns: 'pluginTrigger' })}
+            </InfotipContent>
           </Infotip>
         ),
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),

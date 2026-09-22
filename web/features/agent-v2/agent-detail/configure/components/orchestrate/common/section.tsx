@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import type { AgentBuildDraftChangeSection } from '../build-draft-changes-context'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import { Infotip } from '@/app/components/base/infotip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { AgentBuildDraftChangeDot } from '../build-draft-change-dot'
 import { useIsAgentBuildDraftSectionChanged } from '../build-draft-changes-context'
 
@@ -75,12 +75,11 @@ export function ConfigureSection({
               </CollapsibleTrigger>
             </Heading>
             {hasTip && (
-              <Infotip
-                aria-label={tipAriaLabel}
-                className="ml-0.5 size-3.5"
-                popupClassName="max-w-64"
-              >
-                {tip}
+              <Infotip>
+                <InfotipTrigger aria-label={tipAriaLabel} className="ml-0.5 size-3.5" />
+                <InfotipContent aria-label={tipAriaLabel} className="max-w-64">
+                  {tip}
+                </InfotipContent>
               </Infotip>
             )}
             <span
