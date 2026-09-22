@@ -154,7 +154,6 @@ async function base<T>(
     bodyStringify = true,
     needAllResponseContent,
     deleteContentType,
-    getAbortController,
     fetchCompat = false,
     request,
   } = otherOptions
@@ -165,12 +164,6 @@ async function base<T>(
   if (isMarketplaceAPI) base = MARKETPLACE_API_PREFIX
   else if (isPublicAPI) base = PUBLIC_API_PREFIX
   else base = API_PREFIX
-
-  if (getAbortController) {
-    const abortController = new AbortController()
-    getAbortController(abortController)
-    options.signal = abortController.signal
-  }
 
   const fetchPathname = isPublicAPI
     ? base + getWebAppPublicApiPath(resolveWebAppAddress(), url)

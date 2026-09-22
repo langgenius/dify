@@ -1068,11 +1068,42 @@ export const sseGeneratorPost = (
 }
 
 // base request
-export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+export const request = async <T>(
+  url: string,
+  options: FetchOptionType = {},
+  otherOptions?: IOtherOptions,
+) => {
+  const callerSignal = options.signal ?? otherOptions?.request?.signal
+  let signal = callerSignal
+  let detachCallerSignal: (() => void) | undefined
   try {
+    if (otherOptions?.getAbortController) {
+      const controller = new AbortController()
+      const abort = () => controller.abort(callerSignal?.reason)
+      if (callerSignal?.aborted) abort()
+      else {
+        callerSignal?.addEventListener('abort', abort, { once: true })
+        detachCallerSignal = () => callerSignal?.removeEventListener('abort', abort)
+      }
+      signal = controller.signal
+      otherOptions.getAbortController(controller)
+    }
     const otherOptionsForBaseFetch = otherOptions || {}
     const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
-    const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
+    const execute = () => {
+      signal?.throwIfAborted()
+      return baseFetch<T>(
+        url,
+        { ...options, signal },
+        {
+          ...otherOptionsForBaseFetch,
+          // oRPC encodes the body into a Request, which a fetch attempt consumes.
+          request: otherOptionsForBaseFetch.request?.clone(),
+        },
+      )
+    }
+    const [err, resp] = await asyncRunSafe<T>(execute())
+    signal?.throwIfAborted()
     if (err === null) {
       const address = resolveWebAppAddress()
       if (isPublicAPI && address?.kind === 'environment' && !isWebAppAuthorizationEndpoint(url))
@@ -1083,7 +1114,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
     if (errResp.status === 401 || (errResp.status === 403 && isPublicAPI)) {
       if (!isClient) return Promise.reject(err)
 
-      const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
+      const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.clone().json())
+      signal?.throwIfAborted()
       if (parseErr) {
         if (errResp.status === 401) {
           discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
@@ -1124,8 +1156,9 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       }
 
       // refresh token
-      const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
-      if (refreshErr === null) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT, signal))
+      signal?.throwIfAborted()
+      if (refreshErr === null) return await execute()
       // /device is the device-flow chooser; logged-out is a valid state
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
@@ -1147,6 +1180,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
   } catch (error) {
     console.error(error)
     return Promise.reject(error)
+  } finally {
+    detachCallerSignal?.()
   }
 }
 

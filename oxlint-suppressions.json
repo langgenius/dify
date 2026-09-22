@@ -5369,7 +5369,7 @@
   },
   "web/service/refresh-token.ts": {
     "no-restricted-properties": {
-      "count": 7
+      "count": 2
     }
   },
   "web/service/share.ts": {

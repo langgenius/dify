@@ -5,7 +5,8 @@ in Server and Client Components. Calls use the appropriate HTTP
 transport for the Python Console API.
 
 - [Browser transport] preserves the existing request
-  layer's authentication and error handling.
+  layer's authentication and error handling. See [request lifecycle]
+  for cancellation, session refresh, and replay ownership.
 - [Server transport] requires an absolute API address;
   see [server configuration].
   [Instrumentation] and the [root layout]
@@ -22,5 +23,6 @@ transport for the Python Console API.
 [QueryClient factory]: ../../app/get-query-client.ts
 [Server transport]: ./server.ts
 [query-policies.ts]: ./query-policies.ts
+[request lifecycle]: ./request-lifecycle.md
 [root layout]: ../../app/layout.tsx
 [server configuration]: ../../config/server.ts
