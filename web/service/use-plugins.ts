@@ -223,12 +223,6 @@ const normalizePluginToolDeclaration = (value: unknown): PluginDeclaration['tool
   }
 }
 
-const normalizePluginEndpointDeclaration = (value: unknown): PluginDeclaration['endpoint'] => {
-  if (!isRecord(value)) return undefined
-
-  return zEndpointProviderDeclarationResponse.parse(value)
-}
-
 const normalizeParameterDefault = (value: unknown) => {
   if (Array.isArray(value)) return value.filter((item) => typeof item === 'string')
   if (typeof value === 'string') return value
@@ -434,7 +428,9 @@ const normalizePluginDeclaration = (plugin: InstalledPluginResponse): PluginDecl
     resource: declaration.resource,
     plugins: declaration.plugins,
     verified: declaration.verified ?? false,
-    endpoint: normalizePluginEndpointDeclaration(declaration.endpoint),
+    endpoint: isRecord(declaration.endpoint)
+      ? zEndpointProviderDeclarationResponse.parse(declaration.endpoint)
+      : undefined,
     tool: normalizePluginToolDeclaration(declaration.tool),
     datasource: normalizePluginToolDeclaration(declaration.datasource),
     model: declaration.model,

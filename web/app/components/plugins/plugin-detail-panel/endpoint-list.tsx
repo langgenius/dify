@@ -1,3 +1,4 @@
+import type { EndpointProviderDeclarationResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -16,10 +17,8 @@ type Props = Readonly<{
   detail: PluginDetail
 }>
 
-type EndpointDeclaration = NonNullable<PluginDetail['declaration']['endpoint']>
-
 type EndpointListContentProps = Readonly<{
-  declaration: EndpointDeclaration
+  declaration: EndpointProviderDeclarationResponse
   detail: PluginDetail
 }>
 
