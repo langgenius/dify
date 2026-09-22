@@ -2331,3 +2331,58 @@ def test_loop_back_reapprove_is_still_idempotent():
     result = handle_plan_approval(env, Turn(action=Action(kind="approve_repair"), actor=_actor()), s, fc)
 
     assert result.next == PcState.BUILD_EXECUTION
+
+
+# The Run the port now produces for the ESQ1-302 error frame (Tasks 1-2): no
+# rows, no run id, the pydantic text (whitespace-collapsed, code appended).
+_ESQ1_302_LAUNCH_ERROR = (
+    "2 validation errors for HttpRequestNodeData body.data.0.type Field required [type=missing, "
+    "input_value={'value': '{{#node3.text#}}', 'key': 'slides'}, input_type=dict] For further "
+    "information visit https://errors.pydantic.dev/2.12/v/missing [invalid_param]"
+)
+
+
+def _esq1_302_launch_failed_run(*_a, **_k):
+    from core.dify_builder.models import Run
+
+    return Run(
+        kind="verify", immutable=True, dify_run_id="", status="failed", per_node=[], error=_ESQ1_302_LAUNCH_ERROR
+    )
+
+
+def test_a_launch_error_frame_reaches_diagnose_and_trips_the_breaker_on_the_third_repeat():
+    """THE ESQ1-302 regression, driven through the real handler with the Run the
+    port now produces for the trace's error frame. Before this fix the handler
+    threw ``Run.error`` away (``run_error = ""``), so a launch failure had no
+    signature and the breaker could never fire on it."""
+    from core.dify_builder.handlers_build import _MAX_REPEATED_REPAIRS, _failure_signature, handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    env, _ = _new_env(agent=StubAgent())
+    env.dify = FakeBuildDifyPort()
+    env.dify.run_draft = _esq1_302_launch_failed_run
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(test_input_ref="ti-1")
+
+    results = []
+    snapshots = []  # the handler mutates the SAME context object in place; snapshot per call
+    for _ in range(_MAX_REPEATED_REPAIRS + 1):
+        res = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+        fc = res.context
+        results.append(res)
+        snapshots.append((fc.repair_attempts, len(fc.staged_repair), fc.last_repair_error))
+
+    signature = _failure_signature(_esq1_302_launch_failed_run())
+    assert signature.startswith("|2 validation errors")
+    for res, (_attempts, staged, last) in zip(results[:-1], snapshots[:-1]):
+        assert res.next == PcState.BUILD_AWAIT_REPAIR
+        assert res.run.error == _ESQ1_302_LAUNCH_ERROR  # kept on the persisted Run
+        assert "notice" not in [i.kind for i in res.items]  # NOT the unknown-outcome bounce
+        assert staged == 1  # diagnosed, a repair staged at the gate
+        assert last == signature
+    assert [attempts for attempts, _, _ in snapshots] == [0, 1, 2]
+    final = results[-1]
+    assert final.context.staged_repair == []
+    assert next(i for i in final.items if i.kind == "error").payload["title"] == "Repeated failure"
