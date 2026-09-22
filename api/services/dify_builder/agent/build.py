@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from core.app.app_config.entities import ModelConfig
+from core.dify_builder import urls
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, MutationIntent
 from graphon.enums import BUILT_IN_NODE_TYPES
@@ -801,8 +802,17 @@ def _ground_placeholder_endpoints(intents: list[MutationIntent], *, trusted_text
     ``api.pptrender.io``) is just as much a fabrication as
     ``api.example.com``, only harder to spot by shape alone.
     ``trusted_text == ""`` (no caller-supplied text) keeps exactly today's
-    placeholder-only behaviour. Returns the ids of the http-request nodes it
-    re-pointed.
+    placeholder-only behaviour.
+
+    A URL whose HOST is already a template (``urls.host_is_templated``) reads
+    its endpoint from a variable and is never re-grounded, which also makes a
+    second pass a no-op. A URL with templates only in its path/query (e.g.
+    ``https://api.pptrender.io/v1/render?topic={{#node1.topic#}}``) has only
+    its ``scheme://host[:port]`` replaced -- the path, the query and the data
+    templates in them are kept verbatim, and the start variable is labelled
+    "<title> base URL". A URL with no templates is replaced whole ("<title>
+    URL"), as is one with no ``scheme://`` to split at. Returns the ids of the
+    http-request nodes it re-pointed.
     """
     start = next((i for i in intents if i.op == "create_node" and i.args.get("node_type") == "start"), None)
     if start is None:
@@ -818,13 +828,22 @@ def _ground_placeholder_endpoints(intents: list[MutationIntent], *, trusted_text
             continue
         node_config = dict(intent.args.get("config") or {})
         url = str(node_config.get("url") or "")
+        if urls.host_is_templated(url):
+            continue
         not_user_supplied = bool(trusted_text) and not user_supplied.is_user_supplied_url(url, trusted_text)
         if not (_is_placeholder_endpoint(url) or not_user_supplied):
             continue
         node_id = str(intent.args.get("node_id") or "")
         var_name = f"{node_id}_url"
-        _add_required_start_variable(variables, var_name, f"{node_config.get('title') or node_id} URL")
-        node_config["url"] = f"{{{{#{start_id}.{var_name}#}}}}"
+        template_ref = f"{{{{#{start_id}.{var_name}#}}}}"
+        title = node_config.get("title") or node_id
+        parts = urls.split_origin(url)
+        if parts is not None and urls.TEMPLATE_MARKER in parts.rest:
+            _add_required_start_variable(variables, var_name, f"{title} base URL")
+            node_config["url"] = f"{template_ref}{parts.rest}"
+        else:
+            _add_required_start_variable(variables, var_name, f"{title} URL")
+            node_config["url"] = template_ref
         intent.args["config"] = node_config
         grounded.append(node_id)
     if grounded:
