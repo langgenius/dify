@@ -73,7 +73,9 @@ from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializ
 from services.dify_builder.identity import load_app, resolve_account
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.run_mapping import (
+    error_from_stream_chunk,
     is_unfinished_run_status,
+    map_error_frame_run,
     map_run_result,
     map_unknown_run_outcome,
     node_event_from_stream_chunk,
@@ -353,6 +355,10 @@ class WorkflowServiceDifyPort:
 
         final: dict[str, Any] = {}
         stream_run_id = ""
+        # The first explicit ``event: error`` frame, if any. It is NOT a
+        # terminal frame (no run status), so it is only consulted when no
+        # terminal frame arrives -- see ``_finish_run``.
+        error_frame: dict[str, str] | None = None
 
         # A completed mapping response carries terminal data directly. Iterating
         # its keys as stream chunks would lose the run ID and final status.
@@ -381,6 +387,7 @@ class WorkflowServiceDifyPort:
                 terminal = run_result_data_from_terminal_chunk(payload)
                 if terminal is not None:
                     final = terminal
+                error_frame = error_frame or error_from_stream_chunk(payload)
         finally:
             # In streaming mode ``_run_with_guardrails`` does NOT release the
             # app's rate-limit slot; only closing the generator does. Normal
@@ -390,11 +397,24 @@ class WorkflowServiceDifyPort:
             if callable(close):
                 close()
 
-        return self._finish_run(tenant_id, app_id, final, stream_run_id)
+        return self._finish_run(tenant_id, app_id, final, stream_run_id, error_frame=error_frame)
 
-    def _finish_run(self, tenant_id: str, app_id: str, final: dict[str, Any], stream_run_id: str) -> Run:
+    def _finish_run(
+        self,
+        tenant_id: str,
+        app_id: str,
+        final: dict[str, Any],
+        stream_run_id: str,
+        *,
+        error_frame: dict[str, str] | None = None,
+    ) -> Run:
         """Turn the run's terminal data into a ``Run``. Shared by the blocking
-        and streaming paths so they can never disagree about the outcome."""
+        and streaming paths so they can never disagree about the outcome.
+
+        Precedence: terminal frame > error frame > nothing. A stream that ended
+        on an explicit error frame is a FAILED run carrying that error; only a
+        stream that ended with neither is an unknown outcome.
+        """
         run_id = str(final.get("id") or stream_run_id or "")
 
         # Backend diagnosis still uses persisted node-execution rows to build
@@ -409,6 +429,12 @@ class WorkflowServiceDifyPort:
 
         if final:
             return map_run_result(final, node_execs)
+
+        # The pipeline said the run threw (ESQ1-302: Graph.init rejected a node
+        # before workflow_started, so there is no run row at all). That is a
+        # failure with a reason, not an outcome we lost sight of.
+        if error_frame is not None:
+            return map_error_frame_run(error_frame, run_id, node_execs)
 
         # The stream ended without a terminal frame. The stream is no longer
         # the authority on how the run went; the database is. Synthesising
