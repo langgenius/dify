@@ -9,6 +9,7 @@ on:
         type: boolean
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -24,6 +25,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Test Web build synchronization
+        run: node --test .github/actions/wait-e2e-web-build/wait.test.cjs
+
       - name: Compute build source hash
         id: build-source
         shell: bash
@@ -34,6 +38,9 @@ jobs:
 
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
+        with:
+          # Browser jobs already save this dependency cache; avoid duplicate uploads.
+          cache-save: 'false'
 
       - name: Restore Next.js build cache
         id: next-cache
@@ -73,10 +80,9 @@ jobs:
       - name: Upload Web build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: core-e2e-web-build
+          name: core-e2e-web-build-${{ github.run_attempt }}
           path: e2e-web-build.tar
           if-no-files-found: error
-          overwrite: true
           retention-days: 7
 
       - name: Save Next.js build cache
@@ -89,7 +95,6 @@ jobs:
   chromium-full:
     name: Chromium Full (${{ matrix.shard }}/3)
     if: ${{ !inputs.run-external-runtime }}
-    needs: core-build
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -114,10 +119,17 @@ jobs:
         with:
           browser: chromium
 
+      # Install dependencies while core-build runs, then wait only for its artifact.
+      - name: Wait for Web build
+        id: web-build
+        timeout-minutes: 35
+        uses: ./.github/actions/wait-e2e-web-build
+
       - name: Download Web build
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: core-e2e-web-build
+          artifact-ids: ${{ steps.web-build.outputs.artifact-id }}
+          github-token: ${{ github.token }}
 
       - name: Extract Web build
         run: tar -xf e2e-web-build.tar -C web
@@ -150,9 +162,8 @@ jobs:
   webkit-smoke:
     name: WebKit Browser Smoke
     if: ${{ !inputs.run-external-runtime }}
-    needs: core-build
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       E2E_ADMIN_EMAIL: e2e-admin@example.com
       E2E_ADMIN_NAME: E2E Admin
@@ -172,10 +183,17 @@ jobs:
         with:
           browser: webkit
 
+      # Install dependencies while core-build runs, then wait only for its artifact.
+      - name: Wait for Web build
+        id: web-build
+        timeout-minutes: 35
+        uses: ./.github/actions/wait-e2e-web-build
+
       - name: Download Web build
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: core-e2e-web-build
+          artifact-ids: ${{ steps.web-build.outputs.artifact-id }}
+          github-token: ${{ github.token }}
 
       - name: Extract Web build
         run: tar -xf e2e-web-build.tar -C web

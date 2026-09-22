@@ -200,7 +200,6 @@
   "openInExplore": "Web App in der Seitenleiste öffnen",
   "publishApp.notSet": "Nicht festgelegt",
   "removeOriginal": "Ursprüngliche App löschen",
-  "structOutput.LLMResponse": "LLM-Antwort",
   "structOutput.configure": "Konfigurieren",
   "structOutput.modelNotSupported": "Modell nicht unterstützt",
   "structOutput.modelNotSupportedTip": "Das aktuelle Modell unterstützt diese Funktion nicht und wird automatisch auf Eingabeinjektion heruntergestuft.",

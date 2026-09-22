@@ -200,7 +200,6 @@
   "openInExplore": "Kenar Çubuğu Web App'ini Aç",
   "publishApp.notSet": "Ayar yapılmamış",
   "removeOriginal": "Orijinal uygulamayı sil",
-  "structOutput.LLMResponse": "LLM Yanıtı",
   "structOutput.configure": "Yapılandır",
   "structOutput.modelNotSupported": "Model desteklenmiyor",
   "structOutput.modelNotSupportedTip": "Mevcut model bu özelliği desteklemiyor ve otomatik olarak prompt enjeksiyonuna düşürülüyor.",

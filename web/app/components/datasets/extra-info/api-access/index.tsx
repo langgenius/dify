@@ -4,7 +4,6 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
 import Card from './card'
 
 type ApiAccessProps = {
@@ -37,7 +36,10 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
                   state.open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                 )}
               >
-                <ApiAggregate className="size-4 shrink-0 text-text-secondary" />
+                <span
+                  aria-hidden
+                  className="i-custom-vender-knowledge-api-aggregate size-4 shrink-0 text-text-secondary"
+                />
                 {expand && (
                   <div className="min-w-0 grow truncate system-sm-regular text-text-secondary">
                     {t(($) => $['appMenus.apiAccess'], { ns: 'common' })}

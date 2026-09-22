@@ -22,7 +22,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -321,7 +320,10 @@ const RunOnce: FC<IRunOnceProps> = ({
                     {runControl?.isStopping ? (
                       <RiLoader2Line className="size-4 shrink-0 animate-spin" aria-hidden="true" />
                     ) : (
-                      <StopCircle className="size-4 shrink-0" aria-hidden="true" />
+                      <span
+                        aria-hidden="true"
+                        className="i-custom-vender-solid-mediaAndDevices-stop-circle size-4 shrink-0"
+                      />
                     )}
                     <span className="text-[13px]">{stopLabel}</span>
                   </>

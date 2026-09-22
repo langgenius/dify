@@ -1,202 +1,84 @@
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { Import } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  RecommendedAppDetailResponse,
+  RecommendedAppResponse,
+} from '@dify/contracts/api/console/explore/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useContextSelector } from 'use-context-selector'
-import AppListContext from '@/context/app-list-context'
-import { fetchAppDetail } from '@/service/explore'
-import { render } from '@/test/console/render'
-import { AppModeEnum } from '@/types/app'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
 import { Apps } from '../index'
 
+const { request, toast, checkDependencies, redirect, trackCreateApp, push, replace, search } =
+  vi.hoisted(() => ({
+    request: vi.fn(),
+    toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+    checkDependencies: vi.fn(),
+    redirect: vi.fn(),
+    trackCreateApp: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    search: { params: new URLSearchParams() },
+  }))
+vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/app/notifications', () => ({ toast }))
+vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
+  usePluginDependencies: () => ({ handleCheckPluginDependencies: checkDependencies }),
+}))
+vi.mock('@/utils/app-redirection', () => ({ getRedirection: redirect }))
+vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp }))
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push, replace }),
+  useParams: () => ({}),
+  useSearchParams: () => search.params,
+}))
 vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
-    const LazyComp = React.lazy(loader)
-    return function DynamicWrapper(props: Record<string, unknown>) {
-      return React.createElement(
-        React.Suspense,
-        { fallback: null },
-        React.createElement(LazyComp, props),
+    const LazyComponent = React.lazy(loader)
+    return function Dynamic(props: Record<string, unknown>) {
+      return (
+        <React.Suspense fallback={null}>
+          <LazyComponent {...props} />
+        </React.Suspense>
       )
     }
   },
 }))
-
-let documentTitleCalls: string[] = []
-const mockHandleImportDSL = vi.fn()
-const mockHandleImportDSLConfirm = vi.fn()
-const mockTrackCreateApp = vi.fn()
-const mockFetchAppDetail = vi.mocked(fetchAppDetail)
-let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
-
-const mockTemplateApp: App = {
-  app_id: 'template-1',
-  categories: ['Assistant'],
-  app: {
-    id: 'template-1',
-    mode: AppModeEnum.CHAT,
-    icon_type: 'emoji',
-    icon: '🤖',
-    icon_background: '#fff',
-    icon_url: '',
-    name: 'Sample App',
-    description: 'Sample App',
-    use_icon_as_answer_icon: false,
-  },
-  description: 'Sample App',
-  can_trial: true,
-  copyright: '',
-  privacy_policy: null,
-  custom_disclaimer: null,
-  position: 1,
-  is_listed: true,
-  install_count: 0,
-  installed: false,
-  editable: false,
-  is_agent: false,
-}
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: (title: string) => {
-    documentTitleCalls.push(title)
-  },
-}))
-
-vi.mock('@/app/education/expire-notice', () => ({
-  EducationExpireNotice: () => null,
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('@/hooks/use-import-dsl', () => ({
-  useImportDSL: () => ({
-    handleImportDSL: mockHandleImportDSL,
-    handleImportDSLConfirm: mockHandleImportDSLConfirm,
-    versions: [],
-    isFetching: false,
-  }),
-}))
-
-const mockReplace = vi.fn()
-let mockSearchParams = new URLSearchParams()
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    replace: mockReplace,
-  }),
-  useSearchParams: () => mockSearchParams,
-}))
-
-vi.mock('../list', () => {
-  const MockList = ({
-    onCreateLearnDify,
-    onTryLearnDify,
-  }: {
-    onCreateLearnDify?: (app: App) => void
-    onTryLearnDify?: (params: TryAppSelection) => void
-  }) => {
-    const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
-    return React.createElement(
-      'div',
-      { 'data-testid': 'apps-list' },
-      React.createElement('span', null, 'Apps List'),
-      React.createElement(
-        'button',
-        {
-          'data-testid': 'open-preview',
-          onClick: () =>
-            openTryAppPanel({
-              appId: mockTemplateApp.app_id,
-              app: mockTemplateApp,
-            }),
-        },
-        'Open Preview',
-      ),
-      React.createElement(
-        'button',
-        {
-          type: 'button',
-          onClick: () => onTryLearnDify?.({ appId: mockTemplateApp.app_id, app: mockTemplateApp }),
-        },
-        'Preview Learn Dify template',
-      ),
-      React.createElement(
-        'button',
-        { type: 'button', onClick: () => onCreateLearnDify?.(mockTemplateApp) },
-        'Create Learn Dify template',
-      ),
-    )
+vi.mock('@/app/education/expire-notice', () => ({ EducationExpireNotice: () => null }))
+vi.mock('../list', async () => {
+  const { default: LearnDify } = await import('@/app/components/explore/learn-dify')
+  return {
+    List: ({
+      onCreateLearnDify,
+      onTryLearnDify,
+    }: {
+      onCreateLearnDify: (app: RecommendedAppResponse) => void
+      onTryLearnDify: (app: RecommendedAppResponse) => void
+    }) => (
+      <LearnDify
+        canCreate
+        onCreate={onCreateLearnDify}
+        onTry={onTryLearnDify}
+        dismissible={false}
+      />
+    ),
   }
-
-  return { List: MockList }
 })
-
+// The running preview and marketplace download are separate feature boundaries.
 vi.mock('../../explore/try-app', () => ({
   default: ({ onCreate, onClose }: { onCreate: () => void; onClose: () => void }) => (
-    <div data-testid="try-app-panel">
-      <button data-testid="try-app-create" onClick={onCreate}>
-        Create
-      </button>
-      <button data-testid="try-app-close" onClick={onClose}>
-        Close
-      </button>
-    </div>
+    <section aria-label="Template preview">
+      <button onClick={onCreate}>Create preview</button>
+      <button onClick={onClose}>Close preview</button>
+    </section>
   ),
 }))
-
-vi.mock('../../explore/create-app-modal', () => ({
-  default: ({
-    show,
-    onConfirm,
-    onHide,
-  }: {
-    show: boolean
-    onConfirm: (payload: Record<string, string>) => Promise<void>
-    onHide: () => void
-  }) =>
-    show ? (
-      <div data-testid="create-app-modal">
-        <button
-          data-testid="confirm-create"
-          onClick={() =>
-            onConfirm({
-              name: 'Created App',
-              icon_type: 'emoji',
-              icon: '🤖',
-              icon_background: '#fff',
-              description: 'created from preview',
-            })
-          }
-        >
-          Confirm
-        </button>
-        <button data-testid="hide-create" onClick={onHide}>
-          Hide
-        </button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('../../app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => (
-    <div data-testid="dsl-confirm-modal">
-      <button data-testid="confirm-dsl" onClick={onConfirm}>
-        Confirm DSL
-      </button>
-      <button data-testid="cancel-dsl" onClick={onCancel}>
-        Cancel DSL
-      </button>
-    </div>
-  ),
-}))
-
 vi.mock('../import-from-marketplace-template-modal', () => ({
   default: ({
     templateId,
@@ -207,287 +89,232 @@ vi.mock('../import-from-marketplace-template-modal', () => ({
     onClose: () => void
     onConfirm: (dsl: string) => void
   }) => (
-    <div data-testid="marketplace-template-modal">
-      <span data-testid="template-id">{templateId}</span>
-      <button data-testid="close-template" onClick={onClose}>
-        Close Template
-      </button>
-      <button data-testid="confirm-template" onClick={() => onConfirm('yaml-dsl-content')}>
-        Confirm Template
-      </button>
-    </div>
+    <section aria-label="Marketplace download">
+      <span>{templateId}</span>
+      <button onClick={onClose}>Close download</button>
+      <button onClick={() => onConfirm('marketplace-dsl')}>Import download</button>
+    </section>
   ),
 }))
 
-vi.mock('@/service/explore', () => ({
-  fetchAppDetail: vi.fn(),
-}))
+const template: RecommendedAppResponse = {
+  app_id: 'canonical-template',
+  app: {
+    id: 'different-nested-id',
+    name: 'Sample App',
+    mode: 'chat',
+    icon_type: 'emoji',
+    icon: '🤖',
+    icon_background: '#fff',
+    icon_url: null,
+  },
+  description: 'Catalog description',
+  can_trial: true,
+}
+const detail: RecommendedAppDetailResponse = {
+  id: 'canonical-template',
+  name: 'Sample App',
+  mode: 'chat',
+  can_trial: true,
+  export_data: 'fresh-dsl',
+}
+const completed: Import = {
+  id: 'import-1',
+  status: 'completed',
+  app_id: 'created-app',
+  app_mode: 'chat',
+  permission_keys: ['app.edit'],
+}
+let importResponse: Import
+let detailFails: boolean
+const clients = new Set<QueryClient>()
+const features = zGetFeaturesResponse.parse({ apps: { size: 1, limit: 10 } })
 
-vi.mock('@/utils/create-app-tracking', () => ({
-  trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
-}))
+beforeEach(() => {
+  vi.clearAllMocks()
+  localStorage.clear()
+  search.params = new URLSearchParams()
+  importResponse = completed
+  detailFails = false
+  request.mockImplementation(async (url: string) => {
+    const path = new URL(url).pathname.replace('/console/api', '') + new URL(url).search
+    if (path === '/explore/apps/canonical-template')
+      return detailFails
+        ? Response.json({ message: 'Unavailable' }, { status: 503 })
+        : Response.json(detail)
+    if (path === '/features') return Response.json(features)
+    if (path === '/apps/imports') return Response.json(importResponse)
+    if (path === '/apps/imports/import-1/confirm') return Response.json(completed)
+    throw new Error(`Unexpected request: ${url}`)
+  })
+})
 
-describe('Apps', () => {
-  const createQueryClient = () =>
-    new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
+afterEach(async () => {
+  cleanup()
+  await Promise.all([...clients].map((client) => client.cancelQueries()))
+  for (const client of clients) client.clear()
+  clients.clear()
+})
 
-  const renderWithClient = (ui: React.ReactElement) => {
-    const queryClient = createQueryClient()
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    )
-    return {
-      queryClient,
-      ...render(ui, { wrapper }),
-    }
+const setup = ({ cloud = false, permission = true, item = template } = {}) => {
+  const queryClient = createConsoleQueryClient()
+  clients.add(queryClient)
+  queryClient.setQueryData(
+    consoleQuery.explore.apps.learnDify.get.queryKey({ input: { query: { language: 'en-US' } } }),
+    { recommended_apps: [item] },
+  )
+  queryClient.setQueryData(
+    consoleQuery.explore.apps.byAppId.get.queryKey({
+      input: { params: { app_id: template.app_id } },
+    }),
+    { ...detail, export_data: 'stale-dsl' },
+  )
+  return render(<Apps />, {
+    queryClient,
+    workspacePermissionKeys: permission ? ['app.create_and_management'] : [],
+    systemFeatures: { deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY', enable_learn_app: true },
+    features: { apps: { size: 0, limit: 10 } },
+  })
+}
+const openCreate = async (user: ReturnType<typeof userEvent.setup>, preview = false) => {
+  await user.click(screen.getByRole('button', { name: 'Sample App' }))
+  if (preview) await user.click(await screen.findByRole('button', { name: 'Create preview' }))
+  return screen.findByRole('dialog')
+}
+const submit = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+}
+
+it('imports fresh canonical detail through the real form and import orchestration', async () => {
+  const user = userEvent.setup()
+  setup()
+  await openCreate(user)
+  expect(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder')).toHaveValue('')
+  await submit(user)
+  await waitFor(() => expect(redirect).toHaveBeenCalled())
+  expect(
+    request.mock.calls
+      .map(([url]) => new URL(url).pathname.replace('/console/api', ''))
+      .filter((path) => path !== '/features'),
+  ).toEqual(['/explore/apps/canonical-template', '/apps/imports'])
+  const importRequest = request.mock.calls.find(([url]) =>
+    new URL(url).pathname.endsWith('/apps/imports'),
+  )
+  expect(await importRequest?.[2].request.json()).toMatchObject({
+    yaml_content: 'fresh-dsl',
+    name: 'Sample App',
+    description: '',
+  })
+  expect(checkDependencies).toHaveBeenCalledWith('created-app')
+  expect(toast.success).toHaveBeenCalledWith('app.newApp.appCreated')
+})
+
+it('tracks successful preview creation and closes the preview', async () => {
+  const user = userEvent.setup()
+  setup({ cloud: true })
+  await openCreate(user, true)
+  await submit(user)
+  await waitFor(() =>
+    expect(trackCreateApp).toHaveBeenCalledWith({
+      source: 'studio_template_preview',
+      templateId: 'canonical-template',
+      appMode: 'chat',
+    }),
+  )
+  expect(screen.queryByRole('region', { name: 'Template preview' })).not.toBeInTheDocument()
+})
+
+it('handles detail rejection once without import, navigation, or reopening the submitted modal', async () => {
+  const user = userEvent.setup()
+  detailFails = true
+  setup()
+  await openCreate(user)
+  await submit(user)
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  const paths = request.mock.calls.map(([url]) => new URL(url).pathname.replace('/console/api', ''))
+  expect(paths.filter((path) => path === '/explore/apps/canonical-template')).toHaveLength(1)
+  expect(paths.some((path) => path.startsWith('/apps/imports'))).toBe(false)
+  expect(toast.error).toHaveBeenCalledOnce()
+  expect(redirect).not.toHaveBeenCalled()
+  expect(trackCreateApp).not.toHaveBeenCalled()
+})
+
+it('keeps the pending import confirmation and tracks only after successful confirmation', async () => {
+  const user = userEvent.setup()
+  importResponse = {
+    id: 'import-1',
+    status: 'pending',
+    imported_dsl_version: '0.8.0',
+    current_dsl_version: '0.6.0',
   }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    documentTitleCalls = []
-    mockWorkspacePermissionKeys = ['app.create_and_management']
-    mockSearchParams = new URLSearchParams()
-    mockReplace.mockClear()
-    mockFetchAppDetail.mockResolvedValue({
-      id: 'template-1',
-      name: 'Sample App',
-      icon: '🤖',
-      icon_background: '#fff',
-      mode: AppModeEnum.CHAT,
-      export_data: 'yaml-content',
-      can_trial: true,
-    })
+  setup({ cloud: true })
+  await openCreate(user, true)
+  await submit(user)
+  const dialog = await screen.findByRole('alertdialog')
+  expect(within(dialog).getByText('0.8.0')).toBeInTheDocument()
+  expect(trackCreateApp).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('button', { name: 'app.newApp.Confirm' }))
+  await waitFor(() => expect(redirect).toHaveBeenCalled())
+  expect(
+    request.mock.calls
+      .map(([url]) => new URL(url).pathname.replace('/console/api', ''))
+      .filter((path) => path !== '/features'),
+  ).toEqual(['/explore/apps/canonical-template', '/apps/imports', '/apps/imports/import-1/confirm'])
+  expect(trackCreateApp).toHaveBeenCalledWith({
+    source: 'studio_template_preview',
+    templateId: 'canonical-template',
+    appMode: 'chat',
   })
+})
 
-  describe('Integration', () => {
-    it('should track template preview creation after a successful import', async () => {
-      mockHandleImportDSL.mockImplementation(
-        async (
-          _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
-        ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-        },
-      )
+it('reports import failure without tracking or navigating', async () => {
+  const user = userEvent.setup()
+  importResponse = { id: 'import-1', status: 'failed' }
+  setup({ cloud: true })
+  await openCreate(user, true)
+  await submit(user)
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
+  expect(redirect).not.toHaveBeenCalled()
+  expect(trackCreateApp).not.toHaveBeenCalled()
+})
 
-      renderWithClient(<Apps />)
+it('keeps nullable template metadata editable through the actual modal', async () => {
+  const user = userEvent.setup()
+  setup({ item: { app_id: 'null-template', app: null, can_trial: false } })
+  await user.click(screen.getByRole('button', { name: '' }))
+  await screen.findByRole('dialog')
+  expect(screen.getByPlaceholderText('app.newApp.appNamePlaceholder')).toHaveValue('')
+  expect(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder')).toHaveValue('')
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  expect(request).not.toHaveBeenCalled()
+})
 
-      fireEvent.click(screen.getByTestId('open-preview'))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+it('does not allow template creation or marketplace import without permission', async () => {
+  const user = userEvent.setup()
+  search.params = new URLSearchParams('template-id=tpl-42')
+  setup({ permission: false })
+  await user.click(screen.getByRole('button', { name: 'Sample App' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.queryByRole('region', { name: 'Marketplace download' })).not.toBeInTheDocument()
+  expect(request).not.toHaveBeenCalled()
+})
 
-      await waitFor(() => {
-        expect(mockFetchAppDetail).toHaveBeenCalledWith('template-1')
-        expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          source: 'studio_template_preview',
-          appMode: AppModeEnum.CHAT,
-          templateId: 'template-1',
-        })
-      })
-    })
-
-    it('should open the template preview from Learn Dify', async () => {
-      const user = userEvent.setup()
-      renderWithClient(<Apps />)
-
-      await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
-
-      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
-    })
-
-    it('should close the template preview', async () => {
-      const user = userEvent.setup()
-      renderWithClient(<Apps />)
-
-      await user.click(screen.getByTestId('open-preview'))
-      await user.click(await screen.findByTestId('try-app-close'))
-
-      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
-    })
-
-    it('should open the create modal from Learn Dify', async () => {
-      const user = userEvent.setup()
-      renderWithClient(<Apps />)
-
-      await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
-
-      expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
-    })
-
-    it('should track template preview creation after confirming a pending import', async () => {
-      mockHandleImportDSL.mockImplementation(
-        async (_payload: unknown, options: { onPending?: () => void }) => {
-          options.onPending?.()
-        },
-      )
-      mockHandleImportDSLConfirm.mockImplementation(
-        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
-        },
-      )
-
-      renderWithClient(<Apps />)
-
-      fireEvent.click(screen.getByTestId('open-preview'))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
-
-      fireEvent.click(await screen.findByTestId('confirm-dsl'))
-
-      await waitFor(() => {
-        expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
-        expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          source: 'studio_template_preview',
-          appMode: AppModeEnum.WORKFLOW,
-          templateId: 'template-1',
-        })
-      })
-    })
-
-    it('should close the dsl confirm modal when the pending import is canceled', async () => {
-      mockHandleImportDSL.mockImplementation(
-        async (_payload: unknown, options: { onPending?: () => void }) => {
-          options.onPending?.()
-        },
-      )
-
-      renderWithClient(<Apps />)
-
-      fireEvent.click(screen.getByTestId('open-preview'))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
-
-      fireEvent.click(await screen.findByTestId('cancel-dsl'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('dsl-confirm-modal')).not.toBeInTheDocument()
-      })
-      expect(mockTrackCreateApp).not.toHaveBeenCalled()
-    })
-
-    it('should hide the create modal without tracking when the modal closes', async () => {
-      renderWithClient(<Apps />)
-
-      fireEvent.click(screen.getByTestId('open-preview'))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-
-      fireEvent.click(await screen.findByTestId('hide-create'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
-      })
-      expect(mockTrackCreateApp).not.toHaveBeenCalled()
-    })
+it('preserves marketplace import tracking and removes only its URL parameter', async () => {
+  const user = userEvent.setup()
+  search.params = new URLSearchParams('template-id=tpl-42&category=chat')
+  setup()
+  await user.click(await screen.findByRole('button', { name: 'Import download' }))
+  await waitFor(() =>
+    expect(trackCreateApp).toHaveBeenCalledWith({
+      source: 'external',
+      templateId: 'tpl-42',
+      appMode: 'chat',
+    }),
+  )
+  expect(await request.mock.calls[0]![2].request.json()).toEqual({
+    mode: 'yaml-content',
+    yaml_content: 'marketplace-dsl',
   })
-
-  describe('Marketplace Template', () => {
-    it('should render the template modal when template-id is in search params', async () => {
-      mockSearchParams = new URLSearchParams('template-id=tpl-42')
-      renderWithClient(<Apps />)
-
-      expect(await screen.findByTestId('marketplace-template-modal')).toBeInTheDocument()
-      expect(screen.getByTestId('template-id')).toHaveTextContent('tpl-42')
-    })
-
-    it('should not render the template modal without app.create_and_management permission', () => {
-      mockWorkspacePermissionKeys = []
-      mockSearchParams = new URLSearchParams('template-id=tpl-42')
-      renderWithClient(<Apps />)
-
-      expect(screen.queryByTestId('marketplace-template-modal')).not.toBeInTheDocument()
-    })
-
-    it('should not render the template modal when no template-id is present', () => {
-      renderWithClient(<Apps />)
-
-      expect(screen.queryByTestId('marketplace-template-modal')).not.toBeInTheDocument()
-    })
-
-    it('should close the template modal and remove template-id from URL', async () => {
-      mockSearchParams = new URLSearchParams('template-id=tpl-42')
-      renderWithClient(<Apps />)
-
-      fireEvent.click(await screen.findByTestId('close-template'))
-
-      expect(mockReplace).toHaveBeenCalledTimes(1)
-      const replaceArg = mockReplace.mock.calls[0]![0] as string
-      expect(replaceArg).not.toContain('template-id')
-    })
-
-    it('should import DSL from marketplace template on confirm', async () => {
-      mockHandleImportDSL.mockImplementation(
-        async (
-          _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
-        ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-        },
-      )
-      mockSearchParams = new URLSearchParams('template-id=tpl-42')
-      renderWithClient(<Apps />)
-
-      fireEvent.click(await screen.findByTestId('confirm-template'))
-
-      await waitFor(() => {
-        expect(mockHandleImportDSL).toHaveBeenCalledWith(
-          { mode: 'yaml-content', yaml_content: 'yaml-dsl-content' },
-          expect.objectContaining({ onSuccess: expect.any(Function) }),
-        )
-        expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          source: 'external',
-          appMode: AppModeEnum.CHAT,
-          templateId: 'tpl-42',
-        })
-        expect(mockReplace).toHaveBeenCalled()
-      })
-    })
-
-    it('should not open create modal from template preview without app.create_and_management permission', async () => {
-      mockWorkspacePermissionKeys = []
-      renderWithClient(<Apps />)
-
-      fireEvent.click(screen.getByTestId('open-preview'))
-      fireEvent.click(await screen.findByTestId('try-app-create'))
-
-      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
-    })
-
-    it('should track marketplace template creation after confirming a pending import', async () => {
-      mockHandleImportDSL.mockImplementation(
-        async (_payload: unknown, options: { onPending?: () => void }) => {
-          options.onPending?.()
-        },
-      )
-      mockHandleImportDSLConfirm.mockImplementation(
-        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
-        },
-      )
-      mockSearchParams = new URLSearchParams('template-id=tpl-42')
-      renderWithClient(<Apps />)
-
-      fireEvent.click(await screen.findByTestId('confirm-template'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('dsl-confirm-modal')).toBeInTheDocument()
-        expect(mockReplace).toHaveBeenCalled()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-dsl'))
-
-      await waitFor(() => {
-        expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          source: 'external',
-          appMode: AppModeEnum.WORKFLOW,
-          templateId: 'tpl-42',
-        })
-      })
-    })
-  })
+  expect(replace).toHaveBeenCalledWith('?category=chat', { scroll: false })
 })

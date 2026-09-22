@@ -1,5 +1,4 @@
 'use client'
-import type { AppCategory } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
@@ -7,9 +6,9 @@ import exploreI18n from '@/i18n/locales/en-US/explore.json'
 
 type ICategoryProps = {
   className?: string
-  list: AppCategory[]
+  list: string[]
   value: string
-  onChange: (value: AppCategory | string) => void
+  onChange: (value: string) => void
   /**
    * default value for search param 'category' in en
    */
@@ -18,10 +17,10 @@ type ICategoryProps = {
 
 function Category({ className, list, value, onChange, allCategoriesEn }: ICategoryProps) {
   const { t } = useTranslation()
-  const isAllCategories = !list.includes(value as AppCategory) || value === allCategoriesEn
+  const isAllCategories = !list.includes(value) || value === allCategoriesEn
   const selectedCategory = isAllCategories ? allCategoriesEn : value
 
-  const renderCategoryName = (name: AppCategory) => {
+  const renderCategoryName = (name: string) => {
     const categoryKey = `category.${name}` as keyof typeof exploreI18n
     return categoryKey in exploreI18n ? t(($) => $[categoryKey], { ns: 'explore' }) : name
   }

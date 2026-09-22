@@ -200,7 +200,6 @@
   "openInExplore": "Відкрити Web App на бічній панелі",
   "publishApp.notSet": "Не встановлено",
   "removeOriginal": "Видалити початковий додаток",
-  "structOutput.LLMResponse": "Відповідь ЛЛМ",
   "structOutput.configure": "Налаштувати",
   "structOutput.modelNotSupported": "Модель не підтримується",
   "structOutput.modelNotSupportedTip": "Поточна модель не підтримує цю функцію та автоматично знижується до ін'єкції запитів.",

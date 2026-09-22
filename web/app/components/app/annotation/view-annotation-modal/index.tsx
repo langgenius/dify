@@ -25,7 +25,6 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchHitHistoryList } from '@/service/annotation'
@@ -293,7 +292,10 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                       className="flex cursor-pointer appearance-none items-center space-x-2 border-0 bg-transparent py-0 pr-0 pl-3 text-left"
                       onClick={() => setShowModal(true)}
                     >
-                      <MessageCheckRemove />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-line-communication-message-check-remove h-6 w-6"
+                      />
                       <span>
                         {t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}
                       </span>

@@ -200,7 +200,6 @@
   "openInExplore": "เปิด Web App ในแถบด้านข้าง",
   "publishApp.notSet": "ยังไม่ได้ตั้งค่า",
   "removeOriginal": "ลบโปรเจกต์เดิม",
-  "structOutput.LLMResponse": "LLM ตอบสนอง",
   "structOutput.configure": "กำหนดค่า",
   "structOutput.modelNotSupported": "โมเดลไม่ได้รับการสนับสนุน",
   "structOutput.modelNotSupportedTip": "โมเดลปัจจุบันไม่รองรับฟีเจอร์นี้และจะถูกลดระดับเป็นการฉีดคำสั่งโดยอัตโนมัติ.",
