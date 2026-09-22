@@ -195,6 +195,39 @@ class VectorSpaceAdmissionService:
         self._dimension_by_dataset: dict[str, int] = {}
         self._plan_by_tenant: dict[str, CloudPlan | None] = {}
 
+    def ensure_external_points_can_be_indexed(
+        self, *, tenant_id: str, batch_id: str, point_count: int, dimension: int
+    ) -> None:
+        """Apply the same cloud quota to pre-embedded KnowledgeFS vector batches.
+
+        A stable content-addressed batch ID prevents duplicate reservations on
+        retry. BillingService caches the usage probe; no model call is needed.
+        """
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or dify_config.VECTOR_STORE != "tidb_on_qdrant":
+            return
+        if point_count < 1 or dimension < 1:
+            raise VectorSpaceAdmissionError("Invalid external vector storage estimate")
+        plan = self._get_plan(tenant_id)
+        if plan is None:
+            return
+        estimate_limit_mb = parse_vector_space_estimate_limits(
+            dify_config.TIDB_ON_QDRANT_ESTIMATED_STORAGE_LIMITS_MB
+        ).get(plan)
+        if estimate_limit_mb is None:
+            return
+        usage_mb, plan_limit_mb = self._get_usage_and_limit_mb(tenant_id)
+        _, projected_bytes = self._reserve_projected_usage(
+            tenant_id=tenant_id,
+            document_id=f"knowledgefs:{batch_id}",
+            current_usage_bytes=math.ceil(usage_mb * _MEBIBYTE),
+            document_estimate_bytes=math.ceil(estimate_tidb_storage_bytes(point_count, dimension)),
+            estimate_limit_bytes=estimate_limit_mb * _MEBIBYTE,
+        )
+        if projected_bytes > estimate_limit_mb * _MEBIBYTE:
+            raise VectorSpaceAdmissionError(
+                format_vector_space_admission_error(math.ceil(projected_bytes / _MEBIBYTE), plan_limit_mb)
+            )
+
     def ensure_document_can_be_indexed(
         self,
         *,

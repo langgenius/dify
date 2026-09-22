@@ -30,6 +30,7 @@ OPERATION_QUEUES = {
     "deletion.dispatch": DISPATCH_QUEUE,
     "deletion.execute": MAINTENANCE_QUEUE,
     "upload.cleanup": MAINTENANCE_QUEUE,
+    "vector.cleanup": MAINTENANCE_QUEUE,
     "source.execute": SOURCE_QUEUE,
     "source.schedule": DISPATCH_QUEUE,
     "source.preview": SOURCE_QUEUE,

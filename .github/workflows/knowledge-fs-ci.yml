@@ -55,6 +55,7 @@ jobs:
               - 'api/commands/__init__.py'
               - 'api/controllers/console/__init__.py'
               - 'api/controllers/console/workspace/rbac.py'
+              - 'api/controllers/inner_api/__init__.py'
               - 'api/controllers/service_api/__init__.py'
               - 'api/core/agent/base_agent_runner.py'
               - 'api/core/app/apps/agent_app/runtime_request_builder.py'
@@ -72,6 +73,7 @@ jobs:
               - 'api/services/agent_tool_inner_service.py'
               - 'api/services/enterprise/rbac_service.py'
               - 'api/services/entities/agent_tool_inner.py'
+              - 'api/services/vector_space_admission_service.py'
               - 'api/services/knowledge_fs/**'
               - 'api/services/knowledge_fs_capability.py'
               - 'api/tests/unit_tests/dev/test_generate_knowledge_fs_contract.py'
@@ -84,6 +86,7 @@ jobs:
               - 'api/tests/unit_tests/services/enterprise/test_rbac_service.py'
               - 'api/tests/unit_tests/services/test_account_service.py'
               - 'api/tests/unit_tests/services/test_agent_tool_inner_service.py'
+              - 'api/tests/unit_tests/services/test_vector_space_admission_service.py'
               - 'api/tests/unit_tests/services/test_knowledge_fs_capability.py'
               - 'api/tests/unit_tests/services/test_knowledge_fs_product_operations.py'
               - 'api/pyproject.toml'
@@ -150,12 +153,12 @@ jobs:
 
       - name: Install Dify contract dependencies
         working-directory: .
-        run: uv sync --project api --locked --dev
+        run: uv sync --project api --locked --dev --group vdb-qdrant
 
       # The standalone KnowledgeFS repository owns TypeScript, parser, image and deployment gates.
       # This repository verifies its immutable published contract and all Dify integration code.
       - name: Verify pinned KnowledgeFS contract
-        run: uv run --project api python api/dev/generate_knowledge_fs_contract.py --check
+        run: uv run --project api --group vdb-qdrant python api/dev/generate_knowledge_fs_contract.py --check
 
       - name: Collect Dify KnowledgeFS gate targets
         working-directory: .
@@ -191,6 +194,7 @@ jobs:
             api/controllers/console/__init__.py
             api/controllers/console/datasets/datasets.py
             api/controllers/console/workspace/rbac.py
+            api/controllers/inner_api/__init__.py
             api/controllers/service_api/__init__.py
             api/core/agent/base_agent_runner.py
             api/core/app/apps/agent_app/runtime_request_builder.py
@@ -207,6 +211,7 @@ jobs:
             api/services/agent_tool_inner_service.py
             api/services/enterprise/rbac_service.py
             api/services/entities/agent_tool_inner.py
+            api/services/vector_space_admission_service.py
           )
           for path in "${production_touchpoints[@]}"; do
             add_production_target "$path"
@@ -247,6 +252,7 @@ jobs:
             api/tests/unit_tests/services/enterprise/test_rbac_service.py
             api/tests/unit_tests/services/test_account_service.py
             api/tests/unit_tests/services/test_agent_tool_inner_service.py
+            api/tests/unit_tests/services/test_vector_space_admission_service.py
           )
           for path in "${test_touchpoints[@]}"; do
             add_test_target "$path"
@@ -300,8 +306,8 @@ jobs:
             echo "Dify KnowledgeFS production target manifest is empty" >&2
             exit 1
           fi
-          uv run --project api --dev ruff format --check "${targets[@]}"
-          uv run --project api --dev ruff check "${targets[@]}"
+          uv run --project api --group vdb-qdrant --dev ruff format --check "${targets[@]}"
+          uv run --project api --group vdb-qdrant --dev ruff check "${targets[@]}"
 
       - name: Type-check Dify KnowledgeFS integration
         working-directory: .
@@ -315,7 +321,7 @@ jobs:
             echo "Dify KnowledgeFS production target manifest is empty" >&2
             exit 1
           fi
-          PYREFLY_OUTPUT_FORMAT=github ./dev/pyrefly-check-local "${targets[@]}"
+          UV_NO_SYNC=1 PYREFLY_OUTPUT_FORMAT=github ./dev/pyrefly-check-local "${targets[@]}"
 
           mypy_targets=()
           for path in "${targets[@]}"; do
@@ -327,7 +333,7 @@ jobs:
             echo "Dify KnowledgeFS Mypy target set is empty" >&2
             exit 1
           fi
-          uv run --directory api --dev mypy \
+          uv run --directory api --group vdb-qdrant --dev mypy \
             --explicit-package-bases \
             --exclude-gitignore \
             --exclude '(^|/)conftest\.py$' \
@@ -351,7 +357,7 @@ jobs:
             echo "Dify KnowledgeFS unit test target manifest is empty" >&2
             exit 1
           fi
-          uv run --project api --dev coverage run --branch --source=api -m pytest "${targets[@]}" --no-cov -q
+          uv run --project api --group vdb-qdrant --dev coverage run --branch --source=api -m pytest "${targets[@]}" --no-cov -q
 
       - name: Enforce Dify KnowledgeFS focused coverage
         working-directory: .
@@ -371,8 +377,8 @@ jobs:
               coverage_base="$latest_merge"
             fi
           fi
-          uv run --project api --dev coverage json --show-contexts -o "$report"
-          uv run --project api --dev python api/dev/check_knowledge_fs_coverage.py \
+          uv run --project api --group vdb-qdrant --dev coverage json --show-contexts -o "$report"
+          uv run --project api --group vdb-qdrant --dev python api/dev/check_knowledge_fs_coverage.py \
             --coverage-json "$report" \
             --glue-manifest "${RUNNER_TEMP:?}/knowledge-fs-ci-targets/glue-files" \
             --base "$coverage_base" \
@@ -381,7 +387,7 @@ jobs:
 
       - name: Verify Dify KnowledgeFS contract
         working-directory: .
-        run: uv run --project api python api/dev/generate_knowledge_fs_contract.py --check
+        run: uv run --project api --group vdb-qdrant python api/dev/generate_knowledge_fs_contract.py --check
 
       - name: Verify Dify Agent dependency lock
         working-directory: .
