@@ -294,8 +294,17 @@ class WorkflowServiceDifyPort:
             # never saw: a Fix/Edit repair that writes a condition value as a
             # JSON number (ESQ1-285's flip-flop) or an http body item without
             # ``type``. Must run BEFORE the preflight, which would reject them.
-            graph_normalizers.normalize_condition_values(graph.get("nodes", []))
-            graph_normalizers.normalize_http_request_bodies(graph.get("nodes", []))
+            # Both scan every node in ``graph``, not just the ones the intents
+            # named, so a node they heal may not be in ``changed_nodes`` yet --
+            # fold their returned ids in (order-preserving, deduped) so it
+            # agrees with ``diff_graphs`` below, which sees the healed node too.
+            healed_ids = [
+                *graph_normalizers.normalize_condition_values(graph.get("nodes", [])),
+                *graph_normalizers.normalize_http_request_bodies(graph.get("nodes", [])),
+            ]
+            for node_id in healed_ids:
+                if node_id not in changed_nodes:
+                    changed_nodes.append(node_id)
 
             # Dry-validate what the draft would become. Whatever raises here
             # would raise at Graph.init and kill the very first test run
