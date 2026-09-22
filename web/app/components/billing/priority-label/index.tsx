@@ -38,7 +38,7 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
           aria-label={t(($) => $['plansCommon.documentProcessingPriority'], { ns: 'billing' })}
         />
         <InfotipContent>
-          <InfotipTitle className="font-semibold text-text-primary" render={<div />}>
+          <InfotipTitle className="font-semibold text-text-primary">
             {t(($) => $['plansCommon.documentProcessingPriority'], { ns: 'billing' })}:{' '}
             {t(($) => $[`plansCommon.priority.${label}`], { ns: 'billing' })}
           </InfotipTitle>
