@@ -59,22 +59,22 @@ def analyze_goal(
     return {"fields": form_schema.reconcile_form_fields(fields, scrubbed_values), "values": scrubbed_values}
 
 
-# A dict key naming a credential -- checked against ``is_user_supplied_secret``
-# rather than the plain placeholder regex, so a realistic-looking but
-# never-stated secret (e.g. a made-up ``sk-live-...`` string) is still caught
-# even though it doesn't match any of CREDENTIAL_PLACEHOLDER_RE's shapes.
-_CREDENTIAL_KEY_RE = re.compile(r"(?i)(authorization|api[_-]?key|token|secret|password)")
-
-# Mirrors the prefix ``user_supplied.is_user_supplied_secret`` strips, so a
-# literal is checked against CREDENTIAL_PLACEHOLDER_RE the same way regardless
-# of which of the two credential checks below is doing the looking.
-_AUTH_SCHEME_PREFIX_RE = re.compile(r"^(?:bearer|basic|token)\s+", re.IGNORECASE)
-
-
 def _is_invented_literal(value: Any, key: str | None, goal_text: str, trusted_hosts: set[str]) -> bool:
     """True when ``value`` (found under ``key``, possibly nested inside a
     field's dict/list default) is a URL or credential the LLM invented
-    rather than one the goal actually states."""
+    rather than one the goal actually states.
+
+    An off-goal URL blanks the field regardless of key. A credential-shaped
+    placeholder (``<...>``, ``YOUR_API_KEY``, ...) only blanks it when the
+    value is under a credential-named key (``user_supplied.is_credential_key``,
+    decided by the key's LAST segment -- not by containing "token" or
+    "password" anywhere) or the value itself starts with an auth scheme
+    (``Bearer ``/``Basic ``/``Token ``); otherwise an ordinary default like
+    ``"Dear <customer_name>,"`` would be blanked for no reason. A
+    credential-keyed value that isn't placeholder-shaped but also never
+    appears in the goal (e.g. an invented ``sk-live-...`` string) is still
+    caught via ``is_user_supplied_secret``.
+    """
     if isinstance(value, dict):
         return any(_is_invented_literal(v, k, goal_text, trusted_hosts) for k, v in value.items())
     if isinstance(value, list):
@@ -83,14 +83,11 @@ def _is_invented_literal(value: Any, key: str | None, goal_text: str, trusted_ho
         return False
     if user_supplied.url_hosts(value) - trusted_hosts:
         return True
-    stripped = _AUTH_SCHEME_PREFIX_RE.sub("", value, count=1)
-    if user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(stripped):
+    credential_key = key is not None and user_supplied.is_credential_key(key)
+    stripped = user_supplied.strip_auth_scheme(value)
+    if (credential_key or stripped != value) and user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(stripped):
         return True
-    if (
-        key is not None
-        and _CREDENTIAL_KEY_RE.search(key)
-        and not user_supplied.is_user_supplied_secret(value, goal_text)
-    ):
+    if credential_key and not user_supplied.is_user_supplied_secret(value, goal_text):
         return True
     return False
 
