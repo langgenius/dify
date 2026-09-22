@@ -1,12 +1,15 @@
 """Unit tests for evaluation task result helpers."""
 
 import io
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
 from unittest.mock import MagicMock
 
 import pytest
+from celery.exceptions import Retry
 from openpyxl import load_workbook
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.evaluation.entities.evaluation_entity import (
     CustomizedMetricOutputField,
@@ -18,9 +21,10 @@ from core.evaluation.entities.evaluation_entity import (
     NodeInfo,
 )
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig, JudgmentResult
+from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
-from models.evaluation import EvaluationRun, EvaluationRunStatus
+from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunItemStatus, EvaluationRunStatus
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
     _apply_judgment,
@@ -32,11 +36,16 @@ from tasks.evaluation_task import (
     _generate_result_xlsx,
     _merge_customized_results,
     _merge_result,
+    _persist_results,
+    _persist_target_checkpoint,
     _renew_evaluation_run_heartbeat,
     _renew_evaluation_run_heartbeat_while_running,
+    _resume_retrieval_rows,
+    _resume_workflow_rows,
     _stamp_and_merge,
     _workflow_task_id,
     reconcile_stale_evaluation_runs,
+    run_evaluation,
 )
 
 _NODE_INFO = NodeInfo(node_id="llm-1", type="llm", title="Answer")
@@ -130,6 +139,44 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
     persist_results.assert_called_once()
 
 
+def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.evaluate_with_customized_workflow.side_effect = EvaluationWorkflowVersionNotFoundError(
+        "Pinned evaluation workflow version was deleted."
+    )
+    persist_results = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", MagicMock())
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", MagicMock())
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        evaluation_model_provider="",
+        evaluation_model="",
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id="evaluator-app-1",
+            evaluation_workflow_version_id="evaluator-version-1",
+            input_fields={},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        ),
+        input_list=[EvaluationDatasetInput(index=10, inputs={"query": "hello"})],
+    )
+
+    with pytest.raises(EvaluationWorkflowVersionNotFoundError, match="was deleted"):
+        _execute_evaluation_runner(
+            session=MagicMock(),
+            run_data=run_data,
+            evaluation_instance=evaluation_instance,
+            node_run_result_mapping_list=[{"llm-1": NodeRunResult(outputs={"text": "answer"})}],
+        )
+
+    persist_results.assert_not_called()
+
+
 def test_missing_target_rows_are_materialized_as_errors() -> None:
     input_list = [
         EvaluationDatasetInput(index=1, inputs={"query": "first"}),
@@ -219,6 +266,283 @@ def test_execute_evaluation_starts_running_lease_before_work(
         assert run.heartbeat_at is not None
     assert maintained_run_ids == [run_id]
     execute_running.assert_called_once()
+
+
+def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000061"
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id="30000000-0000-0000-0000-000000000002",
+                target_type="knowledge_base",
+                target_id="30000000-0000-0000-0000-000000000003",
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.PENDING,
+                total_items=1,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+
+    @contextmanager
+    def create_session() -> Generator[Session, None, None]:
+        with sqlite_session_factory() as session:
+            yield session
+
+    transient_error = RuntimeError("temporary database outage")
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+    monkeypatch.setattr("tasks.evaluation_task._execute_evaluation", MagicMock(side_effect=transient_error))
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_MAX_RETRIES", 3)
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_RETRY_DELAY", 7)
+    retry = MagicMock(return_value=Retry("scheduled"))
+    monkeypatch.setattr(run_evaluation, "retry", retry)
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type="knowledge_base",
+        target_id="30000000-0000-0000-0000-000000000003",
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[EvaluationDatasetInput(index=1, inputs={"query": "hello"})],
+    )
+
+    run_evaluation.push_request(retries=0)
+    try:
+        with pytest.raises(Retry):
+            run_evaluation.run(run_data.model_dump(mode="json"))
+    finally:
+        run_evaluation.pop_request()
+
+    retry.assert_called_once_with(exc=transient_error, countdown=7, throw=False)
+    with sqlite_session_factory() as session:
+        run = session.get(EvaluationRun, run_id)
+        assert run is not None
+        assert run.status == EvaluationRunStatus.PENDING
+        assert run.error == "Retry 1/3 scheduled after: temporary database outage"
+        assert run.completed_at is None
+
+
+def test_run_evaluation_does_not_retry_missing_pinned_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000071"
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id="30000000-0000-0000-0000-000000000002",
+                target_type="apps",
+                target_id="30000000-0000-0000-0000-000000000003",
+                target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.RUNNING,
+                total_items=1,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+
+    @contextmanager
+    def create_session() -> Generator[Session, None, None]:
+        with sqlite_session_factory() as session:
+            yield session
+
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+    monkeypatch.setattr(
+        "tasks.evaluation_task._execute_evaluation",
+        MagicMock(side_effect=EvaluationWorkflowVersionNotFoundError("Pinned workflow version was deleted.")),
+    )
+    retry = MagicMock()
+    monkeypatch.setattr(run_evaluation, "retry", retry)
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type="apps",
+        target_id="30000000-0000-0000-0000-000000000003",
+        target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[EvaluationDatasetInput(index=1, inputs={"query": "hello"})],
+    )
+
+    run_evaluation.push_request(retries=0)
+    try:
+        run_evaluation.run(run_data.model_dump(mode="json"))
+    finally:
+        run_evaluation.pop_request()
+
+    retry.assert_not_called()
+    with sqlite_session_factory() as session:
+        run = session.get(EvaluationRun, run_id)
+        assert run is not None
+        assert run.status == EvaluationRunStatus.FAILED
+        assert run.error == "Pinned workflow version was deleted."
+
+
+def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000081"
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id="30000000-0000-0000-0000-000000000002",
+                target_type="apps",
+                target_id="30000000-0000-0000-0000-000000000003",
+                target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.RUNNING,
+                total_items=1,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+        item = EvaluationDatasetInput(index=7, inputs={"query": "hello"}, expected_output="world")
+
+        _persist_target_checkpoint(session, run_id, item, "30000000-0000-0000-0000-000000000091")
+        _persist_target_checkpoint(session, run_id, item, "30000000-0000-0000-0000-000000000091")
+
+        checkpoints = session.query(EvaluationRunItem).filter_by(evaluation_run_id=run_id).all()
+        assert len(checkpoints) == 1
+        assert checkpoints[0].status == EvaluationRunItemStatus.TARGET_COMPLETED
+
+        _persist_results(
+            session,
+            run_id,
+            [EvaluationItemResult(index=7, actual_output="answer")],
+            [item],
+        )
+
+        session.refresh(checkpoints[0])
+        run = session.get(EvaluationRun, run_id)
+        assert checkpoints[0].status == EvaluationRunItemStatus.COMPLETED
+        assert checkpoints[0].workflow_run_id == "30000000-0000-0000-0000-000000000091"
+        assert run is not None
+        assert run.completed_items == 1
+        assert run.failed_items == 0
+
+
+def test_resume_workflow_rows_reuses_target_checkpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000101"
+    item = EvaluationDatasetInput(index=7, inputs={"query": "hello"})
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [
+                EvaluationRun(
+                    id=run_id,
+                    tenant_id="30000000-0000-0000-0000-000000000002",
+                    target_type="apps",
+                    target_id="30000000-0000-0000-0000-000000000003",
+                    target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.RUNNING,
+                    total_items=1,
+                    created_by="30000000-0000-0000-0000-000000000006",
+                ),
+                EvaluationRunItem(
+                    evaluation_run_id=run_id,
+                    workflow_run_id="30000000-0000-0000-0000-000000000091",
+                    item_index=7,
+                    status=EvaluationRunItemStatus.TARGET_COMPLETED,
+                    inputs='{"query": "hello"}',
+                ),
+            ]
+        )
+        session.commit()
+
+        node_results = {"llm-1": NodeRunResult(outputs={"text": "answer"})}
+        query_results = MagicMock(return_value=node_results)
+        execute_targets = MagicMock()
+        execute_runner = MagicMock()
+        monkeypatch.setattr(EvaluationService, "_query_node_run_results", query_results)
+        monkeypatch.setattr(EvaluationService, "execute_targets", execute_targets)
+        monkeypatch.setattr("tasks.evaluation_task._execute_evaluation_runner", execute_runner)
+        run_data = EvaluationRunData(
+            evaluation_run_id=run_id,
+            tenant_id="30000000-0000-0000-0000-000000000002",
+            target_type="apps",
+            target_id="30000000-0000-0000-0000-000000000003",
+            target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+            evaluation_model_provider="",
+            evaluation_model="",
+            input_list=[item],
+        )
+
+        _resume_workflow_rows(session, run_data, MagicMock())
+
+    execute_targets.assert_not_called()
+    query_results.assert_called_once()
+    assert execute_runner.call_args.kwargs["node_run_result_mapping_list"] == [node_results]
+    assert execute_runner.call_args.kwargs["workflow_run_id_map"] == {7: "30000000-0000-0000-0000-000000000091"}
+    assert execute_runner.call_args.kwargs["task_positions"] == [0]
+
+
+def test_resume_retrieval_rows_skips_completed_checkpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000111"
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [
+                EvaluationRun(
+                    id=run_id,
+                    tenant_id="30000000-0000-0000-0000-000000000002",
+                    target_type="knowledge_base",
+                    target_id="30000000-0000-0000-0000-000000000003",
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.RUNNING,
+                    total_items=2,
+                    created_by="30000000-0000-0000-0000-000000000006",
+                ),
+                EvaluationRunItem(
+                    evaluation_run_id=run_id,
+                    item_index=1,
+                    status=EvaluationRunItemStatus.COMPLETED,
+                    inputs='{"query": "first"}',
+                    judgment="{}",
+                ),
+            ]
+        )
+        session.commit()
+        execute_retrieval = MagicMock(return_value=([NodeRunResult(outputs={"result": []})], [None]))
+        evaluate_retrieval = MagicMock()
+        monkeypatch.setattr(EvaluationService, "execute_retrieval_test_targets", execute_retrieval)
+        monkeypatch.setattr("tasks.evaluation_task._evaluate_retrieval_results", evaluate_retrieval)
+        run_data = EvaluationRunData(
+            evaluation_run_id=run_id,
+            tenant_id="30000000-0000-0000-0000-000000000002",
+            target_type="knowledge_base",
+            target_id="30000000-0000-0000-0000-000000000003",
+            evaluation_model_provider="",
+            evaluation_model="",
+            input_list=[
+                EvaluationDatasetInput(index=1, inputs={"query": "first"}),
+                EvaluationDatasetInput(index=2, inputs={"query": "second"}),
+            ],
+        )
+
+        _resume_retrieval_rows(session, run_data, MagicMock(), "account-1")
+
+    execute_retrieval.assert_called_once()
+    assert execute_retrieval.call_args.kwargs["input_list"][0].index == 2
+    evaluate_retrieval.assert_called_once()
+    assert evaluate_retrieval.call_args.kwargs["run_data"].input_list[0].index == 2
+    assert evaluate_retrieval.call_args.kwargs["report_progress"] is False
 
 
 def test_heartbeat_loop_renews_until_run_is_no_longer_running(monkeypatch: pytest.MonkeyPatch) -> None:

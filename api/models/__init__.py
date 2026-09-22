@@ -69,6 +69,7 @@ from .evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
     EvaluationRunItem,
+    EvaluationRunItemStatus,
     EvaluationRunStatus,
     EvaluationTargetType,
 )
@@ -293,6 +294,7 @@ __all__ = [
     "EvaluationConfiguration",
     "EvaluationRun",
     "EvaluationRunItem",
+    "EvaluationRunItemStatus",
     "EvaluationRunStatus",
     "EvaluationTargetType",
     "ExecutionExtraContent",

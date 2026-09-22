@@ -1790,6 +1790,14 @@ class EvaluationConfig(BaseSettings):
         description="Maximum seconds without an evaluation run heartbeat before recovery.",
         default=180,
     )
+    EVALUATION_RUN_MAX_RETRIES: NonNegativeInt = Field(
+        description="Maximum retries after an evaluation task fails with a retryable error.",
+        default=3,
+    )
+    EVALUATION_RUN_RETRY_DELAY: PositiveInt = Field(
+        description="Base delay in seconds for exponential evaluation task retries.",
+        default=30,
+    )
     EVALUATION_MAX_PARALLEL_TARGETS: PositiveInt = Field(
         description="Maximum target executions performed in parallel by one evaluation task.",
         default=5,

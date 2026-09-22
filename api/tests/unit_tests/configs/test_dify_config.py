@@ -51,10 +51,13 @@ def test_evaluation_config_rejects_heartbeat_interval_not_shorter_than_lease() -
 
 
 def test_evaluation_config_accepts_heartbeat_interval_shorter_than_lease() -> None:
-    EvaluationConfig(
+    config = EvaluationConfig(
         EVALUATION_RUN_HEARTBEAT_INTERVAL=30,
         EVALUATION_RUN_LEASE_TIMEOUT=180,
     )
+
+    assert config.EVALUATION_RUN_MAX_RETRIES == 3
+    assert config.EVALUATION_RUN_RETRY_DELAY == 30
 
 
 class _IsolatedDifyConfig(DifyConfig):
