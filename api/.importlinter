@@ -568,6 +568,22 @@ source_modules =
 forbidden_modules =
     flask
 
+[importlinter:contract:trial-app-application-boundary]
+name = Trial app access and generation services are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.trial_app_access_service
+    services.trial_app_generation_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.app_generate_service
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:billing-application-boundary]
 name = Billing application services and ports are framework and infrastructure neutral
 type = forbidden
