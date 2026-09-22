@@ -26,6 +26,7 @@ __all__ = [
     "CREDENTIAL_PLACEHOLDER_RE",
     "is_credential_key",
     "is_credential_param_key",
+    "is_user_supplied_host",
     "is_user_supplied_secret",
     "is_user_supplied_url",
     "strip_auth_scheme",
@@ -82,9 +83,34 @@ def url_hosts(text: str) -> set[str]:
     return hosts
 
 
+def is_user_supplied_host(host: str, trusted_text: str) -> bool:
+    """True iff the user actually typed ``host``: it is the host of a
+    ``http(s)://`` URL in ``trusted_text`` (``url_hosts``), OR -- for a host
+    written without a scheme ("our renderer is at api.pptrender.io/v1", or a
+    requirement value ``api.pptrender.io/v1/render``) -- it appears verbatim,
+    case-insensitively, anywhere in ``trusted_text``.
+
+    The scheme-less match only applies to a dotted host: a single label
+    (``localhost``, ``renderer``) would match any stray word in the goal.
+
+    Caveat: the scheme-less match is a plain substring test, so a host that
+    is a substring of a longer one the user typed also counts as supplied
+    (``pptrender.io`` when the user wrote ``api.pptrender.io``). A host that
+    merely shares a suffix with a typed one but does not itself appear
+    (``cdn.pptrender.io``) is still not user-supplied.
+    """
+    normalized = (host or "").lower()
+    if not normalized:
+        return False
+    if normalized in url_hosts(trusted_text):
+        return True
+    return "." in normalized and normalized in (trusted_text or "").lower()
+
+
 def is_user_supplied_url(url: str, trusted_text: str) -> bool:
-    """True iff ``url`` is something the user actually gave: its host
-    appears among the URLs literally present in ``trusted_text``.
+    """True iff ``url`` is something the user actually gave: its host is one
+    the user typed (``is_user_supplied_host`` -- a URL in ``trusted_text``,
+    or the host written there without a scheme).
 
     A Dify template in the HOST position (``urls.host_is_templated``: the url
     starts with one, or its host contains one) is a variable, not a literal,
@@ -98,9 +124,9 @@ def is_user_supplied_url(url: str, trusted_text: str) -> bool:
     if urls.host_is_templated(url):
         return True
     parts = urls.split_origin(url)
-    if parts is None or not parts.host:
+    if parts is None:
         return False
-    return parts.host.lower() in url_hosts(trusted_text)
+    return is_user_supplied_host(parts.host, trusted_text)
 
 
 def strip_auth_scheme(value: str) -> str:

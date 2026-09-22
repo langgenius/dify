@@ -60,13 +60,15 @@ def analyze_goal(
     return {"fields": form_schema.reconcile_form_fields(fields, scrubbed_values), "values": scrubbed_values}
 
 
-def _is_invented_literal(value: Any, key: str | None, goal_text: str, trusted_hosts: set[str]) -> bool:
+def _is_invented_literal(value: Any, key: str | None, goal_text: str) -> bool:
     """True when ``value`` (found under ``key``, possibly nested inside a
     field's dict/list default) is a URL or credential the LLM invented
     rather than one the goal actually states.
 
-    An off-goal URL blanks the field regardless of key. A credential-shaped
-    placeholder (``<...>``, ``YOUR_API_KEY``, ...) only blanks it when the
+    An off-goal URL -- one whose host the goal never names, with or without a
+    scheme (``user_supplied.is_user_supplied_host``) -- blanks the field
+    regardless of key. A credential-shaped placeholder (``<...>``,
+    ``YOUR_API_KEY``, ...) only blanks it when the
     value is under a credential-named key (``user_supplied.is_credential_key``,
     decided by the key's LAST segment -- not by containing "token" or
     "password" anywhere) or the value itself starts with an auth scheme
@@ -77,12 +79,12 @@ def _is_invented_literal(value: Any, key: str | None, goal_text: str, trusted_ho
     caught via ``is_user_supplied_secret``.
     """
     if isinstance(value, dict):
-        return any(_is_invented_literal(v, k, goal_text, trusted_hosts) for k, v in value.items())
+        return any(_is_invented_literal(v, k, goal_text) for k, v in value.items())
     if isinstance(value, list):
-        return any(_is_invented_literal(item, None, goal_text, trusted_hosts) for item in value)
+        return any(_is_invented_literal(item, None, goal_text) for item in value)
     if not isinstance(value, str):
         return False
-    if user_supplied.url_hosts(value) - trusted_hosts:
+    if any(not user_supplied.is_user_supplied_host(host, goal_text) for host in user_supplied.url_hosts(value)):
         return True
     credential_key = key is not None and user_supplied.is_credential_key(key)
     stripped = user_supplied.strip_auth_scheme(value)
@@ -103,8 +105,7 @@ def _scrub_invented_defaults(values: dict[str, Any], goal_text: str) -> dict[str
     dict -- so the user is prompted to fill it in themselves rather than the
     workflow running against a host or secret that doesn't exist.
     """
-    trusted_hosts = user_supplied.url_hosts(goal_text)
-    blanked = [key for key, value in values.items() if _is_invented_literal(value, key, goal_text, trusted_hosts)]
+    blanked = [key for key, value in values.items() if _is_invented_literal(value, key, goal_text)]
     if not blanked:
         return values
     scrubbed = dict(values)
