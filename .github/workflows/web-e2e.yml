@@ -34,6 +34,9 @@ jobs:
 
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
+        with:
+          # Browser jobs wait for this job, including its post-action cache saves.
+          cache-save: 'false'
 
       - name: Restore Next.js build cache
         id: next-cache
