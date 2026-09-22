@@ -551,7 +551,7 @@ def _gen_graph_with_http(url: str) -> dict:
     }
 
 
-def _build_with(gen_graph: dict):
+def _build_with(gen_graph: dict, *, trusted_text: str = ""):
     with (
         patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
         patch(
@@ -564,7 +564,7 @@ def _build_with(gen_graph: dict):
             return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
         ),
     ):
-        return build.build_nodes("t1", {}, ["Call the PPT API"]).intents
+        return build.build_nodes("t1", {}, ["Call the PPT API"], trusted_text=trusted_text).intents
 
 
 def test_build_nodes_grounds_a_placeholder_endpoint_into_a_required_start_variable():
@@ -642,6 +642,34 @@ def test_build_nodes_leaves_a_real_endpoint_and_a_templated_url_alone():
         start = next(i for i in intents if i.args.get("node_type") == "start")
         assert http.args["config"]["url"] == url
         assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_an_endpoint_the_user_never_supplied_even_when_not_placeholder_shaped():
+    """A plausible, real-looking host the model invented (S5b/ESQ1-302's shape
+    one step earlier: ``api.pptrender.io``) must still be grounded once
+    trusted_text is available -- ``_is_placeholder_endpoint`` alone would miss
+    it, since nothing about the URL LOOKS invented the way ``example.com`` or
+    ``your-api.com`` do."""
+    goal = "Build a workflow that renders a slide deck from bullet points and returns a download link."
+    intents = _build_with(_gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=goal)
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
+    assert var["required"] is True
+
+
+def test_build_nodes_leaves_an_endpoint_alone_when_the_user_actually_supplied_its_host():
+    """The mirror case: trusted_text literally names the same host the
+    generated URL uses, so it is not a fabrication and must be left alone."""
+    goal = "Call https://api.pptrender.io to render a slide deck from bullet points."
+    intents = _build_with(_gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=goal)
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "https://api.pptrender.io/v1/render"
+    assert start.args["config"]["variables"] == []
 
 
 def test_is_placeholder_endpoint_recognises_the_usual_inventions():
