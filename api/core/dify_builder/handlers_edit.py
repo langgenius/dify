@@ -29,6 +29,7 @@ from core.dify_builder.contract import (
     TestResultCard,
     TestStat,
 )
+from core.dify_builder.errors import DraftWouldNotStartError
 from core.dify_builder.handlers_fix import (
     NO_OUTPUT_BODY,
     NO_OUTPUT_REPLY,
@@ -40,6 +41,7 @@ from core.dify_builder.handlers_fix import (
     build_change_set,
     build_form_fields,
     dead_end_branch_node_id,
+    drop_unapplied_repair,
     emit_canvas,
     first_failed_node,
     is_input_failure,
@@ -237,6 +239,35 @@ _EDIT_EXECUTION_STEPS = [
 ]
 
 
+def _change_not_applied(
+    s: Session,
+    fc: DifyBuilderContext,
+    progress: ProgressReporter,
+    *,
+    title: str,
+    body: str,
+    reply_text: str,
+) -> StepResult:
+    """apply_repair refused the edit and wrote nothing: say why and keep the
+    change plan at its gate. (Edit applies with on_canvas=None, so no canvas
+    marker streamed and there is nothing to revert on the client.)"""
+    fc.staged_repair = []
+    progress.fail_step("edit-apply")
+    execution = progress.finish(status="error")
+    error_items = append_card(fc, ErrorCard(title=title, body=body, tone="danger"))
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            execution=execution,
+            reply_text=reply_text,
+            cards=["error"],
+        ),
+    )
+    return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*error_items, *turn_items])
+
+
 def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) THE EDIT. Only ``approve_repair`` (resolved from approve_plan)
     applies: read the current graph, get the canned set_node_config intents,
@@ -274,35 +305,33 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         result = env.dify.apply_repair(
             s.app_id, turn.actor, intents, on_canvas=None, expected_revision=fc.last_snapshot_hash
         )
-    except ValueError as exc:
+    except DraftWouldNotStartError as exc:
         # apply_repair's preflight: the edited draft would fail at Graph.init.
         # Nothing was written; keep the change plan at its gate as a card.
         logger.warning("Dify Builder: edit rejected before write for app %s: %s", s.app_id, exc)
-        fc.staged_repair = []
-        progress.fail_step("edit-apply")
-        execution = progress.finish(status="error")
-        error_items = append_card(
+        return _change_not_applied(
+            s,
             fc,
-            ErrorCard(
-                title="The workflow can't start",
-                body=f"The generated workflow would fail before its first node: {exc}",
-                tone="danger",
+            progress,
+            title="The workflow can't start",
+            body=f"The generated workflow would fail before its first node: {exc}",
+            reply_text=(
+                "I didn't apply the change: the workflow would fail before its first node. Adjust it and approve again."
             ),
         )
-        turn_items = append_card(
+    except ValueError as exc:
+        # graph_ops refused an intent (e.g. "node not found") before the
+        # startability check ever ran. Nothing was written either -- same
+        # recovery, but not "can't start".
+        logger.warning("Dify Builder: edit could not be applied for app %s: %s", s.app_id, exc)
+        return _change_not_applied(
+            s,
             fc,
-            AssistantTurnItem(
-                turn_id=progress.operation_id,
-                stage_id=str(s.current_state),
-                execution=execution,
-                reply_text=(
-                    "I didn't apply the change: the workflow would fail before its first node. "
-                    "Adjust it and approve again."
-                ),
-                cards=["error"],
-            ),
+            progress,
+            title="Couldn't apply the workflow",
+            body=f"The generated workflow couldn't be applied to the draft: {exc}",
+            reply_text="I couldn't apply the change -- see the error above. Adjust it and approve again.",
         )
-        return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*error_items, *turn_items])
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     emit_canvas(env, "apply_edit_plan")
@@ -823,20 +852,30 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 on_canvas=env.emit_canvas,
                 expected_revision=fc.last_snapshot_hash,
             )
+        except DraftWouldNotStartError as exc:
+            # The fix applied, but apply_repair's preflight found the result
+            # would fail at Graph.init, so nothing was written. Not a stale
+            # fix: say so, then the same surface as below.
+            logger.warning(
+                "Dify Builder: staged repair would leave a draft that cannot start for app %s: %s", s.app_id, exc
+            )
+            items = drop_unapplied_repair(
+                fc,
+                progress,
+                title="The workflow can't start",
+                body=f"The proposed fix would leave a workflow that fails before its first node: {exc}",
+            )
+            return StepResult(next=PcState.EDIT_AWAIT_REPAIR, context=fc, items=items)
         except ValueError as exc:
             # Same stale-intent window as Build's gate: apply_repair
             # re-validates against the draft as it is NOW, and a bad intent
             # must not kill the session (ESQ1-271).
             logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
-            fc.staged_repair = []
-            progress.finish()
-            items = append_card(
+            items = drop_unapplied_repair(
                 fc,
-                ErrorCard(
-                    title="Couldn't apply the fix",
-                    body=f"The proposed fix no longer applies to the current draft: {exc}",
-                    tone="danger",
-                ),
+                progress,
+                title="Couldn't apply the fix",
+                body=f"The proposed fix no longer applies to the current draft: {exc}",
             )
             return StepResult(next=PcState.EDIT_AWAIT_REPAIR, context=fc, items=items)
         fc.last_snapshot_hash = result.new_hash

@@ -34,6 +34,7 @@ from core.dify_builder.contract import (
     TestResultCard,
     TestStat,
 )
+from core.dify_builder.errors import DraftWouldNotStartError
 from core.dify_builder.handlers_fix import (
     MAX_REPEATED_REPAIRS,
     NO_OUTPUT_BODY,
@@ -47,6 +48,7 @@ from core.dify_builder.handlers_fix import (
     build_change_set,
     build_form_fields,
     dead_end_branch_node_id,
+    drop_unapplied_repair,
     emit_canvas,
     failure_signature,
     first_failed_node,
@@ -389,6 +391,41 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     )
 
 
+def _graph_not_applied(
+    env: Env,
+    s: Session,
+    fc: DifyBuilderContext,
+    progress: ProgressReporter,
+    *,
+    title: str,
+    body: str,
+    reply_text: str,
+) -> StepResult:
+    """apply_repair refused the generated graph and wrote nothing: say why and
+    keep the plan approvable (re-approving regenerates the graph).
+
+    apply_repair streams a canvas marker per applied intent BEFORE it raises
+    (on_canvas=env.emit_canvas), so the client has already seen add_*/apply_*
+    markers for mutations that were never written. The draft is still the
+    checkpoint taken at plan approval (create_checkpoint), so tell the client
+    to revert to it, same signal perform_revert uses."""
+    emit_canvas(env, "revert_checkpoint")
+    progress.fail_step("build-apply-graph")
+    execution = progress.finish(status="error")
+    error_items = append_card(fc, ErrorCard(title=title, body=body, tone="danger"))
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=progress.operation_id,
+            stage_id=str(s.current_state),
+            execution=execution,
+            reply_text=reply_text,
+            cards=["error"],
+        ),
+    )
+    return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc, items=[*error_items, *turn_items])
+
+
 def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) THE BUILD. Only ``approve_repair`` (resolved from approve_plan)
     builds: drive apply_repair once with all create_node/connect intents
@@ -569,43 +606,38 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         result = env.dify.apply_repair(
             s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
         )
-    except ValueError as exc:
+    except DraftWouldNotStartError as exc:
         # The generator's own checks passed, but the draft would fail at
         # Graph.init (apply_repair's preflight; ESQ1-302/303 both died there
         # on the first test run). Nothing was written. Say which node and why,
         # and keep the plan approvable: re-approving regenerates the graph.
         logger.warning("Dify Builder: generated graph rejected before write for app %s: %s", s.app_id, exc)
-        # apply_repair streams a canvas marker per applied intent BEFORE its
-        # preflight runs (on_canvas=env.emit_canvas above), so the client has
-        # already seen add_*/apply_* markers for mutations that were never
-        # written. Nothing was persisted -- the draft is still the checkpoint
-        # taken at plan approval (create_checkpoint, above) -- so tell the
-        # client to revert to it, same signal perform_revert uses.
-        emit_canvas(env, "revert_checkpoint")
-        progress.fail_step("build-apply-graph")
-        execution = progress.finish(status="error")
-        error_items = append_card(
+        return _graph_not_applied(
+            env,
+            s,
             fc,
-            ErrorCard(
-                title="The workflow can't start",
-                body=f"The generated workflow would fail before its first node: {exc}",
-                tone="danger",
+            progress,
+            title="The workflow can't start",
+            body=f"The generated workflow would fail before its first node: {exc}",
+            reply_text=(
+                "I didn't apply the workflow: it would fail before its first node. Adjust the plan and approve again."
             ),
         )
-        turn_items = append_card(
+    except ValueError as exc:
+        # graph_ops refused an intent (e.g. "node not found") before the
+        # startability check ever ran. Nothing was written either, so the
+        # same recovery -- but "can't start" would send the user hunting for
+        # a broken node that does not exist.
+        logger.warning("Dify Builder: generated graph could not be applied for app %s: %s", s.app_id, exc)
+        return _graph_not_applied(
+            env,
+            s,
             fc,
-            AssistantTurnItem(
-                turn_id=progress.operation_id,
-                stage_id=str(s.current_state),
-                execution=execution,
-                reply_text=(
-                    "I didn't apply the workflow: it would fail before its first node. "
-                    "Adjust the plan and approve again."
-                ),
-                cards=["error"],
-            ),
+            progress,
+            title="Couldn't apply the workflow",
+            body=f"The generated workflow couldn't be applied to the draft: {exc}",
+            reply_text="I couldn't apply the workflow -- see the error above. Adjust the plan and approve again.",
         )
-        return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc, items=[*error_items, *turn_items])
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     fc.built_node_ids = [
@@ -1212,6 +1244,20 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 on_canvas=env.emit_canvas,
                 expected_revision=fc.last_snapshot_hash,
             )
+        except DraftWouldNotStartError as exc:
+            # The fix applied, but apply_repair's preflight found the result
+            # would fail at Graph.init, so nothing was written. Not a stale
+            # fix: say so, then the same no-safe-fix surface as below.
+            logger.warning(
+                "Dify Builder: staged repair would leave a draft that cannot start for app %s: %s", s.app_id, exc
+            )
+            items = drop_unapplied_repair(
+                fc,
+                progress,
+                title="The workflow can't start",
+                body=f"The proposed fix would leave a workflow that fails before its first node: {exc}",
+            )
+            return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
         except ValueError as exc:
             # The repair was validated against the graph as it stood at
             # propose time; apply_repair re-validates against the draft as it
@@ -1219,15 +1265,11 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             # intent stale. A bad intent must not kill the session (ESQ1-271)
             # -- degrade to the no-safe-fix surface and let the user decide.
             logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
-            fc.staged_repair = []
-            progress.finish()
-            items = append_card(
+            items = drop_unapplied_repair(
                 fc,
-                ErrorCard(
-                    title="Couldn't apply the fix",
-                    body=f"The proposed fix no longer applies to the current draft: {exc}",
-                    tone="danger",
-                ),
+                progress,
+                title="Couldn't apply the fix",
+                body=f"The proposed fix no longer applies to the current draft: {exc}",
             )
             return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
         fc.last_snapshot_hash = result.new_hash
