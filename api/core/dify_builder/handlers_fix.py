@@ -42,6 +42,7 @@ from core.dify_builder.contract import (
     SummaryCard,
     TestResultCard,
 )
+from core.dify_builder.errors import DraftWouldNotStartError
 from core.dify_builder.models import (
     ApplyResult,
     ChangeSet,
@@ -82,6 +83,7 @@ __all__ = [
     "build_form_fields",
     "dead_end_branch_node_id",
     "decode_checklist_errors",
+    "drop_unapplied_repair",
     "emit_canvas",
     "failure_signature",
     "first_failed_node",
@@ -405,6 +407,18 @@ def perform_revert(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     fc.last_structure_fingerprint = env.dify.structural_fingerprint(snap.graph)
     env.repo.invalidate_conversation_items(s.id, fc.checkpoint_seq)
     fc.checkpoint_id = ""
+
+
+def drop_unapplied_repair(
+    fc: DifyBuilderContext, progress: ProgressReporter, *, title: str, body: str
+) -> list[ConversationItem]:
+    """The staged repair was refused before anything was written: drop it
+    (so the empty-repair guard stops a re-approve of the same intents), close
+    the progress, and say why in an error card. Shared by every repair-apply
+    gate (Fix's apply, Build's and Edit's await_repair)."""
+    fc.staged_repair = []
+    progress.finish()
+    return append_card(fc, ErrorCard(title=title, body=body, tone="danger"))
 
 
 def first_failed_node(nodes: list[NodeOutput]) -> str:
@@ -734,20 +748,29 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
         result = env.dify.apply_repair(
             s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
         )
+    except DraftWouldNotStartError as exc:
+        # The fix applied, but apply_repair's preflight found the result would
+        # fail at Graph.init, so nothing was written. Not a stale fix: say so.
+        logger.warning(
+            "Dify Builder: staged repair would leave a draft that cannot start for app %s: %s", s.app_id, exc
+        )
+        items = drop_unapplied_repair(
+            fc,
+            progress,
+            title="The workflow can't start",
+            body=f"The proposed fix would leave a workflow that fails before its first node: {exc}",
+        )
+        return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     except ValueError as exc:
         # Same stale-intent window as Build's/Edit's gate: apply_repair
         # re-validates against the draft as it is NOW, and a bad intent must
         # not kill the session (ESQ1-271).
         logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
-        fc.staged_repair = []
-        progress.finish()
-        items = append_card(
+        items = drop_unapplied_repair(
             fc,
-            ErrorCard(
-                title="Couldn't apply the fix",
-                body=f"The proposed fix no longer applies to the current draft: {exc}",
-                tone="danger",
-            ),
+            progress,
+            title="Couldn't apply the fix",
+            body=f"The proposed fix no longer applies to the current draft: {exc}",
         )
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     fc.last_snapshot_hash = result.new_hash

@@ -31,3 +31,13 @@ class BadRequestError(Exception):
 
 class ModelUnavailableError(BadRequestError):
     """The chosen or default Builder model cannot be used with its current configuration."""
+
+
+class DraftWouldNotStartError(ValueError):
+    """Raised by the Dify port when the graph it was asked to write would fail
+    at Graph.init, so nothing was written.
+
+    Handlers catch it to say "the workflow can't start" rather than "the
+    change no longer applies". A ``ValueError`` so older ``except ValueError``
+    guards around the port's writes still catch it.
+    """

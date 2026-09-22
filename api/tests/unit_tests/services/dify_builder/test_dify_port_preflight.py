@@ -81,6 +81,16 @@ def test_a_repair_that_would_not_start_is_rejected_before_it_is_written(mock_ses
     assert isinstance(excinfo.value, ValueError)  # the handlers' existing ``except ValueError`` catches it
 
 
+def test_a_preflight_rejection_is_the_core_draft_would_not_start_error():
+    """The handlers live in ``core`` and cannot import ``services``, so they
+    tell "this draft would not start" apart from a stale intent by the core
+    type this one subclasses."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+
+    assert issubclass(PreflightError, DraftWouldNotStartError)
+    assert issubclass(PreflightError, ValueError)
+
+
 def test_a_pre_existing_broken_node_the_repair_does_not_touch_does_not_veto_it(mock_session: MagicMock):
     broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
     fix_elsewhere = [MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"})]
