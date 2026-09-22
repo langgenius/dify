@@ -11,12 +11,15 @@ from pathlib import Path
 import yaml
 
 from factories import variable_factory
+from services.dsl_import_errors import missing_app_section_error
 from services.workflow_variable_reference_validator import (
     format_variable_reference_errors,
     validate_variable_references,
 )
 
-_FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "workflow" / "minimal_non_uuid_conversation_variable.yml"
+_FIXTURE_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "workflow"
+_CAN_LOAD_FIXTURE = _FIXTURE_DIR / "minimal_non_uuid_conversation_variable.yml"
+_CANNOT_LOAD_FIXTURE = _FIXTURE_DIR / "minimal_not_an_app.yml"
 
 
 def _node(node_id: str, node_type: str, title: str = "", *, selector: list[str] | None = None) -> dict:
@@ -364,10 +367,22 @@ class TestFormatVariableReferenceErrors:
 
 
 def test_minimal_fake_node_fixture_coerces_id_and_flags_skipped_branch() -> None:
-    """The checked-in DSL is the public repro: one bad id, one fake skipped producer."""
-    document = yaml.safe_load(_FIXTURE.read_text(encoding="utf-8"))
+    """The loadable DSL imports as an app, then still has a bad id and a skipped producer."""
+    document = yaml.safe_load(_CAN_LOAD_FIXTURE.read_text(encoding="utf-8"))
+    assert document["kind"] == "app"
+    assert document["app"]["mode"] == "advanced-chat"
     variable = document["workflow"]["conversation_variables"][0]
     built = variable_factory.build_conversation_variable_from_mapping(variable)
     assert built.id != "opt-comp-prompt-var"
     issues = validate_variable_references(document["workflow"]["graph"])
     assert any(issue.node_id == "answer" and issue.referenced_node_id == "producer" for issue in issues)
+
+
+def test_minimal_not_an_app_fixture_names_the_fake_nodes() -> None:
+    """The other DSL has nodes and edges, and no app section, so import must reject it."""
+    document = yaml.safe_load(_CANNOT_LOAD_FIXTURE.read_text(encoding="utf-8"))
+    assert "app" not in document
+    assert [node["id"] for node in document["nodes"]] == ["sketch-start", "sketch-answer"]
+    error = missing_app_section_error([key for key in document if isinstance(key, str)])
+    assert error.startswith("Missing app data in YAML content.")
+    assert "found: meta, nodes, edges" in error

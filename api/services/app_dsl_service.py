@@ -54,6 +54,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.app_package_service import PreparedAppPackage
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
+from services.dsl_import_errors import missing_app_section_error
 from services.dsl_version import check_version_compatibility
 from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import RBACService
@@ -282,17 +283,10 @@ class AppDslService:
             # Extract app data
             app_data = data.get("app")
             if not app_data:
-                found = ", ".join(key for key in original_top_level_keys if key != "app")
-                if len(found) > 80:
-                    found = found[:80].rstrip(", ") + "…"
                 return Import(
                     id=import_id,
                     status=ImportStatus.FAILED,
-                    error=(
-                        "Missing app data in YAML content. "
-                        "Not a valid Dify app DSL: the top-level 'app' section is required "
-                        f"(found: {found or 'none'})."
-                    ),
+                    error=missing_app_section_error(original_top_level_keys),
                 )
 
             if package is not None and (package.agent_resources or package.icons):
