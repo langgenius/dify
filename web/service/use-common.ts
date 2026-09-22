@@ -1,4 +1,3 @@
-import type { FileTypesRes } from './datasets'
 import type {
   ModelParameterRule,
   ModelProvider,
@@ -100,13 +99,6 @@ export const useMailRegister = () => {
     }) => {
       return post<MailRegisterResponse>('/email-register', { body })
     },
-  })
-}
-
-export const useFileSupportTypes = () => {
-  return useQuery<FileTypesRes>({
-    queryKey: [NAME_SPACE, 'file-types'],
-    queryFn: () => get<FileTypesRes>('/files/support-type'),
   })
 }
 
