@@ -3652,6 +3652,66 @@ class TestWorkflowGeneratorStructuredErrors:
         assert nodes[1]["data"]["prompt_template"][0]["text"] == "Summarize {{#node2.body#}}."
         assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
 
+    def test_repairs_invented_structured_output_reference_to_text_on_a_schemaless_llm(self):
+        # Task 2 / B3a: a schema-less LLM node (structured output planned but
+        # never enabled) gets a reference to the invented structured-output
+        # family -- repair every name in that family to the node's real
+        # (default) output, `text`.
+        nodes = [
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "title": "LLM",
+                    "prompt_template": [{"role": "user", "text": "hi"}],
+                    # The flag is off, but a schema block was left behind by
+                    # an isolated node-builder call -- still schema-less.
+                    "structured_output": {"schema": {"properties": {"answer": {"type": "string"}}}},
+                },
+            },
+            {
+                "id": "node3",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Summarize {{#node2.__structured_output__#}}."}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Summarize {{#node2.text#}}."
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_keeps_structured_output_reference_unresolved_on_a_real_structured_output_llm(self):
+        # The same reference on an LLM node that really has structured
+        # output enabled (and a schema) must NOT be guessed away.
+        nodes = [
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "title": "LLM",
+                    "prompt_template": [{"role": "user", "text": "hi"}],
+                    "structured_output_enabled": True,
+                    "structured_output": {"schema": {"properties": {"answer": {"type": "string"}}}},
+                },
+            },
+            {
+                "id": "node3",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Summarize {{#node2.output#}}."}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Summarize {{#node2.output#}}."
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert [e["code"] for e in errors] == ["UNRESOLVED_REFERENCE"]
+
     def test_planner_json_failure_retries_once_then_recovers(self):
         # First planner response is non-JSON (the LLM wrapped the response in
         # prose) — we retry exactly once with a corrective system message,
@@ -4805,6 +4865,96 @@ def test_tool_result_is_aliased_to_text():
 
     node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
     assert G._aliased_output(node, "result") == "text"
+
+
+_INVENTED_STRUCTURED_OUTPUT_NAMES = (
+    "__structured_output__",
+    "__structured_output",
+    "structured_output",
+    "output",
+    "result",
+)
+
+
+def _llm_node(node_id="node2", *, structured_output_enabled=None, schema_properties=None, switch_on_key=False):
+    """Build a raw graph ``llm`` node dict. ``structured_output_enabled=None``
+    means the key is omitted entirely (never planned). ``switch_on_key`` uses
+    the older ``structured_output_switch_on`` alias instead of the current
+    ``structured_output_enabled`` key."""
+    data: dict = {"type": "llm", "title": "LLM", "prompt_template": [{"role": "user", "text": "hi"}]}
+    if structured_output_enabled is not None:
+        key = "structured_output_switch_on" if switch_on_key else "structured_output_enabled"
+        data[key] = structured_output_enabled
+    if schema_properties is not None:
+        data["structured_output"] = {"schema": {"properties": schema_properties}}
+    return {"id": node_id, "data": data}
+
+
+@pytest.mark.parametrize("invented_name", _INVENTED_STRUCTURED_OUTPUT_NAMES)
+def test_invented_structured_output_name_aliases_to_text_when_never_planned(invented_name):
+    """B3a: no structured-output key at all -- a schema-less LLM node's only
+    real output is ``text``."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _llm_node()
+    assert G._aliased_output(node, invented_name) == "text"
+
+
+@pytest.mark.parametrize("invented_name", _INVENTED_STRUCTURED_OUTPUT_NAMES)
+def test_invented_structured_output_name_aliases_to_text_when_flag_off_despite_a_leftover_schema(invented_name):
+    """The enable flag, not just schema presence, decides schema-less-ness:
+    a disabled node with a leftover/planned schema is still schema-less, so
+    the invented name still resolves to `text` rather than staying
+    unresolved. (Distinct from the pre-existing sole-output fallback, which
+    only looks at the schema and would leave this case ambiguous.)"""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _llm_node(structured_output_enabled=False, schema_properties={"answer": {"type": "string"}})
+    assert G._aliased_output(node, invented_name) == "text"
+
+
+@pytest.mark.parametrize("invented_name", _INVENTED_STRUCTURED_OUTPUT_NAMES)
+def test_invented_structured_output_name_respects_the_switch_on_alias_key(invented_name):
+    """The older ``structured_output_switch_on`` key must count too."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    off_node = _llm_node(structured_output_enabled=False, switch_on_key=True)
+    assert G._aliased_output(off_node, invented_name) == "text"
+
+    on_node = _llm_node(
+        structured_output_enabled=True,
+        switch_on_key=True,
+        schema_properties={"answer": {"type": "string"}},
+    )
+    assert G._aliased_output(on_node, invented_name) is None
+
+
+@pytest.mark.parametrize("invented_name", _INVENTED_STRUCTURED_OUTPUT_NAMES)
+def test_invented_structured_output_name_is_not_aliased_when_really_enabled(invented_name):
+    """A real structured-output LLM node may mean one of these names as an
+    actual schema property; the alias must not paper over that."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _llm_node(structured_output_enabled=True, schema_properties={"answer": {"type": "string"}})
+    assert G._aliased_output(node, invented_name) is None
+
+
+def test_llm_unrelated_invented_name_is_not_aliased():
+    """The alias table is scoped to the known structured-output family --
+    an unrelated invented name is still left for the caller to report."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _llm_node()
+    assert G._aliased_output(node, "presentation") is None
+
+
+def test_code_node_reference_is_untouched_by_the_llm_alias_table():
+    """The new LLM entries must not leak onto other node types."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = {"id": "node2", "data": {"type": "code", "outputs": {"summary": {"type": "string"}}}}
+    assert G._aliased_output(node, "result") is None
+    assert G._aliased_output(node, "output") is None
 
 
 class TestPostprocessGraphNormalizers:

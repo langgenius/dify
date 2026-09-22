@@ -1941,15 +1941,54 @@ class WorkflowGenerator:
         # `result` is the output name models reach for on a tool node; the
         # real one is `text`. Rewriting beats failing the build over it.
         (BuiltinNodeTypes.TOOL, "result"): "text",
+        # The structured-output family a builder invents when it planned
+        # structured output for this LLM node but the node ended up
+        # schema-less (never enabled, or enabled with an empty schema -- see
+        # ``_llm_is_schema_less``). Gated in ``_aliased_output``: a node
+        # that genuinely has structured output enabled keeps these names
+        # unresolved rather than guessing at a schema property.
+        (BuiltinNodeTypes.LLM, "__structured_output__"): "text",
+        (BuiltinNodeTypes.LLM, "__structured_output"): "text",
+        (BuiltinNodeTypes.LLM, "structured_output"): "text",
+        (BuiltinNodeTypes.LLM, "output"): "text",
+        (BuiltinNodeTypes.LLM, "result"): "text",
     }
+
+    @classmethod
+    def _llm_is_schema_less(cls, data: dict[str, Any]) -> bool:
+        """
+        Whether an ``llm`` node's ``data`` describes a node with no usable
+        structured output. True when the enable flag -- current key
+        ``structured_output_enabled``, or its older alias
+        ``structured_output_switch_on`` -- is falsy, OR the
+        ``structured_output`` schema carries no properties. Either condition
+        alone makes the structured-output family not a real output here
+        (e.g. a schema block left behind by an isolated node-builder call
+        that never turned the flag on), so an invented reference to it
+        should fall back to the node's actual (default) output instead of
+        staying unresolved.
+        """
+        enabled = bool(data.get("structured_output_enabled")) or bool(data.get("structured_output_switch_on"))
+        if not enabled:
+            return True
+        schema = ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
+        return not schema
 
     @classmethod
     def _aliased_output(cls, node: dict[str, Any], var: str) -> str | None:
         """Map a known-wrong output name to the correct one for this node type,
         but only when that correct output is actually declared (safety)."""
-        node_type = (node.get("data") or {}).get("type")
+        data = node.get("data") or {}
+        node_type = data.get("type")
         replacement = cls._OUTPUT_ALIASES.get((node_type, var))
-        if replacement is not None and cls._declares_variable(node, replacement):
+        if replacement is None:
+            return None
+        if node_type == BuiltinNodeTypes.LLM and not cls._llm_is_schema_less(data):
+            # A real structured-output LLM node may genuinely mean one of
+            # these names as a schema property; only a schema-less node
+            # gets the invented name rewritten.
+            return None
+        if cls._declares_variable(node, replacement):
             return replacement
         return None
 
