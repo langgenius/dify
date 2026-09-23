@@ -132,6 +132,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
             return [tailwindcss()]
           }),
           optimizeDeps: {
+            // Keep Next navigation mockable in provider hydration tests.
+            exclude: ['next-i18next'],
             include: [
               '@base-ui/react/fieldset',
               '@base-ui/react/number-field',

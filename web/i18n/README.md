@@ -93,10 +93,19 @@ because i18next mutates its requested namespace list.
 
 Feature-owned Suspense boundaries can isolate translation loading along with the
 feature's other loading work. Initial shell resources avoid suspending common
-navigation, bootstrap errors and notifications. SSR-loaded feature resources are
-not automatically serialized into the browser store: the browser may load those
-modules again during hydration. This trades a smaller initial RSC payload for
-additional module requests; measure both when changing preload boundaries.
+navigation, bootstrap errors and notifications. During SSR, a Provider-local
+collector reads react-i18next's reported namespaces and streams newly loaded
+resources through `useServerInsertedHTML`, including the active fallback language.
+Inline updates use the request CSP nonce and escape script-sensitive text. Each
+Provider has a hydration-stable ID so concurrent requests and separate Providers
+do not share a resource collection.
+
+The client merges available streamed resources before creating its i18next instance
+and subscribes to later updates. This avoids fetching SSR-used dictionaries again
+while hydrating interactive controls. Namespaces for features not rendered during
+SSR continue to load on demand. Client navigation has no HTML insertion pass and
+continues to use the existing backend. The collector sends complete namespaces,
+not individual keys.
 
 Language switching follows i18next's requested namespace list, including features
 visited earlier in the session. Previously loaded bundles remain cached. There is
@@ -128,3 +137,18 @@ only `zh-Hans/common` and `zh-Hans/login`. Navigation to sign-up and back preser
 Chinese and requested no additional translation modules. These counts use the
 client build manifest, exclude loader modules, and are not backend latency metrics.
 Authenticated feature navigation remains unverified.
+
+### Streaming resource verification
+
+The Chromium hydration regression renders the real creation menu on the server,
+collects its dictionaries, and hydrates with client backend requests held pending.
+Its first click opens the menu without disabling the trigger or retrying the click.
+It also verifies that a later resource update reaches the mounted Provider before
+its feature renders. Unit coverage checks incremental collection, fallback
+languages, Provider isolation, and inline-script escaping.
+
+A production Next.js sign-in check with controlled unauthenticated API fixtures
+confirmed English and Chinese `login` resources in the HTML stream, no repeated
+login translation chunk requests, and no browser hydration errors. Production
+Vinext validation remains pending; its build was stopped to limit local resource
+usage. The complete authenticated Agent creation journey must still pass CI.

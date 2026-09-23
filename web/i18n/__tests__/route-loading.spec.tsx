@@ -13,6 +13,7 @@ import { changeLanguage } from '../client'
 vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({ pathname: '/signin', loadResource: vi.fn() }))
 vi.mock('@/next/headers', () => ({
+  headers: async () => new Headers(),
   cookies: async () => ({ get: () => ({ value: 'zh-Hans' }) }),
 }))
 vi.mock('../load-resource', () => ({ loadI18nResource: mocks.loadResource }))
