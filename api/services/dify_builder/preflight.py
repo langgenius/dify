@@ -24,7 +24,7 @@ does), which is why it lives in ``services/dify_builder`` and not in the
 I/O-free ``core/dify_builder``.
 """
 
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from typing import NamedTuple
 
 from pydantic import ValidationError
@@ -39,13 +39,29 @@ from services.dify_builder import credentials, graph_ops
 _CANVAS_ONLY_NODE_TYPE = "custom-note"
 
 # Stands in for a pydantic error location when validation did not raise a
-# ``ValidationError`` at all -- graphon's
-# ``HttpRequestNodeAuthorization.check_config`` raises a bare ``KeyError`` for an
-# ``authorization`` with no ``type``. A crash has no field path, so the
-# exception's own class name IS its location: the same crash before and after a
-# change is the same problem, a different one is a new problem. Angle-bracketed
-# so it can never collide with a real field name.
+# ``ValidationError`` at all. graphon's
+# ``HttpRequestNodeAuthorization.check_config`` (nodes/http_request/entities.py)
+# is a ``mode="before"`` validator on ``config`` that reads ``values.data["type"]``
+# -- and ``type`` is absent from ``values.data`` whenever it failed its own
+# ``Literal["no-auth", "api-key"]`` check. So the rule is: an ``authorization``
+# with a ``config`` KEY PRESENT and ``type`` absent-or-invalid raises a bare
+# ``KeyError``. Probed, all four shapes: ``{"config": {...}}``,
+# ``{"type": None, "config": {...}}`` and ``{"type": "bogus", "config": {...}}``
+# crash; ``{}`` and ``{"type": None}`` (no ``config`` key, so the validator never
+# runs) raise an ordinary ``ValidationError`` at ``("authorization", "type")``.
+# ``_CRASH_AUTHORIZATION_SHAPES`` in test_preflight.py pins all of them.
+# A crash has no field path, so the exception's own class and message stand in
+# for one: the same crash before and after a change is the same problem, a
+# different one is a new problem. Angle-bracketed so it can never collide with a
+# real field name.
 _CRASH_LOCATION = "<crash>"
+
+# How much of a crash's own message joins its class name in that stand-in
+# location. Without it every non-``ValidationError`` failure on a node collapses
+# to ``("<crash>", "KeyError")``, so a change that swaps one ``KeyError`` shape
+# for a different one is not a new problem. Truncated because the location is
+# compared for equality, not read.
+_CRASH_MESSAGE_CHARS = 200
 
 
 def preflight_errors(graph: Graph) -> list[str]:
@@ -130,13 +146,32 @@ def _error_locations(exc: BaseException) -> frozenset[tuple[str, ...]]:
                 return located
             break
         current = current.__cause__ or current.__context__
-    # No field path to key on. Fall back to the crash's own class -- never an
-    # empty set, which would make a real problem permanently un-new.
-    return frozenset({(_CRASH_LOCATION, type(exc).__name__)})
+    # No field path to key on. Fall back to the crash's own class AND its
+    # (truncated) message -- never an empty set, which would make a real problem
+    # permanently un-new. The message is part of the key because the class alone
+    # makes every ``KeyError`` on a node the same problem, so a change that
+    # replaces one crashing shape with another would pass unnoticed.
+    return frozenset({(_CRASH_LOCATION, type(exc).__name__, str(exc)[:_CRASH_MESSAGE_CHARS])})
+
+
+def _location_label(location: tuple[str, ...]) -> str:
+    """A location rendered for a message a human and the model both read.
+
+    A crash location's third element is the exception's OWN message -- the one
+    part of a location not derived from a field path, and so the only part that
+    could echo a value out of the node. It is keyed on (see
+    ``_error_locations``) and never shown.
+    """
+    if location[:1] == (_CRASH_LOCATION,):
+        return ".".join(location[:2])
+    return ".".join(location)
 
 
 def _withheld_message(node: Mapping, exc: Exception, locations: frozenset[tuple[str, ...]]) -> str:
-    """The engine's refusal, with the node's credentials withheld.
+    """The engine's refusal, with the node's credentials withheld -- to
+    ``credentials.redact_node_config``'s DECLARED SCOPE, which is not every
+    string in the node (see that module: a request ``body`` value is outside it,
+    on purpose).
 
     pydantic puts ``input_value=<repr of what it was given>`` in its message, and
     for a model-level error that repr is the node's whole ``data`` -- which for
@@ -157,7 +192,7 @@ def _withheld_message(node: Mapping, exc: Exception, locations: frozenset[tuple[
         # Redaction changed the verdict -- not observed (it replaces a secret
         # VALUE with a string of the same type), but a message built from the
         # real node could carry the secret, so say only what is certainly safe.
-        paths = ", ".join(sorted(".".join(location) for location in locations))
+        paths = ", ".join(sorted(_location_label(location) for location in locations))
         return f"{_node_label(node)}: refused by the engine at {paths}"
     return _raw_message(safe_node, safe_exc)
 
@@ -190,29 +225,48 @@ def _node_problems(graph: Graph) -> list[_NodeProblem]:
     return problems
 
 
-def new_preflight_problems(before: Graph, after: Graph) -> list[str]:
-    """Every node of ``after`` the engine refuses at a location it did not
-    already refuse in ``before``, one message each, in node order.
+def new_preflight_problems(before: Graph, after: Graph, touched: Collection[str]) -> list[str]:
+    """Every problem this batch is ANSWERABLE for, one message each, in node
+    order. Empty when the batch is safe to write.
 
-    NEW problems only. A draft the user already broke -- a half-configured node
-    they left on the canvas -- must not veto an unrelated change somewhere else,
-    and a change that heals one is a change that passed.
+    Two rules, because a node the batch wrote and a node it left alone are not
+    the same question.
 
-    Keyed on the set of pydantic error LOCATIONS per node (see
-    ``_error_locations``), which is the only key that gets both halves right:
+    **A node in ``touched`` must be fully startable.** No exemption at all: if
+    the engine still refuses it after the write, the batch is refused. A repair
+    targets a node that is by definition already invalid (that is the whole
+    ESQ1-302 / ESQ1-303 / F4 family), so under any "new problems only" rule a
+    repair that swaps one bad value for another bad value AT THE SAME field
+    path -- or fixes one of three missing fields and leaves two -- produces
+    nothing new, is written, and the card says "Applied the changes" over a
+    draft that still cannot start. That silent false success is Fix's main
+    line, not an edge case, and no key short of "did it actually work" catches
+    it. ``touched`` is the caller's own record of the nodes whose DATA it wrote
+    (``graph_ops.DryRun.changed_nodes``, ``apply_repair``'s ``written_nodes``),
+    so this asks exactly that.
 
-    * a node that was already refused and this change breaks FURTHER gains a
-      location, so it IS reported. Node identity alone would exempt it -- and
-      since a Fix repair targets a node that is by definition already invalid,
-      that would leave ``propose_repair`` with no node-data coverage on its own
-      culprit;
-    * a node whose remaining errors merely re-render (pydantic quotes a
-      truncated repr of the input, so filling one of three missing fields
-      rewrites the other two messages) gains NO location, so a valid partial
-      repair is not refused as if it had broken something.
+    "Wrote its data" is narrower than "appears in the change set", and the
+    difference is load-bearing in this direction: a ``connect`` reports both its
+    endpoints as changed, but adding an edge cannot change a node's
+    ``validate_node_config`` verdict, so counting an endpoint here would let
+    merely WIRING an already-broken node make that node's pre-existing defect
+    veto the batch -- the exact invariant the second rule below exists to keep.
+    Both callers exclude it; see ``graph_ops.DryRun``.
+
+    **Every other node keeps its location-keyed exemption.** A draft the user
+    already broke -- a half-configured node they left on the canvas -- must not
+    veto an unrelated change, and a change that heals one is a change that
+    passed. Keyed on the set of pydantic error LOCATIONS per node (see
+    ``_error_locations``), which is the only key that gets both halves right for
+    a node nobody wrote:
+
+    * one the change breaks FURTHER gains a location, so it IS reported;
+    * one whose remaining errors merely re-render (pydantic quotes a truncated
+      repr of the input, so a change elsewhere can rewrite its message) gains NO
+      location, so it is not reported as if it had broken.
 
     A node absent from ``before`` has no known locations, so everything the
-    engine says about a node this batch ADDED is new.
+    engine says about a node this batch ADDED is new either way.
 
     The message reported is that node's whole refusal, pre-existing locations
     included: the model fixing it needs the node's full state, not just the delta.
@@ -220,20 +274,49 @@ def new_preflight_problems(before: Graph, after: Graph) -> list[str]:
     ``before`` is deliberately NOT healed first, while ``after`` (the dry run's
     working copy, or the port's mutated draft) already has been. The asymmetry
     can only ever grow the set of already-known locations, which is the safe
-    direction: it may let a pre-existing defect through, it can never manufacture
-    a new one.
+    direction: it may let a pre-existing defect through on an UNtouched node, it
+    can never manufacture a new one.
+
+    ``touched`` is required rather than defaulted: the answer depends on what
+    was written, and a caller that silently got the weaker rule is exactly the
+    bug this parameter exists to close. Pass ``()`` to compare two graphs with
+    no batch behind them.
 
     One definition for two callers that must agree: ``dify_port.apply_repair``
     raises ``PreflightError`` on a non-empty result, and ``vet_intents`` predicts
     exactly that refusal one step earlier, while a corrective re-prompt is still
-    affordable. If they computed it separately the dry run would be guessing.
+    affordable. If they computed it separately the dry run would be guessing --
+    which is why ``touched`` has to be the same set on both sides too (the
+    pre-heal ``changed_nodes``; see ``graph_ops.DryRun``).
     """
+    written = frozenset(touched)
     known: dict[tuple[str, str], frozenset[tuple[str, ...]]] = {}
     for problem in _node_problems(before):
         known[problem.node] = known.get(problem.node, frozenset()) | problem.locations
     return [
-        problem.message for problem in _node_problems(after) if problem.locations - known.get(problem.node, frozenset())
+        problem.message
+        for problem in _node_problems(after)
+        if problem.node[0] in written or problem.locations - known.get(problem.node, frozenset())
     ]
+
+
+def _withheld_args(intent: MutationIntent) -> dict:
+    """``intent.args`` with the args that carry a node's DATA -- ``create_node``
+    and ``insert_between``'s ``config``, ``set_node_config``'s ``value``
+    (``graph_ops._REDACTABLE_ARGS``) -- credential-redacted.
+
+    A rejection line inlines the whole arg dict into a corrective re-prompt, so
+    it is the same kind of channel as the node config ``_withheld_message``
+    covers. These args are model-authored today, so nothing stored can ride
+    along; redacting anyway costs one dict copy and means a future path that
+    round-trips a real node's data through an intent cannot re-open the leak.
+    """
+    args = dict(intent.args)
+    for key in ("config", "value"):
+        carried = args.get(key)
+        if isinstance(carried, dict):
+            args[key] = credentials.redact_node_config(carried)
+    return args
 
 
 class VettedIntents(NamedTuple):
@@ -277,8 +360,12 @@ def vet_intents(
     back.
     """
     dry_run = graph_ops.filter_applicable(graph, intents, allowed_node_types)
-    rejections = [f"- {intent.op} {intent.args}: {reason}" for intent, reason in dry_run.rejected]
+    rejections = [f"- {intent.op} {_withheld_args(intent)}: {reason}" for intent, reason in dry_run.rejected]
     rejections += [
-        f"- the draft would then not start: {problem}" for problem in new_preflight_problems(graph, dry_run.graph)
+        f"- the draft would then not start: {problem}"
+        # The dry run's own record of what the batch wrote, which is the port's
+        # too -- a node this batch touches has to be startable, not merely no
+        # worse than it was.
+        for problem in new_preflight_problems(graph, dry_run.graph, dry_run.changed_nodes)
     ]
     return VettedIntents(dry_run.applicable, rejections)

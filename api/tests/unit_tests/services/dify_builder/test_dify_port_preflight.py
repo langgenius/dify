@@ -333,3 +333,88 @@ def test_apply_repair_writes_a_template_transform_the_llm_created_without_variab
     written = next(n for n in kwargs["graph"]["nodes"] if n["id"] == "node7")
     assert written["data"]["variables"] == []
     assert written["data"]["template"] == "excellent"
+
+
+def test_a_repair_that_leaves_its_own_culprit_invalid_is_refused_not_applied(mock_session: MagicMock):
+    """The silent false success the location key cannot see, and the reason a
+    node the batch WROTE gets no exemption at all.
+
+    ``node2`` is already refused at ``cases.0.conditions.0.comparison_operator``
+    ("equals"). The repair rewrites that very field to another value the engine
+    also refuses ("klingon"). Nothing is new -- same node, same field path -- so
+    under new-problems-only the batch applies, the draft still will not start,
+    and the Builder reports "Applied the changes". It must be refused instead,
+    and the refusal must name the field so the corrective re-prompt has
+    something to work with."""
+    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
+    still_broken = json.loads(json.dumps(_BROKEN_IF_ELSE_CONFIG["cases"]))
+    still_broken[0]["conditions"][0]["comparison_operator"] = "klingon"
+    repair = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": still_broken})]
+
+    with pytest.raises(PreflightError, match=r"node 'node2' \(if-else\)") as excinfo:
+        _apply(mock_session, {"nodes": [_START, broken], "edges": []}, repair)
+
+    assert "comparison_operator" in str(excinfo.value)
+    assert "klingon" in str(excinfo.value)  # names the value it just wrote, not the one it replaced
+
+
+def test_a_repair_that_only_half_fixes_the_node_it_wrote_is_refused_too(mock_session: MagicMock):
+    """Same rule, the other shape: the repair genuinely improves ``node2`` (it
+    adds the missing ``varType``) but leaves the operator invalid. Improved is
+    not startable, and writing it would still produce a draft that dies at
+    ``Graph.init``."""
+    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
+    half = json.loads(json.dumps(_BROKEN_IF_ELSE_CONFIG["cases"]))
+    half[0]["conditions"][0]["varType"] = "number"
+    repair = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": half})]
+
+    with pytest.raises(PreflightError, match=r"node 'node2' \(if-else\)"):
+        _apply(mock_session, {"nodes": [_START, broken], "edges": []}, repair)
+
+
+def test_a_node_the_healer_touched_is_still_not_a_node_this_batch_wrote(mock_session: MagicMock):
+    """``heal_nodes_for_preflight`` scans EVERY node, so its returned ids are
+    folded into ``changed_nodes`` for the change set. They must NOT widen the set
+    the preflight holds answerable: a node the healer merely normalized is not a
+    node this batch is responsible for, and letting it in would re-break "a
+    pre-existing defect does not veto an unrelated fix".
+
+    ``node4`` is the exact shape that proves it: the healer DOES touch it (its
+    body item has no ``type``, so it is healed and its id is returned) and it is
+    STILL invalid afterwards (no ``url``, which nothing heals). No intent names
+    it. The write must go through anyway."""
+    healed_but_still_broken = {
+        "id": "node4",
+        "type": "custom",
+        "data": {
+            "type": "http-request",
+            "title": "H",
+            "method": "post",
+            "authorization": {"type": "no-auth"},
+            "headers": "",
+            "params": "",
+            "body": {"type": "json", "data": [{"key": "k", "value": "v"}]},  # no ``type`` -> healed
+        },
+    }
+    elsewhere = [MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, healed_but_still_broken], "edges": []}, elsewhere)
+
+    assert "node4" in result.changed_nodes  # the healer's id still reaches the change set...
+    sync.assert_called_once()  # ...and its untouched, unhealed defect still did not veto the write
+
+
+def test_wiring_an_already_broken_node_is_still_written(mock_session: MagicMock):
+    """The port's own copy of the ``connect`` exclusion. ``node2`` is refused as
+    it stands and this batch only adds an EDGE to it -- ``apply_connect`` reports
+    both endpoints as changed (right for the change set), but an edge cannot
+    change a node's ``validate_node_config`` verdict, so neither endpoint may
+    enter the set the preflight holds answerable. Without the exclusion this
+    write is refused on a defect the user already had."""
+    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
+    wire = [MutationIntent(op="connect", args={"from_node": "node1", "to_node": "node2"})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, broken], "edges": []}, wire)
+
+    sync.assert_called_once()
+    assert result.changed_nodes == ["node1", "node2"]  # the change set still names both

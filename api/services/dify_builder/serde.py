@@ -75,6 +75,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         app_name_auto=bool(d.get("app_name_auto", False)),
         edit_rules=dict(d.get("edit_rules") or {}),
         edit_target_node_ids=list(d.get("edit_target_node_ids") or []),
+        last_edit_rejection=d.get("last_edit_rejection", ""),
         paused=bool(d.get("paused", False)),
         checkpoint_seq=int(d.get("checkpoint_seq", 0)),
         last_structure_fingerprint=d.get("last_structure_fingerprint", ""),

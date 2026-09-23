@@ -286,6 +286,11 @@ def propose_edit_plan(
     return [str(p) for p in plan] if isinstance(plan, list) and plan else ["Apply the requested edit"]
 
 
+# Heads the verbatim engine refusal block appended to the user prompt. Kept a
+# constant so a test can pin the exact framing the model is shown.
+_REJECTION_HEADER = "PREVIOUS ATTEMPT REJECTED BY THE ENGINE:"
+
+
 def build_edit_intents(
     model,
     edit_rules: dict[str, Any],
@@ -303,9 +308,15 @@ def build_edit_intents(
     byte-identical. An empty list is legal and simply yields today's
     title/type/handles-only context.
 
-    ``last_edit_rejection`` is declared but NOT yet read: the signature is
-    fixed now so the task that feeds a refused write back into the prompt does
-    not have to change this method's arity a second time.
+    ``last_edit_rejection`` is what the ENGINE said when it refused the
+    previous attempt's write (``handlers_edit._change_not_applied``), quoted
+    verbatim into the prompt. The gate re-reads an unchanged draft on every
+    re-approval, so ``edit_rules`` and ``graph`` are byte-identical each time
+    and this is the only input that can make a second attempt differ from the
+    first. It is also finer-grained than the dry run's own key: the preflight
+    is keyed on pydantic error LOCATIONS, so replacing one bad value with
+    another bad value at the same path is not a new problem to it, while the
+    engine's message names the value.
     """
     if model is None:
         return []
@@ -319,6 +330,8 @@ def build_edit_intents(
         + ".\n"
     )
     user = f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph, edit_target_node_ids)}"
+    if last_edit_rejection:
+        user += f"\n\n{_REJECTION_HEADER}\n{last_edit_rejection}\nDo not repeat it."
     intents = _invoke_intents(model, system, user, on_reasoning)
     if intents is None:
         return []
