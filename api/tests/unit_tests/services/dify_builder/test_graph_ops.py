@@ -1144,3 +1144,18 @@ def test_filter_applicable_survives_a_graph_whose_nodes_key_is_null():
     assert dry.applicable == []
     assert dry.rejected == []
     assert dry.graph == {"nodes": None, "edges": None}
+
+
+def test_value_at_path_reports_an_absent_slot_instead_of_raising():
+    """The read half of ``apply_set_node_config``. ``_resolve_path`` hands back
+    the PARENT for a final segment that does not exist yet -- that is the key a
+    write would create -- so a read of it has to report absence rather than
+    raise, and a path that cannot be walked at all is absence too, not a
+    crash."""
+    data = {"cases": [{"case_id": "true", "conditions": [{"id": "c1"}]}], "title": "Branch"}
+
+    assert graph_ops.value_at_path(data, "cases.0.case_id") == (True, "true")
+    assert graph_ops.value_at_path(data, "cases") == (True, data["cases"])
+    assert graph_ops.value_at_path(data, "cases.0.logical_operator") == (False, None)  # not written yet
+    assert graph_ops.value_at_path(data, "cases.7.case_id") == (False, None)  # index past the end
+    assert graph_ops.value_at_path(data, "title.nested") == (False, None)  # walks into a string
