@@ -7,7 +7,7 @@ always provided by ``LlmBuilderAgent``. The deterministic implementation stays
 as a compact fixture for state-machine tests that do not exercise model calls.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from core.dify_builder import node_defaults
@@ -244,7 +244,14 @@ class PlaceholderAgent:
             "Preserve the existing summary contract",
         ]
 
-    def build_edit_intents(self, edit_rules: dict[str, Any], graph: Graph) -> list[MutationIntent]:
+    def build_edit_intents(
+        self,
+        edit_rules: dict[str, Any],
+        graph: Graph,
+        *,
+        edit_target_node_ids: Sequence[str] = (),
+        last_edit_rejection: str | None = None,
+    ) -> list[MutationIntent]:
         # Canned config-level edits (set_node_config) on the existing LLM node,
         # matching the edit_rules semantics. Deterministic target selection:
         # prefer the canned LLM id, else the lexicographically-first node id.
