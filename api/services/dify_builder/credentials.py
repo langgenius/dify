@@ -26,10 +26,30 @@ confusable with a real credential, and it must survive a JSON round trip
 unchanged (pure ASCII, nothing JSON escapes), because the refusal check
 serializes whatever it is handed and looks for it verbatim.
 
-Scope: this module knows only what the graph itself carries. An http-request
-node's ``authorization`` block and its ``headers`` / ``params`` lines are the
-places a workflow author types a secret directly. Credentials held by a
-provider or a tool live outside the graph and never reach a prompt this way.
+SCOPE, AND WHAT IS DELIBERATELY OUTSIDE IT
+-----------------------------------------
+This module knows only what the graph itself carries, and only in three places:
+an http-request node's ``authorization`` block and its ``headers`` / ``params``
+lines. Those are where a workflow author types a secret into a FIELD THAT EXISTS
+TO HOLD ONE. Credentials held by a provider or a tool live outside the graph and
+never reach a prompt this way.
+
+NOT covered: a secret typed into a request ``body`` value (``body.data[].value``
+-- e.g. a JSON payload with an ``api_key`` in it). Verified: it reaches
+``preflight``'s refusal text verbatim, because pydantic's ``input_value`` repr
+for a model-level error is the node's whole ``data``. Callers must not claim
+otherwise.
+
+It is not closed here on purpose, and the obvious fix makes things worse.
+``graph_ops.validate_intent_args`` refuses any write carrying ``REDACTED``
+(that guard is what stops the model handing the placeholder back and destroying
+a live credential). Redaction and that guard are the same profile, so putting
+body values in scope would make http-request BODIES UNEDITABLE: the model would
+only ever see the sentinel, write it back, and be refused every time -- and a
+request body is ordinary, frequently-edited content, not a credential field.
+Closing it properly needs a second, persistence-and-prompt-only redaction
+profile that the write guard does NOT consult, which is a design change beyond
+the plan this comment was written in. Tracked as a follow-up.
 """
 
 import copy

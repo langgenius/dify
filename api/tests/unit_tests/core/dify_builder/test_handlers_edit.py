@@ -1256,3 +1256,199 @@ def test_plan_approval_threads_edit_targets_into_build_edit_intents():
     handle_plan_approval(env, turn, *repo.get_session(s.id))
 
     assert seen["targets"] == ["llm"]
+
+
+# ---- a refused edit tells the next attempt what the engine said -------------
+#
+# Triage edit-branch-failure-2026-09-22, "Why every retry is blind": the gate
+# re-reads an unchanged draft, so ``edit_rules`` and ``graph`` are byte-identical
+# on every re-approval. The live user approved the same plan three times and got
+# a byte-identical card each time because nothing recorded WHY the write was
+# refused.
+
+_PREFLIGHT_PREFIX = "the draft would not start: node 'node2' (if-else): 1 validation error for IfElseNodeData\n"
+_KLINGON = (
+    _PREFLIGHT_PREFIX + "cases.0.conditions.0.comparison_operator\n"
+    "  Input should be 'is', '=', '≥' [type=literal_error, input_value='klingon', input_type=str]"
+)
+_MARTIAN = (
+    _PREFLIGHT_PREFIX + "cases.0.conditions.0.comparison_operator\n"
+    "  Input should be 'is', '=', '≥' [type=literal_error, input_value='martian', input_type=str]"
+)
+
+
+class _RejectionRecordingAgent(PlaceholderAgent):
+    """Records the ``last_edit_rejection`` each ``build_edit_intents`` call got."""
+
+    def __init__(self):
+        self.rejections: list = []
+
+    def build_edit_intents(self, edit_rules, graph, *, edit_target_node_ids=(), last_edit_rejection=None):
+        self.rejections.append(last_edit_rejection)
+        return super().build_edit_intents(edit_rules, graph, edit_target_node_ids=edit_target_node_ids)
+
+
+def _refusing_port(*errors):
+    """A ``FakeEditDifyPort`` whose ``apply_repair`` raises ``errors`` in turn."""
+    dify = FakeEditDifyPort()
+    remaining = list(errors)
+
+    def refuse(*_a, **_k):
+        raise remaining.pop(0)
+
+    dify.apply_repair = refuse
+    return dify
+
+
+def _approve(env, session, fc):
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    return handle_plan_approval(env, turn, session, fc)
+
+
+def test_a_refused_edit_remembers_the_engines_own_reason():
+    from core.dify_builder.errors import DraftWouldNotStartError
+
+    env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError(_KLINGON)))
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert res.context.staged_repair == []
+    # verbatim, engine-sourced -- no summary, no model prose
+    assert res.context.last_edit_rejection == _KLINGON
+
+
+def test_an_edit_that_simply_did_not_apply_is_remembered_too():
+    """A ``graph_ops`` refusal never reached the startability check, but it is
+    just as blind on re-approval, so it is carried forward the same way."""
+    env, repo = _new_env(dify=_refusing_port(ValueError("node not found: x")))
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert res.context.last_edit_rejection == "node not found: x"
+
+
+def test_the_next_approval_shows_the_agent_what_the_engine_said():
+    agent = _RejectionRecordingAgent()
+    env, repo = _new_env(dify=FakeEditDifyPort(), agent=agent)
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        last_edit_rejection=_KLINGON,
+    )
+
+    _approve(env, *repo.get_session(s.id))
+
+    assert agent.rejections == [_KLINGON]
+
+
+def test_a_first_approval_passes_no_rejection_at_all():
+    agent = _RejectionRecordingAgent()
+    env, repo = _new_env(dify=FakeEditDifyPort(), agent=agent)
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["llm"]
+    )
+
+    _approve(env, *repo.get_session(s.id))
+
+    assert agent.rejections == [None]  # "" would read as a refusal with no text
+
+
+def test_a_second_refusal_at_the_same_location_replaces_the_first():
+    """The case the dry run's own key cannot cover.
+
+    ``preflight.new_preflight_problems`` is keyed on pydantic error LOCATIONS,
+    so a second attempt that leaves the culprit invalid at the SAME location
+    with a DIFFERENT bad value is not a new problem to it. The engine's text is
+    the only record fine enough to tell the two apart, so it is stored
+    unconditionally: attempt 2 is told about ``klingon``, attempt 3 about
+    ``martian``. Were the store deduplicated or written only once, attempt 3
+    would be re-prompted about a value it had already stopped writing.
+    """
+    from core.dify_builder.errors import DraftWouldNotStartError
+
+    agent = _RejectionRecordingAgent()
+    env, repo = _new_env(
+        dify=_refusing_port(DraftWouldNotStartError(_KLINGON), DraftWouldNotStartError(_MARTIAN)), agent=agent
+    )
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    session, fc = repo.get_session(s.id)
+    first = _approve(env, session, fc)
+    second = _approve(env, session, first.context)
+
+    assert agent.rejections == [None, _KLINGON]  # attempt 2 was told about klingon...
+    assert second.context.last_edit_rejection == _MARTIAN  # ...and attempt 3 will hear about martian
+    assert "klingon" not in second.context.last_edit_rejection
+
+
+def test_an_applied_edit_forgets_the_engines_earlier_refusal():
+    env, repo = _new_env(dify=FakeEditDifyPort())
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        checkpoint_id="cp-1",
+        last_edit_rejection=_KLINGON,
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert res.next == PcState.EDIT_APPLY_CHANGES
+    assert res.context.last_edit_rejection == ""
+
+
+def test_a_new_edit_goal_forgets_a_refusal_from_the_previous_one():
+    from core.dify_builder.handlers_edit import edit_registry
+
+    env, repo = _new_env()
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK, last_edit_rejection=_KLINGON)
+
+    Runner(env, edit_registry()).advance(
+        s.id,
+        Turn(
+            action=Action(kind="send_edit_goal", payload={"text": "Add a review gate"}, base_version=1),
+            actor=_actor(),
+        ),
+    )
+
+    _, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == ""
+
+
+def test_a_recovery_reset_forgets_the_refusal_of_a_batch_that_is_gone():
+    from core.dify_builder.recovery import _reset_working_fields
+
+    fc = DifyBuilderContext(last_edit_rejection=_KLINGON)
+
+    _reset_working_fields(fc)
+
+    assert fc.last_edit_rejection == ""
+
+
+def test_a_huge_refusal_is_capped_before_it_is_persisted_and_re_prompted():
+    """A batch refusal concatenates one message per node, and this text is both
+    stored in the session context blob and prepended to the next prompt."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_edit import _MAX_REJECTION_CHARS, _REJECTION_TRUNCATED_MARKER
+
+    env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError("x" * (_MAX_REJECTION_CHARS + 500))))
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert res.context.last_edit_rejection == "x" * _MAX_REJECTION_CHARS + _REJECTION_TRUNCATED_MARKER
