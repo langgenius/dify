@@ -121,7 +121,10 @@ const OpeningSettingModal = ({
     <span className="block wrap-break-word whitespace-pre-wrap">
       {t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
       <br />
-      {t(($) => $['openingStatement.placeholderLine2'], { ns: 'appDebug' })}
+      {t(($) => $['openingStatement.placeholderLine2'], {
+        ns: 'appDebug',
+        variable: '{{variable}}',
+      })}
     </span>
   )
 

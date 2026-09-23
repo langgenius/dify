@@ -134,6 +134,9 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
+      - name: Check generated i18n types
+        run: vp run i18n:check-types
+
       - name: Web tsslint
         env:
           NODE_OPTIONS: --max-old-space-size=4096

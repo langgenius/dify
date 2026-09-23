@@ -257,6 +257,7 @@
   "segment.searchResults_one": "nəticə",
   "segment.searchResults_other": "nəticə",
   "segment.searchResults_zero": "nəticə",
+  "segment.statusFilterLabel": "Seqmentləri statusa görə filtrləyin",
   "segment.summary": "Xülasə",
   "segment.summaryPlaceholder": "Axtarışda daha yaxşı nəticələr üçün qısa xülasə yazın…"
 }
