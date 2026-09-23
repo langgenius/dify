@@ -92,7 +92,6 @@ export function AgentKnowledgeRetrieval() {
         labelId={`${retrievalListId}-label`}
         panelId={retrievalListId}
         tip={knowledgeRetrievalTip}
-        tipAriaLabel={knowledgeRetrievalTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={

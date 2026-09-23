@@ -2069,14 +2069,6 @@ class OperationLog(TypeBase):
     )
 
 
-class DefaultEndUserSessionID(StrEnum):
-    """
-    End User Session ID enum.
-    """
-
-    DEFAULT_SESSION_ID = "DEFAULT-USER"
-
-
 class EndUser(Base, UserMixin):
     __tablename__ = "end_users"
     __table_args__ = (

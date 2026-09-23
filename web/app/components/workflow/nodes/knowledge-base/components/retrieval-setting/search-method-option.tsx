@@ -9,6 +9,7 @@ import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import Badge from '@/app/components/base/badge'
@@ -235,6 +236,8 @@ export function SearchMethodOption({
   reranking,
   retrievalParameters,
 }: SearchMethodOptionProps) {
+  const rerankLabelId = useId()
+
   const { t } = useTranslation()
   const isHybridSearch = option.id === RetrievalSearchMethodEnum.hybrid
   const isHybridSearchWeightedScoreMode = hybridSearch.mode === HybridSearchModeEnum.WeightedScore
@@ -287,14 +290,16 @@ export function SearchMethodOption({
                     onCheckedChange={reranking.onEnabledChange}
                     disabled={readonly}
                   />
-                  <span className="truncate">{rerankModelLabel}</span>
+                  <span id={rerankLabelId} className="truncate">
+                    {rerankModelLabel}
+                  </span>
                 </FieldLabel>
                 <Infotip>
                   <InfotipTrigger
-                    aria-label={rerankModelTip}
+                    aria-labelledby={rerankLabelId}
                     className="ml-0.5 size-3.5 shrink-0"
                   />
-                  <InfotipContent aria-label={rerankModelTip}>{rerankModelTip}</InfotipContent>
+                  <InfotipContent aria-labelledby={rerankLabelId}>{rerankModelTip}</InfotipContent>
                 </Infotip>
               </div>
             </Field>

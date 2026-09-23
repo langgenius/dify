@@ -47,6 +47,10 @@ describe('IndexingProgressItem', () => {
     // Name appears in both the file-icon mock and the display div; verify at least one
     expect(screen.getAllByText('test.pdf').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('50%')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'test.pdf' })).toHaveAttribute(
+      'aria-valuenow',
+      '50',
+    )
   })
 
   it('should render file icon for FILE source type', () => {
@@ -74,16 +78,21 @@ describe('IndexingProgressItem', () => {
     expect(screen.getByTestId('notion-icon')).toBeInTheDocument()
   })
 
-  it('should render success icon for completed status', () => {
-    render(
+  it('announces a file completing after processing without retaining its progress bar', () => {
+    const { rerender } = render(<IndexingProgressItem detail={makeDetail()} name="done.pdf" />)
+    const status = screen.getByRole('status')
+    expect(status).toBeEmptyDOMElement()
+    expect(screen.getByRole('progressbar', { name: 'done.pdf' })).toBeInTheDocument()
+
+    rerender(
       <IndexingProgressItem
         detail={makeDetail({ indexing_status: 'completed' })}
         name="done.pdf"
       />,
     )
 
-    // No progress percentage should be shown for completed
-    expect(screen.queryByText(/%/)).not.toBeInTheDocument()
+    expect(status).toHaveTextContent('done.pdf: datasetDocuments.embedding.completed')
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
   it('opens the full indexing error from the warning button', async () => {
@@ -95,7 +104,7 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.queryByText('Parse failed')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('broken.pdf: common.error: Parse failed')
     await user.click(screen.getByRole('button', { name: 'common.error' }))
     expect(await screen.findByRole('dialog')).toHaveTextContent('Parse failed')
     await user.keyboard('{Escape}')

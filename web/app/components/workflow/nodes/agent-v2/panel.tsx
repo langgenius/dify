@@ -28,6 +28,7 @@ import {
   WorkflowInlineAgentConfigureWorkspace,
   WorkflowRosterAgentOrchestratePanelContent,
 } from './components/agent-orchestrate-panel-content'
+import { AgentOutputRoutes } from './components/agent-output-routes'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { OutputEditCard } from './components/agent-output-variables/edit-card'
 import { createDraft, isDefaultOutput } from './components/agent-output-variables/utils'
@@ -140,11 +141,14 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const [localDeclaredOutputs, setLocalDeclaredOutputs] = useState<DeclaredOutputConfig[] | null>(
     null,
   )
-  const normalizedDeclaredOutputs = useMemo(
-    () => normalizeAgentV2DeclaredOutputs(inputs.agent_declared_outputs ?? []),
-    [inputs.agent_declared_outputs],
+  const declaredOutputs = useMemo(
+    () =>
+      normalizeAgentV2DeclaredOutputs(
+        localDeclaredOutputs ?? inputs.agent_declared_outputs ?? [],
+        inputs.agent_output_routes,
+      ),
+    [localDeclaredOutputs, inputs.agent_declared_outputs, inputs.agent_output_routes],
   )
-  const declaredOutputs = localDeclaredOutputs ?? normalizedDeclaredOutputs
   const rosterAgentId =
     inputs.agent_binding?.binding_type === 'roster_agent'
       ? inputs.agent_binding.agent_id
@@ -544,7 +548,10 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       setIsOutputVariablesCollapsed(false)
       const previousOutputs = getAgentV2DeclaredOutputs(inputsRef.current)
       let nextAgentTask = agentTask
-      let nextOutputs = normalizeAgentV2DeclaredOutputs(outputs)
+      let nextOutputs = normalizeAgentV2DeclaredOutputs(
+        outputs,
+        inputsRef.current.agent_output_routes,
+      )
       if (agentTask !== undefined) {
         const nextPromptOutputNames = extractAgentOutputNames(agentTask)
         const removedPromptOutputNames = [...promptOutputNamesRef.current].filter(
@@ -727,6 +734,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onOutputsChange={handleDeclaredOutputsChange}
           />
         </div>
+        <AgentOutputRoutes id={id} data={inputs} />
         <div>
           <AgentOutputVariables
             collapsed={isOutputVariablesCollapsed}

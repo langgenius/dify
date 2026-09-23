@@ -404,7 +404,7 @@ import {
   zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyBody,
   zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyPath,
   zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Return public Service API metadata without requiring an API key

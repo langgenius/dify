@@ -63,6 +63,11 @@ The non-code baseline and its repository-wide file scope live in `eslint.config.
 
 The root configuration enables both `typeAware` and `typeCheck`, so `vp check` runs type-aware rules and full diagnostics through the repository's `@typescript/native` compiler.
 
+The shared `packages/tsconfig/base.json` enforces erasable TypeScript syntax through
+`erasableSyntaxOnly`. Root tooling and TypeScript packages inherit this contract; enum
+declarations, runtime namespaces, parameter properties, and import assignments are checked
+by the compiler without a separate lint plugin.
+
 The web package still runs its existing TSSLint rule separately:
 
 ```sh

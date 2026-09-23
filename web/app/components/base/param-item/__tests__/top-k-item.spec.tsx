@@ -36,7 +36,9 @@ describe('TopKItem', () => {
     it('should render tooltip trigger', () => {
       render(<TopKItem {...defaultProps} />)
 
-      expect(screen.getByLabelText('appDebug.datasetConfig.top_kTip')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'appDebug.datasetConfig.top_k' }),
+      ).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {

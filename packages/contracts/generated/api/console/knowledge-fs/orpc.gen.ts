@@ -343,7 +343,7 @@ import {
   zPutKnowledgeFsSpacesByControlSpaceIdTagsBody,
   zPutKnowledgeFsSpacesByControlSpaceIdTagsPath,
   zPutKnowledgeFsSpacesByControlSpaceIdTagsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({

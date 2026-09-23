@@ -197,7 +197,7 @@ import {
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataBody,
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataPath,
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get dataset API base information

@@ -25,7 +25,9 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import (
+    CatalogStale,
     ErrorBody,
     ErrorDetail,
     FilenameNotExists,
@@ -233,7 +235,8 @@ class TestWireContract:
         monkeypatch.setattr("controllers.openapi.auth.pipelines._mount_flask_login", lambda _user: None)
 
         resp = openapi_app.test_client().get(
-            "/openapi/v1/account/sessions?page=0", headers={"Authorization": "Bearer dfoa_wire"}
+            "/openapi/v1/account/sessions?page=0",
+            headers={"Authorization": "Bearer dfoa_wire", CATALOG_HEADER: catalog_for(openapi_app)[1]},
         )
 
         assert resp.status_code == 422, resp.get_json()
@@ -319,6 +322,7 @@ ERROR_MATRIX = [
     (KnowledgeFsRequestTooLargeError(), 413, "knowledge_fs_request_too_large"),
     (KnowledgeFsRequestRejectedError(), 422, "knowledge_fs_request_rejected"),
     (KnowledgeFsUnavailableError(), 503, "knowledge_fs_unavailable"),
+    (CatalogStale(), 412, "catalog_stale"),
 ]
 
 

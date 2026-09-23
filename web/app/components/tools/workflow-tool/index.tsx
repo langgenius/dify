@@ -86,17 +86,6 @@ type WorkflowToolDrawerFrameProps = {
   children: React.ReactNode
 }
 
-const InfoTooltip = ({ children }: { children: string }) => {
-  return (
-    <Infotip>
-      <InfotipTrigger aria-label={children} className="ml-1 size-3.5" />
-      <InfotipContent aria-label={children} className="w-45">
-        {children}
-      </InfotipContent>
-    </Infotip>
-  )
-}
-
 const WorkflowToolDrawerFrame = ({
   title,
   closeLabel,
@@ -155,6 +144,8 @@ const WorkflowToolOutputName = React.memo(
     item: WorkflowToolProviderOutputParameter
     reservedOutputParameters: WorkflowToolProviderOutputParameter[]
   }) => {
+    const outputNameId = React.useId()
+
     const { t } = useTranslation()
     const reservedOutputDuplicateTip = t(
       ($) => $['createTool.toolOutput.reservedParameterDuplicateTip'],
@@ -168,17 +159,14 @@ const WorkflowToolOutputName = React.memo(
     const hasReservedNameConflict =
       !item.reserved && hasReservedWorkflowOutputConflict(reservedOutputParameters, item.name)
     const hasDuplicateNameConflict = !item.reserved && !!duplicateSources
-    const issueLabel = hasReservedNameConflict
-      ? hasDuplicateNameConflict
-        ? `${reservedOutputDuplicateTip} ${duplicateOutputTip}`
-        : reservedOutputDuplicateTip
-      : duplicateOutputTip
     const sources = duplicateSources || []
 
     return (
       <div className="text-[13px] leading-4.5">
         <div className="flex min-w-0 items-center gap-x-1">
-          <span className="truncate font-medium text-text-primary">{item.name}</span>
+          <span id={outputNameId} className="truncate font-medium text-text-primary">
+            {item.name}
+          </span>
           {item.reserved && (
             <span className="shrink-0 text-xs leading-4.5 text-[#ec4a0a]">
               {t(($) => $['createTool.toolOutput.reserved'], { ns: 'tools' })}
@@ -187,13 +175,13 @@ const WorkflowToolOutputName = React.memo(
           {hasReservedNameConflict || hasDuplicateNameConflict ? (
             <Infotip>
               <InfotipTrigger
-                aria-label={issueLabel}
+                aria-labelledby={outputNameId}
                 className="text-text-warning-secondary"
                 iconSize="small"
                 iconVariant="warning"
               />
               <InfotipContent
-                aria-label={issueLabel}
+                aria-labelledby={outputNameId}
                 className={hasDuplicateNameConflict ? 'w-60' : 'w-45'}
               >
                 <div className="space-y-2">
@@ -242,6 +230,7 @@ export function WorkflowToolDrawer({
 }: WorkflowToolDrawerProps) {
   const { t } = useTranslation()
   const parameterId = React.useId()
+  const toolNameLabelId = React.useId()
 
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
   const [emoji, setEmoji] = useState<Emoji>(payload.icon)
@@ -372,15 +361,18 @@ export function WorkflowToolDrawer({
             {/* name for tool call */}
             <Field name="name" className="gap-0" invalid={!isWorkflowToolNameValid(name)}>
               <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                <FieldLabel className="py-0 text-text-primary">
+                <FieldLabel id={toolNameLabelId} className="py-0 text-text-primary">
                   {t(($) => $['createTool.nameForToolCall'], { ns: 'tools' })}
                 </FieldLabel>
                 <span aria-hidden className="ml-1 text-text-destructive">
                   *
                 </span>
-                <InfoTooltip>
-                  {t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
-                </InfoTooltip>
+                <Infotip>
+                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ml-1 size-3.5" />
+                  <InfotipContent aria-labelledby={toolNameLabelId} className="w-45">
+                    {t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
+                  </InfotipContent>
+                </Infotip>
               </div>
               <Input
                 className="h-10"

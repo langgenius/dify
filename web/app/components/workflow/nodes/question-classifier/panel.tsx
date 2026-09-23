@@ -8,10 +8,10 @@ import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import ClassList from '../_base/components/branch-list/class-list'
 import ConfigVision from '../_base/components/config-vision'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import AdvancedSetting from './components/advanced-setting'
-import ClassList from './components/class-list'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.questionClassifiers'

@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, m
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._errors import (
     ErrorBody,
     KnowledgeFsAccessDeniedError,
@@ -573,6 +573,19 @@ class KnowledgeFsEntryListApi(Resource):
     """List direct child entries; default ordering is stable and encoded by the page token."""
 
     @endpoint(
+        op="knowledge_fs.ls",
+        kind=Kind.OBJECT,
+        summary="List an Agent Knowledge Base directory (ls)",
+        examples=(
+            Example(
+                title="List a knowledge directory",
+                input={
+                    "workspace_id": "<workspace_id>",
+                    "knowledge_space_id": "<knowledge_space_id>",
+                    "path": "/knowledge",
+                },
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -605,6 +618,20 @@ class KnowledgeFsEntryListApi(Resource):
 @openapi_ns.route(f"{_FS_ROUTE}:tree")
 class KnowledgeFsEntryTreeApi(Resource):
     @endpoint(
+        op="knowledge_fs.tree",
+        kind=Kind.OBJECT,
+        summary="Traverse an Agent Knowledge Base directory (tree)",
+        examples=(
+            Example(
+                title="Traverse a knowledge directory",
+                input={
+                    "workspace_id": "<workspace_id>",
+                    "knowledge_space_id": "<knowledge_space_id>",
+                    "path": "/knowledge",
+                    "depth": 2,
+                },
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -640,6 +667,20 @@ class KnowledgeFsEntryTreeApi(Resource):
 @openapi_ns.route(f"{_FS_ROUTE}:grep")
 class KnowledgeFsEntryContentSearchApi(Resource):
     @endpoint(
+        op="knowledge_fs.grep",
+        kind=Kind.OBJECT,
+        summary="Search Agent Knowledge Base content (grep)",
+        examples=(
+            Example(
+                title="Search knowledge content",
+                input={
+                    "workspace_id": "<workspace_id>",
+                    "knowledge_space_id": "<knowledge_space_id>",
+                    "path": "/knowledge",
+                    "text": "deployment",
+                },
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -675,6 +716,20 @@ class KnowledgeFsEntryContentSearchApi(Resource):
 @openapi_ns.route(f"{_FS_ROUTE}:find")
 class KnowledgeFsEntrySearchApi(Resource):
     @endpoint(
+        op="knowledge_fs.find",
+        kind=Kind.OBJECT,
+        summary="Find Agent Knowledge Base entries (find)",
+        examples=(
+            Example(
+                title="Find entries by name",
+                input={
+                    "workspace_id": "<workspace_id>",
+                    "knowledge_space_id": "<knowledge_space_id>",
+                    "path": "/knowledge",
+                    "name_contains": "guide",
+                },
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -713,6 +768,20 @@ class KnowledgeFsEntryCompareApi(Resource):
     """Side-effect-free comparison query; semantic summaries can consume model quota on every retry."""
 
     @endpoint(
+        op="knowledge_fs.diff",
+        kind=Kind.OBJECT,
+        summary="Compare two Agent Knowledge Base entries (diff)",
+        examples=(
+            Example(
+                title="Compare two knowledge entries",
+                input={
+                    "workspace_id": "<workspace_id>",
+                    "knowledge_space_id": "<knowledge_space_id>",
+                    "old_path": "/knowledge/guide-v1",
+                    "new_path": "/knowledge/guide-v2",
+                },
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -749,6 +818,19 @@ class KnowledgeFsEntryCompareApi(Resource):
 @openapi_ns.route(f"{_FS_ROUTE}:cat")
 class KnowledgeFsEntryReadContentApi(Resource):
     @endpoint(
+        op="knowledge_fs.cat",
+        kind=Kind.OBJECT,
+        summary="Read Agent Knowledge Base entry content (cat)",
+        examples=(
+            Example(
+                title="Read a knowledge entry",
+                input={
+                    "workspace_id": "<workspace_id>",
+                    "knowledge_space_id": "<knowledge_space_id>",
+                    "path": "/knowledge/guide",
+                },
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -784,6 +866,19 @@ class KnowledgeFsEntryReadContentApi(Resource):
 @openapi_ns.route(f"{_FS_ROUTE}:stat")
 class KnowledgeFsEntryInspectApi(Resource):
     @endpoint(
+        op="knowledge_fs.stat",
+        kind=Kind.OBJECT,
+        summary="Inspect an Agent Knowledge Base entry (stat)",
+        examples=(
+            Example(
+                title="Inspect a knowledge entry",
+                input={
+                    "workspace_id": "<workspace_id>",
+                    "knowledge_space_id": "<knowledge_space_id>",
+                    "path": "/knowledge/guide",
+                },
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),

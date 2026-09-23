@@ -45,7 +45,6 @@ class OpenApiErrorCode(StrEnum):
     TOO_MANY_REQUESTS = "too_many_requests"
     INTERNAL_ERROR = "internal_server_error"
     BAD_GATEWAY = "bad_gateway"
-    UPGRADE_REQUIRED = "upgrade_required"
     UNKNOWN = "unknown"
     # domain codes (must match the error_code attribute of the exception
     # classes raised on the openapi surface)
@@ -74,6 +73,7 @@ class OpenApiErrorCode(StrEnum):
     KNOWLEDGE_FS_REQUEST_TOO_LARGE = "knowledge_fs_request_too_large"
     KNOWLEDGE_FS_RESOURCE_NOT_FOUND = "knowledge_fs_resource_not_found"
     KNOWLEDGE_FS_UNAVAILABLE = "knowledge_fs_unavailable"
+    CATALOG_STALE = "catalog_stale"
     TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
 
 
@@ -306,3 +306,16 @@ class KnowledgeFsUnavailableError(OpenApiError):
     code = 503
     error_code = OpenApiErrorCode.KNOWLEDGE_FS_UNAVAILABLE
     description = "Agent Knowledge Base is temporarily unavailable."
+
+
+class CatalogStale(OpenApiError):  # noqa: N818
+    code = 412
+    error_code = OpenApiErrorCode.CATALOG_STALE
+    description = "The request was built from a catalog that is not this server's current catalog."
+    hint = "GET /openapi/v1/_catalog, rebuild the request from it, and send its sha256 in X-Dify-Catalog."
+
+
+class InvalidFilePart(OpenApiError):  # noqa: N818
+    code = 422
+    error_code = OpenApiErrorCode.INVALID_PARAM
+    description = "A request part could not be used"

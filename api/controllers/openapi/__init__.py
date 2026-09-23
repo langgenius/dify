@@ -1,16 +1,28 @@
+from typing import override
+
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.openapi._catalog import attach_catalog
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
-from controllers.openapi._version_gate import attach_version_gate
+from controllers.openapi._upload import describe_multipart_bodies
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ExternalApi
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
-attach_version_gate(bp)
+attach_catalog(bp)
 
-api = ExternalApi(
+
+class _OpenApi(ExternalApi):
+    """The surface's document also names the multipart form its file-bearing bodies accept."""
+
+    @override
+    def finish_document(self, document: dict[str, object]) -> dict[str, object]:
+        return describe_multipart_bodies(document)
+
+
+api = _OpenApi(
     bp,
     version="1.0",
     title="OpenAPI",
@@ -27,17 +39,20 @@ from controllers.common.schema import register_enum_models, register_response_sc
 from controllers.openapi._models import (
     AccountPayload,
     AccountResponse,
+    AdvancedChatRunPayload,
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
     AppDslExportQuery,
     AppDslExportResponse,
     AppDslImportPayload,
+    AppDslImportResponse,
     AppInfo,
     AppListQuery,
     AppListResponse,
     AppListRow,
-    AppRunRequest,
+    ChatRunPayload,
+    CompletionRunPayload,
     DeviceCodeRequest,
     DeviceCodeResponse,
     DeviceLookupQuery,
@@ -46,8 +61,10 @@ from controllers.openapi._models import (
     DeviceMutateResponse,
     DevicePollRequest,
     DeviceTokenResponse,
+    FileUploadPayload,
     FormSubmitResponse,
     HealthResponse,
+    Hint,
     HumanInputFormDefinitionResponse,
     MemberActionResponse,
     MemberInvitePayload,
@@ -57,6 +74,7 @@ from controllers.openapi._models import (
     MemberResponse,
     MemberRoleUpdatePayload,
     MessageMetadata,
+    OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
     RevokeResponse,
@@ -67,7 +85,9 @@ from controllers.openapi._models import (
     TaskStopResponse,
     UsageInfo,
     WorkflowRunData,
+    WorkflowRunPayload,
     WorkspaceDetailResponse,
+    WorkspaceListQuery,
     WorkspaceListResponse,
     WorkspacePayload,
     WorkspaceSummaryResponse,
@@ -78,20 +98,26 @@ from services.entities.dsl_entities import CheckDependenciesResult
 
 register_schema_models(
     openapi_ns,
+    AdvancedChatRunPayload,
     AppDescribeQuery,
     AppDslImportPayload,
     AppDslExportQuery,
     AppListQuery,
-    AppRunRequest,
+    ChatRunPayload,
+    CompletionRunPayload,
     DeviceCodeRequest,
     DevicePollRequest,
     DeviceLookupQuery,
     DeviceMutateRequest,
+    FileUploadPayload,
     MemberInvitePayload,
     MemberListQuery,
     MemberRoleUpdatePayload,
+    OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     SessionListQuery,
+    WorkflowRunPayload,
+    WorkspaceListQuery,
 )
 register_response_schema_models(
     openapi_ns,
@@ -100,6 +126,7 @@ register_response_schema_models(
     SimpleResultResponse,
     UsageInfo,
     MessageMetadata,
+    Hint,
     AppListRow,
     AppListResponse,
     AppInfo,
@@ -107,6 +134,7 @@ register_response_schema_models(
     AppDescribeResponse,
     AppDslExportResponse,
     Import,
+    AppDslImportResponse,
     CheckDependenciesResult,
     WorkflowRunData,
     AccountPayload,

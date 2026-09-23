@@ -23,7 +23,8 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/utils/download', () => ({
+vi.mock('@/utils/download', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/download')>()),
   downloadUrl: (...args: Parameters<typeof mocks.downloadUrl>) => mocks.downloadUrl(...args),
 }))
 
@@ -482,33 +483,64 @@ describe('ImagePreview', () => {
       )
     })
 
-    it.each(['https://example.com/image.png', '/image-proxy/github/example'])(
-      'should download valid url %s',
-      async (url) => {
-        const user = userEvent.setup()
-        render(<ImagePreview url={url} title="Preview Image" onCancel={vi.fn()} />)
-        const downloadButton = getDownloadButton()
-        await user.click(downloadButton)
+    it.each([
+      ['https://example.com/image.png', 'Preview Image'],
+      ['/image-proxy/github/example', ''],
+      [dataImage, 'Screenshot.png'],
+    ])('downloads image bytes without opening a tab for %s', async (url, title) => {
+      const user = userEvent.setup()
+      const createObjectURL = vi
+        .spyOn(window.URL, 'createObjectURL')
+        .mockReturnValue('blob:download-image')
+      const revokeObjectURL = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {})
+      const downloads: { href: string; name: string; target: string }[] = []
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+        this: HTMLAnchorElement,
+      ) {
+        downloads.push({ href: this.href, name: this.download, target: this.target })
+      })
+      render(<ImagePreview url={url} title={title} onCancel={vi.fn()} />)
+      await user.click(getDownloadButton())
 
-        expect(mocks.downloadUrl).toHaveBeenCalledWith({
-          url,
-          fileName: 'Preview Image',
-          target: '_blank',
-        })
+      await waitFor(() =>
+        expect(downloads).toEqual([
+          {
+            href: 'blob:download-image',
+            name: title || 'image.png',
+            target: '',
+          },
+        ]),
+      )
+      const blob = createObjectURL.mock.calls[0]?.[0] as Blob
+      expect(blob.type).toBe('image/png')
+      expect(await blob.text()).toBe('image')
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:download-image')
+      expect(mocks.windowOpen).not.toHaveBeenCalled()
+      expect(getOverlay()).toBeInTheDocument()
+    })
+
+    it.each(['network', 'http'])(
+      'keeps the preview open when a download fails: %s',
+      async (failure) => {
+        const user = userEvent.setup()
+        if (failure === 'network')
+          vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+        else vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 403 }))
+        const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+        render(<ImagePreview url="https://example.com/image.png" title="" onCancel={vi.fn()} />)
+        await user.click(getDownloadButton())
+
+        await waitFor(() =>
+          expect(mocks.notify).toHaveBeenCalledWith({
+            type: 'error',
+            message: 'common.operation.downloadFailed',
+          }),
+        )
+        expect(click).not.toHaveBeenCalled()
+        expect(mocks.windowOpen).not.toHaveBeenCalled()
+        expect(getOverlay()).toBeInTheDocument()
       },
     )
-
-    it('should show error toast for invalid download url', async () => {
-      const user = userEvent.setup()
-      render(<ImagePreview url="invalid://image.png" title="Preview Image" onCancel={vi.fn()} />)
-      const downloadButton = getDownloadButton()
-      await user.click(downloadButton)
-
-      expect(mocks.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Unable to open image: invalid://image.png',
-      })
-    })
 
     it('should zoom with dedicated zoom buttons', async () => {
       const user = userEvent.setup()
