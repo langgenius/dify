@@ -24,6 +24,8 @@ from core.app.layers.pause_state_persist_layer import (
 from core.db.session_factory import session_factory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord, HumanInputFormSubmissionRepository
+from core.tools.workflow_as_tool.repository import WorkflowToolSource
+from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime, resolve_dify_run_context
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.nodes.human_input.boundary import build_human_input_pause_reason
@@ -31,6 +33,7 @@ from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from graphon.engine.layer import Layer
 from graphon.engine_events import (
@@ -45,13 +48,17 @@ from graphon.engine_events import (
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
 )
+from graphon.entities import WorkflowNodeExecution
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.runtime import use_workflow_file_runtime
+from graphon.runtime.container_state import CustomContainerRunState
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.conversation_variable_updater import ConversationVariableUpdater
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
+from services.workflow_tool_source_service import WorkflowToolSourceService
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +86,29 @@ class WorkflowRunAgg:
             raise ValueError("Workflow run ID is required")
         self._run_id = run_id
         self._run_context = resolve_dify_run_context(self._entry.graph_engine.graph.root_node.run_context)
+        self._entry.workflow_tool_sources.update(
+            WorkflowToolSourceService(SQLAlchemyWorkflowToolSourceRepository(session_factory.get_session_maker())).load(
+                tenant_id=self._run_context.tenant_id,
+                graph_config=self._entry.graph_config,
+                allow_human_input=(
+                    prepared.generate_entity.allow_human_input
+                    if isinstance(prepared.generate_entity, WorkflowAppGenerateEntity)
+                    else True
+                ),
+                suspended_tools=[
+                    WorkflowToolContainerPayload.model_validate_json(run.payload)
+                    for run in self._runtime_state.container_runs()
+                    if isinstance(run, CustomContainerRunState)
+                ],
+            )
+        )
+        node_factory = self._entry.graph_engine.graph.node_factory
+        if isinstance(node_factory, DifyNodeFactory):
+            node_factory.workflow_tools.update(
+                (source.tool.workflow_as_tool_id, source.tool)
+                for source in self._entry.workflow_tool_sources.values()
+                if source.tool is not None
+            )
         self._pending_forms = {
             default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id): reason
             for reason in self._runtime_state.graph_execution.pause_reasons
@@ -121,6 +151,30 @@ class WorkflowRunAgg:
         self._persistence_layer.set_node_run_indices(self.index.indices)
         self._persistence_layer.set_node_execution_history(histories)
         self._entry.graph_engine.add_layer(self.index)
+        source_histories: dict[tuple[str, str], Sequence[WorkflowNodeExecution]] = {}
+        for source in self._entry.workflow_tool_sources.values():
+            key = (source.app_id, source.workflow_id)
+            executions: Sequence[WorkflowNodeExecution] = ()
+            if is_resuming:
+                executions = tuple(
+                    execution
+                    for execution in workflow_node_execution_repository.for_workflow_tool(
+                        source.app_id
+                    ).get_by_workflow_execution(self._run_id, include_paused=True)
+                    if execution.workflow_id == source.workflow_id
+                )
+            self.index.seed_source(source.app_id, source.workflow_id, executions)
+            source_histories[key] = executions
+
+        def source_listener(source: WorkflowToolSource, caller_workflow_id: str, caller_node_execution_id: str):
+            return self._persistence_layer.create_workflow_tool_event_listener(
+                source,
+                caller_workflow_id,
+                caller_node_execution_id,
+                node_executions=source_histories[(source.app_id, source.workflow_id)],
+            )
+
+        self._entry.workflow_tool_event_listener_factory = source_listener
 
     @staticmethod
     @trace_span(WorkflowAppRunnerHandler)
