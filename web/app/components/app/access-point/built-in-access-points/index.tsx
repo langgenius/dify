@@ -54,9 +54,10 @@ export function BuiltInAccessPoints({
   if (!appInfo) return <Loading />
 
   const workflowState = getPublishedWorkflowState(appInfo, workflow)
-  const builtInLoading = workflowState.isWorkflowApp && workflowLoading
+  const builtInLoading = workflowState.requiresPublishedWorkflow && workflowLoading
   const appCardsUnavailable =
-    workflowState.isWorkflowApp && (workflowState.isUnpublished || workflowState.hasTriggerNode)
+    workflowState.requiresPublishedWorkflow &&
+    (workflowError || workflowState.isUnpublished || workflowState.hasTriggerNode)
   const appCardAvailability = builtInLoading
     ? 'loading'
     : appCardsUnavailable
