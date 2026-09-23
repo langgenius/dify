@@ -620,7 +620,7 @@ _EDIT_SEED_INTENTS = [
         op="create_node",
         args={
             "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-            "config": node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
+            "config": {**node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL), "dataset_ids": []},
             "node_id": "knowledge_retrieval",
         },
     ),
@@ -638,7 +638,7 @@ _EDIT_SEED_INTENTS = [
         op="create_node",
         args={
             "node_type": BuiltinNodeTypes.END,
-            "config": node_defaults.default_config(BuiltinNodeTypes.END),
+            "config": {**node_defaults.default_config(BuiltinNodeTypes.END), "outputs": []},
             "node_id": "end",
         },
     ),
