@@ -87,9 +87,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
         { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
       ],
     },
-    // Resolve next-i18next's next/navigation import through Vinext's shims.
-    ssr: { noExternal: ['next-i18next'] },
-
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
@@ -118,7 +115,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
             environment: 'happy-dom',
             globals: true,
             setupFiles: ['./vitest.setup.ts'],
-            server: { deps: { inline: ['next-i18next'] } },
             exclude: [...configDefaults.exclude, browserTestPattern],
           },
         },
@@ -132,8 +128,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
             return [tailwindcss()]
           }),
           optimizeDeps: {
-            // Keep Next navigation mockable in provider hydration tests.
-            exclude: ['next-i18next'],
             include: [
               '@base-ui/react/fieldset',
               '@base-ui/react/number-field',

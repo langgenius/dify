@@ -78,8 +78,9 @@ Use the `Translate i18n Files with Claude Code` workflow dispatch for a manual s
 
 ## On-demand resources
 
-The App Router client Provider uses `next-i18next/client` with `ssrBackend` and
-Suspense enabled. The root server Provider starts with an empty resource store
+The App Router client Provider owns one i18next instance per mounted Provider,
+using `react-i18next` with Suspense and the same resource backend during SSR and
+browser rendering. The root server Provider starts with an empty resource store
 and no initial namespaces, including no `common` preload. Components keep declaring their namespaces
 through `react-i18next`; a missing namespace loads through `loadI18nResource` during
 both streaming SSR and browser rendering. Optional features load their translations
