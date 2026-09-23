@@ -1,9 +1,11 @@
 """Tests for Flask app context module."""
 
 import contextvars
+from contextlib import nullcontext
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask, current_app, g
 
 
 class TestFlaskAppContext:
@@ -226,33 +228,85 @@ class TestFlaskExecutionContextIntegration:
 
         return app
 
-    def test_enter_restores_context_vars(self, mock_flask_app):
-        """Test that enter restores captured context variables."""
-        # Create a context variable and set a value
+    @pytest.mark.parametrize("use_enter", [False, True])
+    @pytest.mark.parametrize("caller_value", [None, "caller"])
+    @pytest.mark.parametrize("raise_error", [False, True])
+    def test_enter_restores_context_vars(self, mock_flask_app, use_enter, caller_value, raise_error):
+        """Restore the caller's binding on normal and exceptional exits."""
         test_var = contextvars.ContextVar("integration_test_var")
-        test_var.set("original_value")
-
-        # Capture the context
-        context_vars = contextvars.copy_context()
-
-        # Change the value
-        test_var.set("new_value")
-
-        # Create FlaskExecutionContext and enter it
+        context_vars = contextvars.Context()
+        context_vars.run(test_var.set, "captured")
         from context.flask_app_context import FlaskExecutionContext
 
         ctx = FlaskExecutionContext(
             flask_app=mock_flask_app,
             context_vars=context_vars,
         )
+        token = test_var.set(caller_value) if caller_value is not None else None
 
+        try:
+            with pytest.raises(ValueError, match="body failed") if raise_error else nullcontext():
+                with ctx.enter() if use_enter else ctx:
+                    assert test_var.get() == "captured"
+                    test_var.set("body")
+                    if raise_error:
+                        raise ValueError("body failed")
+
+            assert test_var.get(None) == caller_value
+            assert (test_var in contextvars.copy_context()) == (caller_value is not None)
+        finally:
+            if token is not None:
+                test_var.reset(token)
+
+    @pytest.mark.parametrize(("outer_enter", "inner_enter"), [(False, False), (False, True), (True, False)])
+    def test_nested_context_restores_each_scope(self, outer_enter, inner_enter):
+        from context.flask_app_context import FlaskExecutionContext
+
+        flask_app = Flask(__name__)
+        caller_app = current_app._get_current_object()
+        caller_g = g._get_current_object()
+        test_var = contextvars.ContextVar("nested_var")
+        captured = contextvars.copy_context()
+        captured.run(test_var.set, "captured")
+        ctx = FlaskExecutionContext(flask_app=flask_app, context_vars=captured)
+
+        with ctx.enter() if outer_enter else ctx:
+            assert current_app == flask_app
+            test_var.set("outer")
+            outer_g = g._get_current_object()
+            with ctx.enter() if inner_enter else ctx:
+                assert current_app == flask_app
+                assert g._get_current_object() is not outer_g
+                assert test_var.get() == "captured"
+                test_var.set("inner")
+            assert g._get_current_object() is outer_g
+            assert test_var.get() == "outer"
+
+        assert test_var not in contextvars.copy_context()
+        assert current_app == caller_app
+        assert g._get_current_object() is caller_g
+
+    @pytest.mark.parametrize("use_enter", [False, True])
+    @pytest.mark.parametrize("failure_stage", ["enter", "teardown"])
+    def test_context_vars_restored_when_flask_context_fails(self, mock_flask_app, use_enter, failure_stage):
+        from context.flask_app_context import FlaskExecutionContext
+
+        test_var = contextvars.ContextVar("failure_var")
+        captured = contextvars.Context()
+        captured.run(test_var.set, "captured")
+        ctx = FlaskExecutionContext(flask_app=mock_flask_app, context_vars=captured)
+        app_context = mock_flask_app.app_context.return_value
+        failing_method = app_context.__enter__ if failure_stage == "enter" else app_context.__exit__
+        failing_method.side_effect = ValueError("context failed")
+
+        with pytest.raises(ValueError, match="context failed"), ctx.enter() if use_enter else ctx:
+            assert test_var.get() == "captured"
+
+        assert test_var not in contextvars.copy_context()
+        failing_method.side_effect = None
         with ctx:
-            # Value should be restored to original
-            assert test_var.get() == "original_value"
-
-        # After exiting, variable stays at the value from within the context
-        # (this is expected Python contextvars behavior)
-        assert test_var.get() == "original_value"
+            assert test_var.get() == "captured"
+        assert test_var not in contextvars.copy_context()
 
     def test_enter_enters_flask_app_context(self, mock_flask_app):
         """Test that enter enters Flask app context."""
