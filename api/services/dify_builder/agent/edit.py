@@ -34,9 +34,30 @@ _TRUNCATION_MARKER = "… omitted for length: "
 # but these says nothing and is not worth a line.
 _SUMMARY_LINE_KEYS = frozenset({"type", "title"})
 
+# graphon's own comparison literals, in graphon's own order
+# (``utils/condition/entities.py``'s ``SupportedComparisonOperator``). Spelled
+# out rather than joined from the engine at import time so this module keeps no
+# runtime dependency on graphon's internals; a test asserts the two stay equal.
+_COMPARISON_OPERATORS = (
+    "for strings and arrays: contains, not contains, start with, end with, is, is not, empty, "
+    "not empty, in, not in, all of; for numbers: =, ≠, >, <, ≥, ≤, null, not null; for files: "
+    "exists, not exists"
+)
+
 _OP_SCHEMA = (
     'Allowed ops (each as {"op": ..., "args": {...}}):\n'
     "- set_node_config: {node_id, path, value}\n"
+    "  path is dot-separated and walks into that node's data; an all-digit segment indexes an "
+    "array, so cases.1.conditions.0.value addresses one condition of one case.\n"
+    "  To CHANGE one element of an array, address that element BY INDEX and leave its siblings "
+    "untouched. Do not re-send the array to change one element: every key you do not repeat -- id, "
+    "case_id, varType -- is lost, and a value you retype in a different shape (90 instead of "
+    '"90") is a second change nobody asked for.\n'
+    "  To ADD an element, there is no index to write to: an index past the end of the array is "
+    "rejected. Set path to the WHOLE array and send every existing element back byte-identical -- "
+    "same keys, same ids, same operators, same value spellings as GRAPH shows them -- with the new "
+    "element appended. Adding a branch to an if-else is exactly this: repeat every existing case "
+    "unchanged and append the new one.\n"
     "- create_node: {node_type, config, node_id?}\n"
     "- delete_node: {node_id}\n"
     "- connect: {from_node, to_node, source_handle?}\n"
@@ -44,6 +65,24 @@ _OP_SCHEMA = (
     "error_strategy fail-branch), source_handle is required and must be one of the handles "
     "listed for that node in GRAPH.\n"
     "- insert_between: {edge: {source, target}, node_type, config}\n"
+    "A condition's comparison_operator must be one of the engine's literals -- "
+    + _COMPARISON_OPERATORS
+    + ". The comparison forms are the unicode characters ≥ ≤ ≠, never the ASCII >= <= != <> == and "
+    "never a word form like gte or equals. Write ≠ rather than != or <>, and = rather than ==: an "
+    "equality form cannot be guessed back, because a string compares with is / is not and a number "
+    "with = / ≠, so those forms are refused outright and the whole batch is lost with them.\n"
+    "Follow a new branch to where it rejoins the graph. If the node on the new branch feeds an "
+    "existing variable-aggregator, that aggregator's variables array does not list it yet -- also "
+    "append that node's selector to it, re-sending the existing selectors byte-identical. The "
+    'selector is ["<new node id>", "<that node\'s own output variable>"], and the variable name '
+    "differs by node type: an llm node's is text, a template-transform's is output, a tool's is "
+    "text (or files / json), a code node's is whatever its own outputs declare, a "
+    "question-classifier's is class_name. The selectors already in that aggregator's variables "
+    "show you the spelling a node of the same type uses -- copy it. A selector the run cannot "
+    "resolve is skipped in silence, so the wrong variable name leaves the workflow running green "
+    "and producing nothing, which is the very failure this step exists to prevent.\n"
+    f"A value shown as {credentials.REDACTED} is a secret withheld from you. Never hand it back: "
+    "leave that field out of your change entirely.\n"
 )
 
 
