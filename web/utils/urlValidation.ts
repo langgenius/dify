@@ -19,6 +19,48 @@ export function validateRedirectUrl(url: string): void {
   }
 }
 
+const IPV4_REGEX = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/
+
+/**
+ * Check if an IPv4 dotted-quad hostname falls in a private/local range.
+ */
+function isPrivateIpv4(hostname: string): boolean {
+  const match = IPV4_REGEX.exec(hostname)
+  if (!match) return false
+
+  const [, a, b] = match.map(Number)
+  // 0.0.0.0/8 (unspecified)
+  if (a === 0) return true
+  // 10.0.0.0/8
+  if (a === 10) return true
+  // 127.0.0.0/8 (loopback)
+  if (a === 127) return true
+  // 169.254.0.0/16 (link-local)
+  if (a === 169 && b === 254) return true
+  // 172.16.0.0/12
+  if (a === 172 && b! >= 16 && b! <= 31) return true
+  // 192.168.0.0/16
+  if (a === 192 && b === 168) return true
+
+  return false
+}
+
+/**
+ * Check if an IPv6 address is private/local. The address is passed without its
+ * surrounding brackets, in the compressed lowercase form `URL.hostname` returns
+ * (so `0:0:0:0:0:0:0:1` arrives here as `::1`).
+ */
+function isPrivateIpv6(address: string): boolean {
+  // ::1 (loopback) and :: (unspecified)
+  if (address === '::1' || address === '::') return true
+  // fc00::/7 (unique local)
+  if (/^f[cd]/.test(address)) return true
+  // fe80::/10 (link-local)
+  if (/^fe[89ab]/.test(address)) return true
+
+  return false
+}
+
 /**
  * Check if URL is a private/local network address or cloud debug URL
  * @param url - The URL string to check
@@ -30,22 +72,14 @@ export function isPrivateOrLocalAddress(url: string): boolean {
     const hostname = urlObj.hostname.toLowerCase()
 
     // Check for localhost
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true
+    if (hostname === 'localhost') return true
+
+    // URL.hostname keeps the square brackets around IPv6 literals, e.g. `[::1]`
+    if (hostname.startsWith('[') && hostname.endsWith(']'))
+      return isPrivateIpv6(hostname.slice(1, -1))
 
     // Check for private IP ranges
-    const ipv4Regex = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/
-    const ipv4Match = ipv4Regex.exec(hostname)
-    if (ipv4Match) {
-      const [, a, b] = ipv4Match.map(Number)
-      // 10.0.0.0/8
-      if (a === 10) return true
-      // 172.16.0.0/12
-      if (a === 172 && b! >= 16 && b! <= 31) return true
-      // 192.168.0.0/16
-      if (a === 192 && b === 168) return true
-      // 169.254.0.0/16 (link-local)
-      if (a === 169 && b === 254) return true
-    }
+    if (isPrivateIpv4(hostname)) return true
 
     // Check for .local domains
     return hostname.endsWith('.local')
