@@ -1656,3 +1656,65 @@ def test_the_plan_gate_reverts_through_the_checkpoint_it_already_minted():
     # and edit.reverted's own Retry still leads back to the gate
     out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+
+
+def turn_activities(result) -> dict:
+    """``{activity id: state}`` off the assistant turn's execution timeline."""
+    turn = next(i for i in result.items if i.kind == "assistant_turn")
+    return {a["id"]: a["state"] for a in turn.payload["execution"]["activities"]}
+
+
+class _JudgesItsOwnProposalWrongAgent(PlaceholderAgent):
+    """An agent that refuses to hand on the batch it just proposed, the way
+    ``services.dify_builder.agent.edit`` does when its final attempt still
+    carries a semantic-guard verdict."""
+
+    def __init__(self, reason: str):
+        self._reason = reason
+        self.calls = 0
+
+    def build_edit_intents(self, _edit_rules, _graph, **_kwargs):
+        from core.dify_builder.errors import ProposalWouldRunWrongError
+
+        self.calls += 1
+        raise ProposalWouldRunWrongError(self._reason)
+
+
+_WOULD_RUN_EMPTY = (
+    "the new branch node7 -> node5 would run and produce nothing: node5 is a variable-aggregator "
+    "and none of its selectors is rooted at node7."
+)
+
+
+def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing():
+    """The last hole the two semantic guards had. Their defects are ones the
+    ENGINE ACCEPTS, so ``apply_repair`` has nothing to veto: if the agent
+    handed the condemned batch over anyway it would simply be written. The
+    agent refuses instead, and this is the receiving end -- the plan stays at
+    its gate with the reason on a card, and nothing reached the port."""
+    agent = _JudgesItsOwnProposalWrongAgent(_WOULD_RUN_EMPTY)
+    dify = FakeEditDifyPort()
+    written: list = []
+    dify.apply_repair = lambda *a, **k: written.append((a, k))
+    env, repo = _new_env(dify=dify, agent=agent)
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert written == []  # the port was never called
+    assert res.next == PcState.EDIT_PLAN_APPROVAL  # ...and the plan is still at its gate
+    assert res.context.staged_repair == []
+    assert res.context.last_edit_rejection == _WOULD_RUN_EMPTY  # carried into the next attempt
+    error = next(i for i in res.items if i.kind == "error")
+    assert _WOULD_RUN_EMPTY in error.payload["body"]
+    assert error.payload["title"] == "The change wouldn't do what you asked"
+
+    # The failure is marked on the step that was actually running. Marked on the
+    # write instead, the timeline showed a LATER step failed while an earlier one
+    # was still running, and the step between never resolved at all. A step that
+    # was never revealed is simply absent (``ProgressReporter._snapshot`` drops
+    # pending activities), which is the right rendering for work not reached.
+    activities = turn_activities(res)
+    assert activities == {"edit-prepare": "failed"}

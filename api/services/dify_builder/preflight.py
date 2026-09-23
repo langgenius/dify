@@ -758,10 +758,28 @@ class VettedIntents(NamedTuple):
     Every line quotes the engine -- an ``apply_*``/``validate_intent_args``
     ``ValueError`` or a ``validate_node_config`` message -- never anything the
     model said about its own proposal.
+
+    ``would_run_wrong`` is the subset of those refusals that the engine does NOT
+    make: the two semantic guards. It is carried separately because the two
+    kinds fail differently and a caller has to be able to tell them apart
+    WITHOUT reading the text:
+
+    * a structural refusal DROPPED its intent, so what is left in ``applicable``
+      is a batch nobody has judged wrong. Keeping it -- rather than losing the
+      user's whole change -- is a deliberate choice;
+    * a semantic verdict drops nothing. It condemns the batch that is still
+      sitting in ``applicable``, and there is no engine refusal behind it for
+      ``apply_repair`` to raise, so a caller that wrote it anyway would write
+      the exact draft the guard was built to stop.
+
+    Reading which is which off the rejection PROSE would be the same mistake as
+    keying control flow on the model's prose: the text is for a human and a
+    re-prompt, the list is for the code.
     """
 
     applicable: list[MutationIntent]
     rejections: list[str]
+    would_run_wrong: list[str]
 
 
 def vet_intents(
@@ -803,6 +821,8 @@ def vet_intents(
     # ``Graph.init`` is happy with both, so neither can be quoted from it --
     # they are keyed on the batch's own effect on the graph instead, never on
     # anything the model said.
-    rejections += [f"- {reason}" for reason in _unfed_aggregator_reasons(graph, dry_run.graph)]
-    rejections += [f"- {reason}" for reason in _dropped_identity_reasons(graph, dry_run.graph, dry_run.applicable)]
-    return VettedIntents(dry_run.applicable, rejections)
+    would_run_wrong = _unfed_aggregator_reasons(graph, dry_run.graph) + _dropped_identity_reasons(
+        graph, dry_run.graph, dry_run.applicable
+    )
+    rejections += [f"- {reason}" for reason in would_run_wrong]
+    return VettedIntents(dry_run.applicable, rejections, would_run_wrong)

@@ -65,6 +65,8 @@ PLAIN: frozenset[str] = frozenset(
         "I couldn't apply the workflow -- see the error above. Adjust the plan and approve again.",
         "I couldn't apply the change -- see the error above. "
         "Continue adjusting to change the rules, approve again, or discard the plan.",
+        "I didn't apply the change: it would have run without doing what you asked -- see above. "
+        "Continue adjusting to change the rules, approve again, or discard the plan.",
         # card titles
         "Test run",
         "Review",
@@ -85,6 +87,7 @@ PLAIN: frozenset[str] = frozenset(
         "Proceeding with sensible defaults",
         "Repeated failure",
         "The workflow can't start",
+        "The change wouldn't do what you asked",
         "No output produced",
         "Test outcome unknown",
         "Finished without output",
@@ -154,6 +157,11 @@ TEMPLATES: list[Template] = [
         pattern=re.compile(r"^The generated workflow couldn't be applied to the draft: (?P<value>.+)$", re.DOTALL),
         template="The generated workflow couldn't be applied to the draft: {value}",
         translate_fields=frozenset(),  # value is a validation message; re-inserted verbatim
+    ),
+    Template(
+        pattern=re.compile(r"^The change would have applied cleanly and then not worked: (?P<value>.+)$", re.DOTALL),
+        template="The change would have applied cleanly and then not worked: {value}",
+        translate_fields=frozenset(),  # value is the guard's own engine-grounded reason, kept verbatim
     ),
     Template(
         pattern=re.compile(
