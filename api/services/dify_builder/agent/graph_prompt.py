@@ -63,6 +63,114 @@ def edge_line(edge: Mapping[str, Any]) -> str:
     return f"  {edge.get('source')} -> {edge.get('target')}"
 
 
+# What a node of each type PUBLISHES -- the second element of a selector rooted
+# at that node, and so the thing an aggregator's ``variables`` has to spell to
+# reach it.
+#
+# Read off graphon's own ``NodeRunResult.outputs`` keys: an llm node's
+# ``"text"`` (``nodes/llm/node.py:731``), a template-transform's ``"output"``
+# (``template_transform_node.py:116``), a tool's ``"text"`` alongside ``files``
+# and ``json`` (``tool_node.py:301-304``), a question-classifier's
+# ``"class_name"`` (``question_classifier_node.py:437``). A code node is
+# deliberately absent: its names are whatever its own ``outputs`` declares, so
+# ``output_variable_of`` reads them off the node instead of guessing.
+#
+# Stated once here because two things need the same answer and a DISAGREEMENT
+# between them is the failure being guarded against: Edit's rejoin clause tells
+# the model which name to write, and ``preflight.vet_intents``'s rejoin guard
+# names the selector a new branch is missing from. graphon's
+# ``VariableAggregatorNode._run`` (``variable_aggregator_node.py:29-50``) skips
+# a selector the run cannot resolve IN SILENCE, so a wrong name -- ``["llm",
+# "output"]`` for a node that publishes ``text`` -- leaves the workflow running
+# green and producing nothing.
+OUTPUT_VARIABLE_BY_NODE_TYPE: Mapping[str, str] = {
+    "llm": "text",
+    "template-transform": "output",
+    "tool": "text",
+    "question-classifier": "class_name",
+}
+
+# EVERY variable name a selector rooted at a node of this type may legitimately
+# name -- the set to ACCEPT, where ``OUTPUT_VARIABLE_BY_NODE_TYPE`` above is the
+# single name to SUGGEST. Read off the same ``NodeRunResult.outputs`` literals:
+#
+# * llm (``nodes/llm/node.py::_build_run_outputs``) -- ``text``,
+#   ``reasoning_content``, ``usage``, ``finish_reason``, plus
+#   ``structured_output`` and ``files`` when the node is configured for them.
+#   The two conditional keys are included because a SUPERSET can only ever
+#   accept, never refuse something valid;
+# * template-transform (``template_transform_node.py:116``) -- ``output``, and
+#   that is the whole dict;
+# * question-classifier (``question_classifier_node.py:436-441``) --
+#   ``class_name``, ``class_label``, ``class_id``, ``usage``.
+#
+# A type is absent from this table when its published set is NOT KNOWABLE, and
+# absence means ACCEPT ANYTHING. ``tool`` is the deliberate example: its outputs
+# are ``text``/``files``/``json`` plus ``**state.variables``, which the tool
+# decides at run time (``tool_node.py:300-305``), so no closed set exists.
+# Guessing one would refuse a correct selector, which is worse than missing a
+# wrong one.
+PUBLISHED_VARIABLES_BY_NODE_TYPE: Mapping[str, frozenset[str]] = {
+    "llm": frozenset({"text", "reasoning_content", "usage", "finish_reason", "structured_output", "files"}),
+    "template-transform": frozenset({"output"}),
+    "question-classifier": frozenset({"class_name", "class_label", "class_id", "usage"}),
+}
+
+# Stands in for a name this module cannot know. Angle-bracketed so a model
+# copying it back writes something obviously wrong rather than a plausible
+# field name that would resolve to nothing.
+UNKNOWN_OUTPUT_VARIABLE = "<that node's own output variable>"
+
+
+def published_variables_of(node: Mapping[str, Any]) -> frozenset[str] | None:
+    """Every variable name a selector rooted at ``node`` may name, or ``None``
+    when this module cannot know -- and ``None`` means "accept anything".
+
+    Three answers, in order: a registered type answers from
+    ``PUBLISHED_VARIABLES_BY_NODE_TYPE``; a node whose own data DECLARES its
+    outputs as a mapping (a code node, a loop) answers from those keys, which is
+    where the truth is for it; anything else answers ``None``.
+
+    A declared-but-EMPTY ``outputs`` answers ``None`` too, not the empty set. A
+    code node created without its outputs configured declares nothing rather
+    than declaring that nothing is published, and an empty set would refuse
+    every selector naming it -- a guard turning an unconfigured node into a
+    blocked edit, which is the failure mode this function exists to avoid.
+    """
+    data = node.get("data")
+    if not isinstance(data, Mapping):
+        return None
+    known = PUBLISHED_VARIABLES_BY_NODE_TYPE.get(str(data.get("type") or ""))
+    if known is not None:
+        return known
+    outputs = data.get("outputs")
+    if isinstance(outputs, Mapping) and outputs:
+        return frozenset(str(key) for key in outputs)
+    return None
+
+
+def output_variable_of(node: Mapping[str, Any]) -> str:
+    """The variable name a selector rooted at ``node`` has to use.
+
+    A registered type answers from ``OUTPUT_VARIABLE_BY_NODE_TYPE``. A code
+    node -- and anything else whose node data declares its own outputs -- is
+    read off the node, because that is where the truth is. Anything left
+    answers ``UNKNOWN_OUTPUT_VARIABLE``: a rejection that admits it does not
+    know the name is still actionable, and a guessed one is the exact silent
+    failure this knowledge exists to prevent.
+    """
+    data = node.get("data")
+    if not isinstance(data, Mapping):
+        return UNKNOWN_OUTPUT_VARIABLE
+    known = OUTPUT_VARIABLE_BY_NODE_TYPE.get(str(data.get("type") or ""))
+    if known:
+        return known
+    outputs = data.get("outputs")
+    if isinstance(outputs, Mapping) and outputs:
+        return str(next(iter(outputs)))
+    return UNKNOWN_OUTPUT_VARIABLE
+
+
 # How many characters of ONE node's JSON config either prompt will spend:
 # enough for a realistic if-else ``cases`` array or an LLM prompt template,
 # small enough that Edit's target plus its neighbours still leave room for the

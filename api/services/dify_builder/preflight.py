@@ -25,13 +25,21 @@ I/O-free ``core/dify_builder``.
 """
 
 from collections.abc import Collection, Mapping
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from pydantic import ValidationError
 
 from core.dify_builder.models import Graph, MutationIntent
 from core.workflow.node_factory import validate_node_config
 from services.dify_builder import credentials, graph_ops
+
+# Only for the node-type knowledge the rejoin guard's REASON needs -- which
+# variable a node publishes -- stated once there so the sentence Edit's prompt
+# shows the model and the sentence this module writes cannot name different
+# variables. Nothing here renders a prompt, and ``graph_prompt`` is as pure as
+# this module is (it reaches no further than ``credentials`` and
+# ``graph_normalizers``).
+from services.dify_builder.agent import graph_prompt
 
 # graphon's ``Graph._filter_canvas_only_nodes`` drops persisted note widgets
 # (top-level ``type == "custom-note"``, empty ``data.type``) before validating
@@ -319,6 +327,173 @@ def _withheld_args(intent: MutationIntent) -> dict:
     return args
 
 
+_AGGREGATOR_NODE_TYPE = "variable-aggregator"
+
+
+def _edge_pairs(graph: Graph) -> set[tuple[str, str]]:
+    """Which node REACHES which, ignoring the handle it leaves on.
+
+    Deliberately not keyed on ``sourceHandle``: re-routing an existing
+    ``N -> A`` from one arm to another does not change whether ``A`` has been
+    told about ``N``, and keying on the handle would make that re-route look
+    like a brand-new branch and refuse a batch that was already correct.
+    """
+    return {
+        (str(edge.get("source")), str(edge.get("target")))
+        for edge in graph.get("edges") or []
+        if isinstance(edge, Mapping)
+    }
+
+
+def _aggregator_selector_variables(data: Mapping[str, Any]) -> dict[str, set[str]]:
+    """Which variables this aggregator's selectors name, grouped by the node
+    each selector is rooted at.
+
+    Both places graphon reads selectors from are scanned regardless of
+    ``group_enabled`` (``VariableAggregatorNode._run`` takes the flat
+    ``variables`` when it is off and ``advanced_settings.groups[*].variables``
+    when it is on). Scanning both can only ever FIND a selector, which is the
+    safe direction for a guard that refuses when it finds none.
+
+    A selector shorter than ``[node, variable]`` names no variable and so
+    contributes nothing: it cannot resolve, which is the very condition being
+    guarded against.
+    """
+    named: dict[str, set[str]] = {}
+
+    def collect(selectors: Any) -> None:
+        if not isinstance(selectors, list):
+            return
+        for selector in selectors:
+            if isinstance(selector, list) and len(selector) >= 2:
+                named.setdefault(str(selector[0]), set()).add(str(selector[1]))
+
+    collect(data.get("variables"))
+    advanced = data.get("advanced_settings")
+    if isinstance(advanced, Mapping):
+        groups = advanced.get("groups")
+        if isinstance(groups, list):
+            for group in groups:
+                if isinstance(group, Mapping):
+                    collect(group.get("variables"))
+    return named
+
+
+def _reaches_along_new_edges(source: str, new_pairs: Collection[tuple[str, str]]) -> set[str]:
+    """``source`` and every node that reaches it along edges THIS BATCH ADDED.
+
+    A branch of more than one node is an ordinary shape: a batch that adds
+    ``n7 -> n8`` and ``n8 -> aggregator`` has told the aggregator about the new
+    arm if it lists EITHER of them, because both run whenever that arm runs.
+    Keying on the immediate source alone refused the two-node version of the
+    very edit this guard is meant to allow.
+
+    Restricted to the batch's OWN new edges on purpose, and this is the whole
+    soundness argument: nodes chained by edges this batch added all run together
+    when the new arm runs. Walking back through PRE-EXISTING edges as well would
+    cross into the graph's exclusive branches -- in the live S6 shape the
+    aggregator's existing selectors are rooted in the OTHER arms of the same
+    if-else, which never run when the new one does, so treating them as
+    ancestors would accept exactly the batch that produces nothing.
+    """
+    predecessors: dict[str, set[str]] = {}
+    for edge_source, edge_target in new_pairs:
+        predecessors.setdefault(edge_target, set()).add(edge_source)
+    seen = {source}
+    stack = [source]
+    while stack:
+        node_id = stack.pop()
+        for parent in predecessors.get(node_id, set()):
+            if parent not in seen:
+                seen.add(parent)
+                stack.append(parent)
+    return seen
+
+
+def _feeds(named: Mapping[str, set[str]], node_id: str, node: Mapping[str, Any]) -> bool:
+    """True when the aggregator has a selector rooted at ``node_id`` naming a
+    variable that node actually PUBLISHES.
+
+    Rooted-at is not enough on its own: ``["node7", "output"]`` on a node that
+    publishes ``text`` is exactly as unresolvable as no selector at all, and the
+    run skips it in the same silence -- so a guard that accepted any name would
+    leave the failure it was built for intact behind a selector that looks
+    right.
+
+    The published set comes from ``graph_prompt.published_variables_of``, which
+    answers ``None`` for a type whose set is not knowable. ``None`` accepts:
+    this guard refuses a name it KNOWS is wrong, never one it merely cannot
+    confirm.
+    """
+    variables = named.get(node_id)
+    if not variables:
+        return False
+    published = graph_prompt.published_variables_of(node)
+    if published is None:
+        return True
+    return bool(variables & published)
+
+
+def _unfed_aggregator_reasons(before: Graph, after: Graph) -> list[str]:
+    """Every new branch this batch wires into a ``variable-aggregator`` without
+    telling that aggregator about it.
+
+    This is the one shape that still ended in "All checks passed" on empty
+    output. The aggregator stays engine-VALID -- its EXISTING selectors still
+    resolve, so ``preflight_errors`` has nothing to say and no single intent
+    owns the defect -- while graphon's ``VariableAggregatorNode._run``
+    (``nodes/variable_aggregator/variable_aggregator_node.py:29-50``) walks the
+    selectors, finds nothing for the new arm, and returns ``SUCCEEDED`` with
+    ``outputs={}``. The End node still runs, so even
+    ``run_finished_without_output`` is False: the Builder reports success over a
+    workflow that produces nothing on the branch the user just asked for.
+
+    Kept narrow on purpose, because a guard that false-rejects is worse than no
+    guard:
+
+    * it fires only on an edge THIS BATCH ADDED. An aggregator the user already
+      wired badly keeps the same exemption ``new_preflight_problems`` gives a
+      node the user already broke;
+    * the target must be an aggregator. A new branch that routes anywhere else
+      -- another node, the End node -- is an ordinary edit and is not looked at;
+    * "told about it" means a selector rooted at ANY node on the new arm --
+      not just the edge's immediate source (``_reaches_along_new_edges``) and
+      in either of the two selector homes -- naming a variable that node really
+      publishes (``_feeds``). The first half is what stops a two-node branch
+      being refused; the second is what stops ``["node7", "output"]`` on a node
+      that publishes ``text`` passing as an answer when the run skips it in the
+      same silence as no selector at all.
+
+    Keyed entirely on graph structure and node data. Nothing the model said
+    about its own proposal is consulted.
+    """
+    new_pairs = _edge_pairs(after) - _edge_pairs(before)
+    if not new_pairs:
+        return []
+    nodes_by_id = {str(node.get("id")): node for node in after.get("nodes") or [] if isinstance(node, Mapping)}
+    reasons: list[str] = []
+    for source, target in sorted(new_pairs):
+        aggregator = nodes_by_id.get(target)
+        data = aggregator.get("data") if isinstance(aggregator, Mapping) else None
+        if not isinstance(data, Mapping) or data.get("type") != _AGGREGATOR_NODE_TYPE:
+            continue
+        named = _aggregator_selector_variables(data)
+        if any(
+            _feeds(named, ancestor, nodes_by_id.get(ancestor) or {})
+            for ancestor in _reaches_along_new_edges(source, new_pairs)
+        ):
+            continue
+        variable = graph_prompt.output_variable_of(nodes_by_id.get(source) or {})
+        reasons.append(
+            f"the new branch {source} -> {target} would run and produce nothing: {target} is a "
+            f"{_AGGREGATOR_NODE_TYPE} and none of its selectors is rooted at {source}. Append "
+            f'["{source}", "{variable}"] to {target}\'s variables, re-sending the existing '
+            f"selectors byte-identical. A selector the run cannot resolve is skipped in silence, "
+            f"so without it the workflow still reports success and {target} outputs nothing."
+        )
+    return reasons
+
+
 class VettedIntents(NamedTuple):
     """A proposed batch as the engine sees it.
 
@@ -368,4 +543,9 @@ def vet_intents(
         # worse than it was.
         for problem in new_preflight_problems(graph, dry_run.graph, dry_run.changed_nodes)
     ]
+    # The third layer: two defects the engine accepts and then runs to nothing.
+    # ``Graph.init`` is happy with both, so neither can be quoted from it --
+    # they are keyed on the batch's own effect on the graph instead, never on
+    # anything the model said.
+    rejections += [f"- {reason}" for reason in _unfed_aggregator_reasons(graph, dry_run.graph)]
     return VettedIntents(dry_run.applicable, rejections)

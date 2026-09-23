@@ -30,7 +30,7 @@ _REJOIN_RULE = (
     "existing variable-aggregator, that aggregator's variables array does not list it yet -- also "
     "append that node's selector to it, re-sending the existing selectors byte-identical. The "
     'selector is ["<new node id>", "<that node\'s own output variable>"], and the variable name '
-    "differs by node type: an llm node's is text, a template-transform's is output, a tool's is "
+    "differs by node type: an llm's is text, a template-transform's is output, a tool's is "
     "text (or files / json), a code node's is whatever its own outputs declare, a "
     "question-classifier's is class_name. The selectors already in that aggregator's variables "
     "show you the spelling a node of the same type uses -- copy it. A selector the run cannot "
