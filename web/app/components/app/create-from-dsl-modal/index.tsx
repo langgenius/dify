@@ -239,13 +239,12 @@ function CreateFromDSLModal({
 
       response = await importMutation.mutateAsync(source)
     } catch (error) {
-      // A failed import is HTTP 400. The request layer already toasts `error`.
-      if (!(error instanceof Response)) {
-        toast.error(
-          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-          { description: await getAppTransferErrorMessage(error) },
-        )
-      }
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        {
+          description: await getAppTransferErrorMessage(error),
+        },
+      )
       return
     }
     await handleImportResponse(response)
@@ -260,12 +259,12 @@ function CreateFromDSLModal({
         params: { import_id: pendingImport.id },
       })
     } catch (error) {
-      if (!(error instanceof Response)) {
-        toast.error(
-          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-          { description: await getAppTransferErrorMessage(error) },
-        )
-      }
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        {
+          description: await getAppTransferErrorMessage(error),
+        },
+      )
       return
     }
 

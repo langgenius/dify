@@ -21,16 +21,6 @@ describe('request error toast timer lifecycle', () => {
     vi.useRealTimers()
   })
 
-  it('renders an import failure as text so the error toast does not add a copy button', () => {
-    notifyRequestError(
-      { method: 'POST', url: 'http://localhost/console/api/apps/imports' },
-      'Missing app data in YAML content.',
-    )
-
-    const title = vi.mocked(toast.error).mock.calls[0]?.[0]
-    expect(typeof title).not.toBe('string')
-  })
-
   it('expires by wall clock even when the timer callback has not run', () => {
     notifyRequestError(request, 'A')
 

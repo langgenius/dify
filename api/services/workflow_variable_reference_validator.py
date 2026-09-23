@@ -6,6 +6,8 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from core.trigger.constants import TRIGGER_NODE_TYPES
+from core.workflow.nodes.human_input.constants import TIMEOUT_HANDLE
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 
 _RESERVED_SELECTOR_HEADS: frozenset[str] = frozenset({"sys", "env", "conversation", "start"})
@@ -76,7 +78,6 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
 
     out_targets_by_handle: dict[str, dict[str | None, list[str]]] = defaultdict(lambda: defaultdict(list))
     predecessors: dict[str, list[str]] = defaultdict(list)
-    in_degree: dict[str, int] = defaultdict(int)
     successors: dict[str, list[str]] = defaultdict(list)
     for edge in edges:
         if not isinstance(edge, Mapping):
@@ -88,15 +89,35 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
         out_targets_by_handle[source][edge.get("sourceHandle")].append(target)
         predecessors[target].append(source)
         successors[source].append(target)
-        in_degree[target] += 1
 
-    entries = [nid for nid in node_ids if node_parent.get(nid) is None and in_degree[nid] == 0]
+    entries = [
+        nid
+        for nid in node_ids
+        if node_parent.get(nid) is None and node_type[nid] in (BuiltinNodeTypes.START, *TRIGGER_NODE_TYPES)
+    ]
     reachable = _reachable_from(entries, successors)
     exclusive = {
         nid
         for nid in node_ids
         if node_type.get(nid) in _BRANCH_NODE_TYPES or node_data[nid].get("error_strategy") == ErrorStrategy.FAIL_BRANCH
     }
+    # A selectable handle can be unwired. It still lets the branch skip a producer.
+    for nid in exclusive:
+        data = node_data[nid]
+        handles: list[str] = []
+        if node_type[nid] == BuiltinNodeTypes.IF_ELSE:
+            cases = data.get("cases")
+            handles = [case["case_id"] for case in cases] if isinstance(cases, list) else ["true"]
+            handles.append("false")
+        elif node_type[nid] == BuiltinNodeTypes.QUESTION_CLASSIFIER:
+            handles = [item["id"] for item in data.get("classes", [])]
+        elif node_type[nid] == BuiltinNodeTypes.HUMAN_INPUT:
+            handles = [action["id"] for action in data.get("user_actions", [])]
+            handles.append(TIMEOUT_HANDLE)
+        if data.get("error_strategy") == ErrorStrategy.FAIL_BRANCH:
+            handles.extend(["source", "fail-branch"])
+        for handle in handles:
+            out_targets_by_handle[nid].setdefault(handle, [])
 
     consumers_by_producer: dict[str, set[str]] = defaultdict(set)
     for node_id in node_ids:
@@ -112,7 +133,7 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
             consumers_by_producer[referenced_id].add(node_id)
 
     issues: list[VariableReferenceIssue] = []
-    for producer, consumers in consumers_by_producer.items():
+    for producer, consumers in sorted(consumers_by_producer.items()):
         runnable_without_producer = _nodes_runnable_without(
             producer,
             entries=entries,
@@ -121,7 +142,7 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
             out_targets_by_handle=out_targets_by_handle,
             exclusive=exclusive,
         )
-        for consumer in consumers:
+        for consumer in sorted(consumers):
             if consumer in runnable_without_producer:
                 issues.append(
                     VariableReferenceIssue(
@@ -180,16 +201,13 @@ def _nodes_runnable_without(
             if pred in forbidden:
                 continue
             if pred not in exclusive or (
-                len(out_targets_by_handle[pred]) > 1
+                out_targets_by_handle[pred]
                 and all(
-                    all(target in forbidden for target in targets) for targets in out_targets_by_handle[pred].values()
+                    any(target in forbidden for target in targets) for targets in out_targets_by_handle[pred].values()
                 )
             ):
                 forbidden.add(pred)
                 queue.append(pred)
-
-    if any(entry in forbidden for entry in entries):
-        return set()
 
     runnable: set[str] = set()
     work: deque[str] = deque(entry for entry in entries if entry not in forbidden)
@@ -198,7 +216,19 @@ def _nodes_runnable_without(
         if node in runnable:
             continue
         runnable.add(node)
-        for nxt in successors.get(node, ()):
+        # All edges sharing the selected handle activate together. If one would
+        # execute the producer, none of that handle's siblings can avoid it.
+        targets = (
+            [
+                target
+                for branch_targets in out_targets_by_handle[node].values()
+                if not any(target in forbidden for target in branch_targets)
+                for target in branch_targets
+            ]
+            if node in exclusive
+            else successors.get(node, ())
+        )
+        for nxt in targets:
             if nxt not in forbidden and nxt not in runnable:
                 work.append(nxt)
     return runnable

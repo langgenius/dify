@@ -1002,6 +1002,47 @@ describe('CreateFromDSLModal', () => {
     )
   })
 
+  it.each([
+    [
+      'JSON',
+      () => Response.json({ error: 'Import confirmation expired' }, { status: 400 }),
+      'Import confirmation expired',
+    ],
+    ['empty', () => new Response(null, { status: 500 }), undefined],
+  ] as const)(
+    'reports a %s HTTP failure when confirming an import',
+    async (_, response, description) => {
+      const user = userEvent.setup()
+      mockImportDSL.mockResolvedValue({
+        id: 'pending-import',
+        status: DSLImportStatus.PENDING,
+        imported_dsl_version: '1.0.0',
+        current_dsl_version: '2.0.0',
+      })
+      mockImportDSLConfirm.mockRejectedValueOnce(response())
+      const onClose = vi.fn()
+      render(
+        <CreateFromDSLModal
+          show
+          onClose={onClose}
+          activeTab={CreateFromDSLModalTab.FROM_URL}
+          dslUrl="https://example.com/app.yml"
+        />,
+      )
+
+      await user.click(getCreateButton())
+      await user.click(await screen.findByRole('button', { name: /newApp\.Confirm/ }))
+
+      await waitFor(() => {
+        expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(
+          expect.stringMatching(/newApp\.appCreateFailed/),
+          { description },
+        )
+      })
+      expect(onClose).not.toHaveBeenCalled()
+    },
+  )
+
   it('should handle pending import confirmation failures and cancellation', async () => {
     mockImportDSL.mockResolvedValue({
       id: 'import-4',

@@ -1283,12 +1283,10 @@ def _advisory_variable_reference_warning(graph_text: str | None) -> str | None:
         if not isinstance(graph, dict):
             return None
         issues = validate_variable_references(graph)
+        return format_variable_reference_errors(issues) if issues else None
     except Exception:
         logger.warning("Skipped advisory variable reference check", exc_info=True)
         return None
-    if not issues:
-        return None
-    return format_variable_reference_errors(issues)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")

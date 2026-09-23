@@ -30,6 +30,71 @@ def _node_data(node: dict[str, object]) -> dict[str, object]:
 
 
 class TestValidateVariableReferences:
+    def test_same_selected_handle_runs_producer_and_consumer_together(self) -> None:
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                _node("router", "if-else"),
+                _node("prod", "tool"),
+                _node("cons", "llm", selector=["prod", "text"]),
+                _node("end", "end"),
+            ],
+            "edges": [
+                _edge("start", "router"),
+                _edge("router", "prod", "true"),
+                _edge("router", "cons", "true"),
+                _edge("router", "end", "false"),
+            ],
+        }
+        assert validate_variable_references(graph) == []
+
+    def test_unwired_else_can_skip_all_wired_cases(self) -> None:
+        router = _node("router", "if-else")
+        _node_data(router)["cases"] = [{"case_id": "true"}, {"case_id": "elif"}]
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                router,
+                _node("prod", "tool"),
+                _node("cons", "llm", selector=["prod", "text"]),
+            ],
+            "edges": [
+                _edge("start", "router"),
+                _edge("start", "cons"),
+                _edge("router", "prod", "true"),
+                _edge("router", "prod", "elif"),
+            ],
+        }
+        assert [(issue.node_id, issue.referenced_node_id) for issue in validate_variable_references(graph)] == [
+            ("cons", "prod")
+        ]
+
+    def test_trigger_can_run_without_the_manual_start_path(self) -> None:
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                _node("trigger", "trigger-webhook"),
+                _node("prod", "tool"),
+                _node("cons", "llm", selector=["prod", "text"]),
+            ],
+            "edges": [_edge("start", "prod"), _edge("trigger", "cons")],
+        }
+        assert [(issue.node_id, issue.referenced_node_id) for issue in validate_variable_references(graph)] == [
+            ("cons", "prod")
+        ]
+
+    def test_disconnected_consumer_is_not_an_entry(self) -> None:
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                _node("router", "if-else"),
+                _node("prod", "tool"),
+                _node("cons", "llm", selector=["prod", "text"]),
+            ],
+            "edges": [_edge("start", "router"), _edge("router", "prod", "true")],
+        }
+        assert validate_variable_references(graph) == []
+
     def test_empty_graph_returns_no_issues(self) -> None:
         """An empty or node-less graph is accepted without issues."""
         assert validate_variable_references({}) == []

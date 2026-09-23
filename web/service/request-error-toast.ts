@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react'
-import { createElement } from 'react'
 import { toast } from '@/app/notifications'
 
 const DEDUPE_WINDOW_MS = 10000
@@ -13,13 +11,6 @@ type ErrorNotification = {
 const notifications = new Map<string, Map<string, ErrorNotification>>()
 const requestKey = (request: RequestIdentity) => JSON.stringify([request.method, request.url])
 
-function errorTitle(request: RequestIdentity, message: string): ReactNode {
-  // Import failures are a full sentence. A string error toast adds a copy
-  // button over the title, which covers the message.
-  if (request.url.includes('/apps/imports')) return createElement('span', null, message)
-  return message
-}
-
 export function clearRequestErrorToasts(request: RequestIdentity) {
   const key = requestKey(request)
   const messages = notifications.get(key)
@@ -31,7 +22,7 @@ export function clearRequestErrorToasts(request: RequestIdentity) {
 export function notifyRequestError(request: RequestIdentity, message: string) {
   // Writes can be separate user actions even when their errors are identical.
   if (request.method !== 'GET') {
-    toast.error(errorTitle(request, message))
+    toast.error(message)
     return
   }
 
@@ -49,5 +40,5 @@ export function notifyRequestError(request: RequestIdentity, message: string) {
     if (messages.size === 0) notifications.delete(key)
   }, DEDUPE_WINDOW_MS)
   messages.set(message, { expiresAt: now + DEDUPE_WINDOW_MS, timer })
-  toast.error(errorTitle(request, message))
+  toast.error(message)
 }
