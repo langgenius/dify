@@ -1,4 +1,3 @@
-import type { FileTypesRes } from './datasets'
 import type {
   ModelParameterRule,
   ModelProvider,
@@ -14,7 +13,9 @@ import type {
   StructuredOutputRulesResponse,
 } from '@/models/common'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSetAtom } from 'jotai'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
+import { authSessionRevisionAtom } from '@/context/auth-session-state'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
 
@@ -103,13 +104,6 @@ export const useMailRegister = () => {
   })
 }
 
-export const useFileSupportTypes = () => {
-  return useQuery<FileTypesRes>({
-    queryKey: [NAME_SPACE, 'file-types'],
-    queryFn: () => get<FileTypesRes>('/files/support-type'),
-  })
-}
-
 type MemberResponse = {
   accounts: Member[] | null
 }
@@ -154,6 +148,7 @@ export const useSchemaTypeDefinitions = () => {
 
 export const useLogout = () => {
   const queryClient = useQueryClient()
+  const advanceAuthSession = useSetAtom(authSessionRevisionAtom)
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
@@ -167,6 +162,8 @@ export const useLogout = () => {
       // need to be remembered here. systemFeatures (user-agnostic) just
       // refetches once on the way to /signin, which is cheap.
       queryClient.clear()
+      // Rebind account-scoped Jotai queries to the cleared cache.
+      advanceAuthSession((revision) => revision + 1)
     },
   })
 }

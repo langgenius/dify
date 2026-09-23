@@ -3,7 +3,7 @@
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -18,7 +18,7 @@ type AgentModelFieldProps = {
 }
 
 export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const readOnly = useAgentOrchestrateReadOnly()
   const modelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
@@ -40,10 +40,10 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
     (providerUnavailable && providerQuery.isError)
 
   return (
-    <Field name="model" className="gap-0 pb-4">
-      <FieldLabel className="system-sm-semibold-uppercase! text-text-secondary">
+    <Fieldset className="grid gap-0 pb-4">
+      <FieldsetLegend className="mb-0 w-fit py-1 system-sm-semibold-uppercase! text-text-secondary">
         {t(($) => $['agentDetail.configure.model.label'])}
-      </FieldLabel>
+      </FieldsetLegend>
       {readOnly ? (
         <div className="flex h-8 w-full min-w-0 items-center rounded-lg bg-components-input-bg-disabled px-3 system-sm-regular text-components-input-text-filled">
           <span className="truncate">{currentModel?.model}</span>
@@ -93,6 +93,6 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
           </Button>
         </div>
       )}
-    </Field>
+    </Fieldset>
   )
 }

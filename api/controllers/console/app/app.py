@@ -23,6 +23,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.app.error import TracingProviderUnavailableError
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
@@ -40,6 +41,7 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.file.remote_file_metadata import FileInfo
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -890,7 +892,6 @@ class AppApi(Resource):
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=None)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
@@ -1317,10 +1318,13 @@ class AppTraceApi(Resource):
     def post(self, req_data: AppTracePayload, app_model: App):
         # add app trace
 
-        OpsTraceManager.update_app_tracing_config(
-            app_id=app_model.id,
-            enabled=req_data.enabled,
-            tracing_provider=req_data.tracing_provider,
-        )
+        try:
+            OpsTraceManager.update_app_tracing_config(
+                app_id=app_model.id,
+                enabled=req_data.enabled,
+                tracing_provider=req_data.tracing_provider,
+            )
+        except TraceProviderNotInstalledError as error:
+            raise TracingProviderUnavailableError() from error
 
         return SimpleResultResponse(result="success").model_dump(mode="json")

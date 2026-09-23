@@ -1,221 +1,97 @@
-import type { StrategyDetail as StrategyDetailType } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import type {
+  AgentStrategyEntity,
+  AgentStrategyProviderIdentity,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import { render, screen, within } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import StrategyDetail from '../strategy-detail'
 
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (obj: Record<string, string>) => obj?.en_US || '',
-}))
-
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
-}))
-
-vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
-  default: () => <span data-testid="card-icon" />,
-}))
-
-vi.mock('@/app/components/plugins/card/base/description', () => ({
-  default: ({ text }: { text: string }) => <div data-testid="description">{text}</div>,
-}))
-
-type ProviderType = Parameters<typeof StrategyDetail>[0]['provider']
-
-const mockProvider = {
+const provider: AgentStrategyProviderIdentity = {
   author: 'test-author',
   name: 'test-provider',
-  description: { en_US: 'Provider desc' },
-  tenant_id: 'tenant-1',
+  description: { en_US: 'Provider description' },
   icon: 'icon.png',
   label: { en_US: 'Test Provider' },
-  tags: [],
-} as unknown as ProviderType
+}
 
-const mockDetail = {
+const createStrategy = (): AgentStrategyEntity => ({
   identity: {
     author: 'author-1',
     name: 'strategy-1',
-    icon: 'icon.png',
     label: { en_US: 'Strategy Label' },
     provider: 'provider-1',
   },
+  description: { en_US: 'Strategy description' },
   parameters: [
     {
-      name: 'param1',
-      label: { en_US: 'Parameter 1' },
-      type: 'text-input',
+      name: 'query',
+      label: { en_US: 'Search query' },
+      type: 'string',
       required: true,
-      human_description: { en_US: 'A text parameter' },
+      help: { en_US: 'A text parameter' },
     },
+    { name: 'count', label: { en_US: 'Result count' }, type: 'number' },
+    { name: 'enabled', label: { en_US: 'Enabled' }, type: 'boolean', help: null },
+    { name: 'file', label: { en_US: 'Input file' }, type: 'file' },
+    { name: 'tools', label: { en_US: 'Tools' }, type: 'array[tools]' },
   ],
-  description: { en_US: 'Strategy description' },
   output_schema: {
     properties: {
       result: { type: 'string', description: 'Result output' },
       items: { type: 'array', items: { type: 'string' }, description: 'Array items' },
     },
   },
-  features: [],
-} as unknown as StrategyDetailType
+})
 
-describe('StrategyDetail', () => {
-  const mockOnHide = vi.fn()
+const renderDetails = (detail: AgentStrategyEntity) =>
+  render(
+    <StrategyDetail provider={provider} tenantId="tenant-1" detail={detail} onHide={vi.fn()} />,
+  )
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+describe('Strategy details contract', () => {
+  it('displays API parameter types and help alongside output schema descriptions', () => {
+    renderDetails(createStrategy())
+    const drawer = within(screen.getByRole('dialog', { name: 'Strategy Label' }))
+
+    expect(drawer.getByText('Search query')).toBeInTheDocument()
+    expect(drawer.getByText('tools.setBuiltInTools.string')).toBeInTheDocument()
+    expect(drawer.getByText('tools.setBuiltInTools.required')).toBeInTheDocument()
+    expect(drawer.getByText('A text parameter')).toBeInTheDocument()
+    expect(drawer.getByText('tools.setBuiltInTools.number')).toBeInTheDocument()
+    expect(drawer.getByText('boolean')).toBeInTheDocument()
+    expect(drawer.getByText('tools.setBuiltInTools.file')).toBeInTheDocument()
+    expect(drawer.getByText('multiple-tool-select')).toBeInTheDocument()
+    expect(drawer.getByText('String')).toBeInTheDocument()
+    expect(drawer.getByText('Array[String]')).toBeInTheDocument()
+    expect(drawer.getByText('Result output')).toBeInTheDocument()
+    expect(drawer.getByText('Array items')).toBeInTheDocument()
   })
 
-  describe('Rendering', () => {
-    it('should render drawer', () => {
-      render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
+  it('accepts optional parameters and a null output schema', () => {
+    renderDetails({ ...createStrategy(), parameters: undefined, output_schema: null })
 
-      const dialog = screen.getByRole('dialog')
-
-      expect(dialog)!.toBeInTheDocument()
-      expect(dialog).toHaveClass(
-        'data-[swipe-direction=right]:top-2',
-        'data-[swipe-direction=right]:bottom-2',
-        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
-        'data-[swipe-direction=right]:w-100',
-        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
-      )
-    })
-
-    it('should render provider label', () => {
-      render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
-
-      expect(screen.getByText('Test Provider'))!.toBeInTheDocument()
-    })
-
-    it('should render strategy label', () => {
-      render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
-
-      expect(screen.getByText('Strategy Label'))!.toBeInTheDocument()
-    })
-
-    it('should render parameters section', () => {
-      render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
-
-      expect(screen.getByText('tools.setBuiltInTools.parameters'))!.toBeInTheDocument()
-      expect(screen.getByText('Parameter 1'))!.toBeInTheDocument()
-    })
-
-    it('should render output schema section', () => {
-      render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
-
-      expect(screen.getByText('OUTPUT'))!.toBeInTheDocument()
-      expect(screen.getByText('result'))!.toBeInTheDocument()
-      expect(screen.getByText('String'))!.toBeInTheDocument()
-    })
-
-    it('should render BACK button', () => {
-      render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
-
-      expect(screen.getByText('BACK'))!.toBeInTheDocument()
-    })
+    expect(screen.getByRole('dialog', { name: 'Strategy Label' })).toBeInTheDocument()
+    expect(screen.queryByText('Search query')).not.toBeInTheDocument()
+    expect(screen.queryByText('OUTPUT')).not.toBeInTheDocument()
   })
 
-  describe('User Interactions', () => {
-    it('should call onHide when close button clicked', async () => {
-      const user = userEvent.setup()
-
-      render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
-
-      await user.click(screen.getByRole('button', { name: /operation\.close|close/i }))
-
-      expect(mockOnHide).toHaveBeenCalledTimes(1)
+  it('safely displays JSON schema properties that do not declare a simple type', () => {
+    renderDetails({
+      ...createStrategy(),
+      output_schema: {
+        properties: {
+          unconstrained: true,
+          reference: { $ref: '#/$defs/result' },
+          union: { type: ['string', 'null'] },
+          tuple: { type: 'array', prefixItems: [{ type: 'number' }] },
+        },
+      },
     })
 
-    it('should call onHide when BACK clicked', () => {
-      render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
-
-      fireEvent.click(screen.getByText('BACK'))
-
-      expect(mockOnHide).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Parameter Types', () => {
-    it('should display correct type for number-input', () => {
-      const detailWithNumber = {
-        ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0]!, type: 'number-input' }],
-      }
-      render(
-        <StrategyDetail provider={mockProvider} detail={detailWithNumber} onHide={mockOnHide} />,
-      )
-
-      expect(screen.getByText('tools.setBuiltInTools.number'))!.toBeInTheDocument()
-    })
-
-    it('should display correct type for checkbox', () => {
-      const detailWithCheckbox = {
-        ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0]!, type: 'checkbox' }],
-      }
-      render(
-        <StrategyDetail provider={mockProvider} detail={detailWithCheckbox} onHide={mockOnHide} />,
-      )
-
-      expect(screen.getByText('boolean'))!.toBeInTheDocument()
-    })
-
-    it('should display correct type for file', () => {
-      const detailWithFile = {
-        ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0]!, type: 'file' }],
-      }
-      render(<StrategyDetail provider={mockProvider} detail={detailWithFile} onHide={mockOnHide} />)
-
-      expect(screen.getByText('tools.setBuiltInTools.file'))!.toBeInTheDocument()
-    })
-
-    it('should display correct type for array[tools]', () => {
-      const detailWithArrayTools = {
-        ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0]!, type: 'array[tools]' }],
-      }
-      render(
-        <StrategyDetail
-          provider={mockProvider}
-          detail={detailWithArrayTools}
-          onHide={mockOnHide}
-        />,
-      )
-
-      expect(screen.getByText('multiple-tool-select'))!.toBeInTheDocument()
-    })
-
-    it('should display original type for unknown types', () => {
-      const detailWithUnknown = {
-        ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0]!, type: 'custom-type' }],
-      }
-      render(
-        <StrategyDetail provider={mockProvider} detail={detailWithUnknown} onHide={mockOnHide} />,
-      )
-
-      expect(screen.getByText('custom-type'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty parameters', () => {
-      const detailEmpty = { ...mockDetail, parameters: [] }
-      render(<StrategyDetail provider={mockProvider} detail={detailEmpty} onHide={mockOnHide} />)
-
-      expect(screen.getByText('tools.setBuiltInTools.parameters'))!.toBeInTheDocument()
-    })
-
-    it('should handle no output schema', () => {
-      const detailNoOutput = {
-        ...mockDetail,
-        output_schema: undefined as unknown as Record<string, unknown>,
-      }
-      render(<StrategyDetail provider={mockProvider} detail={detailNoOutput} onHide={mockOnHide} />)
-
-      expect(screen.queryByText('OUTPUT')).not.toBeInTheDocument()
-    })
+    expect(screen.getByText('unconstrained')).toBeInTheDocument()
+    expect(screen.getByText('reference')).toBeInTheDocument()
+    expect(screen.getByText('union')).toBeInTheDocument()
+    expect(screen.getAllByText('Unknown')).toHaveLength(3)
+    expect(screen.getByText('Array[Unknown]')).toBeInTheDocument()
   })
 })

@@ -25,7 +25,7 @@ type MethodSelectorProps = {
 }
 
 const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

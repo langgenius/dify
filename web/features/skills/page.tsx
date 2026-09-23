@@ -121,7 +121,7 @@ function SkillCardSkeletonCards() {
 }
 
 function SkillCardSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -155,8 +155,8 @@ function SkillPlaceholderState({
   role,
   title,
 }: SkillPlaceholderStateProps) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <section
@@ -262,8 +262,8 @@ function DeleteSkillDialog({
   skill: SkillResponse
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const deleteMutation = useMutation(
@@ -287,13 +287,7 @@ function DeleteSkillDialog({
     (referenceCount > 0 && confirmDeleteInput !== skill.display_name)
   const description =
     referenceCount > 0
-      ? t(
-          ($) =>
-            referenceCount === 1
-              ? $['skillManagement.deleteDialog.referencedDescription_one']
-              : $['skillManagement.deleteDialog.referencedDescription_other'],
-          { count: referenceCount },
-        )
+      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], { count: referenceCount })
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
@@ -417,8 +411,8 @@ function SkillCard({
   skill: SkillResponse
   onOpenTagManagement: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -506,13 +500,7 @@ function SkillCard({
         <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <span className="shrink-0">
-              {t(
-                ($) =>
-                  skill.reference_count === 1
-                    ? $['skillManagement.referenceCount_one']
-                    : $['skillManagement.referenceCount_other'],
-                { count: skill.reference_count ?? 0 },
-              )}
+              {t(($) => $['skillManagement.referenceCount'], { count: skill.reference_count ?? 0 })}
             </span>
             <span aria-hidden className="shrink-0 text-text-quaternary">
               ·
@@ -520,7 +508,7 @@ function SkillCard({
             <span className="min-w-0 truncate">
               {isDraft
                 ? t(($) => $['skillManagement.editedAt'], { time: updatedAt })
-                : t(($) => $['skillManagement.publishedAt'], { time: publishedAt })}
+                : t(($) => $['skillManagement.publishedAt'], { time: publishedAt ?? '-' })}
             </span>
           </div>
         </div>
@@ -681,7 +669,7 @@ function SkillsToolbar({
   onImport: () => void
   onOpenTagManagement: () => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const [keyword, setKeyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -756,8 +744,8 @@ type SkillGridProps = {
 }
 
 function SkillGridRetryStatus({ state }: { state: SkillGridRetryState }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <div
@@ -780,7 +768,7 @@ function SkillGridPagination({
     { kind: 'list' }
   >['pagination']
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   if (state.status === 'none') return null
   if (state.status === 'error') return <SkillGridRetryStatus state={state} />
@@ -796,7 +784,7 @@ function SkillGridPagination({
 }
 
 function SkillGrid({ state }: SkillGridProps) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const isBusy =
     state.status === 'pending' ||
     (state.status === 'error' && state.isRetrying) ||
@@ -861,8 +849,8 @@ function ImportSkillDialogForm({
   importing: boolean
   onImport: (file: File) => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const inputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const descriptionId = useId()
@@ -1018,7 +1006,7 @@ function ImportSkillDialogForm({
 }
 
 export default function SkillsPage() {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const { canDelete, canEdit } = useSkillPermissions()

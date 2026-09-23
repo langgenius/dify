@@ -185,7 +185,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     myUserId,
     onlineUsers,
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflow'])
     const workflowContainerRef = useRef<HTMLDivElement>(null)
     useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()

@@ -50,7 +50,7 @@ export const CreateSubscriptionButton = ({
   buttonType = CreateButtonType.FULL_BUTTON,
   shape = 'square',
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'pluginTrigger'])
   const { subscriptions } = useSubscriptionList()
   const subscriptionCount = subscriptions?.length || 0
   const [selectedCreateInfo, setSelectedCreateInfo] = useState<{
@@ -186,13 +186,13 @@ export const CreateSubscriptionButton = ({
         extra: (
           <Infotip>
             <InfotipTrigger
-              aria-label={t(($) => $['subscription.addType.options.manual.tip'], {
+              aria-label={t(($) => $['subscription.addType.options.manual.description'], {
                 ns: 'pluginTrigger',
               })}
               className="size-3.5"
             />
             <InfotipContent
-              aria-label={t(($) => $['subscription.addType.options.manual.tip'], {
+              aria-label={t(($) => $['subscription.addType.options.manual.description'], {
                 ns: 'pluginTrigger',
               })}
             >

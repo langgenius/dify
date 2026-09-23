@@ -560,6 +560,82 @@ describe('useInsertSnippet', () => {
       expect(insertedLoopStartNode.data.loop_id).toBe(insertedLoopNode.id)
     })
 
+    it.each([
+      { enabled: true, description: 'leaves routed outputs for the user to connect' },
+      { enabled: false, description: 'automatically connects the ordinary Agent output' },
+    ])('$description when inserting an Agent snippet into an edge', async ({ enabled }) => {
+      mockGetNodes.mockReturnValue([
+        { id: 'start', position: { x: 0, y: 0 }, data: { type: 'start' } },
+        { id: 'end', position: { x: 600, y: 0 }, data: { type: 'end' } },
+      ])
+      mockEdges = [
+        {
+          id: 'start-source-end-target',
+          source: 'start',
+          sourceHandle: 'source',
+          target: 'end',
+          targetHandle: 'target',
+        },
+      ]
+      seedPublishedWorkflow(queryClient, {
+        graph: {
+          nodes: [
+            {
+              id: 'snippet-agent',
+              position: { x: 0, y: 0 },
+              data: {
+                type: 'agent',
+                agent_node_kind: 'dify_agent',
+                version: '2',
+                agent_output_routes: {
+                  enabled,
+                  routes: [
+                    { id: 'accepted', name: 'Accepted', label: 'The request is accepted.' },
+                    { id: 'rejected', name: 'Rejected', label: 'The request is rejected.' },
+                  ],
+                },
+              },
+            },
+          ],
+          edges: [],
+        },
+      })
+
+      const { result } = renderUseInsertSnippet()
+
+      await act(async () => {
+        await result.current.handleInsertSnippet('snippet-1', {
+          prevNodeId: 'start',
+          prevNodeSourceHandle: 'source',
+          nextNodeId: 'end',
+          nextNodeTargetHandle: 'target',
+        })
+      })
+
+      const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
+      const insertedAgent = nextNodes.find((node) => node.data.type === 'agent')!
+      const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
+      const expectedEdges = [
+        expect.objectContaining({
+          source: 'start',
+          sourceHandle: 'source',
+          target: insertedAgent.id,
+          targetHandle: 'target',
+        }),
+      ]
+      if (!enabled) {
+        expectedEdges.push(
+          expect.objectContaining({
+            source: insertedAgent.id,
+            sourceHandle: 'source',
+            target: 'end',
+            targetHandle: 'target',
+          }),
+        )
+      }
+      expect(nextEdges).toEqual(expectedEdges)
+    })
+
     it.each(['iteration', 'loop'] as const)(
       'should connect inserted snippet nodes inside the %s container',
       async (containerType) => {

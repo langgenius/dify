@@ -90,7 +90,7 @@ const workflowGeneratorErrorSelectors: Record<
   UNRESOLVED_REFERENCE: ($) => $['workflowGenerator.errors.UNRESOLVED_REFERENCE'],
 }
 
-function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<'workflow'>) {
+function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<['workflow']>) {
   return t(workflowGeneratorErrorSelectors[error.code])
 }
 
@@ -152,7 +152,7 @@ const RecoveryDialog = ({
 )
 
 function WorkflowGeneratorModal() {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow', 'common'])
   const router = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled

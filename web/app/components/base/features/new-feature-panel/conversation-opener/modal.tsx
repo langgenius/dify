@@ -38,7 +38,9 @@ const OpeningSettingModal = ({
   workflowVariables = [],
   onAutoAddPromptVariable,
 }: OpeningSettingModalProps) => {
-  const { t } = useTranslation()
+  const questionsLabelId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const [tempValue, setTempValue] = useState(data?.opening_statement || '')
   useEffect(() => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect
@@ -119,7 +121,10 @@ const OpeningSettingModal = ({
     <span className="block wrap-break-word whitespace-pre-wrap">
       {t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
       <br />
-      {t(($) => $['openingStatement.placeholderLine2'], { ns: 'appDebug' })}
+      {t(($) => $['openingStatement.placeholderLine2'], {
+        ns: 'appDebug',
+        variable: '{{variable}}',
+      })}
     </span>
   )
 
@@ -144,22 +149,12 @@ const OpeningSettingModal = ({
       <div>
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <div className="text-sm font-medium text-text-primary">
+            <div id={questionsLabelId} className="text-sm font-medium text-text-primary">
               {t(($) => $['openingStatement.openingQuestion'], { ns: 'appDebug' })}
             </div>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $['openingStatement.openingQuestionDescription'], {
-                  ns: 'appDebug',
-                })}
-                className="size-3.5"
-              />
-              <InfotipContent
-                aria-label={t(($) => $['openingStatement.openingQuestionDescription'], {
-                  ns: 'appDebug',
-                })}
-                className="max-w-55"
-              >
+              <InfotipTrigger aria-labelledby={questionsLabelId} className="size-3.5" />
+              <InfotipContent aria-labelledby={questionsLabelId} className="max-w-55">
                 {t(($) => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
               </InfotipContent>
             </Infotip>
@@ -199,7 +194,7 @@ const OpeningSettingModal = ({
               >
                 <IconButton
                   {...getHandleProps(index)}
-                  className="handle size-6 shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
+                  className="handle shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
                 >
                   <span aria-hidden="true" className="i-ri-draggable size-4 text-text-quaternary" />
                 </IconButton>

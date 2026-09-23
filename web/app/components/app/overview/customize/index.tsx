@@ -59,7 +59,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
   mode,
   sourceCodeRepository,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'common'])
   const docLink = useDocLink()
   const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
   const repository =

@@ -53,7 +53,7 @@ export function EnvironmentWebAppCard({
   canManageAccessPoint,
   highlighted,
 }: EnvironmentWebAppCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'app', 'appOverview', 'common', 'deployments'])
   const queryClient = useQueryClient()
   const appInfo = useAppStore((state) => state.appDetail) as AccessPointAppInfo | null
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

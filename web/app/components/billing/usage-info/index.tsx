@@ -1,6 +1,6 @@
 'use client'
 import type { MeterTone } from '@langgenius/dify-ui/meter'
-import type { ComponentType, FC, ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
@@ -11,7 +11,7 @@ import { NUM_INFINITE } from '../config'
 
 type Props = Readonly<{
   className?: string
-  Icon: ComponentType<{ className?: string }>
+  iconClassName: string
   name: string
   tooltip?: string
   usage: number
@@ -31,7 +31,7 @@ type Props = Readonly<{
 
 const UsageInfo: FC<Props> = ({
   className,
-  Icon,
+  iconClassName,
   name,
   tooltip,
   usage,
@@ -47,7 +47,9 @@ const UsageInfo: FC<Props> = ({
   isSandboxPlan = false,
   usageUnknown = false,
 }) => {
-  const { t } = useTranslation()
+  const labelId = React.useId()
+
+  const { t } = useTranslation(['billing'])
 
   const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
   const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
@@ -162,14 +164,16 @@ const UsageInfo: FC<Props> = ({
       aria-label={name}
       className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}
     >
-      {!hideIcon && Icon && <Icon className="size-4 text-text-tertiary" />}
+      {!hideIcon && iconClassName && (
+        <span aria-hidden className={cn(iconClassName, 'size-4 text-text-tertiary')} />
+      )}
       <dl className="flex flex-col gap-2">
         <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
-          {name}
+          <span id={labelId}>{name}</span>
           {tooltip && (
             <Infotip>
-              <InfotipTrigger aria-label={tooltip} />
-              <InfotipContent aria-label={tooltip} className="w-45">
+              <InfotipTrigger aria-labelledby={labelId} />
+              <InfotipContent aria-labelledby={labelId} className="w-45">
                 {tooltip}
               </InfotipContent>
             </Infotip>

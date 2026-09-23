@@ -94,7 +94,7 @@ import {
   zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse,
   zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetPath,
   zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Stop a running snippet workflow task

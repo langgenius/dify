@@ -210,7 +210,6 @@ export const lintConfig = {
       name: 'dify',
       specifier: './web/plugins/eslint/index.js',
     },
-    'eslint-plugin-erasable-syntax-only',
     {
       name: 'eslint-comments',
       specifier: '@eslint-community/eslint-plugin-eslint-comments',
@@ -489,6 +488,8 @@ export const lintConfig = {
     'unicorn/no-abusive-eslint-disable': 'error',
     'dify/no-file-wide-disable': 'error',
     'dify/require-disable-directive-description': 'error',
+    'dify/require-i18n-namespace': 'error',
+    'dify/require-t-function-namespace': 'error',
     'eslint-comments/no-aggregating-enable': 'error',
     'eslint-comments/no-duplicate-disable': 'error',
     'eslint-comments/no-unlimited-disable': 'error',
@@ -523,10 +524,6 @@ export const lintConfig = {
     'import/no-duplicates': 'error',
     'import/no-mutable-exports': 'error',
     'import/no-named-default': 'error',
-    'erasable-syntax-only/enums': 'error',
-    'erasable-syntax-only/import-aliases': 'error',
-    'erasable-syntax-only/namespaces': 'error',
-    'erasable-syntax-only/parameter-properties': 'error',
     'regexp/confusing-quantifier': 'warn',
     'regexp/control-character-escape': 'error',
     'regexp/match-any': 'error',
@@ -877,11 +874,6 @@ export const lintConfig = {
             },
             libraries: [
               {
-                prefix: 'i-custom-',
-                source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-                name: '^(?<name>.*)$',
-              },
-              {
                 source: '^@remixicon/react$',
                 name: '^(?<set>Ri)(?<name>.+)$',
               },
@@ -930,7 +922,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -997,7 +997,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -1377,10 +1385,6 @@ export const lintConfig = {
         'import/no-duplicates': 'off',
         'import/no-mutable-exports': 'off',
         'import/no-named-default': 'off',
-        'erasable-syntax-only/enums': 'off',
-        'erasable-syntax-only/import-aliases': 'off',
-        'erasable-syntax-only/namespaces': 'off',
-        'erasable-syntax-only/parameter-properties': 'off',
         'regexp/confusing-quantifier': 'off',
         'regexp/control-character-escape': 'off',
         'regexp/match-any': 'off',

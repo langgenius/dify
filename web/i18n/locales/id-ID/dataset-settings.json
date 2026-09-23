@@ -1,5 +1,6 @@
 {
   "desc": "Di sini Anda dapat memodifikasi properti dan pengaturan pengambilan Pengetahuan ini.",
+  "form.changeIcon": "Ubah ikon pengetahuan",
   "form.chunkStructure.description": "tentang Struktur Potongan.",
   "form.chunkStructure.learnMore": "Pelajari lebih lanjut",
   "form.chunkStructure.title": "Struktur Potongan",

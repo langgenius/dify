@@ -358,7 +358,7 @@ describe('ApiBasedExtensionModal', () => {
         t: withSelectorKey((key: string) => {
           if (missingKeys.includes(key)) return ''
           return `common.${key}`
-        }, 'common') as unknown as TFunction,
+        }, 'common') as unknown as TFunction<['common']>,
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act

@@ -7,26 +7,26 @@ from flask.testing import FlaskClient
 from models import App
 
 
-def test_apps_bare_id_route_404(test_client, app_in_workspace, account_token):
+def test_apps_bare_id_route_404(test_client, app_in_workspace, auth_headers):
     resp = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert resp.status_code == 404
 
 
-def test_apps_parameters_route_404(test_client, app_in_workspace, account_token):
+def test_apps_parameters_route_404(test_client, app_in_workspace, auth_headers):
     resp = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}/parameters",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert resp.status_code == 404
 
 
-def test_apps_info_route_404(test_client, app_in_workspace, account_token):
+def test_apps_info_route_404(test_client, app_in_workspace, auth_headers):
     resp = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}/info",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert resp.status_code == 404
 
@@ -34,11 +34,11 @@ def test_apps_info_route_404(test_client, app_in_workspace, account_token):
 def test_apps_describe_returns_merged_shape(
     test_client: FlaskClient,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     res = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     body = res.json
@@ -50,11 +50,11 @@ def test_apps_describe_returns_merged_shape(
 def test_apps_describe_full_includes_input_schema(
     test_client: FlaskClient,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     res = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     body = res.json
@@ -67,11 +67,11 @@ def test_apps_describe_full_includes_input_schema(
 def test_apps_describe_fields_info_only(
     test_client: FlaskClient,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     res = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}?fields=info",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     body = res.json
@@ -83,11 +83,11 @@ def test_apps_describe_fields_info_only(
 def test_apps_describe_fields_parameters_only(
     test_client: FlaskClient,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     res = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}?fields=parameters",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     body = res.json
@@ -99,11 +99,11 @@ def test_apps_describe_fields_parameters_only(
 def test_apps_describe_fields_input_schema_only(
     test_client: FlaskClient,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     res = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}?fields=input_schema",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     body = res.json
@@ -115,11 +115,11 @@ def test_apps_describe_fields_input_schema_only(
 def test_apps_describe_fields_combined(
     test_client: FlaskClient,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     res = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}?fields=info,input_schema",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     body = res.json
@@ -131,11 +131,11 @@ def test_apps_describe_fields_combined(
 def test_apps_describe_fields_unknown_returns_422(
     test_client: FlaskClient,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     res = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}?fields=garbage",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 422
 
@@ -143,11 +143,11 @@ def test_apps_describe_fields_unknown_returns_422(
 def test_apps_describe_fields_extra_param_returns_422(
     test_client: FlaskClient,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     res = test_client.get(
         f"/openapi/v1/apps/{app_in_workspace.id}?fields=info&page=1",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 422
 
@@ -156,12 +156,12 @@ def test_apps_list_returns_pagination_envelope(
     test_client: FlaskClient,
     workspace_account,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     _, tenant, _ = workspace_account
     res = test_client.get(
         f"/openapi/v1/apps?workspace_id={tenant.id}&page=1&limit=20",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     body = res.json
@@ -171,8 +171,8 @@ def test_apps_list_returns_pagination_envelope(
     assert any(d["id"] == app_in_workspace.id for d in body["data"])
 
 
-def test_apps_list_requires_workspace_id(test_client: FlaskClient, account_token: str):
-    res = test_client.get("/openapi/v1/apps", headers={"Authorization": f"Bearer {account_token}"})
+def test_apps_list_requires_workspace_id(test_client: FlaskClient, auth_headers: dict[str, str]):
+    res = test_client.get("/openapi/v1/apps", headers=auth_headers)
     assert res.status_code == 400
 
 
@@ -180,12 +180,12 @@ def test_apps_list_tag_no_match_returns_empty_data_not_400(
     test_client: FlaskClient,
     workspace_account,
     app_in_workspace: App,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
     _, tenant, _ = workspace_account
     res = test_client.get(
         f"/openapi/v1/apps?workspace_id={tenant.id}&tag=nonexistent",
-        headers={"Authorization": f"Bearer {account_token}"},
+        headers=auth_headers,
     )
     assert res.status_code == 200
     assert res.json["data"] == []
@@ -193,9 +193,9 @@ def test_apps_list_tag_no_match_returns_empty_data_not_400(
 
 def test_account_sessions_returns_envelope(
     test_client: FlaskClient,
-    account_token: str,
+    auth_headers: dict[str, str],
 ):
-    res = test_client.get("/openapi/v1/account/sessions", headers={"Authorization": f"Bearer {account_token}"})
+    res = test_client.get("/openapi/v1/account/sessions", headers=auth_headers)
     assert res.status_code == 200
     body = res.json
     # canonical envelope shape

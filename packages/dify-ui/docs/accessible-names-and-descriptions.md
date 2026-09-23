@@ -126,12 +126,9 @@ with a second label or a competing error association:
 ```
 
 Use `DialogTitle` and, when useful, `DialogDescription` for a short dialog summary. Do not turn a
-whole form or rich dialog body into one description. Per [Base UI Tooltip guidance], Tooltip is a
-supplemental visual label, not the trigger's accessible-name source. Base UI specifically recommends
-an `aria-label` that closely matches the Tooltip content; apply that to icon-only triggers. When
-persistent visible trigger text already supplies the name, preserve the content-derived name per
-W3C and MDN guidance instead of adding a redundant override merely because Tooltip is present. Use
-[Overlay] choices for essential, structured, interactive, or touch-reachable information.
+whole form or rich dialog body into one description. Tooltip content is not the trigger's
+accessible-name source: icon-only triggers still need their own name, while persistent visible
+trigger text should continue to name the control.
 
 Prefer descriptions associated with DOM text. When considering `aria-description`, verify target
 browser and assistive-technology behavior. The [AccName 1.2 working draft] gives
@@ -159,7 +156,6 @@ that source computes to an empty description. Do not stack mechanisms to force r
 
 [APG]: https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions#namingtechniques
 [AccName 1.2 working draft]: https://www.w3.org/TR/accname-1.2#mapping_additional_nd_description
-[Base UI Tooltip guidance]: https://base-ui.com/react/components/tooltip#usage-guidelines
 [Base UI accessibility]: https://base-ui.com/react/overview/accessibility
 [Button]: ../src/button/README.md
 [Forms]: forms.md

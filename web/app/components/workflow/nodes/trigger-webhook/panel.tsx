@@ -100,7 +100,7 @@ const WebhookMethodSelector = ({
 }
 
 const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const webhookUrlId = useId()
   const { copied: debugUrlCopied, copy: copyDebugUrl } = useClipboard({ timeout: 2000 })
   const [outputVarsCollapsed, setOutputVarsCollapsed] = useState(false)

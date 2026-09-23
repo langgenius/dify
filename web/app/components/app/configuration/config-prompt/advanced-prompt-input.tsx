@@ -4,6 +4,7 @@ import type { ExternalDataTool } from '@/models/common'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiDeleteBinLine, RiErrorWarningFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -14,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import { toast } from '@/app/components/app/configuration/toast'
-import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
@@ -54,7 +54,9 @@ const AdvancedPromptInput: FC<Props> = ({
   onHideContextMissingTip,
   noResize,
 }) => {
-  const { t } = useTranslation()
+  const promptLabelId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const { eventEmitter } = useEventEmitterContextContext()
 
   const {
@@ -186,19 +188,13 @@ const AdvancedPromptInput: FC<Props> = ({
               <MessageTypeSelector value={type} onChange={onTypeChange} />
             ) : (
               <div className="flex items-center space-x-1">
-                <div className="text-sm font-semibold text-indigo-800 uppercase">
+                <div id={promptLabelId} className="text-sm font-semibold text-indigo-800 uppercase">
                   {t(($) => $['pageTitle.line1'], { ns: 'appDebug' })}
                 </div>
                 <Infotip>
-                  <InfotipTrigger
-                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                    className="ml-1"
-                  />
-                  <InfotipContent
-                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                    className="w-45"
-                  >
-                    {t(($) => $.promptTip, { ns: 'appDebug' })}
+                  <InfotipTrigger aria-labelledby={promptLabelId} className="ml-1" />
+                  <InfotipContent aria-labelledby={promptLabelId} className="w-45">
+                    {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
                   </InfotipContent>
                 </Infotip>
               </div>
@@ -210,17 +206,26 @@ const AdvancedPromptInput: FC<Props> = ({
                   className="size-6 cursor-pointer p-1 text-text-tertiary"
                 />
               )}
-              {!isCopied ? (
-                <Copy
-                  className="size-6 cursor-pointer p-1 text-text-tertiary"
-                  onClick={() => {
-                    copy(value)
-                    setIsCopied(true)
-                  }}
+              <IconButton
+                aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+                aria-disabled={isCopied}
+                size="md"
+                onClick={() => {
+                  if (isCopied) return
+                  copy(value)
+                  setIsCopied(true)
+                }}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    'size-4',
+                    isCopied
+                      ? 'i-custom-vender-line-files-copy-check'
+                      : 'i-custom-vender-line-files-copy',
+                  )}
                 />
-              ) : (
-                <CopyCheck className="size-6 p-1 text-text-tertiary" />
-              )}
+              </IconButton>
             </div>
           </div>
         )}

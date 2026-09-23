@@ -52,7 +52,7 @@ const PROMPT_MODE = {
 type PromptMode = (typeof PROMPT_MODE)[keyof typeof PROMPT_MODE]
 
 const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const [model, setModel] = useState<Model>(() => getInitialModel(data.model))
   const [prompt, setPrompt] = useState(data.prompt || '')
   const [promptMode, setPromptMode] = useState<PromptMode>(

@@ -25,7 +25,7 @@ import { useLogout } from '@/service/use-common'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'oauth'])
 
   const SCOPE_INFO_MAP: Record<
     string,

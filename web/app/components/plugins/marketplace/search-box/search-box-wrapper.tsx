@@ -25,7 +25,7 @@ const SearchBoxWrapper = ({
   showTags = true,
   usedInMarketplace = true,
 }: SearchBoxWrapperProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [searchPluginText, handleSearchPluginTextChange] = useSearchPluginText()
   const [filterPluginTags, handleFilterPluginTagsChange] = useFilterPluginTags()
 

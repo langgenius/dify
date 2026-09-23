@@ -1,221 +1,233 @@
-import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { EndpointListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import EndpointList from '../endpoint-list'
+import { createPluginDetail } from './endpoint-fixture'
 
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
-}))
+const { request, showError } = vi.hoisted(() => ({ request: vi.fn(), showError: vi.fn() }))
+vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/app/notifications', () => ({ toast: { error: showError } }))
+vi.mock('../../readme-panel/entrance', () => ({ ReadmeEntrance: () => null }))
 
-const mockEndpoints = [
-  {
-    id: 'ep-1',
-    name: 'Endpoint 1',
-    url: 'https://api.example.com',
-    declaration: { settings: [], endpoints: [] },
-  },
-]
+const detail = createPluginDetail()
 
-let mockEndpointListData: { endpoints: typeof mockEndpoints } | undefined
-
-const mockInvalidateEndpointList = vi.fn()
-const mockInvalidateInstalledPluginList = vi.fn()
-const mockCreateEndpoint = vi.fn()
-
-vi.mock('@/service/use-endpoints', () => ({
-  useEndpointList: () => ({ data: mockEndpointListData }),
-  useInvalidateEndpointList: () => mockInvalidateEndpointList,
-  useCreateEndpoint: ({ onSuccess }: { onSuccess: () => void }) => ({
-    mutate: (data: unknown) => {
-      mockCreateEndpoint(data)
-      onSuccess()
-    },
-  }),
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
-}))
-
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  toolCredentialToFormSchemas: (schemas: unknown[]) => schemas,
-}))
-
-vi.mock('../endpoint-card', () => ({
-  default: ({ data }: { data: { name: string } }) => (
-    <div data-testid="endpoint-card">{data.name}</div>
-  ),
-}))
-
-vi.mock('../endpoint-modal', () => ({
-  default: ({ onCancel, onSaved }: { onCancel: () => void; onSaved: (state: unknown) => void }) => (
-    <div data-testid="endpoint-modal">
-      <button data-testid="modal-cancel" onClick={onCancel}>
-        Cancel
-      </button>
-      <button data-testid="modal-save" onClick={() => onSaved({ name: 'New Endpoint' })}>
-        Save
-      </button>
-    </div>
-  ),
-}))
-
-const createPluginDetail = (): PluginDetail => ({
-  id: 'test-id',
+const createEndpoint = (): EndpointListItemResponse => ({
+  id: 'ep-1',
+  name: 'Endpoint 1',
+  url: 'https://api.example.com',
+  enabled: true,
   created_at: '2024-01-01',
   updated_at: '2024-01-02',
-  name: 'Test Plugin',
-  plugin_id: 'test-plugin',
-  plugin_unique_identifier: 'test-uid',
-  declaration: {
-    endpoint: { settings: [], endpoints: [] },
-    tool: undefined,
-  } as unknown as PluginDetail['declaration'],
-  installation_id: 'install-1',
+  settings: { enabled: false, count: '0', token: '', retry_count: 0 },
   tenant_id: 'tenant-1',
-  endpoints_setups: 0,
-  endpoints_active: 0,
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_unique_identifier: 'test-uid',
-  source: 'marketplace' as PluginDetail['source'],
-  meta: undefined,
-  status: 'active',
-  deprecated_reason: '',
-  alternative_plugin_id: '',
+  plugin_id: 'test-plugin',
+  expired_at: '',
+  hook_id: 'hook-1',
+  declaration: {
+    settings: detail.declaration.endpoint?.settings ?? [],
+    endpoints: [
+      { method: 'GET', path: '/public' },
+      { method: 'POST', path: '/hidden', hidden: true },
+    ],
+  },
 })
 
-describe('EndpointList', () => {
-  const getAddButton = () =>
-    screen.getByRole('button', { name: 'plugin.detailPanel.endpointModalTitle' })
+let endpoints: EndpointListItemResponse[]
+let rejectMutation: boolean
+let failAfterWrite: boolean
+let mutationGate: Promise<void> | undefined
+const mutations: { path: string; method: string; body: unknown }[] = []
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockEndpointListData = { endpoints: mockEndpoints }
+const renderEndpoints = () => render(<EndpointList detail={detail} />)
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  endpoints = [createEndpoint()]
+  rejectMutation = false
+  failAfterWrite = false
+  mutationGate = undefined
+  mutations.length = 0
+  request.mockImplementation(
+    async (url: string, _init: RequestInit, options: { request: Request }) => {
+      const method = options.request.method
+      const path = new URL(url).pathname.replace(/^.*\/workspaces/, '/workspaces')
+      if (method === 'GET') return Response.json({ endpoints })
+      const body: unknown = options.request.body ? await options.request.json() : undefined
+      mutations.push({ path, method, body })
+      await mutationGate
+      if (rejectMutation && !failAfterWrite)
+        return Response.json({ message: 'Failed' }, { status: 500 })
+      if (path.endsWith('/enable'))
+        endpoints = endpoints.map((item) => ({ ...item, enabled: true }))
+      else if (path.endsWith('/disable'))
+        endpoints = endpoints.map((item) => ({ ...item, enabled: false }))
+      else if (method === 'DELETE') endpoints = []
+      else endpoints = [{ ...createEndpoint(), name: 'Saved endpoint' }]
+      if (rejectMutation) return Response.json({ message: 'Failed after write' }, { status: 500 })
+      return Response.json({ success: true })
+    },
+  )
+})
+
+describe('Endpoint management', () => {
+  it('loads the plugin endpoints and only displays public paths', async () => {
+    renderEndpoints()
+    expect(await screen.findByText('Endpoint 1')).toBeInTheDocument()
+    expect(screen.getByText('https://api.example.com/public')).toBeInTheDocument()
+    expect(screen.queryByText('https://api.example.com/hidden')).not.toBeInTheDocument()
+    const requestedURL = new URL(request.mock.calls[0]![0])
+    expect(requestedURL.searchParams.get('plugin_id')).toBe('test-plugin')
+    expect(requestedURL.searchParams.get('page')).toBe('1')
+    expect(requestedURL.searchParams.get('page_size')).toBe('100')
   })
 
-  describe('Rendering', () => {
-    it('should render endpoint list', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(screen.getByText('plugin.detailPanel.endpoints'))!.toBeInTheDocument()
-    })
-
-    it('should render endpoint cards', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(screen.getByTestId('endpoint-card'))!.toBeInTheDocument()
-      expect(screen.getByText('Endpoint 1'))!.toBeInTheDocument()
-    })
-
-    it('should return null when no data', () => {
-      mockEndpointListData = undefined
-      const { container } = render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(container)!.toBeEmptyDOMElement()
-    })
-
-    it('should show empty message when no endpoints', () => {
-      mockEndpointListData = { endpoints: [] }
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(screen.getByText('plugin.detailPanel.endpointsEmpty'))!.toBeInTheDocument()
-    })
-
-    it('should render add button', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(getAddButton()).toBeInTheDocument()
-    })
+  it('creates through the canonical route and refreshes the list', async () => {
+    const user = userEvent.setup()
+    endpoints = []
+    renderEndpoints()
+    await user.click(
+      await screen.findByRole('button', { name: 'plugin.detailPanel.endpointModalTitle' }),
+    )
+    await user.clear(screen.getByPlaceholderText('Endpoint Name'))
+    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(await screen.findByText('Saved endpoint')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mutations).toEqual([
+      {
+        path: '/workspaces/current/endpoints',
+        method: 'POST',
+        body: {
+          plugin_unique_identifier: 'test-uid',
+          name: 'Saved endpoint',
+          settings: { enabled: false, count: '0', token: '' },
+        },
+      },
+    ])
   })
 
-  describe('User Interactions', () => {
-    it('should show modal when add button clicked', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      fireEvent.click(getAddButton())
-
-      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
-    })
-
-    it('should hide modal when cancel clicked', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      fireEvent.click(getAddButton())
-      expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('modal-cancel'))
-      expect(screen.queryByTestId('endpoint-modal')).not.toBeInTheDocument()
-    })
-
-    it('should call createEndpoint when save clicked', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      fireEvent.click(getAddButton())
-      fireEvent.click(screen.getByTestId('modal-save'))
-
-      expect(mockCreateEndpoint).toHaveBeenCalled()
-    })
+  it('updates through the canonical item route without dropping falsy settings', async () => {
+    const user = userEvent.setup()
+    renderEndpoints()
+    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.clear(screen.getByPlaceholderText('Endpoint Name'))
+    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(await screen.findByText('Saved endpoint')).toBeInTheDocument()
+    expect(mutations).toEqual([
+      {
+        path: '/workspaces/current/endpoints/ep-1',
+        method: 'PATCH',
+        body: {
+          name: 'Saved endpoint',
+          settings: { enabled: false, count: '0', token: '', retry_count: 0 },
+        },
+      },
+    ])
   })
 
-  describe('Border Style', () => {
-    it('should render with border style based on tool existence', () => {
-      const detail = createPluginDetail()
-      detail.declaration.tool = {} as PluginDetail['declaration']['tool']
-      render(<EndpointList detail={detail} />)
-
-      expect(screen.getByText('plugin.detailPanel.endpoints'))!.toBeInTheDocument()
-    })
+  it('keeps enabled state when disabling is cancelled, then follows refetched state after confirm', async () => {
+    const user = userEvent.setup()
+    renderEndpoints()
+    await user.click(await screen.findByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
+    expect(mutations).toHaveLength(0)
+    await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false'))
+    await user.click(screen.getByRole('switch'))
+    await waitFor(() => expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true'))
+    expect(mutations.map(({ path, body }) => ({ path, body }))).toEqual([
+      { path: '/workspaces/current/endpoints/disable', body: { endpoint_id: 'ep-1' } },
+      { path: '/workspaces/current/endpoints/enable', body: { endpoint_id: 'ep-1' } },
+    ])
   })
 
-  describe('Multiple Endpoints', () => {
-    it('should render multiple endpoint cards', () => {
-      mockEndpointListData = {
-        endpoints: [
-          {
-            id: 'ep-1',
-            name: 'Endpoint 1',
-            url: 'https://api1.example.com',
-            declaration: { settings: [], endpoints: [] },
-          },
-          {
-            id: 'ep-2',
-            name: 'Endpoint 2',
-            url: 'https://api2.example.com',
-            declaration: { settings: [], endpoints: [] },
-          },
-        ],
-      }
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      expect(screen.getAllByTestId('endpoint-card')).toHaveLength(2)
-    })
+  it('deletes through the canonical route and refreshes the empty state', async () => {
+    const user = userEvent.setup()
+    renderEndpoints()
+    await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    expect(await screen.findByText('plugin.detailPanel.endpointsEmpty')).toBeInTheDocument()
+    expect(mutations).toEqual([
+      { path: '/workspaces/current/endpoints/ep-1', method: 'DELETE', body: undefined },
+    ])
   })
 
-  describe('Create Endpoint Flow', () => {
-    it('should invalidate endpoint list after successful create', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
+  it('keeps edit values available when the mutation fails', async () => {
+    const user = userEvent.setup()
+    rejectMutation = true
+    renderEndpoints()
+    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.clear(screen.getByPlaceholderText('Endpoint Name'))
+    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(showError).toHaveBeenCalled())
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Endpoint 1')).toBeInTheDocument()
+  })
 
-      fireEvent.click(getAddButton())
-      fireEvent.click(screen.getByTestId('modal-save'))
-
-      return waitFor(() => {
-        expect(mockInvalidateEndpointList).toHaveBeenCalledWith('test-plugin')
-        expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
+  it.each(['edit', 'disable', 'delete'] as const)(
+    'blocks duplicate %s while pending and retains the failed action for retry',
+    async (action) => {
+      const user = userEvent.setup()
+      let settle: () => void = () => {}
+      mutationGate = new Promise<void>((resolve) => {
+        settle = resolve
       })
-    })
-
-    it('should pass correct params to createEndpoint', () => {
-      render(<EndpointList detail={createPluginDetail()} />)
-
-      fireEvent.click(getAddButton())
-      fireEvent.click(screen.getByTestId('modal-save'))
-
-      expect(mockCreateEndpoint).toHaveBeenCalledWith({
-        pluginUniqueID: 'test-uid',
-        state: { name: 'New Endpoint' },
+      rejectMutation = true
+      renderEndpoints()
+      if (action === 'disable') await user.click(await screen.findByRole('switch'))
+      else
+        await user.click(await screen.findByRole('button', { name: `common.operation.${action}` }))
+      const actionName = action === 'edit' ? 'common.operation.save' : 'common.operation.confirm'
+      const submit = screen.getByRole('button', { name: actionName })
+      await user.click(submit)
+      await waitFor(() => expect(submit).toHaveAttribute('aria-disabled', 'true'))
+      expect(submit).toHaveFocus()
+      expect(submit).not.toBeDisabled()
+      await user.click(submit)
+      expect(mutations).toHaveLength(1)
+      await act(async () => {
+        settle()
       })
-    })
+      await waitFor(() => expect(showError).toHaveBeenCalled())
+      expect(screen.getByRole('button', { name: actionName })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      if (action === 'edit')
+        expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Endpoint 1')
+      else expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+      rejectMutation = false
+      await user.click(screen.getByRole('button', { name: actionName }))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole(action === 'edit' ? 'dialog' : 'alertdialog'),
+        ).not.toBeInTheDocument(),
+      )
+      expect(mutations).toHaveLength(2)
+    },
+  )
+
+  it('refreshes a committed write after an error while preserving the editable form', async () => {
+    const user = userEvent.setup()
+    rejectMutation = true
+    failAfterWrite = true
+    renderEndpoints()
+    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.clear(screen.getByPlaceholderText('Endpoint Name'))
+    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Submitted name')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() => expect(showError).toHaveBeenCalled())
+    expect(await screen.findByText('Saved endpoint')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Submitted name')
+    expect(mutations).toHaveLength(1)
   })
 })

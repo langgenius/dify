@@ -41,13 +41,8 @@ const FeatureCard = ({
           <span id={titleId}>{title}</span>
           {!!tooltip && (
             <Infotip>
-              <InfotipTrigger
-                aria-label={typeof tooltip === 'string' ? tooltip : String(title)}
-                className="ml-0.5 size-3.5"
-              />
-              <InfotipContent aria-label={typeof tooltip === 'string' ? tooltip : String(title)}>
-                {tooltip}
-              </InfotipContent>
+              <InfotipTrigger aria-labelledby={titleId} className="ml-0.5 size-3.5" />
+              <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
             </Infotip>
           )}
         </div>

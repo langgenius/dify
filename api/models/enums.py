@@ -208,6 +208,9 @@ class EndUserType(StrEnum):
     TRIGGER = "trigger"
 
 
+DEFAULT_END_USER_SESSION_ID = "DEFAULT-USER"
+
+
 class DocumentDocType(StrEnum):
     """Document doc_type classification"""
 

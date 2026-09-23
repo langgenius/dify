@@ -15,12 +15,22 @@ import type {
   Rules,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { act, cleanup, fireEvent, renderHook, screen } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { expectLoadingButton } from '@/test/button'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -42,6 +52,11 @@ import {
 import escape from '../hooks/escape'
 import unescape from '../hooks/unescape'
 import StepTwo from '../index'
+
+vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
+  return { ...actual, default: vi.fn(() => actual.MediaType.pc) }
+})
 
 const mockDataset: Pick<
   DataSet,
@@ -123,6 +138,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 const mockFetchDefaultProcessRuleMutate = vi.fn()
+const mockResetFileEstimate = vi.fn()
 vi.mock('@/service/knowledge/use-create-dataset', () => ({
   useFetchDefaultProcessRule: ({
     onSuccess,
@@ -154,7 +170,7 @@ vi.mock('@/service/knowledge/use-create-dataset', () => ({
     data: undefined,
     isIdle: true,
     isPending: false,
-    reset: vi.fn(),
+    reset: mockResetFileEstimate,
   }),
   useFetchFileIndexingEstimateForNotion: () => ({
     mutate: vi.fn(),
@@ -1846,6 +1862,8 @@ describe('PreviewPanel', () => {
 
   const defaultProps = {
     isMobile: false,
+    isOpen: false,
+    onClose: vi.fn(),
     dataSourceType: DataSourceType.FILE,
     currentDocForm: ChunkingMode.text,
     estimate: undefined as FileIndexingEstimateResponse | undefined,
@@ -1947,7 +1965,7 @@ describe('PreviewPanel', () => {
         />,
       )
 
-      expect(screen.getByText(/25/))!.toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('25')
     })
 
     it('should render parent-child preview when docForm is parentChild', () => {
@@ -2332,6 +2350,53 @@ describe('StepTwo Component', () => {
   }
 
   describe('Rendering', () => {
+    it('switches chunking modes as one radio group without nesting parameter controls in a radio', async () => {
+      const user = userEvent.setup()
+      render(<StepTwo {...defaultStepTwoProps} />)
+      const group = screen.getByRole('radiogroup', { name: 'datasetCreation.stepTwo.segmentation' })
+      const general = within(group).getByRole('radio', { name: 'datasetCreation.stepTwo.general' })
+      const parentChild = within(group).getByRole('radio', {
+        name: 'datasetCreation.stepTwo.parentChild',
+      })
+      expect(general).toBeChecked()
+      expect(general).not.toContainElement(
+        screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' }),
+      )
+      general.focus()
+      await user.keyboard('{ArrowDown}')
+      expect(parentChild).toBeChecked()
+      expect(general).not.toBeChecked()
+      expect(parentChild).not.toContainElement(
+        screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' }),
+      )
+      await user.keyboard(' ')
+      expect(parentChild).toBeChecked()
+      await user.keyboard('{ArrowUp}')
+      expect(general).toBeChecked()
+      expect(parentChild).not.toBeChecked()
+    })
+
+    it.each(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'])(
+      'keeps General selected and its preview intact when editing the delimiter with %s',
+      async (key) => {
+        const user = userEvent.setup()
+        render(<StepTwo {...defaultStepTwoProps} />)
+        const input = screen.getByRole('textbox', { name: 'datasetCreation.stepTwo.separator' })
+        await user.click(input)
+        await user.keyboard(key === 'ArrowLeft' ? '{Home}' : '{End}')
+        mockResetFileEstimate.mockClear()
+        await user.keyboard(`{${key}}`)
+
+        expect(screen.getByRole('radio', { name: 'datasetCreation.stepTwo.general' })).toBeChecked()
+        expect(
+          screen.getByRole('radio', { name: 'datasetCreation.stepTwo.parentChild' }),
+        ).not.toBeChecked()
+        expect(input).toBeInTheDocument()
+        expect(input).toHaveFocus()
+        expect(mockResetFileEstimate).not.toHaveBeenCalled()
+      },
+    )
+
     it('should show general chunking options when not in upload', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // Should render the segmentation section
@@ -2384,6 +2449,27 @@ describe('StepTwo Component', () => {
       // handleCreate validates, builds params, and calls executeCreation
       // which calls onStepChange(1) on success
       expect(onStepChange).toHaveBeenCalledWith(1)
+    })
+
+    it('opens the mobile preview on request and restores focus to its button after closing', async () => {
+      vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
+      try {
+        const user = userEvent.setup()
+        render(<StepTwo {...defaultStepTwoProps} />)
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        const trigger = screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' })
+        await user.click(trigger)
+        const drawer = await screen.findByRole('dialog', {
+          name: 'datasetCreation.stepTwo.preview',
+        })
+        await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
+        await waitFor(() => {
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+          expect(trigger).toHaveFocus()
+        })
+      } finally {
+        vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
+      }
     })
 
     it('should trigger updatePreview when preview button is clicked', () => {

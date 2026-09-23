@@ -19,7 +19,7 @@ type Props = Readonly<{
 }>
 
 const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
 

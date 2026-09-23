@@ -15,7 +15,7 @@ describe('FieldTitle', () => {
 
     expect(screen.getByText('Embedding')).toBeInTheDocument()
     expect(screen.getByText('subtitle')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Tooltip copy' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Embedding' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'action' })).toBeInTheDocument()
     expect(document.querySelector('.bg-text-warning-secondary')).not.toBeNull()
   })

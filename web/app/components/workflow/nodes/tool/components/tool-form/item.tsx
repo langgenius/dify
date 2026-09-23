@@ -1,8 +1,8 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import type { ToolVarInputs } from '../../types'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
+import type { FormInputSchema } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -49,11 +49,12 @@ const renderDescriptionWithLinks = (description: string): ReactNode => {
 }
 
 type Props = Readonly<{
+  staticSchema?: boolean
   readOnly: boolean
   nodeId: string
-  schema: CredentialFormSchema
-  value: ToolVarInputs
-  onChange: (value: ToolVarInputs) => void
+  schema: FormInputSchema
+  value: ResourceVarInputs
+  onChange: (value: ResourceVarInputs) => void
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
@@ -65,6 +66,7 @@ type Props = Readonly<{
 
 const ToolFormItem: FC<Props> = ({
   readOnly,
+  staticSchema = false,
   nodeId,
   schema,
   value,
@@ -103,8 +105,8 @@ const ToolFormItem: FC<Props> = ({
           )}
           {!showDescription && tooltip && (
             <Infotip>
-              <InfotipTrigger aria-label={tooltip[language] || tooltip.en_US} className="ml-1" />
-              <InfotipContent aria-label={tooltip[language] || tooltip.en_US} className="w-50">
+              <InfotipTrigger aria-labelledby={labelId} className="ml-1" />
+              <InfotipContent aria-labelledby={labelId} className="w-50">
                 {tooltip[language] || tooltip.en_US}
               </InfotipContent>
             </Infotip>
@@ -133,6 +135,7 @@ const ToolFormItem: FC<Props> = ({
       <FormInputItem
         labelId={labelId}
         readOnly={readOnly}
+        staticSchema={staticSchema}
         nodeId={nodeId}
         schema={schema}
         value={value}

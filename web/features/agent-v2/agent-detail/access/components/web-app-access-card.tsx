@@ -6,6 +6,7 @@ import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overvie
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -20,9 +21,9 @@ import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
-import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
+import { getAgentWebAppUrl } from '../../web-app-access'
 import { useWebAppAccessControl } from './use-web-app-access-control'
 
 const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
@@ -38,9 +39,9 @@ export function WebAppAccessCard({
   agentId: string
   isLoading: boolean
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tApp } = useTranslation(['app'])
   const queryClient = useQueryClient()
   const appId = agent?.app_id
   const apiBaseUrl = agent?.api_base_url
@@ -433,14 +434,4 @@ function getSettingsIcon(agent: AgentAppDetailWithSite) {
     icon_background: null,
     icon_url: null,
   }
-}
-
-function getAgentWebAppUrl(agent?: AgentAppDetailWithSite) {
-  const site = agent?.site
-  const token = site?.access_token ?? site?.code
-  if (!token) return ''
-
-  const baseUrl =
-    site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
-  return `${baseUrl.replace(/\/$/, '')}/agent/${token}`
 }

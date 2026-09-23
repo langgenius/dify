@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean, useClickAway } from 'ahooks'
 import * as React from 'react'
-import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptRole } from '@/models/debug'
 
 type Props = Readonly<{
@@ -28,7 +27,10 @@ const MessageTypeSelector: FC<Props> = ({ value, onChange }) => {
         )}
       >
         <div className="text-sm font-semibold uppercase">{value}</div>
-        <ChevronSelectorVertical className="size-3" />
+        <span
+          aria-hidden
+          className="i-custom-vender-line-arrows-chevron-selector-vertical size-3"
+        />
       </div>
       {showOption && (
         <div className="absolute top-7.5 z-10 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">

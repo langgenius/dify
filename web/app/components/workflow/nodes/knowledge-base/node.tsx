@@ -57,7 +57,13 @@ const RETRIEVAL_WARNING_CODES = new Set<KnowledgeBaseValidationIssueCode>([
 ])
 
 const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'common',
+    'datasetCreation',
+    'datasetSettings',
+    'plugin',
+    'workflow',
+  ])
   const language = useLanguage()
   const settingsDisplay = useSettingsDisplay()
   const { data: embeddingModelList = [] } = useQuery(

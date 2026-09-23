@@ -1,5 +1,6 @@
 {
   "desc": "여기에서 지식의 속성과 작동 방법을 변경할 수 있습니다.",
+  "form.changeIcon": "지식 아이콘 변경",
   "form.chunkStructure.description": "청크 구조에 대해.",
   "form.chunkStructure.learnMore": "더 알아보세요",
   "form.chunkStructure.title": "청크 구조",

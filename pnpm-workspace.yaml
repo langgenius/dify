@@ -1,5 +1,7 @@
 allowBuilds:
   '@parcel/watcher': false
+  # i18next-resources-for-ts uses the published SWC native binaries.
+  '@swc/core': false
   canvas: false
   esbuild: false
   sharp: false
@@ -43,6 +45,8 @@ overrides:
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
+  # Keep Vitest's optional DOM peer aligned with Web so browser matcher types augment one Vitest instance.
+  happy-dom: 'catalog:'
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.1.1: ^4.1.2
   picomatch@>=4.0.0 <4.0.4: 4.0.7
@@ -65,6 +69,7 @@ catalog:
   '@amplitude/plugin-session-replay-browser': 1.35.1
   '@axe-core/playwright': 4.13.0
   '@base-ui/react': 1.8.0
+  '@base-ui/utils': 0.4.0
   '@chromatic-com/storybook': 5.3.1
   '@cucumber/cucumber': 13.2.1
   '@egoist/tailwindcss-icons': 1.9.2
@@ -94,9 +99,8 @@ catalog:
   '@orpc/tanstack-query': 1.15.1
   '@playwright/test': 1.63.0
   '@remixicon/react': 4.9.0
-  '@rgrove/parse-xml': 5.0.0
   '@sentry/react': 10.75.0
-  '@shadcn/lint': 0.1.3
+  '@shadcn/lint': 0.2.0
   '@storybook/addon-a11y': 10.6.0
   '@storybook/addon-docs': 10.6.0
   '@storybook/addon-links': 10.6.0
@@ -139,8 +143,8 @@ catalog:
   '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.1.1
   '@vitejs/plugin-rsc': 0.5.35
-  '@vitest/browser-playwright': 4.1.11
-  '@vitest/coverage-v8': 4.1.11
+  '@vitest/browser-playwright': 5.0.1
+  '@vitest/coverage-v8': 5.0.1
   '@xmldom/xmldom': 0.9.12
   abcjs: 6.7.0
   agentation: 3.0.2
@@ -150,7 +154,7 @@ catalog:
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
   cli-table3: 0.6.5
-  cn: 0.3.0
+  cn: 0.4.0
   code-inspector-plugin: 1.6.6
   concurrently: 10.0.5
   copy-to-clipboard: 4.0.2
@@ -171,7 +175,6 @@ catalog:
   eslint-plugin-antfu: 3.2.3
   eslint-plugin-better-tailwindcss: 4.7.0
   eslint-plugin-command: 4.0.0
-  eslint-plugin-erasable-syntax-only: 0.7.1
   eslint-plugin-jsdoc: 64.5.2
   eslint-plugin-jsonc: 3.4.2
   eslint-plugin-markdown-preferences: 0.42.0
@@ -195,6 +198,7 @@ catalog:
   html-entities: 2.6.0
   html-to-image: 1.11.13
   i18next: 26.4.2
+  i18next-resources-for-ts: 2.1.0
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
   immer: 11.1.18
@@ -216,7 +220,7 @@ catalog:
   mitt: 3.0.1
   motion: 13.4.0
   negotiator: 1.1.0
-  next: 16.3.5
+  next: 16.3.6
   next-themes: 0.4.6
   nuqs: 2.10.1
   open: 11.0.4
@@ -253,7 +257,6 @@ catalog:
   svgo: 4.1.0
   tailwindcss: 4.3.3
   tldts: 7.4.13
-  tsx: 4.23.13
   typescript: npm:@typescript/typescript6@6.0.2
   uglify-js: 3.19.3
   undici: 7.29.1
@@ -261,10 +264,10 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.2
   vinext: 1.0.0-beta.10
-  vite: npm:@voidzero-dev/vite-plus-core@0.3.3
+  vite: npm:@voidzero-dev/vite-plus-core@1.0.0-rc.0
   vite-plugin-inspect: 12.0.2
-  vite-plus: 0.3.3
-  vitest: 4.1.11
+  vite-plus: 1.0.0-rc.0
+  vitest: 5.0.1
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0
   zod: 4.6.5

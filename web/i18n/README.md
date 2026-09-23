@@ -1,6 +1,6 @@
 # Internationalization
 
-English JSON files under `web/i18n/locales/en-US/` are the source locale. Other locale directories must keep the same flat keys and placeholders. i18next uses `keySeparator: false`, so dots are part of a key rather than nested-object separators.
+English JSON files under `web/i18n/locales/en-US/` are the source locale. Other locale directories must keep the source flat keys and placeholders. They may also add the plural variants required by their language. i18next uses `keySeparator: false`, so dots are part of a key rather than nested-object separators.
 
 The module keeps runtime code and bundled translation assets together. `#i18n` remains the conditional client/server entrypoint; `locales/` contains translation JSON only. Per-locale loaders preserve the existing dynamic-import boundaries. This layout is a project ownership convention, not an i18next requirement.
 
@@ -40,6 +40,38 @@ A nonempty locale cookie takes priority over `Accept-Language`. An unusable cook
 
 Add or change the English key first, then update every supported locale. Preserve interpolation variables and markup placeholders exactly.
 
+After changing English resources, run `pnpm i18n:generate-types` from `web/` and
+commit `resources.generated.d.ts`. The script calls
+[`i18next-resources-for-ts`]
+with `optimize: true`; the official tool preserves string literal values for
+i18next's interpolation inference and groups plural variants into base keys.
+Use those base keys with `count` instead of selecting `_one` or `_other` yourself.
+The project script handles namespace file names, formatting, and freshness checks.
+The generated file is type-only;
+runtime resource loading still uses JSON. Both `i18n:check` and the Web Style CI
+job reject stale generated types (`pnpm i18n:check-types`).
+
+Use a plural base selector with a numeric `count`, for example
+`t($ => $['accessControlDialog.members'], { count: members.length })`.
+Keep `enableSelector: 'optimize'` for the large translation catalog.
+Before migrating a suffixed plural selector to a base key, provide every category
+returned by `Intl.PluralRules(locale).resolvedOptions().pluralCategories` in
+every supported locale. Missing categories can fall back to English even when
+`_one` and `_other` exist. The key checker permits language-specific variants
+of source plural families and preserves them during `--auto-remove`; their
+placeholders and tags are checked against the English `_other` variant.
+The official i18next 26.4 selector types check interpolation parameters when
+options are supplied, but still allow the entire options argument to be omitted
+in this mode. Generated types do not close that upstream gap, and plural strings
+without a `{{count}}` placeholder do not infer a required count. Always supply
+the runtime `count` for plural calls. Broad `SelectorParam` annotations also
+widen the selected value to `string`; prefer inline selectors when parameter
+inference matters. See the [official TypeScript guidance] and [plural rules].
+
+When copy demonstrates template syntax literally, pass that syntax explicitly,
+for example `{ input: '{{input}}' }`. For dynamic labels, constrain the key union
+to the relevant feature rather than accepting every key in a namespace.
+
 Run from `web/`:
 
 ```sh
@@ -76,82 +108,88 @@ Changes to `web/i18n/locales/en-US/*.json` on `main` trigger the scoped translat
 
 Use the `Translate i18n Files with Claude Code` workflow dispatch for a manual scoped sync. Full mode requires an explicit file list.
 
-## Initial route resources
+## On-demand resources
 
-`route-namespaces.ts` owns the explicit `routeNamespaceDeclarations` opt-in map
-shared by server selection, client navigation and production build validation. `/signin` and its child routes use `common` and
-`login`. Other routes retain the complete registry until they are migrated.
+The App Router client Provider owns one i18next instance per mounted Provider,
+using `react-i18next` with Suspense and the same resource backend during SSR and
+browser rendering. The root server Provider starts with an empty resource store
+and no initial namespaces, including no `common` preload. Components keep declaring their namespaces
+through `react-i18next`; a missing namespace loads through `loadI18nResource` during
+both streaming SSR and browser rendering. Optional features load their translations
+when rendered, without a separate route namespace map or root readiness gate.
 
-The server reads the pathname that `proxy.ts` overwrites on every request. Missing
-or unknown paths conservatively use the full registry. Base paths are supported.
-Serialized resources include the requested locale and English fallback for the
-selected namespaces, keeping translation initialization ready for SSR and hydration.
-Sign-in still includes only `common` and `login`.
+Keep the Provider mounted for the application session. Its initial server locale
+and resources bootstrap that session; client language preferences and share-app
+overrides own subsequent language changes. Passing the original server props again
+must not reset those overrides. The namespace options are created per Provider
+because i18next mutates its requested namespace list.
 
-Client initialization uses only the provided namespaces. The default namespace is
-`common` for sign-in, so a bare `useTranslation()` does not request `app`. The
-provider keeps the same i18next instance across rerenders and locale changes.
-A namespace-set change resets only the translation readiness component; the
-provider and business subtree retain their state, including active notifications.
-The loader suspends missing translations into the existing router/root boundaries;
-the provider adds no application-wide Suspense fallback. The current route's
-namespace list also controls language switching without discarding loaded bundles.
+Feature-owned Suspense boundaries can isolate translation loading along with the
+feature's other loading work. Shell consumers load `common` on demand during SSR;
+the initial shell may wait for that dictionary. During SSR, a Provider-local
+collector reads react-i18next's reported namespaces and streams newly loaded
+resources through `useServerInsertedHTML`, including the active fallback language.
+Inline updates use the request CSP nonce and escape script-sensitive text. Each
+Provider has a hydration-stable ID so concurrent requests and separate Providers
+do not share a resource collection.
 
-Server metadata requests initialize an empty instance and load their requested
-namespace. Existing server consumers without a namespace keep the full-catalog
-behavior for cross-namespace calls.
+The client merges available streamed resources before creating its i18next instance
+and subscribes to later updates. This avoids fetching SSR-used dictionaries again
+while hydrating interactive controls. Namespaces for features not rendered during
+SSR continue to load on demand. Client navigation has no HTML insertion pass and
+continues to use the existing backend. The collector sends complete namespaces,
+not individual keys.
 
-### Build validation
+Language switching follows i18next's requested namespace list, including features
+visited earlier in the session. Previously loaded bundles remain cached. There is
+no route policy that resets `i18n.options.ns` on navigation.
 
-Production Vite builds check every opted-in route against its declaration using
-the combined client, SSR and RSC module graphs. The check includes page imports,
-shared layouts and boundaries, dynamic imports and conservative parallel slots.
-An undeclared namespace fails the build and lists the route and source files.
-The JSON analysis report is written before validation, so it remains available
-when validation fails. Unregistered routes are not checked against a restricted
-list and continue to load the full catalog.
+Server metadata requests still use the request-scoped server instance and load
+exactly their requested namespace. Existing server consumers without a namespace
+retain their full-catalog behavior.
 
-Add a subtree to `routeNamespaceDeclarations` after auditing its dependencies;
-more specific declarations override ancestor declarations. The check covers
-statically recognized translation usage, including namespace constants, imported
-arrays and nested static spreads passed to translation hooks or server loaders,
-not arbitrary runtime imports or
-unknown translation APIs. Consult the analyzer README for its limitations.
+The build analyzer continues to report route usage and check unused keys. Its
+route report is diagnostic and is not a runtime resource manifest or an allowlist.
+The application no longer opts into exhaustive route namespace validation.
 
-### Production validation of the sign-in migration
+Tests cover on-demand feature loading, navigation state, language persistence,
+English fallback, and concurrent streaming SSR in different locales. Production
+Vinext/browser checks are also needed when changing the Provider or loading strategy.
 
-Measured locally on 2026-09-18 against layer 2 (`b6405a857a`), using production
-Vinext standalone builds and fresh Chromium contexts. Both builds used the same
-controlled API fixture: `createSystemFeaturesFixture({ is_allow_register: true })`,
-completed setup/init, and an unauthenticated account-profile response. These are
-frontend transfer diagnostics, not production-backend latency measurements.
+### Provider trial verification
 
-| `/signin` metric                              |  Before |   After |
-| --------------------------------------------- | ------: | ------: |
-| English HTML response body, bytes             | 438,163 |  95,915 |
-| Chinese HTML response body, bytes             | 424,123 | 148,172 |
-| English RSC response body, bytes              | 380,526 |  59,829 |
-| Chinese RSC response body, bytes              | 366,751 | 108,608 |
-| English initial translation-module requests   |       0 |       0 |
-| Chinese initial translation-module requests   |      36 |       0 |
-| English → Chinese translation-module requests |      37 |       2 |
+On 2026-09-23, the production Vinext standalone build was checked in fresh
+Chromium contexts using local system-features and unauthenticated API fixtures.
+English and Simplified Chinese sign-in rendered correctly after hydration without
+runtime or hydration errors. The raw HTML contains the shell and a loading spinner,
+not the login form: `NormalForm` waits for the client account-profile probe. This
+browser check does not establish that the complete login form is server-rendered.
+English hydration requested `en-US/login`; Chinese hydration
+requested `zh-Hans/login` and `en-US/login`. Switching English to Chinese requested
+only `zh-Hans/common` and `zh-Hans/login`. Navigation to sign-up and back preserved
+Chinese and requested no additional translation modules. These counts use the
+client build manifest, exclude loader modules, and are not backend latency metrics.
+Authenticated feature navigation remains unverified.
 
-HTML includes embedded RSC and other page data; HTML and standalone RSC sizes
-must not be added. RSC was requested separately using `RSC: 1` on `/signin?_rsc`
-with an explicit locale cookie. Body sizes are decoded bytes, not compressed
-wire transfer sizes. Estimated gzip sizes for the HTML bodies were approximately
-106 KB → 23 KB (English) and 112 KB → 38 KB (Chinese).
+### Streaming resource verification
 
-Translation requests were identified using the production client manifest's
-`i18n/locales/` entries, rather than chunk-name guesses. The new language-switch
-waterfall loads the locale loader module, then the common and login modules in
-parallel. No translation modules are requested on initial English or Chinese
-sign-in hydration. Rendered page text matched the baseline and no browser runtime
-errors were recorded. Client navigation to `/signup` and back rendered correctly;
-unmigrated destinations still load their complete namespace set on entry.
+The Chromium hydration regression renders the real creation menu on the server,
+collects its dictionaries, and hydrates with client backend requests held pending.
+Its first click opens the menu without disabling the trigger or retrying the click.
+It also verifies that a later resource update reaches the mounted Provider before
+its feature renders. Unit coverage checks incremental collection, fallback
+languages, Provider isolation, and inline-script escaping.
 
-Unit coverage uses real i18next/react-i18next to check initial loading, missing-key
-fallback, locale persistence, route transitions and active-route language changes.
-The route-analysis report is diagnostic guidance, not an automatic resource manifest.
-Datasets and authenticated feature-navigation/network validation remain follow-up
-work for issue #42442; this migration does not close that issue.
+A production Next.js sign-in check with controlled unauthenticated API fixtures
+confirmed English and Chinese `login` resources in the HTML stream, no repeated
+login translation chunk requests, and no browser hydration errors. Production
+Vinext validation remains pending; its build was stopped to limit local resource
+usage. The complete authenticated Agent creation journey must still pass CI.
+
+Empty-store coverage also verifies shell rendering without an enclosing Suspense
+boundary, concurrent locale/fallback rendering, and hydration of both `common`
+and feature namespaces without duplicate backend requests.
+
+[`i18next-resources-for-ts`]: https://github.com/i18next/i18next-resources-for-ts
+[official TypeScript guidance]: https://www.i18next.com/overview/typescript
+[plural rules]: https://www.i18next.com/translation-function/plurals

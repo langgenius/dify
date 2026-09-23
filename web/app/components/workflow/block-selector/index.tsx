@@ -1,3 +1,4 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
   PopoverPopupProps,
   PopoverPositionerProps,
@@ -5,13 +6,7 @@ import type {
   PopoverTriggerProps,
 } from '@langgenius/dify-ui/popover'
 import type { CSSProperties, KeyboardEvent, MouseEventHandler, Ref } from 'react'
-import type {
-  CommonNodeType,
-  NodeDefault,
-  OnNodeAdd,
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
+import type { CommonNodeType, NodeDefault, OnNodeAdd, OnSelectBlock } from '../types'
 import type { TabType } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -56,7 +51,7 @@ export type BlockSelectorProps = Pick<
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   blocks?: NodeDefault[]
-  dataSources?: ToolWithProvider[]
+  dataSources?: RagPipelineDatasourceProviderResponse[]
   noBlocks?: boolean
   noTools?: boolean
   standalonePanel?: TabType
@@ -98,7 +93,7 @@ function BlockSelector({
   snippetInsertPayload,
   isolateKeyboardEvents = false,
 }: BlockSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [localOpen, setLocalOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const open = openFromProps === undefined ? localOpen : openFromProps

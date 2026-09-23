@@ -29,7 +29,7 @@ const AddCustomModel = ({
   open: controlledOpen,
   onOpenChange,
 }: AddCustomModelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
   const setOpen = (nextOpen: boolean) => {

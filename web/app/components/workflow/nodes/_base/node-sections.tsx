@@ -1,9 +1,8 @@
-import type { SelectorParam } from 'i18next'
+import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { useId } from 'react'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
 type HeaderMetaProps = {
@@ -14,13 +13,9 @@ type HeaderMetaProps = {
   t: WorkflowTranslator
 }
 
-export type WorkflowTranslator = (
-  selector: SelectorParam<'workflow'>,
-  options: { ns: 'workflow' } & Record<string, unknown>,
-) => string
+type WorkflowTranslator = TFunction<['workflow']>
 
 export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: HeaderMetaProps) => {
-  const titleId = useId()
   return (
     <>
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
@@ -34,10 +29,10 @@ export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: H
                 ns: 'workflow',
               })}
             />
-            <InfotipContent aria-labelledby={titleId} className="w-45">
-              <div id={titleId} className="font-semibold text-text-primary">
+            <InfotipContent className="w-45">
+              <InfotipTitle className="font-semibold text-text-primary">
                 {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
-              </div>
+              </InfotipTitle>
               {t(($) => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
             </InfotipContent>
           </Infotip>

@@ -63,7 +63,7 @@ function TriggerAccessPointItem({
   trigger: AppTrigger
   triggerPlugins: TriggerWithProvider[]
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'appOverview', 'common'])
   const invalidateTriggers = useInvalidateAppTriggers()
   const updateTriggerMutation = useMutation(
     consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
@@ -143,7 +143,7 @@ export function TriggerAccessPointCard({
   canManageAccessPoint,
   highlighted,
 }: TriggerAccessPointCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'common', 'deployments'])
   const docLink = useDocLink()
   const { data: response, isLoading } = useAppTriggers(appInfo.id)
   const { data: triggerPlugins = [] } = useAllTriggerPlugins()

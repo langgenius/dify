@@ -49,7 +49,7 @@ const Field = ({
 }
 
 const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const headerId = useId()
 
   const [isFocus, setIsFocus] = useState(false)

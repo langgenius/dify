@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 // import { Resolution } from '@/types/app'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Vision } from '@/app/components/base/icons/src/vender/features'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 // import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
@@ -20,7 +19,9 @@ import { Resolution } from '@/types/app'
 import ParamConfig from './param-config'
 
 const ConfigVision: FC = () => {
-  const { t } = useTranslation()
+  const resolutionLabelId = React.useId()
+
+  const { t } = useTranslation(['appDebug'])
   const titleId = useId()
   const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
   const file = useFeatures((s) => s.features.file)
@@ -68,7 +69,10 @@ const ConfigVision: FC = () => {
     <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-2">
       <div className="shrink-0 p-1">
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-          <Vision className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-vision size-4 text-text-primary-on-surface"
+          />
         </div>
       </div>
       <div className="flex grow items-center">
@@ -76,11 +80,8 @@ const ConfigVision: FC = () => {
           {t(($) => $['vision.name'], { ns: 'appDebug' })}
         </h2>
         <Infotip>
-          <InfotipTrigger aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })} />
-          <InfotipContent
-            aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })}
-            className="w-45"
-          >
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-45">
             {t(($) => $['vision.description'], { ns: 'appDebug' })}
           </InfotipContent>
         </Infotip>
@@ -89,19 +90,13 @@ const ConfigVision: FC = () => {
         {readonly ? (
           <>
             <div className="mr-2 flex items-center gap-0.5">
-              <div className="system-xs-medium-uppercase text-text-tertiary">
+              <div id={resolutionLabelId} className="system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
               </div>
               <Infotip>
-                <InfotipTrigger
-                  aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                    ns: 'appDebug',
-                  })}
-                />
+                <InfotipTrigger aria-labelledby={resolutionLabelId} />
                 <InfotipContent
-                  aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                    ns: 'appDebug',
-                  })}
+                  aria-labelledby={resolutionLabelId}
                   className="w-45 whitespace-pre-wrap"
                 >
                   {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}

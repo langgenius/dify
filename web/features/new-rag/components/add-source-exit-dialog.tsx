@@ -24,8 +24,8 @@ export function AddSourceExitDialog({
   onConfirm: () => void
   open: boolean
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <AlertDialog
