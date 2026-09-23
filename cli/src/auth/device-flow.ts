@@ -35,37 +35,50 @@ export async function awaitAuthorization(
 
   const baseInterval = code.interval > 0 ? code.interval * 1000 : DEFAULT_INTERVAL_MS
   let interval = baseInterval
-  const req: PollRequest = {
-    device_code: code.device_code,
-    client_id: opts.clientId ?? DEFAULT_CLIENT_ID,
-  }
+  const req = pollRequest(code.device_code, opts)
 
   while (true) {
     if (opts.clock.isCancelled()) throw cancelledError()
     const result = await pollWithRetry(api, req, opts.clock)
-    switch (result.status) {
-      case 'approved':
-        return result.success
-      case 'pending':
-        break
-      case 'slow_down':
-        interval = Math.min(interval * 2, MAX_INTERVAL_MS)
-        break
-      case 'expired':
-        throw expired()
-      case 'denied':
-        throw new BaseError({
-          code: ErrorCode.AccessDenied,
-          message: 'authorization denied',
-        })
-      case 'retry_5xx':
-        throw new BaseError({
-          code: ErrorCode.ServerError,
-          message: 'device-flow poll unavailable after retries',
-        })
-    }
+    const success = settle(result)
+    if (success !== undefined) return success
+    if (result.status === 'slow_down') interval = Math.min(interval * 2, MAX_INTERVAL_MS)
     await opts.clock.sleepMs(interval)
     if (opts.clock.isCancelled()) throw cancelledError()
+  }
+}
+
+export async function pollAuthorization(
+  api: DeviceFlowApiSubset,
+  deviceCode: string,
+  opts: AwaitOptions,
+): Promise<PollSuccess | undefined> {
+  return settle(await pollWithRetry(api, pollRequest(deviceCode, opts), opts.clock))
+}
+
+function pollRequest(deviceCode: string, opts: AwaitOptions): PollRequest {
+  return { device_code: deviceCode, client_id: opts.clientId ?? DEFAULT_CLIENT_ID }
+}
+
+function settle(result: PollResult): PollSuccess | undefined {
+  switch (result.status) {
+    case 'approved':
+      return result.success
+    case 'pending':
+    case 'slow_down':
+      return undefined
+    case 'expired':
+      throw expired()
+    case 'denied':
+      throw new BaseError({
+        code: ErrorCode.AccessDenied,
+        message: 'authorization denied',
+      })
+    case 'retry_5xx':
+      throw new BaseError({
+        code: ErrorCode.ServerError,
+        message: 'device-flow poll unavailable after retries',
+      })
   }
 }
 

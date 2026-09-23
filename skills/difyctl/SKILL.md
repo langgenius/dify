@@ -48,7 +48,7 @@ Errors are one envelope on stderr: `{"error":{"code","message","hint"?,"details"
 
 `difyctl login --server https://...` (device flow; `--no-browser` prints the URL and code; `--no-keyring` keeps the token in a file; `--insecure` skips TLS verification). One login at a time. `difyctl workspace use <id>` pins a workspace; `difyctl workspace list` shows them. Scripts skip login with `DIFY_SERVER` and `DIFY_TOKEN`; `DIFY_WORKSPACE_ID` overrides the pin; `DIFY_CONFIG_DIR` and `DIFY_CACHE_DIR` move the files.
 
-`login` blocks until the browser approval arrives. Run `difyctl login --server <url> --no-browser` as a background job, relay the `open <url>` and `code <code>` lines from its stderr to the user, and do not cancel the job. Its exit code reports the result. In a sandbox, add `--no-keyring` and set `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session.
+`login` blocks until the browser approval arrives. Run `difyctl login --server <url> --no-browser` as a background job, relay the `open <url>` and `code <code>` lines from its stderr to the user, and do not cancel the job. Its exit code reports the result. In a sandbox, add `--no-keyring` and set `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session. If background jobs do not survive between calls, run `login --no-wait` instead, relay the `verification_uri` and `user_code` it prints, and after the user approves run `login --resume` until it stops printing `status: pending`.
 
 ## Destructive operations
 
