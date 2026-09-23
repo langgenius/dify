@@ -24895,6 +24895,7 @@ Enabled routes require at least two exits; drafts may omit conditions.
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | Yes |
 | result | string |  | Yes |
+| warning | string | Advisory warning for variable references that can read a skipped branch. Publish still succeeds. | No |
 
 #### WorkflowResponse
 
