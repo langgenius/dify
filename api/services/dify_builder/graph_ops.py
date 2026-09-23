@@ -46,6 +46,17 @@ _STRING_ARGS = ("path",)
 # set_node_config's `value`, create_node's and insert_between's `config`.
 _REDACTABLE_ARGS = ("value", "config")
 
+# Inside a node's config, the one key that REINTERPRETS its siblings rather
+# than sitting beside them: an http-request `authorization` is `{type, config}`
+# and a `body` is `{type, data}`, and `type` decides whether the sibling is read
+# at all. `_build_node`'s deeper defaults merge never fills it in behind a
+# caller who wrote the siblings without it -- `{"config": {"type": "bearer",
+# "api_key": ...}}` merged under `{"type": "no-auth", ...}` is a node that
+# LOOKS authorized, sends no credential, and was written in silence. This is
+# `node_defaults`' "a default may fill a blank, never invent a purpose" rule,
+# one level down.
+_MODE_KEY = "type"
+
 
 def validate_intent_args(intent: MutationIntent) -> None:
     """Raise ``ValueError`` if ``intent.args`` is missing a required key for
@@ -264,6 +275,23 @@ def _build_node(
     it was thinking about. This is the one chokepoint every created node passes
     through, so it covers Build, Edit and Fix, ``create_node`` and
     ``insert_between``, and the ``filter_applicable`` dry run alike.
+
+    The merge goes ONE level into a default whose value is a dict, for the same
+    reason: an LLM writing ``model: {provider, name}`` was thinking about the
+    provider and the model name, not about ``mode`` or ``completion_params``,
+    and a shallow merge dropped those with the rest of the block -- so the
+    engine refused the node for ``model.mode`` and the one corrective re-prompt
+    was spent on a field the default was already carrying. One level, not a
+    recursive merge: a caller value that is not a dict replaces the default
+    outright, and a dict nested deeper is still the caller's word entirely.
+
+    With one exclusion, and it is the reason this is not a blanket deep merge
+    (see ``_MODE_KEY``): a default block whose ``type`` the caller did not write
+    keeps today's shallow behaviour, because ``type`` reinterprets its siblings
+    instead of sitting beside them. Merging it in turns a partial
+    ``authorization`` -- the caller's ``config`` with a bearer token in it --
+    into a ``no-auth`` node that sends no credential and is written in silence,
+    which is exactly the failure a default is forbidden from creating.
     """
     existing_ids = {n.get("id") for n in graph.get("nodes", [])}
     if node_id is not None:
@@ -273,7 +301,15 @@ def _build_node(
     else:
         new_id = _next_node_id(node_type, existing_ids)
 
-    data = {**default_config_or_empty(node_type), **copy.deepcopy(config)}
+    defaults = default_config_or_empty(node_type)
+    data = {**defaults, **copy.deepcopy(config)}
+    for key, default_value in defaults.items():
+        supplied = data.get(key)
+        if not isinstance(default_value, dict) or not isinstance(supplied, dict):
+            continue
+        if _MODE_KEY in default_value and _MODE_KEY not in supplied:
+            continue
+        data[key] = {**default_value, **supplied}
     data["type"] = node_type  # data.type is the real node type -- never overridden by config
     data.setdefault("title", new_id)
     data.setdefault("desc", "")
@@ -537,11 +573,22 @@ def already_present_predicate(graph: Graph, intents: list[MutationIntent]) -> Ca
     a from-scratch build sends ``delete_node(placeholder_start)`` +
     ``create_node(same id)`` in one batch, and without the exclusion the create
     would be dropped as already-present while the delete still ran.
+
+    An edge is keyed on ``(source, target, sourceHandle)``, not on the pair
+    alone. Two edges between the same nodes on DIFFERENT handles are different
+    edges -- they leave different arms of a branch -- so a repair that re-routes
+    an arm is not something the draft already satisfies. Keyed on the pair, it
+    matched the edge already there and was dropped as a no-op here AND at
+    ``dify_port.apply_repair``, which runs this same predicate: a legitimate
+    repair silently discarded. Both sides default a missing handle to
+    ``"source"``, which is how graphon reads one (``edge_config.get
+    ("sourceHandle", "source")``), so an intent that omits it still matches an
+    edge persisted with it.
     """
     deleted_ids = {i.args.get("node_id") for i in intents if i.op == "delete_node"}
     present_node_ids = {n.get("id") for n in graph.get("nodes") or []} - deleted_ids
     present_edges = {
-        (e.get("source"), e.get("target"))
+        (e.get("source"), e.get("target"), e.get("sourceHandle") or "source")
         for e in graph.get("edges") or []
         if e.get("source") not in deleted_ids and e.get("target") not in deleted_ids
     }
@@ -550,7 +597,11 @@ def already_present_predicate(graph: Graph, intents: list[MutationIntent]) -> Ca
         if intent.op == "create_node":
             return intent.args.get("node_id") in present_node_ids
         if intent.op == "connect":
-            return (intent.args.get("from_node"), intent.args.get("to_node")) in present_edges
+            return (
+                intent.args.get("from_node"),
+                intent.args.get("to_node"),
+                intent.args.get("source_handle") or "source",
+            ) in present_edges
         return False
 
     return already_present

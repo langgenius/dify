@@ -1300,3 +1300,48 @@ def test_adding_a_case_while_dropping_another_is_still_refused():
 
     assert len(vetted.rejections) == 1
     assert "c2" in vetted.rejections[0]
+
+
+def test_a_rejection_line_withholds_a_credential_the_intents_own_path_names():
+    """``_withheld_args`` redacts a ``value`` that is shaped like a whole node
+    ``data``. A ``set_node_config`` does not send one: it sends the value at a
+    PATH, so ``path="headers"`` with a header line, or ``path="authorization"``
+    with the auth block itself, reached the retry prompt unredacted.
+
+    Unreachable with a stored secret today -- these args are model-authored and
+    the model is never shown one -- so this closes the shape, not a live leak.
+    """
+    from services.dify_builder.preflight import _withheld_args
+
+    header_line = _withheld_args(
+        MutationIntent(op="set_node_config", args={"node_id": "h", "path": "headers", "value": _HEADERS})
+    )
+    whole_block = _withheld_args(
+        MutationIntent(op="set_node_config", args={"node_id": "h", "path": "authorization", "value": _AUTHORIZATION})
+    )
+    nested_config = _withheld_args(
+        MutationIntent(
+            op="set_node_config",
+            args={"node_id": "h", "path": "authorization.config", "value": _AUTHORIZATION["config"]},
+        )
+    )
+
+    assert _SECRET_HEADER not in header_line["value"]
+    assert "Authorization" in header_line["value"]  # the header NAME still reaches the model
+    assert _SECRET_KEY not in json.dumps(whole_block)
+    assert whole_block["value"]["config"]["header"] == "X-Auth"  # ...and so does the structure
+    assert _SECRET_KEY not in json.dumps(nested_config)
+    assert nested_config["value"]["type"] == "bearer"  # the auth MODE is structure, not a secret
+
+
+def test_withholding_by_path_leaves_an_ordinary_value_exactly_as_it_was():
+    """The redaction is keyed on the path a credential actually lives at. A
+    ``cases`` rewrite, an indexed condition value, a title -- none of them is a
+    credential field, and a guard that mangled them would corrupt the one
+    corrective re-prompt the batch gets."""
+    from services.dify_builder.preflight import _withheld_args
+
+    cases = [{"case_id": "true", "conditions": [{"id": "c1", "value": "60"}]}]
+    intent = MutationIntent(op="set_node_config", args={"node_id": "branch", "path": "cases", "value": cases})
+
+    assert _withheld_args(intent)["value"] == cases
