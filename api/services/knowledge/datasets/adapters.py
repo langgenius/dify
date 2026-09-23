@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -12,21 +12,16 @@ from core.plugin.impl.model_runtime_factory import create_plugin_provider_manage
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.pagination import clamp_pagination
 from machinery.context import RequestContext
-from models import Account, ApiToken, App, Dataset, Document
+from models import Account, App, Dataset, Document
 from models.dataset import DatasetPermission, DatasetPermissionEnum
-from models.enums import ApiTokenType
 from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_repository import _get_dataset
-from services import dataset_api_key_service
-from services.api_token_service import ApiTokenCache
 from services.enterprise import rbac_service
 from services.errors.account import NoPermissionError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.dataset_read_service import get_dataset_queries, load_dataset_detail, load_dataset_details
 from services.knowledge.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.knowledge.datasets.application import (
-    DatasetKeyLimitError,
-    DatasetKeyNotFoundError,
     DatasetListFilter,
     DatasetVisibility,
 )
@@ -78,17 +73,6 @@ def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[s
     if counts is not None:
         result.update(completed_segments=counts[0], total_segments=counts[1])
     return result
-
-
-def _key_values(key: ApiToken, dataset_ids: list[str]) -> dict[str, Any]:
-    return {
-        "id": key.id,
-        "type": key.type,
-        "token": key.token,
-        "created_at": key.created_at,
-        "last_used_at": key.last_used_at,
-        "dataset_ids": dataset_ids,
-    }
 
 
 class SQLAlchemyDatasetOperations:
@@ -345,58 +329,3 @@ class SQLAlchemyDatasetOperations:
                 require_dataset(session, ref), enabled, load_actor(session, context), session
             )
             session.commit()
-
-    def list_keys(self, workspace_id: str) -> list[dict[str, Any]]:
-        with self._sessions() as session:
-            keys = session.scalars(
-                select(ApiToken).where(ApiToken.type == ApiTokenType.DATASET, ApiToken.tenant_id == workspace_id)
-            ).all()
-            bindings = dataset_api_key_service.list_bindings_by_token(session, [key.id for key in keys])
-            return [_key_values(key, bindings.get(key.id, [])) for key in keys]
-
-    def create_key(self, workspace_id: str, dataset_ids: list[str], *, max_keys: int) -> dict[str, Any]:
-        with self._sessions.begin() as session:
-            unknown = dataset_api_key_service.find_unknown_dataset_ids(session, dataset_ids, workspace_id)
-            if unknown:
-                raise ValueError(f"Unknown knowledge base id(s): {', '.join(unknown)}")
-            count = (
-                session.scalar(
-                    select(func.count(ApiToken.id)).where(
-                        ApiToken.type == ApiTokenType.DATASET, ApiToken.tenant_id == workspace_id
-                    )
-                )
-                or 0
-            )
-            if count >= max_keys:
-                raise DatasetKeyLimitError(f"Cannot create more than {max_keys} API keys for this resource type.")
-            key = ApiToken(
-                tenant_id=workspace_id,
-                type=ApiTokenType.DATASET,
-                token=ApiToken.generate_api_key("dataset-", 24, session=session),
-            )
-            session.add(key)
-            session.flush()
-            dataset_api_key_service.bind_datasets(session, key.id, dataset_ids)
-            return _key_values(key, dataset_ids)
-
-    def delete_key(self, workspace_id: str, key_id: str) -> None:
-        with self._sessions() as session:
-            key = session.scalar(
-                select(ApiToken).where(
-                    ApiToken.tenant_id == workspace_id, ApiToken.type == ApiTokenType.DATASET, ApiToken.id == key_id
-                )
-            )
-            if key is None:
-                raise DatasetKeyNotFoundError("API key not found")
-            token = key.token
-        # Revoke cache before deletion as required by the token consistency contract,
-        # but release the read transaction before accessing Redis.
-        ApiTokenCache.delete(token, ApiTokenType.DATASET)
-        with self._sessions.begin() as session:
-            key = session.scalar(
-                select(ApiToken).where(
-                    ApiToken.tenant_id == workspace_id, ApiToken.type == ApiTokenType.DATASET, ApiToken.id == key_id
-                )
-            )
-            if key is not None:
-                session.delete(key)

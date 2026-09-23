@@ -12,7 +12,7 @@ from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, 
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import ApiKeyItem, ApiKeyList
+from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_errors
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
@@ -29,6 +29,7 @@ from controllers.console.wraps import (
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.ext_application_services import application_services
+from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from fields.base import ResponseModel
 from fields.dataset_fields import (
     DatasetDetailResponse,
@@ -41,7 +42,7 @@ from models.enums import PermissionEnum as DatasetPermissionEnum
 from services.errors.dataset import DatasetInUseError as DatasetInUseFailure
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.datasets.application import DatasetKeyLimitError, DatasetKeyNotFoundError, DatasetListFilter
+from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.entities.indexing_estimate import (
     NewEstimateSource,
     NewSourcesEstimateCommand,
@@ -61,7 +62,6 @@ from services.knowledge.indexing.estimate import (
 _DATASET_EDIT_ROLES = frozenset(
     {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
 )
-_ADMIN_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
 
 def _raise_dataset_error(error: Exception) -> Never:
@@ -625,30 +625,30 @@ class DatasetApiKeyApi(Resource):
     @console_ns.doc(description="Get dataset API keys")
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @console_account_admission(
-        allowed_roles=_ADMIN_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),)
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),),
     )
     def get(self, request_context: RequestContext):
-        result = application_services().knowledge.datasets.list_keys(request_context)
-        return dump_response(ApiKeyList, {"data": result})
+        with api_key_errors():
+            keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
+        return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @console_account_admission(
-        allowed_roles=_ADMIN_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),)
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),),
     )
     def post(self, request_context: RequestContext):
+        # Preserve the optional scope and validation response of the workspace route.
         payload = request.get_json(silent=True) or {}
         dataset_ids = payload.get("dataset_ids") or []
         if not isinstance(dataset_ids, list) or any(not isinstance(item, str) for item in dataset_ids):
             console_ns.abort(400, message="dataset_ids must be a list of strings.")
-        try:
-            result = application_services().knowledge.datasets.create_key(request_context, dataset_ids=dataset_ids)
-        except DatasetKeyLimitError as error:
-            console_ns.abort(400, message=str(error), custom="max_keys_exceeded")
-        except ValueError as error:
-            console_ns.abort(400, message=str(error))
-        return dump_response(ApiKeyItem, result), 200
+        with api_key_errors():
+            key = application_services().dataset_api_keys.create_workspace_key(request_context, tuple(dataset_ids))
+        return dump_response(ApiKeyItem, key), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
@@ -658,13 +658,12 @@ class DatasetApiDeleteApi(Resource):
     @console_ns.doc(params={"api_key_id": "API key ID"})
     @console_ns.response(204, "API key deleted successfully")
     @console_account_admission(
-        allowed_roles=_ADMIN_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),)
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),),
     )
     def delete(self, request_context: RequestContext, api_key_id: UUID):
-        try:
-            application_services().knowledge.datasets.delete_key(request_context, key_id=str(api_key_id))
-        except DatasetKeyNotFoundError as error:
-            console_ns.abort(404, message=str(error))
+        with api_key_errors():
+            application_services().dataset_api_keys.delete_workspace_key(request_context, str(api_key_id))
         return "", 204
 
 

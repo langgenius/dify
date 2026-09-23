@@ -1,1 +1,1 @@
-"""Application services and adapters for knowledge use cases."""
+"""Knowledge-domain application services and adapters."""

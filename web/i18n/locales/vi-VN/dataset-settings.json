@@ -1,5 +1,6 @@
 {
   "desc": "Tại đây, bạn có thể sửa đổi các thuộc tính và phương pháp làm việc của Kiến thức.",
+  "form.changeIcon": "Thay đổi biểu tượng kiến thức",
   "form.chunkStructure.description": "về Cấu trúc khối.",
   "form.chunkStructure.learnMore": "Tìm hiểu thêm",
   "form.chunkStructure.title": "Cấu trúc Chunk",

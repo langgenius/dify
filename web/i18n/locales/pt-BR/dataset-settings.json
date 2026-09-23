@@ -1,5 +1,6 @@
 {
   "desc": "Aqui você pode modificar as propriedades e métodos de trabalho do conhecimento.",
+  "form.changeIcon": "Alterar ícone do conhecimento",
   "form.chunkStructure.description": "sobre a estrutura do pedaço.",
   "form.chunkStructure.learnMore": "Saiba Mais",
   "form.chunkStructure.title": "Estrutura de Chunk",

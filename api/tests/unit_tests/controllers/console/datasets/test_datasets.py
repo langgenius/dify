@@ -1,11 +1,10 @@
-import datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID
 
 import pytest
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -15,8 +14,6 @@ from controllers.console.datasets import datasets as controller
 from controllers.console.datasets.datasets import (
     DatasetApi,
     DatasetApiBaseUrlApi,
-    DatasetApiDeleteApi,
-    DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
     DatasetEnableApiApi,
     DatasetErrorDocs,
@@ -42,12 +39,7 @@ from controllers.console.datasets.error import (
 from machinery.context import RequestContext
 from services.data_source.entities.notion_import import NotionPageType
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.datasets.application import (
-    DatasetApplicationService,
-    DatasetKeyLimitError,
-    DatasetKeyNotFoundError,
-    DatasetListFilter,
-)
+from services.knowledge.datasets.application import DatasetApplicationService, DatasetListFilter
 from services.knowledge.entities.indexing_estimate import (
     NotionEstimateSource,
     UploadFileEstimateSource,
@@ -134,47 +126,6 @@ def test_domain_errors_are_mapped_at_transport(datasets, error, http_error):
 def test_delete_success_returns_empty_204(datasets):
     assert unwrap(DatasetApi.delete)(DatasetApi(), CONTEXT, DATASET_ID) == ("", 204)
     datasets.delete_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID))
-
-
-@pytest.mark.parametrize("values", ["dataset", 1, [None], [12]])
-def test_invalid_key_scope_never_reaches_application(app, datasets, values):
-    with app.test_request_context("/", json={"dataset_ids": values}), pytest.raises(BadRequest):
-        unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)
-    datasets.create_key.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    ("error", "custom"), [(DatasetKeyLimitError("limit"), "max_keys_exceeded"), (ValueError("unknown"), None)]
-)
-def test_key_creation_preserves_error_contract(app, datasets, error, custom):
-    datasets.create_key.side_effect = error
-    with app.test_request_context("/", json={}), pytest.raises(BadRequest) as raised:
-        unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)
-    assert raised.value.data["message"] == str(error)
-    assert raised.value.data.get("custom") == custom
-
-
-def test_keys_are_serialized_with_scope_and_epoch_dates(app, datasets):
-    datasets.create_key.return_value = {
-        "id": "key-1",
-        "type": "dataset",
-        "token": "dataset-secret",
-        "dataset_ids": ["a"],
-        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
-    }
-    with app.test_request_context("/", json={"dataset_ids": ["a"]}):
-        result, status = unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)
-    assert status == 200
-    assert result["token"] == "dataset-secret"
-    assert result["created_at"] == 1704067200
-    assert result["dataset_ids"] == ["a"]
-
-
-def test_delete_key_maps_missing_key(datasets):
-    datasets.delete_key.side_effect = DatasetKeyNotFoundError("API key not found")
-    with pytest.raises(NotFound) as raised:
-        unwrap(DatasetApiDeleteApi.delete)(DatasetApiDeleteApi(), CONTEXT, DATASET_ID)
-    assert raised.value.data["message"] == "API key not found"
 
 
 def test_request_base_url_and_explicit_status_are_forwarded(app, datasets):

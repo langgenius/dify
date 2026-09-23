@@ -9,16 +9,19 @@ from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from libs.helper import generate_text_hash
+from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.api_token_service import ApiTokenCache
 from services.data_source.credential_gateway import (
     ActorAwareDatasourceCredentialGateway,
     TrustedStoredDatasourceCredentialGateway,
 )
 from services.data_source.provider_service import DatasourceProviderService
+from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge.dataset_access import DatasetAccessService
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
@@ -63,6 +66,17 @@ class KnowledgeServices:
     indexing_estimates: IndexingEstimateApplicationService
     segments: DatasetSegmentApplicationService
     pipeline_generator: PipelineGenerator
+
+
+def build_dataset_api_key_service(
+    *, database_client: sessionmaker[Session], dataset_access: DatasetAccessService
+) -> DatasetApiKeyService:
+    return DatasetApiKeyService(
+        keys=DatasetApiKeyRepository(session_factory=database_client),
+        cache=ApiTokenCache,
+        access=dataset_access,
+        rbac_enabled=lambda: dify_config.RBAC_ENABLED,
+    )
 
 
 def build_knowledge_services(

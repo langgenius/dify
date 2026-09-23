@@ -48,14 +48,6 @@ class DatasetVisibility:
         return ids, "dataset.create_and_management" in self.workspace_permissions
 
 
-class DatasetKeyNotFoundError(Exception):
-    pass
-
-
-class DatasetKeyLimitError(ValueError):
-    pass
-
-
 class DatasetOperations(Protocol):
     """Materialize owned values and complete writes before returning."""
 
@@ -76,9 +68,6 @@ class DatasetOperations(Protocol):
     def partial_members(self, ref: DatasetRef) -> list[str]: ...
     def auto_disable_logs(self, ref: DatasetRef) -> dict[str, Any]: ...
     def set_api_enabled(self, context: RequestContext, ref: DatasetRef, enabled: bool) -> None: ...
-    def list_keys(self, workspace_id: str) -> list[dict[str, Any]]: ...
-    def create_key(self, workspace_id: str, dataset_ids: list[str], *, max_keys: int) -> dict[str, Any]: ...
-    def delete_key(self, workspace_id: str, key_id: str) -> None: ...
 
 
 class DatasetApplicationService:
@@ -161,19 +150,6 @@ class DatasetApplicationService:
 
     def set_api_enabled(self, context: RequestContext, *, dataset_id: str, status: str) -> None:
         self._operations.set_api_enabled(context, self._dataset(context, dataset_id), status == "enable")
-
-    def list_keys(self, context: RequestContext) -> list[dict[str, Any]]:
-        keys = self._operations.list_keys(context.active_workspace_id)
-        for key in keys:
-            token = key["token"]
-            key["token"] = "***" if len(token) <= 8 else f"{token[:5]}...{token[-4:]}"
-        return keys
-
-    def create_key(self, context: RequestContext, *, dataset_ids: Sequence[str]) -> dict[str, Any]:
-        return self._operations.create_key(context.active_workspace_id, list(dict.fromkeys(dataset_ids)), max_keys=10)
-
-    def delete_key(self, context: RequestContext, *, key_id: str) -> None:
-        self._operations.delete_key(context.active_workspace_id, key_id)
 
     def api_base_url(self, context: RequestContext, *, request_base_url: str) -> str:
         return normalize_api_base_url(self._service_api_url or request_base_url)

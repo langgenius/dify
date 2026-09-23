@@ -2,12 +2,12 @@ from collections.abc import Callable, Iterator
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import Engine, event, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.datasets.datasets import DatasetDetailResponse, DatasetListResponse, DatasetQueryListResponse
 from machinery.context import RequestContext
-from models import Account, ApiToken, App, Dataset, Document
+from models import Account, App, Dataset, Document
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -17,11 +17,10 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
-from models.model import DatasetApiTokenBinding
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
-from services.knowledge.datasets.application import DatasetKeyLimitError, DatasetKeyNotFoundError, DatasetListFilter
+from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
@@ -328,69 +327,3 @@ def test_queries_and_related_apps_materialize_after_session_close(
     assert response["has_more"] is False
     assert response["data"][0]["queries"][0]["content"] == "query"
     assert [app["id"] for app in operations.related_apps(REF)["data"]] == ["app"]
-
-
-def test_scoped_key_commit_and_unknown_owner_rejection(
-    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
-) -> None:
-    result = operations.create_key("tenant", ["dataset"], max_keys=10)
-    assert result["dataset_ids"] == ["dataset"]
-    assert result["token"].startswith("dataset-")
-    with sqlite_session_factory() as session:
-        assert (
-            session.scalar(
-                select(DatasetApiTokenBinding.dataset_id).where(DatasetApiTokenBinding.api_token_id == result["id"])
-            )
-            == "dataset"
-        )
-    with pytest.raises(ValueError, match="Unknown knowledge base"):
-        operations.create_key("tenant", ["foreign"], max_keys=10)
-    assert len(operations.list_keys("tenant")) == 1
-
-
-def test_key_limit_counts_only_workspace_dataset_keys(
-    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
-) -> None:
-    with sqlite_session_factory.begin() as session:
-        session.add_all(
-            [
-                ApiToken(tenant_id="other", type="dataset", token="other"),
-                ApiToken(tenant_id="tenant", type="app", token="app"),
-            ]
-        )
-    operations.create_key("tenant", [], max_keys=1)
-    with pytest.raises(DatasetKeyLimitError):
-        operations.create_key("tenant", [], max_keys=1)
-
-
-def test_delete_key_releases_transaction_before_cache_invalidation(
-    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine
-) -> None:
-    key = operations.create_key("tenant", [], max_keys=10)
-    active: set[object] = set()
-
-    def checkout(_conn: object, record: object, _proxy: object) -> None:
-        active.add(record)
-
-    def checkin(_conn: object, record: object) -> None:
-        active.discard(record)
-
-    def invalidate(token: str, kind: str) -> None:
-        assert not active
-        assert token == key["token"]
-        assert kind == "dataset"
-
-    event.listen(sqlite_engine, "checkout", checkout)
-    event.listen(sqlite_engine, "checkin", checkin)
-    try:
-        with patch("services.knowledge.datasets.adapters.ApiTokenCache.delete", side_effect=invalidate) as cache:
-            with pytest.raises(DatasetKeyNotFoundError):
-                operations.delete_key("other", key["id"])
-            cache.assert_not_called()
-            operations.delete_key("tenant", key["id"])
-            cache.assert_called_once()
-    finally:
-        event.remove(sqlite_engine, "checkout", checkout)
-        event.remove(sqlite_engine, "checkin", checkin)
-    with sqlite_session_factory() as session:
-        assert session.get(ApiToken, key["id"]) is None

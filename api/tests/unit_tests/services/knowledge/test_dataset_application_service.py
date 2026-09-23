@@ -136,14 +136,6 @@ def test_rbac_create_normalizes_permission_without_mutating_input(
     assert values["permission"] == "only_me"
 
 
-def test_keys_are_revealed_only_on_creation(service: DatasetApplicationService, operations: MagicMock) -> None:
-    operations.list_keys.return_value = [{"token": "dataset-very-secret"}, {"token": "short"}]
-    assert service.list_keys(CONTEXT) == [{"token": "datas...cret"}, {"token": "***"}]
-    operations.create_key.return_value = {"token": "dataset-very-secret"}
-    assert service.create_key(CONTEXT, dataset_ids=["a", "a", "b"]) == {"token": "dataset-very-secret"}
-    operations.create_key.assert_called_once_with("tenant", ["a", "b"], max_keys=10)
-
-
 def test_settings_are_injected_and_url_is_normalized(service: DatasetApplicationService) -> None:
     assert service.api_base_url(CONTEXT, request_base_url="https://api.example/v1/") == "https://api.example/v1"
     assert service.retrieval_settings(CONTEXT)["retrieval_method"] == [

@@ -67,6 +67,8 @@ class DatasetAccessDeniedError(DatasetAccessError):
 def can_access_dataset(snapshot: DatasetAccessSnapshot, *, actor_id: str, workspace_role: str | None) -> bool:
     """Evaluate legacy dataset visibility without database or framework access."""
 
+    if workspace_role is None:
+        return False
     dataset = snapshot.dataset
     if workspace_role == _OWNER_ROLE or dataset.maintainer_id == actor_id:
         return True

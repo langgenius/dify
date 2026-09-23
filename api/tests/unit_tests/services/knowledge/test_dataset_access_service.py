@@ -123,6 +123,31 @@ def test_require_accessible_denies_unrecognized_or_ungranted_legacy_access(
         service.require_accessible(_context(), "dataset-1")
 
 
+@pytest.mark.parametrize(
+    ("permission", "maintainer_id", "partial_access"),
+    [
+        ("only_me", "actor-1", False),
+        ("all_team_members", "maintainer-1", False),
+        ("partial_members", "maintainer-1", True),
+    ],
+)
+def test_require_accessible_denies_non_members_even_when_dataset_policy_would_allow(
+    permission: str,
+    maintainer_id: str,
+    partial_access: bool,
+) -> None:
+    service = DatasetAccessService(
+        datasets=DatasetReaderStub(
+            _snapshot(permission=permission, maintainer_id=maintainer_id, partial_access=partial_access)
+        ),
+        workspace_roles=WorkspaceRoleReaderStub(None),
+        legacy_permissions_enabled=True,
+    )
+
+    with pytest.raises(DatasetAccessDeniedError):
+        service.require_accessible(_context(), "dataset-1")
+
+
 def test_require_accessible_only_enforces_owner_chain_when_legacy_permissions_are_disabled() -> None:
     roles = WorkspaceRoleReaderStub("normal")
     service = DatasetAccessService(

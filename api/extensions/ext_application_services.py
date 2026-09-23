@@ -21,13 +21,18 @@ from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
+from extensions.application_services.app import build_app_api_key_service
 from extensions.application_services.data_sources import (
     DataSourceServices,
     build_data_source_credentials,
     build_data_source_services,
 )
 from extensions.application_services.datasets import build_dataset_dependencies
-from extensions.application_services.knowledge import KnowledgeServices, build_knowledge_services
+from extensions.application_services.knowledge import (
+    KnowledgeServices,
+    build_dataset_api_key_service,
+    build_knowledge_services,
+)
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now, utc_now
@@ -147,6 +152,7 @@ from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
+from services.app.api_key_service import AppApiKeyService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -179,6 +185,7 @@ from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
+from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
@@ -297,6 +304,8 @@ class ApplicationServices:
     advanced_prompt_templates: AdvancedPromptTemplateService
     credential_queries: CredentialQuery
     accounts: AccountServices
+    app_api_keys: AppApiKeyService
+    dataset_api_keys: DatasetApiKeyService
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     app_preview_details: AppPreviewDetails
@@ -711,6 +720,11 @@ def build_application_services(
         ),
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
+        ),
+        app_api_keys=build_app_api_key_service(database_client=database_client),
+        dataset_api_keys=build_dataset_api_key_service(
+            database_client=database_client,
+            dataset_access=dataset_dependencies.access,
         ),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(

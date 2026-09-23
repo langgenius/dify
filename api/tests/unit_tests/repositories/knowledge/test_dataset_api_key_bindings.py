@@ -1,4 +1,4 @@
-"""Unit tests for dataset API key scoping helpers."""
+"""Persistence tests for dataset API key scoping and deletion."""
 
 import uuid
 
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from models.enums import ApiTokenType
 from models.model import ApiToken, DatasetApiTokenBinding
-from services import dataset_api_key_service
+from repositories.knowledge import dataset_api_key_bindings
 
 
 def _dataset_token(session: Session) -> ApiToken:
@@ -28,7 +28,7 @@ class TestDeleteKeysScopedOnlyTo:
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=token.id, dataset_id=dataset_id))
         sqlite_session.commit()
 
-        deleted = dataset_api_key_service.delete_keys_scoped_only_to(sqlite_session, dataset_id)
+        deleted = dataset_api_key_bindings.delete_keys_scoped_only_to(sqlite_session, dataset_id)
         sqlite_session.commit()
 
         assert deleted == [token.id]
@@ -42,7 +42,7 @@ class TestDeleteKeysScopedOnlyTo:
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=token.id, dataset_id=other_dataset_id))
         sqlite_session.commit()
 
-        deleted = dataset_api_key_service.delete_keys_scoped_only_to(sqlite_session, dataset_id)
+        deleted = dataset_api_key_bindings.delete_keys_scoped_only_to(sqlite_session, dataset_id)
         sqlite_session.commit()
 
         # The key is bound elsewhere, so it survives and stays scoped.
@@ -55,7 +55,7 @@ class TestDeleteKeysScopedOnlyTo:
         unbound = _dataset_token(sqlite_session)
         sqlite_session.commit()
 
-        deleted = dataset_api_key_service.delete_keys_scoped_only_to(sqlite_session, dataset_id)
+        deleted = dataset_api_key_bindings.delete_keys_scoped_only_to(sqlite_session, dataset_id)
         sqlite_session.commit()
 
         assert deleted == []
