@@ -60,6 +60,8 @@ members = ["providers/vdb/*", "providers/trace/*"]
 exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
+# Keep the 0.7 runtime API until a containing replay-fix release is published.
+graphon = { git = "https://github.com/langgenius/graphon.git", rev = "f8feaf33600ba2d827f01c0c3a340e0068e8fa49" }
 dify-agent = { path = "../dify-agent", editable = true }
 flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "27758e26f8f740d7525d5039c51a9e524b6e2b68" }
 dify-vdb-alibabacloud-mysql = { workspace = true }

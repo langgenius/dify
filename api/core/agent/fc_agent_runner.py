@@ -163,9 +163,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 messages_ids=message_file_ids,
             )
 
-            # recalc llm max tokens
             prompt_messages = [*initial_prompt_messages, *self._current_thoughts]
-            self._recalc_llm_max_tokens(prompt_messages, prompt_messages_tools)
+            self._check_context_budget(prompt_messages, prompt_messages_tools)
 
             # Release any setup/tool transaction before waiting on the provider stream.
             session.commit()
@@ -534,8 +533,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_messages
 
-    def _recalc_llm_max_tokens(self, prompt_messages: list[PromptMessage], tools: list[PromptMessageTool]) -> None:
-        """Fit the output budget without trimming the active tool loop's prefix."""
+    def _check_context_budget(self, prompt_messages: list[PromptMessage], tools: list[PromptMessageTool]) -> None:
+        """Stop before changing the active tool loop's prefix or output budget."""
         context_size = self.model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
         if context_size is None:
             return
@@ -543,19 +542,21 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         prompt_tokens = self.model_instance.get_llm_num_tokens(prompt_messages, tools=tools)
         if prompt_tokens < 0:
             return
-        remaining_tokens = context_size - prompt_tokens
-        if remaining_tokens < 16:
-            raise InvokeBadRequestError(
-                "Agent context window exhausted. Start a new conversation or reduce the tool output size."
-            )
-
+        required_output_tokens = 16
         for rule in self.model_config.model_schema.parameter_rules:
             if rule.name == "max_tokens" or rule.use_template == "max_tokens":
-                max_tokens = self.model_config.parameters.get(rule.name) or self.model_config.parameters.get(
-                    rule.use_template or ""
+                required_output_tokens = max(
+                    required_output_tokens,
+                    self.model_config.parameters.get(rule.name)
+                    or self.model_config.parameters.get(rule.use_template or "")
+                    or rule.default
+                    or 0,
                 )
-                if max_tokens and max_tokens > remaining_tokens:
-                    self.model_config.parameters[rule.name] = remaining_tokens
+        if context_size - prompt_tokens < required_output_tokens:
+            raise InvokeBadRequestError(
+                "Agent context window exhausted: the prompt and output token budget do not fit. "
+                "Start a new conversation or reduce the tool output size."
+            )
 
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """Choose the initial history window before the first model response."""

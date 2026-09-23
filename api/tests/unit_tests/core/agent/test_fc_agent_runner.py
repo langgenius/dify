@@ -469,7 +469,7 @@ class TestRunMethod:
         runner.model_config.model_schema.parameter_rules = [SimpleNamespace(name="max_tokens", use_template=None)]
         runner.model_config.parameters = {"max_tokens": 200}
         runner.application_generate_entity.model_conf.parameters = runner.model_config.parameters
-        runner.model_instance.get_llm_num_tokens.side_effect = [100, 990]
+        runner.model_instance.get_llm_num_tokens.side_effect = [100, 850]
         response = AssistantPromptMessage(
             content="",
             opaque_body={"state": "signed"},
@@ -493,13 +493,33 @@ class TestRunMethod:
         assert runner.model_config.parameters["max_tokens"] == 200
         assert runner.model_instance.get_llm_num_tokens.call_args.kwargs == {"tools": []}
 
-    def test_remaining_context_reduces_output_budget(self, runner: FunctionCallAgentRunner):
-        runner.model_config.model_schema.model_properties = {"context_size": 1000}
-        runner.model_config.model_schema.parameter_rules = [SimpleNamespace(name="max_tokens", use_template=None)]
-        runner.model_config.parameters = {"max_tokens": 200}
-        runner.model_instance.get_llm_num_tokens.return_value = 950
-        runner._recalc_llm_max_tokens([UserPromptMessage(content="query")], [])
-        assert runner.model_config.parameters["max_tokens"] == 50
+    @pytest.mark.parametrize(
+        ("parameter_name", "parameters"),
+        [
+            ("max_tokens", {"thinking": True, "thinking_budget": 1024, "max_tokens": 64000}),
+            ("max_output_tokens", {"max_tokens": 64000}),
+            ("max_output_tokens", {}),
+        ],
+    )
+    def test_context_check_preserves_configured_and_default_output_budget(
+        self, runner: FunctionCallAgentRunner, parameter_name: str, parameters: dict
+    ):
+        runner.model_config.model_schema.model_properties = {"context_size": 200000}
+        runner.model_config.model_schema.parameter_rules = [
+            SimpleNamespace(name=parameter_name, use_template="max_tokens", default=64000)
+        ]
+        runner.model_config.parameters = parameters.copy()
+        runner.model_instance.get_llm_num_tokens.return_value = 199000
+
+        with pytest.raises(InvokeBadRequestError, match="prompt and output token budget do not fit"):
+            runner._check_context_budget([UserPromptMessage(content="query")], [])
+
+        assert runner.model_config.parameters == parameters
+
+        for token_count in (-1, 136000):
+            runner.model_instance.get_llm_num_tokens.return_value = token_count
+            runner._check_context_budget([UserPromptMessage(content="query")], [])
+        assert runner.model_config.parameters == parameters
 
     def test_history_window_is_selected_before_the_tool_loop(
         self, runner: FunctionCallAgentRunner, mocker: MockerFixture
