@@ -415,10 +415,14 @@ def test_legacy_auto_generate_name_preserves_metadata_and_persists_success_or_or
     )
     sqlite_session.add_all([app, conversation, message])
     sqlite_session.commit()
-    calls: list[tuple[str, str, str, str, dict[str, object]]] = []
+    calls: list[tuple[str, str, str, str, str, str | None, dict[str, object]]] = []
 
-    def generate(tenant_id: str, query: str, conversation_id: str, app_id: str) -> str:
-        calls.append((tenant_id, query, conversation_id, app_id, dict(get_credit_usage_metadata() or {})))
+    def generate(
+        tenant_id: str, query: str, conversation_id: str, app_id: str, *, message_id: str, user_id: str | None
+    ) -> str:
+        calls.append(
+            (tenant_id, query, conversation_id, app_id, message_id, user_id, dict(get_credit_usage_metadata() or {}))
+        )
         if naming_fails:
             raise RuntimeError("Provider unavailable")
         return "Generated title"
@@ -438,6 +442,8 @@ def test_legacy_auto_generate_name_preserves_metadata_and_persists_success_or_or
             "First query",
             CONVERSATION_ID,
             APP_ID,
+            message.id,
+            ACCOUNT_ID,
             {"app_type": CreditUsageAppType.CHATFLOW, **inherited_metadata},
         )
     ]

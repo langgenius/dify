@@ -15,12 +15,14 @@ from werkzeug.test import TestResponse
 import controllers.console.explore.trial as trial_module
 import controllers.console.explore.trial_app_admission as admission_module
 import controllers.console.wraps as console_wraps
+import core.ops.trace_source as trace_source_module
 import libs.login as login_module
 import services.message_service as message_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
+from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import CompletedTrace, TraceProviderSettings
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
@@ -41,6 +43,7 @@ from services.message_suggested_questions_service import (
     SuggestedQuestionsActorNotFoundError,
 )
 from services.trial_app_access_service import TrialAppAccessService
+from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
 
 
 @dataclass
@@ -59,7 +62,7 @@ class _Provider:
     read_sessions: list[Session]
     tenant_ids: list[str] = field(default_factory=list)
     histories: list[str] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
+    trace_queue: RecordingQueue = field(default_factory=RecordingQueue)
     questions: list[str] = field(default_factory=lambda: ["Next question?", "Another question?"])
     failure: Exception | None = None
     missing_model: bool = False
@@ -76,7 +79,13 @@ class _Provider:
         return len(prompt_messages)
 
     def generate(
-        self, *, tenant_id: str, histories: str, instruction_prompt: str | None, model_config: object
+        self,
+        *,
+        tenant_id: str,
+        histories: str,
+        instruction_prompt: str | None,
+        model_config: object,
+        trace_recorder: MessageTraceRecorder | None,
     ) -> Sequence[str]:
         # Admission and ORM reload finish before the legacy runtime's model I/O.
         assert len(self.read_sessions) == 2
@@ -88,10 +97,17 @@ class _Provider:
         self.histories.append(histories)
         if self.failure is not None:
             raise self.failure
+        assert trace_recorder is not None
+        assert trace_recorder.source.tenant_id == tenant_id
+        trace_recorder.record_operation(
+            "suggested_questions",
+            span_type="llm",
+            inputs=histories,
+            outputs=self.questions,
+            attributes={"operation_type": "suggested_question"},
+            independent=True,
+        )
         return self.questions
-
-    def add_trace_task(self, task: TraceTask) -> None:
-        self.traces.append(task)
 
 
 @dataclass(frozen=True)
@@ -216,15 +232,21 @@ def harness(
         assert tenant_id == target.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _Provider:
+    def trace_provider_settings(tenant_id: str, app_id: str | None) -> tuple[TraceProviderSettings, ...]:
+        assert tenant_id == target.tenant_id
         assert app_id == target.id
-        return provider
+        return (
+            TraceProviderSettings(
+                tenant_id=tenant_id, app_id=app_id, provider_name="recording", config_id=str(uuid4())
+            ),
+        )
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
     monkeypatch.setattr(message_module.LLMGenerator, "generate_suggested_questions_after_answer", provider.generate)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(trace_source_module, "get_trace_provider_settings", trace_provider_settings)
 
     app = Flask(__name__)
+    app.extensions["ops_trace_queue"] = provider.trace_queue
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(app)
     legacy_sessions: list[Session] = []
@@ -298,7 +320,14 @@ def test_questions_keep_response_history_owner_and_usage(
     assert harness.provider.histories == ["Human: What is a trial?\nAssistant: A way to try an app."]
     assert harness.provider.tenant_ids == [harness.target.tenant_id]
     assert harness.target.tenant_id not in {harness.trial.tenant_id, harness.account.current_tenant_id}
-    assert len(harness.provider.traces) == 1
+    assert len(harness.provider.trace_queue.items) == 1
+    trace = CompletedTrace.model_validate_json(harness.provider.trace_queue.items[0].trace_json)
+    assert trace.source.tenant_id == harness.target.tenant_id
+    assert trace.source.app_id == harness.target.id
+    assert trace.source.actor_id == harness.account.id
+    assert trace.source.message_id == harness.message.id
+    assert trace.source.conversation_id == harness.conversation.id
+    assert trace.spans[0].outputs == questions
     assert harness.features.events == ["setup", "csrf", "feature"]
     assert harness.usage() == 1
     assert len(harness.legacy_sessions) == 1
@@ -366,7 +395,7 @@ def test_absent_default_model_keeps_empty_success(harness: _Harness) -> None:
     assert response.status_code == 200
     assert response.get_json() == {"data": []}
     assert harness.provider.histories == []
-    assert harness.provider.traces == []
+    assert harness.provider.trace_queue.items == []
     harness.assert_closed()
 
 
@@ -441,7 +470,7 @@ def test_provider_failures_preserve_specific_errors_and_close_session(
     harness.provider.failure = failure
     _assert_error(harness.get(), 400, code, message)
     assert len(harness.provider.histories) == 1
-    assert harness.provider.traces == []
+    assert harness.provider.trace_queue.items == []
     assert harness.usage() is None
     harness.assert_closed()
 

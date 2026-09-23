@@ -20,6 +20,7 @@ if __name__ == "__main__":
     psycogreen_gevent.patch_psycopg()
 
 import logging
+import os
 import sys
 from typing import TYPE_CHECKING, cast
 
@@ -71,6 +72,8 @@ else:
     socketio_app, flask_app = create_app()
     app = flask_app
     celery = cast("Celery", app.extensions["celery"])
+    if __name__ == "__main__" or os.environ.get("FLASK_RUN_FROM_CLI") == "true":
+        flask_app.extensions["start_ops_tracing"]()
 
 if __name__ == "__main__":
     from gevent import pywsgi
@@ -78,4 +81,7 @@ if __name__ == "__main__":
 
     log_startup_banner(HOST, PORT)
     server = pywsgi.WSGIServer((HOST, PORT), socketio_app, handler_class=WebSocketHandler)
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        flask_app.extensions["close_ops_tracing"]()

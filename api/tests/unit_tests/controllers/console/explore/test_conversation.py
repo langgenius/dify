@@ -43,7 +43,7 @@ class _Conversations:
     harness: _Harness
     factory: sessionmaker[Session]
     sessions: list[Session] = field(default_factory=list)
-    generation_calls: list[tuple[str, str, str, str, str]] = field(default_factory=list)
+    generation_calls: list[tuple[str, str, str, str, str, str, str]] = field(default_factory=list)
     cleanup_calls: list[tuple[str, str, tuple[str, ...]]] = field(default_factory=list)
     generation_error: Exception | None = None
     generation_action: Callable[[], None] | None = None
@@ -51,9 +51,19 @@ class _Conversations:
     def assert_sessions_closed(self) -> None:
         assert all(not session.in_transaction() and not session.identity_map for session in self.sessions)
 
-    def generate_name(self, *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str:
+    def generate_name(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        conversation_id: str,
+        query: str,
+        app_mode: str,
+        message_id: str,
+        user_id: str,
+    ) -> str:
         self.assert_sessions_closed()
-        self.generation_calls.append((tenant_id, app_id, conversation_id, query, app_mode))
+        self.generation_calls.append((tenant_id, app_id, conversation_id, query, app_mode, message_id, user_id))
         if self.generation_error is not None:
             raise self.generation_error
         if self.generation_action is not None:
@@ -312,6 +322,8 @@ def test_auto_rename_uses_first_message_after_sessions_close_and_preserves_name_
     conversation = _conversation(conversations)
     _message(conversations, conversation)
     _message(conversations, conversation, query="Later question", age=1)
+    with conversations.factory() as session:
+        first_message_id = session.scalar(select(Message.id).where(Message.query == "First question"))
     if fail_generation:
         conversations.generation_error = RuntimeError("provider unavailable")
     response = conversations.request("rename", conversation_id=conversation.id, body={"auto_generate": True})
@@ -319,7 +331,15 @@ def test_auto_rename_uses_first_message_after_sessions_close_and_preserves_name_
     assert response.get_json()["name"] == ("Original title" if fail_generation else "Generated title")
     assert response.get_json()["inputs"] == conversation._inputs
     assert conversations.generation_calls == [
-        (conversations.harness.target_app.tenant_id, conversation.app_id, conversation.id, "First question", "chat")
+        (
+            conversations.harness.target_app.tenant_id,
+            conversation.app_id,
+            conversation.id,
+            "First question",
+            "chat",
+            first_message_id,
+            conversations.harness.account.id,
+        )
     ]
     conversations.assert_sessions_closed()
 
@@ -435,6 +455,8 @@ def test_app_removed_after_admission_reports_missing_installation(
 def test_auto_rename_uses_mode_captured_before_permission_check(conversations: _Conversations) -> None:
     conversation = _conversation(conversations)
     _message(conversations, conversation)
+    with conversations.factory() as session:
+        first_message_id = session.scalar(select(Message.id).where(Message.query == "First question"))
 
     def change_mode() -> None:
         with conversations.factory.begin() as session:
@@ -448,7 +470,15 @@ def test_auto_rename_uses_mode_captured_before_permission_check(conversations: _
     assert response.status_code == 200
     assert response.get_json()["name"] == "Generated title"
     assert conversations.generation_calls == [
-        (conversations.harness.target_app.tenant_id, conversation.app_id, conversation.id, "First question", "chat")
+        (
+            conversations.harness.target_app.tenant_id,
+            conversation.app_id,
+            conversation.id,
+            "First question",
+            "chat",
+            first_message_id,
+            conversations.harness.account.id,
+        )
     ]
 
 

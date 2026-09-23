@@ -42,7 +42,6 @@ from controllers.console.wraps import (
 )
 from core.file.remote_file_metadata import FileInfo
 from core.ops.exceptions import TraceProviderNotInstalledError
-from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
@@ -85,6 +84,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.feature_service import FeatureService
+from services.ops_trace_service import get_app_trace_settings, update_app_trace_settings
 from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -1294,7 +1294,7 @@ class AppTraceApi(Resource):
     @get_app_model
     def get(self, session: Session, app_model: App):
         """Get app trace"""
-        app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
+        app_trace_config = get_app_trace_settings(tenant_id=app_model.tenant_id, app_id=app_model.id)
 
         return dump_response(AppTraceResponse, app_trace_config)
 
@@ -1319,7 +1319,8 @@ class AppTraceApi(Resource):
         # add app trace
 
         try:
-            OpsTraceManager.update_app_tracing_config(
+            update_app_trace_settings(
+                tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 enabled=req_data.enabled,
                 tracing_provider=req_data.tracing_provider,

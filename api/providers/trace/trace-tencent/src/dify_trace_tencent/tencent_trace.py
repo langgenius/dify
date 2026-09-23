@@ -1,547 +1,354 @@
-from typing import override
+"""Send Tencent spans and cumulative metrics through their explicitly captured transports."""
 
-"""Tencent APM tracing with idempotent client cleanup."""
+import socket
+from typing import Any, override
+from uuid import UUID
 
-import inspect
-import logging
+from opentelemetry.context import Context
+from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
+from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
+from opentelemetry.sdk.version import __version__ as otel_sdk_version
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, set_span_in_context
+from pydantic import JsonValue
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from configs import dify_config
+from core.helper.ssl_context import create_grpc_credentials, create_ssl_context
+from core.ops.otlp_trace import OtlpTraceClient, histogram, limit_span_attributes, otlp_span, otlp_trace_id
+from core.ops.provider_export import TraceProviderHttpClient, export_span_id, json_text, span_attributes, span_id_bytes
+from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
+from dify_trace_tencent.config import TencentConfig, create_trace_sampler
 
-from core.ops.base_trace_instance import BaseTraceInstance
-from core.ops.entities.trace_entity import (
-    BaseTraceInfo,
-    DatasetRetrievalTraceInfo,
-    GenerateNameTraceInfo,
-    MessageTraceInfo,
-    ModerationTraceInfo,
-    SuggestedQuestionTraceInfo,
-    ToolTraceInfo,
-    WorkflowTraceInfo,
-)
-from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from dify_trace_tencent.client import TencentTraceClient
-from dify_trace_tencent.config import TencentConfig
-from dify_trace_tencent.entities.tencent_trace_entity import SpanData
-from dify_trace_tencent.span_builder import TencentSpanBuilder
-from dify_trace_tencent.utils import TencentTraceUtils
-from extensions.ext_database import db
-from graphon.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-)
-from graphon.nodes import BuiltinNodeTypes
-from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
-
-logger = logging.getLogger(__name__)
+# Preserve the explicit buckets used by the previous Tencent SDK histograms.
+HISTOGRAM_BOUNDS = (0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000)
 
 
-class TencentDataTrace(BaseTraceInstance):
-    """
-    Tencent APM trace implementation with single responsibility principle.
-    Acts as a coordinator that delegates specific tasks to specialized classes.
+def usage_seconds(span: TraceSpan, field: str, *legacy_attributes: str) -> float | None:
+    value = span.usage.get(field)
+    if value is None:
+        value = next((span.attributes[key] for key in legacy_attributes if span.attributes.get(key) is not None), None)
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0 else None
 
-    The instance owns a long-lived ``TencentTraceClient``. Cleanup may happen
-    explicitly in tests or implicitly during garbage collection, so shutdown
-    must be safe to call multiple times.
-    """
 
-    trace_client: TencentTraceClient
-    _closed: bool
+class TencentTraceClient(OtlpTraceClient):
+    """Project Tencent's span attributes and existing metric series from captured calls."""
 
-    def __init__(self, tencent_config: TencentConfig):
-        super().__init__(tencent_config)
-        self._closed = False
-        self.trace_client = TencentTraceClient(
-            service_name=tencent_config.service_name,
-            endpoint=tencent_config.endpoint,
-            token=tencent_config.token,
-            metrics_export_interval_sec=5,
-        )
+    def __init__(
+        self,
+        *args: Any,
+        sampling: dict[str, Any] | None = None,
+        span_limits: dict[str, int | None] | None = None,
+        disabled: bool = False,
+        **kwargs: Any,
+    ):
+        super().__init__(*args, **kwargs)
+        self.sampler = create_trace_sampler(sampling or {})
+        self.span_limits = dict(span_limits or {})
+        self.disabled = disabled
+
+    def _should_sample(self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None) -> bool:
+        trace_id = UUID(otlp_trace_id(completed_trace, parent_span)).int
+        parent = Context()
+        if parent_span:
+            parent = set_span_in_context(
+                NonRecordingSpan(
+                    SpanContext(
+                        trace_id=trace_id,
+                        span_id=int.from_bytes(span_id_bytes(str(parent_span["span_id"]))),
+                        is_remote=True,
+                        trace_flags=TraceFlags(0 if parent_span.get("sampled") is False else 1),
+                    )
+                ),
+                parent,
+            )
+        # All six built-ins make the same decision for this root and its local tree.
+        return self.sampler.should_sample(parent, trace_id, completed_trace.spans[0].span_name).decision.is_sampled()
 
     @override
-    def trace(self, trace_info: BaseTraceInfo) -> None:
-        """Main tracing entry point - coordinates different trace types."""
-        match trace_info:
-            case WorkflowTraceInfo():
-                self.workflow_trace(trace_info)
-            case MessageTraceInfo():
-                self.message_trace(trace_info)
-            case ModerationTraceInfo():
-                pass
-            case SuggestedQuestionTraceInfo():
-                self.suggested_question_trace(trace_info)
-            case DatasetRetrievalTraceInfo():
-                self.dataset_retrieval_trace(trace_info)
-            case ToolTraceInfo():
-                self.tool_trace(trace_info)
-            case GenerateNameTraceInfo():
-                pass
-
-    def api_check(self) -> bool:
-        return self.trace_client.api_check()
-
-    def get_project_url(self) -> str:
-        return self.trace_client.get_project_url()
-
-    def workflow_trace(self, trace_info: WorkflowTraceInfo) -> None:
-        """Handle workflow tracing by coordinating data retrieval and span construction."""
-        try:
-            trace_id = TencentTraceUtils.convert_to_trace_id(trace_info.workflow_run_id)
-
-            links = []
-            if trace_info.trace_id:
-                links.append(TencentTraceUtils.create_link(trace_info.trace_id))
-
-            user_id = self._get_user_id(trace_info)
-
-            workflow_spans = TencentSpanBuilder.build_workflow_spans(trace_info, trace_id, str(user_id), links)
-
-            for span in workflow_spans:
-                self.trace_client.add_span(span)
-
-            self._process_workflow_nodes(trace_info, trace_id)
-
-            # Record trace duration for entry span
-            self._record_workflow_trace_duration(trace_info)
-
-        except Exception:
-            logger.exception("[Tencent APM] Failed to process workflow trace")
-
-    def message_trace(self, trace_info: MessageTraceInfo) -> None:
-        """Handle message tracing."""
-        try:
-            trace_id = TencentTraceUtils.convert_to_trace_id(trace_info.message_id)
-            user_id = self._get_user_id(trace_info)
-
-            links = []
-            if trace_info.trace_id:
-                links.append(TencentTraceUtils.create_link(trace_info.trace_id))
-
-            message_span = TencentSpanBuilder.build_message_span(trace_info, trace_id, str(user_id), links)
-
-            self.trace_client.add_span(message_span)
-
-            self._record_message_llm_metrics(trace_info)
-
-            # Record trace duration for entry span
-            self._record_message_trace_duration(trace_info)
-
-        except Exception:
-            logger.exception("[Tencent APM] Failed to process message trace")
-
-    def tool_trace(self, trace_info: ToolTraceInfo) -> None:
-        """Handle tool tracing."""
-        try:
-            parent_span_id = None
-            trace_root_id = None
-
-            if trace_info.message_id:
-                parent_span_id = TencentTraceUtils.convert_to_span_id(trace_info.message_id, "message")
-                trace_root_id = trace_info.message_id
-
-            if parent_span_id and trace_root_id:
-                trace_id = TencentTraceUtils.convert_to_trace_id(trace_root_id)
-
-                tool_span = TencentSpanBuilder.build_tool_span(trace_info, trace_id, parent_span_id)
-
-                self.trace_client.add_span(tool_span)
-
-        except Exception:
-            logger.exception("[Tencent APM] Failed to process tool trace")
-
-    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo) -> None:
-        """Handle dataset retrieval tracing."""
-        try:
-            parent_span_id = None
-            trace_root_id = None
-
-            if trace_info.message_id:
-                parent_span_id = TencentTraceUtils.convert_to_span_id(trace_info.message_id, "message")
-                trace_root_id = trace_info.message_id
-
-            if parent_span_id and trace_root_id:
-                trace_id = TencentTraceUtils.convert_to_trace_id(trace_root_id)
-
-                retrieval_span = TencentSpanBuilder.build_retrieval_span(trace_info, trace_id, parent_span_id)
-
-                self.trace_client.add_span(retrieval_span)
-
-        except Exception:
-            logger.exception("[Tencent APM] Failed to process dataset retrieval trace")
-
-    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo) -> None:
-        """Handle suggested question tracing"""
-        try:
-            logger.info("[Tencent APM] Processing suggested question trace")
-
-        except Exception:
-            logger.exception("[Tencent APM] Failed to process suggested question trace")
-
-    def _process_workflow_nodes(self, trace_info: WorkflowTraceInfo, trace_id: int) -> None:
-        """Process workflow node executions."""
-        try:
-            workflow_span_id = TencentTraceUtils.convert_to_span_id(trace_info.workflow_run_id, "workflow")
-
-            node_executions = self._get_workflow_node_executions(trace_info)
-            tool_parents = workflow_tool_parent_ids(node_executions)
-
-            for node_execution in node_executions:
-                try:
-                    parent_id = tool_parents.get(node_execution.id)
-                    parent_span_id = (
-                        TencentTraceUtils.convert_to_span_id(parent_id, "node") if parent_id else workflow_span_id
-                    )
-                    node_span = self._build_workflow_node_span(node_execution, trace_id, trace_info, parent_span_id)
-                    if node_span:
-                        self.trace_client.add_span(node_span)
-
-                        if node_execution.node_type == BuiltinNodeTypes.LLM:
-                            self._record_llm_metrics(node_execution)
-                except Exception:
-                    logger.exception("[Tencent APM] Failed to process node execution: %s", node_execution.id)
-
-        except Exception:
-            logger.exception("[Tencent APM] Failed to process workflow nodes")
-
-    def _build_workflow_node_span(
-        self, node_execution: WorkflowNodeExecution, trace_id: int, trace_info: WorkflowTraceInfo, workflow_span_id: int
-    ) -> SpanData | None:
-        """Build span for different node types"""
-        try:
-            if node_execution.node_type == BuiltinNodeTypes.LLM:
-                return TencentSpanBuilder.build_workflow_llm_span(
-                    trace_id, workflow_span_id, trace_info, node_execution
-                )
-            elif node_execution.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
-                return TencentSpanBuilder.build_workflow_retrieval_span(
-                    trace_id, workflow_span_id, trace_info, node_execution
-                )
-            elif node_execution.node_type == BuiltinNodeTypes.TOOL:
-                return TencentSpanBuilder.build_workflow_tool_span(
-                    trace_id, workflow_span_id, trace_info, node_execution
-                )
-            else:
-                # Handle all other node types as generic tasks
-                return TencentSpanBuilder.build_workflow_task_span(
-                    trace_id, workflow_span_id, trace_info, node_execution
-                )
-        except Exception:
-            logger.debug(
-                "[Tencent APM] Error building span for node %s: %s",
-                node_execution.id,
-                node_execution.node_type,
-                exc_info=True,
-            )
-            return None
-
-    def _get_workflow_node_executions(self, trace_info: WorkflowTraceInfo) -> list[WorkflowNodeExecution]:
-        """Retrieve workflow node executions from database."""
-        try:
-            session_maker = sessionmaker(bind=db.engine)
-
-            with Session(db.engine, expire_on_commit=False) as session:
-                app_id = trace_info.metadata.get("app_id")
-                if not app_id:
-                    raise ValueError("No app_id found in trace_info metadata")
-
-                app_stmt = select(App).where(App.id == app_id)
-                app = session.scalar(app_stmt)
-                if not app:
-                    raise ValueError(f"App with id {app_id} not found")
-
-                if not app.created_by:
-                    raise ValueError(f"App with id {app_id} has no creator")
-
-                account_stmt = select(Account).where(Account.id == app.created_by)
-                service_account = session.scalar(account_stmt)
-                if not service_account:
-                    raise ValueError(f"Creator account not found for app {app_id}")
-
-            repository = SQLAlchemyWorkflowNodeExecutionRepository(
-                session_factory=session_maker,
-                tenant_id=app.tenant_id,
-                user=service_account,
-                app_id=trace_info.metadata.get("app_id"),
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-            )
-
-            executions = repository.get_by_workflow_execution(
-                workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
-            )
-            return list(executions)
-
-        except Exception:
-            logger.exception("[Tencent APM] Failed to get workflow node executions")
-            return []
-
-    def _get_user_id(self, trace_info: BaseTraceInfo) -> str:
-        """Get user ID from trace info."""
-        try:
-            tenant_id = None
-            user_id = None
-
-            if isinstance(trace_info, (WorkflowTraceInfo, GenerateNameTraceInfo)):
-                tenant_id = trace_info.tenant_id
-
-            if hasattr(trace_info, "metadata") and trace_info.metadata:
-                user_id = trace_info.metadata.get("user_id")
-
-            if user_id and tenant_id:
-                stmt = (
-                    select(Account.name)
-                    .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-                    .where(Account.id == user_id, TenantAccountJoin.tenant_id == tenant_id)
-                )
-
-                session_maker = sessionmaker(bind=db.engine)
-                with session_maker() as session:
-                    account_name = session.scalar(stmt)
-                    return account_name or str(user_id)
-            elif user_id:
-                return str(user_id)
-
-            return "anonymous"
-
-        except Exception:
-            logger.exception("[Tencent APM] Failed to get user ID")
-            return "unknown"
-
-    def _record_llm_metrics(self, node_execution: WorkflowNodeExecution) -> None:
-        """Record LLM performance metrics"""
-        try:
-            process_data = node_execution.process_data or {}
-            outputs = node_execution.outputs or {}
-            usage = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
-
-            model_provider = process_data.get("model_provider", "unknown")
-            model_name = process_data.get("model_name", "unknown")
-            model_mode = process_data.get("model_mode", "chat")
-
-            # Record LLM duration
-            if hasattr(self.trace_client, "record_llm_duration"):
-                latency_s = float(usage.get("latency", 0.0))
-
-                if latency_s > 0:
-                    # Determine if streaming from usage metrics
-                    is_streaming = usage.get("time_to_first_token") is not None
-
-                    attributes = {
-                        "gen_ai.system": model_provider,
-                        "gen_ai.response.model": model_name,
-                        "gen_ai.operation.name": model_mode,
-                        "stream": "true" if is_streaming else "false",
-                    }
-                    self.trace_client.record_llm_duration(latency_s, attributes)
-
-            # Record streaming metrics from usage
-            time_to_first_token = usage.get("time_to_first_token")
-            if time_to_first_token is not None and hasattr(self.trace_client, "record_time_to_first_token"):
-                ttft_seconds = float(time_to_first_token)
-                if ttft_seconds > 0:
-                    self.trace_client.record_time_to_first_token(
-                        ttft_seconds=ttft_seconds, provider=model_provider, model=model_name, operation_name=model_mode
-                    )
-
-            time_to_generate = usage.get("time_to_generate")
-            if time_to_generate is not None and hasattr(self.trace_client, "record_time_to_generate"):
-                ttg_seconds = float(time_to_generate)
-                if ttg_seconds > 0:
-                    self.trace_client.record_time_to_generate(
-                        ttg_seconds=ttg_seconds, provider=model_provider, model=model_name, operation_name=model_mode
-                    )
-
-            # Record token usage
-            if hasattr(self.trace_client, "record_token_usage"):
-                # Extract token counts
-                input_tokens = int(usage.get("prompt_tokens", 0))
-                output_tokens = int(usage.get("completion_tokens", 0))
-
-                if input_tokens > 0 or output_tokens > 0:
-                    server_address = f"{model_provider}"
-
-                    # Record input tokens
-                    if input_tokens > 0:
-                        self.trace_client.record_token_usage(
-                            token_count=input_tokens,
-                            token_type="input",
-                            operation_name=model_mode,
-                            request_model=model_name,
-                            response_model=model_name,
-                            server_address=server_address,
-                            provider=model_provider,
+    def build_span(
+        self, completed_trace: CompletedTrace, span: TraceSpan, parent_span: dict[str, JsonValue] | None = None
+    ) -> Span:
+        model_labels = self._model_labels(span)
+        native_type = span.span_type
+        if span.node_execution_id and isinstance(node_type := span.attributes.get("node_type"), str):
+            native_type = {"llm": "llm", "tool": "tool", "knowledge-retrieval": "retrieval"}.get(node_type, "node")
+        inputs = json_text(
+            span.attributes.get("original_inputs", span.inputs) if native_type == "node" else span.inputs
+        )
+        outputs = json_text(span.outputs)
+        operation_type = span.attributes.get("operation_type")
+        if operation_type == "message":
+            inputs, outputs = str(span.inputs or ""), str(span.outputs or "")
+        elif native_type == "llm":
+            completion = span.outputs
+            if isinstance(completion, dict) and ("text" in completion or span.attributes.get("node_type") == "llm"):
+                completion = completion.get("text", "")
+            outputs = completion if isinstance(completion, str) else json_text(completion)
+        elif operation_type == "tool" and not span.node_execution_id:
+            outputs = str(span.outputs)
+        elif native_type == "retrieval":
+            query = span.inputs.get("query", "") if isinstance(span.inputs, dict) else span.inputs
+            inputs = str(query or "")
+            documents = span.outputs
+            if isinstance(documents, dict):
+                if "documents" in documents:
+                    native_documents: list[JsonValue] = []
+                    for document in documents["documents"] if isinstance(documents["documents"], list) else []:
+                        if not isinstance(document, dict):
+                            continue
+                        metadata = document.get("metadata")
+                        metadata = metadata if isinstance(metadata, dict) else {}
+                        native_documents.append(
+                            {
+                                "content": document.get("page_content", document.get("content")),
+                                "metadata": {key: metadata.get(key) for key in ("dataset_id", "doc_id", "document_id")},
+                                "score": metadata.get("score"),
+                            }
                         )
-
-                    # Record output tokens
-                    if output_tokens > 0:
-                        self.trace_client.record_token_usage(
-                            token_count=output_tokens,
-                            token_type="output",
-                            operation_name=model_mode,
-                            request_model=model_name,
-                            response_model=model_name,
-                            server_address=server_address,
-                            provider=model_provider,
-                        )
-
-        except Exception:
-            logger.debug("[Tencent APM] Failed to record LLM metrics")
-
-    def _record_message_llm_metrics(self, trace_info: MessageTraceInfo) -> None:
-        """Record LLM metrics for message traces"""
-        try:
-            trace_metadata = trace_info.metadata or {}
-            message_data = trace_info.message_data or {}
-            provider_latency = 0.0
-            if isinstance(message_data, dict):
-                provider_latency = float(message_data.get("provider_response_latency", 0.0) or 0.0)
-            else:
-                provider_latency = float(getattr(message_data, "provider_response_latency", 0.0) or 0.0)
-
-            model_provider = trace_metadata.get("ls_provider") or (
-                message_data.get("model_provider", "") if isinstance(message_data, dict) else ""
-            )
-            model_name = trace_metadata.get("ls_model_name") or (
-                message_data.get("model_id", "") if isinstance(message_data, dict) else ""
-            )
-
-            # Record LLM duration
-            if provider_latency > 0 and hasattr(self.trace_client, "record_llm_duration"):
-                is_streaming = trace_info.is_streaming_request
-
-                duration_attributes = {
-                    "gen_ai.system": model_provider,
-                    "gen_ai.response.model": model_name,
-                    "gen_ai.operation.name": "chat",  # Message traces are always chat
-                    "stream": "true" if is_streaming else "false",
-                }
-                self.trace_client.record_llm_duration(provider_latency, duration_attributes)
-
-            # Record streaming metrics for message traces
-            if trace_info.is_streaming_request:
-                # Record time to first token
-                if trace_info.gen_ai_server_time_to_first_token is not None and hasattr(
-                    self.trace_client, "record_time_to_first_token"
-                ):
-                    ttft_seconds = float(trace_info.gen_ai_server_time_to_first_token)
-                    if ttft_seconds > 0:
-                        self.trace_client.record_time_to_first_token(
-                            ttft_seconds=ttft_seconds, provider=str(model_provider or ""), model=str(model_name or "")
-                        )
-
-                # Record time to generate
-                if trace_info.llm_streaming_time_to_generate is not None and hasattr(
-                    self.trace_client, "record_time_to_generate"
-                ):
-                    ttg_seconds = float(trace_info.llm_streaming_time_to_generate)
-                    if ttg_seconds > 0:
-                        self.trace_client.record_time_to_generate(
-                            ttg_seconds=ttg_seconds, provider=str(model_provider or ""), model=str(model_name or "")
-                        )
-
-            # Record token usage
-            if hasattr(self.trace_client, "record_token_usage"):
-                input_tokens = int(trace_info.message_tokens or 0)
-                output_tokens = int(trace_info.answer_tokens or 0)
-
-                if input_tokens > 0:
-                    self.trace_client.record_token_usage(
-                        token_count=input_tokens,
-                        token_type="input",
-                        operation_name="chat",
-                        request_model=str(model_name or ""),
-                        response_model=str(model_name or ""),
-                        server_address=str(model_provider or ""),
-                        provider=str(model_provider or ""),
-                    )
-
-                if output_tokens > 0:
-                    self.trace_client.record_token_usage(
-                        token_count=output_tokens,
-                        token_type="output",
-                        operation_name="chat",
-                        request_model=str(model_name or ""),
-                        response_model=str(model_name or ""),
-                        server_address=str(model_provider or ""),
-                        provider=str(model_provider or ""),
-                    )
-
-        except Exception:
-            logger.debug("[Tencent APM] Failed to record message LLM metrics")
-
-    def _record_workflow_trace_duration(self, trace_info: WorkflowTraceInfo) -> None:
-        """Record end-to-end workflow trace duration."""
-        try:
-            if not hasattr(self.trace_client, "record_trace_duration"):
-                return
-
-            # Calculate duration from start_time and end_time to match span duration
-            if trace_info.start_time and trace_info.end_time:
-                duration_s = (trace_info.end_time - trace_info.start_time).total_seconds()
-            else:
-                # Fallback to workflow_run_elapsed_time if timestamps not available
-                duration_s = float(trace_info.workflow_run_elapsed_time)
-
-            if duration_s > 0:
-                attributes = {
-                    "conversation_mode": "workflow",
-                    "workflow_status": trace_info.workflow_run_status,
-                }
-
-                # Add conversation_id if available
-                if trace_info.conversation_id:
-                    attributes["has_conversation"] = "true"
+                    documents = native_documents
                 else:
-                    attributes["has_conversation"] = "false"
+                    documents = documents.get("result", [])
+            outputs = json_text(documents)
+        attributes = {
+            **span_attributes(completed_trace, span),
+            **model_labels,
+            "gen_ai.provider.name": model_labels["gen_ai.system"],
+            "gen_ai.session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
+            "gen_ai.user.id": completed_trace.source.actor_id,
+            "gen_ai.framework": "dify",
+            "gen_ai.span.kind": {
+                "llm": "GENERATION",
+                "workflow": "WORKFLOW",
+                "operation": "WORKFLOW",
+                "tool": "TOOL",
+                "retrieval": "RETRIEVER",
+                "agent": "AGENT",
+            }.get(native_type, "TASK"),
+            "gen_ai.is_entry": "true"
+            if span.span_id == completed_trace.root_span_id and parent_span is None
+            else "false",
+            "gen_ai.entity.input": inputs,
+            "gen_ai.entity.output": outputs,
+            "gen_ai.usage.input_tokens": span.usage.get("prompt_tokens"),
+            "gen_ai.usage.output_tokens": span.usage.get("completion_tokens"),
+            "gen_ai.usage.total_tokens": span.usage.get("total_tokens"),
+        }
+        if operation_type == "message" and span.attributes.get("is_streaming_request"):
+            attributes["llm.is_streaming"] = "true"
+        if native_type == "llm":
+            attributes.update(
+                {
+                    "gen_ai.prompt": json_text(span.inputs),
+                    "gen_ai.completion": outputs,
+                    "gen_ai.response.finish_reason": span.outputs.get("finish_reason")
+                    if isinstance(span.outputs, dict)
+                    else None,
+                    "llm.is_streaming": self._is_streaming(span),
+                }
+            )
+        elif native_type == "tool":
+            metadata = span.attributes.get("metadata")
+            tool_info = metadata.get("tool_info", {}) if isinstance(metadata, dict) else {}
+            attributes.update(
+                {
+                    "tool.name": span.attributes.get("tool_name") or span.span_name,
+                    "tool.description": span.attributes.get("tool_description")
+                    or (json_text(tool_info) if span.node_execution_id else ""),
+                    "tool.parameters": json_text(span.attributes.get("tool_parameters", span.inputs)),
+                }
+            )
+        elif native_type == "retrieval":
+            attributes.update({"retrieval.query": inputs, "retrieval.document": outputs})
+        for field, key, legacy in (
+            ("time_to_first_token", "gen_ai.server.time_to_first_token", "gen_ai_server_time_to_first_token"),
+            ("time_to_generate", "gen_ai.streaming.time_to_generate", "llm_streaming_time_to_generate"),
+        ):
+            if (seconds := usage_seconds(span, field, legacy, key)) is not None:
+                attributes[key] = seconds
+        exported_span = otlp_span(completed_trace, span, parent_span, attributes=attributes)
+        # Existing provider status filters include stopped workflows with a reason.
+        if span.span_type == "workflow" and span.status == "cancelled" and span.error:
+            exported_span.status.code = Status.STATUS_CODE_ERROR
+        return limit_span_attributes(exported_span, **self.span_limits)
 
-                self.trace_client.record_trace_duration(duration_s, attributes)
-
-        except Exception:
-            logger.debug("[Tencent APM] Failed to record workflow trace duration")
-
-    def _record_message_trace_duration(self, trace_info: MessageTraceInfo) -> None:
-        """Record end-to-end message trace duration."""
-        try:
-            if not hasattr(self.trace_client, "record_trace_duration"):
-                return
-
-            # Calculate duration from start_time and end_time
-            if trace_info.start_time and trace_info.end_time:
-                duration = (trace_info.end_time - trace_info.start_time).total_seconds()
-
-                if duration > 0:
-                    attributes = {
-                        "conversation_mode": trace_info.conversation_mode,
+    @override
+    def export_trace(
+        self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
+    ) -> ExportedParentSpans:
+        disabled = self.disabled or (parent_span is not None and parent_span.get("disabled") is True)
+        sampled = not disabled and self._should_sample(completed_trace, parent_span)
+        if sampled:
+            receipt = super().export_trace(completed_trace, parent_span)
+        else:
+            receipt = ExportedParentSpans(
+                spans={
+                    span.span_id: {
+                        "trace_id": otlp_trace_id(completed_trace, parent_span),
+                        "span_id": export_span_id(completed_trace, span.span_id),
+                        **({"disabled": True} if disabled else {}),
                     }
+                    for span in completed_trace.spans
+                }
+            )
+        for exported_span in receipt.spans.values():
+            exported_span["sampled"] = sampled
+        if not disabled:
+            # Native meter collection is independent of the trace sampler.
+            self.send_metrics(self.build_metrics(completed_trace))
+        return receipt
 
-                    # Add streaming flag if available
-                    if hasattr(trace_info, "is_streaming_request"):
-                        attributes["stream"] = "true" if trace_info.is_streaming_request else "false"
+    @staticmethod
+    def _model_labels(span: TraceSpan) -> dict[str, Any]:
+        process_data = span.attributes.get("process_data")
+        model = {**(process_data if isinstance(process_data, dict) else {}), **span.attributes}
+        return {
+            "gen_ai.operation.name": model.get("model_mode") or "chat",
+            "gen_ai.system": model.get("model_provider") or model.get("ls_provider") or "",
+            "gen_ai.request.model": model.get("model_name") or model.get("ls_model_name") or "",
+            "gen_ai.response.model": model.get("model_name") or model.get("ls_model_name") or "",
+        }
 
-                    self.trace_client.record_trace_duration(duration, attributes)
+    @staticmethod
+    def _is_streaming(span: TraceSpan) -> bool:
+        return (
+            bool(span.attributes.get("is_streaming_request"))
+            or usage_seconds(
+                span, "time_to_first_token", "gen_ai_server_time_to_first_token", "gen_ai.server.time_to_first_token"
+            )
+            is not None
+        )
 
-        except Exception:
-            logger.debug("[Tencent APM] Failed to record message trace duration")
+    def build_metrics(self, completed_trace: CompletedTrace) -> list[Metric]:
+        metrics: list[Metric] = []
+        for span in completed_trace.spans:
+            is_message = span.attributes.get("operation_type") == "message" and span.span_type == "operation"
+            # Workflow duration remains valid when a Chatflow message is its parent.
+            if (
+                (is_message or span.span_type == "workflow")
+                and span.span_id == completed_trace.root_span_id
+                and span.started_at
+                and span.ended_at
+            ):
+                seconds = (span.ended_at - span.started_at).total_seconds()
+                trace_labels = (
+                    {
+                        "conversation_mode": "workflow",
+                        "workflow_status": {
+                            "ok": "succeeded",
+                            "error": "failed",
+                            "handled_error": "partial-succeeded",
+                            "cancelled": "stopped",
+                            "incomplete": "unknown",
+                        }[span.status],
+                        "has_conversation": "true" if completed_trace.source.conversation_id else "false",
+                    }
+                    if span.span_type == "workflow"
+                    else {
+                        "conversation_mode": span.attributes.get("conversation_mode") or "chat",
+                        "stream": "true" if self._is_streaming(span) else "false",
+                    }
+                )
+                if seconds > 0:
+                    metrics.append(
+                        histogram(
+                            "gen_ai.trace.duration", seconds, span, trace_labels, explicit_bounds=HISTOGRAM_BOUNDS
+                        )
+                    )
+            is_model = span.span_type == "llm" or (
+                span.span_type == "node"
+                and span.attributes.get("node_type") in ("llm", "question-classifier", "parameter-extractor")
+            )
+            # Message roots and logical retry nodes carry the call aggregate. Detail
+            # spans must not count the same logical call again in the existing series.
+            if span.attributes.get("metrics_from_parent") or (not is_model and not is_message):
+                continue
+            aggregate_usage = span.attributes.get("aggregate_usage")
+            if not span.usage and isinstance(aggregate_usage, dict):
+                span = span.model_copy(update={"usage": aggregate_usage})
+            labels = self._model_labels(span)
+            if (latency := usage_seconds(span, "latency", "provider_response_latency")) is not None and latency > 0:
+                metrics.append(
+                    histogram(
+                        "gen_ai.client.operation.duration",
+                        latency,
+                        span,
+                        {
+                            "gen_ai.operation.name": labels["gen_ai.operation.name"],
+                            "gen_ai.system": labels["gen_ai.system"],
+                            "gen_ai.response.model": labels["gen_ai.response.model"],
+                            "stream": "true" if self._is_streaming(span) else "false",
+                        },
+                        explicit_bounds=HISTOGRAM_BOUNDS,
+                    )
+                )
+            for field, token_type in (("prompt_tokens", "input"), ("completion_tokens", "output")):
+                tokens = span.usage.get(field)
+                if isinstance(tokens, (int, float)) and not isinstance(tokens, bool) and tokens > 0:
+                    metrics.append(
+                        histogram(
+                            "gen_ai.client.token.usage",
+                            float(tokens),
+                            span,
+                            {
+                                **labels,
+                                "gen_ai.token.type": token_type,
+                                "server.address": labels["gen_ai.system"],
+                            },
+                            "token",
+                            explicit_bounds=HISTOGRAM_BOUNDS,
+                        )
+                    )
+            for field, key, legacy in (
+                ("time_to_first_token", "gen_ai.server.time_to_first_token", "gen_ai_server_time_to_first_token"),
+                ("time_to_generate", "gen_ai.streaming.time_to_generate", "llm_streaming_time_to_generate"),
+            ):
+                streaming_seconds = usage_seconds(span, field, legacy, key)
+                if streaming_seconds is not None and streaming_seconds > 0:
+                    metrics.append(
+                        histogram(
+                            key, streaming_seconds, span, {**labels, "stream": "true"}, explicit_bounds=HISTOGRAM_BOUNDS
+                        )
+                    )
+        return metrics
 
-    def close(self) -> None:
-        """Synchronously and idempotently shutdown the underlying trace client."""
-        if getattr(self, "_closed", False):
-            return
 
-        self._closed = True
-        trace_client = getattr(self, "trace_client", None)
-        if trace_client is None:
-            return
-
-        try:
-            shutdown_result = trace_client.shutdown()
-            if inspect.isawaitable(shutdown_result):
-                close_awaitable = getattr(shutdown_result, "close", None)
-                if callable(close_awaitable):
-                    close_awaitable()
-        except Exception:
-            logger.exception("[Tencent APM] Failed to shutdown trace client during cleanup")
-
-    def __del__(self):
-        """Ensure best-effort cleanup on garbage collection without retrying shutdown."""
-        self.close()
+def create_trace_client(provider_config: dict[str, Any]) -> TencentTraceClient:
+    config = TencentConfig.model_validate(provider_config)
+    runtime_settings = (
+        provider_config["_runtime_settings"]
+        if "_runtime_settings" in provider_config
+        else TencentConfig.load_runtime_settings(provider_config)
+    )
+    http_metrics = runtime_settings["metrics_protocol"] == "http/protobuf"
+    headers = {"authorization": f"Bearer {config.token}"}
+    client = TencentTraceClient(
+        config.endpoint,
+        headers,
+        {
+            "service.name": config.service_name,
+            "service.version": f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
+            "deployment.environment": f"{dify_config.DEPLOY_ENV}-{dify_config.DEPLOYMENT_EDITION.value}",
+            "host.name": socket.gethostname(),
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": otel_sdk_version,
+        },
+        "https://console.cloud.tencent.com/apm",
+        protocol="grpc",
+        sampling=runtime_settings.get("sampling"),
+        span_limits=runtime_settings.get("span_limits"),
+        disabled=bool(runtime_settings.get("disabled", False)),
+        metrics_http=TraceProviderHttpClient(
+            config.endpoint,
+            headers,
+            request_timeout=float(runtime_settings.get("metrics_request_timeout", 10)),
+            ssl_context=create_ssl_context(runtime_settings["metrics_tls"], verify=runtime_settings["metrics_verify"])
+            if http_metrics
+            else None,
+        ),
+        metrics_protocol=runtime_settings["metrics_protocol"],
+        grpc_credentials={
+            "trace": create_grpc_credentials(runtime_settings["trace_tls"]),
+            **({"metrics": create_grpc_credentials(runtime_settings["metrics_tls"])} if not http_metrics else {}),
+        },
+    )
+    return client

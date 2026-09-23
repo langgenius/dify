@@ -49,8 +49,7 @@ from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher
 from core.db.session_factory import session_factory
 from core.model_manager import ModelInstance
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.message_trace import MessageTraceRecorder
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
@@ -92,6 +91,14 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         )
         self._model_config = application_generate_entity.model_conf
         self._app_config = application_generate_entity.app_config
+        if application_generate_entity.trace_recorder:
+            application_generate_entity.trace_recorder.update_attributes(
+                {
+                    "model_parameters": self._model_config.parameters,
+                    "invoke_from": application_generate_entity.invoke_from,
+                    "is_streaming_request": stream,
+                }
+            )
 
         self._conversation_id = conversation.id
         self._conversation_mode = conversation.mode
@@ -130,7 +137,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 message_id=self._message_id,
             )
 
-        generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
+        generator = self._wrapper_process_stream_response(
+            trace_recorder=self._application_generate_entity.trace_recorder
+        )
         if self.stream:
             return self._to_stream_response(generator)
         else:
@@ -219,26 +228,26 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         raise RuntimeError(f"TTS publisher returned an unknown status: {audio_msg.status}")
 
     def _wrapper_process_stream_response(
-        self, trace_manager: TraceQueueManager | None = None
+        self, trace_recorder: MessageTraceRecorder | None = None
     ) -> Generator[StreamResponse, None, None]:
-        tenant_id = self._application_generate_entity.app_config.tenant_id
-        task_id = self._application_generate_entity.task_id
         publisher = None
-        text_to_speech_dict = cast(dict[str, Any], self._app_config.app_model_config_dict.get("text_to_speech"))
-        if (
-            self.stream
-            and text_to_speech_dict
-            and text_to_speech_dict.get("autoPlay") == "enabled"
-            and text_to_speech_dict.get("enabled")
-        ):
-            publisher = AppGeneratorTTSPublisher(
-                tenant_id,
-                text_to_speech_dict.get("voice", ""),
-                text_to_speech_dict.get("language", None),
-                get_credit_usage_app_type(self._app_config.app_mode),
-            )
         try:
-            for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
+            tenant_id = self._application_generate_entity.app_config.tenant_id
+            task_id = self._application_generate_entity.task_id
+            text_to_speech_dict = cast(dict[str, Any], self._app_config.app_model_config_dict.get("text_to_speech"))
+            if (
+                self.stream
+                and text_to_speech_dict
+                and text_to_speech_dict.get("autoPlay") == "enabled"
+                and text_to_speech_dict.get("enabled")
+            ):
+                publisher = AppGeneratorTTSPublisher(
+                    tenant_id,
+                    text_to_speech_dict.get("voice", ""),
+                    text_to_speech_dict.get("language", None),
+                    get_credit_usage_app_type(self._app_config.app_mode),
+                )
+            for response in self._process_stream_response(publisher=publisher, trace_recorder=trace_recorder):
                 while audio_response := self._listen_audio_msg(publisher, task_id):
                     yield audio_response
                 if publisher and isinstance(response, ErrorStreamResponse):
@@ -268,11 +277,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     yield ErrorStreamResponse(err=audio.error, task_id=task_id)
                 return
         finally:
+            if trace_recorder:
+                trace_recorder.close(submit_pending_operations=True)
             if publisher:
                 publisher.cancel()
 
     def _process_stream_response(
-        self, publisher: AppGeneratorTTSPublisher | None, trace_manager: TraceQueueManager | None = None
+        self, publisher: AppGeneratorTTSPublisher | None, trace_recorder: MessageTraceRecorder | None = None
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
@@ -289,15 +300,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                         err = self.handle_error(event=event, session=session, message_id=self._message_id)
                         session.commit()
 
-                    if trace_manager:
-                        trace_manager.add_trace_task(
-                            TraceTask(
-                                TraceTaskName.MESSAGE_TRACE,
-                                conversation_id=self._conversation_id,
-                                message_id=self._message_id,
-                                trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
-                            )
-                        )
+                    if trace_recorder:
+                        trace_recorder.record_saved_message(self._message_id)
 
                     yield self.error_to_stream_response(err)
                     break
@@ -324,12 +328,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                         if isinstance(event, QueueStopEvent):
                             self._save_message(
                                 session=session,
-                                trace_manager=trace_manager,
                                 preserve_existing_usage=True,
                             )
                         else:
-                            self._save_message(session=session, trace_manager=trace_manager)
+                            self._save_message(session=session)
                         session.commit()
+                    if trace_recorder:
+                        trace_recorder.record_saved_message(self._message_id)
                     message_end_resp = self._message_end_to_stream_response()
                     yield message_end_resp
                 case QueueRetrieverResourcesEvent():
@@ -426,7 +431,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         self,
         *,
         session: Session,
-        trace_manager: TraceQueueManager | None = None,
         preserve_existing_usage: bool = False,
     ):
         """
@@ -482,16 +486,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if has_persisted_usage and "usage" in existing_metadata:
             metadata["usage"] = existing_metadata["usage"]
         message.message_metadata = json.dumps(metadata, ensure_ascii=False)
-
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.MESSAGE_TRACE,
-                    conversation_id=self._conversation_id,
-                    message_id=self._message_id,
-                    trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
-                )
-            )
 
         message_was_created.send(
             message,

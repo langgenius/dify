@@ -3,6 +3,7 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from werkzeug.exceptions import Conflict
 
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -30,6 +31,7 @@ from models.account import TenantAccountRole
 from services.app_tracing_config_service import (
     AppTracingConfigAlreadyExistsError,
     AppTracingConfigAppNotFoundError,
+    AppTracingConfigChangedError,
     AppTracingConfigInvalidConfigurationError,
     AppTracingConfigInvalidProviderError,
     AppTracingConfigNotFoundError,
@@ -228,6 +230,8 @@ class TraceAppConfigApi(Resource):
             )
         except AppTracingConfigAppNotFoundError as error:
             raise AppNotFoundError() from error
+        except AppTracingConfigChangedError as error:
+            raise Conflict(str(error)) from error
         except AppTracingConfigNotFoundError as error:
             raise TracingConfigNotFoundError() from error
         except AppTracingConfigInvalidProviderError as error:
@@ -274,6 +278,8 @@ class TraceAppConfigApi(Resource):
             )
         except AppTracingConfigAppNotFoundError as error:
             raise AppNotFoundError() from error
+        except AppTracingConfigChangedError as error:
+            raise Conflict(str(error)) from error
         except AppTracingConfigNotFoundError as error:
             raise TracingConfigNotFoundError() from error
         except AppTracingConfigInvalidProviderError as error:

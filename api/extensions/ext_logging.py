@@ -32,9 +32,10 @@ def init_app(app: DifyApp):
     log_handlers.append(sh)
 
     # Apply filters to all handlers
-    from core.logging.filters import IdentityContextFilter, TraceContextFilter
+    from core.logging.filters import HTTPURLRedactionFilter, IdentityContextFilter, TraceContextFilter
 
     for handler in log_handlers:
+        handler.addFilter(HTTPURLRedactionFilter())
         handler.addFilter(TraceContextFilter())
         handler.addFilter(IdentityContextFilter())
 

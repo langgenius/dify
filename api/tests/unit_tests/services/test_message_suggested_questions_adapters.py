@@ -12,9 +12,11 @@ from flask import Flask
 from sqlalchemy import Connection, Engine, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
+import core.ops.trace_source as trace_source_module
 import services.message_service as message_module
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
+from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import CompletedTrace, TraceProviderSettings
 from extensions.ext_database import db
 from graphon.model_runtime.entities import PromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -32,6 +34,7 @@ from services.message_suggested_questions_service import (
     SuggestedQuestionsActorNotFoundError,
     SuggestedQuestionsEndUser,
 )
+from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
 
 
 @dataclass
@@ -40,7 +43,7 @@ class _Provider:
     tenant_id: str
     prompts: list[str | None] = field(default_factory=list)
     histories: list[str] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
+    trace_queue: RecordingQueue = field(default_factory=RecordingQueue)
     failure: Exception | None = None
 
     def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
@@ -54,7 +57,13 @@ class _Provider:
         return len(prompt_messages)
 
     def generate(
-        self, *, tenant_id: str, histories: str, instruction_prompt: str | None, model_config: object
+        self,
+        *,
+        tenant_id: str,
+        histories: str,
+        instruction_prompt: str | None,
+        model_config: object,
+        trace_recorder: MessageTraceRecorder | None,
     ) -> list[str]:
         assert tenant_id == self.tenant_id
         assert model_config is None
@@ -62,10 +71,17 @@ class _Provider:
         self.histories.append(histories)
         if self.failure is not None:
             raise self.failure
+        assert trace_recorder is not None
+        assert trace_recorder.source.tenant_id == tenant_id
+        trace_recorder.record_operation(
+            "suggested_questions",
+            span_type="llm",
+            inputs=histories,
+            outputs=["What next?"],
+            attributes={"operation_type": "suggested_question"},
+            independent=True,
+        )
         return ["What next?"]
-
-    def add_trace_task(self, task: TraceTask) -> None:
-        self.traces.append(task)
 
 
 @dataclass(frozen=True)
@@ -156,14 +172,20 @@ def harness(
         assert tenant_id == target.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _Provider:
+    def trace_provider_settings(tenant_id: str, app_id: str | None) -> tuple[TraceProviderSettings, ...]:
+        assert tenant_id == target.tenant_id
         assert app_id == target.id
-        return provider
+        return (
+            TraceProviderSettings(
+                tenant_id=tenant_id, app_id=app_id, provider_name="recording", config_id=str(uuid4())
+            ),
+        )
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
     monkeypatch.setattr(message_module.LLMGenerator, "generate_suggested_questions_after_answer", provider.generate)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(trace_source_module, "get_trace_provider_settings", trace_provider_settings)
     flask_app = Flask(__name__)
+    flask_app.extensions["ops_trace_queue"] = provider.trace_queue
     flask_app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(flask_app)
     legacy_sessions: list[Session] = []
@@ -248,7 +270,15 @@ def test_end_user_runtime_preserves_history_and_caller_session(
         harness.assert_closed()
     assert harness.provider.prompts == ["Published questions"]
     assert harness.provider.histories == ["Human: How does this work?\nAssistant: Like this."]
-    assert len(harness.provider.traces) == (0 if provider_failure else 1)
+    assert len(harness.provider.trace_queue.items) == (0 if provider_failure else 1)
+    if not provider_failure:
+        trace = CompletedTrace.model_validate_json(harness.provider.trace_queue.items[0].trace_json)
+        assert trace.source.tenant_id == harness.target.tenant_id
+        assert trace.source.app_id == harness.target.id
+        assert trace.source.actor_id == harness.end_user.session_id
+        assert trace.source.message_id == harness.message.id
+        assert trace.source.conversation_id == harness.conversation.id
+        assert trace.spans[0].outputs == ["What next?"]
 
 
 @pytest.mark.parametrize("entity", ["message", "conversation"])

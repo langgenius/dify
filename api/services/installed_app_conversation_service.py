@@ -37,6 +37,7 @@ class ConversationPage:
 @dataclass(frozen=True, slots=True)
 class ConversationNameSource:
     tenant_id: str
+    message_id: str
     query: str
 
 
@@ -86,7 +87,17 @@ class InstalledAppConversationStore(Protocol):
 
 
 class ConversationNameGenerator(Protocol):
-    def __call__(self, *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str: ...
+    def __call__(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        conversation_id: str,
+        query: str,
+        app_mode: str,
+        message_id: str,
+        user_id: str,
+    ) -> str: ...
 
 
 class ConversationCleanup(Protocol):
@@ -150,6 +161,8 @@ class InstalledAppConversationService:
                 conversation_id=conversation_id,
                 query=source.query,
                 app_mode=app_mode,
+                message_id=source.message_id,
+                user_id=account_id,
             )
         except Exception:
             # Automatic naming is best-effort; preserve the existing name on failure.

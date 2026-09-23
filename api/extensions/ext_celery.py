@@ -186,7 +186,16 @@ def init_app(app: DifyApp) -> Celery:
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
-    beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    beat_schedule: dict[str, CeleryBeatScheduleEntry] = {
+        "ops_trace_recovery": {
+            "task": "tasks.ops_trace_maintenance_task.enqueue_due_traces",
+            "schedule": timedelta(seconds=30),
+        },
+        "ops_trace_cleanup": {
+            "task": "tasks.ops_trace_maintenance_task.delete_expired_traces",
+            "schedule": timedelta(hours=1),
+        },
+    }
     if dify_config.AGENT_SANDBOX_METERING_ENABLED:
         try:
             interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)

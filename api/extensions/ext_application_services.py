@@ -159,7 +159,7 @@ from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
 from services.app_statistic_query import AppStatisticQuery
 from services.app_task_service import AppTaskControlService
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from services.app_tracing_config_gateway import TraceProviderConfigChecks
 from services.app_tracing_config_service import AppTracingConfigService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
@@ -263,14 +263,20 @@ _EXTENSION_KEY = "application_services"
 
 
 def _generate_installed_app_conversation_name(
-    *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str
+    *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str, message_id: str, user_id: str
 ) -> str:
     # Legacy provider and tracing lookups use db.session. Give them their own
     # scope so teardown releases it before the conversation write transaction,
     # without removing a session owned by the surrounding request.
     with current_app.app_context():
         return ConversationService.generate_name(
-            tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id, query=query, app_mode=app_mode
+            tenant_id=tenant_id,
+            app_id=app_id,
+            conversation_id=conversation_id,
+            query=query,
+            app_mode=app_mode,
+            message_id=message_id,
+            user_id=user_id,
         )
 
 
@@ -793,7 +799,7 @@ def build_application_services(
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
-            provider=OpsTraceManagerGateway(),
+            provider=TraceProviderConfigChecks(),
         ),
         billing_portal=BillingPortalService(
             accounts=accounts,

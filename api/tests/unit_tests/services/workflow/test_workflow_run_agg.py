@@ -23,6 +23,9 @@ from core.app.entities.queue_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.trigger_post_layer import TriggerPostLayer
+from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource
+from core.ops.workflow_trace import WorkflowTraceState
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
@@ -43,6 +46,7 @@ from models.workflow import (
 )
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.workflow_run_agg import WorkflowRunAgg
+from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
 
 
 def make_workflow_runner(sqlite_engine: Engine, *, human_input: bool = False) -> WorkflowAppRunner:
@@ -126,6 +130,30 @@ def make_workflow_runner(sqlite_engine: Engine, *, human_input: bool = False) ->
     )
 
 
+def record_workflow_traces(runner: WorkflowAppRunner) -> RecordingQueue:
+    entity = runner.application_generate_entity
+    source = TraceSource(
+        tenant_id=entity.app_config.tenant_id,
+        app_id=entity.app_config.app_id,
+        operation_id=entity.workflow_execution_id,
+        actor_id=entity.user_id,
+    )
+    queue = RecordingQueue()
+    entity.trace_recorder = MessageTraceRecorder(
+        source,
+        queue,
+        (
+            TraceProviderSettings(
+                tenant_id=source.tenant_id,
+                app_id=source.app_id,
+                provider_name="langfuse",
+                config_id=str(uuid4()),
+            ),
+        ),
+    )
+    return queue
+
+
 def test_driver_publishes_persisted_start_index_and_success(sqlite_engine: Engine) -> None:
     runner = make_workflow_runner(sqlite_engine)
     WorkflowRunAgg.run(runner, None)
@@ -156,12 +184,15 @@ def test_pause_publication_persists_summary_and_optional_snapshot(
     sqlite_engine: Engine, persist_snapshot: bool
 ) -> None:
     runner = make_workflow_runner(sqlite_engine, human_input=True)
+    trace_queue = record_workflow_traces(runner)
     config = (
         PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id) if persist_snapshot else None
     )
     WorkflowRunAgg.run(runner, config)
     events = [message.event for message in runner._queue_manager.listen()]
     assert isinstance(events[-1], QueueWorkflowPausedEvent), events
+    assert trace_queue.items == []
+    assert trace_queue.reserved == 0
     with Session(sqlite_engine) as session:
         run = session.get(WorkflowRun, runner.application_generate_entity.workflow_execution_id)
         assert run is not None
@@ -174,6 +205,14 @@ def test_pause_publication_persists_summary_and_optional_snapshot(
             return
         assert pause is not None
         snapshot = WorkflowResumptionContext.loads(storage.load(pause.state_object_key).decode())
+        trace_state = WorkflowTraceState.model_validate(snapshot.ops_trace_state)
+        assert trace_state.source.tenant_id == runner.application_generate_entity.app_config.tenant_id
+        assert trace_state.source.app_id == run.app_id
+        assert trace_state.source.workflow_run_id == run.id
+        assert {span.node_id: span.attributes["index"] for span in trace_state.spans if span.node_id} == {
+            "start": 1,
+            "approval": 2,
+        }
         restored = RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state)
         assert restored.graph_execution.paused
         assert snapshot.get_response_stream_filter().dumps() == snapshot.serialized_response_stream_filter_state
@@ -212,6 +251,7 @@ def test_pause_database_failure_publishes_failure_instead_of_resume_ready(
     monkeypatch.setattr("core.app.layers.trigger_post_layer.datetime", trigger_clock)
     runner = make_workflow_runner(sqlite_engine, human_input=True)
     runner._graph_engine_layers = (TriggerPostLayer(MagicMock(), start_time, "trigger-log"),)
+    trace_queue = record_workflow_traces(runner)
     WorkflowRunAgg.run(runner, PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id))
     events = [message.event for message in runner._queue_manager.listen()]
     assert isinstance(events[-1], QueueWorkflowFailedEvent), events
@@ -227,6 +267,13 @@ def test_pause_database_failure_publishes_failure_instead_of_resume_ready(
     enqueue.assert_called_once_with(
         tenant_id=runner.application_generate_entity.app_config.tenant_id, workspace_ids=["workspace-1"]
     )
+    assert len(trace_queue.items) == 1
+    trace = CompletedTrace.model_validate_json(trace_queue.items[0].trace_json)
+    assert trace.source.tenant_id == runner.application_generate_entity.app_config.tenant_id
+    assert trace.source.workflow_run_id == runner.application_generate_entity.workflow_execution_id
+    assert trace.spans[0].status == "error"
+    assert "pause-write-failed" in (trace.spans[0].error or "")
+    assert trace_queue.reserved == 0
     with Session(sqlite_engine) as session:
         run = session.get(WorkflowRun, runner.application_generate_entity.workflow_execution_id)
         assert run is not None
@@ -276,6 +323,7 @@ def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(s
     from models.human_input import HumanInputForm
 
     original = make_workflow_runner(sqlite_engine, human_input=True)
+    original_trace_queue = record_workflow_traces(original)
     config = PauseStateLayerConfig(sqlite_engine, original.application_generate_entity.user_id)
     WorkflowRunAgg.run(original, config)
     before = [message.event for message in original._queue_manager.listen()]
@@ -287,6 +335,13 @@ def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(s
         assert form is not None
         form_id = form.id
         snapshot = WorkflowResumptionContext.loads(storage.load(pause.state_object_key).decode())
+    assert original_trace_queue.items == []
+    snapshot.restore_trace_state(
+        tenant_id=original.application_generate_entity.app_config.tenant_id,
+        app_id=original.application_generate_entity.app_config.app_id,
+        workflow_id=original._workflow.id,
+        workflow_run_id=original.application_generate_entity.workflow_execution_id,
+    )
     HumanInputFormSubmissionRepository().mark_submitted(
         form_id=form_id,
         recipient_id=None,
@@ -295,7 +350,8 @@ def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(s
         submission_user_id=None,
         submission_end_user_id=None,
     )
-    entity = original.application_generate_entity.model_copy(update={"task_id": str(uuid4())})
+    entity = snapshot.get_generate_entity().model_copy(update={"task_id": str(uuid4())})
+    assert isinstance(entity, WorkflowAppGenerateEntity)
     queue = WorkflowAppQueueManager(entity.task_id, entity.user_id, entity.invoke_from, AppMode.WORKFLOW)
     resumed = WorkflowAppRunner(
         application_generate_entity=entity,
@@ -310,6 +366,7 @@ def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(s
         response_stream_filter=snapshot.get_response_stream_filter(),
         execution_driver=WorkflowRunAgg.run,
     )
+    resumed_trace_queue = record_workflow_traces(resumed)
     WorkflowRunAgg.run(resumed, config)
     after = [message.event for message in queue.listen()]
     assert isinstance(after[0], QueueWorkflowStartedEvent)
@@ -320,6 +377,15 @@ def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(s
     assert [(event.node_id, event.node_run_index) for event in starts] == [("approval", 2), ("end", 3)]
     assert isinstance(after[-1], QueueWorkflowSucceededEvent)
     assert after[-1].outputs == {"answer": "approved result"}
+    assert len(resumed_trace_queue.items) == 1
+    trace = CompletedTrace.model_validate_json(resumed_trace_queue.items[0].trace_json)
+    assert trace.spans[0].status == "ok"
+    assert trace.source.workflow_run_id == entity.workflow_execution_id
+    assert {span.node_id: span.attributes["index"] for span in trace.spans if span.node_id} == {
+        "start": 1,
+        "approval": 2,
+        "end": 3,
+    }
     with Session(sqlite_engine) as session:
         executions = session.scalars(
             select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)

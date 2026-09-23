@@ -30,7 +30,7 @@ from libs.exception import BaseHTTPException
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from services.app_tracing_config_gateway import TraceProviderConfigChecks
 from services.app_tracing_config_service import (
     AppTracingConfigAlreadyExistsError,
     AppTracingConfigAppNotFoundError,
@@ -120,14 +120,17 @@ def test_trace_config_without_sdk_can_be_read_when_absent_or_deleted(
     configs = MagicMock()
     configs.get.return_value = None
     configs.delete.return_value = True
-    service = AppTracingConfigService(configs=configs, provider=OpsTraceManagerGateway())
+    service = AppTracingConfigService(configs=configs, provider=TraceProviderConfigChecks())
     monkeypatch.setattr(
         ops_trace_module,
         "application_services",
         lambda: SimpleNamespace(app_tracing_configs=service),
     )
 
-    with patch.object(OpsTraceManagerGateway, "_provider_config") as load_provider, app.test_request_context("/"):
+    with (
+        patch("services.app_tracing_config_gateway.get_provider_config_class") as load_provider,
+        app.test_request_context("/"),
+    ):
         result = _original(_CONTROLLER_METHODS[method_name])(
             ops_trace_module.TraceAppConfigApi(),
             ops_trace_module.TraceProviderQuery(tracing_provider="weave"),
@@ -144,14 +147,14 @@ def test_trace_config_without_sdk_can_be_read_when_absent_or_deleted(
 def test_enable_tracing_maps_missing_dependency_to_unavailable(app: Flask) -> None:
     missing_dependency = TraceProviderNotInstalledError("weave", "wandb")
     with (
-        patch.object(app_module.OpsTraceManager, "update_app_tracing_config", side_effect=missing_dependency),
+        patch.object(app_module, "update_app_trace_settings", side_effect=missing_dependency),
         app.test_request_context("/"),
         pytest.raises(TracingProviderUnavailableError) as caught,
     ):
         _original(app_module.AppTraceApi.post)(
             app_module.AppTraceApi(),
             app_module.AppTracePayload(enabled=True, tracing_provider="weave"),
-            SimpleNamespace(id=APP_ID),
+            SimpleNamespace(id=APP_ID, tenant_id=WORKSPACE_ID),
         )
 
     assert caught.value.code == 400
