@@ -48,7 +48,7 @@ class GatewayProviderConfig(BaseTracingConfig):
 @pytest.fixture(autouse=True)
 def use_generic_provider_schema(monkeypatch: pytest.MonkeyPatch) -> None:
     def get_fields(provider_name: str) -> ProviderConfigFields:
-        if provider_name != "test-provider":
+        if provider_name != "langfuse":
             raise ValueError("Unknown test provider")
         return ProviderConfigFields(GatewayProviderConfig)
 
@@ -64,16 +64,16 @@ def test_provider_config_preserves_masked_credentials_without_mutating_inputs() 
     }
     submitted = {"credential": "fir***", "secondary_credential": "sec***", "endpoint": "https://new.example"}
     with patch("core.helper.encrypter.encrypt_token") as encrypt:
-        encrypted = encrypt_provider_config("tenant-a", "test-provider", submitted, previous)
+        encrypted = encrypt_provider_config("tenant-a", "langfuse", submitted, previous)
     encrypt.assert_not_called()
     assert encrypted["credential"] == "encrypted-first"
     assert encrypted["secondary_credential"] == "encrypted-second"
     assert previous["endpoint"] == "https://old.example"
     assert submitted["credential"] == "fir***"
     with patch("core.helper.encrypter.batch_decrypt_token", return_value=["first-value", "second-value"]) as decrypt:
-        decrypted = decrypt_provider_config("tenant-a", "test-provider", encrypted)
+        decrypted = decrypt_provider_config("tenant-a", "langfuse", encrypted)
     decrypt.assert_called_once_with("tenant-a", ["encrypted-first", "encrypted-second"])
-    masked = mask_provider_config("test-provider", decrypted)
+    masked = mask_provider_config("langfuse", decrypted)
     assert masked["secondary_credential"] != "second-value"
     assert decrypted["secondary_credential"] == "second-value"
     assert encrypted["secondary_credential"] == "encrypted-second"
@@ -91,7 +91,7 @@ def test_config_checks_verify_before_encrypt_and_use_only_request_settings() -> 
     ):
         result = checks.prepare_new_config(
             workspace_id="tenant-a",
-            tracing_provider="test-provider",
+            tracing_provider="langfuse",
             tracing_config={"credential": "one", "project": "A"},
         )
         assert result == {"credential": "cipher"}
@@ -101,7 +101,7 @@ def test_config_checks_verify_before_encrypt_and_use_only_request_settings() -> 
         with pytest.raises(AppTracingConfigVerificationFailedError):
             checks.prepare_new_config(
                 workspace_id="tenant-b",
-                tracing_provider="test-provider",
+                tracing_provider="langfuse",
                 tracing_config={"credential": "two", "project": "B"},
             )
         assert create.call_args.args[1]["credential"] == "two"
@@ -116,7 +116,7 @@ def test_invalid_configuration_never_contacts_provider() -> None:
         with pytest.raises(AppTracingConfigInvalidConfigurationError):
             checks.prepare_new_config(
                 workspace_id="tenant-a",
-                tracing_provider="test-provider",
+                tracing_provider="langfuse",
                 tracing_config={"credential": "value", "endpoint": "file:///tmp/trace"},
             )
     create.assert_not_called()
@@ -199,7 +199,7 @@ def test_config_save_preserves_ciphertext_for_noop_and_can_repair_old_credential
     ):
         result = TraceProviderConfigChecks().prepare_updated_config(
             workspace_id="tenant-a",
-            tracing_provider="test-provider",
+            tracing_provider="langfuse",
             tracing_config=settings,
             current_tracing_config=previous,
         )
