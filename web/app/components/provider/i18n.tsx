@@ -2,13 +2,14 @@
 
 import type { Resource } from 'i18next'
 import type { Locale } from '@/i18n'
-import type { Namespace } from '@/i18n/resources'
-import { useEffect, useState } from 'react'
-import { I18nextProvider, useTranslation } from 'react-i18next'
-import { createI18nextInstance } from '@/i18n/client'
-import { getRouteNamespaces } from '@/i18n/route-namespaces'
-import { usePathname } from '@/next/navigation'
-import { basePath } from '@/utils/var'
+import resourcesToBackend from 'i18next-resources-to-backend'
+import { I18nProvider } from 'next-i18next/client'
+import { useState } from 'react'
+import { loadI18nResource } from '@/i18n/load-resource'
+import { defaultLocale, supportedLocales } from '@/i18n/locale'
+import { getInitOptions } from '@/i18n/settings'
+
+const backends = [resourcesToBackend(loadI18nResource)]
 
 export function I18nClientProvider({
   locale,
@@ -19,35 +20,29 @@ export function I18nClientProvider({
   resource: Resource
   children: React.ReactNode
 }) {
-  const requiredNamespaces = getRouteNamespaces(usePathname(), basePath)
-  const [i18n] = useState(() => createI18nextInstance(locale, resource))
-  const defaultNamespace = requiredNamespaces.includes('app') ? 'app' : 'common'
+  // Server resources bootstrap this session. Client preferences and share-app
+  // overrides own later language changes, even when the root layout rerenders.
+  const [initial] = useState(() => ({
+    locale,
+    resource,
+    options: {
+      ...getInitOptions(['common']),
+      fallbackNS: false as const,
+      react: { useSuspense: true },
+    },
+  }))
   return (
-    <I18nextProvider i18n={i18n} defaultNS={defaultNamespace}>
-      <RouteTranslations
-        key={requiredNamespaces.join(':')}
-        i18n={i18n}
-        requiredNamespaces={requiredNamespaces}
-      />
+    <I18nProvider
+      language={initial.locale}
+      resources={initial.resource}
+      supportedLngs={supportedLocales}
+      defaultNS="common"
+      fallbackLng={defaultLocale}
+      use={backends}
+      ssrBackend
+      i18nextOptions={initial.options}
+    >
       {children}
-    </I18nextProvider>
+    </I18nProvider>
   )
-}
-
-function RouteTranslations({
-  i18n,
-  requiredNamespaces,
-}: {
-  requiredNamespaces: readonly Namespace[]
-  i18n: ReturnType<typeof createI18nextInstance>
-}) {
-  const defaultNamespace = requiredNamespaces.includes('app') ? 'app' : 'common'
-  useTranslation([...requiredNamespaces], { i18n })
-  useEffect(() => {
-    // i18next remembers every namespace ever requested. Keep language switching
-    // scoped to the active route while retaining already fetched bundles.
-    i18n.options.ns = [...requiredNamespaces]
-    i18n.setDefaultNamespace(defaultNamespace)
-  }, [i18n, requiredNamespaces, defaultNamespace])
-  return null
 }
