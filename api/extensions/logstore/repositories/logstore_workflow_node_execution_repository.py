@@ -301,6 +301,24 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
 
+    @override
+    def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
+        """Append each record through the existing writer and batch the SQL backup."""
+        if not executions:
+            return
+        controlled_executions = []
+        for execution in executions:
+            execution, version = self._prepare_controlled_write(execution)
+            controlled_executions.append(execution)
+            self.logstore_client.put_log(
+                AliyunLogStore.workflow_node_execution_logstore, self._to_logstore_model(execution, log_version=version)
+            )
+        if self._enable_dual_write:
+            try:
+                self.sql_repository.save_many(controlled_executions)
+            except Exception:
+                logger.exception("Failed to dual-write workflow node execution batch: %s", [e.id for e in executions])
+
     def _prepare_controlled_write(self, execution: WorkflowNodeExecution) -> tuple[WorkflowNodeExecution, int]:
         # Assign ordering before checking SQL so an in-flight pause cannot sort
         # after a stop that commits while the LogStore upload is pending.
@@ -319,24 +337,6 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                     ),
                 )
         return execution, version
-
-    @override
-    def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
-        """Append each record through the existing writer and batch the SQL backup."""
-        if not executions:
-            return
-        controlled_executions = []
-        for execution in executions:
-            execution, version = self._prepare_controlled_write(execution)
-            controlled_executions.append(execution)
-            self.logstore_client.put_log(
-                AliyunLogStore.workflow_node_execution_logstore, self._to_logstore_model(execution, log_version=version)
-            )
-        if self._enable_dual_write:
-            try:
-                self.sql_repository.save_many(controlled_executions)
-            except Exception:
-                logger.exception("Failed to dual-write workflow node execution batch: %s", [e.id for e in executions])
 
     @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
