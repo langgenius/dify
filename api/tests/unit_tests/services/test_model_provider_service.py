@@ -1009,6 +1009,17 @@ class TestModelProviderServiceListingsAndDefaults:
 
         assert result is None
 
+    def test_get_default_model_selection_returns_none_when_no_active_models(self, sqlite_session: Session) -> None:
+        service, manager = _create_service_with_mocked_manager()
+        manager.get_configurations.return_value.get_models.return_value = []
+
+        result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
+
+        assert result is None
+        manager.get_configurations.return_value.get_models.assert_called_once_with(
+            model_type=ModelType.LLM, only_active=True
+        )
+
     def test_get_default_model_of_model_type_should_return_response_when_manager_returns_model(self) -> None:
         service, manager = _create_service_with_mocked_manager()
         manager.get_default_model.return_value = SimpleNamespace(
