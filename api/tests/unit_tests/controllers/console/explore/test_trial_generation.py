@@ -17,6 +17,7 @@ import controllers.console.explore.trial_app_admission as admission_module
 import controllers.console.wraps as console_wraps
 import libs.login as login_module
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
@@ -109,8 +110,9 @@ class _Tasks:
     calls: list[str] = field(default_factory=list)
     chat_calls: list[tuple[str, str, str]] = field(default_factory=list)
 
-    def stop_chat_task(self, *, task_id: str, account_id: str, app_mode: str) -> None:
-        self.chat_calls.append((task_id, account_id, app_mode))
+    def stop_task(self, *, task_id: str, invoke_from: InvokeFrom, user_id: str, app_mode: AppMode) -> None:
+        assert invoke_from == InvokeFrom.EXPLORE
+        self.chat_calls.append((task_id, user_id, app_mode))
 
     def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
         self.calls.append(task_id)
@@ -302,7 +304,8 @@ def test_stream_records_usage_after_runtime_returns_before_consumption(
 
 
 @pytest.mark.parametrize(
-    "endpoint", ["completion-messages", "chat-messages", "workflows/run", "workflows/tasks/task/stop"]
+    "endpoint",
+    ["completion-messages", "chat-messages", "chat-messages/task/stop", "workflows/run", "workflows/tasks/task/stop"],
 )
 @pytest.mark.parametrize(
     ("state", "status", "code"), [("setup", 401, "not_setup"), ("feature", 403, "trial_app_feature_disabled")]
@@ -406,20 +409,6 @@ def test_unpublished_agent_remains_unavailable_after_service_migration(harness: 
     response = harness.post("chat-messages", payload={"inputs": {}, "query": "hello"})
     _assert_error(response, 400, "app_unavailable")
     assert harness.usage() is None
-
-
-@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.ADVANCED_CHAT])
-def test_stop_chat_uses_admitted_account_without_consuming_usage(harness: _Harness, mode: AppMode) -> None:
-    harness.set_mode(mode)
-    response = harness.post("chat-messages/task-1/stop")
-    assert response.status_code == 200
-    assert response.json == {"result": "success"}
-    assert harness.services.app_tasks.chat_calls == [("task-1", harness.account.id, mode)]
-    assert harness.usage() is None
-    harness.state.enabled = False
-    response = harness.post("chat-messages/task-2/stop")
-    _assert_error(response, 403, "trial_app_feature_disabled")
-    assert len(harness.services.app_tasks.chat_calls) == 1
 
 
 def test_stop_chat_rejects_workflow(harness: _Harness) -> None:

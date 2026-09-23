@@ -19,10 +19,6 @@ class AppTaskControlService:
     def __init__(self, *, redis_client: RedisClientWrapper) -> None:
         self._redis_client: RedisClientWrapper = redis_client
 
-    def stop_chat_task(self, *, task_id: str, account_id: str, app_mode: str) -> None:
-        """Stop an admitted trial chat using the injected cancellation runtime."""
-        self.stop_task(task_id, InvokeFrom.EXPLORE, account_id, AppMode.value_of(app_mode))
-
     def stop_task(
         self,
         task_id: str,

@@ -63,6 +63,7 @@ from controllers.console.remote_files import RemoteFileUploadPayload, upload_rem
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
@@ -85,6 +86,7 @@ from libs.stream import close_stream
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from models.enums import CreatorUserRole
+from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import (
@@ -634,10 +636,11 @@ class TrialChatTaskStopApi(Resource):
         if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
             raise NotChatAppError()
 
-        application_services().app_tasks.stop_chat_task(
+        application_services().app_tasks.stop_task(
             task_id=task_id,
-            account_id=request_context.account_id,
-            app_mode=trial_app.app_mode,
+            invoke_from=InvokeFrom.EXPLORE,
+            user_id=request_context.account_id,
+            app_mode=AppMode.value_of(trial_app.app_mode),
         )
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 

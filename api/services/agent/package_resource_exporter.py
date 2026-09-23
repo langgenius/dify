@@ -190,7 +190,8 @@ class AgentPackageResourceExporter:
             total_size += len(payload)
             return len(payload), hashlib.sha256(payload).hexdigest()
 
-        resources = AgentPackageResources()
+        skills: list[RosterAgentPackageSkill] = []
+        files: list[RosterAgentPackageFile] = []
         nested_uncompressed_size = 0
         skill_packages = SkillPackageService()
         for item in skill_sources:
@@ -206,7 +207,7 @@ class AgentPackageResourceExporter:
             nested_uncompressed_size += inspection.uncompressed_size
             if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                 raise RosterAgentPackageTooLargeError("Agent template nested Skill contents exceed the size limit")
-            resources.skills.append(
+            skills.append(
                 RosterAgentPackageSkill(
                     id=item.id,
                     scope=item.scope,
@@ -219,7 +220,7 @@ class AgentPackageResourceExporter:
             )
         for file_source in file_sources:
             size, digest = read(file_source.path, file_source.storage_key, dify_config.AGENT_PACKAGE_MAX_BYTES)
-            resources.files.append(
+            files.append(
                 RosterAgentPackageFile(
                     id=file_source.id,
                     path=file_source.path,
@@ -232,7 +233,7 @@ class AgentPackageResourceExporter:
         for path, key in self.icon_sources.values():
             size, digest = read(path, key, dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024)
             icons.append(PackageIcon(id=path.split(".")[0], path=path, size=size, sha256=digest))
-        resources = AgentPackageResources.model_validate(resources.model_dump())
+        resources = AgentPackageResources(skills=skills, files=files)
         resources.validate_packages([self.packages[package_ref]])
         return payloads, resources, icons
 

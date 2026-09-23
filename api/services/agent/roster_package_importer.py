@@ -85,17 +85,12 @@ class RosterAgentPackageImporter:
         )
         payloads, resource_index, icons = resources.read_local_resources(app.agent.package_ref)
 
-        def read_member(path: str, limit: int) -> bytes:
-            payload = payloads[path]
-            if len(payload) > limit:
-                raise RosterAgentPackageTooLargeError("Agent template resource exceeds the size limit")
-            return payload
-
         return self.import_collected(
             app_dsl=app,
             resources=resource_index,
             icons=icons,
-            read_member=read_member,
+            # Local payloads already passed per-resource and aggregate limits during collection.
+            read_member=lambda path, _limit: payloads[path],
             invalid_skills={},
             tenant_id=tenant_id,
             account=account,

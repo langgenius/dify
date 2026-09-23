@@ -109,15 +109,6 @@ def _assert_stop_flag(redis: _StopRedis) -> None:
     assert redis.expirations[_STOP_KEY] == 600
 
 
-def test_trial_chat_control_uses_injected_redis_and_account_ownership() -> None:
-    redis = _StopRedis(values={_OWNER_KEY: b"account-user-1"})
-    service = AppTaskControlService(redis_client=redis)
-    service.stop_chat_task(task_id=_TASK_ID, account_id=_USER_ID, app_mode="agent")
-    _assert_stop_flag(redis)
-    assert redis.reads == [_OWNER_KEY]
-    assert redis.commands == {}
-
-
 def _assert_graph_command(redis: _StopRedis) -> None:
     assert set(redis.commands) == {_COMMAND_KEY}
     assert [json.loads(command) for command in redis.commands[_COMMAND_KEY]] == [
