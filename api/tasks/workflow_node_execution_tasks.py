@@ -72,12 +72,14 @@ def save_workflow_node_executions_task(
                         )
                     )
                     continue
-                offloaded_values = {
-                    offload.type_.value: getattr(existing, offload.type_.value) for offload in existing.offload_data
-                }
+                inputs, process_data, outputs = existing.inputs, existing.process_data, existing.outputs
                 _update_node_execution_from_domain(existing, execution)
-                for field, value in offloaded_values.items():
-                    setattr(existing, field, value)
+                if existing.inputs_truncated:
+                    existing.inputs = inputs
+                if existing.process_data_truncated:
+                    existing.process_data = process_data
+                if existing.outputs_truncated:
+                    existing.outputs = outputs
         return True
     except Exception as error:
         logger.exception(

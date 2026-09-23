@@ -420,13 +420,18 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                     continue
                 process_data = keep_agent_and_tool_ids(existing.process_data_dict, db_model.process_data_dict)
                 db_model.process_data = _deterministic_json_dump(process_data) if process_data is not None else None
-                for field in ("triggered_from_workflow_id", "triggered_from_node_execution_id"):
-                    if getattr(db_model, field) is None:
-                        setattr(db_model, field, getattr(existing, field))
+                if db_model.triggered_from_workflow_id is None:
+                    db_model.triggered_from_workflow_id = existing.triggered_from_workflow_id
+                if db_model.triggered_from_node_execution_id is None:
+                    db_model.triggered_from_node_execution_id = existing.triggered_from_node_execution_id
                 # Cleanup changes terminal state; replacing an offloaded preview would
                 # leave it inconsistent with the separately owned upload/file reference.
-                for offload in existing.offload_data:
-                    setattr(db_model, offload.type_.value, getattr(existing, offload.type_.value))
+                if existing.inputs_truncated:
+                    db_model.inputs = existing.inputs
+                if existing.process_data_truncated:
+                    db_model.process_data = existing.process_data
+                if existing.outputs_truncated:
+                    db_model.outputs = existing.outputs
                 session.merge(db_model)
 
     @override
