@@ -829,20 +829,44 @@ class StarredAppListApi(Resource):
             is_created_by_me=args.is_created_by_me,
         )
 
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            current_tenant_id,
+            current_user_id,
+            session=session,
+        )
+        if dify_config.RBAC_ENABLED:
+            access_filter = resolve_app_access_filter(
+                current_tenant_id,
+                current_user_id,
+                session=session,
+                permissions=permissions,
+            )
+            access_filter.apply_to_params(params)
+
         app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params, session)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
 
+        app_ids = [str(app.id) for app in app_pagination.items]
+        permission_keys_map = permissions.app.permission_keys_by_resource_ids(app_ids)
         _enrich_app_list_items(session, apps=app_pagination.items, tenant_id=current_tenant_id)
-        return (
-            AppPagination.model_validate(
-                app_pagination,
-                from_attributes=True,
-                context={"session": session},
-            ).model_dump(mode="json"),
-            200,
+
+        pagination_model = AppPagination.model_validate(
+            app_pagination,
+            from_attributes=True,
+            context={"session": session},
         )
+        if app_pagination.items:
+            pagination_model = pagination_model.model_copy(
+                update={
+                    "data": [
+                        item.model_copy(update={"permission_keys": permission_keys_map.get(item.id, [])})
+                        for item in pagination_model.data
+                    ]
+                }
+            )
+        return pagination_model.model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/star")
