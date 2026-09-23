@@ -488,6 +488,7 @@ export const lintConfig = {
     'unicorn/no-abusive-eslint-disable': 'error',
     'dify/no-file-wide-disable': 'error',
     'dify/require-disable-directive-description': 'error',
+    'dify/require-i18n-namespace': 'error',
     'eslint-comments/no-aggregating-enable': 'error',
     'eslint-comments/no-duplicate-disable': 'error',
     'eslint-comments/no-unlimited-disable': 'error',

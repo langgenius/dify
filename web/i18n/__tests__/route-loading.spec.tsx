@@ -29,7 +29,7 @@ const makeResources = () => ({
 })
 let resources = makeResources()
 function Label() {
-  const { t } = useTranslation()
+  const { t } = useTranslation('common')
   return (
     <span>
       {t(($) => $['operation.save'], { ns: 'common' })} /{' '}
