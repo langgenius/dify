@@ -1,5 +1,4 @@
 'use client'
-
 import type { ApiKeyItem } from '@dify/contracts/api/console/agent/types.gen'
 import {
   AlertDialog,
@@ -13,18 +12,19 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function AgentApiKeyModal({
   agentId,
@@ -35,8 +35,8 @@ export function AgentApiKeyModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('appApi')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['appApi', 'appLog', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const [newKey, setNewKey] = useState<ApiKeyItem | null>(null)
@@ -130,7 +130,17 @@ export function AgentApiKeyModal({
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="flex w-full max-w-200! flex-col overflow-hidden px-8">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['apiKeyModal.apiSecretKey'])}
           </DialogTitle>
@@ -200,16 +210,14 @@ export function AgentApiKeyModal({
                     </div>
                     <div className="flex grow gap-2 px-3">
                       <CopyFeedback content={apiKey.token} />
-                      <Button
-                        variant="ghost"
-                        size="small"
-                        className="size-6 px-0 text-text-tertiary hover:text-text-secondary"
+                      <IconButton
+                        size="md"
                         aria-label={tCommon(($) => $['operation.delete'])}
                         disabled={isDeleting}
                         onClick={() => setApiKeyToDelete(apiKey)}
                       >
                         <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                      </Button>
+                      </IconButton>
                     </div>
                   </div>
                 ))}
@@ -263,7 +271,7 @@ function AgentApiKeyGenerateModal({
   apiKey: ApiKeyItem | null
   onClose: () => void
 }) {
-  const { t } = useTranslation('appApi')
+  const { t } = useTranslation(['appApi', 'common'])
 
   return (
     <Dialog
@@ -273,7 +281,17 @@ function AgentApiKeyGenerateModal({
       }}
     >
       <DialogContent className="w-full max-w-120! overflow-hidden px-8">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['apiKeyModal.apiSecretKey'])}
         </DialogTitle>

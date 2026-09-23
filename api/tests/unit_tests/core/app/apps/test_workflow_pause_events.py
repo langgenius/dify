@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -26,6 +27,7 @@ from graphon.graph_events import GraphRunPausedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.workflow import Workflow, WorkflowType
 
 
 class _RecordingWorkflowAppRunner(WorkflowAppRunner):
@@ -92,12 +94,19 @@ def _build_runner():
         workflow_execution_id="run-id",
         user_id="user-id",
     )
-    workflow = SimpleNamespace(
-        graph_dict={},
+    workflow = Workflow.new(
         tenant_id="tenant-id",
-        environment_variables={},
-        id="workflow-id",
+        app_id="app-id",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({}),
+        features="{}",
+        created_by="account-id",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
     )
+    workflow.id = "workflow-id"
     queue_manager = SimpleNamespace(publish=lambda event, pub_from: None)
     return _RecordingWorkflowAppRunner(
         application_generate_entity=app_entity,

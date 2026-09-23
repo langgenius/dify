@@ -1,4 +1,4 @@
-import type { AccessPoint } from '@/app/components/app/deploy/access-point'
+import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { screen, within } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import { DeployedEnvironmentAccessPoints } from '../deployed-environment-access-points'
@@ -16,14 +16,14 @@ vi.mock('react-i18next', async () => {
 vi.mock('../deployed-environment-access-points/environment-service-api-card', () => ({
   EnvironmentServiceApiCard: (props: Record<string, unknown>) => {
     mocks.serviceApiCard(props)
-    return <div data-testid="environment-service-api-card" />
+    return null
   },
 }))
 
 vi.mock('../deployed-environment-access-points/environment-web-app-card', () => ({
   EnvironmentWebAppCard: (props: Record<string, unknown>) => {
     mocks.webAppCard(props)
-    return <div data-testid="environment-web-app-card" />
+    return null
   },
 }))
 
@@ -39,8 +39,7 @@ describe('DeployedEnvironmentAccessPoints', () => {
         <DeployedEnvironmentAccessPoints
           appId="app-1"
           environmentId="staging"
-          canEdit
-          canManage
+          canManageAccessPoint
           highlightedAccessPoint={highlightedAccessPoint}
         />,
       )
@@ -56,7 +55,11 @@ describe('DeployedEnvironmentAccessPoints', () => {
 
   it('renders MCP and Trigger as unsupported without a permanent loading state', () => {
     render(
-      <DeployedEnvironmentAccessPoints appId="app-1" environmentId="staging" canEdit canManage />,
+      <DeployedEnvironmentAccessPoints
+        appId="app-1"
+        environmentId="staging"
+        canManageAccessPoint
+      />,
     )
 
     const mcpCard = screen.getByRole('region', { name: /mcp\.server\.title/ })
@@ -75,5 +78,24 @@ describe('DeployedEnvironmentAccessPoints', () => {
       expect(card).not.toHaveAttribute('aria-busy')
       expect(card.querySelector('[aria-busy="true"]')).not.toBeInTheDocument()
     }
+  })
+
+  it('passes Access Point management to deployed environment cards', () => {
+    render(
+      <DeployedEnvironmentAccessPoints
+        appId="app-1"
+        environmentId="staging"
+        canManageAccessPoint
+      />,
+    )
+
+    expect(mocks.webAppCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canManageAccessPoint: true,
+      }),
+    )
+    expect(mocks.serviceApiCard).toHaveBeenCalledWith(
+      expect.objectContaining({ canManageAccessPoint: true }),
+    )
   })
 })

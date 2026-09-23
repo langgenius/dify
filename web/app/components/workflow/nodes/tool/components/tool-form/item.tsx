@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import type { ToolVarInputs } from '../../types'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
+import type { FormInputSchema } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId, useState } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal'
@@ -49,11 +49,12 @@ const renderDescriptionWithLinks = (description: string): ReactNode => {
 }
 
 type Props = Readonly<{
+  staticSchema?: boolean
   readOnly: boolean
   nodeId: string
-  schema: CredentialFormSchema
-  value: ToolVarInputs
-  onChange: (value: ToolVarInputs) => void
+  schema: FormInputSchema
+  value: ResourceVarInputs
+  onChange: (value: ResourceVarInputs) => void
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
@@ -65,6 +66,7 @@ type Props = Readonly<{
 
 const ToolFormItem: FC<Props> = ({
   readOnly,
+  staticSchema = false,
   nodeId,
   schema,
   value,
@@ -78,6 +80,7 @@ const ToolFormItem: FC<Props> = ({
   providerType = 'tool',
 }) => {
   const language = useLanguage()
+  const labelId = useId()
   const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
   const showDescription =
@@ -90,20 +93,22 @@ const ToolFormItem: FC<Props> = ({
   return (
     <div className="space-y-0.5 py-1">
       <div>
-        <div className="flex h-6 items-center">
-          <div className="system-sm-medium text-text-secondary">
+        <div className="flex min-h-6 min-w-0 items-center">
+          <div
+            id={labelId}
+            className="min-w-0 system-sm-medium wrap-break-word text-text-secondary"
+          >
             {label[language] || label.en_US}
           </div>
           {required && (
             <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
           {!showDescription && tooltip && (
-            <Infotip
-              aria-label={tooltip[language] || tooltip.en_US}
-              className="ml-1"
-              popupClassName="w-[200px]"
-            >
-              {tooltip[language] || tooltip.en_US}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={labelId} className="ml-1" />
+              <InfotipContent aria-labelledby={labelId} className="w-50">
+                {tooltip[language] || tooltip.en_US}
+              </InfotipContent>
             </Infotip>
           )}
           {showSchemaButton && (
@@ -128,7 +133,9 @@ const ToolFormItem: FC<Props> = ({
         )}
       </div>
       <FormInputItem
+        labelId={labelId}
         readOnly={readOnly}
+        staticSchema={staticSchema}
         nodeId={nodeId}
         schema={schema}
         value={value}

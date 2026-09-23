@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useInspectVarsCrud } from '../use-inspect-vars-crud'
 
 // Mock return value for useInspectVarsCrudCommon

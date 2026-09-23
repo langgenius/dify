@@ -1,12 +1,12 @@
 import type { WorkflowHistoryState } from '../store/workflow/history-slice'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Divider from '../../base/divider'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
 import { useNodesReadOnly } from '../hooks/use-workflow'
@@ -26,7 +26,7 @@ type ChangeHistoryList = {
 }
 
 const ViewWorkflowHistory = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
 
   const { nodesReadOnly } = useNodesReadOnly()
@@ -156,46 +156,39 @@ const ViewWorkflowHistory = () => {
             )
           }
           render={
-            <Button
-              variant="ghost"
-              size="small"
+            <IconButton
+              size="lg"
               disabled={nodesReadOnly}
               focusableWhenDisabled
               aria-label={t(($) => $['changeHistory.title'], { ns: 'workflow' })}
-              className={cn(
-                'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
-              )}
+              className="rounded-md"
               onClick={() => {
                 if (nodesReadOnly) return
                 setCurrentLogItem()
                 setShowMessageLogModal(false)
               }}
-            />
+            >
+              <span aria-hidden className="i-ri-history-line size-4 shrink-0" />
+            </IconButton>
           }
-        >
-          <span aria-hidden className="i-ri-history-line size-4 shrink-0" />
-        </PopoverTrigger>
+        />
       </TipPopup>
-      <PopoverContent
-        placement="bottom-end"
-        popupClassName="border-none bg-transparent shadow-none"
-      >
+      <PopoverContent placement="bottom-end" className="border-none bg-transparent shadow-none">
         <div className="flex max-w-90 min-w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
           <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
-            <div className="system-mg-regular grow text-text-secondary">
+            <div className="grow text-text-secondary">
               {t(($) => $['changeHistory.title'], { ns: 'workflow' })}
             </div>
             <PopoverClose
               render={
-                <Button
+                <IconButton
                   variant="ghost"
-                  size="small"
+                  size="md"
                   aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  className="size-6 shrink-0 p-0 text-text-secondary hover:bg-state-base-hover"
+                  className="shrink-0 text-text-secondary hover:bg-state-base-hover"
                 >
                   <span aria-hidden className="i-ri-close-line size-4 text-text-secondary" />
-                </Button>
+                </IconButton>
               }
               onClick={() => {
                 setCurrentLogItem()
@@ -286,7 +279,7 @@ const ViewWorkflowHistory = () => {
           </div>
           {!!calculateChangeList.statesCount && (
             <div className="px-0.5">
-              <Divider className="m-0" />
+              <Separator className="m-0 h-[0.5px]" />
               <button
                 type="button"
                 className={cn(

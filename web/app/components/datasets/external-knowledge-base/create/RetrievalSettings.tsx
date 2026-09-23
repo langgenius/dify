@@ -28,7 +28,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
   isInRetrievalSetting = false,
   readonly = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   const handleScoreThresholdChange = (enabled: boolean) => {
     onChange({ score_threshold_enabled: enabled })

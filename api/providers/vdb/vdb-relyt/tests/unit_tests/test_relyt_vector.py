@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import types
 from types import SimpleNamespace
@@ -9,6 +10,7 @@ from pydantic import ValidationError
 from sqlalchemy.types import UserDefinedType
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_relyt_modules():
@@ -297,12 +299,10 @@ def test_delete_drops_table(relyt_module, monkeypatch: pytest.MonkeyPatch):
 
 def test_relyt_factory_existing_and_generated_collection(relyt_module, monkeypatch: pytest.MonkeyPatch):
     factory = relyt_module.RelytVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(relyt_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(relyt_module.dify_config, "RELYT_HOST", "localhost")

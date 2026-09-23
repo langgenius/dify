@@ -2,6 +2,7 @@ import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/syst
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
@@ -10,10 +11,11 @@ import { ExternalServiceSync } from '@/app/(commonLayout)/external-service-sync'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { consoleQuery } from '@/service/console'
+import { useLogout } from '@/service/use-common'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
-import { userProfileAtom } from '../account-state'
 import { initialWorkspaceSummary } from '../app-context-defaults'
 import {
   datasetDefaultPermissionKeysAtom,
@@ -21,17 +23,16 @@ import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '../permission-state'
-import { langGeniusVersionInfoAtom } from '../version-state'
 import {
   currentWorkspaceAtom,
   currentWorkspaceLoadingAtom,
   isCurrentWorkspaceDatasetOperatorAtom,
-  isCurrentWorkspaceEditorAtom,
   isCurrentWorkspaceManagerAtom,
   isCurrentWorkspaceOwnerAtom,
 } from '../workspace-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
+const mockPostRequest = vi.hoisted(() => vi.fn())
 const mockGetPermissionKeys = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({
   datasetPermissionKeys: ['dataset.acl.edit'],
@@ -98,6 +99,7 @@ vi.mock('@/config', async (importOriginal) => {
   return {
     ...actual,
     ZENDESK_FIELD_IDS: {
+      PLAN: '',
       ENVIRONMENT: 'environment-field',
       VERSION: 'version-field',
       EMAIL: 'email-field',
@@ -113,8 +115,17 @@ vi.mock('@/features/account-profile/client', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
+    features: {
+      get: {
+        queryOptions: (options: object) => ({
+          queryKey: ['features'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
+    },
     systemFeatures: {
       get: {
         queryOptions: () => ({
@@ -144,6 +155,7 @@ vi.mock('@/service/client', () => ({
         rbac: {
           myPermissions: {
             get: {
+              key: () => ['current-permissions'],
               queryOptions: () => ({
                 queryKey: ['current-permissions'],
                 queryFn: mockGetPermissionKeys,
@@ -174,7 +186,7 @@ vi.mock('@/service/client', () => ({
 
 vi.mock('@/service/base', () => ({
   get: mockGetRequest,
-  post: vi.fn(),
+  post: mockPostRequest,
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -188,28 +200,25 @@ vi.mock('@/app/components/base/amplitude/use-amplitude-initialized', () => ({
 
 vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
   flushRegistrationSuccess: vi.fn(),
+  subscribeRegistrationSuccess: () => () => {},
+  getRegistrationSuccessSnapshot: () => 0,
 }))
 
-vi.mock('@/app/components/base/zendesk/utils', () => ({
-  setZendeskConversationFields: vi.fn(),
-}))
-
-vi.mock('@/app/components/header/maintenance-notice', () => ({
-  default: () => null,
+vi.mock('@/app/components/base/zendesk/runtime', () => ({
+  zendeskRuntime: {
+    setConversationFields: vi.fn(),
+  },
 }))
 
 function ConsoleBootstrapProbe() {
-  const userProfile = useAtomValue(userProfileAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const refreshPermissionsAfterMutationDenial = useSetAtom(
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   )
@@ -233,10 +242,6 @@ function ConsoleBootstrapProbe() {
         {String(isLoadingCurrentWorkspace)}
       </span>
       <span>
-        user:
-        {userProfile.email}
-      </span>
-      <span>
         workspace:
         {currentWorkspace.name}
       </span>
@@ -253,22 +258,22 @@ function ConsoleBootstrapProbe() {
         {String(isCurrentWorkspaceOwner)}
       </span>
       <span>
-        editor:
-        {String(isCurrentWorkspaceEditor)}
-      </span>
-      <span>
         dataset operator:
         {String(isCurrentWorkspaceDatasetOperator)}
-      </span>
-      <span>
-        version:
-        {langGeniusVersionInfo.current_version}/{langGeniusVersionInfo.latest_version}/
-        {langGeniusVersionInfo.current_env}
       </span>
       <button type="button" onClick={() => void refreshPermissionsAfterMutationDenial()}>
         refresh permissions after denial
       </button>
     </>
+  )
+}
+
+function LogoutButton() {
+  const { isSuccess, mutateAsync: logout } = useLogout()
+  return (
+    <button type="button" onClick={() => void logout()}>
+      {isSuccess ? 'Logged out' : 'Log out'}
+    </button>
   )
 }
 
@@ -374,19 +379,63 @@ describe('Console bootstrap', () => {
   })
 
   describe('Bootstrap atoms', () => {
-    it('should provide profile, workspace, permissions, loading state, and version metadata', async () => {
+    it('replaces account-scoped atom results after logout and the next account hydration', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: 5 * 60 * 1000 } },
+      })
+      const permissionQueryKey = consoleQuery.workspaces.current.rbac.myPermissions.get.key()
+      const workspaceQueryKey = consoleQuery.workspaces.current.summary.get.key()
+      queryClient.setQueryData(permissionQueryKey, {
+        workspace: { permission_keys: ['agent.create'] },
+      })
+      queryClient.setQueryData(workspaceQueryKey, mockCurrentWorkspaceResponse)
+      mockPostRequest.mockResolvedValueOnce({ result: 'success' })
+      const tree = (showConsole: boolean) => (
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                {showConsole && <ConsoleBootstrapProbe />}
+                <LogoutButton />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>
+      )
+      const view = render(tree(true))
+      expect(await screen.findByText('keys:agent.create')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Log out' }))
+      await screen.findByRole('button', { name: 'Logged out' })
+      view.rerender(tree(false))
+      mockPermissionKeysState.permissionKeys = []
+      act(() => {
+        queryClient.setQueryData(permissionQueryKey, {
+          workspace: { permission_keys: [] },
+        })
+        queryClient.setQueryData(workspaceQueryKey, {
+          ...mockCurrentWorkspaceResponse,
+          name: 'Next Workspace',
+        })
+      })
+      view.rerender(tree(true))
+
+      expect(await screen.findByText('keys:')).toBeInTheDocument()
+      expect(await screen.findByText('workspace:Next Workspace')).toBeInTheDocument()
+    })
+
+    it('should provide workspace, permissions, and loading state', async () => {
       renderConsoleBootstrap()
 
-      expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
       expect(await screen.findByText('workspace:Workspace')).toBeInTheDocument()
       expect(await screen.findByText('keys:app.create_and_management')).toBeInTheDocument()
       expect(screen.getByText('dataset keys:dataset.acl.edit')).toBeInTheDocument()
       expect(screen.getByText('permission loading:false')).toBeInTheDocument()
       expect(screen.getByText('workspace loading:false')).toBeInTheDocument()
-      expect(await screen.findByText('version:1.0.0/1.0.1/cloud')).toBeInTheDocument()
     })
 
-    it('should fall back to placeholder values when workspace, permission, or version data is missing', async () => {
+    it('should fall back to placeholder values when workspace or permission data is missing', async () => {
       mockCurrentWorkspaceQueryState.data = undefined
       mockPermissionKeysState.datasetPermissionKeys = []
       mockPermissionKeysState.permissionKeys = []
@@ -394,12 +443,12 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
-      expect(screen.getByText(`workspace:${initialWorkspaceSummary.name}`)).toBeInTheDocument()
+      expect(
+        await screen.findByText(`workspace:${initialWorkspaceSummary.name}`),
+      ).toBeInTheDocument()
       expect(screen.getByText(`role:${initialWorkspaceSummary.role}`)).toBeInTheDocument()
       expect(screen.getByText('keys:')).toBeInTheDocument()
       expect(screen.getByText('dataset keys:')).toBeInTheDocument()
-      expect(screen.getByText('version://')).toBeInTheDocument()
     })
 
     it('should normalize invalid workspace roles to the initial workspace role', async () => {
@@ -423,7 +472,6 @@ describe('Console bootstrap', () => {
 
       expect(await screen.findByText('manager:true')).toBeInTheDocument()
       expect(screen.getByText('owner:true')).toBeInTheDocument()
-      expect(screen.getByText('editor:true')).toBeInTheDocument()
       expect(screen.getByText('dataset operator:false')).toBeInTheDocument()
     })
 
@@ -470,7 +518,7 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
           [
             {
               id: ZENDESK_FIELD_IDS.ENVIRONMENT,
@@ -480,7 +528,7 @@ describe('Console bootstrap', () => {
           'CLOUD',
         )
       })
-      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+      expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
         [
           {
             id: ZENDESK_FIELD_IDS.VERSION,
@@ -489,7 +537,7 @@ describe('Console bootstrap', () => {
         ],
         'CLOUD',
       )
-      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+      expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
         [
           {
             id: ZENDESK_FIELD_IDS.EMAIL,
@@ -499,7 +547,7 @@ describe('Console bootstrap', () => {
         'CLOUD',
       )
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
           [
             {
               id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
@@ -525,6 +573,96 @@ describe('Console bootstrap', () => {
       })
     })
 
+    it('syncs the actual plan only after features arrive and follows plan changes', async () => {
+      ZENDESK_FIELD_IDS.PLAN = 'plan-field'
+      try {
+        const { queryClient } = renderConsoleBootstrap()
+        await waitFor(() => expect(zendeskRuntime.setConversationFields).toHaveBeenCalled())
+        expect(
+          vi
+            .mocked(zendeskRuntime.setConversationFields)
+            .mock.calls.flatMap(([fields]) => fields)
+            .some((field) => field.id === 'plan-field'),
+        ).toBe(false)
+        act(() =>
+          queryClient.setQueryData(['features'], {
+            billing: { subscription: { plan: 'professional' } },
+          }),
+        )
+        await waitFor(() =>
+          expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
+            [{ id: 'plan-field', value: 'professional-plan' }],
+            'CLOUD',
+          ),
+        )
+        act(() =>
+          queryClient.setQueryData(['features'], { billing: { subscription: { plan: 'team' } } }),
+        )
+        await waitFor(() =>
+          expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
+            [{ id: 'plan-field', value: 'team-plan' }],
+            'CLOUD',
+          ),
+        )
+      } finally {
+        ZENDESK_FIELD_IDS.PLAN = ''
+      }
+    })
+
+    it('should not sync Zendesk fields outside cloud deployments', async () => {
+      mockSystemFeaturesState.data = createSystemFeaturesFixture({
+        deployment_edition: 'COMMUNITY',
+      })
+
+      renderConsoleBootstrap()
+
+      await screen.findByText('workspace:Workspace')
+      expect(zendeskRuntime.setConversationFields).not.toHaveBeenCalled()
+    })
+
+    it('should resync only changed Zendesk fields', async () => {
+      const { queryClient, rerender } = renderConsoleBootstrap()
+
+      await waitFor(() => expect(zendeskRuntime.setConversationFields).toHaveBeenCalledTimes(4))
+
+      rerender(
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                <ExternalServiceSync />
+                <ConsoleBootstrapProbe />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>,
+      )
+      expect(zendeskRuntime.setConversationFields).toHaveBeenCalledTimes(4)
+
+      act(() => {
+        queryClient.setQueryData(['user-profile'], {
+          ...mockUserProfileResponseState.data,
+          profile: {
+            ...mockUserProfileResponseState.data.profile,
+            email: 'updated@example.com',
+          },
+        })
+      })
+
+      await waitFor(() => {
+        expect(zendeskRuntime.setConversationFields).toHaveBeenCalledTimes(5)
+        expect(zendeskRuntime.setConversationFields).toHaveBeenLastCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.EMAIL,
+              value: 'updated@example.com',
+            },
+          ],
+          'CLOUD',
+        )
+      })
+    })
+
     it('should not sync Amplitude identity when user id is missing', async () => {
       mockUserProfileResponseState.data = {
         profile: {
@@ -543,7 +681,7 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      await screen.findByText('user:')
+      await screen.findByText('workspace:Workspace')
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
       expect(flushRegistrationSuccess).not.toHaveBeenCalled()
@@ -553,7 +691,7 @@ describe('Console bootstrap', () => {
       setAnalyticsConsent('denied')
       renderConsoleBootstrap()
 
-      await screen.findByText('user:user@example.com')
+      await screen.findByText('workspace:Workspace')
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
 
@@ -563,6 +701,43 @@ describe('Console bootstrap', () => {
         expect(setUserId).toHaveBeenCalledWith('user@example.com')
         expect(setUserProperties).toHaveBeenCalled()
         expect(flushRegistrationSuccess).toHaveBeenCalled()
+      })
+    })
+
+    it('should resync Amplitude only when identity properties change', async () => {
+      const { queryClient, rerender } = renderConsoleBootstrap()
+
+      await waitFor(() => expect(setUserProperties).toHaveBeenCalledTimes(1))
+
+      rerender(
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                <ExternalServiceSync />
+                <ConsoleBootstrapProbe />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>,
+      )
+      expect(setUserProperties).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        queryClient.setQueryData(['user-profile'], {
+          ...mockUserProfileResponseState.data,
+          profile: {
+            ...mockUserProfileResponseState.data.profile,
+            name: 'Updated User',
+          },
+        })
+      })
+
+      await waitFor(() => {
+        expect(setUserProperties).toHaveBeenCalledTimes(2)
+        expect(setUserProperties).toHaveBeenLastCalledWith(
+          expect.objectContaining({ name: 'Updated User' }),
+        )
       })
     })
   })

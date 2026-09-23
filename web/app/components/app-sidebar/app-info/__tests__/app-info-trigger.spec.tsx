@@ -41,7 +41,11 @@ vi.mock('../../../base/app-icon', () => ({
     background: string
     iconType?: string
     imageUrl?: string
-  }) => <div data-testid="app-icon" data-size={size} data-icon={icon} data-bg={background} />,
+  }) => (
+    <span data-size={size} data-icon={icon} data-bg={background}>
+      {icon}
+    </span>
+  ),
 }))
 
 const defaultAppPermissionKeys = [
@@ -91,12 +95,12 @@ describe('AppInfoTrigger', () => {
     })
     render(<AppInfoTrigger {...props} />)
 
-    expect(screen.getByTestId('app-icon')).toHaveAttribute('data-size', 'large')
+    expect(screen.getByText('🤖')).toHaveAttribute('data-size', 'medium')
     expect(screen.getByText('My Chatbot')).toBeInTheDocument()
     expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
     expect(screen.getByText('My Chatbot').closest('button')).toBeNull()
 
-    await user.click(screen.getByTestId('app-icon'))
+    await user.click(screen.getByText('🤖'))
 
     expect(props.openModal).not.toHaveBeenCalled()
     expect(props.exportCheck).not.toHaveBeenCalled()
@@ -105,7 +109,7 @@ describe('AppInfoTrigger', () => {
   it('renders only the medium app icon when collapsed', () => {
     render(<AppInfoTrigger {...createProps({ expand: false })} />)
 
-    expect(screen.getByTestId('app-icon')).toHaveAttribute('data-size', 'medium')
+    expect(screen.getByText('🤖')).toHaveAttribute('data-size', 'medium')
     expect(screen.queryByText('Test App')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
@@ -120,7 +124,7 @@ describe('AppInfoTrigger', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'app.editApp',
       'app.duplicate',
-      'app.export',
+      'app.exportApp',
       'common.operation.delete',
       'app.switch',
     ])
@@ -138,10 +142,10 @@ describe('AppInfoTrigger', () => {
 
     await user.click(getOperationsTrigger())
 
-    expect(screen.getByRole('menuitem', { name: 'workflow.common.importDSL' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'app.importApp' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'app.switch' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: 'workflow.common.importDSL' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.importApp' }))
     expect(props.openModal).toHaveBeenCalledWith('importDSL')
   })
 
@@ -151,14 +155,14 @@ describe('AppInfoTrigger', () => {
     const { rerender } = render(<AppInfoTrigger {...props} />)
 
     await user.click(getOperationsTrigger())
-    expect(screen.getByRole('menuitem', { name: 'app.export' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
 
     const readyProps = createProps()
     rerender(<AppInfoTrigger {...readyProps} />)
-    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
     expect(readyProps.exportCheck).toHaveBeenCalledTimes(1)
   })

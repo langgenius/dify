@@ -1,8 +1,8 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { waitForAppsConsole } from '../../../support/apps'
-import { waitForConsoleHome } from '../../../support/home'
+import { waitForAppsConsole } from '../../../support/apps.ts'
+import { waitForConsoleHome } from '../../../support/home.ts'
 
 When('I open the default console entry', async function (this: DifyWorld) {
   await this.getPage().goto('/')
@@ -36,6 +36,8 @@ Then('I should not see the {string} button', async function (this: DifyWorld, la
   await expect(this.getPage().getByRole('button', { name: label })).not.toBeVisible()
 })
 
-Then('I should see the {string} text', async function (this: DifyWorld, text: string) {
-  await expect(this.getPage().getByText(text)).toBeVisible({ timeout: 30_000 })
+Then('I should see the {string} link', async function (this: DifyWorld, label: string) {
+  await expect(this.getPage().getByRole('link', { exact: true, name: label })).toBeVisible({
+    timeout: 30_000,
+  })
 })

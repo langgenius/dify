@@ -1,5 +1,6 @@
 import type {
   AppPublisherProps,
+  AppPublisherPublishOptions,
   AppPublisherPublishParams,
 } from '@/app/components/app/app-publisher/types'
 import type { ConfigurationPublishConfig } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
@@ -26,13 +27,14 @@ type Props = Omit<AppPublisherProps, 'onPublish'> & {
   onPublish?: (
     params?: AppPublisherPublishParams,
     features?: Features,
+    options?: AppPublisherPublishOptions,
   ) => Promise<unknown> | unknown
   publishedConfig: ConfigurationPublishConfig
   resetAppConfig?: () => void
 }
 
 const FeaturesWrappedAppPublisher = (props: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
@@ -88,7 +90,8 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
   }
 
   const handlePublish = useCallback(
-    (params?: AppPublisherPublishParams) => {
+    (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) => {
+      if (options) return props.onPublish?.(params, features, options)
       return props.onPublish?.(params, features)
     },
     [features, props],

@@ -1,12 +1,12 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
+import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { t } from 'i18next'
 import { useState } from 'react'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import Loading from '@/app/components/base/loading'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
-import s from './style.module.css'
 
 type AudioBtnProps = {
   id?: string
@@ -14,17 +14,16 @@ type AudioBtnProps = {
   value?: string
   className?: string
   isAudition?: boolean
-  noCache?: boolean
 }
 
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
-const AudioBtn = ({ id, voice, value, className, isAudition }: AudioBtnProps) => {
+export function AudioBtn({ id, voice, value, className, isAudition }: AudioBtnProps) {
   const [audioState, setAudioState] = useState<AudioState>('initial')
 
   const params = useParams()
   const pathname = usePathname()
-  const audio_finished_call = (event: string): void => {
+  const handleAudioEvent = (event: string): void => {
     switch (event) {
       case 'ended':
         setAudioState('ended')
@@ -49,20 +48,22 @@ const AudioBtn = ({ id, voice, value, className, isAudition }: AudioBtnProps) =>
   if (params.token) {
     url = '/text-to-audio'
     isPublic = true
+  } else if (params.agentId) {
+    url = `/agent/${params.agentId}/text-to-audio`
   } else if (params.appId) {
     if (isInstalledAppPath(pathname)) url = `/installed-apps/${params.appId}/text-to-audio`
     else url = `/apps/${params.appId}/text-to-audio`
   }
-  const handleToggle = async () => {
+  const handleToggle = () => {
     if (audioState === 'playing' || audioState === 'loading') {
       setTimeout(() => setAudioState('paused'), 1)
       AudioPlayerManager.getInstance()
-        .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
+        .getAudioPlayer(url, isPublic, id, value, voice, handleAudioEvent)
         .pauseAudio()
     } else {
       setTimeout(() => setAudioState('loading'), 1)
       AudioPlayerManager.getInstance()
-        .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
+        .getAudioPlayer(url, isPublic, id, value, voice, handleAudioEvent)
         .playAudio()
     }
   }
@@ -77,7 +78,10 @@ const AudioBtn = ({ id, voice, value, className, isAudition }: AudioBtnProps) =>
 
   return (
     <div
-      className={`inline-flex items-center justify-center ${audioState === 'loading' || audioState === 'playing' ? 'mr-1' : className}`}
+      className={cn(
+        'inline-flex items-center justify-center',
+        audioState === 'loading' || audioState === 'playing' ? 'mr-1' : className,
+      )}
     >
       <Tooltip>
         <TooltipTrigger
@@ -87,18 +91,27 @@ const AudioBtn = ({ id, voice, value, className, isAudition }: AudioBtnProps) =>
                 type="button"
                 aria-label={tooltipContent}
                 disabled={audioState === 'loading'}
-                className={`box-border flex size-6 cursor-pointer items-center justify-center border-none bg-transparent ${isAudition ? 'p-0.5' : 'rounded-md bg-white p-0'}`}
+                className={cn(
+                  'box-border flex size-6 cursor-pointer items-center justify-center border-none bg-transparent',
+                  isAudition ? 'p-0.5' : 'rounded-md bg-white p-0',
+                )}
                 onClick={handleToggle}
               >
                 {audioState === 'loading' ? (
                   <div className="flex size-full items-center justify-center rounded-md">
-                    <Loading />
+                    <SpinnerIcon />
                   </div>
                 ) : (
                   <div className="flex size-full items-center justify-center rounded-md hover:bg-gray-50">
-                    <div
-                      className={`size-4 ${audioState === 'playing' ? s.pauseIcon : s.playIcon}`}
-                    ></div>
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'size-4',
+                        audioState === 'playing'
+                          ? 'i-ri-pause-circle-fill'
+                          : 'i-ri-play-large-fill',
+                      )}
+                    />
                   </div>
                 )}
               </button>
@@ -110,5 +123,3 @@ const AudioBtn = ({ id, voice, value, className, isAudition }: AudioBtnProps) =>
     </div>
   )
 }
-
-export default AudioBtn

@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import type { PluginDetail } from '../types'
+import type { EmbeddedMarketplaceCategory } from './category-marketplace'
 import type { PluginPageContentInset } from './content-inset'
 import type { Collection } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -13,15 +14,19 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import IntegrationsToolProviderCard from '@/app/components/integrations/tool-provider-card'
 import { BuiltinMarketplacePanel } from '@/app/components/tools/marketplace/builtin-marketplace-panel'
+import CategoryEmptyState from './category-empty-state'
+import CategoryMarketplacePanel from './category-marketplace-panel'
 import List from './list'
 
 type PluginsPanelResultsProps = {
   autoLoadNextPage: boolean
   canDeletePlugin: boolean
   canUpdatePlugin: boolean
+  categoryEmptyState?: EmbeddedMarketplaceCategory
+  categoryMarketplace?: EmbeddedMarketplaceCategory
   containerRef: RefObject<HTMLDivElement | null>
   contentFrameClassName: string
   contentInset: PluginPageContentInset
@@ -33,13 +38,14 @@ type PluginsPanelResultsProps = {
   hasToolMarketplacePanel: boolean
   hasVisibleBuiltinTools: boolean
   hasVisiblePlugins: boolean
-  isAgentStrategyIntegrationPage: boolean
+  hasEmbeddedMarketplace: boolean
   isFetching: boolean
   isLastPage: boolean
   keywords: string
   loadNextPage: () => void
+  onSelectBuiltinTool: (id: string) => void
   scrollAreaLabel?: string
-  setCurrentBuiltinToolID: (id: string) => void
+  showCategoryEmptyState: boolean
   tagFilterValue: string[]
 }
 
@@ -47,6 +53,8 @@ const PluginsPanelResults = ({
   autoLoadNextPage,
   canDeletePlugin,
   canUpdatePlugin,
+  categoryEmptyState,
+  categoryMarketplace,
   containerRef,
   contentFrameClassName,
   contentInset,
@@ -58,16 +66,17 @@ const PluginsPanelResults = ({
   hasToolMarketplacePanel,
   hasVisibleBuiltinTools,
   hasVisiblePlugins,
-  isAgentStrategyIntegrationPage,
+  hasEmbeddedMarketplace,
   isFetching,
   isLastPage,
   keywords,
   loadNextPage,
+  onSelectBuiltinTool,
   scrollAreaLabel,
-  setCurrentBuiltinToolID,
+  showCategoryEmptyState,
   tagFilterValue,
 }: PluginsPanelResultsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'workflow'])
   const loadMoreAnchorRef = useRef<HTMLDivElement>(null)
   const loadNextPageRequestedRef = useRef(false)
 
@@ -112,6 +121,16 @@ const PluginsPanelResults = ({
         contentFrameClassName,
       )}
     >
+      <div role="status" aria-atomic="true" className="sr-only">
+        {isFetching
+          ? t(($) => $.loading, { ns: 'common' })
+          : t(($) => $['marketplace.pluginsResult'], {
+              ns: 'plugin',
+              num:
+                (hasVisiblePlugins ? filteredList.length : 0) +
+                (hasVisibleBuiltinTools ? filteredBuiltinTools.length : 0),
+            })}
+      </div>
       <ScrollAreaViewport
         ref={containerRef}
         aria-label={scrollAreaLabel}
@@ -119,8 +138,14 @@ const PluginsPanelResults = ({
         role={scrollAreaLabel ? 'region' : undefined}
       >
         <ScrollAreaContent
-          className={cn('flex min-h-full flex-col', isAgentStrategyIntegrationPage && 'pt-2')}
+          className={cn('flex min-h-full flex-col', hasEmbeddedMarketplace && 'pt-1')}
         >
+          {showCategoryEmptyState && categoryEmptyState && (
+            <CategoryEmptyState
+              category={categoryEmptyState}
+              showMarketplaceLink={!!categoryMarketplace}
+            />
+          )}
           {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
             <List
               pluginList={filteredList}
@@ -137,7 +162,7 @@ const PluginsPanelResults = ({
                   data-step-by-step-tour-target={
                     filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined
                   }
-                  onClick={() => setCurrentBuiltinToolID(collection.id)}
+                  onClick={() => onSelectBuiltinTool(collection.id)}
                 >
                   <IntegrationsToolProviderCard
                     collection={collection}
@@ -151,7 +176,7 @@ const PluginsPanelResults = ({
           {!isLastPage && (
             <div className="flex w-full justify-center py-4">
               {isFetching ? (
-                <Loading className="size-8" />
+                <LoadingPlaceholder className="size-8" />
               ) : autoLoadNextPage ? null : (
                 <Button onClick={loadNextPage}>
                   {t(($) => $['common.loadMore'], { ns: 'workflow' })}
@@ -168,6 +193,13 @@ const PluginsPanelResults = ({
               contentInset={contentInset}
               keywords={keywords}
               tagFilterValue={tagFilterValue}
+            />
+          )}
+          {categoryMarketplace && (
+            <CategoryMarketplacePanel
+              category={categoryMarketplace}
+              searchText={keywords}
+              tags={categoryMarketplace === 'trigger' ? tagFilterValue : []}
             />
           )}
         </ScrollAreaContent>

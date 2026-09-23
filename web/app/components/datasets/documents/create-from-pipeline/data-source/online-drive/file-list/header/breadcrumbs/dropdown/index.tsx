@@ -1,12 +1,13 @@
-import { cn } from '@langgenius/dify-ui/cn'
+import { BreadcrumbItem, BreadcrumbSeparator } from '@langgenius/dify-ui/breadcrumb'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Menu from './menu'
 
 type DropdownProps = {
   startIndex: number
@@ -15,37 +16,37 @@ type DropdownProps = {
 }
 
 const Dropdown = ({ startIndex, breadcrumbs, onBreadcrumbClick }: DropdownProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <button
-            type="button"
-            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-            className={cn(
-              'flex size-6 items-center justify-center rounded-md',
-              'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover',
-            )}
-          >
-            <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-          </button>
-        }
-      />
-      <DropdownMenuContent
-        placement="bottom-start"
-        sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-      >
-        <Menu
-          breadcrumbs={breadcrumbs}
-          startIndex={startIndex}
-          onBreadcrumbClick={onBreadcrumbClick}
-        />
-      </DropdownMenuContent>
-      <span className="system-xs-regular text-divider-deep">/</span>
-    </DropdownMenu>
+    <>
+      <BreadcrumbItem className="shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+                className="data-popup-open:bg-state-base-hover"
+              >
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </IconButton>
+            }
+          />
+          <DropdownMenuContent placement="bottom-start" className="w-34 px-1">
+            {breadcrumbs.map((breadcrumb, index) => (
+              <DropdownMenuItem
+                key={breadcrumbs.slice(0, index + 1).join('/')}
+                className="px-3 py-1.5 system-md-regular"
+                onClick={() => onBreadcrumbClick(startIndex + index)}
+              >
+                {breadcrumb}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </BreadcrumbItem>
+      <BreadcrumbSeparator className="system-xs-regular text-divider-deep" />
+    </>
   )
 }
 

@@ -36,7 +36,7 @@ concurrency:
 jobs:
   accessibility:
     name: WCAG Level ${{ inputs.level == 'a' && 'A' || 'AA' }} · ${{ inputs.page }}
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     defaults:
       run:
@@ -52,7 +52,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
           python-version: '3.12'
@@ -80,7 +80,7 @@ jobs:
           if [[ "$WCAG_PAGE" == "all" ]]; then
             vp run e2e:accessibility:${{ inputs.level }}
           else
-            pnpm exec tsx ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-${{ inputs.level }} and @wcag-page-$WCAG_PAGE"
+            pnpm exec node ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-${{ inputs.level }} and @wcag-page-$WCAG_PAGE"
           fi
 
       - name: Upload accessibility Cucumber report

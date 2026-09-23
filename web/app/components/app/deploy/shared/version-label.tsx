@@ -22,7 +22,7 @@ export function VersionLabel({
   versionsBehind?: number
   isLatest?: boolean
 }) {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments', 'workflow'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   if (!version) return <span className="text-text-quaternary">--</span>
@@ -37,11 +37,7 @@ export function VersionLabel({
   const latest = isLatest ?? versionsBehind === 0
   const behind = versionsBehind !== undefined && versionsBehind > 0 ? versionsBehind : undefined
   const versionsBehindLabel =
-    behind === undefined
-      ? ''
-      : behind === 1
-        ? t(($) => $['studio.versionsBehind_one'], { count: behind })
-        : t(($) => $['studio.versionsBehind_other'], { count: behind })
+    behind === undefined ? '' : t(($) => $['studio.versionsBehind'], { count: behind })
 
   return (
     <div className="flex min-w-0 items-center gap-1">
@@ -61,7 +57,7 @@ export function VersionLabel({
         />
         <PopoverContent
           placement="top"
-          popupClassName="w-[296px] max-w-[calc(100vw-32px)] border-0 bg-components-tooltip-bg px-4 py-3.5 text-start inset-ring-[0.5px] inset-ring-components-panel-border backdrop-blur-[5px]"
+          className="w-74 max-w-[calc(100vw-32px)] border-0 bg-components-tooltip-bg px-4 py-3.5 text-start inset-ring-[0.5px] inset-ring-components-panel-border backdrop-blur-[5px]"
         >
           <div className="flex flex-col gap-1">
             <PopoverTitle className="system-sm-semibold text-text-secondary">{name}</PopoverTitle>

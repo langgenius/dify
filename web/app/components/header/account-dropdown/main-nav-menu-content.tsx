@@ -25,10 +25,9 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type MainNavRadioItemContentProps = {
@@ -56,7 +55,7 @@ function MainNavRadioItemContent({ iconClassName, label }: MainNavRadioItemConte
 }
 
 function AppearanceSubmenu() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { theme, setTheme } = useTheme()
   const currentTheme: Theme =
     theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
@@ -72,7 +71,7 @@ function AppearanceSubmenu() {
       <DropdownMenuSubContent
         placement="right-start"
         sideOffset={6}
-        popupClassName="w-[139px] max-h-[360px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
+        className="max-h-90 w-34.75 bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}
@@ -119,15 +118,19 @@ type MainNavMenuContentProps = {
 }
 
 export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { enableEducationPlan } = useProviderContext()
+  const { data: enableEducationPlan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.education.enabled,
+    }),
+  )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      enabled: enableEducationPlan,
+      enabled: enableEducationPlan === true,
       select: ({ is_student }) => is_student ?? false,
     }),
   )

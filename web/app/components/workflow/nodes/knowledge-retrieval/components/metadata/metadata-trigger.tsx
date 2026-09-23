@@ -13,7 +13,7 @@ const MetadataTrigger = ({
   selectedDatasetsLoaded,
   ...restProps
 }: MetadataShape) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const conditions = metadataFilteringConditions?.conditions || []
 
@@ -51,7 +51,7 @@ const MetadataTrigger = ({
       <PopoverContent
         placement="left"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <MetadataPanel
           metadataFilteringConditions={metadataFilteringConditions}

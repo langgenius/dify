@@ -29,6 +29,7 @@ const getEnglishPageName = (pathname: string): string => {
   const pageNameMap: Record<string, string> = {
     '': 'Home',
     apps: 'Studio',
+    agents: 'Agents',
     datasets: 'Knowledge',
     explore: 'Explore',
     tools: 'Tools',

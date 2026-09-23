@@ -1,6 +1,8 @@
 import type { PermissionKey } from '@/models/access-control'
 
 export const AppACLPermission = {
+  AccessPointManage: 'app.acl.access_point_manage',
+  AccessPointView: 'app.acl.access_point_view',
   Preview: 'app.acl.preview',
   ViewLayout: 'app.acl.view_layout',
   TestAndRun: 'app.acl.test_and_run',
@@ -38,6 +40,8 @@ export type ResourceMaintainerPermissionOptions = {
 }
 
 type AppACLCapabilities = {
+  canManageAccessPoint: boolean
+  canViewAccessPoint: boolean
   canViewLayout: boolean
   canTestAndRun: boolean
   canEdit: boolean
@@ -133,8 +137,17 @@ export const getAppACLCapabilities = (
     AppACLPermission.Edit,
     hasMaintainerPermissions,
   )
-
   return {
+    canManageAccessPoint: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.AccessPointManage,
+      hasMaintainerPermissions,
+    ),
+    canViewAccessPoint: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.AccessPointView,
+      hasMaintainerPermissions,
+    ),
     canViewLayout,
     canTestAndRun,
     canEdit,
@@ -155,11 +168,7 @@ export const getAppACLCapabilities = (
       AppACLPermission.ReleaseAndVersion,
       hasMaintainerPermissions,
     ),
-    canDeploy: hasResourcePermission(
-      permissionKeys,
-      AppACLPermission.Deploy,
-      hasMaintainerPermissions,
-    ),
+    canDeploy: hasPermission(permissionKeys, AppACLPermission.Deploy),
     canMonitor: hasResourcePermission(
       permissionKeys,
       AppACLPermission.Monitor,

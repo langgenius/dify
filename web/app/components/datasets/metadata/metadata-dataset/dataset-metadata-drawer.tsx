@@ -23,16 +23,16 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
-import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { useBoolean, useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
+import { toast } from '@/app/notifications'
 import { getIconClassName } from '../utils/get-icon'
 import Field from './field'
 
@@ -57,7 +57,7 @@ type ItemProps = {
   onDelete?: () => void
 }
 const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const iconClassName = getIconClassName(payload.type)
 
   const handleRename = useCallback(() => {
@@ -88,7 +88,7 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
           disabled && 'opacity-30', // not include border and bg
         )}
       >
-        <div className="flex h-full items-center space-x-1 text-text-tertiary">
+        <div className="flex h-full min-w-0 items-center space-x-1 text-text-tertiary">
           <span className={cn(iconClassName, 'size-4 shrink-0')} aria-hidden="true" />
           <div className="max-w-62.5 truncate system-sm-medium text-text-primary">
             {payload.name}
@@ -96,31 +96,32 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
           <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>
         {(!readonly || disabled) && (
-          <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary group-hover/item:hidden">
+          <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
             {disabled
               ? t(($) => $[`${i18nPrefix}.disabled`], { ns: 'dataset' })
               : t(($) => $[`${i18nPrefix}.values`], { ns: 'dataset', num: payload.count || 0 })}
           </div>
         )}
-        <div className="ml-2 hidden items-center space-x-1 text-text-tertiary group-hover/item:flex">
-          <button
-            type="button"
-            aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
-            className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            onClick={handleRename}
-          >
-            <RiEditLine className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            ref={deleteBtnRef}
-            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
-            className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
-            onClick={showDeleteConfirm}
-          >
-            <RiDeleteBinLine className="size-4" aria-hidden="true" />
-          </button>
-        </div>
+        {!readonly && !disabled && (
+          <div className="ml-2 flex shrink-0 items-center space-x-1 text-text-tertiary">
+            <IconButton
+              size="sm"
+              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+              onClick={handleRename}
+            >
+              <span className="i-ri-edit-line size-4" aria-hidden="true" />
+            </IconButton>
+            <IconButton
+              size="sm"
+              ref={deleteBtnRef}
+              tone="destructive"
+              aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+              onClick={showDeleteConfirm}
+            >
+              <span className="i-ri-delete-bin-line size-4" aria-hidden="true" />
+            </IconButton>
+          </div>
+        )}
         <AlertDialog
           open={isShowDeleteConfirm}
           onOpenChange={(open) => !open && hideDeleteConfirm()}
@@ -162,7 +163,9 @@ const DatasetMetadataDrawer: FC<Props> = ({
   onRename,
   onRemove,
 }) => {
-  const { t } = useTranslation()
+  const builtInLabelId = React.useId()
+
+  const { t } = useTranslation(['common', 'dataset'])
   const [isShowRenameModal, setIsShowRenameModal] = useState(false)
   const [currPayload, setCurrPayload] = useState<MetadataItemWithValueLength | null>(null)
   const [templeName, setTempleName] = useState('')
@@ -241,7 +244,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                   setOpen={setOpen}
                   trigger={
                     <Button variant="primary" className="mt-3">
-                      <RiAddLine />
+                      <span aria-hidden="true" className="i-ri-add-line size-4" />
                       {t(($) => $[`${i18nPrefix}.addMetaData`], { ns: 'dataset' })}
                     </Button>
                   }
@@ -261,15 +264,22 @@ const DatasetMetadataDrawer: FC<Props> = ({
                 </div>
 
                 <div className="mt-3 flex h-6 items-center">
-                  <Switch checked={isBuiltInEnabled} onCheckedChange={onIsBuiltInEnabledChange} />
-                  <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">
+                  <Switch
+                    aria-labelledby={builtInLabelId}
+                    checked={isBuiltInEnabled}
+                    onCheckedChange={onIsBuiltInEnabledChange}
+                  />
+                  <div
+                    id={builtInLabelId}
+                    className="mr-0.5 ml-2 system-sm-semibold text-text-secondary"
+                  >
                     {t(($) => $[`${i18nPrefix}.builtIn`], { ns: 'dataset' })}
                   </div>
-                  <Infotip
-                    aria-label={t(($) => $[`${i18nPrefix}.builtInDescription`], { ns: 'dataset' })}
-                    popupClassName="max-w-[100px]"
-                  >
-                    {t(($) => $[`${i18nPrefix}.builtInDescription`], { ns: 'dataset' })}
+                  <Infotip>
+                    <InfotipTrigger aria-labelledby={builtInLabelId} />
+                    <InfotipContent aria-labelledby={builtInLabelId} className="max-w-25">
+                      {t(($) => $[`${i18nPrefix}.builtInDescription`], { ns: 'dataset' })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
 
@@ -303,7 +313,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                         <Input
                           aria-label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
                           value={templeName}
-                          onChange={(e) => setTempleName(e.target.value)}
+                          onValueChange={setTempleName}
                           placeholder={t(($) => $[`${i18nPrefix}.namePlaceholder`], {
                             ns: 'dataset',
                           })}

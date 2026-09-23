@@ -1,27 +1,31 @@
-import type { OnSelectBlock, ToolWithProvider } from '../types'
-import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
+import type {
+  DatasourceEntity,
+  RagPipelineDatasourceProviderResponse,
+} from '@dify/contracts/api/console/rag/types.gen'
+import type { OnSelectBlock } from '../types'
+import type { DataSourceDefaultValue } from './types'
 import type { ListRef } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
-import { zDatasourceProviderType } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useRef } from 'react'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { renderI18nObject } from '@/i18n/metadata'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
-import Tools from './tools'
-import { ViewType } from './types'
+import { DatasourceList } from './datasource-list'
 
 type DataSourcesProps = {
   className?: string
   toolContentClassName?: string
   searchText: string
   onSelect: OnSelectBlock
-  dataSources: ToolWithProvider[]
+  dataSources: RagPipelineDatasourceProviderResponse[]
 }
 
 function DataSources({
@@ -40,46 +44,42 @@ function DataSources({
   }
 
   const filteredDatasources = useMemo(() => {
-    const hasFilter = searchText
-    if (!hasFilter)
-      return dataSources.filter((toolWithProvider) => toolWithProvider.tools.length > 0)
-
-    return dataSources.filter((toolWithProvider) => {
+    return dataSources.filter((provider) => {
+      const datasources = provider.declaration.datasources ?? []
+      if (!searchText) return datasources.length > 0
       return (
-        isMatchingKeywords(toolWithProvider.name, searchText) ||
-        toolWithProvider.tools.some((tool) => {
-          return (
-            tool.label[language]!.toLowerCase().includes(searchText.toLowerCase()) ||
-            tool.name.toLowerCase().includes(searchText.toLowerCase())
-          )
-        })
+        isMatchingKeywords(provider.provider, searchText) ||
+        datasources.some(
+          (datasource) =>
+            isMatchingKeywords(renderI18nObject(datasource.identity.label, language), searchText) ||
+            isMatchingKeywords(datasource.identity.name, searchText),
+        )
       )
     })
   }, [searchText, dataSources, language])
 
   const handleSelect = useCallback(
-    (_: BlockEnum, toolDefaultValue: ToolDefaultValue) => {
-      let defaultValue: DataSourceDefaultValue = {
-        plugin_id: toolDefaultValue?.provider_id,
-        provider_type: zDatasourceProviderType.parse(toolDefaultValue.provider_type),
-        provider_name: toolDefaultValue?.provider_name,
-        datasource_name: toolDefaultValue?.tool_name,
-        datasource_label: toolDefaultValue?.tool_label,
-        title: toolDefaultValue?.title,
-        plugin_unique_identifier: toolDefaultValue?.plugin_unique_identifier,
+    (provider: RagPipelineDatasourceProviderResponse, datasource: DatasourceEntity) => {
+      const label = renderI18nObject(datasource.identity.label, language)
+      const defaultValue: DataSourceDefaultValue = {
+        plugin_id: provider.plugin_id,
+        provider_type: provider.declaration.provider_type,
+        provider_name: provider.provider,
+        datasource_name: datasource.identity.name,
+        datasource_label: label,
+        title: label,
+        plugin_unique_identifier: provider.plugin_unique_identifier,
+        ...(provider.plugin_id === 'langgenius/file' && provider.provider === 'file'
+          ? { fileExtensions: DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE }
+          : {}),
       }
-      if (
-        toolDefaultValue?.provider_id === 'langgenius/file' &&
-        toolDefaultValue?.provider_name === 'file'
-      ) {
-        defaultValue = {
-          ...defaultValue,
-          fileExtensions: DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE,
-        }
-      }
-      onSelect(BlockEnum.DataSource, toolDefaultValue && defaultValue)
+      onSelect(BlockEnum.DataSource, defaultValue)
+      trackEvent('tool_selected', {
+        tool_name: datasource.identity.name,
+        plugin_id: provider.plugin_id,
+      })
     },
-    [onSelect],
+    [onSelect, language],
   )
 
   const { data: enable_marketplace } = useSuspenseQuery({
@@ -118,13 +118,11 @@ function DataSources({
         className="max-h-116 overflow-x-hidden overflow-y-auto"
         onScroll={() => pluginRef.current?.handleScroll()}
       >
-        <Tools
+        <DatasourceList
           className={toolContentClassName}
-          tools={filteredDatasources}
-          onSelect={handleSelect as OnSelectBlock}
-          viewType={ViewType.flat}
+          providers={filteredDatasources}
+          onSelect={handleSelect}
           hasSearchText={!!searchText}
-          canNotSelectMultiple
         />
         {enable_marketplace && (
           <PluginList

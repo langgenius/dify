@@ -10,18 +10,17 @@ import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Field, FieldDescription, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
-import { Plan } from '@/app/components/billing/type'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import Link from '@/next/link'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import UserInfo from '../user-info'
 import AppliedEducationContent from './applied-education-content'
 import InstitutionField from './institution-field'
@@ -41,7 +40,7 @@ type EducationApplyPageProps = {
 }
 
 const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
   const queryClient = useQueryClient()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState<EducationRole>('Student')
@@ -66,7 +65,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const appliedEducationCase = (() => {
     if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
 
-    if (plan === Plan.sandbox) return AppliedEducationCase.eligible
+    if (plan === 'sandbox') return AppliedEducationCase.eligible
 
     return AppliedEducationCase.activeSubscription
   })()

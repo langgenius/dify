@@ -7,8 +7,8 @@ import type {
   updatePackageResponse,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
+import { consoleClient } from '@/service/console'
 import { get, getMarketplace, post, upload } from './base'
-import { consoleClient } from './client'
 
 export const uploadFile = async (file: File, isBundle: boolean) => {
   const formData = new FormData()

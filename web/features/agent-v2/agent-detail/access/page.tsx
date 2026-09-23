@@ -10,7 +10,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { ServiceApiAccessCard } from './components/service-api-access-card'
 import { WebAppAccessCard } from './components/web-app-access-card'
@@ -21,7 +21,7 @@ type AgentAccessPageProps = {
 }
 
 export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
   const agentQuery = useQuery(
     consoleQuery.agent.byAgentId.get.queryOptions({

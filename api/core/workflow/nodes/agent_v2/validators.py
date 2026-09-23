@@ -7,8 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
+from core.agent.workflow_references import (
+    extract_workflow_node_output_selectors,
+    workflow_previous_node_output_refs_from_selectors,
+)
 from core.workflow.graph_topology import WorkflowGraphTopology
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
@@ -28,6 +32,7 @@ from models.model import UploadFile
 from models.workflow import Workflow
 from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 
+from .discriminator import is_dify_agent_node_data
 from .entities import DifyAgentNodeData
 
 
@@ -73,6 +78,7 @@ class WorkflowAgentNodeValidator:
             session=session,
             workflow=workflow,
             require_binding=False,
+            require_agent_model=False,
             validate_previous_node_topology=False,
         )
 
@@ -82,6 +88,7 @@ class WorkflowAgentNodeValidator:
             session=session,
             workflow=workflow,
             require_binding=True,
+            require_agent_model=True,
             validate_previous_node_topology=True,
         )
 
@@ -92,6 +99,7 @@ class WorkflowAgentNodeValidator:
         session: Session,
         workflow: Workflow,
         require_binding: bool,
+        require_agent_model: bool,
         validate_previous_node_topology: bool,
     ) -> None:
         graph = workflow.graph_dict
@@ -111,7 +119,20 @@ class WorkflowAgentNodeValidator:
                         f"Workflow Agent node {node_id} requires a binding before publishing."
                     )
                 continue
-            cls.validate_binding(session=session, binding=binding, topology=topology)
+            if (
+                require_binding
+                and node_data.get("error_strategy") == ErrorStrategy.DEFAULT_VALUE
+                and WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).output_routes.enabled
+            ):
+                raise WorkflowAgentNodeValidationError(
+                    "Output routes do not support the node-level default-value error strategy."
+                )
+            cls.validate_binding(
+                session=session,
+                binding=binding,
+                topology=topology,
+                require_agent_model=require_agent_model,
+            )
 
         if require_binding:
             for node_id, node_data in cls.iter_tool_nodes(graph):
@@ -124,6 +145,7 @@ class WorkflowAgentNodeValidator:
         session: Session,
         binding: WorkflowAgentNodeBinding,
         topology: _WorkflowGraphTopology | None = None,
+        require_agent_model: bool = True,
     ) -> None:
         """Validate binding ownership, publication state, Agent Soul, and node-job references."""
 
@@ -173,7 +195,7 @@ class WorkflowAgentNodeValidator:
             )
 
         agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
-        if agent_soul.model is None:
+        if require_agent_model and agent_soul.model is None:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} requires Agent Soul model config."
             )
@@ -181,6 +203,8 @@ class WorkflowAgentNodeValidator:
         cls._validate_agent_soul_tools(binding=binding, agent_soul=agent_soul)
         cls._validate_agent_soul_knowledge(session=session, binding=binding, agent_soul=agent_soul)
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+        if require_agent_model:
+            node_job.output_routes.validate_for_execution()
         cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
 
     @classmethod
@@ -211,7 +235,14 @@ class WorkflowAgentNodeValidator:
                     ref_context=f"output {output.name} benchmark file",
                 )
 
-        for ref in node_job.previous_node_output_refs:
+        route_refs = (
+            workflow_previous_node_output_refs_from_selectors(
+                extract_workflow_node_output_selectors("\n".join(route.name for route in node_job.output_routes.routes))
+            )
+            if node_job.output_routes.enabled
+            else []
+        )
+        for ref in [*node_job.previous_node_output_refs, *route_refs]:
             selector = cls.selector_from_ref(ref)
             if selector is None:
                 raise WorkflowAgentNodeValidationError(
@@ -258,7 +289,7 @@ class WorkflowAgentNodeValidator:
             node_data = node.get("data")
             if not isinstance(node_id, str) or not isinstance(node_data, Mapping):
                 continue
-            if node_data.get("type") == BuiltinNodeTypes.AGENT and str(node_data.get("version")) == "2":
+            if is_dify_agent_node_data(node_data):
                 yield node_id, node_data
 
     @staticmethod

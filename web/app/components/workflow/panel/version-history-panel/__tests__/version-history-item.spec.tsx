@@ -1,6 +1,7 @@
 import type { VersionHistory } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 import VersionHistoryItem from '../version-history-item'
 
@@ -142,13 +143,9 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      const title = screen.getByText('Release 1')
-      const itemContainer = title.closest('.group')
-      if (!itemContainer) throw new Error('Expected version history item container')
+      fireEvent.mouseEnter(screen.getByRole('button', { name: 'Release 1' }))
 
-      fireEvent.mouseEnter(itemContainer)
-
-      const triggerButton = await screen.findByRole('button')
+      const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
 
       expect(screen.getByText('workflow.versionHistory.latest')).toBeInTheDocument()
@@ -156,7 +153,7 @@ describe('VersionHistoryItem', () => {
       expect(screen.getByText(/Alice$/)).toBeInTheDocument()
       expect(screen.getByText('workflow.common.restore')).toBeInTheDocument()
       expect(screen.getByText('workflow.versionHistory.editVersionInfo')).toBeInTheDocument()
-      expect(screen.getByText('app.export')).toBeInTheDocument()
+      expect(screen.getByText('app.exportApp')).toBeInTheDocument()
       expect(screen.getByText('workflow.versionHistory.copyId')).toBeInTheDocument()
       expect(screen.getByText('version-1')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
@@ -188,16 +185,12 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      const title = screen.getByText('Release 1')
-      const itemContainer = title.closest('.group')
-      if (!itemContainer) throw new Error('Expected version history item container')
+      fireEvent.mouseEnter(screen.getByRole('button', { name: 'Release 1' }))
 
-      fireEvent.mouseEnter(itemContainer)
-
-      const triggerButton = await screen.findByRole('button')
+      const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
 
-      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.exportApp')).not.toBeInTheDocument()
       expect(screen.getByText('workflow.versionHistory.copyId')).toBeInTheDocument()
     })
 
@@ -218,9 +211,34 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      await user.click(screen.getByText('Release 1'))
+      const versionButton = screen.getByRole('button', { name: 'Release 1' })
+      expect(versionButton).toHaveAttribute('aria-current', 'true')
+
+      await user.click(versionButton)
 
       expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('should expose the version and action menu in keyboard order', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <VersionHistoryItem
+          item={createVersionHistory()}
+          currentVersion={null}
+          latestVersionId="version-1"
+          onClick={vi.fn()}
+          handleClickActionMenuItem={vi.fn()}
+          canImportExportDSL
+          isLast
+        />,
+      )
+
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Release 1' })).toHaveFocus()
+
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'common.operation.more' })).toHaveFocus()
     })
   })
 })

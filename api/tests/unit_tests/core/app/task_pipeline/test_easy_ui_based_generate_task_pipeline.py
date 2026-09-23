@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -31,7 +32,8 @@ from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
-from models.model import AppMode
+from models.enums import ConversationFromSource
+from models.model import AppMode, Conversation, Message
 
 
 @pytest.fixture
@@ -92,21 +94,25 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         return manager
 
     @pytest.fixture
-    def mock_conversation(self):
-        """Create a mock conversation."""
-        conversation = Mock()
-        conversation.id = "test-conversation-id"
-        conversation.mode = "chat"
-        return conversation
+    def conversation(self):
+        """Create a transient mapped conversation."""
+        return Conversation(
+            id="test-conversation-id",
+            app_id="test-app-id",
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source=ConversationFromSource.API,
+            inputs={},
+        )
 
     @pytest.fixture
-    def mock_message(self):
-        """Create a mock message."""
-        message = Mock()
-        message.id = "test-message-id"
-        message.created_at = Mock()
-        message.created_at.timestamp.return_value = 1234567890
-        return message
+    def message(self):
+        """Create a transient mapped message."""
+        return Message(
+            id="test-message-id",
+            created_at=datetime.fromtimestamp(1234567890, tz=UTC),
+        )
 
     @pytest.fixture
     def mock_task_state(self):
@@ -129,8 +135,8 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         self,
         mock_application_generate_entity,
         mock_queue_manager,
-        mock_conversation,
-        mock_message,
+        conversation,
+        message,
         mock_message_cycle_manager,
         mock_task_state,
     ):
@@ -141,8 +147,8 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             pipeline = EasyUIBasedGenerateTaskPipeline(
                 application_generate_entity=mock_application_generate_entity,
                 queue_manager=mock_queue_manager,
-                conversation=mock_conversation,
-                message=mock_message,
+                conversation=conversation,
+                message=message,
                 stream=True,
             )
             pipeline._message_cycle_manager = mock_message_cycle_manager
@@ -355,10 +361,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         list(pipeline._process_stream_response(publisher=publisher, trace_manager=None))
 
         # Assert
-        # Called once with message and once with None at the end
-        assert publisher.publish.call_count == 2
-        publisher.publish.assert_any_call(mock_queue_message)
-        publisher.publish.assert_any_call(None)
+        publisher.publish.assert_called_once_with(mock_queue_message)
 
     def test_trace_manager_passed_to_save_message(self, pipeline, committed_sessions):
         """Test that trace manager is passed to _save_message."""

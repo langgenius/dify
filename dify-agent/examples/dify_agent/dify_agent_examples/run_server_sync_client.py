@@ -13,7 +13,6 @@ from dify_agent.client import Client
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-    DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
 )
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, RunComposition, RunLayerSpec
@@ -21,10 +20,11 @@ from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, Run
 
 API_BASE_URL = "http://localhost:8000"
 TENANT_ID = "replace-with-tenant-id"
+USER_ID = "replace-with-user-id"
+APP_ID = "replace-with-app-id"
 PLUGIN_ID = "langgenius/openai"
 PLUGIN_PROVIDER = "openai"
 MODEL_NAME = "gpt-4o-mini"
-MODEL_CREDENTIALS: dict[str, DifyPluginCredentialValue] = {"api_key": "replace-with-provider-key"}
 
 
 def main() -> None:
@@ -46,7 +46,9 @@ def main() -> None:
                             type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
                             config=DifyExecutionContextLayerConfig(
                                 tenant_id=TENANT_ID,
+                                user_id=USER_ID,
                                 user_from="account",
+                                app_id=APP_ID,
                                 agent_mode="workflow_run",
                                 invoke_from="service-api",
                             ),
@@ -59,7 +61,6 @@ def main() -> None:
                                 plugin_id=PLUGIN_ID,
                                 model_provider=PLUGIN_PROVIDER,
                                 model=MODEL_NAME,
-                                credentials=MODEL_CREDENTIALS,
                             ),
                         ),
                         # Minimal plugin-tools example. API callers should pass

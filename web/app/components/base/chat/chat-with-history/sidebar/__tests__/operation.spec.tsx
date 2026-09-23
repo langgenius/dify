@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Operation from '../operation'
 
 describe('Operation', () => {
@@ -34,11 +34,6 @@ describe('Operation', () => {
     await user.click(trigger)
 
     expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
-  })
-
-  it('should apply active state to ActionButton', () => {
-    render(<Operation {...defaultProps} isActive={true} />)
-    expect(getTrigger()).toBeInTheDocument()
   })
 
   it('should call togglePin when pin/unpin is clicked', async () => {
@@ -109,7 +104,7 @@ describe('Operation', () => {
     expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
   })
 
-  it('should close dropdown when item hovering stops', async () => {
+  it('should let the menu primitive own open state when item hovering stops', async () => {
     const user = userEvent.setup()
     const { rerender } = render(<Operation {...defaultProps} isItemHovering={true} />)
 
@@ -118,9 +113,8 @@ describe('Operation', () => {
 
     rerender(<Operation {...defaultProps} isItemHovering={false} />)
 
-    await waitFor(() => {
-      expect(screen.queryByText('explore.sidebar.action.pin')).not.toBeInTheDocument()
-    })
+    expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
+    expect(getTrigger()).toHaveAttribute('data-popup-open')
   })
 
   it('should keep the trigger mounted while visually hidden', () => {

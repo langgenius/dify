@@ -1,8 +1,8 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import RetrievalSettings from '../external-knowledge-base/create/RetrievalSettings'
 
 type ModifyExternalRetrievalModalProps = {
@@ -24,7 +24,7 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
   initialScoreThreshold,
   initialScoreThresholdEnabled,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetHitTesting'])
   const [topK, setTopK] = useState(initialTopK)
   const [scoreThreshold, setScoreThreshold] = useState(initialScoreThreshold)
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(initialScoreThresholdEnabled)
@@ -50,18 +50,18 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
   }
 
   return (
-    <div className="shadows-shadow-2xl absolute top-9 right-3.5 z-10 flex w-[320px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg">
+    <div className="absolute top-9 right-3.5 z-10 flex w-[320px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg">
       <div className="flex items-center justify-between self-stretch p-4 pb-2">
         <div className="grow system-xl-semibold text-text-primary">
           {t(($) => $.settingTitle, { ns: 'datasetHitTesting' })}
         </div>
-        <ActionButton
+        <IconButton
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           className="ml-auto"
           onClick={onClose}
         >
           <RiCloseLine aria-hidden className="size-4 shrink-0" />
-        </ActionButton>
+        </IconButton>
       </div>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch p-4 pt-2">
         <RetrievalSettings

@@ -37,22 +37,27 @@ const FileList = ({
 }: FileListProps) => {
   const [inputValue, setInputValue] = useState(keywords)
 
-  const { run: updateKeywordsWithDebounce } = useDebounceFn(
+  const { run: updateKeywordsWithDebounce, cancel: cancelKeywordsUpdate } = useDebounceFn(
     (keywords: string) => {
       updateKeywords(keywords)
     },
     { wait: 500 },
   )
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const keywords = e.target.value
-    setInputValue(keywords)
-    updateKeywordsWithDebounce(keywords)
-  }
-
   const handleResetKeywords = () => {
+    cancelKeywordsUpdate()
     setInputValue('')
     resetKeywords()
+  }
+
+  const handleSearchValueChange = (keywords: string) => {
+    if (!keywords) {
+      handleResetKeywords()
+      return
+    }
+
+    setInputValue(keywords)
+    updateKeywordsWithDebounce(keywords)
   }
 
   return (
@@ -63,9 +68,8 @@ const FileList = ({
         keywords={keywords}
         bucket={bucket}
         isInPipeline={isInPipeline}
-        handleInputChange={handleInputChange}
+        onSearchValueChange={handleSearchValueChange}
         searchResultsLength={searchResultsLength}
-        handleResetKeywords={handleResetKeywords}
       />
       <List
         fileList={fileList}

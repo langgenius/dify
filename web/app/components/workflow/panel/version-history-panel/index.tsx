@@ -1,20 +1,21 @@
 'use client'
 
+import type { AppModeEnum } from '@/types/app'
 import type { VersionHistory } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
-import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { Plan } from '@/app/components/billing/type'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
-import { useProviderContext } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import {
   useDeleteWorkflow,
   useInvalidAllLastRun,
@@ -46,6 +47,7 @@ const HISTORY_PER_PAGE = 10
 const INITIAL_PAGE = 1
 
 export type VersionHistoryPanelProps = {
+  appMode?: AppModeEnum
   getVersionListUrl?: string
   deleteVersionUrl?: (versionId: string) => string
   restoreVersionUrl: (versionId: string) => string
@@ -54,21 +56,30 @@ export type VersionHistoryPanelProps = {
 }
 
 export const VersionHistoryPanel = ({
+  appMode,
   getVersionListUrl,
   deleteVersionUrl,
   restoreVersionUrl,
   updateVersionUrl,
   latestVersionId,
 }: VersionHistoryPanelProps) => {
-  const [filterValue, setFilterValue] = useState(WorkflowVersionFilterOptions.all)
+  const [filterValue, setFilterValue] = useState<WorkflowVersionFilterOptions>(
+    WorkflowVersionFilterOptions.all,
+  )
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
   const [operatedItem, setOperatedItem] = useState<VersionHistory>()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
-  const { plan, enableBilling } = useProviderContext()
-  const canUseWorkflowVersionAction = !enableBilling || plan.type !== Plan.sandbox
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
   const workflowStore = useWorkflowStore()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -85,7 +96,7 @@ export const VersionHistoryPanel = ({
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const { deleteAllInspectVars } = workflowStore.getState()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common', 'workflow'])
 
   const {
     data: versionHistory,
@@ -151,7 +162,8 @@ export const VersionHistoryPanel = ({
       setOperatedItem(item)
       switch (operation) {
         case VersionHistoryContextMenuOptions.restore:
-          if (!canUseWorkflowVersionAction) {
+          if (isPlanUnavailable) return
+          if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
             setIsRestorePlanUpgradeModalOpen(true)
             break
           }
@@ -168,7 +180,8 @@ export const VersionHistoryPanel = ({
           toast.success(t(($) => $['versionHistory.action.copyIdSuccess'], { ns: 'workflow' }))
           break
         case VersionHistoryContextMenuOptions.exportDSL:
-          if (!canUseWorkflowVersionAction) {
+          if (isPlanUnavailable) return
+          if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
             setIsRestorePlanUpgradeModalOpen(true)
             break
           }
@@ -177,7 +190,7 @@ export const VersionHistoryPanel = ({
           break
       }
     },
-    [canUseWorkflowVersionAction, canImportExportDSL, t, handleExportDSL],
+    [isPlanUnavailable, deploymentEdition, plan, canImportExportDSL, t, handleExportDSL],
   )
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {
@@ -325,6 +338,9 @@ export const VersionHistoryPanel = ({
       const { id, ...rest } = params
       await updateWorkflow(
         {
+          ...(configsMap?.flowType === FlowType.appFlow && configsMap.flowId
+            ? { appId: configsMap.flowId, appMode }
+            : {}),
           url: updateVersionUrl?.(id || '') || '',
           ...rest,
         },
@@ -349,6 +365,7 @@ export const VersionHistoryPanel = ({
       )
     },
     [
+      appMode,
       configsMap?.flowId,
       configsMap?.flowType,
       invalidateAppWorkflow,
@@ -371,13 +388,15 @@ export const VersionHistoryPanel = ({
           onClickFilterItem={handleClickFilterItem}
           handleSwitch={handleSwitch}
         />
-        <Divider type="vertical" className="mx-1 h-3.5" />
-        <div
-          className="flex size-6 cursor-pointer items-center justify-center p-0.5"
+        <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
+        <button
+          type="button"
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          className="flex size-6 cursor-pointer items-center justify-center rounded p-0.5 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={handleClose}
         >
-          <RiCloseLine className="size-4 text-text-tertiary" />
-        </div>
+          <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
+        </button>
       </div>
       <div className="flex h-0 flex-1 flex-col">
         <div className="flex-1 overflow-y-auto px-3 py-2">
@@ -412,18 +431,30 @@ export const VersionHistoryPanel = ({
         </div>
         {hasNextPage && (
           <div className="p-2">
-            <div className="flex cursor-pointer items-center gap-x-1" onClick={handleNextPage}>
-              <div className="item-center flex justify-center p-0.5">
+            <button
+              type="button"
+              aria-busy={isFetching || undefined}
+              className="flex w-full cursor-pointer items-center gap-x-1 rounded outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-wait"
+              disabled={isFetching}
+              onClick={handleNextPage}
+            >
+              <span className="flex items-center justify-center p-0.5">
                 {isFetching ? (
-                  <RiLoader2Line className="size-3.5 animate-spin text-text-accent" />
+                  <span
+                    aria-hidden
+                    className="i-ri-loader-2-line size-3.5 animate-spin text-text-accent motion-reduce:animate-none"
+                  />
                 ) : (
-                  <RiArrowDownDoubleLine className="size-3.5 text-text-accent" />
+                  <span
+                    aria-hidden
+                    className="i-ri-arrow-down-double-line size-3.5 text-text-accent"
+                  />
                 )}
-              </div>
-              <div className="py-px system-xs-medium-uppercase text-text-accent">
+              </span>
+              <span className="py-px system-xs-medium-uppercase text-text-accent">
                 {t(($) => $['common.loadMore'], { ns: 'workflow' })}
-              </div>
-            </div>
+              </span>
+            </button>
           </div>
         )}
       </div>

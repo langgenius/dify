@@ -1,10 +1,10 @@
 import type { VisualEditorProps } from '.'
 import type { Field } from '../../../types'
 import type { EditData } from './edit-card'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { ArrayType, Type } from '../../../types'
 import { findPropertyWithPath } from '../../../utils'
 import { useMittContext } from './context'
@@ -23,7 +23,7 @@ type AddEventParams = {
 
 export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   const { schema: jsonSchema, onChange: doOnChange } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const onChange = doOnChange || noop
   const backupSchema = useVisualEditorStore((state) => state.backupSchema)
   const setBackupSchema = useVisualEditorStore((state) => state.setBackupSchema)

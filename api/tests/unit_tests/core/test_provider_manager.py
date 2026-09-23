@@ -9,6 +9,7 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core import provider_manager as provider_manager_module
+from core.entities.model_entities import DefaultModelSetting
 from core.entities.provider_entities import (
     CustomConfiguration,
     CustomProviderConfiguration,
@@ -36,6 +37,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _build_provider_manager() -> ProviderManager:
@@ -302,7 +304,7 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
     paid_pool = SimpleNamespace(quota_used=0, quota_limit=0)
 
     with (
-        patch.object(provider_manager_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
         patch(
             "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
             {provider_entity.provider: _build_hosting_provider()},
@@ -972,6 +974,156 @@ def test_update_default_model_record_creates_record_with_origin_model_type(provi
     assert {record.tenant_id for record in persisted_defaults} == {"tenant-id", "other-tenant"}
 
 
+@pytest.mark.parametrize("clear_all", [False, True])
+def test_replace_default_model_records_removes_omitted_types_only_for_current_tenant(
+    provider_db: Session, clear_all: bool
+) -> None:
+    manager = _build_provider_manager()
+    existing_default = TenantDefaultModel(
+        tenant_id="tenant-id",
+        provider_name="anthropic",
+        model_name="claude-3-sonnet",
+        model_type=ModelType.LLM,
+    )
+    omitted_default = TenantDefaultModel(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="text-embedding-3-small",
+        model_type=ModelType.TEXT_EMBEDDING,
+    )
+    other_tenant_default = TenantDefaultModel(
+        tenant_id="other-tenant",
+        provider_name="openai",
+        model_name="text-embedding-3-small",
+        model_type=ModelType.TEXT_EMBEDDING,
+    )
+    provider_db.add_all([existing_default, omitted_default, other_tenant_default])
+    provider_db.commit()
+    configurations = MagicMock()
+    configurations.__contains__.return_value = True
+    configurations.get_models.side_effect = lambda model_type, **_kwargs: {
+        ModelType.LLM: [Mock(model="gpt-4")],
+        ModelType.RERANK: [Mock(model="rerank-v3")],
+    }[model_type]
+    settings = (
+        []
+        if clear_all
+        else [
+            DefaultModelSetting(model_type=ModelType.LLM, provider="openai", model="gpt-4"),
+            DefaultModelSetting(model_type=ModelType.RERANK, provider="cohere", model="rerank-v3"),
+        ]
+    )
+
+    with patch.object(manager, "get_configurations", return_value=configurations) as get_configurations:
+        manager.replace_default_model_records("tenant-id", settings)
+
+    provider_db.expire_all()
+    defaults = list(provider_db.scalars(select(TenantDefaultModel)))
+    expected_defaults = {("other-tenant", ModelType.TEXT_EMBEDDING, "openai", "text-embedding-3-small")}
+    expected_defaults.update(("tenant-id", setting.model_type, setting.provider, setting.model) for setting in settings)
+    assert {
+        (record.tenant_id, record.model_type, record.provider_name, record.model_name) for record in defaults
+    } == expected_defaults
+    if clear_all:
+        get_configurations.assert_not_called()
+    else:
+        persisted_default = provider_db.get(TenantDefaultModel, existing_default.id)
+        assert persisted_default is not None
+        assert persisted_default.model_name == "gpt-4"
+
+
+@pytest.mark.parametrize(
+    ("provider", "model", "error"),
+    [
+        ("missing-provider", "text-embedding-3-small", "Provider missing-provider does not exist"),
+        ("openai", "missing-model", "Model missing-model does not exist"),
+    ],
+)
+def test_replace_default_model_records_preserves_defaults_when_validation_fails(
+    provider_db: Session, provider: str, model: str, error: str
+) -> None:
+    manager = _build_provider_manager()
+    existing_defaults = [
+        TenantDefaultModel(
+            tenant_id="tenant-id", provider_name="anthropic", model_name="claude-3-sonnet", model_type=ModelType.LLM
+        ),
+        TenantDefaultModel(
+            tenant_id="tenant-id", provider_name="cohere", model_name="rerank-v3", model_type=ModelType.RERANK
+        ),
+    ]
+    provider_db.add_all(existing_defaults)
+    provider_db.commit()
+    original_defaults = {(record.id, record.provider_name, record.model_name) for record in existing_defaults}
+    configurations = MagicMock()
+    configurations.__contains__.side_effect = lambda name: name == "openai"
+    configurations.get_models.side_effect = lambda model_type, **_kwargs: {
+        ModelType.LLM: [Mock(model="gpt-4")],
+        ModelType.TEXT_EMBEDDING: [Mock(model="text-embedding-3-small")],
+    }[model_type]
+
+    with (
+        patch.object(manager, "get_configurations", return_value=configurations),
+        pytest.raises(ValueError, match=error),
+    ):
+        manager.replace_default_model_records(
+            "tenant-id",
+            [
+                DefaultModelSetting(model_type=ModelType.LLM, provider="openai", model="gpt-4"),
+                DefaultModelSetting(model_type=ModelType.TEXT_EMBEDDING, provider=provider, model=model),
+            ],
+        )
+
+    provider_db.expire_all()
+    assert {
+        (record.id, record.provider_name, record.model_name)
+        for record in provider_db.scalars(select(TenantDefaultModel))
+    } == original_defaults
+
+
+def test_replace_default_model_records_rolls_back_when_persistence_fails(provider_db: Session) -> None:
+    manager = _build_provider_manager()
+    existing_defaults = [
+        TenantDefaultModel(
+            tenant_id="tenant-id", provider_name="anthropic", model_name="claude-3-sonnet", model_type=ModelType.LLM
+        ),
+        TenantDefaultModel(
+            tenant_id="tenant-id", provider_name="cohere", model_name="rerank-v3", model_type=ModelType.RERANK
+        ),
+    ]
+    provider_db.add_all(existing_defaults)
+    provider_db.commit()
+    original_defaults = {(record.id, record.provider_name, record.model_name) for record in existing_defaults}
+    configurations = MagicMock()
+    configurations.__contains__.return_value = True
+    configurations.get_models.return_value = [Mock(model="gpt-4"), Mock(model="text-embedding-3-small")]
+
+    def fail_after_flush(_session: Session, _flush_context: object) -> None:
+        raise RuntimeError("Persistence failed")
+
+    with Session(bind=provider_db.get_bind()) as write_session:
+        event.listen(write_session, "after_flush", fail_after_flush)
+        with (
+            patch.object(manager, "get_configurations", return_value=configurations),
+            patch.object(provider_manager_module.session_factory, "create_session", return_value=write_session),
+            pytest.raises(RuntimeError, match="Persistence failed"),
+        ):
+            manager.replace_default_model_records(
+                "tenant-id",
+                [
+                    DefaultModelSetting(model_type=ModelType.LLM, provider="openai", model="gpt-4"),
+                    DefaultModelSetting(
+                        model_type=ModelType.TEXT_EMBEDDING, provider="openai", model="text-embedding-3-small"
+                    ),
+                ],
+            )
+
+    provider_db.expire_all()
+    assert {
+        (record.id, record.provider_name, record.model_name)
+        for record in provider_db.scalars(select(TenantDefaultModel))
+    } == original_defaults
+
+
 def test_get_all_providers_normalizes_provider_names_with_model_provider_id(provider_db: Session) -> None:
     openai_provider = Provider(
         tenant_id="tenant-id",
@@ -1143,8 +1295,8 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
 
     assert version_bumped is True
     assert fake_redis.store[version_key] == "1"
-    assert "provider_configurations:tenant:tenant-id:source:provider_model_credentials:v:0" not in fake_redis.store
-    assert "provider_configurations:tenant:tenant-id:source:provider_model_credentials:v:1" not in fake_redis.store
+    assert "provider_configurations:v2:tenant:tenant-id:source:provider_model_credentials:v:0" not in fake_redis.store
+    assert "provider_configurations:v2:tenant:tenant-id:source:provider_model_credentials:v:1" not in fake_redis.store
     assert result["openai"][0].credential_name == "primary"
 
 

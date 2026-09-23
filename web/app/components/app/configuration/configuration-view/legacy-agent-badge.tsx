@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
 export function LegacyAgentBadge() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const description = t(($) => $['legacyAgentBadge.description'], { ns: 'appDebug' })
 
   return (
@@ -23,7 +23,7 @@ export function LegacyAgentBadge() {
       <PopoverContent
         placement="bottom-start"
         sideOffset={6}
-        popupClassName="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary"
+        className="max-w-75 px-3 py-2 system-xs-regular text-text-tertiary"
       >
         <div>{description}</div>
         <Link

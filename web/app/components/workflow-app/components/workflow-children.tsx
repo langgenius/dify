@@ -2,10 +2,11 @@ import type {
   BlockDefaultValue,
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { ExportSecretEnvironmentVariable } from '@/app/components/workflow/export-secret-env-event'
 import { memo, useCallback, useState } from 'react'
 import { useStoreApi } from 'reactflow'
-import { DSL_EXPORT_CHECK, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
+import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
+import { isExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
 import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
@@ -28,12 +29,9 @@ const Features = dynamic(() => import('@/app/components/workflow/features'), {
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
   ssr: false,
 })
-const DSLExportConfirmModal = dynamic(
-  () => import('@/app/components/workflow/dsl-export-confirm-modal'),
-  {
-    ssr: false,
-  },
-)
+const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
+  ssr: false,
+})
 const WorkflowOnboardingModal = dynamic(() => import('./workflow-onboarding-modal'), {
   ssr: false,
 })
@@ -65,7 +63,7 @@ const getTriggerPluginNodeData = (
 
 const WorkflowChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
-  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const [secretEnvList, setSecretEnvList] = useState<ExportSecretEnvironmentVariable[]>([])
   const showFeaturesPanel = useStore((s) => s.showFeaturesPanel)
   const showImportDSLModal = useStore((s) => s.showImportDSLModal)
   const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
@@ -80,10 +78,10 @@ const WorkflowChildren = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleOnboardingClose } = useAutoOnboarding()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
-  const { exportCheck, handleExportDSL } = useDSL()
+  const { exportCheck, handleExportDSL, isExporting } = useDSL()
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === DSL_EXPORT_CHECK) setSecretEnvList(v.payload.data as EnvironmentVariable[])
+  eventEmitter?.useSubscription((event) => {
+    if (isExportSecretEnvironmentEvent(event)) setSecretEnvList(event.payload.data)
   })
 
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
@@ -180,9 +178,10 @@ const WorkflowChildren = () => {
         />
       )}
       {canImportExportDSL && secretEnvList.length > 0 && (
-        <DSLExportConfirmModal
+        <AppExportConfirmModal
           envList={secretEnvList}
           onConfirm={handleExportDSL!}
+          isExporting={isExporting}
           onClose={() => setSecretEnvList([])}
         />
       )}

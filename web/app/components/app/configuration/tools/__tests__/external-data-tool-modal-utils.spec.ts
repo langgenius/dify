@@ -1,6 +1,7 @@
-import type { I18nText } from '@/i18n-config/language'
+import type { TFunction } from 'i18next'
+import type { I18nText } from '@/i18n/language'
 import type { CodeBasedExtensionItem } from '@/models/common'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
 import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildProviders,
@@ -13,7 +14,7 @@ const t = withSelectorKey((key: string, options?: Record<string, unknown>) => {
   if (options?.key) return `${key}:${options.key as string}`
 
   return key
-})
+}) as TFunction<['appDebug', 'common']>
 
 const i18n = (en: string, zh = en): I18nText =>
   ({ 'en-US': en, 'zh-Hans': zh }) as unknown as I18nText

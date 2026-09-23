@@ -1,9 +1,14 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactElement } from 'react'
 import type { Shape } from '../../../store'
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useEffect, useRef } from 'react'
-import { Plan } from '@/app/components/billing/type'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
+import { AppModeEnum } from '@/types/app'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -19,13 +24,16 @@ const mockWorkflowStoreSetState = vi.fn()
 const mockEmitRestoreIntent = vi.fn()
 const mockEmitRestoreComplete = vi.fn()
 const mockEmitWorkflowUpdate = vi.fn()
+const mockFetchNextPage = vi.fn()
 const mockToast = vi.hoisted(() => ({
   error: vi.fn(),
   success: vi.fn(),
 }))
-let mockPlanType = Plan.professional
-let mockEnableBilling = true
+let mockPlanType: CloudPlan = 'professional'
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 let mockPublishedEnvironments: VersionHistory['environments']
+let mockHasNextPage = false
+let mockIsFetching = false
 
 const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
   id: 'version-id',
@@ -73,14 +81,7 @@ type MockVersionHistoryItemProps = {
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: { type: mockPlanType },
-    enableBilling: mockEnableBilling,
-  }),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mockToast }))
+vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
 vi.mock('@/service/use-workflow', () => ({
   useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
@@ -109,9 +110,9 @@ vi.mock('@/service/use-workflow', () => ({
         },
       ],
     },
-    fetchNextPage: vi.fn(),
-    hasNextPage: false,
-    isFetching: false,
+    fetchNextPage: mockFetchNextPage,
+    hasNextPage: mockHasNextPage,
+    isFetching: mockIsFetching,
   }),
 }))
 
@@ -184,7 +185,11 @@ vi.mock('../restore-confirm-modal', () => ({
 
       if (!isOpen) return null
 
-      return <button onClick={() => onRestore(versionInfo)}>confirm restore</button>
+      return (
+        <button type="button" onClick={() => onRestore(versionInfo)}>
+          confirm restore
+        </button>
+      )
     }
 
     return <MockRestoreConfirmModal />
@@ -200,6 +205,7 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
     onPublish: (params: { id?: string; title: string; releaseNotes: string }) => Promise<void>
   }) => (
     <button
+      type="button"
       onClick={() =>
         onPublish({
           id: versionInfo.id,
@@ -228,15 +234,19 @@ vi.mock('../version-history-item', () => ({
 
       return (
         <div>
-          <button onClick={() => onClick(item)}>{item.marked_name || item.version}</button>
+          <button type="button" onClick={() => onClick(item)}>
+            {item.marked_name || item.version}
+          </button>
           {item.version !== WorkflowVersion.Draft && (
             <>
               <button
+                type="button"
                 onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.restore)}
               >
                 {`restore-${item.id}`}
               </button>
               <button
+                type="button"
                 onClick={() =>
                   handleClickActionMenuItem(VersionHistoryContextMenuOptions.exportDSL)
                 }
@@ -244,11 +254,13 @@ vi.mock('../version-history-item', () => ({
                 {`export-${item.id}`}
               </button>
               <button
+                type="button"
                 onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.edit)}
               >
                 {`edit-${item.id}`}
               </button>
               <button
+                type="button"
                 onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.delete)}
               >
                 {`delete-${item.id}`}
@@ -269,9 +281,38 @@ describe('VersionHistoryPanel', () => {
     mockRestoreWorkflow.mockResolvedValue(undefined)
     mockUpdateWorkflow.mockResolvedValue(undefined)
     mockCurrentVersion = null
-    mockPlanType = Plan.professional
-    mockEnableBilling = true
+    mockPlanType = 'professional'
+    deploymentEdition = 'CLOUD'
     mockPublishedEnvironments = undefined
+    mockHasNextPage = false
+    mockIsFetching = false
+  })
+
+  it('should expose close and pagination actions as accessible buttons', async () => {
+    const user = userEvent.setup()
+    mockHasNextPage = true
+    const { VersionHistoryPanel } = await import('../index')
+
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
+    expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
+
+    await waitFor(() => {
+      expect(mockHandleLoadBackupDraft).toHaveBeenCalled()
+    })
+    vi.clearAllMocks()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(mockHandleLoadBackupDraft).toHaveBeenCalledTimes(1)
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isRestoring: false })
+    expect(mockSetShowWorkflowVersionHistoryPanel).toHaveBeenCalledWith(false)
   })
 
   describe('Version Click Behavior', () => {
@@ -343,7 +384,7 @@ describe('VersionHistoryPanel', () => {
 
   it('should show plan upgrade modal instead of restore confirmation for sandbox users', async () => {
     const { VersionHistoryPanel } = await import('../index')
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
 
     render(
       <VersionHistoryPanel
@@ -363,7 +404,7 @@ describe('VersionHistoryPanel', () => {
 
   it('should show plan upgrade modal instead of exporting DSL for sandbox users', async () => {
     const { VersionHistoryPanel } = await import('../index')
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
 
     render(
       <VersionHistoryPanel
@@ -464,6 +505,7 @@ describe('VersionHistoryPanel', () => {
 
     render(
       <VersionHistoryPanel
+        appMode={AppModeEnum.WORKFLOW}
         latestVersionId="published-version-id"
         restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
         updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
@@ -474,7 +516,31 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
 
     await waitFor(() => {
+      expect(mockUpdateWorkflow).toHaveBeenCalledWith(
+        {
+          appId: 'app-1',
+          appMode: AppModeEnum.WORKFLOW,
+          releaseNotes: 'Updated notes',
+          title: 'Updated release',
+          url: '/apps/app-1/workflows/published-version-id',
+        },
+        expect.any(Object),
+      )
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })
   })
 })
+
+function render(ui: ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { billing: { subscription: { plan: mockPlanType } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}

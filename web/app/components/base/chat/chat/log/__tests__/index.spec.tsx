@@ -1,7 +1,7 @@
 import type { IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Log from '../index'
 

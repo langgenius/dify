@@ -1,1 +1,0 @@
-export const EDUCATION_APPLICATIONS_PAUSED = true

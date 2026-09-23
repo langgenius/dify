@@ -1,14 +1,11 @@
-import type { Features } from '../../../types'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { Features, OnFeaturesChange } from '../../../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import AnnotationReply from '../index'
 
 const originalConsoleError = console.error
-const mockPush = vi.fn()
 let mockPathname = '/app/test-app-id/configuration'
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
   usePathname: () => mockPathname,
 }))
 
@@ -82,7 +79,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/declaration
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: () => <div data-testid="model-selector">Model Selector</div>,
+  ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }))
 
 const defaultFeatures: Features = {
@@ -273,7 +270,7 @@ describe('AnnotationReply', () => {
     expect(mockSetIsShowAnnotationConfigInit).toHaveBeenCalledWith(true)
   })
 
-  it('should navigate to annotations page when cache management is clicked', () => {
+  it('should link to the app annotations page from cache management', () => {
     renderWithProvider(
       {},
       {
@@ -290,9 +287,10 @@ describe('AnnotationReply', () => {
 
     const card = screen.getByText(/feature\.annotation\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/feature\.annotation\.cacheManagement/))
 
-    expect(mockPush).toHaveBeenCalledWith('/app/test-app-id/annotations')
+    expect(
+      screen.getByRole('link', { name: /feature\.annotation\.cacheManagement/ }),
+    ).toHaveAttribute('href', '/app/test-app-id/annotations')
   })
 
   it('should fallback appId to empty string when pathname does not match', () => {
@@ -313,9 +311,10 @@ describe('AnnotationReply', () => {
 
     const card = screen.getByText(/feature\.annotation\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/feature\.annotation\.cacheManagement/))
 
-    expect(mockPush).toHaveBeenCalledWith('/app//annotations')
+    expect(
+      screen.getByRole('link', { name: /feature\.annotation\.cacheManagement/ }),
+    ).toHaveAttribute('href', '/app//annotations')
   })
 
   it('should show config param modal when isShowAnnotationConfigInit is true', async () => {

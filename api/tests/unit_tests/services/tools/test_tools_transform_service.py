@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 from core.tools.__base.tool import Tool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -401,18 +401,16 @@ class TestWorkflowProviderToUserProvider:
 
 
 class TestGetToolProviderIconUrl:
-    def test_builtin_provider_returns_console_url(self):
-        with patch(f"{MODULE}.dify_config") as cfg:
-            cfg.CONSOLE_API_URL = "https://app.dify.ai"
-            url = ToolTransformService.get_tool_provider_icon_url("builtin", "google", "icon.png")
+    def test_builtin_provider_returns_console_url(self, config_overrides):
+        config_overrides(CONSOLE_API_URL="https://app.dify.ai")
+        url = ToolTransformService.get_tool_provider_icon_url("builtin", "google", "icon.png")
 
         assert "/builtin/google/icon" in url
         assert url.startswith("https://app.dify.ai/console/api/workspaces/current/tool-provider")
 
-    def test_builtin_provider_with_no_console_url(self):
-        with patch(f"{MODULE}.dify_config") as cfg:
-            cfg.CONSOLE_API_URL = None
-            url = ToolTransformService.get_tool_provider_icon_url("builtin", "slack", "icon.png")
+    def test_builtin_provider_with_no_console_url(self, config_overrides):
+        config_overrides(CONSOLE_API_URL=None)
+        url = ToolTransformService.get_tool_provider_icon_url("builtin", "slack", "icon.png")
 
         assert "/builtin/slack/icon" in url
 
@@ -514,31 +512,39 @@ class TestApiProviderToController:
     def test_api_key_header_auth(self):
         db_provider = MagicMock()
         db_provider.credentials = {"auth_type": "api_key_header"}
-        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
+        with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
             ctrl_cls.from_db.return_value = MagicMock()
             ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER)
+        ctrl_cls.from_db.assert_called_once_with(
+            db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER, session=ANY
+        )
 
     def test_api_key_query_auth(self):
         db_provider = MagicMock()
         db_provider.credentials = {"auth_type": "api_key_query"}
-        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
+        with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
             ctrl_cls.from_db.return_value = MagicMock()
             ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_QUERY)
+        ctrl_cls.from_db.assert_called_once_with(
+            db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_QUERY, session=ANY
+        )
 
     def test_legacy_api_key_maps_to_header(self):
         db_provider = MagicMock()
         db_provider.credentials = {"auth_type": "api_key"}
-        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
+        with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
             ctrl_cls.from_db.return_value = MagicMock()
             ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER)
+        ctrl_cls.from_db.assert_called_once_with(
+            db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER, session=ANY
+        )
 
     def test_unknown_auth_defaults_to_none(self):
         db_provider = MagicMock()
         db_provider.credentials = {"auth_type": "something_else"}
-        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
+        with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
             ctrl_cls.from_db.return_value = MagicMock()
             ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.NONE)
+        ctrl_cls.from_db.assert_called_once_with(
+            db_provider=db_provider, auth_type=ApiProviderAuthType.NONE, session=ANY
+        )

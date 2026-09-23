@@ -25,6 +25,8 @@ export function AmplitudeProvider({
       sessionReplaySampleRate,
     })
     setAmplitudeOptOut(false)
+
+    return () => setAmplitudeOptOut(true)
   }, [active, consent, sessionReplaySampleRate])
 
   return null

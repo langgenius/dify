@@ -3,6 +3,7 @@ import type { Member } from '@/models/common'
 import type { DataSet, IconInfo } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
@@ -202,8 +203,11 @@ describe('BasicInfoSection', () => {
 
     it('should render name input with correct value', () => {
       render(<BasicInfoSection {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
+      const nameInput = screen.getByRole('textbox', {
+        name: 'datasetSettings.form.name',
+      })
       expect(nameInput)!.toBeInTheDocument()
+      expect(nameInput).toHaveValue('Test Dataset')
     })
 
     it('should render description textarea with correct value', () => {
@@ -212,11 +216,45 @@ describe('BasicInfoSection', () => {
       expect(descriptionTextarea)!.toBeInTheDocument()
     })
 
-    it('should render app icon with emoji', () => {
-      const { container } = render(<BasicInfoSection {...defaultProps} />)
-      // The icon section should be rendered (emoji may be in a span or SVG)
-      const iconSection = container.querySelector('[class*="cursor-pointer"]')
-      expect(iconSection)!.toBeInTheDocument()
+    it('names the icon action and opens it with the keyboard', async () => {
+      const user = userEvent.setup()
+      const handleOpenAppIconPicker = vi.fn()
+      render(
+        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
+      )
+
+      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
+      await user.tab()
+      expect(trigger).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
+    })
+
+    it('associates the permissions field label without losing the selected value', () => {
+      render(<BasicInfoSection {...defaultProps} />)
+
+      expect(
+        screen.getByRole('button', {
+          name: /datasetSettings.form.permissions .*datasetSettings.form.permissionsOnlyMe/,
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('does not open the icon picker when settings are read-only', async () => {
+      const user = userEvent.setup()
+      const handleOpenAppIconPicker = vi.fn()
+      render(
+        <BasicInfoSection
+          {...defaultProps}
+          readonly
+          handleOpenAppIconPicker={handleOpenAppIconPicker}
+        />,
+      )
+
+      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
+      expect(trigger).toBeDisabled()
+      await user.click(trigger)
+      expect(handleOpenAppIconPicker).not.toHaveBeenCalled()
     })
   })
 
@@ -225,7 +263,9 @@ describe('BasicInfoSection', () => {
       const setName = vi.fn()
       render(<BasicInfoSection {...defaultProps} setName={setName} />)
 
-      const nameInput = screen.getByDisplayValue('Test Dataset')
+      const nameInput = screen.getByRole('textbox', {
+        name: 'datasetSettings.form.name',
+      })
       fireEvent.change(nameInput, { target: { value: 'New Name' } })
 
       expect(setName).toHaveBeenCalledWith('New Name')
@@ -283,18 +323,15 @@ describe('BasicInfoSection', () => {
   })
 
   describe('App Icon', () => {
-    it('should call handleOpenAppIconPicker when icon is clicked', () => {
+    it('should call handleOpenAppIconPicker when icon is clicked', async () => {
+      const user = userEvent.setup()
       const handleOpenAppIconPicker = vi.fn()
-      const { container } = render(
+      render(
         <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
       )
 
-      // Find the clickable icon element - it's inside a wrapper that handles the click
-      const iconWrapper = container.querySelector('[class*="cursor-pointer"]')
-      if (iconWrapper) {
-        fireEvent.click(iconWrapper)
-        expect(handleOpenAppIconPicker).toHaveBeenCalled()
-      }
+      await user.click(screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' }))
+      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
     })
 
     it('should not render AppIconPicker when showAppIconPicker is false', () => {
@@ -457,8 +494,7 @@ describe('BasicInfoSection', () => {
     it('should have accessible name input', () => {
       render(<BasicInfoSection {...defaultProps} />)
 
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput.tagName.toLowerCase()).toBe('input')
+      expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeInTheDocument()
     })
 
     it('should have accessible description textarea', () => {

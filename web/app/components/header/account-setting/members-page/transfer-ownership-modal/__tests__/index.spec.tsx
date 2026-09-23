@@ -1,7 +1,7 @@
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import { useMembers } from '@/service/use-common'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
@@ -23,7 +23,7 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/service/common')
 vi.mock('@/service/use-common')
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
   },

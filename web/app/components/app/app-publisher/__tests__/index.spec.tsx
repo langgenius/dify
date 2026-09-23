@@ -1,14 +1,10 @@
-/* oxlint-disable typescript/no-explicit-any */
-import {
-  DeploymentStatus,
-  EnvironmentStatus,
-} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { EnvironmentStatus, RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { AccessMode } from '@/models/access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { appWorkflowVersionsInfiniteQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
@@ -16,8 +12,12 @@ import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { AppPublisher } from '../index'
 
-const render = (ui: React.ReactElement) =>
+const render = (
+  ui: React.ReactElement,
+  queryClient?: ReturnType<typeof createConsoleQueryClient>,
+) =>
   renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: { webapp_auth: { enabled: true } },
   })
 
@@ -95,9 +95,15 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 }))
 
 const mockPublishToCreatorsPlatform = vi.fn()
+const mockCreateWorkflowToolProvider = vi.fn()
 
 vi.mock('@/service/apps', () => ({
   publishToCreatorsPlatform: (...args: unknown[]) => mockPublishToCreatorsPlatform(...args),
+}))
+
+vi.mock('@/service/tools', () => ({
+  createWorkflowToolProvider: (...args: unknown[]) => mockCreateWorkflowToolProvider(...args),
+  saveWorkflowToolProvider: vi.fn(),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -142,7 +148,6 @@ vi.mock('@/service/use-tools', () => ({
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
-    isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
@@ -155,7 +160,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
     success: (...args: unknown[]) => mockToastSuccess(...args),
@@ -167,10 +172,29 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 
 vi.mock('@/app/components/tools/workflow-tool', () => ({
-  WorkflowToolDrawer: ({ onHide }: { onHide: () => void }) => (
-    <div data-testid="workflow-tool-drawer">
+  WorkflowToolDrawer: ({
+    onCreate,
+    onHide,
+  }: {
+    onCreate?: (payload: Record<string, unknown>) => void
+    onHide: () => void
+  }) => (
+    <div role="dialog" aria-label="Workflow tool drawer">
       workflow tool drawer
-      <button onClick={onHide}>close-workflow-tool-drawer</button>
+      <button
+        type="button"
+        onClick={() =>
+          onCreate?.({
+            workflow_app_id: 'app-1',
+            name: 'workflow_tool',
+          })
+        }
+      >
+        create-workflow-tool
+      </button>
+      <button type="button" onClick={onHide}>
+        close-workflow-tool-drawer
+      </button>
     </div>
   ),
 }))
@@ -182,15 +206,18 @@ vi.mock('../built-in-publisher/summary-section', () => ({
       <div>
         {props.environmentTabs}
         <button
+          type="button"
           disabled={props.publishDisabled || props.published}
           onClick={() => void props.handlePublish()}
         >
           publisher-summary-publish
         </button>
-        <button disabled={props.published} onClick={() => void props.handleRestore()}>
+        <button type="button" disabled={props.published} onClick={() => void props.handleRestore()}>
           publisher-summary-restore
         </button>
-        <button onClick={props.onEditVersion}>publisher-summary-edit-version</button>
+        <button type="button" onClick={props.onEditVersion}>
+          publisher-summary-edit-version
+        </button>
       </div>
     )
   },
@@ -200,20 +227,26 @@ vi.mock('../built-in-publisher/actions-section', () => ({
   PublisherActionsSection: (props: Record<string, any>) => {
     sectionProps.actions = props
     return (
-      <div data-testid="publisher-actions">
+      <div>
         {props.showRunConfig && props.handleOpenRunConfig && (
-          <button onClick={() => props.handleOpenRunConfig(props.appURL)}>
+          <button type="button" onClick={() => props.handleOpenRunConfig(props.appURL)}>
             publisher-run-config
           </button>
         )}
         {props.showMarketplaceAction && (
-          <button disabled={props.marketplaceActionDisabled} onClick={props.onPublishToMarketplace}>
+          <button
+            type="button"
+            disabled={props.marketplaceActionDisabled}
+            onClick={props.onPublishToMarketplace}
+          >
             {props.publishingToMarketplace
               ? 'workflow.common.publishingToMarketplace'
               : 'workflow.common.publishToMarketplace'}
           </button>
         )}
-        <button onClick={props.onConfigureWorkflowTool}>publisher-workflow-tool</button>
+        <button type="button" onClick={props.onConfigureWorkflowTool}>
+          publisher-workflow-tool
+        </button>
       </div>
     )
   },
@@ -406,7 +439,7 @@ describe('AppPublisher', () => {
     )
     await user.click(screen.getByText('publisher-summary-edit-version'))
 
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    expect(screen.queryByText('publisher-summary-edit-version')).not.toBeInTheDocument()
     const [titleInput, notesInput] = screen.getAllByRole('textbox')
     await user.clear(titleInput!)
     await user.type(titleInput!, 'Release 6')
@@ -420,6 +453,8 @@ describe('AppPublisher', () => {
 
     expect(mockUpdateWorkflow).toHaveBeenCalledWith(
       {
+        appId: 'app-1',
+        appMode: AppModeEnum.WORKFLOW,
         url: '/apps/app-1/workflows/workflow-version-5',
         title: 'Release 6',
         releaseNotes: 'Updated notes',
@@ -597,7 +632,7 @@ describe('AppPublisher', () => {
       expect(environmentDeploymentListRequests.length).toBeGreaterThan(0)
     })
     expect(environmentDeploymentDetailRequests).toHaveLength(0)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText(/studio\.accessPoint\.noPublishedTitle/)).not.toBeInTheDocument()
     expect(screen.queryByText(/studio\.publisher\.notDeployedYet/)).not.toBeInTheDocument()
 
@@ -688,7 +723,7 @@ describe('AppPublisher', () => {
                   marked_name: 'Release 5',
                   version: 'v5',
                 },
-                status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+                runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
               },
               environment: {
                 description: '',
@@ -803,8 +838,76 @@ describe('AppPublisher', () => {
     )
     fireEvent.click(screen.getByText('publisher-workflow-tool'))
 
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
-    expect(screen.getByTestId('workflow-tool-drawer')).toBeInTheDocument()
+    expect(screen.queryByText('publisher-workflow-tool')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Workflow tool drawer' })).toBeInTheDocument()
+  })
+
+  it('should show one success toast when automatically publishing a workflow tool', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
+      if (options?.showSuccessToast !== false) mockToastSuccess('common.api.actionSuccess')
+    })
+    mockCreateWorkflowToolProvider.mockResolvedValue({})
+
+    render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText('publisher-workflow-tool'))
+    fireEvent.click(screen.getByRole('button', { name: 'create-workflow-tool' }))
+
+    await waitFor(() => {
+      expect(mockCreateWorkflowToolProvider).toHaveBeenCalledOnce()
+    })
+    expect(mockOnPublish).toHaveBeenCalledWith(undefined, { showSuccessToast: false })
+    expect(mockToastSuccess).toHaveBeenCalledOnce()
+  })
+
+  it('should not show a success toast when workflow tool creation fails after publishing', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
+      if (options?.showSuccessToast !== false) mockToastSuccess('common.api.actionSuccess')
+    })
+    mockCreateWorkflowToolProvider.mockRejectedValue(new Error('create failed'))
+
+    render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText('publisher-workflow-tool'))
+    fireEvent.click(screen.getByRole('button', { name: 'create-workflow-tool' }))
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith('create failed')
+    })
+    expect(mockOnPublish).toHaveBeenCalledWith(undefined, { showSuccessToast: false })
+    expect(mockToastSuccess).not.toHaveBeenCalled()
+  })
+
+  it('should not create a workflow tool when automatic publishing fails', async () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    mockOnPublish.mockRejectedValueOnce(new Error('publish failed'))
+
+    render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText('publisher-workflow-tool'))
+    fireEvent.click(screen.getByRole('button', { name: 'create-workflow-tool' }))
+
+    await waitFor(() => {
+      expect(mockOnPublish).toHaveBeenCalledOnce()
+    })
+    expect(mockCreateWorkflowToolProvider).not.toHaveBeenCalled()
+    expect(mockToastError).toHaveBeenCalledWith('publish failed')
+    consoleWarnSpy.mockRestore()
   })
 
   it('should not open workflow tool drawer without tool.manage', () => {
@@ -819,7 +922,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-workflow-tool'))
 
-    expect(screen.queryByTestId('workflow-tool-drawer')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Workflow tool drawer' })).not.toBeInTheDocument()
     expect(sectionProps.actions?.workflowToolAvailable).toBe(false)
   })
 
@@ -833,31 +936,6 @@ describe('AppPublisher', () => {
 
     expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
     expect(mockOnToggle).not.toHaveBeenCalled()
-  })
-
-  it('should apply the per-open publish lock to the keyboard shortcut', async () => {
-    const preventDefault = vi.fn()
-    mockOnPublish.mockResolvedValue(undefined)
-
-    render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
-
-    expect(hotkeyMocks.hotkeys).toContain('Mod+Shift+P')
-    hotkeyMocks.handlers[0]!({ preventDefault })
-
-    await waitFor(() => {
-      expect(preventDefault).toHaveBeenCalled()
-      expect(mockOnPublish).toHaveBeenCalledTimes(1)
-    })
-
-    hotkeyMocks.handlers.at(-1)!({ preventDefault })
-    expect(mockOnPublish).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    expect(sectionProps.summary?.published).toBe(false)
-    hotkeyMocks.handlers.at(-1)!({ preventDefault })
-    await waitFor(() => {
-      expect(mockOnPublish).toHaveBeenCalledTimes(2)
-    })
   })
 
   it('should keep keyboard publishing available in multiple model mode', async () => {
@@ -1041,6 +1119,7 @@ describe('AppPublisher', () => {
 
   it('should refresh the shared workflow query and store after a collaborator publishes', async () => {
     const setPublishedAt = vi.fn()
+    const queryClient = createConsoleQueryClient()
     const workflowStore = {
       getState: () => ({ setPublishedAt }),
     }
@@ -1052,11 +1131,16 @@ describe('AppPublisher', () => {
       created_at: 1_710_000_300,
       hash: 'published-hash',
     })
+    queryClient.setQueryData(['workflow', 'publish', 'app-1'], {
+      created_at: 1_710_000_100,
+      hash: 'stale-published-hash',
+    })
 
     render(
       <WorkflowContext value={workflowStore as any}>
         <AppPublisher publishedAt={1_710_000_100_000} />
       </WorkflowContext>,
+      queryClient,
     )
 
     act(() => {

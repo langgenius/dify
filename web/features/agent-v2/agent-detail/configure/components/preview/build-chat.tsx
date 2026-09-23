@@ -31,7 +31,7 @@ type AgentBuildChatProps = Omit<
 function AgentBuildChatEmptyState({
   showUnconfiguredNotice,
 }: Pick<AgentChatRuntimeEmptyStateProps, 'showUnconfiguredNotice'>) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const communityEditionBuildModeTip = t(
     ($) => $['agentDetail.configure.build.empty.communityEditionTip'],
   )
@@ -60,7 +60,7 @@ function AgentBuildChatEmptyState({
         <CommunityEditionTip
           tip={communityEditionBuildModeTip}
           placement="top"
-          popupClassName="max-w-[340px]"
+          className="max-w-85"
         />
       </div>
       <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
@@ -72,7 +72,7 @@ function AgentBuildChatEmptyState({
 }
 
 export function AgentBuildChat(props: AgentBuildChatProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <AgentChatRuntime

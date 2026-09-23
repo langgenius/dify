@@ -80,11 +80,7 @@ describe('SuggestedAction', () => {
     const handleClick = vi.fn()
 
     render(
-      <SuggestedAction
-        description="Use as a tool in other apps"
-        endIcon={<span data-testid="configure-icon" />}
-        onClick={handleClick}
-      >
+      <SuggestedAction description="Use as a tool in other apps" onClick={handleClick}>
         Workflow as Tool
       </SuggestedAction>,
     )
@@ -92,7 +88,6 @@ describe('SuggestedAction', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Workflow as Tool' }))
 
     expect(handleClick).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('configure-icon')).toBeInTheDocument()
   })
 
   it('should keep the main link separate from a trailing action button', () => {

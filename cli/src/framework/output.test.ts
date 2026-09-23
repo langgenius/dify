@@ -1,5 +1,5 @@
 import type { FormattedPrintable, NamePrintable, TablePrintable } from './output'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { OutputFormatNotSupportedError } from './errors'
 import { formatted, raw, stringifyOutput, table } from './output'
 

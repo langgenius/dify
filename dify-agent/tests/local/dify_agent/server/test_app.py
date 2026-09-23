@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import os
 import time
 from typing import ClassVar
 
@@ -9,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import dify_agent.server.app as app_module
+import dify_agent.server.observability as server_observability
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
@@ -22,6 +24,24 @@ from dify_agent.runtime.compositor_factory import DifyAgentLayerProvider
 from dify_agent.server.app import create_app, create_dify_api_inner_http_client, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
+
+
+@pytest.fixture(autouse=True)
+def _isolated_app_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep app construction independent of the developer's dotenv and SDK env.
+
+    ``ServerSettings`` resolves ``.env``/``dify-agent/.env`` against the current
+    directory, and importing this module builds ``app_module.app``, which already
+    latched the process-global trace context mode from whatever it found there.
+    Pinning the settings source and resetting that latch lets each case build an
+    app from the settings it states, in any order and on any machine.
+    """
+    for name in tuple(os.environ):
+        if name.startswith(("DIFY_AGENT_", "OTEL_", "LOGFIRE_")):
+            monkeypatch.delenv(name)
+    monkeypatch.setitem(ServerSettings.model_config, "env_file", None)
+    monkeypatch.setattr(server_observability, "_global_instrumentation_ready", False)
+    monkeypatch.setattr(server_observability, "_global_trace_context_mode", None)
 
 
 def _base64url_secret(value: bytes) -> str:
@@ -68,6 +88,10 @@ class FakeRunScheduler:
 
     store: object
     shutdown_grace_seconds: float
+    run_timeout_seconds: float
+    stream_text_delta_coalescing_enabled: bool
+    stream_text_delta_flush_interval_seconds: float
+    stream_text_delta_max_chars: int
     layer_providers: tuple[DifyAgentLayerProvider, ...]
     plugin_daemon_http_client: FakePluginDaemonHttpClient
     dify_api_http_client: FakePluginDaemonHttpClient
@@ -80,13 +104,23 @@ class FakeRunScheduler:
         plugin_daemon_http_client: FakePluginDaemonHttpClient,
         dify_api_http_client: FakePluginDaemonHttpClient,
         shutdown_grace_seconds: float,
+        run_timeout_seconds: float,
+        stream_text_delta_coalescing_enabled: bool,
+        stream_text_delta_flush_interval_seconds: float,
+        stream_text_delta_max_chars: int,
         layer_providers: tuple[DifyAgentLayerProvider, ...],
+        agent_observability: object | None = None,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
+        self.run_timeout_seconds = run_timeout_seconds
+        self.stream_text_delta_coalescing_enabled = stream_text_delta_coalescing_enabled
+        self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds
+        self.stream_text_delta_max_chars = stream_text_delta_max_chars
         self.layer_providers = layer_providers
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
+        self.agent_observability = agent_observability
         self.shutdown_called = False
         self.created.append(self)
 
@@ -155,6 +189,27 @@ class FakeHttpxModule:
     AsyncClient: ClassVar[type[FakePluginDaemonHttpClient]] = FakePluginDaemonHttpClient
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/runs",
+        "/execution-bindings",
+        "/home-snapshots/from-binding",
+        "/execution-bindings/files/list",
+    ],
+)
+def test_create_app_authenticates_control_plane_routes(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(redis_url="redis://example.invalid/0", api_token="secret-token")
+
+    with TestClient(create_app(settings)) as client:
+        assert client.post(path, json={}).status_code == 401
+        assert client.post(path, headers={"Authorization": "Bearer secret-token"}, json={}).status_code != 401
+
+
 def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_redis = FakeRedis()
     fake_http_client = FakePluginDaemonHttpClient()
@@ -177,7 +232,12 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         redis_url="redis://example.invalid/0",
         redis_prefix="test",
         shutdown_grace_seconds=5,
+        run_timeout_seconds=17,
         run_retention_seconds=7,
+        run_event_stream_max_length=23,
+        stream_text_delta_coalescing_enabled=False,
+        stream_text_delta_flush_interval_ms=250,
+        stream_text_delta_max_chars=2048,
         plugin_daemon_url="http://plugin-daemon",
         plugin_daemon_api_key="daemon-secret",
         inner_api_url="http://dify-api",
@@ -200,6 +260,10 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert len(FakeRunScheduler.created) == 1
         scheduler = FakeRunScheduler.created[0]
         assert scheduler.shutdown_grace_seconds == 5
+        assert scheduler.run_timeout_seconds == 17
+        assert scheduler.stream_text_delta_coalescing_enabled is False
+        assert scheduler.stream_text_delta_flush_interval_seconds == 0.25
+        assert scheduler.stream_text_delta_max_chars == 2048
         layer_providers = scheduler.layer_providers
         assert isinstance(layer_providers, tuple)
         execution_context_provider = next(
@@ -258,6 +322,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         store = scheduler.store
         assert isinstance(store, RedisRunStore)
         assert store.run_retention_seconds == 7
+        assert store.run_event_stream_max_length == 23
         assert any(getattr(route, "path", None) == "/agent-stub/connections" for route in create_app(settings).routes)
         assert any(
             getattr(route, "path", None) == "/agent-stub/files/upload-request" for route in create_app(settings).routes
@@ -266,10 +331,6 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
             getattr(route, "path", None) == "/agent-stub/files/download-request"
             for route in create_app(settings).routes
         )
-        assert any(
-            getattr(route, "path", None) == "/agent-stub/drive/manifest" for route in create_app(settings).routes
-        )
-        assert any(getattr(route, "path", None) == "/agent-stub/drive/commit" for route in create_app(settings).routes)
         route_paths = create_app(settings).openapi()["paths"]
         assert {
             "/execution-bindings/files/list",
@@ -352,65 +413,6 @@ def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch
     assert fake_redis.closed is True
 
 
-def test_create_app_wires_authenticated_agent_stub_drive_manifest_route(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
-    settings = ServerSettings(
-        redis_url="redis://example.invalid/0",
-        agent_stub_api_base_url="https://agent.example.com/agent-stub",
-        server_secret_key=_base64url_secret(b"1" * 32),
-        inner_api_url="https://api.example.com",
-        inner_api_key="inner-secret",
-        sandbox_files_base_url="https://files.example.com",
-    )
-    token_codec = settings.create_agent_stub_token_codec()
-    assert token_codec is not None
-    token = token_codec.encode_connection_token(
-        _execution_context().model_copy(update={"agent_id": "agent-1"}), now=int(time.time()) - 1
-    )
-
-    original_async_client = httpx.AsyncClient
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert str(request.url) == (
-            "https://api.example.com/inner/api/drive/agent-agent-1/manifest"
-            "?tenant_id=tenant-1&prefix=skills%2F&include_download_url=false"
-        )
-        assert request.headers["X-Inner-Api-Key"] == "inner-secret"
-        return httpx.Response(
-            200,
-            json={
-                "items": [
-                    {
-                        "key": "skills/example/SKILL.md",
-                        "size": 12,
-                        "hash": "sha256:abc",
-                        "mime_type": "text/markdown",
-                        "file_kind": "tool_file",
-                        "file_id": "tool-file-1",
-                    }
-                ]
-            },
-        )
-
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.server.agent_stub_drive.httpx.AsyncClient",
-        lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
-    )
-
-    with TestClient(create_app(settings)) as client:
-        response = client.get(
-            "/agent-stub/drive/manifest",
-            headers={"Authorization": f"Bearer {token}"},
-            params={"prefix": "skills/"},
-        )
-
-    assert response.status_code == 200
-    assert response.json()["items"][0]["key"] == "skills/example/SKILL.md"
-    assert FakeRunScheduler.created[0].shutdown_called is True
-    assert fake_http_client.is_closed is True
-    assert fake_redis.closed is True
-
-
 def test_create_plugin_daemon_http_client_uses_generic_outbound_httpx_construction_args(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -469,6 +471,84 @@ def test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construct
     assert client.trust_env is False
 
 
+def test_create_app_lifecycle_owns_agent_observability_instance(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    events: list[str] = []
+
+    class FakeAgentObservability:
+        async def aclose(self) -> None:
+            events.append("agent-observability-close")
+
+    sentinel = FakeAgentObservability()
+
+    def fake_configure_agent_observability(_settings: ServerSettings) -> object:
+        events.append("agent-observability-configure")
+        return sentinel
+
+    async def recording_shutdown(self: FakeRunScheduler) -> None:
+        self.shutdown_called = True
+        events.append("scheduler-shutdown")
+
+    monkeypatch.setattr(app_module, "configure_agent_observability", fake_configure_agent_observability)
+    monkeypatch.setattr(FakeRunScheduler, "shutdown", recording_shutdown)
+    FakeRunScheduler.created.clear()
+
+    app = create_app(ServerSettings(redis_url="redis://example.invalid/0"))
+    with TestClient(app):
+        assert app.state.agent_observability is sentinel
+        assert FakeRunScheduler.created[0].agent_observability is sentinel
+        assert events == ["agent-observability-configure"]
+
+    # The instance is closed after the scheduler drains, so spans from runs
+    # finishing during shutdown still reach the exporter.
+    assert events == ["agent-observability-configure", "scheduler-shutdown", "agent-observability-close"]
+
+
+def test_create_app_defaults_agent_observability_to_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    FakeRunScheduler.created.clear()
+    settings = ServerSettings(redis_url="redis://example.invalid/0", trajectory_enabled=False)
+    created: list[ServerSettings] = []
+    real_configure = app_module.configure_agent_observability
+
+    def recording_configure(settings: ServerSettings):
+        created.append(settings)
+        return real_configure(settings)
+
+    monkeypatch.setattr(app_module, "configure_agent_observability", recording_configure)
+    app = create_app(settings)
+    with TestClient(app):
+        assert app.state.agent_observability is None
+        assert FakeRunScheduler.created[0].agent_observability is None
+
+    assert created == [settings]
+    assert app.state.platform_observability is not None
+
+
+def test_create_app_passes_settings_to_server_observability(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    captured: dict[str, object] = {}
+    sentinel = object()
+
+    def fake_configure(app, *, settings=None):
+        captured["app"] = app
+        captured["settings"] = settings
+        return sentinel
+
+    monkeypatch.setattr(app_module, "configure_server_observability", fake_configure)
+    settings = ServerSettings(
+        _env_file=None,
+        redis_url="redis://example.invalid/0",
+        trajectory_trace_context_mode="shared",
+    )
+
+    app = create_app(settings)
+
+    assert captured["app"] is app
+    assert captured["settings"] is settings
+    assert app.state.platform_observability is sentinel
+
+
 def test_server_settings_use_generic_outbound_http_args_for_shared_clients() -> None:
     model_fields = ServerSettings.model_fields
 
@@ -481,3 +561,35 @@ def test_server_settings_use_generic_outbound_http_args_for_shared_clients() -> 
     assert "outbound_http_max_connections" in model_fields
     assert "outbound_http_max_keepalive_connections" in model_fields
     assert "outbound_http_keepalive_expiry" in model_fields
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_optional_metering_never_starts_a_collector_or_blocks_runtime_startup(
+    monkeypatch: pytest.MonkeyPatch, enabled: bool
+) -> None:
+    import dify_agent.server.routes.e2b_usage as usage_route
+
+    _patch_app_lifecycle(monkeypatch)
+
+    def unexpected_collector(*args: object, **kwargs: object) -> None:
+        raise AssertionError("collector must only be constructed by an explicit scheduled request")
+
+    monkeypatch.setattr(usage_route, "E2BUsageCollector", unexpected_collector)
+    settings = ServerSettings(
+        _env_file=None,
+        sandbox_metering_enabled=enabled,
+        runtime_backend="local",
+        api_token="control-token",
+        e2b_project_id="",
+        e2b_api_key=None,
+        inner_api_key=None,
+    )
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/openapi.json").status_code == 200
+        response = client.post(
+            "/internal/e2b/usage/collect",
+            headers={"Authorization": "Bearer control-token"},
+            json={"project_id": "project"},
+        )
+        assert response.status_code == 503
+    assert FakeRunScheduler.created[-1].shutdown_called

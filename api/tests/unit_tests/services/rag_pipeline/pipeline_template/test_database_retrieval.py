@@ -68,7 +68,7 @@ def test_get_pipeline_template_detail_returns_detail(sqlite_session: Session) ->
     sqlite_session.commit()
     retrieval = DatabasePipelineTemplateRetrieval()
 
-    detail = retrieval.get_pipeline_template_detail(TEMPLATE_ID, session=sqlite_session)
+    detail = retrieval.get_pipeline_template_detail(TEMPLATE_ID, "tenant-1", session=sqlite_session)
 
     assert detail == {
         "id": TEMPLATE_ID,
@@ -86,7 +86,7 @@ def test_get_pipeline_template_detail_returns_detail(sqlite_session: Session) ->
 def test_get_pipeline_template_detail_returns_none_when_not_found(sqlite_session: Session) -> None:
     retrieval = DatabasePipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail(TEMPLATE_ID, session=sqlite_session)
+    result = retrieval.get_pipeline_template_detail(TEMPLATE_ID, "tenant-1", session=sqlite_session)
 
     assert result is None
     assert sqlite_session.in_transaction()

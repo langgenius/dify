@@ -1,12 +1,20 @@
 import type { JSX } from 'react'
-import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
-import ReactEcharts from 'echarts-for-react'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import ActionButton from '@/app/components/base/action-button'
+import type { BundledTheme } from 'shiki/bundle/web'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Toggle } from '@langgenius/dify-ui/toggle'
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import CopyIcon from '@/app/components/base/copy-icon'
-import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
-import SVGBtn from '@/app/components/base/svg'
 import useTheme from '@/hooks/use-theme'
 import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
@@ -14,6 +22,9 @@ import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base 
 import { highlightCode } from './shiki-highlight'
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
+// React.lazy preserves the chart adapter's ref and loads each runtime only when rendered.
+const ReactEcharts = lazy(() => import('echarts-for-react'))
+const MarkdownMusic = lazy(() => import('./music'))
 
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
@@ -78,7 +89,7 @@ const ShikiCodeBlock = memo(
 
       void highlightCode({
         code,
-        language: language as BundledLanguage,
+        language,
         theme,
       })
         .then((result) => {
@@ -138,7 +149,7 @@ type EChartsEventParams = {
   [key: string]: any
 }
 
-const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
+export const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
@@ -544,16 +555,35 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
         <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
         <div className="flex items-center gap-1">
-          {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-          <ActionButton>
-            <CopyIcon content={String(children).replace(/\n$/, '')} />
-          </ActionButton>
+          {language === 'svg' && (
+            <Toggle
+              pressed={isSVG}
+              onPressedChange={setIsSVG}
+              render={
+                <IconButton aria-label="SVG">
+                  <span
+                    aria-hidden
+                    className={isSVG ? 'i-ri-file-code-fill size-4' : 'i-ri-file-code-line size-4'}
+                  />
+                </IconButton>
+              }
+            />
+          )}
+          <CopyIcon content={String(children).replace(/\n$/, '')} />
         </div>
       </div>
-      {renderCodeContent}
+      <Suspense
+        fallback={
+          <div
+            aria-busy="true"
+            className="animate-pulse rounded-b-[10px] bg-components-input-bg-normal"
+            style={{ minHeight: language === 'echarts' ? 350 : 96 }}
+          />
+        }
+      >
+        {renderCodeContent}
+      </Suspense>
     </div>
   )
 })
 CodeBlock.displayName = 'CodeBlock'
-
-export default CodeBlock

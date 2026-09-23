@@ -1,9 +1,10 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { InstalledAppListResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { AccessMode } from '@/models/access-control'
-import * as exploreService from '@/service/explore'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -25,14 +26,13 @@ const mockWorkflowAppDslExport = vi.hoisted(() => ({
   isExporting: false,
 }))
 const mockCopyApp = vi.hoisted(() =>
-  vi.fn(
-    (_variables: unknown): Promise<unknown> =>
-      Promise.resolve({
-        id: 'new-app-id',
-        mode: 'chat',
-        maintainer: 'user-1',
-        permission_keys: [],
-      }),
+  vi.fn((_variables: unknown): Promise<unknown> =>
+    Promise.resolve({
+      id: 'new-app-id',
+      mode: 'chat',
+      maintainer: 'user-1',
+      permission_keys: [],
+    }),
   ),
 )
 const mockUpdateAppMutation = vi.hoisted(() =>
@@ -48,8 +48,8 @@ const mockUnstarAppMutation = vi.hoisted(() =>
   vi.fn((_variables: unknown): Promise<unknown> => Promise.resolve()),
 )
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const withMutation = (operation: object, mutationFn: typeof mockCopyApp) =>
     new Proxy(operation, {
       get(target, property, receiver) {
@@ -141,7 +141,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
@@ -159,7 +159,6 @@ vi.mock('use-context-selector', () => ({
 }))
 
 const mockConsoleState = vi.hoisted(() => ({
-  isCurrentWorkspaceEditor: true,
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
@@ -185,22 +184,20 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
-// Mock provider context
-const mockOnPlanInfoChanged = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    onPlanInfoChanged: mockOnPlanInfoChanged,
-  }),
-}))
-
 // systemFeatures is seeded into the QueryClient via the local render helper.
 
 vi.mock('@/service/apps', () => ({
   deleteApp: vi.fn(() => Promise.resolve()),
 }))
 
-vi.mock('@/service/explore', () => ({
-  fetchInstalledAppList: vi.fn(() => Promise.resolve({ installed_apps: [{ id: 'installed-1' }] })),
+const { installedRequest } = vi.hoisted(() => ({
+  installedRequest:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: installedRequest,
 }))
 
 vi.mock('@/service/access-control', () => ({
@@ -223,11 +220,13 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   }),
 }))
 
-// Mock hooks
-const mockOpenAsyncWindow = vi.fn()
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => mockOpenAsyncWindow,
-}))
+const popup: {
+  location: { href: string }
+  opener: Window | null
+  close: ReturnType<typeof vi.fn>
+} = { location: { href: '' }, opener: null, close: vi.fn() }
+let installedApps: InstalledAppListResponse
+const openWindow = vi.fn<() => typeof popup | null>()
 
 // Mock utils
 const { mockGetRedirection } = vi.hoisted(() => ({
@@ -348,7 +347,7 @@ vi.mock('@/next/dynamic', () => ({
         )
       }
     }
-    if (fnString.includes('dsl-export-confirm-modal')) {
+    if (fnString.includes('app/export-confirm-modal')) {
       return function MockDSLExportModal({
         onClose,
         onConfirm,
@@ -386,15 +385,18 @@ vi.mock('@/features/tag-management/components/app-card-tags', () => ({
   AppCardTags: ({
     tags,
     canBindOrUnbindTags,
+    appName,
   }: {
     tags?: { id: string; name: string }[]
     canBindOrUnbindTags?: boolean
+    appName: string
   }) => {
     return React.createElement(
       'div',
       {
         'aria-label': 'tag-selector',
         'data-can-bind-or-unbind-tags': String(Boolean(canBindOrUnbindTags)),
+        'data-app-name': appName,
       },
       tags?.map((tag: { id: string; name: string }) =>
         React.createElement('span', { key: tag.id }, tag.name),
@@ -436,7 +438,33 @@ describe('AppCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockOpenAsyncWindow.mockReset()
+    openWindow.mockReturnValue(popup)
+    popup.location.href = ''
+    popup.opener = window
+    vi.stubGlobal('open', openWindow)
+    installedApps = {
+      has_more: false,
+      next_cursor: null,
+      installed_apps: ['installed-1', 'installed-2'].map((id) => ({
+        id,
+        app_owner_tenant_id: 'workspace-1',
+        editable: false,
+        is_pinned: false,
+        last_used_at: null,
+        app: {
+          id: mockApp.id,
+          name: mockApp.name,
+          description: '',
+          mode: 'chat',
+          icon: null,
+          icon_type: null,
+          icon_background: null,
+          icon_url: null,
+          use_icon_as_answer_icon: false,
+        },
+      })),
+    }
+    installedRequest.mockResolvedValue(Response.json(installedApps))
     mockWebappAuthEnabled = false
     mockRbacEnabled = true
     mockUserCanAccessApp.result = true
@@ -451,9 +479,12 @@ describe('AppCard', () => {
     mockAppDslExport.exportAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockWorkflowAppDslExport.isExporting = false
     mockWorkflowAppDslExport.exportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
-    mockConsoleState.isCurrentWorkspaceEditor = true
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   describe('Rendering', () => {
@@ -472,6 +503,8 @@ describe('AppCard', () => {
 
       const card = screen.getByRole('button', { name: 'Preview Only App' })
       expect(card).toHaveClass('opacity-60')
+      expect(screen.getByRole('listitem')).toContainElement(card)
+      expect(card).toHaveAccessibleDescription('Only visible metadata')
       expect(card).not.toHaveAttribute('aria-disabled')
       expect(screen.getByText('Only visible metadata')).toBeInTheDocument()
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()
@@ -549,9 +582,20 @@ describe('AppCard', () => {
     it('should render app icon', () => {
       // AppIcon component renders the emoji icon from app data
       const { container } = render(<AppCard app={mockApp} />)
-      const emojiIcon = container.querySelector(`em-emoji[id="${mockApp.icon}"]`)
+      const emojiIcon = screen.getByText(mockApp.icon!)
       const imageIcon = container.querySelector('img')
       expect(emojiIcon || imageIcon).toBeTruthy()
+      expect(emojiIcon).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    it('should treat a redundant image icon as decorative', () => {
+      const imageApp = createMockApp({
+        icon_type: 'image',
+        icon_url: 'https://example.com/app-icon.png',
+      })
+      const { container } = render(<AppCard app={imageApp} />)
+
+      expect(container.querySelector('img')).toHaveAttribute('alt', '')
     })
 
     it('should render app type icon', () => {
@@ -579,7 +623,7 @@ describe('AppCard', () => {
       }
       render(<AppCard app={appWithTags} />)
       // Verify the tag selector component renders
-      expect(screen.getByLabelText('tag-selector')).toBeInTheDocument()
+      expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-app-name', 'Test App')
     })
 
     it('should display refreshed tag names from app props when tag ids stay the same', () => {
@@ -600,7 +644,6 @@ describe('AppCard', () => {
     })
 
     it('should allow app edit permission to bind tags without workspace tag management permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = []
       mockConsoleState.userProfile = { id: 'user-2' }
       const editableApp = createMockApp({
@@ -618,7 +661,6 @@ describe('AppCard', () => {
     })
 
     it('should allow workspace app tag management permission to bind tags without app edit permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = ['app.tag.manage']
       mockConsoleState.userProfile = { id: 'user-2' }
       const tagManageApp = createMockApp({
@@ -636,7 +678,6 @@ describe('AppCard', () => {
     })
 
     it('should render existing app tags as readonly without app edit or workspace tag management permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = []
       mockConsoleState.userProfile = { id: 'user-2' }
       const readonlyApp = createMockApp({
@@ -670,20 +711,39 @@ describe('AppCard', () => {
       const cardLink = screen.getByRole('link', { name: 'Test App' })
 
       expect(cardLink).toHaveAttribute('href', '/app/test-app-id/configuration')
+      expect(cardLink).toHaveAccessibleName('Test App')
+      expect(cardLink).toHaveAccessibleDescription('Test app description')
+      expect(cardLink).toHaveAttribute('aria-describedby')
+      expect(screen.getByRole('listitem')).toContainElement(cardLink)
     })
 
-    it('should expose a visible focus ring on the card link', () => {
+    it('should keep card navigation and actions as sibling focus targets', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
-      const cardLink = screen.getByRole('link', { name: 'Test App' })
 
-      expect(cardLink).toHaveClass('focus-visible:ring-2')
-      expect(cardLink).toHaveClass('focus-visible:ring-state-accent-solid')
+      const cardLink = screen.getByRole('link', { name: 'Test App' })
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
+      const operationsTrigger = getOperationsTrigger()
+
+      expect(cardLink).not.toContainElement(starToggle)
+      expect(cardLink).not.toContainElement(operationsTrigger)
+
+      await user.tab()
+      expect(cardLink).toHaveFocus()
+      await user.tab()
+      expect(starToggle).toHaveFocus()
+      await user.tab()
+      expect(operationsTrigger).toHaveFocus()
     })
 
     it('should star the app from the card action without navigating', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.starApp' }))
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
+      expect(starToggle).toHaveAttribute('aria-pressed', 'false')
+
+      await user.click(starToggle)
 
       await waitFor(() => {
         expect(mockStarAppMutation).toHaveBeenCalledWith({
@@ -694,10 +754,18 @@ describe('AppCard', () => {
     })
 
     it('should unstar the app from the filled star action', async () => {
+      const user = userEvent.setup()
       const starredApp = createMockApp({ is_starred: true })
       render(<AppCard app={starredApp} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.unstarApp' }))
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
+      expect(starToggle).toHaveAttribute('aria-pressed', 'true')
+
+      await user.hover(starToggle)
+
+      expect(await screen.findByText('app.studio.starApp')).toBeInTheDocument()
+
+      await user.click(starToggle)
 
       await waitFor(() => {
         expect(mockUnstarAppMutation).toHaveBeenCalledWith({
@@ -708,28 +776,42 @@ describe('AppCard', () => {
   })
 
   describe('Operations Menu', () => {
-    it('should reveal operations trigger when card receives keyboard focus', () => {
-      render(<AppCard app={mockApp} />)
-      const operationsTrigger = getOperationsTrigger()
-      const operationsTriggerWrapper = operationsTrigger.closest('.absolute')
-
-      expect(operationsTriggerWrapper).toHaveClass('top-2')
-      expect(operationsTriggerWrapper).toHaveClass('right-2')
-      expect(operationsTriggerWrapper).toHaveClass('group-focus-within:pointer-events-auto')
-      expect(operationsTriggerWrapper).toHaveClass('group-focus-within:opacity-100')
-      expect(operationsTriggerWrapper).not.toHaveClass('w-[120px]')
-      expect(operationsTrigger).toHaveClass('focus-visible:ring-2')
-      expect(operationsTrigger).toHaveClass('focus-visible:ring-state-accent-solid')
-    })
-
     it('should show edit option when dropdown menu is opened', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(getOperationsTrigger())
+      await user.click(getOperationsTrigger())
 
       await waitFor(() => {
         expect(screen.getByText('app.editApp')).toBeInTheDocument()
       })
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
+    it('should expose the same operations from the card context menu', async () => {
+      const user = userEvent.setup()
+      render(<AppCard app={mockApp} />)
+
+      await user.pointer({
+        target: screen.getByRole('link', { name: 'Test App' }),
+        keys: '[MouseRight]',
+      })
+
+      expect(await screen.findByRole('menuitem', { name: 'app.editApp' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.duplicate' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toBeInTheDocument()
+    })
+
+    it('should keep card actions outside the card context menu trigger', async () => {
+      const user = userEvent.setup()
+      render(<AppCard app={mockApp} />)
+
+      await user.pointer({
+        target: screen.getByRole('button', { name: 'app.studio.starApp: Test App' }),
+        keys: '[MouseRight]',
+      })
+
+      expect(screen.queryByRole('menuitem', { name: 'app.editApp' })).not.toBeInTheDocument()
     })
 
     it('should show duplicate option when dropdown menu is opened', async () => {
@@ -755,7 +837,7 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.duplicate')).toBeInTheDocument()
       })
-      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.exportApp')).not.toBeInTheDocument()
     })
 
     it('should show duplicate option on starred cards when user can create apps without app import export permission', async () => {
@@ -771,7 +853,7 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.duplicate')).toBeInTheDocument()
       })
-      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.exportApp')).not.toBeInTheDocument()
     })
 
     it('should show export option when dropdown menu is opened', async () => {
@@ -780,7 +862,7 @@ describe('AppCard', () => {
       fireEvent.click(getOperationsTrigger())
 
       await waitFor(() => {
-        expect(screen.getByText('app.export')).toBeInTheDocument()
+        expect(screen.getByText('app.exportApp')).toBeInTheDocument()
       })
     })
 
@@ -883,6 +965,24 @@ describe('AppCard', () => {
       fireEvent.click(getOperationsTrigger())
       fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    })
+
+    it('should autofill the app name for delete confirmation', async () => {
+      const user = userEvent.setup()
+      render(<AppCard app={mockApp} />)
+
+      await user.click(getOperationsTrigger())
+      await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+
+      const deleteInput = await screen.findByRole('textbox')
+      const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+
+      expect(confirmButton).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
+
+      expect(deleteInput).toHaveValue(mockApp.name)
+      expect(confirmButton).toBeEnabled()
     })
 
     it('should close confirm dialog when cancel is clicked', async () => {
@@ -1088,25 +1188,6 @@ describe('AppCard', () => {
       })
     })
 
-    it('should call onPlanInfoChanged after successful duplication', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.duplicate'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-duplicate-modal'))
-
-      await waitFor(() => {
-        expect(mockOnPlanInfoChanged).toHaveBeenCalled()
-      })
-    })
-
     it('should handle copy failure', async () => {
       mockCopyApp.mockRejectedValueOnce(new Error('Copy failed'))
 
@@ -1137,7 +1218,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       expect(mockAppDslExport.exportAppDsl).toHaveBeenCalledWith({
@@ -1151,6 +1232,7 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
 
       const trigger = screen.getByRole('button', { name: 'common.operation.exporting' })
+
       expect(trigger).toBeDisabled()
     })
   })
@@ -1215,6 +1297,21 @@ describe('AppCard', () => {
         expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
       })
     })
+
+    it('should hide open in explore for SSO-restricted apps', async () => {
+      mockWebappAuthEnabled = true
+      const user = userEvent.setup()
+      const ssoApp = createMockApp({ access_mode: AccessMode.EXTERNAL_MEMBERS })
+
+      render(<AppCard app={ssoApp} />)
+
+      await user.click(getOperationsTrigger())
+      const menu = await screen.findByRole('menu')
+
+      expect(
+        within(menu).queryByRole('menuitem', { name: 'app.openInExplore' }),
+      ).not.toBeInTheDocument()
+    })
   })
 
   describe('Workflow Export with Environment Variables', () => {
@@ -1224,7 +1321,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1247,7 +1344,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1261,7 +1358,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1280,7 +1377,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1302,7 +1399,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1380,46 +1477,39 @@ describe('AppCard', () => {
       })
     })
 
-    it('should handle open in explore via async window', async () => {
-      let openedUrl = ''
-      // Configure mockOpenAsyncWindow to actually call the callback
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        openedUrl = await callback()
+    it('opens the popup before lookup completes and navigates to the first installed app', async () => {
+      let resolveResponse!: (response: Response) => void
+      const response = new Promise<Response>((resolve) => {
+        resolveResponse = resolve
       })
-
+      installedRequest.mockReturnValueOnce(response)
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
 
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalledWith(mockApp.id)
-        expect(openedUrl).toBe('/installed/installed-1')
-      })
+      expect(openWindow).toHaveBeenCalledOnce()
+      expect(openWindow).toHaveBeenCalledWith('about:blank', '_blank', undefined)
+      expect(popup.opener).toBeNull()
+      expect(popup.location.href).toBe('')
+      await waitFor(() => expect(installedRequest).toHaveBeenCalledOnce())
+      const url = new URL(installedRequest.mock.calls[0]![0])
+      expect(url.pathname).toBe('/console/api/installed-apps')
+      expect(url.searchParams.get('app_id')).toBe(mockApp.id)
+      expect(installedRequest.mock.calls[0]![2].request.method).toBe('GET')
+      resolveResponse(Response.json(installedApps))
+      await waitFor(() => expect(popup.location.href).toBe('/installed/installed-1'))
+      expect(popup.close).not.toHaveBeenCalled()
     })
 
-    it('should show string errors from open in explore onError callback', async () => {
-      mockOpenAsyncWindow.mockImplementationOnce(
-        async (
-          _callback: () => Promise<string>,
-          options?: { onError?: (err: unknown) => void },
-        ) => {
-          options?.onError?.('Window failed')
-        },
-      )
-
+    it('reports a blocked popup without making a request', async () => {
+      openWindow.mockReturnValueOnce(null)
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.openInExplore'))
-      })
-
-      await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Window failed' })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
+      expect(installedRequest).not.toHaveBeenCalled()
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Failed to open new window',
       })
     })
   })
@@ -1468,70 +1558,38 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByText('app.openInExplore'))
 
-      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
-      expect(exploreService.fetchInstalledAppList).not.toHaveBeenCalled()
+      expect(openWindow).not.toHaveBeenCalled()
+      expect(installedRequest).not.toHaveBeenCalled()
       expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'app.notPublishedYet',
       })
     })
 
-    it('should handle case when installed_apps is empty array', async () => {
-      vi.mocked(exploreService.fetchInstalledAppList).mockResolvedValueOnce({
-        has_more: false,
-        installed_apps: [],
-        next_cursor: null,
-      })
-
-      // Configure mockOpenAsyncWindow to call the callback and trigger error
-      mockOpenAsyncWindow.mockImplementationOnce(
-        async (callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
-          try {
-            await callback()
-          } catch (err) {
-            options?.onError?.(err)
-          }
-        },
+    it('closes the popup and reports an empty installed list', async () => {
+      installedRequest.mockResolvedValueOnce(
+        Response.json({ has_more: false, installed_apps: [], next_cursor: null }),
       )
-
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.notPublishedYet',
-        })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
+      await waitFor(() => expect(popup.close).toHaveBeenCalledOnce())
+      expect(popup.location.href).toBe('')
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'app.notPublishedYet',
       })
     })
 
-    it('should handle case when API throws in callback', async () => {
-      vi.mocked(exploreService.fetchInstalledAppList).mockRejectedValueOnce(
-        new Error('Network error'),
-      )
-
-      // Configure mockOpenAsyncWindow to call the callback without catching
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        return await callback()
-      })
-
+    it('closes the popup and reports a failed lookup without retrying', async () => {
+      installedRequest.mockRejectedValueOnce(new Error('Network error'))
       render(<AppCard app={mockApp} />)
-
       fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-      })
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
+      await waitFor(() => expect(popup.close).toHaveBeenCalledOnce())
+      expect(installedRequest).toHaveBeenCalledOnce()
+      expect(popup.location.href).toBe('')
+      expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Network error' })
     })
   })
 
@@ -1546,14 +1604,6 @@ describe('AppCard', () => {
         // openInExplore should not be shown for draft trigger apps
         expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe('Non-editor User', () => {
-    it('should handle non-editor workspace users', () => {
-      // This tests the isCurrentWorkspaceEditor=true branch (default mock)
-      render(<AppCard app={mockApp} />)
-      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
   })
 
@@ -1664,8 +1714,8 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByText('app.openInExplore'))
 
-      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
-      expect(exploreService.fetchInstalledAppList).not.toHaveBeenCalled()
+      expect(openWindow).not.toHaveBeenCalled()
+      expect(installedRequest).not.toHaveBeenCalled()
       expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'app.notPublishedYet',

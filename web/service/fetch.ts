@@ -1,6 +1,5 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
-import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import ky, { HTTPError } from 'ky'
 import {
@@ -14,6 +13,8 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
+import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -47,6 +48,7 @@ export type ResponseError = {
   code: string
   message: string
   error?: string
+  reason?: string
   status: number
 }
 
@@ -68,20 +70,26 @@ const createResponseFromHTTPError = (error: HTTPError): Response => {
 }
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async ({ response }) => {
+  return async ({ request, response }) => {
     if (!/^[23]\d{2}$/.test(String(response.status))) {
       let errorData: ResponseError | null = null
       try {
         const data: unknown = await response.clone().json()
         errorData = data as ResponseError
       } catch {}
-      const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
+      const shouldNotifyError =
+        response.status !== 401 &&
+        errorData &&
+        !otherOptions.silent &&
+        !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
       const errorMessage = errorData?.message || errorData?.error
-      if (shouldNotifyError && errorMessage) toast.error(errorMessage)
+      if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
+    } else {
+      clearRequestErrorToasts(request)
     }
   }
 }

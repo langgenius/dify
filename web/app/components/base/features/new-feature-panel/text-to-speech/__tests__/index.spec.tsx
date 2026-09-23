@@ -6,7 +6,7 @@ import { TtsAutoPlay } from '@/types/app'
 import { FeaturesProvider } from '../../../context'
 import TextToSpeech from '../index'
 
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   languages: [
     { value: 'en-US', name: 'English', example: 'Hello world' },
     { value: 'zh-Hans', name: '中文', example: '你好' },

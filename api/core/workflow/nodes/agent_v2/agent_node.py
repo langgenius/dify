@@ -29,11 +29,18 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.enums import (
+    BuiltinNodeTypes,
+    ErrorStrategy,
+    NodeExecutionType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig, WorkflowOutputRoutes
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
@@ -75,6 +82,14 @@ type _TerminalAgentBackendEvent = (
 
 
 class DifyAgentNode(Node[DifyAgentNodeData]):
+    """Execute a frozen node job and select one workflow exit on success.
+
+    Enabled routing selects a stable route ID through the required ``switch``
+    output. Disabled routing remains executable so
+    graph-owned default values can continue without a selected route; Graphon
+    still promotes nodes that opt into its failure branch.
+    """
+
     node_type = BuiltinNodeTypes.AGENT
 
     def __init__(
@@ -99,6 +114,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+        # The base node parses the factory's serialized payload into node_data.
+        if self.node_data.agent_output_routes.enabled and self.error_strategy == ErrorStrategy.DEFAULT_VALUE:
+            raise ValueError("Output routes do not support the node-level default-value error strategy.")
+        if self.node_data.agent_output_routes.enabled:
+            self.execution_type = NodeExecutionType.BRANCH
         self._binding_resolver = binding_resolver
         self._runtime_request_builder = runtime_request_builder
         self._agent_backend_client = agent_backend_client
@@ -178,6 +198,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 workflow_run_id=workflow_run_id,
                 node_id=self._node_id,
                 node_execution_id=self.execution_id,
+                conversation_id=conversation_id,
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -186,6 +207,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
                 snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
+                conversation_id=conversation_id,
             )
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
@@ -223,15 +245,13 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             workflow_agent_binding_id=bundle.binding.id,
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
+            conversation_id=conversation_id,
         )
 
-        # Stage 4 §4.1 (D-3): use effective outputs so defaults flow through both
-        # the backend request and the post-run type check.
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)
-        effective_outputs = list(
-            WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(list(node_job.declared_outputs))
-        )
-        outputs_by_name = {o.name: o for o in effective_outputs}
+        node_job.output_routes.validate_for_execution()
+        custom_outputs = list(node_job.declared_outputs)
+        outputs_by_name = {output.name: output for output in custom_outputs}
 
         # ──── ENG-638: resume after a submitted/timed-out ask_human form ────
         # graphon re-executes this _run when the outer workflow resumes. If a
@@ -340,6 +360,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 process_data=process_data,
                 metadata=metadata,
             )
+            # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
+            if (
+                isinstance(terminal_event, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent)
+                and terminal_event.session_snapshot is not None
+            ):
+                self._save_session_snapshot(
+                    session_scope=session_scope,
+                    binding_id=stored_session.binding_id,
+                    snapshot=terminal_event.session_snapshot,
+                    metadata=metadata,
+                )
             if exhausted is not None:
                 # Streaming error / unexpected end — surface immediately without
                 # retrying because the failure is transport-level.
@@ -434,68 +465,78 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 metadata=metadata,
             )
 
-            # ──── Stage 4: per-output type check ────
-            type_check = self._type_checker.check(
-                declared_outputs=effective_outputs,
-                raw_output=terminal_event.output,
-                tenant_id=dify_ctx.tenant_id,
-            )
-            self._record_type_check_metadata(metadata, type_check)
+            success_event = terminal_event
+            if custom_outputs:
+                # ──── Stage 4: per-output type check ────
+                type_check = self._type_checker.check(
+                    declared_outputs=custom_outputs,
+                    raw_output=terminal_event.output,
+                    tenant_id=dify_ctx.tenant_id,
+                )
+                self._record_type_check_metadata(metadata, type_check)
 
-            if not type_check.has_failures:
-                yield StreamCompletedEvent(
-                    node_run_result=self._output_adapter.build_success_result(
-                        event=terminal_event,
+                if type_check.has_failures:
+                    # ──── Stage 4: orchestrate retry / default / fail ────
+                    failures = [
+                        FailedOutput(
+                            declared=outputs_by_name[result.name],
+                            failure_kind=OutputFailureKind.TYPE_CHECK,
+                            reason=result.reason,
+                        )
+                        for result in type_check.failures
+                        if result.name in outputs_by_name
+                    ]
+                    outcome = self._failure_orchestrator.decide(failures=failures, current_attempt=attempt)
+                    metadata["output_failure_decision"] = outcome.decision.value
+                    metadata["output_failure_reason"] = outcome.primary_reason
+
+                    if outcome.decision == OutputFailureDecision.RETRY:
+                        attempt = outcome.next_attempt
+                        continue
+
+                    if outcome.decision == OutputFailureDecision.USE_DEFAULT:
+                        success_event = self._patch_event_with_defaults(terminal_event, outcome.per_output_actions)
+                    else:
+                        error_type = (
+                            "output_type_check_failed_fail_branch"
+                            if outcome.decision == OutputFailureDecision.TAKE_FAIL_BRANCH
+                            else "output_type_check_failed"
+                        )
+                        yield self._failure_event(
+                            inputs=inputs,
+                            process_data=process_data,
+                            metadata=metadata,
+                            error=outcome.primary_reason,
+                            error_type=error_type,
+                        )
+                        return
+
+            # Select only after this attempt's custom outputs have passed. Failed
+            # route output uses the node's normal retry / failure-branch handling.
+            routes = node_job.output_routes
+            edge_source_handle = "source"
+            if routes.enabled:
+                selected = success_event.output.get("switch") if isinstance(success_event.output, dict) else None
+                if not isinstance(selected, str) or selected not in {route.id for route in routes.routes}:
+                    yield self._failure_event(
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
-                        declared_outputs=effective_outputs,
+                        error="Agent output switch must select one configured output route ID.",
+                        error_type="output_route_selection_failed",
                     )
+                    return
+                edge_source_handle = selected
+
+            yield StreamCompletedEvent(
+                node_run_result=self._output_adapter.build_success_result(
+                    event=success_event,
+                    edge_source_handle=edge_source_handle,
+                    inputs=inputs,
+                    process_data=process_data,
+                    metadata=metadata,
+                    declared_outputs=custom_outputs,
                 )
-                return
-
-            # ──── Stage 4: orchestrate retry / default / fail ────
-            failures = [
-                FailedOutput(
-                    declared=outputs_by_name[result.name],
-                    failure_kind=OutputFailureKind.TYPE_CHECK,
-                    reason=result.reason,
-                )
-                for result in type_check.failures
-                if result.name in outputs_by_name
-            ]
-            outcome = self._failure_orchestrator.decide(failures=failures, current_attempt=attempt)
-            metadata["output_failure_decision"] = outcome.decision.value
-            metadata["output_failure_reason"] = outcome.primary_reason
-
-            if outcome.decision == OutputFailureDecision.RETRY:
-                attempt = outcome.next_attempt
-                continue
-
-            if outcome.decision == OutputFailureDecision.USE_DEFAULT:
-                patched_event = self._patch_event_with_defaults(terminal_event, outcome.per_output_actions)
-                yield StreamCompletedEvent(
-                    node_run_result=self._output_adapter.build_success_result(
-                        event=patched_event,
-                        inputs=inputs,
-                        process_data=process_data,
-                        metadata=metadata,
-                        declared_outputs=effective_outputs,
-                    )
-                )
-                return
-
-            error_type = (
-                "output_type_check_failed_fail_branch"
-                if outcome.decision == OutputFailureDecision.TAKE_FAIL_BRANCH
-                else "output_type_check_failed"
-            )
-            yield self._failure_event(
-                inputs=inputs,
-                process_data=process_data,
-                metadata=metadata,
-                error=outcome.primary_reason,
-                error_type=error_type,
             )
             return
 
@@ -516,16 +557,20 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         - ``terminal_event``: the first non-stream/non-started internal event,
           or ``None`` if the stream ended without one.
         - ``transport_failure``: a populated ``StreamCompletedEvent`` when the
-          stream itself errored (backend/HTTP/protocol fault). Mutually
-          exclusive with ``terminal_event``.
+          stream itself errored (backend/HTTP/protocol fault). A cancellation
+          terminal may accompany it so the caller can persist the final session
+          snapshot while preserving the original transport failure.
         """
         stream_event_count = 0
+        last_event_id: str | None = None
         try:
             for public_event in self._agent_backend_client.stream_events(
                 run_id,
                 should_stop=self._is_graph_aborted,
             ):
                 stream_event_count += 1
+                if public_event.id is not None:
+                    last_event_id = public_event.id
                 for internal_event in self._event_adapter.adapt(public_event):
                     if internal_event.type == AgentBackendInternalEventType.RUN_STARTED:
                         continue
@@ -552,8 +597,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         | AgentBackendDeferredToolCallInternalEvent,
                     ):
                         return internal_event, None
-                    self._cancel_backend_run(run_id, reason="unexpected_event")
-                    return None, self._failure_event(
+                    cancellation = self._cancel_backend_run(
+                        run_id,
+                        reason="unexpected_event",
+                        after=last_event_id,
+                    )
+                    return cancellation, self._failure_event(
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
@@ -561,8 +610,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         error_type="agent_backend_stream_error",
                     )
         except AgentBackendError as error:
-            self._cancel_backend_run(run_id, reason=self._stream_stop_reason())
-            return None, self._failure_event(
+            cancellation = self._cancel_backend_run(
+                run_id,
+                reason=self._stream_stop_reason(),
+                after=last_event_id,
+            )
+            return cancellation, self._failure_event(
                 inputs=inputs,
                 process_data=process_data,
                 metadata=metadata,
@@ -570,8 +623,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 error_type=self._agent_backend_error_type(error),
             )
         except Exception as error:
-            self._cancel_backend_run(run_id, reason=self._stream_stop_reason())
-            return None, self._failure_event(
+            cancellation = self._cancel_backend_run(
+                run_id,
+                reason=self._stream_stop_reason(),
+                after=last_event_id,
+            )
+            return cancellation, self._failure_event(
                 inputs=inputs,
                 process_data=process_data,
                 metadata=metadata,
@@ -579,8 +636,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 error_type="agent_backend_stream_error",
             )
 
-        self._cancel_backend_run(run_id, reason="stream_ended_without_terminal_event")
-        return None, None
+        cancellation = self._cancel_backend_run(
+            run_id,
+            reason=self._stream_stop_reason() if self._is_graph_aborted() else "stream_ended_without_terminal_event",
+            after=last_event_id,
+        )
+        return cancellation, None
 
     def _is_graph_aborted(self) -> bool:
         """Let Agent SSE consumption observe GraphEngine's cooperative abort state."""
@@ -592,14 +653,25 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     def _stream_stop_reason(self) -> str:
         return "workflow_graph_aborted" if self._is_graph_aborted() else "event_stream_failed"
 
-    def _cancel_backend_run(self, run_id: str, *, reason: str) -> None:
+    def _cancel_backend_run(
+        self,
+        run_id: str,
+        *,
+        reason: str,
+        after: str | None,
+    ) -> AgentBackendRunCancelledInternalEvent | None:
         try:
-            self._agent_backend_client.cancel_run(
+            public_event = self._agent_backend_client.cancel_run_and_wait(
                 run_id,
                 CancelRunRequest(reason=reason, message="Workflow Agent event consumption stopped"),
+                after=after,
             )
+            for internal_event in self._event_adapter.adapt(public_event):
+                if isinstance(internal_event, AgentBackendRunCancelledInternalEvent):
+                    return internal_event
         except Exception:
-            logger.warning("Failed to cancel Workflow Agent backend run: run_id=%s", run_id, exc_info=True)
+            logger.warning("Failed to finish cancelling Workflow Agent backend run: run_id=%s", run_id, exc_info=True)
+        return None
 
     @staticmethod
     def _record_type_check_metadata(metadata: dict[str, Any], outcome: OutputTypeCheckOutcome) -> None:
@@ -782,18 +854,23 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     ) -> Mapping[str, Sequence[str]]:
         """Reuse frontend workflow-marker parsing for graph variable loading.
 
-        This follows the same marker parser used by publish sync and runtime
-        request building, including reserved-prefix exclusion.
+        Task mentions use the publish parser. Enabled route conditions use
+        Graphon template selectors, including environment and system variables;
+        disabled jobs do not load their saved conditions.
         """
         del graph_config
 
-        agent_task = (
-            node_data.get("agent_task") if isinstance(node_data, Mapping) else getattr(node_data, "agent_task", None)
-        )
-        if not isinstance(agent_task, str):
-            return {}
-
-        return {
-            f"{node_id}.{'.'.join(selector)}": list(selector)
-            for selector in extract_workflow_node_output_selectors(agent_task)
-        }
+        if isinstance(node_data, Mapping):
+            task = node_data.get("agent_task", "")
+            routes = WorkflowOutputRoutes.model_validate(node_data.get("agent_output_routes", {}))
+        else:
+            task = node_data.agent_task
+            routes = node_data.agent_output_routes
+        selectors = list(extract_workflow_node_output_selectors(task))
+        if routes.enabled:
+            for route in routes.routes:
+                selectors.extend(
+                    tuple(selector.value_selector)
+                    for selector in VariableTemplateParser(template=route.name).extract_variable_selectors()
+                )
+        return {f"{node_id}.{'.'.join(selector)}": list(selector) for selector in selectors}

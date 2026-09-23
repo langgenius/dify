@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import ChunkContent from '../chunk-content'
 
@@ -75,6 +75,26 @@ describe('ChunkContent', () => {
       // Assert - In view mode, textarea should not be present, Markdown renders instead
       expect(container.querySelector('textarea')).not.toBeInTheDocument()
     })
+  })
+
+  it('names the editable content', () => {
+    render(<ChunkContent {...defaultProps} isEditMode={true} />)
+    expect(
+      screen.getByRole('textbox', { name: 'datasetDocuments.segment.contentPlaceholder' }),
+    ).toBeInTheDocument()
+  })
+
+  it('names the question and answer fields', () => {
+    render(
+      <ChunkContent
+        {...defaultProps}
+        docForm={ChunkingMode.qa}
+        answer="Test answer"
+        isEditMode={true}
+      />,
+    )
+    expect(screen.getByRole('textbox', { name: 'QUESTION' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'ANSWER' })).toBeInTheDocument()
   })
 
   // QA mode tests

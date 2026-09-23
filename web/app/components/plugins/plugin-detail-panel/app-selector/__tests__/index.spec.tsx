@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AppModeEnum } from '@/types/app'
 import { AppSelector } from '../index'
 
@@ -42,7 +42,7 @@ const apps = [
 const mockAppDetailQuery = vi.hoisted(() => vi.fn())
 const mockUseAppWorkflow = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       get: {
@@ -165,7 +165,7 @@ describe('AppSelector', () => {
     await waitFor(() => {
       expect(mockUseAppWorkflow).toHaveBeenCalledWith('app-2')
     })
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
 
   it('should reset the input draft when switching apps', async () => {

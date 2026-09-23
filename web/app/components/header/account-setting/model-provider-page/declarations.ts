@@ -8,27 +8,29 @@ export type TypeWithI18N<T = string> = {
   [key: string]: T
 }
 
-export enum FormTypeEnum {
-  textInput = 'text-input',
-  textNumber = 'number-input',
-  secretInput = 'secret-input',
-  select = 'select',
-  radio = 'radio',
-  checkbox = 'checkbox',
-  boolean = 'boolean',
-  files = 'files',
-  file = 'file',
-  modelSelector = 'model-selector',
-  toolSelector = 'tool-selector',
-  multiToolSelector = 'array[tools]',
-  appSelector = 'app-selector',
-  any = 'any',
-  object = 'object',
-  array = 'array',
-  dynamicSelect = 'dynamic-select',
-  date = 'date',
-  dateRange = 'date-range',
-}
+export const FormTypeEnum = {
+  textInput: 'text-input',
+  textNumber: 'number-input',
+  secretInput: 'secret-input',
+  select: 'select',
+  radio: 'radio',
+  checkbox: 'checkbox',
+  boolean: 'boolean',
+  files: 'files',
+  file: 'file',
+  modelSelector: 'model-selector',
+  toolSelector: 'tool-selector',
+  multiToolSelector: 'array[tools]',
+  appSelector: 'app-selector',
+  any: 'any',
+  object: 'object',
+  array: 'array',
+  dynamicSelect: 'dynamic-select',
+  date: 'date',
+  dateRange: 'date-range',
+} as const
+
+export type FormTypeEnum = (typeof FormTypeEnum)[keyof typeof FormTypeEnum]
 
 export type FormOption = {
   label: TypeWithI18N
@@ -37,14 +39,16 @@ export type FormOption = {
   icon?: string
 }
 
-export enum ModelTypeEnum {
-  textGeneration = 'llm',
-  textEmbedding = 'text-embedding',
-  rerank = 'rerank',
-  speech2text = 'speech2text',
-  moderation = 'moderation',
-  tts = 'tts',
-}
+export const ModelTypeEnum = {
+  textGeneration: 'llm',
+  textEmbedding: 'text-embedding',
+  rerank: 'rerank',
+  speech2text: 'speech2text',
+  moderation: 'moderation',
+  tts: 'tts',
+} as const
+
+export type ModelTypeEnum = (typeof ModelTypeEnum)[keyof typeof ModelTypeEnum]
 
 export const MODEL_TYPE_TEXT = {
   [ModelTypeEnum.textGeneration]: 'LLM',
@@ -55,45 +59,55 @@ export const MODEL_TYPE_TEXT = {
   [ModelTypeEnum.tts]: 'TTS',
 }
 
-export enum ConfigurationMethodEnum {
-  predefinedModel = 'predefined-model',
-  customizableModel = 'customizable-model',
-  fetchFromRemote = 'fetch-from-remote',
-}
+export const ConfigurationMethodEnum = {
+  predefinedModel: 'predefined-model',
+  customizableModel: 'customizable-model',
+  fetchFromRemote: 'fetch-from-remote',
+} as const
 
-export enum ModelFeatureEnum {
-  toolCall = 'tool-call',
-  multiToolCall = 'multi-tool-call',
-  agentThought = 'agent-thought',
-  streamToolCall = 'stream-tool-call',
-  vision = 'vision',
-  video = 'video',
-  document = 'document',
-  audio = 'audio',
-  polling = 'polling',
-  StructuredOutput = 'structured-output',
-}
+export type ConfigurationMethodEnum =
+  (typeof ConfigurationMethodEnum)[keyof typeof ConfigurationMethodEnum]
 
-export enum ModelFeatureTextEnum {
-  vision = 'Vision',
-  video = 'Video',
-  document = 'Document',
-  audio = 'Audio',
-}
+export const ModelFeatureEnum = {
+  toolCall: 'tool-call',
+  multiToolCall: 'multi-tool-call',
+  agentThought: 'agent-thought',
+  streamToolCall: 'stream-tool-call',
+  vision: 'vision',
+  video: 'video',
+  document: 'document',
+  audio: 'audio',
+  polling: 'polling',
+  StructuredOutput: 'structured-output',
+} as const
 
-export enum ModelStatusEnum {
-  active = 'active',
-  noConfigure = 'no-configure',
-  quotaExceeded = 'quota-exceeded',
-  noPermission = 'no-permission',
-  disabled = 'disabled',
-  credentialRemoved = 'credential-removed',
-}
+export type ModelFeatureEnum = (typeof ModelFeatureEnum)[keyof typeof ModelFeatureEnum]
 
-export enum CustomConfigurationStatusEnum {
-  active = 'active',
-  noConfigure = 'no-configure',
-}
+export const ModelFeatureTextEnum = {
+  vision: 'Vision',
+  video: 'Video',
+  document: 'Document',
+  audio: 'Audio',
+} as const
+
+export const ModelStatusEnum = {
+  active: 'active',
+  noConfigure: 'no-configure',
+  quotaExceeded: 'quota-exceeded',
+  noPermission: 'no-permission',
+  disabled: 'disabled',
+  credentialRemoved: 'credential-removed',
+} as const
+
+export type ModelStatusEnum = (typeof ModelStatusEnum)[keyof typeof ModelStatusEnum]
+
+export const CustomConfigurationStatusEnum = {
+  active: 'active',
+  noConfigure: 'no-configure',
+} as const
+
+export type CustomConfigurationStatusEnum =
+  (typeof CustomConfigurationStatusEnum)[keyof typeof CustomConfigurationStatusEnum]
 
 type FormShowOnObject = {
   variable: string
@@ -156,20 +170,28 @@ export type ModelItem = {
   has_invalid_load_balancing_configs?: boolean
 }
 
-export enum PreferredProviderTypeEnum {
-  system = 'system',
-  custom = 'custom',
-}
+export const PreferredProviderTypeEnum = {
+  system: 'system',
+  custom: 'custom',
+} as const
 
-export enum CurrentSystemQuotaTypeEnum {
-  trial = 'trial',
-  free = 'free',
-  paid = 'paid',
-}
+export type PreferredProviderTypeEnum =
+  (typeof PreferredProviderTypeEnum)[keyof typeof PreferredProviderTypeEnum]
 
-export enum QuotaUnitEnum {
-  times = 'times',
-}
+export const CurrentSystemQuotaTypeEnum = {
+  trial: 'trial',
+  free: 'free',
+  paid: 'paid',
+} as const
+
+export type CurrentSystemQuotaTypeEnum =
+  (typeof CurrentSystemQuotaTypeEnum)[keyof typeof CurrentSystemQuotaTypeEnum]
+
+export const QuotaUnitEnum = {
+  times: 'times',
+} as const
+
+export type QuotaUnitEnum = (typeof QuotaUnitEnum)[keyof typeof QuotaUnitEnum]
 
 type QuotaConfiguration = {
   quota_type: CurrentSystemQuotaTypeEnum
@@ -240,15 +262,6 @@ export type ModelProvider = {
     quota_configurations: QuotaConfiguration[]
   }
   allow_custom_token?: boolean
-}
-
-export type Model = {
-  provider: string
-  icon_small: TypeWithI18N
-  icon_small_dark?: TypeWithI18N
-  label: TypeWithI18N
-  models: ModelItem[]
-  status: ModelStatusEnum
 }
 
 export type DefaultModelResponse = {
@@ -329,9 +342,11 @@ export type ModelCredentialPayload = {
   credential_id?: string
 }
 
-export enum ModelModalModeEnum {
-  configProviderCredential = 'config-provider-credential',
-  configCustomModel = 'config-custom-model',
-  addCustomModelToModelList = 'add-custom-model-to-model-list',
-  configModelCredential = 'config-model-credential',
-}
+export const ModelModalModeEnum = {
+  configProviderCredential: 'config-provider-credential',
+  configCustomModel: 'config-custom-model',
+  addCustomModelToModelList: 'add-custom-model-to-model-list',
+  configModelCredential: 'config-model-credential',
+} as const
+
+export type ModelModalModeEnum = (typeof ModelModalModeEnum)[keyof typeof ModelModalModeEnum]

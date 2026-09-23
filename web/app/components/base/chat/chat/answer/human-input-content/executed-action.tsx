@@ -1,7 +1,7 @@
 import type { ExecutedAction as ExecutedActionType } from './type'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { memo } from 'react'
 import { Trans } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 
 type ExecutedActionProps = {
   executedAction: ExecutedActionType
@@ -10,7 +10,7 @@ type ExecutedActionProps = {
 const ExecutedAction = ({ executedAction }: ExecutedActionProps) => {
   return (
     <div className="flex flex-col gap-y-1 py-1" data-testid="executed-action">
-      <Divider className="mt-1 mb-2 w-7.5" />
+      <Separator className="mt-1 mb-2 h-[0.5px] w-7.5" />
       <div className="flex items-center gap-x-1 system-xs-regular text-text-tertiary">
         <div className="i-custom-vender-workflow-trigger-all size-3.5 shrink-0" />
         <Trans

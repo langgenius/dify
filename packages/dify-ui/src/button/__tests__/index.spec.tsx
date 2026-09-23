@@ -17,15 +17,14 @@ describe('Button', () => {
       await expect.element(screen.getByRole('button')).toHaveAttribute('type', 'submit')
     })
 
-    it('renders custom element via render prop', async () => {
+    it('renders a non-native button via render prop', async () => {
       const screen = await render(
-        <Button nativeButton={false} render={<a href="/test" />}>
-          Link
+        <Button nativeButton={false} render={<div />}>
+          Custom button
         </Button>,
       )
-      const button = screen.getByRole('button', { name: 'Link' }).element()
-      expect(button.tagName).toBe('A')
-      expect(button).toHaveAttribute('href', '/test')
+      const button = screen.getByRole('button', { name: 'Custom button' }).element()
+      expect(button.tagName).toBe('DIV')
     })
   })
 
