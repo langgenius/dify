@@ -863,7 +863,12 @@ class TestAppDslService:
 
     # ── Export ─────────────────────────────────────────────────────────
 
-    def test_export_dsl_delegates_by_mode(self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session):
+    def test_export_dsl_delegates_by_mode(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+    ):
         workflow_calls: list[bool] = []
         model_calls: list[bool] = []
 
@@ -902,7 +907,10 @@ class TestAppDslService:
         assert model_calls == [True]
 
     def test_export_dsl_preserves_icon_and_icon_type(
-        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
     ):
         monkeypatch.setattr(
             AppDslService,
