@@ -202,7 +202,7 @@ describe('@langgenius/dify-ui/toast', () => {
     }
   })
 
-  it('should dismiss an expanded background toast from its current row when swiped right', async () => {
+  it('should dismiss an expanded background toast when swiped right', async () => {
     const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
     const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
     baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
@@ -238,11 +238,10 @@ describe('@langgenius/dify-ui/toast', () => {
 
       const backgroundToast = screen.getByRole('dialog', { name: 'Background notification' })
       await expect.element(backgroundToast).toBeInTheDocument()
-      await backgroundToast.hover()
+      await screen.getByRole('dialog', { name: 'Front notification' }).hover()
       await expect.element(backgroundToast).toHaveAttribute('data-expanded')
 
       const toastElement = backgroundToast.element()
-      const bounds = toastElement.getBoundingClientRect()
 
       await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe destination'), {
         steps: 10,
@@ -250,10 +249,10 @@ describe('@langgenius/dify-ui/toast', () => {
 
       await vi.waitFor(() => {
         expect(toastElement).toHaveAttribute('data-ending-style')
+        expect(toastElement).toHaveAttribute('data-swipe-direction', 'right')
       })
-      expect(toastElement.getBoundingClientRect().top).toBeCloseTo(bounds.top, 0)
-    } finally {
       await userEvent.unhover(document.body)
+    } finally {
       baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
     }
   })

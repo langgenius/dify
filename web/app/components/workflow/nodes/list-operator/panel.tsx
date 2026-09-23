@@ -19,7 +19,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.listFilter'
 
 const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const {
     readOnly,

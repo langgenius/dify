@@ -36,7 +36,7 @@ type AppsProps = {
 }
 
 const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const locale = useLocale()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
@@ -307,7 +307,7 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
 export default React.memo(Apps)
 
 function NoTemplateFound() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   return (
     <div className="w-full rounded-lg bg-workflow-process-bg p-4">
       <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">

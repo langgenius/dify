@@ -33,8 +33,6 @@
   "sidebar.action.pin": "Sabitle",
   "sidebar.action.rename": "Yeniden Adlandır",
   "sidebar.action.unpin": "Sabitlemeyi Kaldır",
-  "sidebar.delete.content": "Bu uygulamayı silmek istediğinizden emin misiniz?",
-  "sidebar.delete.title": "Uygulamayı sil",
   "sidebar.webApps": "Web uygulamaları",
   "tryApp.category": "Kategori",
   "tryApp.createFromSampleApp": "Bu örnek uygulamadan oluştur",

@@ -38,7 +38,7 @@ type DocumentSettingsProps = {
 }
 
 const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation', 'datasetPipeline'])
   const router = useRouter()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)

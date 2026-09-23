@@ -10,7 +10,7 @@ type FeatureIconProps = {
   showFeaturesLabel?: boolean
 }
 function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   if (feature === ModelFeatureEnum.vision) {
     if (showFeaturesLabel) {

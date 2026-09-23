@@ -146,7 +146,7 @@ const WorkflowToolOutputName = React.memo(
   }) => {
     const outputNameId = React.useId()
 
-    const { t } = useTranslation()
+    const { t } = useTranslation(['tools', 'workflow'])
     const reservedOutputDuplicateTip = t(
       ($) => $['createTool.toolOutput.reservedParameterDuplicateTip'],
       { ns: 'tools' },
@@ -228,7 +228,7 @@ export function WorkflowToolDrawer({
   onSave,
   onCreate,
 }: WorkflowToolDrawerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common', 'tools'])
   const parameterId = React.useId()
   const toolNameLabelId = React.useId()
 

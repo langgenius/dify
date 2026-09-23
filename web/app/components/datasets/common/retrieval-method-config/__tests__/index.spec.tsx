@@ -237,11 +237,10 @@ describe('RetrievalMethodConfig', () => {
     it('should apply disabled state to option cards', () => {
       renderComponent({ disabled: true })
 
-      // When disabled, clicking should not trigger onChange
       const semanticOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.semantic_search.title',
       })
-      expect(semanticOption).toHaveAttribute('aria-disabled', 'true')
+      expect(semanticOption).toBeDisabled()
     })
 
     it('should default disabled to false', () => {
@@ -334,7 +333,8 @@ describe('RetrievalMethodConfig', () => {
       expect(onChange).not.toHaveBeenCalled()
     })
 
-    it('should not call onChange when disabled', () => {
+    it('should not call onChange when disabled', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
@@ -345,7 +345,7 @@ describe('RetrievalMethodConfig', () => {
       const fullTextOption = screen.getByRole('radio', {
         name: 'dataset.retrieval.full_text_search.title',
       })
-      fireEvent.click(fullTextOption!)
+      await user.click(fullTextOption)
 
       expect(onChange).not.toHaveBeenCalled()
     })
@@ -857,7 +857,7 @@ describe('RetrievalMethodConfig', () => {
         const option = screen.getByRole('radio', {
           name: 'dataset.retrieval.semantic_search.title',
         })
-        expect(option).toHaveAttribute('aria-disabled', 'true')
+        expect(option).toBeDisabled()
       })
 
       it('should handle disabled=false', () => {

@@ -1,5 +1,4 @@
 'use client'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
 import { IndexingType } from '../../create/step-two'
@@ -24,7 +23,7 @@ const IndexMethod = ({
   keywordNumber,
   onKeywordNumberChange,
 }: IndexMethodProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetSettings'])
   const isEconomyDisabled = currentValue === IndexingType.QUALIFIED
 
   return (
@@ -50,41 +49,35 @@ const IndexMethod = ({
         className="gap-x-2"
       />
       {/* Economy */}
-      <Popover>
-        <PopoverTrigger nativeButton={false} openOnHover={isEconomyDisabled} render={<div />}>
-          <OptionCard
-            id={IndexingType.ECONOMICAL}
-            isActive={value === IndexingType.ECONOMICAL}
-            icon={<span aria-hidden className="i-custom-vender-knowledge-economic size-4.5" />}
-            iconActiveColor="text-util-colors-indigo-indigo-600"
-            title={t(($) => $['form.indexMethodEconomy'], { ns: 'datasetSettings' })}
-            description={t(($) => $['form.indexMethodEconomyTip'], {
-              ns: 'datasetSettings',
-              count: keywordNumber,
-            })}
-            disabled={disabled || isEconomyDisabled}
-            effectColor={EffectColor.indigo}
-            showEffectColor
-            showChildren={value === IndexingType.ECONOMICAL}
-            className="gap-x-2"
-          >
-            <KeywordNumber
-              disabled={disabled || isEconomyDisabled}
-              keywordNumber={keywordNumber}
-              onKeywordNumberChange={onKeywordNumberChange}
-            />
-          </OptionCard>
-        </PopoverTrigger>
-        {isEconomyDisabled && (
-          <PopoverContent
-            placement="right"
-            sideOffset={4}
-            className="rounded-lg border-0 bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg"
-          >
-            {t(($) => $['form.indexMethodChangeToEconomyDisabledTip'], { ns: 'datasetSettings' })}
-          </PopoverContent>
-        )}
-      </Popover>
+      <OptionCard
+        id={IndexingType.ECONOMICAL}
+        isActive={value === IndexingType.ECONOMICAL}
+        icon={<span aria-hidden className="i-custom-vender-knowledge-economic size-4.5" />}
+        iconActiveColor="text-util-colors-indigo-indigo-600"
+        title={t(($) => $['form.indexMethodEconomy'], { ns: 'datasetSettings' })}
+        description={[
+          t(($) => $['form.indexMethodEconomyTip'], {
+            ns: 'datasetSettings',
+            count: keywordNumber,
+          }),
+          isEconomyDisabled
+            ? t(($) => $['form.indexMethodChangeToEconomyDisabledTip'], { ns: 'datasetSettings' })
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        disabled={disabled || isEconomyDisabled}
+        effectColor={EffectColor.indigo}
+        showEffectColor
+        showChildren={value === IndexingType.ECONOMICAL}
+        className="gap-x-2"
+      >
+        <KeywordNumber
+          disabled={disabled || isEconomyDisabled}
+          keywordNumber={keywordNumber}
+          onKeywordNumberChange={onKeywordNumberChange}
+        />
+      </OptionCard>
     </RadioGroup>
   )
 }

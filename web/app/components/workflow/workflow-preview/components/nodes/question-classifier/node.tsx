@@ -8,7 +8,7 @@ import InfoPanel from '@/app/components/workflow/nodes/_base/components/info-pan
 import { NodeSourceHandle } from '../../node-handle'
 
 const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { data } = props
   const topics = data.classes
 

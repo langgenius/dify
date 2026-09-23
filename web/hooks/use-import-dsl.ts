@@ -30,7 +30,7 @@ function notifyImportFailure(error: unknown, message: string) {
   if (!(error instanceof Response)) toast.error(message)
 }
 export const useImportDSL = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { push } = useRouter()
   const { mutateAsync: importApp } = useMutation(consoleQuery.apps.imports.post.mutationOptions())

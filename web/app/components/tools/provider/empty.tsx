@@ -30,7 +30,7 @@ const getLink = (type?: ToolType) => {
   }
 }
 const Empty = ({ type, isAgent }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const { theme } = useTheme()
 

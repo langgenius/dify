@@ -7,7 +7,7 @@ import { useUpload } from '../hooks/use-upload'
 import { useFileStoreWithSelector } from '../store'
 
 const ImageUploader = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetHitTesting'])
   const files = useFileStoreWithSelector((s) => s.files)
 
   const { fileUploadConfig, uploaderRef, fileChangeHandle, selectHandle } = useUpload()

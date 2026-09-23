@@ -118,7 +118,7 @@ export function AgentPreviewChatConversation({
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
   const queryClient = useQueryClient()
   const { data: userProfile } = useSuspenseQuery({

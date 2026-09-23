@@ -60,7 +60,7 @@ const DEFAULT_SCHEMA: SchemaRoot = {
 }
 
 function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaConfigProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [selectedSchemaView, setSelectedSchemaView] = useState<SchemaView>('visualEditor')
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
   const [json, setJson] = useState(() => JSON.stringify(jsonSchema, null, 2))

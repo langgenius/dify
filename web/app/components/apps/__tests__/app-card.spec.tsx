@@ -347,7 +347,7 @@ vi.mock('@/next/dynamic', () => ({
         )
       }
     }
-    if (fnString.includes('dsl-export-confirm-modal')) {
+    if (fnString.includes('app/export-confirm-modal')) {
       return function MockDSLExportModal({
         onClose,
         onConfirm,
@@ -451,7 +451,6 @@ describe('AppCard', () => {
         editable: false,
         is_pinned: false,
         last_used_at: null,
-        uninstallable: true,
         app: {
           id: mockApp.id,
           name: mockApp.name,
@@ -800,7 +799,7 @@ describe('AppCard', () => {
 
       expect(await screen.findByRole('menuitem', { name: 'app.editApp' })).toBeInTheDocument()
       expect(screen.getByRole('menuitem', { name: 'app.duplicate' })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'app.export' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toBeInTheDocument()
     })
 
     it('should keep card actions outside the card context menu trigger', async () => {
@@ -838,7 +837,7 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.duplicate')).toBeInTheDocument()
       })
-      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.exportApp')).not.toBeInTheDocument()
     })
 
     it('should show duplicate option on starred cards when user can create apps without app import export permission', async () => {
@@ -854,7 +853,7 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.duplicate')).toBeInTheDocument()
       })
-      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.exportApp')).not.toBeInTheDocument()
     })
 
     it('should show export option when dropdown menu is opened', async () => {
@@ -863,7 +862,7 @@ describe('AppCard', () => {
       fireEvent.click(getOperationsTrigger())
 
       await waitFor(() => {
-        expect(screen.getByText('app.export')).toBeInTheDocument()
+        expect(screen.getByText('app.exportApp')).toBeInTheDocument()
       })
     })
 
@@ -1219,7 +1218,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       expect(mockAppDslExport.exportAppDsl).toHaveBeenCalledWith({
@@ -1322,7 +1321,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1345,7 +1344,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1359,7 +1358,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1378,7 +1377,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {
@@ -1400,7 +1399,7 @@ describe('AppCard', () => {
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
+        fireEvent.click(screen.getByText('app.exportApp'))
       })
 
       await waitFor(() => {

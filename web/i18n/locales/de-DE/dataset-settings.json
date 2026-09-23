@@ -1,5 +1,6 @@
 {
   "desc": "Hier können Sie die Eigenschaften und Arbeitsweisen des Wissens anpassen.",
+  "form.changeIcon": "Wissenssymbol ändern",
   "form.chunkStructure.description": "über Chunk Structure.",
   "form.chunkStructure.learnMore": "Weitere Informationen",
   "form.chunkStructure.title": "Chunk-Struktur",

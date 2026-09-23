@@ -11,7 +11,7 @@ type Props = Readonly<{
 }>
 
 const CSVReader: FC<Props> = ({ onParsed }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const { CSVReader } = useCSVReader()
   const [zoneHover, setZoneHover] = useState(false)
   return (

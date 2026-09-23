@@ -30,8 +30,8 @@ export function EnvironmentDeployMenu({
   appearance = 'header',
   onSelectEnvironment,
 }: EnvironmentDeployMenuProps) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
   const undeployedEnvironments = useAtomValue(undeployedAppEnvironmentsAtom) ?? []
   const isLoading = useAtomValue(appEnvironmentsIsLoadingAtom)
   const isError = useAtomValue(appEnvironmentsIsErrorAtom)

@@ -6,7 +6,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -17,15 +17,15 @@ from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rba
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.apikey import ApiKeyItem, ApiKeyList, build_masked_api_key_list
+from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_errors
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
-    is_admin_or_owner_required,
     model_validate,
     rbac_permission_required,
     setup_required,
@@ -41,6 +41,8 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from extensions.ext_application_services import application_services
+from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from fields.base import ResponseModel
 from fields.dataset_fields import (
     DatasetDetailResponse,
@@ -52,12 +54,10 @@ from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from libs.pagination import clamp_pagination
 from libs.url_utils import normalize_api_base_url
-from models import Account, ApiToken, App, Dataset, Document, UploadFile
+from machinery.context import RequestContext
+from models import Account, App, Dataset, Document, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
-from models.enums import ApiTokenType
 from models.provider_ids import ModelProviderID
-from services import dataset_api_key_service
-from services.api_token_service import ApiTokenCache
 from services.app_service import AppService
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -806,7 +806,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DELETE, DatasetId()))
     @with_session
     def delete(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1113,121 +1113,49 @@ class DatasetIndexingStatusApi(Resource):
 
 @console_ns.route("/datasets/api-keys")
 class DatasetApiKeyApi(Resource):
-    max_keys = 10
-    token_prefix = "dataset-"
-    resource_type = ApiTokenType.DATASET
-
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
-    @account_initialization_required
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str):
-        keys = session.scalars(
-            select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
-        ).all()
-        token_ids = [str(key.id) for key in keys]
-        bindings_by_token = dataset_api_key_service.list_bindings_by_token(session, token_ids)
-        return dump_response(ApiKeyList, build_masked_api_key_list(keys, bindings_by_token))
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace())],
+    )
+    def get(self, request_context: RequestContext):
+        with api_key_errors():
+            keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
+        return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
-    @account_initialization_required
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, current_tenant_id: str):
-        # Optional list of knowledge bases to scope the key to. Absent/empty => the key
-        # can access every dataset in the tenant (default). Duplicates are de-duplicated.
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace())],
+    )
+    def post(self, request_context: RequestContext):
+        # Preserve the optional scope and validation response of the workspace route.
         payload = request.get_json(silent=True) or {}
         raw_dataset_ids = payload.get("dataset_ids") or []
         if not isinstance(raw_dataset_ids, list) or any(not isinstance(item, str) for item in raw_dataset_ids):
             console_ns.abort(400, message="dataset_ids must be a list of strings.")
-        dataset_ids = list(dict.fromkeys(raw_dataset_ids))
-
-        if dataset_ids:
-            unknown = dataset_api_key_service.find_unknown_dataset_ids(session, dataset_ids, current_tenant_id)
-            if unknown:
-                console_ns.abort(400, message=f"Unknown knowledge base id(s): {', '.join(unknown)}")
-
-        current_key_count = (
-            session.scalar(
-                select(func.count(ApiToken.id)).where(
-                    ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id
-                )
-            )
-            or 0
-        )
-
-        if current_key_count >= self.max_keys:
-            console_ns.abort(
-                400,
-                message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
-                custom="max_keys_exceeded",
-            )
-
-        key = ApiToken.generate_api_key(self.token_prefix, 24, session=session)
-        api_token = ApiToken()
-        api_token.tenant_id = current_tenant_id
-        api_token.token = key
-        api_token.type = self.resource_type
-        session.add(api_token)
-        session.flush()
-        dataset_api_key_service.bind_datasets(session, api_token.id, dataset_ids)
-        session.flush()
-
-        # Reveal-once: the create response carries the full secret and its bound scope.
-        item = ApiKeyItem.model_validate(api_token, from_attributes=True)
-        item.dataset_ids = dataset_ids
-        return dump_response(ApiKeyItem, item), 200
+        with api_key_errors():
+            key = application_services().dataset_api_keys.create_workspace_key(request_context, tuple(raw_dataset_ids))
+        return dump_response(ApiKeyItem, key), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
 class DatasetApiDeleteApi(Resource):
-    resource_type = ApiTokenType.DATASET
-
     @console_ns.doc("delete_dataset_api_key")
     @console_ns.doc(description="Delete dataset API key")
     @console_ns.doc(params={"api_key_id": "API key ID"})
     @console_ns.response(204, "API key deleted successfully")
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
-    @account_initialization_required
-    @with_current_tenant_id
-    @with_session
-    def delete(self, session: Session, current_tenant_id: str, api_key_id: UUID):
-        api_key_id_str = str(api_key_id)
-        key = session.scalar(
-            select(ApiToken)
-            .where(
-                ApiToken.tenant_id == current_tenant_id,
-                ApiToken.type == self.resource_type,
-                ApiToken.id == api_key_id_str,
-            )
-            .limit(1)
-        )
-
-        if key is None:
-            console_ns.abort(404, message="API key not found")
-
-        # Invalidate cache before deleting from database
-        # Type assertion: key is guaranteed to be non-None here because abort() raises
-        assert key is not None  # nosec - for type checker only
-        ApiTokenCache.delete(key.token, key.type)
-
-        session.delete(key)
-
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace())],
+    )
+    def delete(self, request_context: RequestContext, api_key_id: UUID):
+        with api_key_errors():
+            application_services().dataset_api_keys.delete_workspace_key(request_context, str(api_key_id))
         return "", 204
 
 

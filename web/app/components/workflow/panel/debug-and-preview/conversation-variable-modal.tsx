@@ -23,7 +23,7 @@ type Props = Readonly<{
 }>
 
 const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common', 'workflow'])
   const { formatTime } = useTimestamp()
   const varList = useStore((s) => s.conversationVariables) as ConversationVariable[]
   const appID = useStore((s) => s.appId)

@@ -57,7 +57,7 @@ type ModerationSettingModalProps = {
 }
 
 const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCancel, onSave }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const docLink = useDocLink()
   const locale = useLocale()
   const { data: modelProviders, isPending: isLoading } = useModelProviderDetails()

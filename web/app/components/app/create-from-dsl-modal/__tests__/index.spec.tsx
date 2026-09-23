@@ -583,6 +583,40 @@ describe('CreateFromDSLModal', () => {
     )
   })
 
+  it.each([false, true])(
+    'navigates after a dependency check fails for an import (confirmed: %s)',
+    async (confirmed) => {
+      const user = userEvent.setup()
+      const completed = {
+        status: DSLImportStatus.COMPLETED,
+        app_id: 'created-app',
+        app_mode: AppModeEnum.WORKFLOW,
+      }
+      mockImportDSL.mockResolvedValue(
+        confirmed ? { id: 'pending-import', status: DSLImportStatus.PENDING } : completed,
+      )
+      mockImportDSLConfirm.mockResolvedValue(completed)
+      // The dependency owner has already reported its request failure.
+      mockHandleCheckPluginDependencies.mockResolvedValue(false)
+      const onClose = vi.fn()
+      render(
+        <CreateFromDSLModal
+          show
+          onClose={onClose}
+          activeTab={CreateFromDSLModalTab.FROM_URL}
+          dslUrl="https://example.com/app.yml"
+        />,
+      )
+      await user.click(getCreateButton())
+      if (confirmed)
+        await user.click(await screen.findByRole('button', { name: /newApp\.Confirm/ }))
+
+      await waitFor(() => expect(mockGetRedirection).toHaveBeenCalled())
+      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(toastMocks.error).not.toHaveBeenCalled()
+    },
+  )
+
   it('should surface Agent warnings after confirming a pending import', async () => {
     mockImportDSL.mockResolvedValue({
       id: 'agent-import-pending',
@@ -928,7 +962,9 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.FAILED,
       error: 'Invalid YAML format',
     })
-    mockImportDSL.mockRejectedValueOnce(new Error('boom'))
+    mockImportDSL.mockRejectedValueOnce(
+      Response.json({ message: 'Package checksum mismatch' }, { status: 400 }),
+    )
 
     const { rerender } = render(
       <CreateFromDSLModal
@@ -942,7 +978,10 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(getCreateButton())
     })
-    expect(toastMocks.error).toHaveBeenCalledWith('Invalid YAML format')
+    expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(/newApp\.appCreateFailed/),
+      { description: 'Invalid YAML format' },
+    )
 
     rerender(
       <CreateFromDSLModal
@@ -959,6 +998,7 @@ describe('CreateFromDSLModal', () => {
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
     expect(toastMocks.error).toHaveBeenLastCalledWith(
       expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/),
+      { description: 'Package checksum mismatch' },
     )
   })
 
@@ -1002,7 +1042,10 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!)
     })
-    expect(toastMocks.error).toHaveBeenCalledWith('Confirm failed')
+    expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(/newApp\.appCreateFailed/),
+      { description: 'Confirm failed' },
+    )
 
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!)
@@ -1010,6 +1053,7 @@ describe('CreateFromDSLModal', () => {
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
     expect(toastMocks.error).toHaveBeenLastCalledWith(
       expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/),
+      { description: 'boom' },
     )
   })
 })

@@ -20,7 +20,7 @@ import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 const i18nPrefix = 'nodes.agent'
 
 function AgentTaskToolbar({ taskLength, onInsert }: { taskLength: number; onInsert: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
 
   const handleInsert = useCallback(() => {
@@ -70,7 +70,7 @@ export function AgentTaskField({
 }) {
   const taskLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const getVarType = useWorkflowVariableType()
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id)

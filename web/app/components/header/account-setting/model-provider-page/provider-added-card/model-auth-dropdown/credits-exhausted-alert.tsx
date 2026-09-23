@@ -21,7 +21,7 @@ export default function CreditsExhaustedAlert({
   credits: creditsOverride,
   totalCredits: totalCreditsOverride,
 }: CreditsExhaustedAlertProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

@@ -44,7 +44,7 @@ const ConfigCredential: FC<Props> = ({
   isSaving,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const language = useLanguage()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { name: collectionName } = collection

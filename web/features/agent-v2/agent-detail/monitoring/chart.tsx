@@ -35,7 +35,7 @@ export function AgentMonitoringChart({
 }: AgentMonitoringChartProps) {
   const titleId = useId()
 
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const yField = getChartValueField(rows, valueKey)
   const tokenSummary = getTokenSummary(rows)
   const shouldUseEmptyYAxis = !hasChartData(rows, yField)

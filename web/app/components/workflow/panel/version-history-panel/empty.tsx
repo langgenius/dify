@@ -9,7 +9,7 @@ type EmptyProps = {
 }
 
 const Empty: FC<EmptyProps> = ({ onResetFilter }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="flex h-5/6 w-full flex-col justify-center gap-y-2">

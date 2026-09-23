@@ -40,7 +40,7 @@ const VarList: FC<Props> = ({
   filterVar,
   isSupportFileVar = true,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
   const variableNameLabel = t(($) => $['common.variableNamePlaceholder'], { ns: 'workflow' })
 
   const keyboardSort = useKeyboardSortable({

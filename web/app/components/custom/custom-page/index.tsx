@@ -11,7 +11,7 @@ import { consoleQuery } from '@/service/console'
 import CustomWebAppBrand from '../custom-web-app-brand'
 
 const CustomPage = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'custom'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

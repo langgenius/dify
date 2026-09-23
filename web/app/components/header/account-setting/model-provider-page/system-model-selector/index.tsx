@@ -65,7 +65,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const modelLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: textGenerationModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({

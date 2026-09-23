@@ -21,7 +21,7 @@ export function DetailSidebarToggleButton({
   className,
   icon,
 }: DetailSidebarToggleButtonProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['layout'])
   const label = expand
     ? t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })
     : t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })

@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from libs.oauth_bearer import BearerAuthenticator, InvalidBearerError, TokenType
+from constants.oauth_bearer import TokenType
+from libs.oauth_bearer import BearerAuthenticator, InvalidBearerError
 
 
 def _authenticator_with(resolver) -> BearerAuthenticator:

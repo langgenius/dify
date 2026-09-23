@@ -58,7 +58,7 @@ export function TopKAndScoreThreshold({
   const scoreThresholdLabelId = useId()
   const topKLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const topKLabel = t(($) => $['datasetConfig.top_k'], { ns: 'appDebug' })
   const scoreThresholdLabel = t(($) => $['datasetConfig.score_threshold'], { ns: 'appDebug' })
   const topKTip = t(($) => $['datasetConfig.top_kTip'], { ns: 'appDebug' })

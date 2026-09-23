@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const SubscriptionCard = ({ data, pluginDetail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const [isShowDeleteModal, { setTrue: showDeleteModal, setFalse: hideDeleteModal }] =
     useBoolean(false)
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)

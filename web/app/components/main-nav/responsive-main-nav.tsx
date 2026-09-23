@@ -27,7 +27,7 @@ const getSnapshot = () => window.matchMedia(compactNavigationQuery).matches
 const getServerSnapshot = () => false
 
 export function ResponsiveMainNav({ initialPlatform }: Pick<MainNavProps, 'initialPlatform'>) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const isCompact = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
   if (!isCompact) return <MainNav initialPlatform={initialPlatform} />

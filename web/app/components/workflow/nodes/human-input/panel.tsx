@@ -45,7 +45,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
   const actionsLabelId = React.useId()
   const formContentLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share', 'workflow'])
   const {
     readOnly,
     inputs,

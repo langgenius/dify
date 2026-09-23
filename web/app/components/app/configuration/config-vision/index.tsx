@@ -21,7 +21,7 @@ import ParamConfig from './param-config'
 const ConfigVision: FC = () => {
   const resolutionLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const titleId = useId()
   const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
   const file = useFeatures((s) => s.features.file)

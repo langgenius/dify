@@ -20,7 +20,7 @@ type IndexingProgressItemProps = {
 
 // Status icon component for completed/error states
 const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   if (status === 'completed')
     return <RiCheckboxCircleFill aria-hidden="true" className="size-4 shrink-0 text-text-success" />
@@ -75,7 +75,7 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
   sourceType,
   notionIcon,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const nameId = useId()
   const isEmbedding = isSourceEmbedding(detail)
   const percent = getSourcePercent(detail)

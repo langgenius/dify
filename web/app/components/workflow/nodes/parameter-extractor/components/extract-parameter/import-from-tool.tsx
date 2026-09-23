@@ -35,7 +35,7 @@ function toParmExactParams(toolParams: ToolParameter[], lan: string): Param[] {
   })
 }
 const ImportFromTool: FC<Props> = ({ onImport }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const language = useLanguage()
 
   const { data: buildInTools } = useAllBuiltInTools()

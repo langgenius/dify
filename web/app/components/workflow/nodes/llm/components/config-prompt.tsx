@@ -52,7 +52,7 @@ const ConfigPrompt: FC<Props> = ({
   handleAddVariable,
   modelConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const workflowStore = useWorkflowStore()
   const { setControlPromptEditorRerenderKey } = workflowStore.getState()
   const prompts = useMemo(

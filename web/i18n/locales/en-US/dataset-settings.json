@@ -1,5 +1,6 @@
 {
   "desc": "Here you can modify the properties and retrieval settings of this Knowledge.",
+  "form.changeIcon": "Change knowledge icon",
   "form.chunkStructure.description": " about Chunk Structure.",
   "form.chunkStructure.learnMore": "Learn more",
   "form.chunkStructure.title": "Chunk Structure",

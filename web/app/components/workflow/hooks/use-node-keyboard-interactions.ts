@@ -21,7 +21,7 @@ export function useNodeKeyboardInteractions(onSelect: (id: string, cancel?: bool
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   return (event: KeyboardEvent<HTMLDivElement>) => {
     const target = event.target

@@ -29,7 +29,7 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
   const [showGeneratedForm, setShowGeneratedForm] = useState(false)
   const [formData, setFormData] = useState<HumanInputFormData | null>(null)
