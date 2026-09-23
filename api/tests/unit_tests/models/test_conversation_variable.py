@@ -21,7 +21,7 @@ def test_from_variable_coerces_non_uuid_primary_key():
     UUID(row.id)
     assert row.id == expected
     assert variable.id == "opt-comp-prompt-var"
-    assert row.to_variable().id == expected
+    assert row.to_variable().id == "opt-comp-prompt-var"
 
 
 def test_from_variable_and_to_variable():

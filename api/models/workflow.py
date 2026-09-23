@@ -1492,8 +1492,8 @@ class ConversationVariable(TypeBase):
 
         Draft and DSL ids such as ``opt-comp-prompt-var`` are not UUIDs and cannot
         be inserted. Those become a uuid5 of the variable name, so the same variable
-        keeps one row. An id that is already a UUID is stored unchanged. The
-        in-memory workflow variable keeps the author id.
+        keeps one row. An id that is already a UUID is stored unchanged. Callers
+        still see the author id on the variable payload.
         """
         row_id = variable.id
         try:
@@ -1504,13 +1504,11 @@ class ConversationVariable(TypeBase):
 
     @classmethod
     def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> "ConversationVariable":
-        row_id = cls.storage_id(variable)
-        stored = variable if row_id == str(variable.id) else variable.model_copy(update={"id": row_id})
         return cls(
-            id=row_id,
+            id=cls.storage_id(variable),
             app_id=app_id,
             conversation_id=conversation_id,
-            data=stored.model_dump_json(),
+            data=variable.model_dump_json(),
         )
 
     def to_variable(self) -> VariableBase:

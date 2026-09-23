@@ -142,9 +142,10 @@ def test_non_uuid_conversation_variable_is_created_once(
     first = runner._initialize_conversation_variables()
     second = runner._initialize_conversation_variables()
 
-    expected_id = ConversationVariable.storage_id(variable)
+    expected_row_id = ConversationVariable.storage_id(variable)
     assert variable.id == author_id
-    assert [item.id for item in first] == [expected_id]
-    assert [item.id for item in second] == [expected_id]
+    assert [item.id for item in first] == [author_id]
+    assert [item.id for item in second] == [author_id]
     persisted = sqlite_session.scalars(select(ConversationVariable)).all()
-    assert [row.id for row in persisted] == [expected_id]
+    assert [row.id for row in persisted] == [expected_row_id]
+    assert persisted[0].to_variable().id == author_id

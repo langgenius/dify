@@ -2,6 +2,7 @@ import contextlib
 import logging
 from collections.abc import Callable, Sequence
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
@@ -29,6 +30,25 @@ from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.delete_conversation_task import delete_conversation_related_data
 
 logger = logging.getLogger(__name__)
+
+
+def _is_uuid_text(value: str) -> bool:
+    try:
+        UUID(value)
+    except (ValueError, TypeError, AttributeError):
+        return False
+    return True
+
+
+def _conversation_variable_for_public_id(session: Session, stmt, public_id: str) -> ConversationVariable | None:
+    """Match a primary key, or the author id stored in the variable payload."""
+    row = session.scalar(stmt.where(ConversationVariable.id == public_id))
+    if row is not None or _is_uuid_text(public_id):
+        return row
+    for candidate in session.scalars(stmt).all():
+        if candidate.to_variable().id == public_id:
+            return candidate
+    return None
 
 
 class ConversationService:
@@ -287,7 +307,7 @@ class ConversationService:
                 )
 
         if last_id:
-            last_variable = session.scalar(stmt.where(ConversationVariable.id == last_id))
+            last_variable = _conversation_variable_for_public_id(session, stmt, last_id)
             if not last_variable:
                 raise ConversationVariableNotExistsError()
 
@@ -350,10 +370,9 @@ class ConversationService:
         stmt = select(ConversationVariable).where(
             ConversationVariable.app_id == app_model.id,
             ConversationVariable.conversation_id == conversation.id,
-            ConversationVariable.id == variable_id,
         )
 
-        existing_variable = session.scalar(stmt)
+        existing_variable = _conversation_variable_for_public_id(session, stmt, variable_id)
         if not existing_variable:
             raise ConversationVariableNotExistsError()
 
