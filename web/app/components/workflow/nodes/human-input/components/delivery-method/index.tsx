@@ -32,6 +32,8 @@ const DeliveryMethodForm: React.FC<Props> = ({
   onChange,
   readonly,
 }) => {
+  const deliveryLabelId = React.useId()
+
   const { t } = useTranslation()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
@@ -63,16 +65,12 @@ const DeliveryMethodForm: React.FC<Props> = ({
     <div className="px-4 py-2">
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
-          <div className="system-sm-semibold-uppercase text-text-secondary">
+          <div id={deliveryLabelId} className="system-sm-semibold-uppercase text-text-secondary">
             {t(($) => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflow' })}
           </div>
           <Infotip>
-            <InfotipTrigger
-              aria-label={t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}
-            />
-            <InfotipContent
-              aria-label={t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}
-            >
+            <InfotipTrigger aria-labelledby={deliveryLabelId} />
+            <InfotipContent aria-labelledby={deliveryLabelId}>
               {t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}
             </InfotipContent>
           </Infotip>

@@ -40,6 +40,8 @@ const EditMetadataBatchModal: FC<Props> = ({
   onHide,
   onShowManage,
 }) => {
+  const applyToAllLabelId = React.useId()
+
   const { t } = useTranslation()
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
   const handleTemplesChange = useCallback(
@@ -200,23 +202,19 @@ const EditMetadataBatchModal: FC<Props> = ({
                 checked={isApplyToAllSelectDocument}
                 onCheckedChange={setIsApplyToAllSelectDocument}
               />
-              <span className="mr-1 ml-2 system-xs-medium text-text-secondary">
+              <span
+                id={applyToAllLabelId}
+                className="mr-1 ml-2 system-xs-medium text-text-secondary"
+              >
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocument`], { ns: 'dataset' })}
               </span>
             </label>
             <Infotip>
               <InfotipTrigger
-                aria-label={t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], {
-                  ns: 'dataset',
-                })}
+                aria-labelledby={applyToAllLabelId}
                 className="p-px text-text-tertiary"
               />
-              <InfotipContent
-                aria-label={t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], {
-                  ns: 'dataset',
-                })}
-                className="max-w-60"
-              >
+              <InfotipContent aria-labelledby={applyToAllLabelId} className="max-w-60">
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
               </InfotipContent>
             </Infotip>

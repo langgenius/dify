@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Faites glisser et déposez des fichiers ou des dossiers, ou",
   "stepOne.uploader.buttonSingleFile": "Faites glisser et déposez un fichier, ou",
   "stepOne.uploader.change": "Changer",
+  "stepOne.uploader.completed": "Téléversement terminé",
   "stepOne.uploader.failed": "Le téléchargement a échoué",
   "stepOne.uploader.tip": "Prend en charge {{supportTypes}}. Maximum {{batchCount}} fichiers par lot et {{size}} MB chacun.",
   "stepOne.uploader.tipWithTotalLimit": "Prend en charge {{supportTypes}}. Maximum {{batchCount}} fichiers par lot et {{size}} MB chacun. Maximum total de {{totalCount}} fichiers.",

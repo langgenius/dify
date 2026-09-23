@@ -13,6 +13,8 @@ type Props = Readonly<{
 }>
 
 const ItemPanel: FC<Props> = ({ className, icon, name, description, children }) => {
+  const titleId = React.useId()
+
   return (
     <div
       className={cn(
@@ -22,10 +24,12 @@ const ItemPanel: FC<Props> = ({ className, icon, name, description, children }) 
     >
       <div className="flex items-center">
         {icon}
-        <div className="mr-1 ml-3 text-sm/6 font-semibold text-text-secondary">{name}</div>
+        <div id={titleId} className="mr-1 ml-3 text-sm/6 font-semibold text-text-secondary">
+          {name}
+        </div>
         <Infotip>
-          <InfotipTrigger aria-label={description} />
-          <InfotipContent aria-label={description} className="w-45">
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-45">
             {description}
           </InfotipContent>
         </Infotip>

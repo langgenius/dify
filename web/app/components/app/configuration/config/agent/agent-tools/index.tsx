@@ -42,6 +42,9 @@ import SettingBuiltInTool from './setting-built-in-tool'
 
 type AgentToolWithMoreInfo = (AgentTool & { icon: any; collection?: Collection }) | null
 const AgentTools: FC = () => {
+  const toolNameLabelId = React.useId()
+  const toolsLabelId = React.useId()
+
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const { readonly, modelConfig, setModelConfig } = useContext(ConfigContext)
@@ -160,14 +163,12 @@ const AgentTools: FC = () => {
         noBodySpacing={tools.length === 0}
         title={
           <div className="flex items-center">
-            <h2 className="mr-1">{t(($) => $['agent.tools.name'], { ns: 'appDebug' })}</h2>
+            <h2 id={toolsLabelId} className="mr-1">
+              {t(($) => $['agent.tools.name'], { ns: 'appDebug' })}
+            </h2>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $['agent.tools.description'], { ns: 'appDebug' })}
-              />
-              <InfotipContent
-                aria-label={t(($) => $['agent.tools.description'], { ns: 'appDebug' })}
-              >
+              <InfotipTrigger aria-labelledby={toolsLabelId} />
+              <InfotipContent aria-labelledby={toolsLabelId}>
                 {t(($) => $['agent.tools.description'], { ns: 'appDebug' })}
               </InfotipContent>
             </Infotip>
@@ -251,8 +252,13 @@ const AgentTools: FC = () => {
                         aria-label={item.tool_name}
                         className="ml-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                       />
-                      <InfotipContent aria-label={item.tool_name} className="w-55">
-                        <div className="mb-1.5">{item.tool_name}</div>
+                      <InfotipContent
+                        aria-labelledby={`${toolNameLabelId}-${index}`}
+                        className="w-55"
+                      >
+                        <div id={`${toolNameLabelId}-${index}`} className="mb-1.5">
+                          {item.tool_name}
+                        </div>
                         <div className="mb-1.5 text-text-tertiary">
                           {t(($) => $.toolNameUsageTip, { ns: 'tools' })}
                         </div>

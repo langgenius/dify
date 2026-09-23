@@ -13,6 +13,7 @@ import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } fr
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workflow-history'
 import { getNodeUsedVars, updateNodeVars } from '../../nodes/_base/components/variable/utils'
+import { hasAgentV2OutputRoutes } from '../../nodes/agent-v2/types'
 import { AssignerNodeInputType } from '../../nodes/assigner/types'
 import { BlockEnum } from '../../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../../utils'
@@ -65,6 +66,7 @@ const canConnectFromSource = (node: Node) => {
   return (
     node.data.type !== BlockEnum.IfElse &&
     node.data.type !== BlockEnum.QuestionClassifier &&
+    !hasAgentV2OutputRoutes(node.data) &&
     node.data.type !== BlockEnum.HumanInput &&
     node.data.type !== BlockEnum.LoopEnd
   )

@@ -54,7 +54,7 @@ overrides = [
     { name = "cryptography", specifier = ">=50.0.0,<51.0.0" },
     { name = "litellm", specifier = ">=1.83.10,<2.0.0" },
     { name = "pyarrow", specifier = ">=23.0.1,<24.0.0" },
-    { name = "setuptools", specifier = ">=80.10.2,<81" },
+    { name = "setuptools", specifier = ">=84.0.0,<85" },
     { name = "wrapt", specifier = ">=2.1.1,<3.0.0" },
 ]
 
@@ -1478,6 +1478,7 @@ dev = [
     { name = "types-greenlet" },
     { name = "types-html5lib" },
     { name = "types-jmespath" },
+    { name = "types-jsonschema" },
     { name = "types-markdown" },
     { name = "types-oauthlib" },
     { name = "types-objgraph" },
@@ -1768,6 +1769,7 @@ dev = [
     { name = "types-greenlet", specifier = ">=3.5.0.20260518" },
     { name = "types-html5lib", specifier = ">=1.1.11.20260518" },
     { name = "types-jmespath", specifier = ">=1.1.0.20260724" },
+    { name = "types-jsonschema", specifier = ">=4.26.0.20260518" },
     { name = "types-markdown", specifier = ">=3.10.2.20260712" },
     { name = "types-oauthlib", specifier = ">=3.3.0.20260724" },
     { name = "types-objgraph", specifier = ">=3.6.0.20260508" },
@@ -3355,8 +3357,8 @@ name = "httpcore2"
 version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/ad/f4f0e57345f1870f3e8cb624e058d7eca6e5a27d33bcc3311d9b618734cd/httpcore2-2.12.0.tar.gz", hash = "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648", size = 67548, upload-time = "2026-08-18T13:22:08.211Z" }
 wheels = [
@@ -6217,11 +6219,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "80.10.2"
+version = "84.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/76/95/faf61eb8363f26aa7e1d762267a8d602a1b26d4f3a1e758e92cb3cb8b054/setuptools-80.10.2.tar.gz", hash = "sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70", size = 1200343, upload-time = "2026-01-25T22:38:17.252Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/44/f5da03a8ef95d369145c5bb53050e7877c9f3d312e128605fd9504829143/setuptools-84.0.0.tar.gz", hash = "sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73", size = 1168449, upload-time = "2026-08-08T18:27:58.365Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/b8/f1f62a5e3c0ad2ff1d189590bfa4c46b4f3b6e49cef6f26c6ee4e575394d/setuptools-80.10.2-py3-none-any.whl", hash = "sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173", size = 1064234, upload-time = "2026-01-25T22:38:15.216Z" },
+    { url = "https://files.pythonhosted.org/packages/95/9c/c510029fc6ef33a6275cd2c5d3cecd6613dfd6aa401d57c54f1c18852ccf/setuptools-84.0.0-py3-none-any.whl", hash = "sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670", size = 818216, upload-time = "2026-08-08T18:27:56.719Z" },
 ]
 
 [[package]]
@@ -6954,6 +6956,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/99/e5/1645e22a7aeddc20673cd7899e91a8131fd98e5f4eaaeb96fa666af05efc/types_jmespath-1.1.0.20260724.tar.gz", hash = "sha256:cd429dab3bb2f339a5a546f444f2f96c30cb1f31395590fb1d609ed13624d919", size = 10822, upload-time = "2026-07-24T04:58:24.694Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/e4/ed44f19a906c8f249653e1f1befb5f1cc87a7826629375ae7ceb62fcd0cc/types_jmespath-1.1.0.20260724-py3-none-any.whl", hash = "sha256:ad965080d2ef25f4dc95da30819be559597c4301efc0311a9571b2ce8fc62c32", size = 11524, upload-time = "2026-07-24T04:58:23.763Z" },
+]
+
+[[package]]
+name = "types-jsonschema"
+version = "4.26.0.20260518"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "referencing" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dd/46/73b6a5d61a61015c4248030a8cb07e5bdddb4041430fae9e585a68692578/types_jsonschema-4.26.0.20260518.tar.gz", hash = "sha256:e1dd53dc97a64f5eccdd6fa9839666e09bb500a8ebba2db6fdaf1789faea81a6", size = 16638, upload-time = "2026-05-18T06:06:44.106Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/d5/134f8a147dcecda10db7f60cfc6af0578a25a5c53c87b3907a64385e0184/types_jsonschema-4.26.0.20260518-py3-none-any.whl", hash = "sha256:30b30a518c7fe335df85c919fcbcc631b69c03d4a4b5b632fa916bea03065307", size = 16072, upload-time = "2026-05-18T06:06:43.264Z" },
 ]
 
 [[package]]

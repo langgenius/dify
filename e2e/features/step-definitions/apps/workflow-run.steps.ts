@@ -1,7 +1,7 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { syncRunnableWorkflowDraft } from '../../../support/api/workflows'
+import { syncRunnableWorkflowDraft } from '../../../support/api/workflows.ts'
 
 Given('a minimal runnable workflow draft has been synced', async function (this: DifyWorld) {
   const appId = this.createdAppIds.at(-1)

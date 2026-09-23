@@ -12,6 +12,15 @@ Bearer format: API_KEY
 ## openapi
 User-scoped operations
 
+### [GET] /_catalog
+Machine-readable catalog of every op on this surface
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
 ### [GET] /_health
 #### Responses
 
@@ -109,6 +118,69 @@ User-scoped operations
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /apps/{app_id}/advanced-chat:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AdvancedChatRunPayload](#advancedchatrunpayload)<br>**multipart/form-data**: [AdvancedChatRunPayload](#advancedchatrunpayload)<br> | **application/json**: [AdvancedChatRunPayload](#advancedchatrunpayload)<br>**multipart/form-data**: [AdvancedChatRunPayload](#advancedchatrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/chat:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatRunPayload](#chatrunpayload)<br>**multipart/form-data**: [ChatRunPayload](#chatrunpayload)<br> | **application/json**: [ChatRunPayload](#chatrunpayload)<br>**multipart/form-data**: [ChatRunPayload](#chatrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/completion:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CompletionRunPayload](#completionrunpayload)<br>**multipart/form-data**: [CompletionRunPayload](#completionrunpayload)<br> | **application/json**: [CompletionRunPayload](#completionrunpayload)<br>**multipart/form-data**: [CompletionRunPayload](#completionrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/dependencies:check
 #### Parameters
 
@@ -149,15 +221,22 @@ Upload a file to use as an input variable when running the app
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: [FileUploadPayload](#fileuploadpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | Bad request — no file, multiple files, invalid filename, or blocked extension |  |
+| 400 | Bad request — invalid filename or blocked extension |  |
 | 401 | Unauthorized — invalid or expired bearer token |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type |  |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/human-input-forms/{form_token}
@@ -187,7 +266,7 @@ Upload a file to use as an input variable when running the app
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [HumanInputFormSubmitPayload](#humaninputformsubmitpayload)<br> |
+|  Yes | **application/json**: [OpenApiFormSubmitPayload](#openapiformsubmitpayload)<br>**multipart/form-data**: [OpenApiFormSubmitPayload](#openapiformsubmitpayload)<br> | **application/json**: [OpenApiFormSubmitPayload](#openapiformsubmitpayload)<br>**multipart/form-data**: [OpenApiFormSubmitPayload](#openapiformsubmitpayload)<br> |
 
 #### Responses
 
@@ -212,6 +291,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/tasks/{task_id}:stop
@@ -229,7 +309,7 @@ Upload a file to use as an input variable when running the app
 | 200 | Task stopped | **application/json**: [TaskStopResponse](#taskstopresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /apps/{app_id}:run
+### [POST] /apps/{app_id}/workflow:run
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -240,7 +320,7 @@ Upload a file to use as an input variable when running the app
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [AppRunRequest](#apprunrequest)<br> |
+|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br>**multipart/form-data**: [WorkflowRunPayload](#workflowrunpayload)<br> | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br>**multipart/form-data**: [WorkflowRunPayload](#workflowrunpayload)<br> |
 
 #### Responses
 
@@ -350,11 +430,19 @@ Upload a file to use as an input variable when running the app
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /workspaces
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace list | **application/json**: [WorkspaceListResponse](#workspacelistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /workspaces/{workspace_id}
@@ -388,9 +476,9 @@ Upload a file to use as an input variable when running the app
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Import completed | **application/json**: [Import](#import)<br> |
-| 202 | Import pending confirmation | **application/json**: [Import](#import)<br> |
-| 400 | Import failed | **application/json**: [Import](#import)<br> |
+| 200 | Import completed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
+| 202 | Import pending confirmation | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
+| 400 | Import failed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -521,6 +609,21 @@ Upload a file to use as an input variable when running the app
 | subject_type | [SubjectType](#subjecttype) |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
+#### AdvancedChatRunPayload
+
+A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
+| conversation_id | string | Continue an existing conversation | No |
+| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| query | string | User message | Yes |
+| workflow_id | string | Pin a published workflow version | No |
+| workspace_id | string | Workspace that owns the app | No |
+
 #### AppDescribeInfo
 
 | Name | Type | Description | Required |
@@ -584,6 +687,23 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | yaml_content | string | Inline YAML DSL string (required when mode is yaml-content) | No |
 | yaml_url | string | Remote URL to fetch YAML from (required when mode is yaml-url) | No |
 
+#### AppDslImportResponse
+
+`Import` plus the server-built next step for a pending import.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| app_mode | string |  | No |
+| current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
+| error | string |  | No |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| imported_dsl_version | string |  | No |
+| permission_keys | [ string ] |  | No |
+| status | [ImportStatus](#importstatus) |  | Yes |
+| warnings | [ [DslImportWarning](#dslimportwarning) ] |  | No |
+
 #### AppInfo
 
 | Name | Type | Description | Required |
@@ -611,6 +731,7 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | data | [ [AppListRow](#applistrow) ] |  | Yes |
 | has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
@@ -633,23 +754,33 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | AppMode | string |  |  |
 
-#### AppRunRequest
+#### ChatRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate_name | boolean, <br>**Default:** true |  | No |
-| conversation_id | string |  | No |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
-| query | string |  | No |
-| workflow_id | string |  | No |
-| workspace_id | string |  | No |
+| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
+| conversation_id | string | Continue an existing conversation | No |
+| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| query | string | User message | Yes |
+| workspace_id | string | Workspace that owns the app | No |
 
 #### CheckDependenciesResult
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
+
+#### CompletionRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| query | string | Prompt text; most completion apps take their input through `inputs` | No |
+| workspace_id | string | Workspace that owns the app | No |
 
 #### DeploymentEdition
 
@@ -782,6 +913,12 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | tenant_id | string |  | No |
 | user_id | string |  | No |
 
+#### FileUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file | binary | The file to upload; its id can then be used in an app run's file variables | Yes |
+
 #### FormSubmitResponse
 
 Empty 200 body for POST /apps/<id>/human-input-forms/<token>:submit. `extra='forbid'`
@@ -808,6 +945,17 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | ok | boolean |  | Yes |
 
+#### Hint
+
+A next step the caller can hand straight to `call <op> --input <input>`.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form | [ object ] | Form fields behind `input.inputs`, copied from the pausing event | No |
+| input | object | Ready-to-send input for `op`; unknown values are null | Yes |
+| op | string |  | Yes |
+| summary | string |  | Yes |
+
 #### HumanInputFormDefinitionResponse
 
 | Name | Type | Description | Required |
@@ -817,13 +965,6 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | inputs | [ object ] |  | No |
 | resolved_default_values | object |  | Yes |
 | user_actions | [ object ] |  | No |
-
-#### HumanInputFormSubmitPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
-| inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### Import
 
@@ -897,6 +1038,7 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | data | [ [MemberResponse](#memberresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
@@ -931,6 +1073,16 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | OpenApiErrorCode | string |  |  |
 
+#### OpenApiFormSubmitPayload
+
+The console payload plus local file parts; `_files.merge_files` sets them on `inputs`.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
+| files | object | Local files keyed by the form's file input name, same convention as the run ops' `files` | No |
+| inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
+
 #### Package
 
 | Name | Type | Description | Required |
@@ -955,6 +1107,7 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | data | [ [AppListRow](#applistrow) ] |  | Yes |
 | has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
@@ -1003,6 +1156,7 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | data | [ [SessionRow](#sessionrow) ] |  | Yes |
 | has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
@@ -1082,6 +1236,16 @@ types it as a required `'success'` rather than an optional field.
 | total_tokens | integer |  | No |
 | workflow_id | string |  | Yes |
 
+#### WorkflowRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| workflow_id | string | Pin a published workflow version | No |
+| workspace_id | string | Workspace that owns the app | No |
+
 #### WorkspaceDetailResponse
 
 | Name | Type | Description | Required |
@@ -1093,11 +1257,25 @@ types it as a required `'success'` rather than an optional field.
 | role | string |  | Yes |
 | status | string |  | Yes |
 
+#### WorkspaceListQuery
+
+Strict (extra='forbid').
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
 #### WorkspaceListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| workspaces | [ [WorkspaceSummaryResponse](#workspacesummaryresponse) ] |  | Yes |
+| data | [ [WorkspaceSummaryResponse](#workspacesummaryresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
 
 #### WorkspacePayload
 

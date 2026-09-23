@@ -168,7 +168,6 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
       showPublishBar={false}
       className="h-full max-w-none min-w-0 flex-none rounded-none border-0"
       onSelectModel={setConfigureModel}
-      onPublish={() => undefined}
       onOpenVersions={() => undefined}
     />
   )
@@ -709,9 +708,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           }
           className="min-w-90"
           onSelectModel={setConfigureModel}
-          onPublish={() => {
-            void saveDraft()
-          }}
           onOpenVersions={() => undefined}
         />
       }

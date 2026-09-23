@@ -1,11 +1,10 @@
 'use client'
 
-import type { FC } from 'react'
+import type { ComponentProps, FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { DataSourceType, FileIndexingEstimateResponse } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiSearchEyeLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import FloatRightContainer from '@/app/components/base/float-right-container'
@@ -23,11 +22,13 @@ import SummaryLabel from '../../../documents/detail/completed/common/summary-lab
 import { PreviewSlice } from '../../../formatted-text/flavours/preview-slice'
 import { FormattedText } from '../../../formatted-text/formatted'
 import PreviewContainer from '../../../preview/container'
-import { PreviewHeader } from '../../../preview/header'
 
 type PreviewPanelProps = {
   // State
   isMobile: boolean
+  isOpen: boolean
+  onClose: () => void
+  finalFocus?: ComponentProps<typeof FloatRightContainer>['finalFocus']
   dataSourceType: DataSourceType
   currentDocForm: ChunkingMode
   estimate?: FileIndexingEstimateResponse
@@ -45,6 +46,9 @@ type PreviewPanelProps = {
 
 export const PreviewPanel: FC<PreviewPanelProps> = ({
   isMobile,
+  isOpen,
+  onClose,
+  finalFocus,
   dataSourceType: _dataSourceType,
   currentDocForm,
   estimate,
@@ -59,11 +63,33 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
   const { t } = useTranslation()
 
   return (
-    <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop}>
+    <FloatRightContainer
+      isMobile={isMobile}
+      isOpen={!isMobile || isOpen}
+      onClose={onClose}
+      showClose
+      title={t(($) => $['stepTwo.preview'], { ns: 'datasetCreation' })}
+      finalFocus={finalFocus}
+    >
+      <div role="status" aria-atomic="true" className="sr-only">
+        {isPending
+          ? t(($) => $.loading, { ns: 'common' })
+          : estimate
+            ? t(($) => $['stepTwo.previewChunkCount'], {
+                ns: 'datasetCreation',
+                count: estimate.total_segments ?? estimate.qa_preview?.length ?? 0,
+              })
+            : ''}
+      </div>
       <PreviewContainer
         header={
-          <PreviewHeader title={t(($) => $['stepTwo.preview'], { ns: 'datasetCreation' })}>
-            <div className="flex items-center gap-1">
+          <div>
+            {!isMobile && (
+              <h2 className="mb-1 px-1 system-2xs-semibold-uppercase text-text-accent uppercase">
+                {t(($) => $['stepTwo.preview'], { ns: 'datasetCreation' })}
+              </h2>
+            )}
+            <div className="flex min-w-0 flex-wrap items-center gap-1">
               <PreviewDocumentPicker
                 files={
                   pickerFiles as Array<Required<{ id: string; name: string; extension: string }>>
@@ -72,23 +98,21 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
                 value={isSetting ? pickerFiles[0] : pickerValue}
               />
               {currentDocForm !== ChunkingMode.qa && (
-                <Badge
-                  text={
-                    t(($) => $['stepTwo.previewChunkCount'], {
-                      ns: 'datasetCreation',
-                      count: estimate?.total_segments || 0,
-                    }) as string
-                  }
-                />
+                <Badge>
+                  {t(($) => $['stepTwo.previewChunkCount'], {
+                    ns: 'datasetCreation',
+                    count: estimate?.total_segments || 0,
+                  })}
+                </Badge>
               )}
             </div>
-          </PreviewHeader>
+          </div>
         }
         className={cn(
-          'relative flex h-full w-1/2 shrink-0 p-4 pr-0',
-          isMobile && 'w-full max-w-131',
+          'relative flex min-w-0 shrink-0 p-4',
+          isMobile ? 'min-h-0 w-full flex-1' : 'h-full w-1/2 pr-0',
         )}
-        mainClassName="space-y-6"
+        mainClassName="space-y-6 wrap-break-word"
       >
         {/* QA Preview */}
         {currentDocForm === ChunkingMode.qa &&
@@ -176,7 +200,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
                 </SkeletonRow>
                 <SkeletonRectangle className="w-full" />
                 <SkeletonRectangle className="w-full" />
-                <SkeletonRectangle className="w-105.5" />
+                <SkeletonRectangle className="w-full max-w-105.5" />
               </SkeletonContainer>
             ))}
           </div>

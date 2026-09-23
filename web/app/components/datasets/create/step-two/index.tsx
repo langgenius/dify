@@ -1,10 +1,11 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, MouseEvent } from 'react'
 import type { StepTwoProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/notifications'
@@ -61,6 +62,8 @@ const StepTwo: FC<StepTwoProps> = ({
   const { t } = useTranslation()
   const locale = useLocale()
   const isMobile = useBreakpoints() === MediaType.mobile
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const previewTriggerRef = useRef<HTMLButtonElement | null>(null)
   const currentDataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector((s) => s.mutateDatasetRes)
 
@@ -183,21 +186,26 @@ const StepTwo: FC<StepTwoProps> = ({
     [indexing, segmentation, estimateHook],
   )
 
-  const updatePreview = useCallback(() => {
-    if (
-      segmentation.segmentationType === ProcessMode.general &&
-      segmentation.maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH
-    ) {
-      toast.error(
-        t(($) => $['stepTwo.maxLengthCheck'], {
-          ns: 'datasetCreation',
-          limit: MAXIMUM_CHUNK_TOKEN_LENGTH,
-        }),
-      )
-      return
-    }
-    estimateHook.fetchEstimate()
-  }, [segmentation, t, estimateHook])
+  const updatePreview = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      if (
+        segmentation.segmentationType === ProcessMode.general &&
+        segmentation.maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH
+      ) {
+        toast.error(
+          t(($) => $['stepTwo.maxLengthCheck'], {
+            ns: 'datasetCreation',
+            limit: MAXIMUM_CHUNK_TOKEN_LENGTH,
+          }),
+        )
+        return
+      }
+      previewTriggerRef.current = event.currentTarget
+      setIsPreviewOpen(true)
+      estimateHook.fetchEstimate()
+    },
+    [segmentation, t, estimateHook],
+  )
 
   const handleCreate = useCallback(async () => {
     if (!canCreateDocument) return
@@ -267,61 +275,70 @@ const StepTwo: FC<StepTwoProps> = ({
     isInInit
 
   return (
-    <div className="flex size-full">
+    <div className={cn('flex size-full min-w-0', isMobile && 'flex-col overflow-y-auto')}>
       <div
-        className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}
+        className={cn(
+          '@container/chunkfields relative min-w-0 py-6',
+          isMobile ? 'w-full shrink-0 px-4' : 'h-full w-1/2 overflow-y-auto px-12',
+        )}
       >
-        <div className="mb-1 system-md-semibold text-text-secondary">
+        <h1 className="mb-1 system-md-semibold text-text-secondary">
           {t(($) => $['stepTwo.segmentation'], { ns: 'datasetCreation' })}
-        </div>
-        {showGeneralOption && (
-          <GeneralChunkingOptions
-            segmentIdentifier={segmentation.segmentIdentifier}
-            maxChunkLength={segmentation.maxChunkLength}
-            overlap={segmentation.overlap}
-            rules={segmentation.rules}
-            currentDocForm={currentDocForm}
-            docLanguage={docLanguage}
-            isActive={generalChunkingModes.includes(currentDocForm)}
-            isInUpload={isInUpload}
-            isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
-            hasCurrentDatasetDocForm={!!currentDataset?.doc_form}
-            onSegmentIdentifierChange={(value) => segmentation.setSegmentIdentifier(value, true)}
-            onMaxChunkLengthChange={segmentation.setMaxChunkLength}
-            onOverlapChange={segmentation.setOverlap}
-            onRuleToggle={segmentation.toggleRule}
-            onDocFormChange={handleDocFormChange}
-            onDocLanguageChange={setDocLanguage}
-            onPreview={updatePreview}
-            onReset={segmentation.resetToDefaults}
-            locale={locale}
-            showSummaryIndexSetting={showSummaryIndexSetting}
-            summaryIndexSetting={segmentation.summaryIndexSetting}
-            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
-          />
-        )}
-        {showParentChildOption && (
-          <ParentChildOptions
-            parentChildConfig={segmentation.parentChildConfig}
-            rules={segmentation.rules}
-            currentDocForm={currentDocForm}
-            isActive={currentDocForm === ChunkingMode.parentChild}
-            isInUpload={isInUpload}
-            isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
-            onDocFormChange={handleDocFormChange}
-            onChunkForContextChange={segmentation.setChunkForContext}
-            onParentDelimiterChange={(v) => segmentation.updateParentConfig('delimiter', v)}
-            onParentMaxLengthChange={(v) => segmentation.updateParentConfig('maxLength', v)}
-            onChildDelimiterChange={(v) => segmentation.updateChildConfig('delimiter', v)}
-            onChildMaxLengthChange={(v) => segmentation.updateChildConfig('maxLength', v)}
-            onRuleToggle={segmentation.toggleRule}
-            onPreview={updatePreview}
-            onReset={segmentation.resetToDefaults}
-            showSummaryIndexSetting={showSummaryIndexSetting}
-            summaryIndexSetting={segmentation.summaryIndexSetting}
-            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
-          />
-        )}
+        </h1>
+        <RadioGroup<ChunkingMode>
+          className="block"
+          aria-label={t(($) => $['stepTwo.segmentation'], { ns: 'datasetCreation' })}
+          value={currentDocForm === ChunkingMode.qa ? ChunkingMode.text : currentDocForm}
+          onValueChange={handleDocFormChange}
+        >
+          {showGeneralOption && (
+            <GeneralChunkingOptions
+              segmentIdentifier={segmentation.segmentIdentifier}
+              maxChunkLength={segmentation.maxChunkLength}
+              overlap={segmentation.overlap}
+              rules={segmentation.rules}
+              currentDocForm={currentDocForm}
+              docLanguage={docLanguage}
+              isActive={generalChunkingModes.includes(currentDocForm)}
+              isInUpload={isInUpload}
+              isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
+              hasCurrentDatasetDocForm={!!currentDataset?.doc_form}
+              onSegmentIdentifierChange={(value) => segmentation.setSegmentIdentifier(value, true)}
+              onMaxChunkLengthChange={segmentation.setMaxChunkLength}
+              onOverlapChange={segmentation.setOverlap}
+              onRuleToggle={segmentation.toggleRule}
+              onDocFormChange={handleDocFormChange}
+              onDocLanguageChange={setDocLanguage}
+              onPreview={updatePreview}
+              onReset={segmentation.resetToDefaults}
+              locale={locale}
+              showSummaryIndexSetting={showSummaryIndexSetting}
+              summaryIndexSetting={segmentation.summaryIndexSetting}
+              onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
+            />
+          )}
+          {showParentChildOption && (
+            <ParentChildOptions
+              parentChildConfig={segmentation.parentChildConfig}
+              rules={segmentation.rules}
+              currentDocForm={currentDocForm}
+              isActive={currentDocForm === ChunkingMode.parentChild}
+              isInUpload={isInUpload}
+              isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
+              onChunkForContextChange={segmentation.setChunkForContext}
+              onParentDelimiterChange={(v) => segmentation.updateParentConfig('delimiter', v)}
+              onParentMaxLengthChange={(v) => segmentation.updateParentConfig('maxLength', v)}
+              onChildDelimiterChange={(v) => segmentation.updateChildConfig('delimiter', v)}
+              onChildMaxLengthChange={(v) => segmentation.updateChildConfig('maxLength', v)}
+              onRuleToggle={segmentation.toggleRule}
+              onPreview={updatePreview}
+              onReset={segmentation.resetToDefaults}
+              showSummaryIndexSetting={showSummaryIndexSetting}
+              summaryIndexSetting={segmentation.summaryIndexSetting}
+              onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
+            />
+          )}
+        </RadioGroup>
         <Separator className="my-5 h-[0.5px]" />
         <IndexingModeSection
           indexType={indexing.indexType}
@@ -350,6 +367,9 @@ const StepTwo: FC<StepTwoProps> = ({
       </div>
       <PreviewPanel
         isMobile={isMobile}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        finalFocus={previewTriggerRef}
         dataSourceType={dataSourceType}
         currentDocForm={currentDocForm}
         estimate={estimateHook.estimate}

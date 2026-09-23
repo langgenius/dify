@@ -25,7 +25,9 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import (
+    CatalogStale,
     ErrorBody,
     ErrorDetail,
     FilenameNotExists,
@@ -226,7 +228,8 @@ class TestWireContract:
         monkeypatch.setattr("controllers.openapi.auth.pipelines._mount_flask_login", lambda _user: None)
 
         resp = openapi_app.test_client().get(
-            "/openapi/v1/account/sessions?page=0", headers={"Authorization": "Bearer dfoa_wire"}
+            "/openapi/v1/account/sessions?page=0",
+            headers={"Authorization": "Bearer dfoa_wire", CATALOG_HEADER: catalog_for(openapi_app)[1]},
         )
 
         assert resp.status_code == 422, resp.get_json()
@@ -305,6 +308,7 @@ ERROR_MATRIX = [
     (MemberLicenseExceeded(), 403, "member_license_exceeded"),
     (HumanInputFormNotFound(), 404, "form_not_found"),
     (RecipientSurfaceMismatch(), 403, "recipient_surface_mismatch"),
+    (CatalogStale(), 412, "catalog_stale"),
 ]
 
 

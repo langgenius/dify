@@ -22,7 +22,9 @@ const iconSizeClassNames = {
 } as const
 
 const Infotip = BasePopover.Root
+const InfotipTitle = BasePopover.Title
 type InfotipProps<Payload = unknown> = BasePopover.Root.Props<Payload>
+type InfotipTitleProps = BasePopover.Title.Props
 
 type InfotipTriggerProps<Payload = unknown> = Omit<
   BasePopover.Trigger.Props<Payload>,
@@ -103,5 +105,5 @@ function InfotipContent({
   )
 }
 
-export { Infotip, InfotipContent, InfotipTrigger }
-export type { InfotipContentProps, InfotipProps, InfotipTriggerProps }
+export { Infotip, InfotipContent, InfotipTitle, InfotipTrigger }
+export type { InfotipContentProps, InfotipProps, InfotipTitleProps, InfotipTriggerProps }
