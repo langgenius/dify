@@ -140,6 +140,8 @@ def _seed_bundle(session: Session, monkeypatch: pytest.MonkeyPatch) -> tuple[Acc
         "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", Mock(return_value=[])
     )
     monkeypatch.setattr("services.app_dsl_bundle.app_published_workflow_was_updated", Mock())
+    monkeypatch.setattr("services.trigger.trigger_service.TriggerService.sync_plugin_trigger_relationships", Mock())
+    monkeypatch.setattr("services.trigger.webhook_service.WebhookService.sync_webhook_relationships", Mock())
     monkeypatch.setattr("services.workflow_service.SystemFeatureService.is_plugin_manager_enabled", lambda: False)
     monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)
     account = _account()
