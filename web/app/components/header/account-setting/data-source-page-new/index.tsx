@@ -42,7 +42,7 @@ function DataSourceCardSkeleton() {
 }
 
 function DataSourceListSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
@@ -54,7 +54,7 @@ function DataSourceListSkeleton() {
 }
 
 const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSourcePageProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')

@@ -51,7 +51,7 @@ const fetchImageAsPng = async (url: string): Promise<Blob> => {
 }
 
 const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onNext }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)

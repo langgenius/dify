@@ -28,7 +28,7 @@ type Props = Readonly<{
 const maxIterationsMin = 1
 
 export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, onSave }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'tools'])
   const [tempPayload, setTempPayload] = useState(payload)
   const maximumIterationsLabel = t(($) => $['agent.setting.maximumIterations.name'], {
     ns: 'appDebug',

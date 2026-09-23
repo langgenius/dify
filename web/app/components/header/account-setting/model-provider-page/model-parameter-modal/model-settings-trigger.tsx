@@ -9,7 +9,7 @@ type ModelSettingsTriggerProps = {
 }
 
 function ModelSettingsTrigger({ disabled, surface = 'default' }: ModelSettingsTriggerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const label = t(($) => $['modelProvider.modelSettings'], { ns: 'common' })
 
   return (

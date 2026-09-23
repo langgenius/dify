@@ -10,7 +10,7 @@ import VarPicker from './var-picker'
 const ContextVar: FC<Props> = (props) => {
   const titleId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { value, options } = props
   const currItem = options.find((item) => item.value === value)
   const notSetVar = !currItem

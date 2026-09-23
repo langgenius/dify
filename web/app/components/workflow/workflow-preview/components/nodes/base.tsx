@@ -19,7 +19,7 @@ type NodeCardProps = NodeProps & {
 }
 
 const BaseCard = ({ id, data, children }: NodeCardProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div

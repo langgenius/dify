@@ -38,7 +38,7 @@ type VoiceParamConfigProps = {
 const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
   const languageLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'appDebug', 'common'])
   const params = useParams<{ appId?: string; agentId?: string }>()
   const text2speech = useFeatures((state) => state.features.text2speech)
   const featuresStore = useFeaturesStore()

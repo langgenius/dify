@@ -34,7 +34,7 @@ const EMPTY_PUBLICATION_COUNTS: AgentPublicationCountsResponse = {
 }
 
 export default function RosterPage() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
   const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
   const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)

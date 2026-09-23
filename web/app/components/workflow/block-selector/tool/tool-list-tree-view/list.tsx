@@ -27,7 +27,7 @@ export const ToolListTreeView = memo(
     onSelectMultiple,
     selectedTools,
   }: Props) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const getGroupName = (group: ToolGroup) => {
       if (group.kind === 'author') return group.author
 

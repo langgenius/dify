@@ -38,9 +38,9 @@ function AppDeployContent({
   appId: string
   canViewAccessPoint: boolean
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const deployOverviewDocUrl = getEnterpriseDocUrl('/use/deploy/overview', docLanguage)

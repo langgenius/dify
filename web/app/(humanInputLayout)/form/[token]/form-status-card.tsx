@@ -20,7 +20,7 @@ const FormStatusCard = ({
   removeWebappBrand,
   replaceWebappLogo,
 }: FormStatusCardProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
 
   return (
     <div className={cn('flex size-full flex-col items-center justify-center')}>

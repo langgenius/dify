@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const InputsPanel = ({ onRun }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const workflowStore = useWorkflowStore()
   const inputs = useStore((s) => s.inputs)
   const fileSettings = useHooksStore((s) => s.configsMap?.fileSettings)

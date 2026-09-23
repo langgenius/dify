@@ -16,7 +16,7 @@ type Props = {
 }
 
 const ResultItemMeta: FC<Props> = ({ labelPrefix, positionId, wordCount, score, className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
     <div className={cn('flex items-center justify-between', className)}>

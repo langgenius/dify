@@ -272,7 +272,7 @@ function AddToolMenu({
   onAddTools: (tools: AgentProviderToolDefaultValue[]) => void
   selectedTools: ToolValue[]
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<AddToolMenuView>(addToolDefaultView)
   const { providerById } = useAgentToolProviderCatalog()
@@ -382,7 +382,7 @@ function AddToolMenu({
 }
 
 export function AgentTools() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()

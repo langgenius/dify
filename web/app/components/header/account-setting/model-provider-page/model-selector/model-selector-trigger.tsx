@@ -48,7 +48,7 @@ function ModelSelectorTrigger({
   showModelMeta = true,
   isModelCompatible = true,
 }: ModelSelectorTriggerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
 
   const showClear = !!defaultModel && !!onClear
   const isSelected = !!currentProvider && !!currentModel

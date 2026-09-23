@@ -30,8 +30,8 @@ const Description = ({
   marketplaceNav,
   scrollContainerId = MARKETPLACE_CONTAINER_ID,
 }: DescriptionProps) => {
-  const { t } = useTranslation('plugin')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['plugin'])
+  const { t: tCommon } = useTranslation(['common'])
   const locale = useLocale()
   const isZhHans = locale === 'zh-Hans'
   const rafRef = useRef<number | null>(null)

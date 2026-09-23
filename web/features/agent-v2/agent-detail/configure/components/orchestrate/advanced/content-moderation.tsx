@@ -31,7 +31,7 @@ const defaultModerationConfig: ModerationConfig = {
 }
 
 function AgentContentModerationSettingsContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const locale = useLocale()
   const featuresStore = useFeaturesStore()
   const readOnly = useAgentOrchestrateReadOnly()

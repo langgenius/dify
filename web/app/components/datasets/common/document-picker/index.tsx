@@ -61,7 +61,7 @@ function DocumentPickerTriggerValue({
   document?: SimpleDocumentDetail | null
   parentMode?: ParentMode
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const isGeneralMode = document?.doc_form === ChunkingMode.text
   const isParentChild = document?.doc_form === ChunkingMode.parentChild
   const isQAMode = document?.doc_form === ChunkingMode.qa
@@ -108,7 +108,7 @@ function DocumentPickerTriggerValue({
 }
 
 export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [searchValue, setSearchValue] = useState('')
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 

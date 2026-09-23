@@ -204,7 +204,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [inputInfo, setInputInfo] = useState(nextInputInfo)
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'appOverview', 'billing', 'common'])
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(nextAppIcon)

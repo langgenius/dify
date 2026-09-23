@@ -711,7 +711,7 @@ def test_build_application_services_groups_dataset_services_and_reuses_repositor
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=cast(RedisClientWrapper, object()),
+        redis=MagicMock(spec=RedisClientWrapper),
     )
 
     assert isinstance(services.data_sources.bindings, DataSourceBindingApplicationService)

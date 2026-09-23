@@ -19,7 +19,7 @@ type UserActionItemProps = {
 }
 
 const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, readonly }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const handleIDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value

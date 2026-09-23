@@ -13,7 +13,7 @@ type LoopLogTriggerProps = {
   ) => void
 }
 const LoopLogTrigger = ({ nodeInfo, allExecutions, onShowLoopResultList }: LoopLogTriggerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const filterNodesForInstance = (key: string): NodeTracing[] => {
     if (!allExecutions) return []

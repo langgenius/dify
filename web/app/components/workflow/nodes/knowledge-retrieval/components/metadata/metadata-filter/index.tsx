@@ -32,7 +32,7 @@ const MetadataFilter = ({
 }: MetadataFilterProps) => {
   const titleId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [collapsed, setCollapsed] = useState(true)
 
   const handleMetadataFilterModeChangeWrapped = useCallback(

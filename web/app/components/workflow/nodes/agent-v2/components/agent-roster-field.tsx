@@ -123,7 +123,7 @@ function AgentRosterDrawer({
   onSaveInlineToRoster?: () => void
   onClose: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'common', 'workflow'])
   const canCreateAgents = useCanCreateAgents()
   const isSetup = mode === 'setup'
   const title = isInlineSetup
@@ -303,7 +303,7 @@ function AgentRosterInlineConfigureDialog({
   trigger: ReactElement
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
@@ -362,7 +362,7 @@ export function AgentRosterField({
   onSaveInlineToRoster?: () => void
   onStartFromScratch?: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'common', 'workflow'])
   const [localPanelOpen, setLocalPanelOpen] = useState(false)
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
   const panelOpen = isPanelOpen ?? localPanelOpen

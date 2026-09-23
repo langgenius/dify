@@ -163,7 +163,7 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 }
 
 export const useNodesInteractions = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
       staleTime: Infinity,

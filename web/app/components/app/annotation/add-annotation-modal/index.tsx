@@ -31,7 +31,7 @@ type Props = Readonly<{
 }>
 
 const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({

@@ -86,7 +86,7 @@ const getDatasetRedirectionPath = (
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { children, datasetId } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const router = useRouter()
   const pathname = usePathname()
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)

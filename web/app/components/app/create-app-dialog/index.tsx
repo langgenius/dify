@@ -10,7 +10,7 @@ type CreateAppDialogProps = {
 }
 
 const CreateAppTemplateDialog = ({ show, onClose, onCreateFromBlank }: CreateAppDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <CreateAppDialogShell

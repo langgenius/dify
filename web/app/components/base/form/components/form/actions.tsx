@@ -15,7 +15,7 @@ type ActionsProps = {
 }
 
 const Actions = ({ CustomActions }: ActionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const form = useFormContext()
 
   const [isSubmitting, canSubmit] = useStore(form.store, (state) => [

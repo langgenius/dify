@@ -71,7 +71,7 @@ import { Type } from '../../../llm/types'
 type WorkflowTranslate = <const Selector extends SelectorParam<'workflow'>>(
   selector: Selector,
   options: { ns: 'workflow' } & Record<string, unknown>,
-) => ReturnType<TFunction>
+) => ReturnType<TFunction<['workflow']>>
 
 const translateWorkflowString = <const Selector extends SelectorParam<'workflow'>>(
   t: WorkflowTranslate,

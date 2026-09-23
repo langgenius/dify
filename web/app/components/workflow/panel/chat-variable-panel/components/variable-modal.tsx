@@ -30,7 +30,7 @@ type ModalPropsType = {
 }
 
 const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const translateChatVariable: ChatVariableTranslator = (selector, options) => t(selector, options)
   const workflowStore = useWorkflowStore()
   const notify = React.useCallback(({ children, message, type = 'info' }: ToastPayload) => {

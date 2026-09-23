@@ -211,7 +211,7 @@ const FilterCondition: FC<Props> = ({
     ComparisonOperator.allOf,
   ]
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const expectedVarType = getExpectedVarType(condition, varType)
   const supportVariableInput = !!expectedVarType

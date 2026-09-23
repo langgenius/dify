@@ -8,7 +8,7 @@ import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from './create-options/create-from-dsl-modal'
 
 const Footer = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   const [showImportModal, setShowImportModal] = useState(false)
 
