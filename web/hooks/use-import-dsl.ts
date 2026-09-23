@@ -25,6 +25,10 @@ type ResponseCallback = {
   onFailed?: () => void
   skipRedirectOnSuccess?: boolean
 }
+
+function notifyImportFailure(error: unknown, message: string) {
+  if (!(error instanceof Response)) toast.error(message)
+}
 export const useImportDSL = () => {
   const { t } = useTranslation()
   const { handleCheckPluginDependencies } = usePluginDependencies()
@@ -116,8 +120,10 @@ export const useImportDSL = () => {
           onFailed?.()
         }
       } catch (error) {
-        if (!(error instanceof Response))
-          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+        notifyImportFailure(
+          error,
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        )
         onFailed?.()
       } finally {
         actionInFlightRef.current = false
@@ -196,8 +202,10 @@ export const useImportDSL = () => {
           }
         }
       } catch (error) {
-        if (!(error instanceof Response))
-          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+        notifyImportFailure(
+          error,
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        )
         onFailed?.()
       } finally {
         actionInFlightRef.current = false
