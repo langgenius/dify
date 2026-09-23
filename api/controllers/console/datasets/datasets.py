@@ -794,7 +794,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DELETE, DatasetId()))
     @with_session
     def delete(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)

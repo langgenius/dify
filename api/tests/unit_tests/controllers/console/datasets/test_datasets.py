@@ -59,6 +59,7 @@ from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.app_entities import AppRecord
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 pytestmark = pytest.mark.usefixtures("app_query_services")
 
@@ -149,6 +150,13 @@ def make_related_app(**overrides) -> AppRecord:
     }
     base.update(overrides)
     return AppRecord(**base)
+
+
+def test_dataset_delete_requires_dataset_delete_permission() -> None:
+    [check] = rbac_checks(DatasetApi.delete)
+
+    assert check.scene is RBACPermission.DATASET_DELETE
+    assert isinstance(check.locator, DatasetId)
 
 
 def make_document_status(**overrides) -> Document:
