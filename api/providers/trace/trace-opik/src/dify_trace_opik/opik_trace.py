@@ -21,6 +21,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_opik.config import OpikConfig
 from extensions.ext_database import db
@@ -182,8 +183,10 @@ class OpikDataTrace(BaseTraceInstance):
 
         # Get all executions for this workflow run
         workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id
+            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
         )
+        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
+        node_span_ids = {item.id: prepare_opik_uuid(item.created_at, item.id) for item in workflow_node_executions}
 
         for node_execution in workflow_node_executions:
             node_execution_id = node_execution.id
@@ -250,8 +253,8 @@ class OpikDataTrace(BaseTraceInstance):
 
             span_data = {
                 "trace_id": opik_trace_id,
-                "id": prepare_opik_uuid(created_at, node_execution_id),
-                "parent_span_id": root_span_id,
+                "id": node_span_ids[node_execution_id],
+                "parent_span_id": node_span_ids.get(tool_parents.get(node_execution_id, ""), root_span_id),
                 "name": node_name,
                 "type": run_type,
                 "start_time": created_at,
