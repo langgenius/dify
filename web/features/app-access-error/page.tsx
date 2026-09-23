@@ -12,7 +12,6 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import ThemeSelector from '@/app/components/base/theme-selector'
 import { loadI18nResource } from '@/i18n-config/load-resource'
 import { getInitOptions } from '@/i18n-config/settings'
-import Link from '@/next/link'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { basePath } from '@/utils/var'
 import { getBrowserLocale } from './locale'
@@ -34,6 +33,7 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
   const searchParams = useSearchParams()
   const query = searchParams.toString()
   const returnTo = `${pathname}${query ? `?${query}` : ''}`
+  const signInHref = `${basePath}/signin?${new URLSearchParams({ redirect_url: returnTo })}`
   const [copyrightYear] = useState(() => new Date().getFullYear())
   const title = t(($) => $['appNotAccessible.documentTitle'])
   const ip = getClientIp({ client_ip: clientIp })
@@ -68,9 +68,8 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
             />
             <ThemeSelector />
             <span aria-hidden className="h-3.5 w-px shrink-0 bg-divider-regular" />
-            <Link
-              href={{ pathname: '/signin', query: { redirect_url: returnTo } }}
-              prefetch={false}
+            <a
+              href={signInHref}
               className="inline-flex shrink-0 items-center rounded-full p-0.5 text-components-button-secondary-text hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
               <span
@@ -88,7 +87,7 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
               <span className="px-2 system-sm-medium whitespace-nowrap">
                 {t(($) => $.signBtn, { ns: 'login' })}
               </span>
-            </Link>
+            </a>
           </div>
         </header>
         <Content className="flex flex-1 items-center justify-center px-6 pt-12 pb-12 md:pb-30">
