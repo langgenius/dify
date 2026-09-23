@@ -114,6 +114,7 @@ describe('AgentRosterList', () => {
     workspacePermissions.canCreate = true
     vi.spyOn(toast, 'error').mockReturnValue('toast-id')
     vi.spyOn(toast, 'success').mockReturnValue('toast-id')
+    vi.spyOn(toast, 'warning').mockReturnValue('toast-id')
     duplicateAgentMutationFn.mockResolvedValue(
       createAgent({
         id: 'agent-copy',
@@ -613,15 +614,25 @@ describe('AgentRosterList', () => {
     ).toBeDisabled()
   })
 
-  it('renders preview-only agent cards without navigation', () => {
+  it('explains preview-only access through the card without navigating', async () => {
+    const user = userEvent.setup()
     workspacePermissions.canCreate = false
     renderList([createAgent({ permission_keys: [AgentPermission.Preview] })])
 
     const card = screen.getByRole('listitem', { name: 'Research Agent' })
+    const entry = within(card).getByRole('button', { name: 'Research Agent' })
     expect(within(card).queryByRole('link', { name: 'Research Agent' })).not.toBeInTheDocument()
-    expect(card).toHaveAccessibleDescription(
+    expect(entry).toHaveAccessibleDescription(
       'agentV2.roster.usageStatus.draft Find and summarize market materials.',
     )
+
+    await user.tab()
+    expect(entry).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(toast.warning).toHaveBeenCalledWith('app.noAccessResourcePermission')
+
+    await user.click(entry)
+    expect(toast.warning).toHaveBeenCalledTimes(2)
   })
 
   it('links viewers to access points and hides mutation menus including the context menu', async () => {

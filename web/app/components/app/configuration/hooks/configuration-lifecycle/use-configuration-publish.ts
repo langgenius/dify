@@ -1,5 +1,5 @@
+import type { TFunction } from 'i18next'
 import type { Dispatch, SetStateAction } from 'react'
-import type { SelectorTranslate } from '../../utils'
 import type { ConfigurationPublishConfig } from './types'
 import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher/types'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
@@ -32,7 +32,7 @@ type UseConfigurationPublishParams = {
   setCanReturnToSimpleMode: (value: boolean) => void
   setPublishedConfig: Dispatch<SetStateAction<ConfigurationPublishConfig | null>>
   syncToPublishedConfig: (config: ConfigurationPublishConfig) => void
-  t: SelectorTranslate<'appDebug' | 'common'>
+  t: TFunction<['appDebug', 'common']>
   updateModelConfig: (params: { url: string; body: BackendModelConfig }) => Promise<unknown>
 }
 

@@ -10,6 +10,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
+from constants.oauth_bearer import Scope
 from controllers.common.human_input import stringify_form_default_values
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -40,7 +41,6 @@ from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
 from libs.helper import to_timestamp
-from libs.oauth_bearer import Scope
 from models.enums import CreatorUserRole
 from models.model import App
 from services.human_input_service import FormNotFoundError, HumanInputService

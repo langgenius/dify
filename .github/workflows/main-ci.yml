@@ -180,6 +180,9 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'knip.config.ts'
               - 'scripts/check-web-production-unused-after-knip-fix.mjs'
+              - '.npmrc'
+              - '.github/workflows/main-ci.yml'
+              - '.github/workflows/web-bundle-size.yml'
               - '.github/workflows/style.yml'
               - '.github/actions/setup-web/**'
             ts-common-style:

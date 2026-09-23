@@ -7,6 +7,7 @@ from flask import request
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
+from constants.oauth_bearer import Scope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
@@ -23,7 +24,6 @@ from controllers.openapi.auth.requirements import CheckScope, CheckSubject
 from controllers.openapi.auth.subjects import AccountSubject
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
-from libs.oauth_bearer import Scope
 from libs.rate_limit import LIMIT_ME_PER_ACCOUNT, enforce
 from machinery.context import AccountRequestContext
 from services.account_errors import AccountNotFoundError, AccountSessionNotFoundError

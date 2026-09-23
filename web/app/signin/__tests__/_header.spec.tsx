@@ -7,7 +7,7 @@ vi.mock('@/i18n/client', () => ({
   setLocaleOnClient: vi.fn(),
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => () => null,
 }))
 

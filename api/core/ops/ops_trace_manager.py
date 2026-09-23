@@ -1,4 +1,5 @@
 import collections
+import importlib.util
 import json
 import logging
 import os
@@ -39,6 +40,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.unified_trace.registry import UnifiedProviderConfigEntry, unified_provider_config_map
 from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
 from extensions.ext_database import db
@@ -335,8 +337,10 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
 
                 case _:
                     raise KeyError(f"Unsupported tracing provider: {key}")
-        except ImportError:
-            raise ImportError(f"Provider {key} is not installed.")
+        except ModuleNotFoundError as error:
+            if error.name is None or importlib.util.find_spec(error.name.partition(".")[0]) is not None:
+                raise
+            raise TraceProviderNotInstalledError(key, error.name) from error
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -589,10 +593,10 @@ class OpsTraceManager:
         """
         # auth check
         if tracing_provider is not None:
-            try:
-                provider_config_map[tracing_provider]
-            except KeyError:
+            if tracing_provider not in TracingProviderEnum:
                 raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+            if enabled:
+                provider_config_map[tracing_provider]
 
         app_config: App | None = db.session.get(App, app_id)
         if not app_config:
@@ -996,7 +1000,7 @@ class TraceTask:
         message_trace_info = MessageTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             conversation_model=conversation_mode,
             message_tokens=message_tokens,
             answer_tokens=message_data.answer_tokens,
@@ -1048,7 +1052,7 @@ class TraceTask:
             trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
             inputs=inputs,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             flagged=moderation_result.flagged,
             action=moderation_result.action,
             preset_response=moderation_result.preset_response,
@@ -1090,7 +1094,7 @@ class TraceTask:
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
             trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             inputs=message_data.message,
             outputs=message_data.answer,
             start_time=timer.get("start"),
@@ -1193,7 +1197,7 @@ class TraceTask:
             start_time=timer.get("start"),
             end_time=timer.get("end"),
             metadata=metadata,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             error=kwargs.get("error"),
         )
 
@@ -1258,7 +1262,7 @@ class TraceTask:
         tool_trace_info = ToolTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             tool_name=tool_name,
             start_time=timer.get("start") if timer else created_time,
             end_time=timer.get("end") if timer else end_time,

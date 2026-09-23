@@ -16,6 +16,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
+from constants.oauth_bearer import Scope
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -39,7 +40,6 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface
-from libs.oauth_bearer import Scope
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream

@@ -1,4 +1,3 @@
-import type { Resource, ResourceLanguage } from 'i18next'
 import type { Locale } from '.'
 import type { Namespace, NamespaceInFileName } from './resources'
 import { match } from '@formatjs/intl-localematcher'
@@ -25,7 +24,6 @@ const getOrCreateI18next = cache(async (lng: Locale) => {
     )
     .init({
       ...getInitOptions([]),
-      defaultNS: 'app',
       lng,
     })
   return instance
@@ -58,27 +56,3 @@ export const getLocaleOnServer = cache(async (): Promise<Locale> => {
 
   return match(languages, supportedLocales, defaultLocale) as Locale
 })
-
-export const getResources = cache(
-  async (
-    lng: Locale,
-    requiredNamespaces: readonly Namespace[] = namespaces,
-    includeFallback = false,
-  ): Promise<Resource> => {
-    const locales = includeFallback && lng !== defaultLocale ? [lng, defaultLocale] : [lng]
-    const resources: Resource = {}
-    await Promise.all(
-      locales.map(async (locale) => {
-        const messages: ResourceLanguage = {}
-        await Promise.all(
-          requiredNamespaces.map(async (namespace) => {
-            const mod = await loadI18nResource(locale, namespace)
-            messages[namespace] = mod.default
-          }),
-        )
-        resources[locale] = messages
-      }),
-    )
-    return resources
-  },
-)

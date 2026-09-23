@@ -1,8 +1,9 @@
 """Composition root for application services used by transport adapters."""
 
 import json
+import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
@@ -23,6 +24,8 @@ from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
+from extensions.application_services.app import build_app_api_key_service
+from extensions.application_services.knowledge import build_dataset_api_key_service
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now, utc_now
@@ -53,9 +56,11 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
-from repositories.installed_app_access_repository import SQLAlchemyInstalledAppAccessRepository
+from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
+from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -142,6 +147,7 @@ from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
+from services.app.api_key_service import AppApiKeyService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -163,6 +169,7 @@ from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthS
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.conversation_service import ConversationService
 from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
@@ -177,12 +184,30 @@ from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
+from services.installed_app_conversation_service import InstalledAppConversationService
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
+from services.installed_app_generation_service import InstalledAppGenerationService
+from services.installed_app_service import InstalledAppService
+from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
+from services.oauth_device_adapters import (
+    DifyConfigOAuthDeviceSettings,
+    EnterpriseOAuthDeviceSSOGateway,
+    EnvironmentOAuthDeviceTokenTTLPolicy,
+    OAuthDeviceTokenIssuanceGateway,
+    RedisExternalApprovalLimiter,
+)
+from services.oauth_device_application_service import (
+    DeviceWorkspaceQuery,
+    OAuthDeviceAccountQuery,
+    OAuthDeviceApplicationService,
+)
+from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
@@ -232,9 +257,32 @@ from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
 from services.workspace_query_service import WorkspaceQueryService
 from tasks.mail_inner_task import enqueue_inner_mail
 
+logger = logging.getLogger(__name__)
+
 _EXTENSION_KEY = "application_services"
 
 
+def _generate_installed_app_conversation_name(
+    *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str
+) -> str:
+    # Legacy provider and tracing lookups use db.session. Give them their own
+    # scope so teardown releases it before the conversation write transaction,
+    # without removing a session owned by the surrounding request.
+    with current_app.app_context():
+        return ConversationService.generate_name(
+            tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id, query=query, app_mode=app_mode
+        )
+
+
+# TODO: Normalize EnterpriseService.WebAppAuth result/error contracts in the SDK,
+# migrate its callers, then inject its methods directly and remove these adapters.
+# Define SDK errors for timeouts, transport failures, upstream status and invalid
+# responses before adding finer HTTP mappings; these adapters report unavailability.
+# Validate required fields and real booleans there, replacing legacy permission
+# truthiness conversion. Missing fields currently become False, {} or a default mode.
+# Replace response-shape ValueError/KeyError/AttributeError with typed SDK errors;
+# ordinary ValueError can still reach the global 400 invalid_param handler. The
+# lost field information cannot be recovered by translating exceptions here.
 def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
     try:
         settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
@@ -246,11 +294,37 @@ def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
         raise WebAppAccessUnavailableError from e
 
 
-def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
+def _is_enterprise_webapp_user_allowed(user_id: str, app_id: str) -> bool:
     try:
         return EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id)
     except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
         raise WebAppAccessUnavailableError from e
+
+
+def _batch_get_enterprise_webapp_access_modes(*, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
+    try:
+        settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(list(app_ids))
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError, ValidationError) as e:
+        raise WebAppAccessUnavailableError from e
+    access_modes: dict[str, WebAppAccessMode] = {}
+    for app_id, setting in settings.items():
+        try:
+            access_mode = WebAppAccessMode(setting.access_mode)
+        except ValueError:
+            logger.warning("Skipping invalid web app access mode %r for app %s", setting.access_mode, app_id)
+            continue
+        access_modes[app_id] = access_mode
+    return access_modes
+
+
+def _batch_get_enterprise_webapp_user_permissions(*, user_id: str, app_ids: Sequence[str]) -> Mapping[str, bool]:
+    try:
+        permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
+            user_id=user_id, app_ids=list(app_ids)
+        )
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise WebAppAccessUnavailableError from e
+    return {app_id: bool(allowed) for app_id, allowed in permissions.items()}
 
 
 @dataclass(frozen=True, slots=True)
@@ -282,6 +356,8 @@ class ApplicationServices:
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
     accounts: AccountServices
+    app_api_keys: AppApiKeyService
+    dataset_api_keys: DatasetApiKeyService
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     app_preview_details: AppPreviewDetails
@@ -309,8 +385,12 @@ class ApplicationServices:
     tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
+    oauth_device: OAuthDeviceApplicationService
     init_validation: InitValidationService
     installed_app_access: InstalledAppAccessService
+    installed_app_conversations: InstalledAppConversationService
+    installed_app_generation: InstalledAppGenerationService
+    installed_apps: InstalledAppService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
@@ -370,6 +450,32 @@ def _build_oauth_server_service(
         repository=SQLAlchemyOAuthServerRepository(session_factory=database_client),
         tokens=RedisOAuthServerTokenRepository(redis=redis),
         access_token_expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    )
+
+
+def _build_oauth_device_service(
+    *,
+    database_client: sessionmaker[Session],
+    redis: RedisClientWrapper,
+    accounts: OAuthDeviceAccountQuery,
+    workspaces: DeviceWorkspaceQuery,
+) -> OAuthDeviceApplicationService:
+    token_repository = SQLAlchemyOAuthDeviceTokenRepository(session_factory=database_client, redis=redis)
+    return OAuthDeviceApplicationService(
+        store=DeviceFlowRedis(redis),
+        accounts=accounts,
+        workspaces=workspaces,
+        tokens=OAuthDeviceTokenIssuanceGateway(
+            tokens=token_repository,
+            ttl_policy=EnvironmentOAuthDeviceTokenTTLPolicy(),
+        ),
+        sessions=token_repository,
+        sso=EnterpriseOAuthDeviceSSOGateway(
+            redis=redis,
+            enterprise_service=EnterpriseService(),
+        ),
+        external_approval_limiter=RedisExternalApprovalLimiter(redis=redis),
+        settings=DifyConfigOAuthDeviceSettings(),
     )
 
 
@@ -461,13 +567,29 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(session_factory=database_client)
+    installed_apps = SQLAlchemyInstalledAppRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    app_definitions = AppDefinitionQueryService(
+        definitions=app_definition_repository,
+        builtin_icon_url_prefix=(
+            dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        ),
+    )
+    webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition)
     webapp_access = WebAppAccessQueryService(
         access=WebAppAccessQueryRepository(session_factory=database_client),
-        webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
+        webapp_auth_enabled=webapp_auth_enabled,
         access_mode_for_app=_get_enterprise_webapp_access_mode,
-        is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
+        is_user_allowed_for_app=_is_enterprise_webapp_user_allowed,
+        get_access_modes=_batch_get_enterprise_webapp_access_modes,
+        get_user_permissions=_batch_get_enterprise_webapp_user_permissions,
+    )
+    installed_app_access = InstalledAppAccessService(
+        installed_apps=installed_apps,
+        is_user_allowed=webapp_access.is_user_allowed,
+        get_access_modes=webapp_access.batch_get_access_modes,
+        get_user_permissions=webapp_access.batch_get_user_permissions,
     )
     app_preview_repository = AppPreviewQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
@@ -657,12 +779,7 @@ def build_application_services(
         ),
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
-        app_definitions=AppDefinitionQueryService(
-            definitions=app_definition_repository,
-            builtin_icon_url_prefix=(
-                dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
-            ),
-        ),
+        app_definitions=app_definitions,
         app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
         app_previews=AppPreviewQueryService(
             apps=app_preview_repository,
@@ -671,6 +788,8 @@ def build_application_services(
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
+        app_api_keys=build_app_api_key_service(database_client=database_client),
+        dataset_api_keys=build_dataset_api_key_service(database_client=database_client),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
@@ -701,9 +820,20 @@ def build_application_services(
             queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
         ),
         webapp_access=webapp_access,
-        installed_app_access=InstalledAppAccessService(
-            installed_apps=SQLAlchemyInstalledAppAccessRepository(session_factory=database_client),
-            is_user_allowed=webapp_access.is_user_allowed,
+        installed_app_access=installed_app_access,
+        installed_app_conversations=InstalledAppConversationService(
+            conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),
+            generate_name=_generate_installed_app_conversation_name,
+            enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
+        ),
+        installed_app_generation=InstalledAppGenerationService(
+            usage=installed_apps,
+            runtime=InstalledAppGenerateServiceRuntime(session_factory=database_client),
+        ),
+        installed_apps=InstalledAppService(
+            installed_apps=installed_apps,
+            get_workspace_role=workspace_query_repository.get_account_role,
+            get_visible_app_ids=installed_app_access.get_visible_app_ids if webapp_auth_enabled else None,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
@@ -752,6 +882,12 @@ def build_application_services(
             storage=storage,
         ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
+        oauth_device=_build_oauth_device_service(
+            database_client=database_client,
+            redis=redis,
+            accounts=accounts,
+            workspaces=workspace_query_repository,
+        ),
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),

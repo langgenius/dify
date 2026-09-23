@@ -333,7 +333,7 @@ const ChatInputArea = ({
                         t(
                           ($) =>
                             $[readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder'],
-                          { ns: 'common', botName },
+                          { ns: 'common', botName: botName ?? '' },
                         ) || '',
                       )
                 }
