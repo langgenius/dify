@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import type { BundledTheme } from 'shiki/bundle/web'
+import type { CodeTheme } from './shiki-highlight'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import {
@@ -79,7 +79,7 @@ const ShikiCodeBlock = memo(
   }: {
     code: string
     language: string
-    theme: BundledTheme
+    theme: CodeTheme
     initial?: JSX.Element
   }) => {
     const [nodes, setNodes] = useState(initial)

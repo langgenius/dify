@@ -15,10 +15,17 @@ import PluginList from '@/app/components/workflow/block-selector/marketplace-plu
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
+import dynamic from '@/next/dynamic'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
-import { DatasourceList } from './datasource-list'
+
+const DatasourceList = dynamic(
+  () => import('./datasource-list').then((module) => module.DatasourceList),
+  {
+    loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
+  },
+)
 
 type DataSourcesProps = {
   className?: string

@@ -18,16 +18,21 @@ import PluginList from '@/app/components/workflow/block-selector/marketplace-plu
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
+import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { ViewType } from '../../../block-selector/types'
 import ViewTypeSelect from '../../../block-selector/view-type-select'
 import { useStrategyInfo } from '../../agent/use-config'
-import { AgentStrategyList } from './agent-strategy-list'
 import { InstallPluginButton } from './install-plugin-button'
 import { SwitchPluginVersion } from './switch-plugin-version'
 
 const DEFAULT_TAGS: ListProps['tags'] = []
+
+const AgentStrategyList = dynamic(
+  () => import('./agent-strategy-list').then((module) => module.AgentStrategyList),
+  { loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" /> },
+)
 
 const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
   const { title, description } = props
