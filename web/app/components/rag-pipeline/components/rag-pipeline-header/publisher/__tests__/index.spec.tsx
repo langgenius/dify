@@ -1,13 +1,16 @@
 import type { IconInfo } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { render as renderWithoutPricing } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 vi.mock('@/features/system-features/state', async () => {
   const { atom } = await import('jotai')
@@ -119,13 +122,6 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const mockSetShowPricingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(
-    selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T,
-  ): T => selector({ setShowPricingModal: mockSetShowPricingModal }),
-}))
-
 let publishEnabled = true
 
 const toastMocks = vi.hoisted(() => ({
@@ -135,7 +131,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -244,6 +240,11 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
   seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
   seedFeatures(queryClient, { knowledge_pipeline: { publish_enabled: publishEnabled } })
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
 }
 
 describe('publisher', () => {
@@ -363,7 +364,9 @@ describe('publisher', () => {
         await waitFor(() => {
           expect(screen.queryByText('pipeline.common.publishAs')).not.toBeInTheDocument()
         })
-        expect(mockSetShowPricingModal).toHaveBeenCalled()
+        await waitFor(() =>
+          expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+        )
       })
     })
   })
@@ -497,7 +500,9 @@ describe('publisher', () => {
           .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
-        expect(mockSetShowPricingModal).toHaveBeenCalled()
+        await waitFor(() =>
+          expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+        )
       })
 
       it('should show publish as knowledge pipeline modal when permitted', async () => {

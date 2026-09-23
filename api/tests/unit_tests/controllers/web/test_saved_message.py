@@ -13,7 +13,6 @@ import controllers.web.saved_message as module
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
 from controllers.web.error import NotCompletionAppError
 from graphon.file import File, FileTransferMethod, FileType
-from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from services.errors.message import LastMessageNotExistsError, MessageNotExistsError
 from services.saved_message_service import (
@@ -23,6 +22,7 @@ from services.saved_message_service import (
     SavedMessagePage,
     SavedMessageRecord,
 )
+from tests.unit_tests.model_factories import make_end_user
 
 _INPUT_FILE_URL = "https://example.com/input.pdf"
 _CREATED_AT = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
@@ -37,12 +37,7 @@ def _chat_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        type=EndUserType.BROWSER,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1")
 
 
 def _record() -> SavedMessageRecord:

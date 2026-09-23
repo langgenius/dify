@@ -4,8 +4,6 @@ import type { SelectorParam } from 'i18next'
 import type { FC, ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { Github } from '@/app/components/base/icons/src/public/common'
-import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import { PluginSource } from '../../../types'
 
 type SourceConfig = {
@@ -19,11 +17,21 @@ type PluginSourceBadgeProps = {
 
 const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
   [PluginSource.marketplace]: {
-    icon: <BoxSparkleFill className="size-3.5 text-text-tertiary hover:text-text-accent" />,
+    icon: (
+      <span
+        aria-hidden
+        className="i-custom-vender-plugin-box-sparkle-fill size-3.5 text-text-tertiary hover:text-text-accent"
+      />
+    ),
     tipSelector: ($) => $['detailPanel.categoryTip.marketplace'],
   },
   [PluginSource.github]: {
-    icon: <Github className="size-3.5 text-text-secondary hover:text-text-primary" />,
+    icon: (
+      <span
+        aria-hidden
+        className="i-custom-public-common-github size-3.5 text-text-secondary hover:text-text-primary"
+      />
+    ),
     tipSelector: ($) => $['detailPanel.categoryTip.github'],
   },
   [PluginSource.local]: {

@@ -10,7 +10,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
-from graphon.enums import WorkflowType
 from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
 from models.model import App, AppMode, EndUser
 from models.tools import ToolFile
@@ -19,6 +18,25 @@ from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service as webhook_service_module
 from services.trigger.webhook_service import WebhookService
+from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
+
+
+class _EndUserServiceStub:
+    def __init__(self, result: EndUser | Exception) -> None:
+        self._result = result
+        self.calls: list[tuple[EndUserType, str, str, str | None]] = []
+
+    def get_or_create_end_user_by_type(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser:
+        self.calls.append((type, tenant_id, app_id, user_id))
+        if isinstance(self._result, Exception):
+            raise self._result
+        return self._result
 
 
 def _webhook_trigger(
@@ -59,31 +77,22 @@ def _workflow(
     app_id: str = "app-123",
     version: str = Workflow.VERSION_DRAFT,
 ) -> Workflow:
-    workflow = Workflow.new(
+    return make_workflow(
+        workflow_id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type=WorkflowType.WORKFLOW.value,
         version=version,
-        graph='{"nodes": [], "edges": []}',
-        features="{}",
         created_by="account-123",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
-    workflow.id = workflow_id
-    return workflow
 
 
 def _app(*, tenant_id: str = "tenant-123", app_id: str = "app-123") -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name="Webhook App",
-        description="",
         mode=AppMode.WORKFLOW,
-        enable_site=True,
-        enable_api=True,
+        icon_type=None,
         max_active_requests=0,
     )
 
@@ -100,11 +109,11 @@ def _app_trigger(*, status: AppTriggerStatus = AppTriggerStatus.ENABLED) -> AppT
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="end-user-123",
+    return make_end_user(
+        end_user_id="end-user-123",
         tenant_id="tenant-123",
         app_id="app-123",
-        type=EndUserType.TRIGGER,
+        end_user_type=EndUserType.TRIGGER,
         session_id="webhook-session",
     )
 
@@ -238,10 +247,6 @@ class TestWebhookServiceUnit:
 
         caplog.set_level(logging.INFO)
         with (
-            patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                return_value=_end_user(),
-            ),
             patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
             patch(
                 "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
@@ -253,6 +258,7 @@ class TestWebhookServiceUnit:
                     webhook_trigger,
                     {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
                     workflow,
+                    end_users=_EndUserServiceStub(_end_user()),
                 )
 
         assert exc_info.value is quota_error
@@ -285,18 +291,18 @@ class TestWebhookServiceUnit:
         }
 
         with (
-            patch.object(
-                webhook_service_module.EndUserService,
-                "get_or_create_end_user_by_type",
-                return_value=end_user,
-            ),
             patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge),
             patch.object(
                 webhook_service_module.AsyncWorkflowService,
                 "trigger_workflow_async",
             ) as mock_trigger,
         ):
-            WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                webhook_data,
+                workflow,
+                end_users=_EndUserServiceStub(end_user),
+            )
 
         call_session = mock_trigger.call_args.kwargs["session"]
         assert call_session.get_bind() is sqlite_engine
@@ -308,13 +314,13 @@ class TestWebhookServiceUnit:
         workflow = _workflow()
         webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
 
-        with patch.object(
-            webhook_service_module.EndUserService,
-            "get_or_create_end_user_by_type",
-            side_effect=ValueError("Failed to create end user"),
-        ):
-            with pytest.raises(ValueError, match="Failed to create end user"):
-                WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+        with pytest.raises(ValueError, match="Failed to create end user"):
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                webhook_data,
+                workflow,
+                end_users=_EndUserServiceStub(ValueError("Failed to create end user")),
+            )
 
     def test_extract_webhook_data_json(self):
         """Test webhook data extraction from JSON request."""

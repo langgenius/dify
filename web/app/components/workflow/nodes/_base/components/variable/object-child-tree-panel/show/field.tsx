@@ -1,18 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import type { Field as FieldType } from '../../../../../llm/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDropDownLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Type } from '../../../../../llm/types'
-import { getFieldType } from '../../../../../llm/utils'
 import TreeIndentLine from '../tree-indent-line'
 
 type Props = Readonly<{
   name: string
-  payload: FieldType
+  payload: unknown
   required: boolean
   depth?: number
   rootClassName?: string
@@ -21,8 +19,47 @@ type Props = Readonly<{
 const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName }) => {
   const { t } = useTranslation()
   const isRoot = depth === 1
-  const hasChildren = payload.type === Type.object && payload.properties
-  const hasEnum = payload.enum && payload.enum.length > 0
+  const schema = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {}
+  const type =
+    'type' in schema && typeof schema.type === 'string' && schema.type ? schema.type : 'Unknown'
+  const properties =
+    'properties' in schema &&
+    schema.properties &&
+    typeof schema.properties === 'object' &&
+    !Array.isArray(schema.properties)
+      ? schema.properties
+      : undefined
+  const requiredProperties =
+    'required' in schema && Array.isArray(schema.required) ? schema.required : []
+  const description =
+    'description' in schema && typeof schema.description === 'string' ? schema.description : ''
+  const schemaType =
+    'schemaType' in schema && typeof schema.schemaType === 'string' ? schema.schemaType : ''
+  const enumValues =
+    'enum' in schema && Array.isArray(schema.enum)
+      ? schema.enum.filter(
+          (value): value is string | number =>
+            typeof value === 'string' || typeof value === 'number',
+        )
+      : []
+  const items = 'items' in schema ? schema.items : undefined
+  const itemType =
+    items &&
+    typeof items === 'object' &&
+    'type' in items &&
+    typeof items.type === 'string' &&
+    items.type
+      ? items.type
+      : 'Unknown'
+  const displayType =
+    schemaType === 'file'
+      ? Type.file
+      : enumValues.length > 0
+        ? Type.enumType
+        : type === Type.array && items
+          ? `array[${itemType}]`
+          : type
+  const hasChildren = type === Type.object && properties
   const [fold, setFold] = useState(false)
   return (
     <div>
@@ -48,8 +85,8 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
               {name}
             </div>
             <div className="ml-3 shrink-0 system-xs-regular leading-6 text-text-tertiary">
-              {getFieldType(payload)}
-              {payload.schemaType && payload.schemaType !== 'file' && ` (${payload.schemaType})`}
+              {displayType}
+              {schemaType && schemaType !== 'file' && ` (${schemaType})`}
             </div>
             {required && (
               <div className="ml-3 system-2xs-medium-uppercase leading-6 text-text-warning">
@@ -57,20 +94,20 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
               </div>
             )}
           </div>
-          {payload.description && (
+          {description && (
             <div className="ml-1.75 flex">
               <div className="w-0 grow truncate system-xs-regular text-text-tertiary">
-                {payload.description}
+                {description}
               </div>
             </div>
           )}
-          {hasEnum && (
+          {enumValues.length > 0 && (
             <div className="ml-1.75 flex">
               <div className="w-0 grow system-xs-regular text-text-quaternary">
-                {payload.enum!.map((value, index) => (
+                {enumValues.map((value, index) => (
                   <span key={index}>
                     {typeof value === 'string' ? `"${value}"` : value}
-                    {index < payload.enum!.length - 1 && ' | '}
+                    {index < enumValues.length - 1 && ' | '}
                   </span>
                 ))}
               </div>
@@ -81,13 +118,13 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
 
       {hasChildren && !fold && (
         <div>
-          {Object.keys(payload.properties!).map((name) => (
+          {Object.entries(properties).map(([name, value]: [string, unknown]) => (
             <Field
               key={name}
               name={name}
-              payload={payload.properties?.[name] as FieldType}
+              payload={value}
               depth={depth + 1}
-              required={!!payload.required?.includes(name)}
+              required={requiredProperties.includes(name)}
             />
           ))}
         </div>

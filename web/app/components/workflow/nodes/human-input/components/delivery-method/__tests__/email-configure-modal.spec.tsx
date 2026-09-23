@@ -17,7 +17,7 @@ const render = (ui: ReactElement) =>
     wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
   })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockToastError(message),
   },
@@ -126,7 +126,11 @@ describe('human-input/delivery-method/email-configure-modal', () => {
       target: { value: 'Please review {{#url#}} now' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'set-workspace-recipient' }))
-    fireEvent.click(screen.getByRole('switch'))
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.debugMode',
+      }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(handleConfirm).toHaveBeenCalledWith({

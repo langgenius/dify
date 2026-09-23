@@ -3,7 +3,6 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +11,7 @@ import SnippetInfoDropdown from '@/app/components/app-sidebar/snippet-info/dropd
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import VarList from '@/app/components/workflow/nodes/start/components/var-list'
+import { toast } from '@/app/notifications'
 import { hasDuplicateStr } from '@/utils/var'
 import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
 
@@ -36,10 +36,6 @@ const toSnippetInputField = (field: InputVar): SnippetInputField => ({
   label: typeof field.label === 'string' ? field.label : field.label.variable,
   type: field.type as unknown as SnippetInputField['type'],
 })
-
-const NodeTreeIcon = ({ className }: { className?: string }) => (
-  <span className={cn('i-ri-node-tree', className)} />
-)
 
 export const SnippetSidebarContent = ({
   snippet,
@@ -141,7 +137,7 @@ export const SnippetSidebarContent = ({
           name={t(($) => $.sectionOrchestrate, { ns: 'snippet' })}
           href={`/snippets/${snippet.id}/orchestrate`}
           active
-          iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
+          iconMap={{ selected: 'i-ri-node-tree', normal: 'i-ri-node-tree' }}
         />
       </nav>
 

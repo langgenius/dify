@@ -24,6 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from core.workflow.nodes.human_input.pause_reason import (
@@ -73,8 +74,8 @@ from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 
-# UploadFile uses TypeBase while workflow execution offload models use Base, so relationships
-# must target the class object directly instead of relying on string lookup across registries.
+# UploadFile and workflow execution offload use TypeBase, so importing the class object keeps
+# relationship joins explicit where the related execution model still uses Base.
 from .model import UploadFile
 from .types import EnumText, LongText, StringUUID
 from .utils.file_input_compat import (
@@ -225,17 +226,14 @@ class Workflow(Base):  # bug
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255), nullable=False)
     kind: Mapped[WorkflowKind | None] = mapped_column(
-        EnumText(WorkflowKind, length=255),
-        nullable=True,
-        default=WorkflowKind.STANDARD,
-        server_default=sa.text("'standard'"),
+        EnumText(WorkflowKind, length=255), nullable=True, default=WorkflowKind.STANDARD
     )
     version: Mapped[str] = mapped_column(String(255), nullable=False)
     # User-facing version number, unique and monotonically increasing within an app, displayed as `#N`.
     # NULL for draft workflows and for versions published before numbering was introduced.
     version_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
-    marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
-    marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
+    marked_name: Mapped[str] = mapped_column(String(255), default="")
+    marked_comment: Mapped[str] = mapped_column(String(255), default="")
     graph: Mapped[str] = mapped_column(LongText)
     _features: Mapped[str] = mapped_column("features", LongText)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -592,36 +590,7 @@ class Workflow(Base):  # bug
     def environment_variables(
         self,
     ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable]:
-        # Use workflow.tenant_id to avoid relying on request user in background threads
-        tenant_id = self.tenant_id
-
-        if not tenant_id:
-            return []
-
-        environment_variables_dict = cast(SerializedWorkflowVariables, json.loads(self._environment_variables or "{}"))
-        results = [
-            variable_factory.build_environment_variable_from_mapping(v) for v in environment_variables_dict.values()
-        ]
-
-        # decrypt secret variables value
-        def decrypt_func(
-            var: VariableBase,
-        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable:
-            match var:
-                case SecretVariable():
-                    return var.model_copy(
-                        update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
-                    )
-                case StringVariable() | IntegerVariable() | FloatVariable() | LLMEnvironmentVariable():
-                    return var
-                case _:
-                    # Other variable types are not supported for environment variables
-                    raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
-
-        decrypted_results: list[
-            SecretVariable | StringVariable | IntegerVariable | FloatVariable | LLMEnvironmentVariable
-        ] = [decrypt_func(var) for var in results]
-        return decrypted_results
+        return load_environment_variables(tenant_id=self.tenant_id, serialized_variables=self._environment_variables)
 
     @environment_variables.setter
     def environment_variables(self, value: Sequence[VariableBase]):
@@ -866,19 +835,15 @@ class WorkflowRun(Base):
         back_populates="workflow_run",
     )
 
-    @property
-    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
-    def created_by_account(self):
+    def created_by_account(self, session: orm.Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+        return session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
-    @property
-    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
-    def created_by_end_user(self):
+    def created_by_end_user(self, session: orm.Session):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+        return session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
     @property
     def graph_dict(self) -> Mapping[str, Any]:
@@ -891,20 +856,6 @@ class WorkflowRun(Base):
     @property
     def outputs_dict(self) -> Mapping[str, Any]:
         return json.loads(self.outputs) if self.outputs else {}
-
-    @property
-    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
-    def message(self):
-        from .model import Message
-
-        return db.session.scalar(
-            select(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id)
-        )
-
-    @property
-    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
-    def workflow(self):
-        return db.session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
 
     def to_dict(self) -> WorkflowRunDict:
         return WorkflowRunDict(
@@ -1074,9 +1025,13 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     created_by: Mapped[str] = mapped_column(StringUUID)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
+    # WorkflowNodeExecutionOffload uses TypeBase while this model uses Base, so both the target and join
+    # must resolve lazily as class objects instead of relying on string lookup across registries.
     offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
-        "WorkflowNodeExecutionOffload",
-        primaryjoin="WorkflowNodeExecutionModel.id == foreign(WorkflowNodeExecutionOffload.node_execution_id)",
+        lambda: WorkflowNodeExecutionOffload,
+        primaryjoin=lambda: (
+            WorkflowNodeExecutionModel.id == orm.foreign(WorkflowNodeExecutionOffload.node_execution_id)
+        ),
         uselist=True,
         lazy="raise",
         back_populates="execution",
@@ -1100,22 +1055,20 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
             )
         )
 
-    @property
-    def created_by_account(self):
+    def created_by_account(self, session: orm.Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
         if created_by_role == CreatorUserRole.ACCOUNT:
             stmt = select(Account).where(Account.id == self.created_by)
-            return db.session.scalar(stmt)
+            return session.scalar(stmt)
         return None
 
-    @property
-    def created_by_end_user(self):
+    def created_by_end_user(self, session: orm.Session):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
         if created_by_role == CreatorUserRole.END_USER:
             stmt = select(EndUser).where(EndUser.id == self.created_by)
-            return db.session.scalar(stmt)
+            return session.scalar(stmt)
         return None
 
     @property
@@ -1216,7 +1169,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         return self._load_full_content(session, offload.file_id, storage)
 
 
-class WorkflowNodeExecutionOffload(Base):
+class WorkflowNodeExecutionOffload(TypeBase):
     __tablename__ = "workflow_node_execution_offload"
     __table_args__ = (
         # PostgreSQL 14 treats NULL values as distinct in unique constraints by default,
@@ -1235,15 +1188,7 @@ class WorkflowNodeExecutionOffload(Base):
     )
     _HASH_COL_SIZE = 64
 
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        default=lambda: str(uuid4()),
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=naive_utc_now, server_default=func.current_timestamp()
-    )
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
@@ -1276,8 +1221,11 @@ class WorkflowNodeExecutionOffload(Base):
         foreign_keys=[node_execution_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowNodeExecutionOffload.node_execution_id == WorkflowNodeExecutionModel.id",
+        primaryjoin=lambda: (
+            orm.foreign(WorkflowNodeExecutionOffload.node_execution_id) == WorkflowNodeExecutionModel.id
+        ),
         back_populates="offload_data",
+        init=False,
     )
 
     file: Mapped[Optional["UploadFile"]] = orm.relationship(
@@ -1286,6 +1234,10 @@ class WorkflowNodeExecutionOffload(Base):
         lazy="raise",
         uselist=False,
         primaryjoin=lambda: orm.foreign(WorkflowNodeExecutionOffload.file_id) == UploadFile.id,
+        init=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default_factory=naive_utc_now, server_default=func.current_timestamp()
     )
 
 

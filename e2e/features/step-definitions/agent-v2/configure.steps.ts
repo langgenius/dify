@@ -1,14 +1,8 @@
 import type { Page } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
-import {
-  createConfiguredTestAgent,
-  createTestAgent,
-  getAgentConfigurePath,
-  saveAgentComposerDraft,
-} from '../../agent-v2/support/agent'
+import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure.ts'
 import {
   concurrentFirstAgentPrompt,
   concurrentSecondAgentPrompt,
@@ -17,12 +11,18 @@ import {
   normalAgentPrompt,
   normalAgentSoulConfig,
   updatedAgentPrompt,
-} from '../../agent-v2/support/agent-soul'
+} from '../../agent-v2/support/agent-soul.ts'
+import {
+  createConfiguredTestAgent,
+  createTestAgent,
+  getAgentConfigurePath,
+  saveAgentComposerDraft,
+} from '../../agent-v2/support/agent.ts'
 import {
   expectNormalAgentPromptDraft,
   getCurrentAgentId,
   getPreseededAgent,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 const concurrentAgentPrompts = [concurrentFirstAgentPrompt, concurrentSecondAgentPrompt]
 

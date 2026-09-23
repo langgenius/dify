@@ -5,12 +5,12 @@ import type { Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import BaseInput from '@/app/components/base/input'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import InputSupportSelectVar from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
 import { APIType, AuthorizationType } from '../../types'
@@ -30,15 +30,17 @@ const Field = ({
   title,
   isRequired,
   children,
+  htmlFor,
 }: {
   title: string
   isRequired?: boolean
   children: React.JSX.Element
+  htmlFor?: string
 }) => {
   return (
     <div>
       <div className="text-[13px] leading-8 font-medium text-text-secondary">
-        {title}
+        {htmlFor ? <label htmlFor={htmlFor}>{title}</label> : title}
         {isRequired && <span className="ml-0.5 text-text-destructive">*</span>}
       </div>
       <div>{children}</div>
@@ -48,12 +50,15 @@ const Field = ({
 
 const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide }) => {
   const { t } = useTranslation()
+  const headerId = useId()
 
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+
+      return textVariableTypes.includes(varPayload.type)
     },
   })
 
@@ -92,7 +97,7 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
 
   const handleAPIKeyOrHeaderChange = useCallback(
     (type: 'api_key' | 'header') => {
-      return (e: React.ChangeEvent<HTMLInputElement>) => {
+      return (value: string) => {
         const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
           if (!draft.config) {
             draft.config = {
@@ -100,7 +105,7 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
               api_key: '',
             }
           }
-          draft.config[type] = e.target.value
+          draft.config[type] = value
         })
         setTempPayload(newPayload)
       }
@@ -140,7 +145,12 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
           {t(($) => $[`${i18nPrefix}.authorization`], { ns: 'workflow' })}
         </DialogTitle>
 
-        <div>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleConfirm()
+          }}
+        >
           <div className="space-y-2">
             <Field title={t(($) => $[`${i18nPrefix}.authorizationType`], { ns: 'workflow' })}>
               <RadioGroup
@@ -182,10 +192,16 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
                   />
                 </Field>
                 {tempPayload.config?.type === APIType.custom && (
-                  <Field title={t(($) => $[`${i18nPrefix}.header`], { ns: 'workflow' })} isRequired>
-                    <BaseInput
+                  <Field
+                    htmlFor={headerId}
+                    title={t(($) => $[`${i18nPrefix}.header`], { ns: 'workflow' })}
+                    isRequired
+                  >
+                    <Input
+                      id={headerId}
+                      name="header"
                       value={tempPayload.config?.header || ''}
-                      onChange={handleAPIKeyOrHeaderChange('header')}
+                      onValueChange={handleAPIKeyOrHeaderChange('header')}
                     />
                   </Field>
                 )}
@@ -195,7 +211,7 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
                   isRequired
                 >
                   <div className="flex">
-                    <Input
+                    <InputSupportSelectVar
                       instanceId="http-api-key"
                       className={cn(
                         isFocus
@@ -218,11 +234,11 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
           </div>
           <div className="mt-6 flex justify-end space-x-2">
             <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-            <Button variant="primary" onClick={handleConfirm}>
+            <Button variant="primary" type="submit">
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   )

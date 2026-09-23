@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
 import { ChunkingMode } from '@/models/datasets'
 import CSVDownload from '../csv-downloader'
 
 // Mock useLocale
 let mockLocale = LanguagesSupported[0] // en-US
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale,
 }))
 

@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useMemo, useState } from 'react'
+import { memo, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import Badge from '@/app/components/base/badge'
@@ -30,7 +30,6 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const [open, setOpen] = useState(false)
   const { data: humanInputEmailDeliveryEnabled } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.human_input_email_delivery_enabled,
@@ -55,7 +54,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
   }, [data, humanInputEmailDeliveryEnabled])
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         render={
           <IconButton

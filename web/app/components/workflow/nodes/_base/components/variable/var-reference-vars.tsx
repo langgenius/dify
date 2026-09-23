@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, RefObject } from 'react'
 import type { Field, StructuredOutput } from '../../../llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -98,10 +98,12 @@ const Item: FC<ItemProps> = ({
   isSelected,
   onActivate,
 }) => {
+  const nestedVariableTypes: readonly VarType[] = [VarType.object, VarType.file]
+
   const isStructureOutput =
     itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isObj =
-    [VarType.object, VarType.file].includes(itemData.type) &&
+    nestedVariableTypes.includes(itemData.type) &&
     itemData.children &&
     (itemData.children as Var[]).length > 0
   const isEnv = itemData.variable.startsWith('env.')
@@ -334,7 +336,7 @@ type Props = Readonly<{
   isInCodeGeneratorInstructionEditor?: boolean
   showManageInputField?: boolean
   onManageInputField?: () => void
-  autoFocus?: boolean
+  searchInputRef?: RefObject<HTMLInputElement | null>
   preferSchemaType?: boolean
 }>
 const VarReferenceVars: FC<Props> = ({
@@ -351,13 +353,14 @@ const VarReferenceVars: FC<Props> = ({
   isInCodeGeneratorInstructionEditor,
   showManageInputField,
   onManageInputField,
-  autoFocus = true,
+  searchInputRef: externalSearchInputRef,
   preferSchemaType,
 }) => {
   const { t } = useTranslation()
   const [internalSearchValue, setInternalSearchValue] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
+  const internalSearchInputRef = useRef<HTMLInputElement>(null)
+  const searchInputRef = externalSearchInputRef ?? internalSearchInputRef
   const searchValue = searchText ?? internalSearchValue
   const searchLabel = t(($) => $['common.searchVar'], { ns: 'workflow' })
   const filteredVars = useMemo(() => filterReferenceVars(vars, searchValue), [vars, searchValue])
@@ -497,7 +500,6 @@ const VarReferenceVars: FC<Props> = ({
               placeholder={searchLabel}
               onValueChange={setInternalSearchValue}
               onKeyDown={handleKeyDown}
-              autoFocus={autoFocus}
             />
             <InputGroupAddon className="ps-2 pe-0.5">
               <span

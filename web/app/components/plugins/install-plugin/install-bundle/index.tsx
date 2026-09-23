@@ -19,11 +19,13 @@ export type InstallBundleCompleteCallback = (
   versionInfo: VersionProps[],
 ) => void
 
-export enum InstallType {
-  fromLocal = 'fromLocal',
-  fromMarketplace = 'fromMarketplace',
-  fromDSL = 'fromDSL',
-}
+export const InstallType = {
+  fromLocal: 'fromLocal',
+  fromMarketplace: 'fromMarketplace',
+  fromDSL: 'fromDSL',
+} as const
+
+export type InstallType = (typeof InstallType)[keyof typeof InstallType]
 
 type Props = Readonly<{
   installType?: InstallType
@@ -71,7 +73,7 @@ const InstallBundle: FC<Props> = ({
           'w-full max-w-120 overflow-hidden! text-left align-middle',
           cn(
             modalClassName,
-            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-140 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+            'flex max-h-[calc(100dvh-48px)] min-w-140 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
           ),
         )}
       >

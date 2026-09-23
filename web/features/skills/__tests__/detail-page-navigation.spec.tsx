@@ -1,12 +1,15 @@
 import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
   createFileTabSkillDetail,
   createReferencePickerSkillDetail,
   createSkillDetail,
+  createSkillVersion,
   getFileTabButton,
   getFileTreeButton,
   getLiveMarkdownEditor,
@@ -78,6 +81,61 @@ describe('SkillDetailPage navigation', () => {
     ).toBeInTheDocument()
   })
 
+  it('opens another skill in its editable draft without retaining the original view state', async () => {
+    const { default: SkillDetailPageRoute } = await import('../detail-page')
+    const user = userEvent.setup()
+    const version = createSkillVersion({ id: 'original-version', version_name: 'Original version' })
+    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-versions', options],
+      queryFn: async () => ({ data: [version] }),
+    }))
+    mocks.skillVersionDetailQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-version-detail', options],
+      queryFn: async () => ({
+        ...version,
+        files: createSkillDetail().files,
+      }),
+    }))
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    const { wrapper } = createNuqsTestWrapper()
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <SkillDetailPageRoute />
+      </QueryClientProvider>,
+      { wrapper },
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Original version/ }))
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.rename' }),
+    ).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.collapseSidebar' }),
+    )
+    expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+
+    mocks.routeSkillId = 'copied-skill'
+    mocks.skillDetail = createSkillDetail({ id: 'copied-skill', display_name: 'Copied skill' })
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <SkillDetailPageRoute />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.rename' }),
+    ).toHaveTextContent('Copied skill')
+    expect(
+      screen.queryByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows the sidebar while the collapsed rail is hovered', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
@@ -103,6 +161,7 @@ describe('SkillDetailPage navigation', () => {
   })
 
   it('resizes the file tree sidebar within its accessible range', async () => {
+    const user = userEvent.setup()
     renderSkillDetailPage()
 
     const resizeHandle = await screen.findByRole('separator', {
@@ -120,11 +179,14 @@ describe('SkillDetailPage navigation', () => {
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
     fireEvent.pointerUp(document)
 
-    fireEvent.keyDown(resizeHandle, { key: 'ArrowRight' })
+    resizeHandle.focus()
+    await user.keyboard('{ArrowRight}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '248')
-    fireEvent.keyDown(resizeHandle, { key: 'End' })
+    await user.keyboard('{Shift>}{ArrowRight}{/Shift}')
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '280')
+    await user.keyboard('{End}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '420')
-    fireEvent.keyDown(resizeHandle, { key: 'Home' })
+    await user.keyboard('{Home}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
   })
 

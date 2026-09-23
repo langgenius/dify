@@ -1,13 +1,12 @@
 import type { FC, ReactNode } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
-import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import type { PluginLanguage } from '@/i18n/metadata'
 import CardIcon from '@/app/components/plugins/card/base/card-icon'
 
 type PluginItemProps = {
   plugin: PluginStatus
   getIconUrl: (icon: string) => string
-  language: Locale
+  language: PluginLanguage
   statusIcon: ReactNode
   statusText: ReactNode
   statusClassName?: string
@@ -34,8 +33,10 @@ const PluginItem: FC<PluginItemProps> = ({
         {hasPluginIcon ? (
           <CardIcon size="small" src={getIconUrl(plugin.icon)} />
         ) : (
-          // oxlint-disable-next-line dify/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
-          <MagicBox className="size-8 text-text-tertiary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-mediaAndDevices-magic-box size-8 text-text-tertiary"
+          />
         )}
         <div className="absolute -right-0.5 -bottom-0.5 z-10">{statusIcon}</div>
       </div>

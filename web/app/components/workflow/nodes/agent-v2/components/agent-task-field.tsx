@@ -4,12 +4,12 @@ import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-ed
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useBoolean } from 'ahooks'
 import { $insertNodes } from 'lexical'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { $createCustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 import { useDocLink } from '@/context/i18n'
@@ -68,6 +68,8 @@ export function AgentTaskField({
   onOutputsChange: (outputs: DeclaredOutputConfig[], prompt?: string) => void
   onEditOutput?: (name: string, outputType: AgentOutputTypeOptionValue) => void
 }) {
+  const taskLabelId = useId()
+
   const { t } = useTranslation()
   const docLink = useDocLink()
   const getVarType = useWorkflowVariableType()
@@ -94,20 +96,26 @@ export function AgentTaskField({
   return (
     <Field name="agent_task" className="gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-1">
-        <FieldLabel className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary">
+        <FieldLabel
+          id={taskLabelId}
+          className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary"
+        >
           {t(($) => $[`${i18nPrefix}.task.label`], { ns: 'workflow' })}
         </FieldLabel>
-        <Infotip aria-label={t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}>
-          <span>{t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}</span>{' '}
-          <a
-            href={docLink('/use-dify/nodes/agent#give-it-a-task')}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            {t(($) => $[`${i18nPrefix}.task.learnMore`], { ns: 'workflow' })}
-            <span aria-hidden className="i-ri-external-link-line size-3" />
-          </a>
+        <Infotip>
+          <InfotipTrigger aria-labelledby={taskLabelId} />
+          <InfotipContent aria-labelledby={taskLabelId}>
+            {t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}{' '}
+            <a
+              href={docLink('/use-dify/nodes/agent#give-it-a-task')}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            >
+              {t(($) => $[`${i18nPrefix}.task.learnMore`], { ns: 'workflow' })}
+              <span aria-hidden className="i-ri-external-link-line size-3" />
+            </a>
+          </InfotipContent>
         </Infotip>
       </div>
       <div

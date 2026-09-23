@@ -147,15 +147,6 @@ class _VectorSpaceQuota(TypedDict):
     usage_unknown: NotRequired[bool]
 
 
-class _KnowledgeRateLimit(TypedDict):
-    # NOTE (hj24):
-    # 1. Return for sandbox users but is null for other plans, it's defined but never used.
-    # 2. Keep it for compatibility for now, can be deprecated in future versions.
-    size: NotRequired[int]
-    # NOTE END
-    limit: int
-
-
 class _BillingSubscription(TypedDict):
     plan: str
     interval: str
@@ -177,10 +168,8 @@ class BillingInfo(TypedDict):
     members: _BillingQuota
     apps: _BillingQuota
     vector_space: NotRequired[_VectorSpaceQuota]
-    knowledge_rate_limit: _KnowledgeRateLimit
     documents_upload_quota: _BillingQuota
     annotation_quota_limit: _BillingQuota
-    docs_processing: str
     can_replace_logo: bool
     model_load_balancing_enabled: bool
     knowledge_pipeline_publish_enabled: bool

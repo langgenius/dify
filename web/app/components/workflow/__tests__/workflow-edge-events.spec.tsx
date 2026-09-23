@@ -192,7 +192,7 @@ vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: toastErrorMock,
     info: toastInfoMock,

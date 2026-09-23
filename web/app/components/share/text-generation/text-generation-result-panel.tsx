@@ -6,7 +6,7 @@ import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Res from '@/app/components/share/text-generation/result'
 import ResDownload from './run-batch/res-download'
 import { TaskStatus } from './types'
@@ -170,7 +170,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           {isCallBatchAPI ? showTaskList.map((task) => renderResult(task)) : renderResult()}
           {!noPendingTask && (
             <div className="mt-4">
-              <Loading type="area" />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>

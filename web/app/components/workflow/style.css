@@ -6,6 +6,12 @@
   transition: transform 0.2s ease-in-out;
 }
 
+#workflow-container .react-flow__node:focus-visible,
+#workflow-container .react-flow__nodesselection-rect:focus-visible {
+  outline: 2px solid var(--color-state-accent-solid);
+  outline-offset: 4px;
+}
+
 /* Comment mode cursor override */
 .comment-mode-flow .react-flow__pane,
 .comment-mode-flow .react-flow__viewport {

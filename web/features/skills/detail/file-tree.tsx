@@ -29,6 +29,13 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -50,18 +57,19 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
+import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
+import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
+import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { fetchSkillFileBlob, uploadSkillFile } from '../client'
@@ -107,7 +115,6 @@ import {
 
 const skillSidebarMinWidth = 240
 const skillSidebarMaxWidth = 420
-const skillSidebarKeyboardStep = 8
 
 const skillSidebarHelpTriggerIcon = (
   <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
@@ -176,12 +183,23 @@ export function FileTree({
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
   const filesTitleId = useId()
+  const sidebarPanelId = useId()
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
   const [draggingPaths, setDraggingPaths] = useState<string[]>([])
   const [dropTarget, setDropTarget] = useState<SkillDropTarget>()
   const [collapsedFolderPaths, setCollapsedFolderPaths] = useState<string[]>([])
-  const [skillRenameEditing, setSkillRenameEditing] = useState(false)
+  const [renameRequested, setRenameRequested] = useQueryState(
+    'rename',
+    parseAsBoolean.withDefault(false),
+  )
+  const [skillRenameEditing, setSkillRenameEditing] = useState(
+    () => canEdit && !readonly && renameRequested,
+  )
+  useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the URL navigation flag after the loaded detail initializes its local editor.
+    if (renameRequested) void setRenameRequested(null)
+  }, [renameRequested, setRenameRequested])
   const [selectedPaths, setSelectedPaths] = useState<string[]>([])
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string>()
   const [clipboard, setClipboard] = useState<SkillFileClipboard>()
@@ -288,15 +306,17 @@ export function FileTree({
   )
 
   const handleSidebarResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    let nextWidth: number | undefined
-    if (event.key === 'ArrowLeft') nextWidth = sidebarWidth - skillSidebarKeyboardStep
-    if (event.key === 'ArrowRight') nextWidth = sidebarWidth + skillSidebarKeyboardStep
-    if (event.key === 'Home') nextWidth = skillSidebarMinWidth
-    if (event.key === 'End') nextWidth = skillSidebarMaxWidth
+    const nextWidth = getKeyboardResizeValue(event, {
+      side: 'right',
+      value: sidebarWidth,
+      min: skillSidebarMinWidth,
+      max: skillSidebarMaxWidth,
+    })
     if (nextWidth === undefined) return
 
     event.preventDefault()
-    setSidebarWidth(clampSkillSidebarWidth(nextWidth))
+    event.stopPropagation()
+    setSidebarWidth(nextWidth)
   }
 
   const fileMutation = useMutation(
@@ -1122,7 +1142,10 @@ export function FileTree({
                   className="mt-2 flex size-8 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-tertiary shadow-none outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={() => onCollapsedChange(false)}
                 >
-                  <SidebarLeftArrowIcon aria-hidden className="size-4" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-arrows-sidebar-left-arrow size-4"
+                  />
                 </button>
               }
             />
@@ -1157,6 +1180,7 @@ export function FileTree({
         onMouseLeave={collapsed ? closeSidebarFloatingPreview : undefined}
       >
         <div
+          id={sidebarPanelId}
           data-testid="skill-detail-sidebar"
           className={cn(
             'group/sidebar relative flex min-h-0 flex-col rounded-lg bg-components-panel-bg',
@@ -1174,6 +1198,8 @@ export function FileTree({
               aria-valuemax={skillSidebarMaxWidth}
               aria-valuemin={skillSidebarMinWidth}
               aria-valuenow={sidebarWidth}
+              aria-valuetext={t(($) => $['resize.width'], { ns: 'common', width: sidebarWidth })}
+              aria-controls={sidebarPanelId}
               tabIndex={0}
               className="group/resize absolute top-0 -right-2 z-40 flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-hidden"
               onKeyDown={handleSidebarResizeKeyDown}
@@ -1192,23 +1218,29 @@ export function FileTree({
             data-testid="skill-detail-sidebar-header"
             className="flex h-12 shrink-0 items-center py-2 pr-2 pl-1"
           >
-            <div className="flex min-w-0 flex-1 items-center gap-px">
-              <Link
-                href="/skills"
-                className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary outline-hidden hover:bg-background-default-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                aria-label={t(($) => $['skillManagement.detail.back'])}
-              >
-                <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-                <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
-              </Link>
-              <span className="shrink-0 system-md-regular text-text-quaternary">/</span>
-              <Link
-                href="/skills"
-                className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              >
-                SKILLS
-              </Link>
-            </div>
+            <Breadcrumb aria-label={tCommon(($) => $['mainNav.skills'])} className="flex-1">
+              <BreadcrumbList className="gap-px">
+                <BreadcrumbItem className="shrink-0">
+                  <BreadcrumbLink
+                    render={<Link href="/skills" />}
+                    className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+                    aria-label={t(($) => $['skillManagement.detail.back'])}
+                  >
+                    <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+                    <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="system-md-regular" />
+                <BreadcrumbItem className="shrink-0">
+                  <BreadcrumbLink
+                    render={<Link href="/skills" />}
+                    className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
+                  >
+                    SKILLS
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -1229,10 +1261,7 @@ export function FileTree({
                   />
                 }
               />
-              <TooltipContent
-                placement="bottom"
-                className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-              >
+              <TooltipContent placement="bottom" className="flex items-center gap-1">
                 <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
                 <KbdGroup>
                   {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
@@ -1257,7 +1286,10 @@ export function FileTree({
                       }
                     }}
                   >
-                    <SidebarLeftArrowIcon aria-hidden className="size-4" />
+                    <span
+                      aria-hidden
+                      className="i-custom-vender-line-arrows-sidebar-left-arrow size-4"
+                    />
                   </button>
                 }
               />

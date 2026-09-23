@@ -1,11 +1,11 @@
 import type { SchemaRoot } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
+import { toast } from '@/app/notifications'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { Type } from '../../types'
 import {
@@ -234,7 +234,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
         <div className="flex items-center gap-x-0.5">
           {/* JSON Schema Generator */}
           <JsonSchemaGenerator crossAxisOffset={btnWidth} onApply={handleApplySchema} />
-          <Divider type="vertical" className="h-3" />
+          <Separator decorative orientation="vertical" className="mx-2 h-3" />
           {/* JSON Schema Importer */}
           <JsonImporter updateBtnWidth={updateBtnWidth} onSubmit={handleSubmit} />
         </div>
@@ -256,7 +256,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
             <Button variant="secondary" onClick={handleResetDefaults}>
               {t(($) => $['nodes.llm.jsonSchema.resetDefaults'], { ns: 'workflow' })}
             </Button>
-            <Divider type="vertical" className="mr-0 ml-1 h-4" />
+            <Separator orientation="vertical" className="mr-0 ml-1 h-4" />
           </div>
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleCancel}>

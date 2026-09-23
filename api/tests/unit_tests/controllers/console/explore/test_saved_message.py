@@ -156,6 +156,7 @@ class TestSavedMessageListApi:
         ):
             result = unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
+                module.SavedMessageListQuery.model_validate({}),
                 _ACCOUNT_ID,
                 installed_app,
             )
@@ -179,8 +180,9 @@ class TestSavedMessageListApi:
         services.saved_messages.pagination_by_last_id.return_value = SavedMessagePage(limit=50, has_more=True, data=())
 
         with app.test_request_context("/", query_string={"last_id": last_id, "limit": "50"}):
-            unwrap(module.SavedMessageListApi().get)(
+            result = unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
+                module.SavedMessageListQuery.model_validate({"last_id": last_id, "limit": "50"}),
                 _ACCOUNT_ID,
                 installed_app,
             )
@@ -191,6 +193,26 @@ class TestSavedMessageListApi:
             last_id=last_id,
             limit=50,
         )
+
+        assert result == {"limit": 50, "has_more": True, "data": []}
+
+    @pytest.mark.parametrize("query_string", [{"limit": "0"}, {"limit": "101"}, {"last_id": "invalid-uuid"}])
+    def test_get_rejects_invalid_query(self, services: _ApplicationServiceMocks, query_string: dict[str, str]) -> None:
+        http_app = Flask(__name__)
+
+        @http_app.get("/saved-messages")
+        def get_saved_messages() -> dict[str, object]:
+            return module.SavedMessageListApi().get(_installed_app())
+
+        with patch(
+            "controllers.console.wraps.current_account_with_tenant",
+            return_value=(MagicMock(id=_ACCOUNT_ID), _WORKSPACE_ID),
+        ):
+            response = http_app.test_client().get("/saved-messages", query_string=query_string)
+
+        assert response.status_code == 422
+        services.app_definitions.get_mode.assert_not_called()
+        services.saved_messages.pagination_by_last_id.assert_not_called()
 
     def test_get_preserves_invalid_last_id_context(self, app: Flask, services: _ApplicationServiceMocks) -> None:
         installed_app = _installed_app()
@@ -204,6 +226,7 @@ class TestSavedMessageListApi:
         ):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
+                module.SavedMessageListQuery.model_validate({"last_id": last_id}),
                 _ACCOUNT_ID,
                 installed_app,
             )
@@ -216,6 +239,7 @@ class TestSavedMessageListApi:
         with app.test_request_context("/"), pytest.raises(AppUnavailableError):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
+                module.SavedMessageListQuery.model_validate({}),
                 _ACCOUNT_ID,
                 _installed_app(),
             )
@@ -226,6 +250,7 @@ class TestSavedMessageListApi:
         with app.test_request_context("/"), pytest.raises(NotCompletionAppError):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
+                module.SavedMessageListQuery.model_validate({}),
                 _ACCOUNT_ID,
                 _installed_app(),
             )

@@ -17,24 +17,14 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow(*, workflow_id: str = "workflow-1", version: str = Workflow.VERSION_DRAFT) -> Workflow:
-    return Workflow(
-        id=workflow_id,
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=WorkflowType.WORKFLOW,
-        version=version,
-        graph={"nodes": [], "edges": []},
-        features={},
-        created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-    )
+    return make_workflow(workflow_id=workflow_id, version=version)
 
 
 def _inline_agent(
@@ -534,3 +524,56 @@ def test_restore_clones_inline_binding_owned_by_published_workflow(
     assert restored is not None
     assert restored.agent_id == "draft-agent"
     assert restored.current_snapshot_id == "draft-snapshot"
+
+
+def test_output_routes_round_trip_through_sync_projection_and_publication(sqlite_session: Session):
+    import json
+
+    from models.agent_config_entities import WorkflowNodeJobConfig
+
+    agent = _inline_agent(agent_id="route-agent", workflow_id="workflow-1", node_id="route-node")
+    snapshot = _snapshot(snapshot_id="route-snapshot", agent_id=agent.id)
+    sqlite_session.add_all([agent, snapshot])
+    sqlite_session.flush()
+    routes = {
+        "enabled": True,
+        "routes": [
+            {"id": "accept", "name": "Accepted", "label": "Continue"},
+            {"id": "reject", "name": "Rejected", "label": None},
+        ],
+    }
+    node_data = {
+        "type": "agent",
+        "version": "2",
+        "agent_node_kind": "dify_agent",
+        "agent_output_routes": routes,
+        "agent_binding": {"binding_type": "inline_agent", "agent_id": agent.id, "current_snapshot_id": snapshot.id},
+    }
+    workflow = _workflow()
+    workflow.graph = json.dumps({"nodes": [{"id": "route-node", "data": node_data}], "edges": []})
+    WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+        session=sqlite_session, draft_workflow=workflow, account_id="account-1"
+    )
+    projected = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+        session=sqlite_session, draft_workflow=workflow
+    )
+    assert projected["nodes"][0]["data"]["agent_output_routes"] == routes
+    published = _workflow(workflow_id="published-routes", version="published-routes")
+    WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        session=sqlite_session, draft_workflow=workflow, published_workflow=published
+    )
+    sqlite_session.flush()
+    frozen = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == published.id)
+    )
+    assert WorkflowNodeJobConfig.model_validate(frozen.node_job_config_dict).output_routes.model_dump() == routes
+    node_data["agent_output_routes"] = {"enabled": False, "routes": routes["routes"]}
+    workflow.graph = json.dumps({"nodes": [{"id": "route-node", "data": node_data}], "edges": []})
+    WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+        session=sqlite_session, draft_workflow=workflow, account_id="account-1"
+    )
+    projected = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+        session=sqlite_session, draft_workflow=workflow
+    )
+    assert projected["nodes"][0]["data"]["agent_output_routes"]["enabled"] is False
+    assert WorkflowNodeJobConfig.model_validate(frozen.node_job_config_dict).output_routes.model_dump() == routes

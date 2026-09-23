@@ -31,10 +31,10 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
@@ -424,8 +424,8 @@ function VersionRow({
             </DialogDescription>
           </div>
           <div className="flex flex-col gap-y-4 px-6 py-3">
-            <Field name="versionTitle" className="gap-y-1">
-              <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
+            <Field name="versionTitle">
+              <FieldLabel className="system-sm-semibold">
                 {t(($) => $['skillManagement.detail.versionTitle'])}
               </FieldLabel>
               <Input
@@ -434,8 +434,8 @@ function VersionRow({
                 onValueChange={setVersionName}
               />
             </Field>
-            <Field name="publishNote" className="gap-y-1">
-              <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
+            <Field name="publishNote">
+              <FieldLabel className="system-sm-semibold">
                 {t(($) => $['skillManagement.detail.versionPublishNote'])}
               </FieldLabel>
               <Textarea

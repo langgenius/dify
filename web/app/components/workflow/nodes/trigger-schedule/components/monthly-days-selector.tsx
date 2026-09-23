@@ -1,7 +1,7 @@
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 
 type MonthlyDaysSelectorProps = {
   selectedDays: (number | 'last')[]
@@ -9,6 +9,8 @@ type MonthlyDaysSelectorProps = {
 }
 
 const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProps) => {
+  const lastDayLabelId = React.useId()
+
   const { t } = useTranslation()
 
   const handleDayClick = (day: number | 'last') => {
@@ -49,20 +51,22 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                   }`}
                 >
                   <button
+                    id={lastDayLabelId}
                     type="button"
                     onClick={() => handleDayClick(day)}
                     className="min-w-0 flex-1 py-1"
                   >
                     {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflow' })}
                   </button>
-                  <Infotip
-                    aria-label={t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
-                      ns: 'workflow',
-                    })}
-                    className="mr-1 size-3"
-                    iconSize="small"
-                  >
-                    {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-labelledby={lastDayLabelId}
+                      className="mr-1 size-3"
+                      iconSize="small"
+                    />
+                    <InfotipContent aria-labelledby={lastDayLabelId}>
+                      {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
               ) : (
@@ -92,7 +96,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
       {/* Warning message for day 31 - aligned with grid */}
       {selectedDays?.includes(31) && (
         <div className="mt-1.5 grid grid-cols-7 gap-1.5">
-          <div className="col-span-7 text-xs text-gray-500">
+          <div className="col-span-7 text-xs text-text-tertiary">
             {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
           </div>
         </div>

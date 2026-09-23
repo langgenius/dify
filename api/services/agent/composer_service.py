@@ -389,6 +389,16 @@ class AgentComposerService:
         return cls._load_agent_composer_for_agent(session=session, tenant_id=tenant_id, agent=agent)
 
     @classmethod
+    def prepare_agent_composer_draft(
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
+    ) -> AgentConfigDraft:
+        """Prepare a persisted normal draft for an explicit configuration write."""
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        return cls.get_or_create_normal_agent_draft(
+            session=session, tenant_id=tenant_id, agent=agent, created_by=account_id
+        )
+
+    @classmethod
     def load_agent_soul_for_debug(
         cls,
         *,
@@ -416,22 +426,38 @@ class AgentComposerService:
 
     @classmethod
     def _load_agent_composer_for_agent(cls, *, session: Session, tenant_id: str, agent: Agent) -> dict[str, Any]:
-        draft = cls.get_or_create_normal_agent_draft(
+        """Read effective configuration without creating or rebasing persisted drafts.
+
+        Stale workflow-only drafts read from the current snapshot. Their draft
+        metadata still describes the persisted row; write paths own rebasing.
+        """
+        draft = cls._get_agent_draft(
             session=session,
             tenant_id=tenant_id,
-            agent=agent,
-            created_by=agent.updated_by or agent.created_by,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
         )
         version = cls._get_version_if_present(
             session=session, tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
         )
+        if draft is None or (
+            agent.scope == AgentScope.WORKFLOW_ONLY
+            and agent.active_config_snapshot_id
+            and draft.base_snapshot_id != agent.active_config_snapshot_id
+        ):
+            if version is None:
+                raise AgentVersionNotFoundError()
+            agent_soul = version.config_snapshot_dict
+        else:
+            agent_soul = draft.config_snapshot_dict
         return {
             "variant": ComposerVariant.AGENT_APP.value,
             "agent": cls._serialize_agent(agent),
             "active_config_snapshot": cls._serialize_version(version),
             "active_config_is_published": bool(agent.active_config_snapshot_id and agent.active_config_is_published),
             "draft": cls._serialize_draft(draft),
-            "agent_soul": draft.config_snapshot_dict,
+            "agent_soul": agent_soul,
             "save_options": [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value],
             "app_id": agent.app_id,
             "backing_app_id": agent.backing_app_id or agent.app_id,
@@ -681,6 +707,7 @@ class AgentComposerService:
         )
         return {
             "result": "success",
+            "publication_kind": "update" if access_was_ready else "first",
             "active_config_snapshot_id": version.id,
             "active_config_snapshot": cls._serialize_version(version),
             "draft": cls._serialize_draft(draft),
@@ -1236,7 +1263,7 @@ class AgentComposerService:
         node_job = cls._parse_node_job(binding)
         if node_job is None:
             return None
-        return list(_effective_declared_outputs(node_job.declared_outputs))
+        return list(_effective_declared_outputs(node_job.declared_outputs, node_job.output_routes))
 
     @staticmethod
     def _draft_node_variables(*, session: Any, app_id: str, node_id: str, user_id: str) -> list[tuple[str, str | None]]:
@@ -1349,7 +1376,6 @@ class AgentComposerService:
         binding: WorkflowAgentNodeBinding | None,
         payload: ComposerSavePayload,
     ) -> WorkflowAgentNodeBinding:
-        node_job = payload.node_job or WorkflowNodeJobConfig()
         if binding:
             if cls._is_start_from_scratch_request(binding=binding, payload=payload):
                 return cls._switch_roster_binding_to_inline_agent(
@@ -1362,7 +1388,8 @@ class AgentComposerService:
                     binding=binding,
                     payload=payload,
                 )
-            binding.node_job_config = node_job
+            if payload.node_job is not None:
+                binding.node_job_config = payload.node_job
             if payload.agent_soul is not None and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
                 current_snapshot = cls._require_version(
                     session=session,
@@ -1422,7 +1449,7 @@ class AgentComposerService:
             binding_type=WorkflowAgentBindingType.INLINE_AGENT,
             agent_id=agent.id,
             current_snapshot_id=agent.active_config_snapshot_id,
-            node_job_config=node_job,
+            node_job_config=payload.node_job or WorkflowNodeJobConfig(),
             created_by=account_id,
             updated_by=account_id,
         )
@@ -1603,7 +1630,6 @@ class AgentComposerService:
                 target_snapshot_id=agent.active_config_snapshot_id,
                 user_id=account_id,
             )
-        node_job = payload.node_job or WorkflowNodeJobConfig()
         if not binding:
             binding = WorkflowAgentNodeBinding(
                 tenant_id=tenant_id,
@@ -1611,13 +1637,15 @@ class AgentComposerService:
                 workflow_id=workflow_id,
                 workflow_version=_DRAFT_WORKFLOW_VERSION,
                 node_id=node_id,
+                node_job_config=WorkflowNodeJobConfig(),
                 created_by=account_id,
             )
             session.add(binding)
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = agent.id
         binding.current_snapshot_id = agent.active_config_snapshot_id
-        binding.node_job_config = node_job
+        if payload.node_job is not None:
+            binding.node_job_config = payload.node_job
         binding.updated_by = account_id
         session.flush()
         return binding
@@ -1982,6 +2010,9 @@ class AgentComposerService:
         account_id: str | None,
         created_by: str | None,
     ) -> AgentConfigDraft:
+        # All draft writers lock the parent before checking for an absent draft.
+        # Locking a draft query alone cannot serialize concurrent first writes.
+        session.scalar(select(Agent.id).where(Agent.tenant_id == tenant_id, Agent.id == agent.id).with_for_update())
         draft = cls._get_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -2192,20 +2223,12 @@ class AgentComposerService:
         )
 
     @staticmethod
-    def _declared_outputs_from_binding(binding: WorkflowAgentNodeBinding) -> list[DeclaredOutputConfig]:
-        """Re-hydrate the binding's custom-only persisted output declarations.
-
-        node_job_config is stored as JSON / LongText; the typed view is needed
-        before the later effective-output projection prepends the system
-        ``text`` output.
-        """
-        node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
-        return list(node_job.declared_outputs)
-
-    @staticmethod
-    def _serialize_effective_outputs(declared_outputs: list[DeclaredOutputConfig]) -> list[dict[str, Any]]:
-        """JSON-serialize system ``text`` followed by custom declarations."""
-        return [output.model_dump(mode="json") for output in _effective_declared_outputs(declared_outputs)]
+    def _serialize_effective_outputs(node_job: WorkflowNodeJobConfig) -> list[dict[str, Any]]:
+        """Serialize custom declarations and the system outputs enabled for this job."""
+        return [
+            output.model_dump(mode="json")
+            for output in _effective_declared_outputs(node_job.declared_outputs, node_job.output_routes)
+        ]
 
     @classmethod
     def _empty_workflow_state(cls, *, app_id: str, workflow_id: str, node_id: str) -> dict[str, Any]:
@@ -2218,7 +2241,7 @@ class AgentComposerService:
             "agent_soul": AgentSoulConfig().model_dump(mode="json"),
             "node_job": WorkflowNodeJobConfig().model_dump(mode="json"),
             # ``text`` is derived for the editor and is not stored in node_job.
-            "effective_declared_outputs": cls._serialize_effective_outputs([]),
+            "effective_declared_outputs": cls._serialize_effective_outputs(WorkflowNodeJobConfig()),
             "save_options": [ComposerSaveStrategy.NODE_JOB_ONLY.value, ComposerSaveStrategy.SAVE_TO_ROSTER.value],
             "impact_summary": None,
             "app_id": app_id,
@@ -2283,8 +2306,9 @@ class AgentComposerService:
             if version
             else AgentSoulConfig().model_dump(mode="json"),
             "node_job": binding.node_job_config_dict,
-            # Surface system ``text`` followed by the binding's custom outputs.
-            "effective_declared_outputs": cls._serialize_effective_outputs(cls._declared_outputs_from_binding(binding)),
+            "effective_declared_outputs": cls._serialize_effective_outputs(
+                WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+            ),
             "save_options": save_options,
             "impact_summary": cls.calculate_impact(
                 session=session, tenant_id=binding.tenant_id, current_snapshot_id=version.id

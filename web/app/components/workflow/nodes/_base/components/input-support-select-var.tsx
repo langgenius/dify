@@ -8,7 +8,6 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -122,7 +121,10 @@ const Editor: FC<Props> = ({
               <TooltipTrigger
                 render={
                   <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
-                    <Variable02 className="size-3.5 text-components-button-secondary-accent-text" />
+                    <span
+                      aria-hidden
+                      className="i-custom-vender-solid-development-variable-02 size-3.5 text-components-button-secondary-accent-text"
+                    />
                   </div>
                 }
               />

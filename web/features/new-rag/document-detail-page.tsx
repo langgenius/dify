@@ -6,7 +6,7 @@ import { useAtomValue } from 'jotai'
 import { createParser, useQueryState } from 'nuqs'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
@@ -164,7 +164,7 @@ export function DocumentDetailPage({
   if (documentQuery.isPending)
     return (
       <div className="flex min-h-80 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
         <span className="sr-only">{tCommon(($) => $.loading)}</span>
       </div>
     )

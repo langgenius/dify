@@ -481,6 +481,7 @@ class AppAnnotationService:
             df = pd.read_csv(
                 file.stream,
                 dtype=str,
+                keep_default_na=False,
                 nrows=max_records + 1,  # Read one extra to detect overflow
                 engine="python",
                 on_bad_lines="skip",  # Skip malformed lines instead of crashing

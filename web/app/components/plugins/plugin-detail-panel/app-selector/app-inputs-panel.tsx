@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
 import { useAppInputsFormSchema } from '@/app/components/plugins/plugin-detail-panel/app-selector/hooks/use-app-inputs-form-schema'
 
@@ -34,7 +34,7 @@ const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
     <div className={cn('flex max-h-60 flex-col rounded-b-2xl border-t border-divider-subtle pb-4')}>
       {isLoading && (
         <div className="pt-3">
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         </div>
       )}
       {!isLoading && isError && (

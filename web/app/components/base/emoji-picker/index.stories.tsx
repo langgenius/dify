@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Modal-based emoji selector that powers the icon picker. Supports search, background swatches, and confirmation callbacks.',
+          'Modal-based emoji selector that powers the icon picker. Supports search, recent selections, random selection, and confirmation callbacks.',
       },
     },
     nextjs: {
