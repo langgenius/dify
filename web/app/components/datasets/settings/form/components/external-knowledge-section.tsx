@@ -4,8 +4,8 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import RetrievalSettings from '../../../external-knowledge-base/create/RetrievalSettings'
 
-const rowClass = 'flex gap-x-1'
-const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
+const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1'
+const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 
 type ExternalKnowledgeSectionProps = {
   currentDataset: DataSet

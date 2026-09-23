@@ -129,8 +129,8 @@ const SummaryIndexSetting = ({
   if (entry === 'dataset-settings') {
     return (
       <div className="space-y-4">
-        <div className="flex gap-x-1">
-          <div className="flex h-7 w-45 shrink-0 items-center pt-1">
+        <div className="flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1">
+          <div className="flex shrink-0 items-center pt-1 @3xl/settings:w-45">
             <div id={summaryLabelId} className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
             </div>
@@ -159,13 +159,13 @@ const SummaryIndexSetting = ({
         </div>
         {summaryIndexSetting?.enable && (
           <>
-            <div className="flex gap-x-1">
-              <div className="flex h-7 w-45 shrink-0 items-center pt-1">
+            <div className="flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1">
+              <div className="flex shrink-0 items-center pt-1 @3xl/settings:w-45">
                 <div className="system-sm-medium text-text-tertiary">
                   {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
                 </div>
               </div>
-              <div className="grow">
+              <div className="min-w-0 grow">
                 <ModelSelector
                   value={
                     summaryIndexModelConfig && {
@@ -180,13 +180,13 @@ const SummaryIndexSetting = ({
                 />
               </div>
             </div>
-            <div className="flex">
-              <div className="flex h-7 w-45 shrink-0 items-center pt-1">
+            <div className="flex min-w-0 flex-col gap-2 @3xl/settings:flex-row">
+              <div className="flex shrink-0 items-center pt-1 @3xl/settings:w-45">
                 <div className="system-sm-medium text-text-tertiary">
                   {t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
                 </div>
               </div>
-              <div className="grow">
+              <div className="min-w-0 grow">
                 <Textarea
                   aria-label={t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
                   value={summaryIndexSetting?.summary_prompt ?? ''}
