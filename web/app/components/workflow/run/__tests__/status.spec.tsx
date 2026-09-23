@@ -76,10 +76,16 @@ describe('Status', () => {
     mockUseWorkflowPausedDetails.mockReturnValue({ data: undefined })
   })
 
+  it('renders the scheduled status before execution', () => {
+    render(<Status status="scheduled" />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.scheduled')
+  })
+
   it('renders the running status and loading placeholders', () => {
     render(<Status status="running" workflowRunId="run-1" />)
 
-    expect(screen.getByText('Running')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.running')).toBeInTheDocument()
     expect(document.querySelectorAll('.bg-text-quaternary')).toHaveLength(2)
     expect(mockUseWorkflowPausedDetails).toHaveBeenCalledWith({
       workflowRunId: 'run-1',
@@ -90,13 +96,13 @@ describe('Status', () => {
   it('renders the listening label when the run is waiting for input', () => {
     render(<Status status="running" isListening workflowRunId="run-2" />)
 
-    expect(screen.getByText('Listening')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.listening')).toBeInTheDocument()
   })
 
   it('renders succeeded metadata values', () => {
     render(<Status status="succeeded" time={1.234} tokens={8} />)
 
-    expect(screen.getByRole('status')).toHaveTextContent('SUCCESS')
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.succeeded')
     expect(screen.getByText('1.234s')).toBeInTheDocument()
     expect(screen.getByText('8 Tokens')).toBeInTheDocument()
   })
@@ -104,7 +110,7 @@ describe('Status', () => {
   it('renders stopped fallbacks when time and tokens are missing', () => {
     render(<Status status="stopped" />)
 
-    expect(screen.getByText('STOP')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.stopped')).toBeInTheDocument()
     expect(screen.getByText('-')).toBeInTheDocument()
     expect(screen.getByText('0 Tokens')).toBeInTheDocument()
   })
@@ -112,7 +118,7 @@ describe('Status', () => {
   it('renders failed details and the partial-success exception tip', () => {
     render(<Status status="failed" error="Something broke" exceptionCounts={2} />)
 
-    expect(screen.getByText('FAIL')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.failed')).toBeInTheDocument()
     expect(screen.getByText('Something broke')).toBeInTheDocument()
     expect(
       screen.getAllByText(
@@ -126,7 +132,7 @@ describe('Status', () => {
   it('renders the partial-succeeded warning summary', () => {
     render(<Status status="partial-succeeded" exceptionCounts={3} />)
 
-    expect(screen.getByText('PARTIAL SUCCESS')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.partial-succeeded')).toBeInTheDocument()
     expect(
       screen.getAllByText(
         (_, element) =>
@@ -153,7 +159,7 @@ describe('Status', () => {
 
     const learnMoreLink = screen.getByRole('link', { name: 'workflow.common.learnMore' })
 
-    expect(screen.getByText('EXCEPTION')).toBeInTheDocument()
+    expect(screen.getByText('workflow.tracing.status.exception')).toBeInTheDocument()
     expect(learnMoreLink).toHaveAttribute('href', resolveDocLink('/use-dify/debug/error-type'))
     expect(mockDocLink).toHaveBeenCalledWith('/use-dify/debug/error-type')
   })
@@ -161,7 +167,7 @@ describe('Status', () => {
   it('renders paused placeholders when pause details have not loaded yet', () => {
     render(<Status status="paused" workflowRunId="run-3" />)
 
-    expect(screen.getByText('PENDING')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.paused')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.humanInput.log.reason')).toBeInTheDocument()
     expect(document.querySelectorAll('.bg-text-quaternary')).toHaveLength(3)
     expect(mockUseWorkflowPausedDetails).toHaveBeenCalledWith({
