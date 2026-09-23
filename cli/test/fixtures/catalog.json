@@ -1,6 +1,6 @@
 {
   "ops": {
-    "account.get": {
+    "get.account": {
       "bind": {},
       "deprecated": false,
       "input": { "properties": {}, "required": [], "type": "object" },
@@ -10,7 +10,7 @@
       "path": "/openapi/v1/account",
       "summary": "Current account"
     },
-    "account.sessions.list": {
+    "list.account.session": {
       "bind": { "limit": "query", "page": "query" },
       "deprecated": false,
       "input": {
@@ -33,7 +33,7 @@
       "path": "/openapi/v1/account/sessions",
       "summary": "List login sessions of the current account"
     },
-    "account.sessions.revoke": {
+    "revoke.account.session": {
       "bind": { "session_id": "path" },
       "deprecated": false,
       "input": {
@@ -47,7 +47,7 @@
       "path": "/openapi/v1/account/sessions/{session_id}",
       "summary": "Revoke one login session by id"
     },
-    "account.sessions.revoke_current": {
+    "revoke.account.current_session": {
       "bind": {},
       "deprecated": false,
       "input": { "properties": {}, "required": [], "type": "object" },
@@ -57,7 +57,7 @@
       "path": "/openapi/v1/account/sessions/self",
       "summary": "Revoke the session behind this token"
     },
-    "console_app.advanced_chat.run": {
+    "run.console_app.advanced_chat": {
       "bind": {
         "app_id": "path",
         "attachments": "file",
@@ -113,7 +113,7 @@
           },
           "inputs": {
             "additionalProperties": true,
-            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
             "title": "Inputs",
             "type": "object"
           },
@@ -140,7 +140,7 @@
       "path": "/openapi/v1/apps/{app_id}/advanced-chat:run",
       "summary": "Run an advanced-chat (chatflow) app; streams message and workflow events"
     },
-    "console_app.chat.run": {
+    "run.console_app.chat": {
       "bind": {
         "app_id": "path",
         "attachments": "file",
@@ -195,7 +195,7 @@
           },
           "inputs": {
             "additionalProperties": true,
-            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
             "title": "Inputs",
             "type": "object"
           },
@@ -216,7 +216,7 @@
       "path": "/openapi/v1/apps/{app_id}/chat:run",
       "summary": "Run a chat or agent app; streams message events"
     },
-    "console_app.completion.run": {
+    "run.console_app.completion": {
       "bind": {
         "app_id": "path",
         "attachments": "file",
@@ -257,7 +257,7 @@
           },
           "inputs": {
             "additionalProperties": true,
-            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
             "title": "Inputs",
             "type": "object"
           },
@@ -283,7 +283,7 @@
       "path": "/openapi/v1/apps/{app_id}/completion:run",
       "summary": "Run a completion app; streams message events"
     },
-    "console_app.dependencies.check": {
+    "check.console_app.dependency": {
       "bind": { "app_id": "path" },
       "deprecated": false,
       "input": {
@@ -297,7 +297,7 @@
       "path": "/openapi/v1/apps/{app_id}/dependencies:check",
       "summary": "Check plugin dependencies of an app"
     },
-    "console_app.describe": {
+    "describe.console_app": {
       "bind": { "app_id": "path", "fields": "query" },
       "deprecated": false,
       "input": {
@@ -314,7 +314,7 @@
       "path": "/openapi/v1/apps/{app_id}",
       "summary": "App detail, parameters and runtime input_schema"
     },
-    "console_app.dsl.export": {
+    "export.console_app.dsl": {
       "bind": { "app_id": "path", "include_secret": "query", "workflow_id": "query" },
       "deprecated": false,
       "input": {
@@ -342,7 +342,7 @@
       "path": "/openapi/v1/apps/{app_id}/dsl",
       "summary": "Export app DSL as YAML text inside a JSON object"
     },
-    "console_app.dsl.import": {
+    "import.console_app.dsl": {
       "bind": {
         "app_id": "body",
         "description": "body",
@@ -420,7 +420,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports",
       "summary": "Import an app from DSL text or URL"
     },
-    "console_app.dsl.import_confirm": {
+    "confirm.console_app.dsl_import": {
       "bind": { "import_id": "path", "workspace_id": "path" },
       "deprecated": false,
       "input": {
@@ -434,7 +434,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports/{import_id}:confirm",
       "summary": "Confirm a pending DSL import"
     },
-    "console_app.file.upload": {
+    "upload.console_app.file": {
       "bind": { "app_id": "path", "file": "file" },
       "deprecated": false,
       "input": {
@@ -456,7 +456,7 @@
       "path": "/openapi/v1/apps/{app_id}/files",
       "summary": "Upload a file and get a file id for later runs"
     },
-    "console_app.list": {
+    "list.console_app": {
       "bind": {
         "limit": "query",
         "mode": "query",
@@ -503,7 +503,7 @@
       "path": "/openapi/v1/apps",
       "summary": "List apps in a workspace"
     },
-    "console_app.legacy_run": {
+    "legacy_run.console_app": {
       "bind": {
         "app_id": "path",
         "attachments": "file",
@@ -559,7 +559,7 @@
           },
           "inputs": {
             "additionalProperties": true,
-            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
             "title": "Inputs",
             "type": "object"
           },
@@ -591,7 +591,7 @@
       "path": "/openapi/v1/apps/{app_id}:legacy_run",
       "summary": "Deprecated: use console_app.<mode>.run for the app's mode"
     },
-    "console_app.workflow.run": {
+    "run.console_app.workflow": {
       "bind": {
         "app_id": "path",
         "attachments": "file",
@@ -632,7 +632,7 @@
           },
           "inputs": {
             "additionalProperties": true,
-            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
             "title": "Inputs",
             "type": "object"
           },
@@ -658,7 +658,7 @@
       "path": "/openapi/v1/apps/{app_id}/workflow:run",
       "summary": "Run a workflow app; streams workflow events"
     },
-    "run.events": {
+    "stream.run.event": {
       "bind": {
         "app_id": "path",
         "continue_on_pause": "query",
@@ -692,7 +692,7 @@
       "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}/events",
       "summary": "Stream the events of a workflow run"
     },
-    "run.form.get": {
+    "get.run.form": {
       "bind": { "app_id": "path", "form_token": "path" },
       "deprecated": false,
       "input": {
@@ -706,7 +706,7 @@
       "path": "/openapi/v1/apps/{app_id}/human-input-forms/{form_token}",
       "summary": "Read a human-input form"
     },
-    "run.form.submit": {
+    "submit.run.form": {
       "bind": {
         "action": "body",
         "app_id": "path",
@@ -779,7 +779,7 @@
       "path": "/openapi/v1/apps/{app_id}/human-input-forms/{form_token}:submit",
       "summary": "Submit a human-input form"
     },
-    "run.stop": {
+    "stop.run": {
       "bind": { "app_id": "path", "task_id": "path" },
       "deprecated": false,
       "input": {
@@ -793,7 +793,7 @@
       "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}:stop",
       "summary": "Stop a running task"
     },
-    "workspace.get": {
+    "get.workspace": {
       "bind": { "workspace_id": "path" },
       "deprecated": false,
       "input": {
@@ -807,7 +807,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}",
       "summary": "Workspace detail"
     },
-    "workspace.list": {
+    "list.workspace": {
       "bind": { "limit": "query", "page": "query" },
       "deprecated": false,
       "input": {
@@ -830,7 +830,7 @@
       "path": "/openapi/v1/workspaces",
       "summary": "List workspaces of the current account"
     },
-    "workspace.members.invite": {
+    "invite.workspace.member": {
       "bind": { "email": "body", "role": "body", "workspace_id": "path" },
       "deprecated": false,
       "input": {
@@ -848,7 +848,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/members",
       "summary": "Invite a member by email"
     },
-    "workspace.members.list": {
+    "list.workspace.member": {
       "bind": { "limit": "query", "page": "query", "workspace_id": "path" },
       "deprecated": false,
       "input": {
@@ -872,7 +872,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/members",
       "summary": "List workspace members"
     },
-    "workspace.members.remove": {
+    "remove.workspace.member": {
       "bind": { "member_id": "path", "workspace_id": "path" },
       "deprecated": false,
       "input": {
@@ -886,7 +886,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/members/{member_id}",
       "summary": "Remove a member"
     },
-    "workspace.members.set_role": {
+    "set.workspace.member_role": {
       "bind": { "member_id": "path", "role": "body", "workspace_id": "path" },
       "deprecated": false,
       "input": {
@@ -904,7 +904,7 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/members/{member_id}",
       "summary": "Change a member's role"
     },
-    "workspace.switch": {
+    "switch.workspace": {
       "bind": { "workspace_id": "path" },
       "deprecated": false,
       "input": {
@@ -916,7 +916,7 @@
       "kind": "object",
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}:switch",
-      "summary": "Server-side current workspace switch (shared with the web console)"
+      "summary": "Server-side current switch workspace (shared with the web console)"
     }
   }
 }

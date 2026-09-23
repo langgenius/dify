@@ -16,18 +16,18 @@ afterEach(async () => {
 })
 
 it('fills the pin, validates, sends the fingerprint and prints a list with the server hint', async () => {
-  const w = await world(['console_app', 'list', '--input', '{"limit":1}'])
+  const w = await world(['list', 'console_app', '--input', '{"limit":1}'])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.mock.lastRequest?.path).toBe('/openapi/v1/apps?limit=1&workspace_id=ws-1')
   expect(w.mock.lastRequest?.headers['x-dify-catalog']).toHaveLength(64)
   expect(JSON.parse(w.io.outBuf()).hints[0]).toMatchObject({
-    op: 'console_app.list',
+    op: 'list.console_app',
     input: { workspace_id: 'ws-1', limit: 1, page: 2 },
   })
 })
 
 it('rejects invalid input with details and the schema, exit 2, before any op request', async () => {
-  const w = await world(['console_app', 'describe', '--input', '{}'])
+  const w = await world(['describe', 'console_app', '--input', '{}'])
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'input_invalid',
     details: [{ type: 'required', loc: ['app_id'] }],
@@ -37,7 +37,7 @@ it('rejects invalid input with details and the schema, exit 2, before any op req
 })
 
 it('refuses --stream on a non-sse op, exit 2', async () => {
-  const w = await world(['console_app', 'describe', '--input', '{"app_id":"app-1"}', '--stream'])
+  const w = await world(['describe', 'console_app', '--input', '{"app_id":"app-1"}', '--stream'])
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
     message: expect.stringContaining('--stream'),
@@ -46,9 +46,9 @@ it('refuses --stream on a non-sse op, exit 2', async () => {
 
 it('refuses --only without --stream, exit 2, before any op request', async () => {
   const w = await world([
+    'run',
     'console_app',
     'workflow',
-    'run',
     '--input',
     '{"app_id":"app-2","inputs":{}}',
     '--only',
@@ -63,13 +63,13 @@ it('refuses --only without --stream, exit 2, before any op request', async () =>
 
 it('warns once on stderr for a deprecated op and still runs it', async () => {
   const w = await world([
-    'console_app',
     'legacy_run',
+    'console_app',
     '--input',
     '{"app_id":"app-1","inputs":{},"query":"hi"}',
   ])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(w.io.errBuf().trim()).toBe('deprecated: console_app.legacy_run')
+  expect(w.io.errBuf().trim()).toBe('deprecated: legacy_run.console_app')
   expect(JSON.parse(w.io.outBuf())).toMatchObject({
     status: 'ended',
     text: { answer: 'echo: hi' },
@@ -78,9 +78,9 @@ it('warns once on stderr for a deprecated op and still runs it', async () => {
 
 it('folds a per-mode run and copies the reply hint', async () => {
   const w = await world([
+    'run',
     'console_app',
     'chat',
-    'run',
     '--input',
     '{"app_id":"app-1","inputs":{},"query":"hi"}',
   ])
@@ -89,15 +89,15 @@ it('folds a per-mode run and copies the reply hint', async () => {
     status: 'ended',
     text: { answer: 'echo: hi' },
     conversation_id: 'conv-1',
-    hints: [{ op: 'console_app.chat.run', input: { conversation_id: 'conv-1', query: null } }],
+    hints: [{ op: 'run.console_app.chat', input: { conversation_id: 'conv-1', query: null } }],
   })
 })
 
 it('streams with --stream --only', async () => {
   const w = await world([
+    'run',
     'console_app',
     'workflow',
-    'run',
     '--input',
     '{"app_id":"app-2","inputs":{}}',
     '--stream',
@@ -122,9 +122,9 @@ it('sends multipart when files are given', async () => {
   const w = await testContext({
     login: true,
     argv: [
+      'run',
       'console_app',
       'workflow',
-      'run',
       '--input',
       JSON.stringify({ app_id: 'app-2', inputs: {}, files: { doc: tmp } }),
     ],
@@ -138,9 +138,9 @@ it('sends multipart when files are given', async () => {
 
 it('a paused run is exit 0 with status suspended and the server hints', async () => {
   const w = await world([
+    'run',
     'console_app',
     'workflow',
-    'run',
     '--input',
     '{"app_id":"app-2","inputs":{}}',
   ])
@@ -148,7 +148,7 @@ it('a paused run is exit 0 with status suspended and the server hints', async ()
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(w.io.outBuf())).toMatchObject({
     status: 'suspended',
-    hints: [{ op: 'run.form.submit', input: { form_token: 'ft-hitl-1', action: 'submit' } }],
+    hints: [{ op: 'submit.run.form', input: { form_token: 'ft-hitl-1', action: 'submit' } }],
   })
 })
 
@@ -158,7 +158,7 @@ it('a stale catalog is refreshed once and the op is retried', async () => {
   w.mock.setScenario('catalog-changed')
   const w2 = await testContext({
     login: true,
-    argv: ['workspace', 'ping', '--input', '{"workspace_id":"ws-1"}'],
+    argv: ['ping', 'workspace', '--input', '{"workspace_id":"ws-1"}'],
     reuseDirOf: w,
   })
   worlds.push(w2)
@@ -167,9 +167,9 @@ it('a stale catalog is refreshed once and the op is retried', async () => {
 
 it('a stream that dies mid-run folds as incomplete, exit 0, with one stderr notice', async () => {
   const w = await world([
+    'run',
     'console_app',
     'chat',
-    'run',
     '--input',
     '{"app_id":"app-1","inputs":{},"query":"hi"}',
   ])
@@ -185,9 +185,9 @@ it('a stream that dies mid-run folds as incomplete, exit 0, with one stderr noti
 
 it('registers the stream abort as a deferred cleanup', async () => {
   const w = await world([
+    'run',
     'console_app',
     'workflow',
-    'run',
     '--input',
     '{"app_id":"app-2","inputs":{}}',
   ])

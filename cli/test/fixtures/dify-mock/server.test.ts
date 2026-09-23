@@ -131,7 +131,7 @@ describe('dify-mock fixture server', () => {
     expect(body.hints).toEqual([
       {
         summary: 'Next page',
-        op: 'console_app.list',
+        op: 'list.console_app',
         input: { workspace_id: 'ws-1', page: 2, limit: 1 },
       },
     ])
@@ -165,7 +165,7 @@ describe('dify-mock fixture server', () => {
     expect(r.headers.get('content-type')).toContain('text/event-stream')
     const text = await r.text()
     expect(text).toContain('"answer":"echo: "')
-    expect(text).toContain('"op":"console_app.chat.run"')
+    expect(text).toContain('"op":"run.console_app.chat"')
   })
 
   it('POST /openapi/v1/apps/:id:legacy_run returns SSE stream for workflow app', async () => {

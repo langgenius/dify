@@ -15,7 +15,7 @@ afterEach(async () => {
 })
 
 it('writes the catalog file and reports the op count and fingerprint', async () => {
-  const w = await testContext({ login: true, argv: ['cache', 'refresh'] })
+  const w = await testContext({ login: true, argv: ['refresh', 'cache'] })
   worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   const body = JSON.parse(w.io.outBuf()) as { ops: number; fingerprint: string; path: string }

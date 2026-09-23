@@ -14,7 +14,7 @@ it('writes the collection into the given skills root', async () => {
   const seed = await testContext({ login: false })
   worlds.push(seed)
   const dir = join(seed.dir, 'target')
-  const w = await testContext({ login: false, argv: ['skills', 'install', dir], reuseDirOf: seed })
+  const w = await testContext({ login: false, argv: ['install', 'skills', dir], reuseDirOf: seed })
   worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   const body = JSON.parse(w.io.outBuf()) as { wrote: string[] }

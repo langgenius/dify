@@ -12,7 +12,7 @@ import { collectCommands } from './registry'
 
 const SEARCH_LIMIT = 20
 const NEWLINE = '\n'
-const SKILL_WORDS = 'skills install <dir>'
+const SKILL_WORDS = 'install skills <dir>'
 const POINTER_MESSAGE = `${BINARY} has no built-in business commands; every server operation is a command`
 
 export type HelpEntry = {
@@ -37,7 +37,7 @@ export function pointer(): View<Record<string, string>> {
   return view(json, () => Object.values(json).join(NEWLINE))
 }
 
-/** `help console_app.workflow.run` names the command its spaced words name. */
+/** `help run.console_app.workflow` names the command its spaced words name. */
 export function spacedWords(words: readonly string[]): readonly string[] {
   const [only] = words
   if (words.length !== 1 || only === undefined || !only.includes(OP_SEPARATOR)) return words

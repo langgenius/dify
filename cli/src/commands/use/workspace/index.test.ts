@@ -11,7 +11,7 @@ afterEach(async () => {
 })
 
 it('pins the workspace locally without a server call', async () => {
-  const w = await testContext({ login: true, argv: ['workspace', 'use', 'ws-9'] })
+  const w = await testContext({ login: true, argv: ['use', 'workspace', 'ws-9'] })
   worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(w.io.outBuf())).toEqual({ workspace_id: 'ws-9' })
@@ -20,19 +20,19 @@ it('pins the workspace locally without a server call', async () => {
 })
 
 it('refuses under an env login and without a login', async () => {
-  const a = await testContext({ login: false, env: true, argv: ['workspace', 'use', 'ws-9'] })
+  const a = await testContext({ login: false, env: true, argv: ['use', 'workspace', 'ws-9'] })
   worlds.push(a)
   await expect((await a.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
     message: 'the login comes from DIFY_TOKEN; set DIFY_WORKSPACE_ID instead',
   })
-  const b = await testContext({ login: false, argv: ['workspace', 'use', 'ws-9'] })
+  const b = await testContext({ login: false, argv: ['use', 'workspace', 'ws-9'] })
   worlds.push(b)
   await expect((await b.ctx.get(commands)).run()).rejects.toMatchObject({ code: 'not_logged_in' })
 })
 
 it('refuses an empty workspace id, exit 2, and changes nothing', async () => {
-  const w = await testContext({ login: true, argv: ['workspace', 'use', ''] })
+  const w = await testContext({ login: true, argv: ['use', 'workspace', ''] })
   worlds.push(w)
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'input_invalid',
@@ -42,7 +42,7 @@ it('refuses an empty workspace id, exit 2, and changes nothing', async () => {
 })
 
 it('refuses when DIFY_WORKSPACE_ID overrides the pin', async () => {
-  const w = await testContext({ login: true, argv: ['workspace', 'use', 'ws-9'] })
+  const w = await testContext({ login: true, argv: ['use', 'workspace', 'ws-9'] })
   worlds.push(w)
   process.env[ENV.WorkspaceId] = 'ws-9'
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({

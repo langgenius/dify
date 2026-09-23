@@ -10,7 +10,7 @@ afterEach(async () => {
 })
 
 it('removes a value, restoring its default', async () => {
-  const w = await testContext({ login: false, argv: ['config', 'unset', 'http.timeout'] })
+  const w = await testContext({ login: false, argv: ['unset', 'config', 'http.timeout'] })
   worlds.push(w)
   await (await w.ctx.get(config)).set('http.timeout', '5000')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
@@ -18,7 +18,7 @@ it('removes a value, restoring its default', async () => {
 })
 
 it('rejects an unknown key with exit 2', async () => {
-  const w = await testContext({ login: false, argv: ['config', 'unset', 'nope'] })
+  const w = await testContext({ login: false, argv: ['unset', 'config', 'nope'] })
   worlds.push(w)
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'config_invalid_key',

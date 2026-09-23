@@ -10,14 +10,14 @@ afterEach(async () => {
 })
 
 it('writes a value that the config service can read back', async () => {
-  const w = await testContext({ login: false, argv: ['config', 'set', 'http.timeout', '5000'] })
+  const w = await testContext({ login: false, argv: ['set', 'config', 'http.timeout', '5000'] })
   worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(await (await w.ctx.get(config)).get('http.timeout')).toBe(5000)
 })
 
 it('rejects an unknown key with exit 2', async () => {
-  const w = await testContext({ login: false, argv: ['config', 'set', 'nope', '1'] })
+  const w = await testContext({ login: false, argv: ['set', 'config', 'nope', '1'] })
   worlds.push(w)
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'config_invalid_key',

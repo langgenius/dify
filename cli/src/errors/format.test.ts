@@ -9,9 +9,9 @@ it('renders code, message, details, hint, request and status in v1 order', () =>
     {
       error: {
         code: 'input_invalid',
-        message: 'invalid input for "console_app list"',
+        message: 'invalid input for "list console_app"',
         details: [{ type: 'maximum', loc: ['limit'], msg: 'must be <= 100' }],
-        hint: 'run difyctl help console_app list',
+        hint: 'run difyctl help list console_app',
         http_status: 422,
         method: 'GET',
         url: 'https://x/apps',
@@ -21,9 +21,9 @@ it('renders code, message, details, hint, request and status in v1 order', () =>
     { verbose: false },
   )
   expect(text.split('\n')).toEqual([
-    'input_invalid: invalid input for "console_app list"',
+    'input_invalid: invalid input for "list console_app"',
     '  - limit: must be <= 100 (maximum)',
-    'hint: run difyctl help console_app list',
+    'hint: run difyctl help list console_app',
     'request: GET https://x/apps',
     'http_status: 422',
   ])

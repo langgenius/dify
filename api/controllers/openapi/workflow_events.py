@@ -53,7 +53,7 @@ class WorkflowEventsQuery(BaseModel):
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
 class OpenApiWorkflowEventsApi(Resource):
     @endpoint(
-        op="run.events",
+        op="stream.run.event",
         kind=Kind.SSE,
         summary="Stream the events of a workflow run",
         examples=(

@@ -74,7 +74,7 @@ import { ErrorCode } from '@/errors/codes'
 throw new BaseError({
   code: ErrorCode.UsageMissingArg,
   message: 'workspace id required',
-  hint: "pass --workspace or run 'difyctl workspace use <id>'",
+  hint: "pass --workspace or run 'difyctl use workspace <id>'",
 })
 ```
 

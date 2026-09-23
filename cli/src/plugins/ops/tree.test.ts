@@ -18,13 +18,13 @@ function fixtureOp(id: string): CatalogOp {
 
 it('builds a tree from dotted ids, one command per leaf', () => {
   const tree = opsTree({
-    'workspace.list': fixtureOp('workspace.list'),
-    'workspace.members.invite': fixtureOp('workspace.members.invite'),
+    'list.workspace': fixtureOp('list.workspace'),
+    'invite.workspace.member': fixtureOp('invite.workspace.member'),
   })
-  expect(tree.workspace?.subcommands.list?.command?.facets().op).toBe('workspace.list')
-  expect(tree.workspace?.subcommands.members?.command).toBeUndefined()
-  expect(tree.workspace?.subcommands.members?.subcommands.invite?.command?.facets().op).toBe(
-    'workspace.members.invite',
+  expect(tree.list?.subcommands.workspace?.command?.facets().op).toBe('list.workspace')
+  expect(tree.invite?.subcommands.workspace?.command).toBeUndefined()
+  expect(tree.invite?.subcommands.workspace?.subcommands.member?.command?.facets().op).toBe(
+    'invite.workspace.member',
   )
 })
 
@@ -38,10 +38,10 @@ it('no op the catalog publishes is shadowed by a static command', () => {
 })
 
 it('an internal op is in the tree but stays out of listings', () => {
-  const tree = opsTree({ 'workspace.switch': fixtureOp('workspace.switch') })
-  expect(tree.workspace?.subcommands.switch?.command?.hidden).toBe(true)
+  const tree = opsTree({ 'switch.workspace': fixtureOp('switch.workspace') })
+  expect(tree.switch?.subcommands.workspace?.command?.hidden).toBe(true)
 })
 
 it('spaces a dotted id into the words it is typed as', () => {
-  expect(spacedId('console_app.workflow.run')).toBe('console_app workflow run')
+  expect(spacedId('run.console_app.workflow')).toBe('run console_app workflow')
 })

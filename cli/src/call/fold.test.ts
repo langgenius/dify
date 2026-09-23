@@ -10,7 +10,7 @@ function run(events: [string, Record<string, unknown>][]) {
 it('folds a chat run and copies the reply hint from message_end', () => {
   const hint = {
     summary: 'Reply in this conversation',
-    op: 'console_app.chat.run',
+    op: 'run.console_app.chat',
     input: { app_id: 'a', conversation_id: 'c1', query: null, inputs: {} },
   }
   const { result, code } = run([
@@ -70,7 +70,7 @@ it('a late error still wins and unknown events are ignored', () => {
 it('copies server hints from a pause and suspends; a pause without hints is still suspended', () => {
   const hint = {
     summary: 'Submit',
-    op: 'run.form.submit',
+    op: 'submit.run.form',
     input: { app_id: 'a', form_token: 'ft', action: 'submit', inputs: { name: null } },
     form: [{ output_variable_name: 'name' }],
   }

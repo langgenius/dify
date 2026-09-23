@@ -2,44 +2,60 @@
 // Regenerate via `pnpm tree:gen`. Drift gated by `pnpm tree:check` in CI.
 
 import type { CommandTree } from '@/plugins/commands/registry'
-import CacheClear from '@/commands/cache/clear/index'
-import CacheRefresh from '@/commands/cache/refresh/index'
-import ConfigGet from '@/commands/config/get/index'
-import ConfigSet from '@/commands/config/set/index'
-import ConfigUnset from '@/commands/config/unset/index'
+import ClearCache from '@/commands/clear/cache/index'
+import GetConfig from '@/commands/get/config/index'
+import InstallSkills from '@/commands/install/skills/index'
+import ListSkills from '@/commands/list/skills/index'
 import Login from '@/commands/login/index'
 import Logout from '@/commands/logout/index'
-import SkillsInstall from '@/commands/skills/install/index'
-import SkillsList from '@/commands/skills/list/index'
+import RefreshCache from '@/commands/refresh/cache/index'
+import SetConfig from '@/commands/set/config/index'
+import UnsetConfig from '@/commands/unset/config/index'
+import UseWorkspace from '@/commands/use/workspace/index'
 import Version from '@/commands/version/index'
-import WorkspaceUse from '@/commands/workspace/use/index'
 
 export const commandTree: CommandTree = {
-  cache: {
+  clear: {
     subcommands: {
-      clear: { command: CacheClear, subcommands: {} },
-      refresh: { command: CacheRefresh, subcommands: {} },
+      cache: { command: ClearCache, subcommands: {} },
     },
   },
-  config: {
+  get: {
     subcommands: {
-      get: { command: ConfigGet, subcommands: {} },
-      set: { command: ConfigSet, subcommands: {} },
-      unset: { command: ConfigUnset, subcommands: {} },
+      config: { command: GetConfig, subcommands: {} },
+    },
+  },
+  install: {
+    subcommands: {
+      skills: { command: InstallSkills, subcommands: {} },
+    },
+  },
+  list: {
+    subcommands: {
+      skills: { command: ListSkills, subcommands: {} },
     },
   },
   login: { command: Login, subcommands: {} },
   logout: { command: Logout, subcommands: {} },
-  skills: {
+  refresh: {
     subcommands: {
-      install: { command: SkillsInstall, subcommands: {} },
-      list: { command: SkillsList, subcommands: {} },
+      cache: { command: RefreshCache, subcommands: {} },
+    },
+  },
+  set: {
+    subcommands: {
+      config: { command: SetConfig, subcommands: {} },
+    },
+  },
+  unset: {
+    subcommands: {
+      config: { command: UnsetConfig, subcommands: {} },
+    },
+  },
+  use: {
+    subcommands: {
+      workspace: { command: UseWorkspace, subcommands: {} },
     },
   },
   version: { command: Version, subcommands: {} },
-  workspace: {
-    subcommands: {
-      use: { command: WorkspaceUse, subcommands: {} },
-    },
-  },
 }

@@ -59,7 +59,7 @@ describe('http plugin', () => {
       return {
         method: 'GET',
         path: '/openapi/v1/account',
-        headers: { 'x-build': String(cat.op('workspace.ping') !== undefined) },
+        headers: { 'x-build': String(cat.op('ping.workspace') !== undefined) },
       }
     })
     expect(res.status).toBe(200)
@@ -166,7 +166,7 @@ describe('http plugin', () => {
     await expect((await new Context().get(http)).request(account)).rejects.toMatchObject({
       code: 'catalog_unavailable',
       message: `failed to fetch the catalog: HTTP 404 from ${CATALOG_PATH}`,
-      hint: expect.stringContaining('cache refresh'),
+      hint: expect.stringContaining('refresh cache'),
     })
   })
 

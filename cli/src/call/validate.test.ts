@@ -5,8 +5,8 @@ import { parseCatalog } from '@/plugins/catalog'
 import { validateInput } from './validate'
 
 const doc = parseCatalog(readFileSync(join(__dirname, '../../test/fixtures/catalog.json')))
-const run = doc.ops['console_app.workflow.run']!.input
-const list = doc.ops['console_app.list']!.input
+const run = doc.ops['run.console_app.workflow']!.input
+const list = doc.ops['list.console_app']!.input
 
 it('returns no details for valid input against the real schemas', () => {
   expect(

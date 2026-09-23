@@ -36,12 +36,12 @@ Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`i
 difyctl login --server https://dify.example.com   # opens the browser; approve the device code shown
 difyctl help                                      # the map: every command and operation namespace
 difyctl help chatbot                              # search commands and operations by plain words
-difyctl workspace list                            # workspaces visible to this account
-difyctl console_app list --limit 5                # list apps
-difyctl console_app workflow run --app-id <id> --inputs @vars.json --stream
+difyctl list workspace                            # workspaces visible to this account
+difyctl list console_app --limit 5                # list apps
+difyctl run console_app workflow --app-id <id> --inputs @vars.json --stream
 ```
 
-difyctl has no built-in business commands. Every operation the server publishes is a command: `console_app.workflow.run` is `difyctl console_app workflow run`, and its input fields are flags (`--app-id`, `--inputs`). A field named like one of difyctl's own flags (`input`, `stream`, `only`, `output`, `verbose`, `json`, `help`) is passed through `--input`. The table lists the local commands; `difyctl help` lists the server's too. See [Agent skill] for the discovery flow.
+difyctl has no built-in business commands. Every operation the server publishes is a command: `run.console_app.workflow` is `difyctl run console_app workflow`, and its input fields are flags (`--app-id`, `--inputs`). A field named like one of difyctl's own flags (`input`, `stream`, `only`, `output`, `verbose`, `json`, `help`) is passed through `--input`. The table lists the local commands; `difyctl help` lists the server's too. See [Agent skill] for the discovery flow.
 
 ## Commands
 
@@ -50,14 +50,14 @@ difyctl has no built-in business commands. Every operation the server publishes 
 | `login`                    | Log in via the OAuth device flow                                |
 | `logout`                   | Log out of the current session                                  |
 | `version`                  | Print the client and (if logged in) server versions             |
-| `workspace use <id>`       | Pin the local session to a workspace                            |
-| `config get [key]`         | Print the local config, or one key                              |
-| `config set <key> <value>` | Set a local config value                                        |
-| `config unset <key>`       | Remove a local config value, restoring its default              |
-| `cache refresh`            | Refetch the server catalog and replace the local cache          |
-| `cache clear`              | Delete the local server catalog cache                           |
-| `skills list`              | List the skills in the collection                               |
-| `skills install <dir>`     | Write skills from the collection into a skills root (`--skill`) |
+| `use workspace <id>`       | Pin the local session to a workspace                            |
+| `get config [key]`         | Print the local config, or one key                              |
+| `set config <key> <value>` | Set a local config value                                        |
+| `unset config <key>`       | Remove a local config value, restoring its default              |
+| `refresh cache`            | Refetch the server catalog and replace the local cache          |
+| `clear cache`              | Delete the local server catalog cache                           |
+| `list skills`              | List the skills in the collection                               |
+| `install skills <dir>`     | Write skills from the collection into a skills root (`--skill`) |
 
 `login` blocks until the browser approval arrives. An agent runs it in the background, relays the `open <url>` and `code <code>` lines from its stderr to the user, and does not cancel the job. In a sandbox it adds `--no-keyring` and sets `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session.
 
@@ -70,8 +70,8 @@ response in the error envelope instead of dropping it.
 
 difyctl ships a collection of agent skills from [`skills/`] at the repo root. The basic skill, `difyctl`, teaches the discovery flow — `help` to see the map or search, `help <id>` to inspect one operation, then the operation's own command to run it — so it stays correct as the server's catalog grows. Scenario skills add guidance for one kind of task and open by reading the basic one. The collection is embedded in the binary.
 
-- `difyctl skills list` — the collection: each skill's name and description. Writes nothing.
-- `difyctl skills install <dir>` — write every skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. Existing copies are overwritten. `--skill <name>` (repeatable) writes only those skills; a scenario skill brings `difyctl` along.
+- `difyctl list skills` — the collection: each skill's name and description. Writes nothing.
+- `difyctl install skills <dir>` — write every skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. Existing copies are overwritten. `--skill <name>` (repeatable) writes only those skills; a scenario skill brings `difyctl` along.
 
 difyctl does not detect agents. You name the root, and the same command re-run after an upgrade refreshes the copies.
 
@@ -85,7 +85,7 @@ The same files install through the Vercel skills installer: `npx skills add lang
 | macOS   | `$HOME/.config/difyctl/`                     |
 | Windows | `%APPDATA%\difyctl\`                         |
 
-`config get [key]` prints the whole local config or one key; `config set <key> <value>` and `config unset <key>` change it. The only config key today is `http.timeout` (request timeout in milliseconds).
+`get config [key]` prints the whole local config or one key; `set config <key> <value>` and `unset config <key>` change it. The only config key today is `http.timeout` (request timeout in milliseconds).
 
 Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts without one; `login --no-keyring` chooses the file outright. Config and cache files are written `0600`, their directory `0700`.
 
@@ -103,7 +103,7 @@ Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts wit
 Pass `--stream` on a streaming operation to print every event as one JSON line, instead of folding the whole run into a single result object:
 
 ```sh
-difyctl console_app chat run --app-id … --query hello --inputs '{}' --stream
+difyctl run console_app chat --app-id … --query hello --inputs '{}' --stream
 ```
 
 `--only <event>` filters the streamed events to the named event types; repeat it to keep more than one. Without `--stream`, a streaming operation's events fold into `{status, text, outputs?, message_id?, conversation_id?, error?, hints}`.

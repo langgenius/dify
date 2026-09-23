@@ -31,7 +31,7 @@ it('bare difyctl prints a pointer to help and the skill, and makes no request', 
   expect(JSON.parse(w.io.outBuf())).toEqual({
     message: 'difyctl has no built-in business commands; every server operation is a command',
     help: 'difyctl help',
-    skill: 'difyctl skills install <dir>',
+    skill: 'difyctl install skills <dir>',
   })
   expect(w.mock.requestCount).toBe(0)
 })
@@ -41,11 +41,11 @@ it('the map is one tree: leaves carry a summary, groups a count and sub-groups',
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   const map = JSON.parse(w.io.outBuf())
   expect(map.login).toMatchObject({ summary: expect.any(String), count: 1, groups: [] })
-  expect(map.console_app).toMatchObject({
+  expect(map.run).toMatchObject({
     count: expect.any(Number),
-    groups: expect.arrayContaining(['chat', 'dsl']),
+    groups: expect.arrayContaining(['console_app']),
   })
-  expect(map.workspace.groups).toEqual(expect.arrayContaining(['members']))
+  expect(map.list.groups).toEqual(expect.arrayContaining(['workspace']))
   expect(map.call).toBeUndefined()
   expect(map.ops).toBeUndefined()
   expect(w.io.outBuf()).toMatch(/\n {2}"login"/)
@@ -83,32 +83,32 @@ it('the map still prints the static half when the catalog cannot be fetched', as
 })
 
 it('help accepts a dotted id and prints the same descriptor as the spaced path', async () => {
-  const a = await world(true, ['help', 'console_app.workflow.run'])
-  const b = await world(true, ['console_app', 'workflow', 'run', '--help'])
+  const a = await world(true, ['help', 'run.console_app.workflow'])
+  const b = await world(true, ['run', 'console_app', 'workflow', '--help'])
   await (await a.ctx.get(commands)).run()
   await (await b.ctx.get(commands)).run()
   expect(JSON.parse(a.io.outBuf())).toEqual(JSON.parse(b.io.outBuf()))
   expect(JSON.parse(a.io.outBuf())).toMatchObject({
-    id: 'console_app workflow run',
-    op: 'console_app.workflow.run',
+    id: 'run console_app workflow',
+    op: 'run.console_app.workflow',
     kind: 'sse',
   })
 })
 
 it('a namespace without a command lists what is under it, with or without the help word', async () => {
-  const a = await world(true, ['console_app'])
+  const a = await world(true, ['run'])
   expect(await (await a.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(a.io.outBuf()).entries.map((e: { id: string }) => e.id)).toContain(
-    'console_app list',
+    'run console_app workflow',
   )
 
-  const b = await world(true, ['help', 'workspace', 'members'])
+  const b = await world(true, ['help', 'run', 'console_app'])
   expect(await (await b.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(b.io.outBuf()).entries.map((e: { id: string }) => e.id)).toEqual([
-    'workspace members invite',
-    'workspace members list',
-    'workspace members remove',
-    'workspace members set_role',
+    'run console_app advanced_chat',
+    'run console_app chat',
+    'run console_app completion',
+    'run console_app workflow',
   ])
 })
 
@@ -116,20 +116,20 @@ it('an internal op stays out of the listing, comes back under --all, and always 
   const a = await world(true, ['help', 'workspace'])
   expect(await (await a.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(a.io.outBuf()).entries.map((e: { id: string }) => e.id)).not.toContain(
-    'workspace switch',
+    'switch workspace',
   )
 
   const b = await world(true, ['help', 'workspace', '--all'])
   expect(await (await b.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(b.io.outBuf()).entries.map((e: { id: string }) => e.id)).toContain(
-    'workspace switch',
+    'switch workspace',
   )
 
-  const c = await world(true, ['workspace', 'switch', '--help'])
+  const c = await world(true, ['switch', 'workspace', '--help'])
   expect(await (await c.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(c.io.outBuf())).toMatchObject({
-    id: 'workspace switch',
-    op: 'workspace.switch',
+    id: 'switch workspace',
+    op: 'switch.workspace',
   })
 })
 
@@ -138,21 +138,21 @@ it('search reaches a word that only a field name carries', async () => {
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   const found = JSON.parse(w.io.outBuf())
   expect(found.total).toBeGreaterThan(0)
-  expect(found.entries.map((e: { id: string }) => e.id)).toContain('console_app workflow run')
+  expect(found.entries.map((e: { id: string }) => e.id)).toContain('run console_app workflow')
 })
 
 it('help routes a word to a namespace listing or a search, and --full is the flat list', async () => {
-  const c = await world(true, ['help', 'workspace'])
+  const c = await world(true, ['help', 'list'])
   await (await c.ctx.get(commands)).run()
   const ids = JSON.parse(c.io.outBuf()).entries.map((e: { id: string }) => e.id)
-  expect(ids).toContain('workspace use')
-  expect(ids).toContain('workspace members list')
+  expect(ids).toContain('list skills')
+  expect(ids).toContain('list workspace member')
   expect(ids).toEqual([...ids].sort())
 
   const d = await world(true, ['help', 'chatbot'])
   await (await d.ctx.get(commands)).run()
   expect(JSON.parse(d.io.outBuf()).entries[0]).toMatchObject({
-    id: 'console_app chat run',
+    id: 'run console_app chat',
     kind: 'sse',
   })
   const e = await world(true, ['help', 'zebra'])
@@ -164,7 +164,7 @@ it('help routes a word to a namespace listing or a search, and --full is the fla
   await (await f.ctx.get(commands)).run()
   const full = JSON.parse(f.io.outBuf())
   expect(full.commands[0]).toHaveProperty('usage')
-  expect(full.commands.map((row: { id: string }) => row.id)).toContain('console_app workflow run')
+  expect(full.commands.map((row: { id: string }) => row.id)).toContain('run console_app workflow')
 })
 
 it('help on a command prints its row; --help anywhere and the help word both work', async () => {
@@ -231,46 +231,46 @@ it('the map reuses a cached catalog instead of fetching again', async () => {
   const reusing = await testContext({ login: true, argv: ['help'], reuseDirOf: w })
   worlds.push(reusing)
   await (await reusing.ctx.get(commands)).run()
-  expect(JSON.parse(reusing.io.outBuf()).console_app.count).toBeGreaterThan(5)
+  expect(JSON.parse(reusing.io.outBuf()).list.count).toBeGreaterThan(3)
   expect(reusing.mock.requestCount).toBe(1)
 })
 
 it('a catalog op resolves as a spaced command and takes its fields as flags', async () => {
-  const w = await world(true, ['console_app', 'list', '--limit', '2'])
+  const w = await world(true, ['list', 'console_app', '--limit', '2'])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.mock.lastRequest?.path).toContain('limit=2')
 })
 
 it('a command word may be spelled with dashes where the op id has underscores', async () => {
-  const w = await world(true, ['console-app', 'list'])
+  const w = await world(true, ['list', 'console-app'])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.mock.lastRequest?.path).toBe('/openapi/v1/apps?workspace_id=ws-1')
 
-  const help = await world(true, ['console-app', 'list', '--help'])
+  const help = await world(true, ['list', 'console-app', '--help'])
   expect(await (await help.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(help.io.outBuf())).toMatchObject({
-    id: 'console_app list',
-    usage: 'difyctl console_app list [flags]',
+    id: 'list console_app',
+    usage: 'difyctl list console_app [flags]',
   })
 })
 
 it('an unknown path refetches the catalog once before giving up', async () => {
-  const w = await world(true, ['console_app', 'nope'])
+  const w = await world(true, ['list', 'nope'])
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'unknown command: console_app nope',
+    message: 'unknown command: list nope',
     hint: 'run difyctl help',
   })
   expect(w.mock.requestCount).toBe(2) // the cached catalog, then one refetch
 
-  const typo = await world(true, ['console_app', 'lst'])
+  const typo = await world(true, ['list', 'consol_app'])
   await expect((await typo.ctx.get(commands)).run()).rejects.toMatchObject({
-    hint: 'did you mean: console_app list',
+    hint: 'did you mean: list console_app',
   })
 })
 
 it('a known namespace and a help view answer from the cached catalog, with no refetch', async () => {
-  const a = await world(true, ['console_app'])
+  const a = await world(true, ['run'])
   expect(await (await a.ctx.get(commands)).run()).toBe(0)
   expect(a.mock.requestCount).toBe(1)
 
@@ -280,13 +280,13 @@ it('a known namespace and a help view answer from the cached catalog, with no re
 })
 
 it("an op's invalid input carries the op's own schema, not the parse-only one", async () => {
-  const w = await world(true, ['console_app', 'list', '--limit', '500'])
-  const expected = FIXTURE_OPS['console_app.list']?.input
+  const w = await world(true, ['list', 'console_app', '--limit', '500'])
+  const expected = FIXTURE_OPS['list.console_app']?.input
   expect(expected).toMatchObject({ required: ['workspace_id'] })
   expect(propertiesOf(expected ?? {})).not.toHaveProperty('input')
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'input_invalid',
-    hint: 'run difyctl help console_app list',
+    hint: 'run difyctl help list console_app',
     schema: expected,
   })
 })
@@ -303,10 +303,10 @@ it('an unreachable catalog costs a notice, not the static suggestion', async () 
 })
 
 it('without a login only statics resolve and the hint says to log in', async () => {
-  const w = await world(false, ['console_app', 'list'])
+  const w = await world(false, ['list', 'console_app'])
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'unknown command: console_app list',
+    message: 'unknown command: list console_app',
     hint: 'log in to use server operations',
   })
   expect(w.mock.requestCount).toBe(0)
@@ -320,14 +320,14 @@ it('a static command resolves without loading the catalog', async () => {
 })
 
 it('invalid input points at the help for the path that failed', async () => {
-  const a = await world(false, ['workspace', 'use'])
+  const a = await world(false, ['use', 'workspace'])
   await expect((await a.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'input_invalid',
-    hint: 'run difyctl help workspace use',
+    hint: 'run difyctl help use workspace',
   })
-  const b = await world(true, ['console_app', 'describe'])
+  const b = await world(true, ['describe', 'console_app'])
   await expect((await b.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'input_invalid',
-    hint: 'run difyctl help console_app describe',
+    hint: 'run difyctl help describe console_app',
   })
 })

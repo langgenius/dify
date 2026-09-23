@@ -12,8 +12,8 @@ import { isRecord } from '@/util/is-record'
 
 const INPUT = z.object({})
 
-const WORKSPACE_LIST_OP = 'workspace.list'
-const NO_DATA_ARRAY_MESSAGE = 'workspace list response has no data array'
+const WORKSPACE_LIST_OP = 'list.workspace'
+const NO_DATA_ARRAY_MESSAGE = 'list workspace response has no data array'
 
 type WorkspaceListEnvelope = {
   data: readonly Record<string, unknown>[]

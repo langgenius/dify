@@ -30,17 +30,17 @@ const checks: Check[] = [
     },
   },
   {
-    name: 'help console_app.list carries .input.properties.workspace_id',
+    name: 'help list.console_app carries .input.properties.workspace_id',
     run: () => {
-      const body = JSON.parse(cli(['help', 'console_app.list', '--json']))
+      const body = JSON.parse(cli(['help', 'list.console_app', '--json']))
       if (body.input?.properties?.workspace_id === undefined)
         throw new Error('no .input.properties.workspace_id')
     },
   },
   {
-    name: 'console_app list returns .data',
+    name: 'list console_app returns .data',
     run: () => {
-      const body = JSON.parse(cli(['console_app', 'list', '--input', '{"limit":1}']))
+      const body = JSON.parse(cli(['list', 'console_app', '--input', '{"limit":1}']))
       if (body.data === undefined) throw new Error('no .data')
     },
   },
@@ -48,13 +48,13 @@ const checks: Check[] = [
     name: '--stream on an object-kind op exits 2 (usage)',
     run: () =>
       expectExit(
-        ['console_app', 'describe', '--input', '{"app_id":"x"}', '--stream'],
+        ['describe', 'console_app', '--input', '{"app_id":"x"}', '--stream'],
         ExitCode.Usage,
       ),
   },
   {
     name: 'a missing required input exits 2 (usage)',
-    run: () => expectExit(['console_app', 'describe', '--input', '{}'], ExitCode.Usage),
+    run: () => expectExit(['describe', 'console_app', '--input', '{}'], ExitCode.Usage),
   },
 ]
 

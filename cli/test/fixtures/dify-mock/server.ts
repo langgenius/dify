@@ -65,12 +65,12 @@ const ServerErrorCode = {
 } as const
 
 const OpId = {
-  AppList: 'console_app.list',
-  WorkspaceList: 'workspace.list',
-  AccountSessionsList: 'account.sessions.list',
-  ChatRun: 'console_app.chat.run',
-  AdvancedChatRun: 'console_app.advanced_chat.run',
-  FormSubmit: 'run.form.submit',
+  AppList: 'list.console_app',
+  WorkspaceList: 'list.workspace',
+  AccountSessionsList: 'list.account.session',
+  ChatRun: 'run.console_app.chat',
+  AdvancedChatRun: 'run.console_app.advanced_chat',
+  FormSubmit: 'submit.run.form',
 } as const
 
 const CATALOG_STALE_MESSAGE =

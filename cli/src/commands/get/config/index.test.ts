@@ -10,7 +10,7 @@ afterEach(async () => {
 })
 
 it('reads a value written directly through the config service', async () => {
-  const w = await testContext({ login: false, argv: ['config', 'get', 'http.timeout'] })
+  const w = await testContext({ login: false, argv: ['get', 'config', 'http.timeout'] })
   worlds.push(w)
   await (await w.ctx.get(config)).set('http.timeout', '5000')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
@@ -18,7 +18,7 @@ it('reads a value written directly through the config service', async () => {
 })
 
 it('prints the whole doc with its path when no key is given', async () => {
-  const w = await testContext({ login: false, argv: ['config', 'get'] })
+  const w = await testContext({ login: false, argv: ['get', 'config'] })
   worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   const body = JSON.parse(w.io.outBuf()) as { path: string; http: { timeout: number } }
@@ -27,7 +27,7 @@ it('prints the whole doc with its path when no key is given', async () => {
 })
 
 it('rejects an unknown key with exit 2', async () => {
-  const w = await testContext({ login: false, argv: ['config', 'get', 'nope'] })
+  const w = await testContext({ login: false, argv: ['get', 'config', 'nope'] })
   worlds.push(w)
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'config_invalid_key',

@@ -8,10 +8,10 @@ const FIXTURE = readFileSync(join(__dirname, '../../../test/fixtures/catalog.jso
 it('parses the real catalog and defaults examples to []', () => {
   const doc = parseCatalog(FIXTURE)
   expect(Object.keys(doc.ops).length).toBeGreaterThan(20)
-  expect(doc.ops['console_app.workflow.run']?.kind).toBe('sse')
-  expect(doc.ops['console_app.workflow.run']?.examples).toEqual([])
-  expect(doc.ops['console_app.legacy_run']?.deprecated).toBe(true)
-  expect(doc.ops['workspace.switch']?.internal).toBe(true)
+  expect(doc.ops['run.console_app.workflow']?.kind).toBe('sse')
+  expect(doc.ops['run.console_app.workflow']?.examples).toEqual([])
+  expect(doc.ops['legacy_run.console_app']?.deprecated).toBe(true)
+  expect(doc.ops['switch.workspace']?.internal).toBe(true)
 })
 
 it('accepts kinds and binds it has never heard of', () => {

@@ -22,7 +22,7 @@ Always pass \`--json\`. Help and errors are text on a terminal and JSON in a pip
 
 ## Finding what the CLI can do
 
-An operation id is dotted, \`console_app.chat.run\`, and is typed as words: \`difyctl console_app chat run\`. Ids come from the server and can change, so look them up instead of assuming them.
+An operation id is dotted, \`run.console_app.chat\`, and is typed as words: \`difyctl run console_app chat\`. Ids come from the server and can change, so look them up instead of assuming them.
 
 Four views under \`help\`, covering local commands and server operations as one tree:
 
@@ -37,11 +37,11 @@ Not logged in, or the server unreachable, gives the local commands plus one line
 
 ## Running an operation
 
-\`difyctl console_app workflow run --app-id <id> --inputs '{"a":1}'\`. Each top-level field of \`input\` is a flag, dashes for underscores. Scalars take a value; objects, maps and lists of objects take a JSON literal or \`@file.json\`; lists of scalars repeat the flag. Fields named \`input\`, \`stream\`, \`only\`, \`output\`, \`verbose\`, \`json\` or \`help\` have no flag; pass them through \`--input\`.
+\`difyctl run console_app workflow --app-id <id> --inputs '{"a":1}'\`. Each top-level field of \`input\` is a flag, dashes for underscores. Scalars take a value; objects, maps and lists of objects take a JSON literal or \`@file.json\`; lists of scalars repeat the flag. Fields named \`input\`, \`stream\`, \`only\`, \`output\`, \`verbose\`, \`json\` or \`help\` have no flag; pass them through \`--input\`.
 
-\`--input '{"a":1}'\`, \`--input @file.json\` or \`--input @-\` (stdin) sends the whole body; field flags merge over it. A dotted id is a command with the dots as spaces: \`console_app.workflow.run\` is \`difyctl console_app workflow run\`.
+\`--input '{"a":1}'\`, \`--input @file.json\` or \`--input @-\` (stdin) sends the whole body; field flags merge over it. A dotted id is a command with the dots as spaces: \`run.console_app.workflow\` is \`difyctl run console_app workflow\`.
 
-Run an app with the op for its mode: \`console_app workflow run\`, \`console_app chat run\`, \`console_app advanced_chat run\`, \`console_app completion run\`. First \`difyctl console_app describe --app-id <id> --json\` and read \`input_schema\`; that is the shape of \`inputs\`. Local files go under \`files\`, keyed by the app's file variable name (\`{"files":{"doc":"./r.pdf"}}\` or a list of paths); files for the run itself under \`attachments\`; URLs straight into \`inputs\`.
+Run an app with the op for its mode: \`run console_app workflow\`, \`run console_app chat\`, \`run console_app advanced_chat\`, \`run console_app completion\`. First \`difyctl describe console_app --app-id <id> --json\` and read \`input_schema\`; that is the shape of \`inputs\`. Local files go under \`files\`, keyed by the app's file variable name (\`{"files":{"doc":"./r.pdf"}}\` or a list of paths); files for the run itself under \`attachments\`; URLs straight into \`inputs\`.
 
 ## difyctl-only flags
 
@@ -53,11 +53,11 @@ Streaming ops fold to \`{status, text, outputs?, total_tokens?, message_id?, con
 
 ## Errors and exit codes
 
-Errors are one envelope on stderr: \`{"error":{"code","message","hint"?,"details"?,"schema"?}}\`. Exit 2 is bad input (schema included), 4 not logged in or forbidden, 6 catalog unavailable or unknown op (run \`difyctl cache refresh\` or upgrade difyctl), 7 rate limited.
+Errors are one envelope on stderr: \`{"error":{"code","message","hint"?,"details"?,"schema"?}}\`. Exit 2 is bad input (schema included), 4 not logged in or forbidden, 6 catalog unavailable or unknown op (run \`difyctl refresh cache\` or upgrade difyctl), 7 rate limited.
 
 ## Login and environment
 
-\`difyctl login --server https://...\` (device flow; \`--no-browser\` prints the URL and code; \`--no-keyring\` keeps the token in a file; \`--insecure\` skips TLS verification). One login at a time. \`difyctl workspace use <id>\` pins a workspace; \`difyctl workspace list\` shows them. Scripts skip login with \`DIFY_SERVER\` and \`DIFY_TOKEN\`; \`DIFY_WORKSPACE_ID\` overrides the pin; \`DIFY_CONFIG_DIR\` and \`DIFY_CACHE_DIR\` move the files.
+\`difyctl login --server https://...\` (device flow; \`--no-browser\` prints the URL and code; \`--no-keyring\` keeps the token in a file; \`--insecure\` skips TLS verification). One login at a time. \`difyctl use workspace <id>\` pins a workspace; \`difyctl list workspace\` shows them. Scripts skip login with \`DIFY_SERVER\` and \`DIFY_TOKEN\`; \`DIFY_WORKSPACE_ID\` overrides the pin; \`DIFY_CONFIG_DIR\` and \`DIFY_CACHE_DIR\` move the files.
 
 \`login\` blocks until the browser approval arrives. Run \`difyctl login --server <url> --no-browser\` as a background job, relay the \`open <url>\` and \`code <code>\` lines from its stderr to the user, and do not cancel the job. Its exit code reports the result. In a sandbox, add \`--no-keyring\` and set \`DIFY_CONFIG_DIR\` to persistent storage on every call, so the login survives the next session. If background jobs do not survive between calls, run \`login --no-wait\` instead, relay the \`verification_uri\` and \`user_code\` it prints, and after the user approves run \`login --resume\` until it stops printing \`status: pending\`.
 
@@ -67,7 +67,7 @@ Operations that remove or revoke have no confirmation prompt. Confirm with the p
 
 ## Other skills
 
-Scenario skills add guidance for one kind of task. \`difyctl skills list\` shows them; \`difyctl skills install <skills root> --skill <name>\` installs one, where \`<skills root>\` is the folder above this file's folder. \`difyctl skills install <skills root>\` also refreshes this file after upgrading difyctl.
+Scenario skills add guidance for one kind of task. \`difyctl list skills\` shows them; \`difyctl install skills <skills root> --skill <name>\` installs one, where \`<skills root>\` is the folder above this file's folder. \`difyctl install skills <skills root>\` also refreshes this file after upgrading difyctl.
 `,
       },
     ],

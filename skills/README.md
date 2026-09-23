@@ -2,7 +2,7 @@
 
 Agent skills shipped with the difyctl CLI. The CLI embeds this folder at build
 time (`pnpm skills:gen` in `cli/`) and installs the skills with
-`difyctl skills install <dir>`. The same files install unchanged through the Vercel
+`difyctl install skills <dir>`. The same files install unchanged through the Vercel
 installer: `npx skills add langgenius/dify --skill difyctl -g`.
 
 ## Adding a skill

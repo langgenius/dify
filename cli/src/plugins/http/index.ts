@@ -40,7 +40,7 @@ const HttpStatus = {
 
 const CATALOG_STALE_CODE = 'catalog_stale'
 const CATALOG_UNAVAILABLE_PREFIX = 'failed to fetch the catalog: '
-const CATALOG_UNAVAILABLE_HINT = 'check the server URL or run difyctl cache refresh'
+const CATALOG_UNAVAILABLE_HINT = 'check the server URL or run difyctl refresh cache'
 
 // The catalog fetch is the CLI's first request, so its failure has to name itself:
 // a rejected status for the catalog route, or whatever the network said.

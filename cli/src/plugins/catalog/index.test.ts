@@ -59,7 +59,7 @@ it('knows nothing before a catalog is loaded', async () => {
   const c = await build()
   expect(c.loaded).toBe(false)
   expect(c.ops()).toEqual({})
-  expect(c.op('console_app.list')).toBeUndefined()
+  expect(c.op('list.console_app')).toBeUndefined()
   expect(c.fingerprint).toBe('')
 })
 
@@ -71,7 +71,7 @@ it('replace writes the raw bytes; the fingerprint is the sha256 of those bytes',
   expect(c.fingerprint).toBe(createHash('sha256').update(FIXTURE).digest('hex'))
   const again = await build()
   expect(again.loaded).toBe(true)
-  expect(again.op('console_app.workflow.run')?.kind).toBe('sse')
+  expect(again.op('run.console_app.workflow')?.kind).toBe('sse')
 })
 
 it('clear() forgets everything', async () => {
