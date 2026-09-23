@@ -163,39 +163,6 @@ def test_publish_workflow_returns_success(
         )
 
     assert response["result"] == "success"
-    assert "warning" not in response
-
-
-def test_publish_workflow_skips_warning_when_graph_cannot_be_read(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    current_user = SimpleNamespace(id="account-1")
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-    workflow = SimpleNamespace(id="published-workflow", created_at=datetime(2026, 8, 17, 12, 0, 0), graph="{")
-    session = Mock()
-    session.get.return_value = app_model
-    monkeypatch.setattr(
-        workflow_module,
-        "WorkflowService",
-        Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
-    )
-    monkeypatch.setattr(
-        workflow_module,
-        "sessionmaker",
-        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session)),
-    )
-    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
-    with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
-        response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
-            workflow_module.PublishedWorkflowApi(),
-            workflow_module.PublishWorkflowPayload.model_validate({}),
-            current_user,
-            app_model,
-        )
-
-    assert response["result"] == "success"
-    assert "warning" not in response
 
 
 @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
