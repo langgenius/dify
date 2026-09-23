@@ -119,7 +119,7 @@ const DocumentTableRow = React.memo(
           </div>
         </td>
         <td>
-          <div className="group mr-6 flex max-w-115 items-center hover:mr-0">
+          <div className="group mr-6 flex max-w-115 items-center focus-within:mr-0 hover:mr-0">
             <div className="flex shrink-0 items-center">
               <DocumentSourceIcon doc={doc} fileType={fileType} />
             </div>
@@ -143,7 +143,7 @@ const DocumentTableRow = React.memo(
               </div>
             )}
             {datasetACLCapabilities.canEdit && (
-              <div className="ml-auto shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+              <div className="w-0 shrink-0 overflow-hidden opacity-0 group-focus-within:ml-auto group-focus-within:w-6 group-focus-within:overflow-visible group-focus-within:opacity-100 group-hover:ml-auto group-hover:w-6 group-hover:overflow-visible group-hover:opacity-100">
                 <Tooltip>
                   <TooltipTrigger
                     render={
