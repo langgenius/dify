@@ -324,6 +324,49 @@ class TestBatchCreateSegmentToIndexTask:
         cache_value = redis_client.get(cache_key)
         assert cache_value == b"completed"
 
+    def test_batch_create_segment_to_index_task_preserves_csv_cell_text(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that numeric-looking and NA CSV cells remain text in QA segments."""
+        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
+        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
+        document.doc_form = IndexStructureType.QA_INDEX
+        db_session_with_containers.commit()
+        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+
+        csv_content = "content,answer\n00123,NA\nNA,00456\n"
+        mock_storage = mock_external_service_dependencies["storage"]
+
+        def mock_download(key, file_path):
+            Path(file_path).write_text(csv_content, encoding="utf-8")
+
+        mock_storage.download.side_effect = mock_download
+
+        job_id = str(uuid.uuid4())
+        batch_create_segment_to_index_task(
+            job_id=job_id,
+            upload_file_id=upload_file.id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            tenant_id=tenant.id,
+            user_id=account.id,
+        )
+
+        segments = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.document_id == document.id).order_by(DocumentSegment.position)
+        ).all()
+
+        assert [(segment.content, segment.answer, segment.word_count) for segment in segments] == [
+            ("00123", "NA", 7),
+            ("NA", "00456", 7),
+        ]
+
+        from extensions.ext_redis import redis_client
+
+        cache_key = f"segment_batch_import_{job_id}"
+        assert redis_client.get(cache_key) == b"completed"
+
     def test_batch_create_segment_to_index_task_dataset_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):

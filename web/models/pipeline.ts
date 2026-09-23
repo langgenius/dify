@@ -17,12 +17,14 @@ import type { TransferMethod } from '@/types/app'
 import type { NodeRunResult } from '@/types/workflow'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 
-export enum DatasourceType {
-  localFile = 'local_file',
-  onlineDocument = 'online_document',
-  websiteCrawl = 'website_crawl',
-  onlineDrive = 'online_drive',
-}
+export const DatasourceType = {
+  localFile: 'local_file',
+  onlineDocument: 'online_document',
+  websiteCrawl: 'website_crawl',
+  onlineDrive: 'online_drive',
+} as const
+
+export type DatasourceType = (typeof DatasourceType)[keyof typeof DatasourceType]
 
 export type PipelineTemplateListParams = {
   type: 'built-in' | 'customized'
@@ -115,15 +117,17 @@ export type PipelineCheckDependenciesResponse = {
   leaked_dependencies: Dependency[]
 }
 
-export enum PipelineInputVarType {
-  textInput = 'text-input',
-  paragraph = 'paragraph',
-  select = 'select',
-  number = 'number',
-  singleFile = 'file',
-  multiFiles = 'file-list',
-  checkbox = 'checkbox',
-}
+export const PipelineInputVarType = {
+  textInput: 'text-input',
+  paragraph: 'paragraph',
+  select: 'select',
+  number: 'number',
+  singleFile: 'file',
+  multiFiles: 'file-list',
+  checkbox: 'checkbox',
+} as const
+
+export type PipelineInputVarType = (typeof PipelineInputVarType)[keyof typeof PipelineInputVarType]
 
 export const VAR_TYPE_MAP: Record<PipelineInputVarType, BaseFieldType> = {
   [PipelineInputVarType.textInput]: BaseFieldType.textInput,
@@ -280,11 +284,13 @@ export type ConversionResponse = {
   status: 'success' | 'failed'
 }
 
-export enum OnlineDriveFileType {
-  file = 'file',
-  folder = 'folder',
-  bucket = 'bucket',
-}
+export const OnlineDriveFileType = {
+  file: 'file',
+  folder: 'folder',
+  bucket: 'bucket',
+} as const
+
+export type OnlineDriveFileType = (typeof OnlineDriveFileType)[keyof typeof OnlineDriveFileType]
 
 export type OnlineDriveFile = {
   id: string

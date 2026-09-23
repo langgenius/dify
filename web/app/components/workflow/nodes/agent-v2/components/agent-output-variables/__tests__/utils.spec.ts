@@ -1,5 +1,5 @@
 import type { OutputDraft } from '../utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { createOutputFromDraft, getDefaultValueErrorKey } from '../utils'
 
 const createDraft = (overrides: Partial<OutputDraft> = {}): OutputDraft => ({

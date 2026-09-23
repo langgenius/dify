@@ -63,7 +63,7 @@ const Answer: FC<AnswerProps> = ({
   renderAgentContent,
   onHumanInputFormSubmit,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation'])
   const {
     content,
     citation,

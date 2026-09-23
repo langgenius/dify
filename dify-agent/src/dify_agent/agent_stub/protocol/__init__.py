@@ -1,7 +1,5 @@
 """Client-safe protocol exports for the Dify Agent Stub package."""
 
-from dify_agent.agent_stub._constants import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
-
 from .agent_stub import (
     AGENT_STUB_AUTH_JWE_ENV_VAR,
     AGENT_STUB_PROTOCOL_VERSION,
@@ -20,12 +18,6 @@ from .agent_stub import (
     AgentStubConfigPushSkillItem,
     AgentStubConfigSkillItem,
     AgentStubConfigVersionInfo,
-    AgentStubDriveCommitItem,
-    AgentStubDriveCommitRequest,
-    AgentStubDriveCommitResponse,
-    AgentStubDriveFileRef,
-    AgentStubDriveItem,
-    AgentStubDriveManifestResponse,
     AgentStubEndpoint,
     AgentStubFileDownloadRequest,
     AgentStubFileDownloadResponse,
@@ -39,9 +31,6 @@ from .agent_stub import (
     agent_stub_config_push_url,
     agent_stub_config_skill_inspect_url,
     agent_stub_connections_url,
-    agent_stub_drive_base_for_ref,
-    agent_stub_drive_commit_url,
-    agent_stub_drive_manifest_url,
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
     is_canonical_dify_file_reference,
@@ -51,10 +40,8 @@ from .agent_stub import (
 
 __all__ = [
     "AGENT_STUB_AUTH_JWE_ENV_VAR",
-    "AGENT_STUB_DRIVE_BASE_ENV_VAR",
     "AGENT_STUB_PROTOCOL_VERSION",
     "AGENT_STUB_API_BASE_URL_ENV_VAR",
-    "DEFAULT_AGENT_STUB_DRIVE_BASE",
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
     "AgentStubConfigDownloadSource",
@@ -69,12 +56,6 @@ __all__ = [
     "AgentStubConfigPushSkillItem",
     "AgentStubConfigSkillItem",
     "AgentStubConfigVersionInfo",
-    "AgentStubDriveCommitItem",
-    "AgentStubDriveCommitRequest",
-    "AgentStubDriveCommitResponse",
-    "AgentStubDriveFileRef",
-    "AgentStubDriveItem",
-    "AgentStubDriveManifestResponse",
     "AgentStubEndpoint",
     "AgentStubFileDownloadRequest",
     "AgentStubFileDownloadResponse",
@@ -88,9 +69,6 @@ __all__ = [
     "agent_stub_config_push_url",
     "agent_stub_config_skill_inspect_url",
     "agent_stub_connections_url",
-    "agent_stub_drive_base_for_ref",
-    "agent_stub_drive_commit_url",
-    "agent_stub_drive_manifest_url",
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "is_canonical_dify_file_reference",

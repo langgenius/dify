@@ -67,7 +67,7 @@ async function pickWorkspaceId(client: WorkspacesClient, deps: UseWorkspaceDeps)
   const list = await runWithSpinner({ io: deps.io, label: 'Loading workspaces' }, () =>
     client.list(),
   )
-  const items = list.workspaces.map<Workspace>((w) => ({ id: w.id, name: w.name, role: w.role }))
+  const items = list.data.map<Workspace>((w) => ({ id: w.id, name: w.name, role: w.role }))
   if (items.length === 0) {
     throw new BaseError({
       code: ErrorCode.AccessDenied,

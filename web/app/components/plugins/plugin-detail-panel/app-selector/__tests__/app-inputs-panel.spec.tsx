@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import AppInputsPanel from '../app-inputs-panel'
 
 let mockHookResult = {
@@ -10,8 +10,8 @@ let mockHookResult = {
   retry: vi.fn(),
 }
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading">Loading</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div data-testid="loading">Loading</div>,
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form', () => ({

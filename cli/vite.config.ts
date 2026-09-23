@@ -2,7 +2,9 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite-plus'
 import { resolveBuildInfo } from './scripts/lib/resolve-buildinfo.js'
 
-const buildInfo = resolveBuildInfo()
+const buildInfo = resolveBuildInfo({
+  env: { ...process.env, DIFYCTL_CHANNEL: process.env.DIFYCTL_CHANNEL ?? 'dev' },
+})
 
 export default defineConfig({
   resolve: {
@@ -12,6 +14,7 @@ export default defineConfig({
     },
   },
   pack: {
+    deps: { resolveDepSubpath: true },
     entry: ['src/index.ts', 'src/commands/**/*.ts', 'src/framework/**/*.ts'],
     format: ['esm'],
     fixedExtension: false,
@@ -20,7 +23,7 @@ export default defineConfig({
     sourcemap: true,
     treeshake: false,
     outDir: 'dist',
-    target: 'node22',
+    target: 'node24',
     define: {
       __DIFYCTL_VERSION__: JSON.stringify(buildInfo.version),
       __DIFYCTL_COMMIT__: JSON.stringify(buildInfo.commit),

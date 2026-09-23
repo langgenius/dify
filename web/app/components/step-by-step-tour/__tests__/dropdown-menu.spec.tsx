@@ -1,19 +1,15 @@
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '../dropdown-menu'
-
-const STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR = 'data-step-by-step-tour-highlight-part'
-
-const getHighlightPartValue = (props: unknown): string | undefined => {
-  if (!props || typeof props !== 'object') return undefined
-
-  const value = (props as Record<string, unknown>)[STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]
-  return typeof value === 'string' ? value : undefined
-}
-
-const noopKeyboardHandler = () => {}
 
 function TestDropdown({
   allowTriggerCloseWhileControlled,
@@ -35,11 +31,7 @@ function TestDropdown({
       <button type="button" onClick={menu.close}>
         Close from action
       </button>
-      <div
-        aria-label="dropdown"
-        data-controlled={String(menu.controlled)}
-        data-open={String(menu.open)}
-      />
+      <p>{`Menu is ${menu.open ? 'open' : 'closed'} and ${menu.controlled ? 'controlled' : 'uncontrolled'}`}</p>
     </>
   )
 }
@@ -48,49 +40,46 @@ describe('useStepByStepTourControlledDropdown', () => {
   it('keeps ordinary dropdown toggle behavior when no tour controls it', () => {
     render(<TestDropdown />)
 
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-open', 'false')
+    expect(screen.getByText('Menu is closed and uncontrolled')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-open', 'true')
+    expect(screen.getByText('Menu is open and uncontrolled')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-open', 'false')
+    expect(screen.getByText('Menu is closed and uncontrolled')).toBeInTheDocument()
   })
 
   it('opens for a tour step without locking the dropdown open', () => {
     render(<TestDropdown controlledOpen />)
 
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-open', 'true')
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-controlled', 'true')
+    expect(screen.getByText('Menu is open and controlled')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-open', 'false')
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-controlled', 'false')
+    expect(screen.getByText('Menu is closed and uncontrolled')).toBeInTheDocument()
   })
 
   it('can keep a tour-opened dropdown locked until the tour leaves the step', () => {
     render(<TestDropdown controlledOpen allowTriggerCloseWhileControlled={false} />)
 
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-open', 'true')
+    expect(screen.getByText('Menu is open and controlled')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-open', 'true')
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-controlled', 'true')
+    expect(screen.getByText('Menu is open and controlled')).toBeInTheDocument()
   })
 
   it('closes when the tour leaves the dropdown step', async () => {
     const { rerender } = render(<TestDropdown controlledOpen />)
 
-    expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-open', 'true')
+    expect(screen.getByText('Menu is open and controlled')).toBeInTheDocument()
 
     rerender(<TestDropdown />)
 
     await waitFor(() => {
-      expect(screen.getByLabelText('dropdown')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByText('Menu is closed and uncontrolled')).toBeInTheDocument()
     })
   })
 })
@@ -99,84 +88,62 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
   it('blocks presentation menu interactions without letting clicks bubble through', () => {
     const onAction = vi.fn()
     const onBackgroundClick = vi.fn()
-    const { popupClassName, popupProps, positionerProps } =
-      getStepByStepTourDropdownMenuContentProps({
-        highlightPart: 'tour-menu',
-        interactionMode: 'presentation',
-      })
 
     render(
-      <div role="button" tabIndex={0} onClick={onBackgroundClick} onKeyDown={noopKeyboardHandler}>
-        <div
-          data-testid="positioner"
-          data-step-by-step-tour-highlight-part={getHighlightPartValue(positionerProps)}
-          onClickCapture={positionerProps?.onClickCapture}
-          onKeyDownCapture={positionerProps?.onKeyDownCapture}
-          onMouseDownCapture={positionerProps?.onMouseDownCapture}
-          onPointerDownCapture={positionerProps?.onPointerDownCapture}
+      <DropdownMenu open>
+        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
+        <DropdownMenuContent
+          {...getStepByStepTourDropdownMenuContentProps({
+            highlightPart: 'tour-menu',
+            interactionMode: 'presentation',
+          })}
         >
-          <div
-            role="menu"
-            aria-hidden={popupProps?.['aria-hidden']}
-            onClickCapture={popupProps?.onClickCapture}
-            onKeyDownCapture={popupProps?.onKeyDownCapture}
-            onMouseDownCapture={popupProps?.onMouseDownCapture}
-            onPointerDownCapture={popupProps?.onPointerDownCapture}
-          >
-            <button type="button" role="menuitem" onClick={onAction}>
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>,
+          <DropdownMenuItem onClick={onAction}>Delete</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
     )
+    document.addEventListener('click', onBackgroundClick)
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete', hidden: true }))
 
     expect(onAction).not.toHaveBeenCalled()
     expect(onBackgroundClick).not.toHaveBeenCalled()
     expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByTestId('positioner')).toHaveAttribute(
+    expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute(
       'data-step-by-step-tour-highlight-part',
       'tour-menu',
     )
-    expect(popupClassName).toContain('pointer-events-none')
+    document.removeEventListener('click', onBackgroundClick)
   })
 
-  it('leaves interactive menus clickable without bubbling through', () => {
+  it('leaves interactive menus clickable without bubbling through', async () => {
+    const user = userEvent.setup()
     const onAction = vi.fn()
     const onBackgroundClick = vi.fn()
-    const onPopupClick = vi.fn()
-    const { popupProps, positionerProps } = getStepByStepTourDropdownMenuContentProps({
-      highlightPart: 'tour-menu',
-      interactionMode: 'interactive',
-      popupProps: {
-        onClick: onPopupClick,
-      },
-    })
 
     render(
-      <div role="button" tabIndex={0} onClick={onBackgroundClick} onKeyDown={noopKeyboardHandler}>
-        <div data-step-by-step-tour-highlight-part={getHighlightPartValue(positionerProps)}>
-          <div
-            role="menu"
-            tabIndex={-1}
-            aria-hidden={popupProps?.['aria-hidden']}
-            onClick={popupProps?.onClick}
-            onKeyDown={noopKeyboardHandler}
-          >
-            <button type="button" role="menuitem" onClick={onAction}>
-              Create
-            </button>
-          </div>
-        </div>
-      </div>,
+      <DropdownMenu open>
+        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
+        <DropdownMenuContent
+          {...getStepByStepTourDropdownMenuContentProps({
+            highlightPart: 'tour-menu',
+            interactionMode: 'interactive',
+          })}
+        >
+          <DropdownMenuItem onClick={onAction}>Create</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
     )
+    document.addEventListener('click', onBackgroundClick)
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Create' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Create' }))
 
     expect(onAction).toHaveBeenCalledTimes(1)
-    expect(onPopupClick).toHaveBeenCalledTimes(1)
     expect(onBackgroundClick).not.toHaveBeenCalled()
+    expect(screen.getByRole('menu')).toHaveAttribute(
+      'data-step-by-step-tour-highlight-part',
+      'tour-menu',
+    )
+    document.removeEventListener('click', onBackgroundClick)
   })
 })

@@ -1,9 +1,9 @@
 import type { LoopVariable } from '@/app/components/workflow/nodes/loop/types'
 import type { Var } from '@/app/components/workflow/types'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -24,18 +24,12 @@ type FormItemProps = {
   onChange: (value: any) => void
 }
 const FormItem = ({ nodeId, item, onChange }: FormItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'workflowLogic'])
   const { value_type, var_type, value } = item
+  const valueLabel = item.label || t(($) => $['errorMsg.fields.variableValue'], { ns: 'workflow' })
   const normalizedVarValue = useMemo(() => {
     return Array.isArray(value) ? value : []
   }, [value])
-
-  const handleInputChange = useCallback(
-    (e: any) => {
-      onChange(e.target.value)
-    },
-    [onChange],
-  )
 
   const handleValueChange = useCallback(
     (value: string) => {
@@ -80,19 +74,28 @@ const FormItem = ({ nodeId, item, onChange }: FormItemProps) => {
           value={normalizedVarValue}
           onChange={handleChange}
           filterVar={filterVar}
-          placeholder={t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' }) as string}
+          placeholder={
+            t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' }) as string
+          }
         />
       )}
       {value_type === ValueType.constant && var_type === VarType.string && (
         <Textarea
-          aria-label={item.label}
+          aria-label={valueLabel}
           value={value}
           onValueChange={handleValueChange}
           className="min-h-12 w-full"
         />
       )}
       {value_type === ValueType.constant && var_type === VarType.number && (
-        <Input type="number" value={value} onChange={handleInputChange} className="w-full" />
+        <Input
+          aria-label={valueLabel}
+          type="number"
+          value={value}
+          onValueChange={handleValueChange}
+          placeholder={t(($) => $['placeholder.input'], { ns: 'common' })}
+          className="w-full"
+        />
       )}
       {value_type === ValueType.constant && var_type === VarType.boolean && (
         <BoolValue value={value} onChange={handleChange} />

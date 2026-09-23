@@ -1,5 +1,4 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -18,7 +17,7 @@ type Props = Readonly<{
   pluginID: string
   currentVersion: string
   trigger: (open: boolean) => React.ReactNode
-  placement?: Placement
+  triggerAccessibleName?: string
   sideOffset?: number
   alignOffset?: number
   onSelect: ({
@@ -39,12 +38,12 @@ const PluginVersionPicker: FC<Props> = ({
   pluginID,
   currentVersion,
   trigger,
-  placement = 'bottom-start',
+  triggerAccessibleName,
   sideOffset = 4,
   alignOffset = 0,
   onSelect,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common', 'plugin'])
   const format = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]
   const { formatDate } = useTimestamp()
 
@@ -80,6 +79,7 @@ const PluginVersionPicker: FC<Props> = ({
           <button
             {...props}
             type="button"
+            aria-label={triggerAccessibleName}
             className={cn(
               'inline-flex cursor-pointer items-center data-disabled:cursor-default',
               props.className,
@@ -91,15 +91,15 @@ const PluginVersionPicker: FC<Props> = ({
       />
 
       <PopoverContent
-        placement={placement}
+        placement="bottom-start"
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        popupClassName="relative w-[209px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
+        className="relative w-52.25 bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <div className="px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
         </div>
-        <div className="relative max-h-[224px] overflow-y-auto">
+        <div className="relative max-h-56 overflow-y-auto">
           {isLoading ? (
             <div
               role="status"

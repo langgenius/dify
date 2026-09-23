@@ -1,5 +1,5 @@
 import type { FlagDefinition } from './types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { OutputFormatNotSupportedError, UnsupportedArgValueError } from './errors'
 
 describe('OutputFormatNotSupportedError', () => {

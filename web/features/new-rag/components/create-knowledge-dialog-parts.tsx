@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import type { NewKnowledgeStartMode } from '../routes'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -24,7 +24,7 @@ export function StartMode({
   title: string
   value: NewKnowledgeStartMode
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const titleId = useId()
   const descriptionId = useId()
   const unavailableId = useId()

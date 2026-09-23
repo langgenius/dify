@@ -1,11 +1,11 @@
 import type { Page } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
-import { waitForAgentsConsole } from '../../../support/agents'
-import { waitForAppsConsole } from '../../../support/apps'
-import { waitForConsoleHome } from '../../../support/home'
-import { waitForModelProviderIntegrations } from '../../../support/integrations'
-import { waitForKnowledgeConsole } from '../../../support/knowledge'
+import { waitForAgentsConsole } from '../../../support/agents.ts'
+import { waitForAppsConsole } from '../../../support/apps.ts'
+import { waitForConsoleHome } from '../../../support/home.ts'
+import { waitForModelProviderIntegrations } from '../../../support/integrations.ts'
+import { waitForKnowledgeConsole } from '../../../support/knowledge.ts'
 
 type AccessibilityPageConfig = {
   path: string

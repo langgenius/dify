@@ -1,4 +1,6 @@
 import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
@@ -7,18 +9,27 @@ import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { useStore } from '../../store'
 import { BlockEnum } from '../../types'
-import { useChecklist, useWorkflowRunValidation } from '../use-checklist'
+import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: vi.fn((url: string) => {
+    if (url.endsWith('/workspaces/current/agent-providers'))
+      return Promise.resolve(Response.json([]))
+    throw new Error(`Unexpected request: ${url}`)
+  }),
+}))
 
 const toolServiceState = vi.hoisted(() => ({
   buildInTools: [] as ToolWithProvider[] | undefined,
@@ -75,14 +86,6 @@ vi.mock('@/service/use-triggers', async () =>
   (await import('../../__tests__/service-mock-factory')).createTriggerServiceMock(),
 )
 
-vi.mock('@/service/use-strategy', () => ({
-  useStrategyProviders: () => ({ data: [] }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({ data: [] }),
-}))
-
 type CheckValidFn = (data: CommonNodeType, t: unknown, extra?: unknown) => { errorMessage: string }
 const mockNodesMap: Record<
   string,
@@ -113,7 +116,11 @@ vi.mock('../use-nodes-available-var-list', () => ({
     }
     return map
   },
-  useGetNodesAvailableVarList: () => ({ getNodesAvailableVarList: vi.fn(() => ({})) }),
+  useGetNodesAvailableVarList: () => ({
+    getNodesAvailableVarList: vi.fn((nodes: Node[]) =>
+      Object.fromEntries(nodes.map((node) => [node.id, { availableVars: [] }])),
+    ),
+  }),
 }))
 
 vi.mock('../../nodes/_base/components/variable/utils', () => ({
@@ -139,7 +146,7 @@ vi.mock('../index', () => ({
   useNodesMetaData: () => ({ nodes: [], nodesMap: mockNodesMap }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -150,12 +157,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en',
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { modelProviders: Array<{ provider: string }> }) => unknown,
-  ) => selector({ modelProviders: mockModelProviders }),
 }))
 
 // useWorkflowNodes reads from WorkflowContext (real store via renderWorkflowHook)
@@ -223,12 +224,32 @@ function buildConnectedGraph() {
   return { nodes, edges }
 }
 
+function buildLegacyAgentGraph() {
+  const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+  const agentNode = createNode({
+    id: 'legacy-agent',
+    data: {
+      type: BlockEnum.Agent,
+      title: 'Legacy Agent',
+      agent_strategy_provider_name: 'provider',
+      agent_strategy_name: 'strategy',
+    },
+  })
+
+  return {
+    nodes: [startNode, agentNode],
+    edges: [createEdge({ source: 'start', target: 'legacy-agent' })],
+  }
+}
+
 function buildInlineAgentGraph({
   difyTools = [],
+  hasModel = true,
   hasMissingFile = false,
   hasMissingSkill = false,
 }: {
   difyTools?: AgentSoulDifyToolConfig[]
+  hasModel?: boolean
   hasMissingFile?: boolean
   hasMissingSkill?: boolean
 }) {
@@ -239,6 +260,7 @@ function buildInlineAgentGraph({
   })
   const appId = 'app-id'
   const nodeId = 'inline-agent-node'
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
       input: {
@@ -250,6 +272,13 @@ function buildInlineAgentGraph({
     }),
     zWorkflowAgentComposerResponse.parse({
       agent_soul: {
+        model: hasModel
+          ? {
+              model_provider: 'langgenius/openai/openai',
+              model: 'gpt-4o-mini',
+              plugin_id: 'langgenius/openai',
+            }
+          : undefined,
         config_files: [
           { file_kind: 'upload_file', name: 'available.pdf' },
           ...(hasMissingFile
@@ -390,6 +419,21 @@ describe('useChecklist', () => {
     expect(warning!.errorMessages).toContain('Model not configured')
   })
 
+  it('should validate legacy Agent nodes when their metadata is hidden by Agent v2', async () => {
+    const { nodes, edges } = buildLegacyAgentGraph()
+
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges))
+
+    await waitFor(() =>
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: 'legacy-agent',
+          errorMessages: ['workflow.nodes.agent.checkList.strategyNotSelected'],
+        }),
+      ]),
+    )
+  })
+
   it.each([
     {
       errorMessage: 'agentV2.agentDetail.configure.files.missing',
@@ -412,6 +456,21 @@ describe('useChecklist', () => {
         expect.objectContaining({
           id: nodeId,
           errorMessages: [scenario.errorMessage],
+          openInlineAgentPanel: true,
+        }),
+      ])
+    })
+  })
+
+  it('should report a missing model from inline agents and open their configuration panel', async () => {
+    const { edges, nodeId, nodes, options } = buildInlineAgentGraph({ hasModel: false })
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), options)
+
+    await waitFor(() => {
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: nodeId,
+          errorMessages: ['workflow.nodes.agent.modelNotSelected'],
           openInlineAgentPanel: true,
         }),
       ])
@@ -745,6 +804,21 @@ describe('useChecklist', () => {
 })
 
 // ---------------------------------------------------------------------------
+// useChecklistBeforePublish
+// ---------------------------------------------------------------------------
+
+describe('useChecklistBeforePublish', () => {
+  it('should reject an invalid legacy Agent instead of throwing when its metadata is hidden', async () => {
+    const { nodes, edges } = buildLegacyAgentGraph()
+    rfState.nodes = nodes as unknown as typeof rfState.nodes
+    rfState.edges = edges as unknown as typeof rfState.edges
+
+    const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
+    await waitFor(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
+  })
+})
+
+// ---------------------------------------------------------------------------
 // useWorkflowRunValidation
 // ---------------------------------------------------------------------------
 
@@ -774,4 +848,22 @@ describe('useWorkflowRunValidation', () => {
     expect(typeof result.current.validateBeforeRun).toBe('function')
     expect(result.current.validateBeforeRun()).toBe(true)
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))
+        return { data: mockModelProviders }
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: [] }
+    },
+  }
 })

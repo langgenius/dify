@@ -1,7 +1,9 @@
 import type {
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
   DefaultModel,
-  Model,
-  ModelItem,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CredentialPanelState } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state'
@@ -14,7 +16,9 @@ import {
   PreferredProviderTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
-export function createModelItem(overrides: Partial<ModelItem> = {}): ModelItem {
+export function createModelItem(
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity {
   return {
     model: 'text-embedding-3-large',
     label: { en_US: 'Text Embedding 3 Large', zh_Hans: 'Text Embedding 3 Large' },
@@ -27,8 +31,11 @@ export function createModelItem(overrides: Partial<ModelItem> = {}): ModelItem {
   }
 }
 
-export function createModel(overrides: Partial<Model> = {}): Model {
+export function createModel(
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse {
   return {
+    tenant_id: 'test-workspace',
     provider: 'openai',
     icon_small: { en_US: 'icon', zh_Hans: 'icon' },
     icon_small_dark: { en_US: 'icon-dark', zh_Hans: 'icon-dark' },

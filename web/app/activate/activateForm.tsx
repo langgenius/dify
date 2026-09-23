@@ -1,17 +1,16 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useInvitationCheck } from '@/service/use-common'
 
 const ActivateForm = () => {
-  useDocumentTitle('')
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const workspaceID = searchParams.get('workspace_id')
   const email = searchParams.get('email')
@@ -32,6 +31,11 @@ const ActivateForm = () => {
     },
     true,
   )
+  useDocumentTitle(
+    checkRes?.is_valid === false
+      ? t(($) => $.invalid, { ns: 'login' })
+      : t(($) => $.setYourAccount, { ns: 'login' }),
+  )
 
   useEffect(() => {
     if (checkRes?.is_valid) {
@@ -48,7 +52,7 @@ const ActivateForm = () => {
     <div
       className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
     >
-      {!checkRes && <Loading />}
+      {!checkRes && <LoadingPlaceholder />}
       {checkRes && !checkRes.is_valid && (
         <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
@@ -60,9 +64,12 @@ const ActivateForm = () => {
             </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant="primary" className="w-full text-sm!">
-              <a href="https://dify.ai">{t(($) => $.explore, { ns: 'login' })}</a>
-            </Button>
+            <a
+              href="https://dify.ai"
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full text-sm!')}
+            >
+              {t(($) => $.explore, { ns: 'login' })}
+            </a>
           </div>
         </div>
       )}

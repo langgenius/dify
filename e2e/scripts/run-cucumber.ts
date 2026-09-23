@@ -1,22 +1,22 @@
-import type { ManagedProcess } from '../support/process'
+import type { ManagedProcess } from '../support/process.ts'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
-import { runCleanupTasks } from '../support/cleanup'
-import { assertCucumberScenariosStarted } from '../support/cucumber-messages'
-import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
-import { startWebServer, stopWebServer } from '../support/web-server'
-import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
-import { e2eDir, isMainModule, runCommand } from './common'
-import { parseRunOptions, shouldStartManagedAgentBackend } from './run-options'
-import { runSeed } from './seed-runner'
-import { resetState, startMiddleware, stopMiddleware } from './setup'
-import './env-register'
+import { runCleanupTasks } from '../support/cleanup.ts'
+import { assertCucumberScenariosStarted } from '../support/cucumber-messages.ts'
+import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process.ts'
+import { startWebServer, stopWebServer } from '../support/web-server.ts'
+import { apiURL, baseURL, reuseExistingWebServer } from '../test-env.ts'
+import { e2eDir, isMainModule, runCommand } from './common.ts'
+import { parseRunOptions, shouldStartManagedAgentBackend } from './run-options.ts'
+import { runSeed } from './seed-runner.ts'
+import { resetState, startMiddleware, stopMiddleware } from './setup.ts'
+import './env-register.ts'
 
 const hasCustomTags = (forwardArgs: string[]) =>
   forwardArgs.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
 
 const fullNonExternalTags =
-  'not @axe and not @prepared and not @external-model and not @external-tool'
+  'not @axe and not @prepared and not @external-model and not @external-tool and not @cloud-catalog-runtime'
 const seedCeleryQueues = 'dataset,priority_dataset,workflow_based_app_execution'
 
 const readLogTail = async (logFilePath: string) => {
@@ -131,8 +131,8 @@ const main = async () => {
 
     if (startAgentBackendForRun) {
       shellctlProcess = await startLoggedProcess({
-        command: 'npx',
-        args: ['tsx', './scripts/setup.ts', 'shellctl-sandbox'],
+        command: process.execPath,
+        args: ['./scripts/setup.ts', 'shellctl-sandbox'],
         cwd: e2eDir,
         label: 'shellctl sandbox',
         logFilePath: path.join(logDir, 'cucumber-shellctl-sandbox.log'),
@@ -145,8 +145,8 @@ const main = async () => {
       })
 
       difyAgentProcess = await startLoggedProcess({
-        command: 'npx',
-        args: ['tsx', './scripts/setup.ts', 'agent-backend'],
+        command: process.execPath,
+        args: ['./scripts/setup.ts', 'agent-backend'],
         cwd: e2eDir,
         env: { E2E_START_AGENT_BACKEND: '1' },
         label: 'agent backend',
@@ -161,8 +161,8 @@ const main = async () => {
     }
 
     apiProcess = await startLoggedProcess({
-      command: 'npx',
-      args: ['tsx', './scripts/setup.ts', 'api'],
+      command: process.execPath,
+      args: ['./scripts/setup.ts', 'api'],
       cwd: e2eDir,
       env: startAgentBackendForRun ? { E2E_START_AGENT_BACKEND: '1' } : undefined,
       label: 'api server',
@@ -175,13 +175,8 @@ const main = async () => {
     })
 
     celeryProcess = await startLoggedProcess({
-      command: 'npx',
-      args: [
-        'tsx',
-        './scripts/setup.ts',
-        'celery',
-        ...(seed ? ['--queues', seedCeleryQueues] : []),
-      ],
+      command: process.execPath,
+      args: ['./scripts/setup.ts', 'celery', ...(seed ? ['--queues', seedCeleryQueues] : [])],
       cwd: e2eDir,
       label: 'celery worker',
       logFilePath: path.join(logDir, 'cucumber-celery.log'),
@@ -189,8 +184,8 @@ const main = async () => {
 
     await startWebServer({
       baseURL,
-      command: 'npx',
-      args: ['tsx', './scripts/setup.ts', 'web'],
+      command: process.execPath,
+      args: ['./scripts/setup.ts', 'web'],
       cwd: e2eDir,
       logFilePath: path.join(logDir, 'cucumber-web.log'),
       reuseExistingServer: reuseExistingWebServer,
@@ -208,9 +203,8 @@ const main = async () => {
       if (full && !hasCustomTags(forwardArgs)) cucumberEnv.E2E_CUCUMBER_TAGS = fullNonExternalTags
 
       const result = await runCommand({
-        command: 'npx',
+        command: process.execPath,
         args: [
-          'tsx',
           './node_modules/@cucumber/cucumber/bin/cucumber.js',
           '--config',
           './cucumber.config.ts',

@@ -122,7 +122,7 @@ class TestAppDslService:
             patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
             patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.app_service.FeatureService") as mock_feature_service,
+            patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
         ):
             mock_workflow_service.return_value.get_draft_workflow.return_value = None
@@ -139,7 +139,7 @@ class TestAppDslService:
                 "gpt-3.5-turbo",
             )
 
-            mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+            mock_feature_service.is_webapp_auth_enabled.return_value = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
             yield {
@@ -153,8 +153,8 @@ class TestAppDslService:
 
     def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         fake = Faker()
-        with patch("services.account_service.FeatureService") as mock_account_feature_service:
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+        with patch("services.account_service.SystemFeatureService") as mock_account_feature_service:
+            mock_account_feature_service.is_registration_allowed.return_value = True
             account = AccountService.create_account(
                 email=fake.email(),
                 name=fake.name(),
@@ -600,6 +600,8 @@ class TestAppDslService:
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
 
         pending = PendingData(
+            tenant_id=_DEFAULT_TENANT_ID,
+            account_id=_DEFAULT_ACCOUNT_ID,
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_workflow_yaml(),
             name="name",
@@ -609,11 +611,7 @@ class TestAppDslService:
             icon_background="#fff",
             app_id=None,
         )
-        redis_client.setex(
-            redis_key,
-            IMPORT_INFO_REDIS_EXPIRY,
-            pending.model_dump_json(exclude={"tenant_id", "account_id"}),
-        )
+        redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, pending.model_dump_json())
 
         created_app = SimpleNamespace(
             id=str(uuid4()),
@@ -761,8 +759,8 @@ class TestAppDslService:
         )
         assert updated is app
         assert app.name == "override-name"
-        assert app.icon_type == IconType.IMAGE
-        assert app.icon == "X"
+        assert app.icon_type == app_dsl_service.DEFAULT_ICON_TYPE
+        assert app.icon == app_dsl_service.DEFAULT_ICON
         assert app.icon_background == "#222222"
         assert app.updated_at is fixed_now
 
@@ -865,18 +863,32 @@ class TestAppDslService:
 
     # ── Export ─────────────────────────────────────────────────────────
 
-    def test_export_dsl_delegates_by_mode(self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session):
+    def test_export_dsl_delegates_by_mode(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+    ):
         workflow_calls: list[bool] = []
         model_calls: list[bool] = []
+
+        def append_workflow(**_kwargs: Any) -> list[str]:
+            workflow_calls.append(True)
+            return []
+
+        def append_model(*_args: Any, **_kwargs: Any) -> list[str]:
+            model_calls.append(True)
+            return []
+
         monkeypatch.setattr(
             AppDslService,
             "_append_workflow_export_data",
-            lambda **_kwargs: workflow_calls.append(True),
+            append_workflow,
         )
         monkeypatch.setattr(
             AppDslService,
             "_append_model_config_export_data",
-            lambda *_args, **_kwargs: model_calls.append(True),
+            append_model,
         )
 
         workflow_app = _app_stub(
@@ -895,12 +907,15 @@ class TestAppDslService:
         assert model_calls == [True]
 
     def test_export_dsl_preserves_icon_and_icon_type(
-        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
     ):
         monkeypatch.setattr(
             AppDslService,
             "_append_workflow_export_data",
-            lambda **_kwargs: None,
+            lambda **_kwargs: [],
         )
 
         emoji_app = _app_stub(
@@ -1010,6 +1025,7 @@ class TestAppDslService:
                     "data": {
                         "type": BuiltinNodeTypes.AGENT,
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                         "agent_binding": {
                             "binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value,
                             AGENT_PACKAGE_REF_KEY: "agent_1",
@@ -1021,6 +1037,7 @@ class TestAppDslService:
                     "data": {
                         "type": BuiltinNodeTypes.AGENT,
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                         "agent_binding": {
                             "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
                             AGENT_PACKAGE_REF_KEY: "agent_1",
@@ -1318,7 +1335,7 @@ class TestAppDslService:
 
         with pytest.raises(
             WorkflowNotFoundError,
-            match="Missing draft workflow configuration, please check.",
+            match="Workflow version not found. Workflow ID:",
         ):
             AppDslService.export_dsl(
                 app, include_secret=False, workflow_id=str(uuid4()), session=db_session_with_containers
@@ -1393,22 +1410,8 @@ class TestAppDslService:
             "_extract_dependencies_from_workflow",
             lambda *_args, **_kwargs: ["dep-1"],
         )
-        monkeypatch.setattr(
-            app_dsl_service.DependenciesAnalysisService,
-            "generate_dependencies",
-            lambda *, tenant_id, dependencies: [
-                SimpleNamespace(
-                    model_dump=lambda: {
-                        "tenant": tenant_id,
-                        "dep": dependencies[0],
-                    }
-                )
-            ],
-        )
-        monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
-
         export_data: dict = {}
-        AppDslService._append_workflow_export_data(
+        dependencies = AppDslService._append_workflow_export_data(
             export_data=export_data,
             app_model=_app_stub(),
             include_secret=False,
@@ -1427,7 +1430,7 @@ class TestAppDslService:
         assert nodes[4]["data"]["webhook_url"] == ""
         assert nodes[4]["data"]["webhook_debug_url"] == ""
         assert nodes[5]["data"]["subscription_id"] == ""
-        assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
+        assert dependencies == ["dep-1"]
 
     def test_append_workflow_export_data_missing_workflow_raises(
         self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
@@ -1453,20 +1456,6 @@ class TestAppDslService:
             "_extract_dependencies_from_model_config",
             lambda *_args, **_kwargs: ["dep-1"],
         )
-        monkeypatch.setattr(
-            app_dsl_service.DependenciesAnalysisService,
-            "generate_dependencies",
-            lambda *, tenant_id, dependencies: [
-                SimpleNamespace(
-                    model_dump=lambda: {
-                        "tenant": tenant_id,
-                        "dep": dependencies[0],
-                    }
-                )
-            ],
-        )
-        monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
-
         app_model_config = MagicMock(app_id="app-1")
         app_model_config.to_dict.return_value = {"agent_mode": {"tools": [{"credential_id": "secret"}]}}
         app_model = _app_stub(id="app-1", app_model_config_id="config-1")
@@ -1476,9 +1465,9 @@ class TestAppDslService:
         monkeypatch.setattr(app_dsl_service, "load_annotation_reply_config", lambda *_args: annotation_reply)
         export_data: dict = {}
 
-        AppDslService._append_model_config_export_data(export_data, app_model, session=session)
+        dependencies = AppDslService._append_model_config_export_data(export_data, app_model, session=session)
         assert export_data["model_config"]["agent_mode"]["tools"] == [{}]
-        assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
+        assert dependencies == ["dep-1"]
         session.get.assert_called_once_with(AppModelConfig, "config-1")
         app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 

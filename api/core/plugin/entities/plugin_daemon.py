@@ -135,6 +135,28 @@ class PluginStringResultResponse(BaseModel):
     result: str = Field(description="The result of the string.")
 
 
+class PluginTTSResultResponse(PluginStringResultResponse):
+    """One TTS data chunk returned by the plugin daemon."""
+
+    mime_type: str | None = Field(default=None, description="The MIME type of the audio chunk.")
+
+
+class TTSAudioChunk(bytes):
+    """A bytes-compatible TTS chunk carrying optional daemon MIME metadata.
+
+    The currently released Graphon runtime exposes TTS output as ``bytes``.
+    This carrier preserves that contract while retaining the daemon field until
+    the structured Graphon ``TTSChunk`` protocol is available in a release.
+    """
+
+    mime_type: str | None
+
+    def __new__(cls, data: bytes | bytearray | memoryview, mime_type: str | None = None):
+        instance = super().__new__(cls, data)
+        instance.mime_type = mime_type
+        return instance
+
+
 class PluginVoiceEntity(BaseModel):
     name: str = Field(description="The name of the voice.")
     value: str = Field(description="The value of the voice.")

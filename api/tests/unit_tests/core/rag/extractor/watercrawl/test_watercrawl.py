@@ -4,6 +4,7 @@ import json
 from typing import Any
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 
 import core.rag.extractor.watercrawl.client as client_module
@@ -301,7 +302,10 @@ class TestWaterCrawlAPIClient:
         result = client.download_result({"result": "https://example.com/result.json"})
 
         assert result["result"] == {"markdown": "body"}
-        assert captured["timeout"] is not None
+        timeout = captured["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect == 5.0
+        assert timeout.read == 30.0
         response.close.assert_called_once()
 
 

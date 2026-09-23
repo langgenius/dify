@@ -4,6 +4,7 @@ import { useFormatDetector } from '../hooks'
 type MockParent = {
   isLink?: boolean
   getURL?: () => string
+  getKey?: () => string
   isListItem?: boolean
 } | null
 
@@ -16,6 +17,7 @@ const {
   mockSetSelectedIsItalic,
   mockSetSelectedIsStrikeThrough,
   mockSetSelectedLinkUrl,
+  mockSetSelectedLinkKey,
   mockSetSelectedIsLink,
   mockSetSelectedIsBullet,
   mockEditorIsComposing,
@@ -30,12 +32,14 @@ const {
     isLink: false,
     isListItem: false,
     getURL: vi.fn(() => ''),
+    getKey: vi.fn(() => 'link-node'),
     getParent: vi.fn<() => MockParent>(() => null),
   },
   mockSetSelectedIsBold: vi.fn(),
   mockSetSelectedIsItalic: vi.fn(),
   mockSetSelectedIsStrikeThrough: vi.fn(),
   mockSetSelectedLinkUrl: vi.fn(),
+  mockSetSelectedLinkKey: vi.fn(),
   mockSetSelectedIsLink: vi.fn(),
   mockSetSelectedIsBullet: vi.fn(),
   mockEditorIsComposing: vi.fn(() => false),
@@ -93,6 +97,7 @@ vi.mock('../../../store', () => ({
       setSelectedIsItalic: mockSetSelectedIsItalic,
       setSelectedIsStrikeThrough: mockSetSelectedIsStrikeThrough,
       setSelectedLinkUrl: mockSetSelectedLinkUrl,
+      setSelectedLinkKey: mockSetSelectedLinkKey,
       setSelectedIsLink: mockSetSelectedIsLink,
       setSelectedIsBullet: mockSetSelectedIsBullet,
     }),

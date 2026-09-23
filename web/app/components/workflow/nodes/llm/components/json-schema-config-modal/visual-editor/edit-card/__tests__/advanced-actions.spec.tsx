@@ -1,65 +1,62 @@
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import type { ComponentProps } from 'react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { useRef } from 'react'
 import { AdvancedActions } from '../advanced-actions'
 
-const hotkeyRegistrations = vi.hoisted(
-  () =>
-    new Map<
-      string,
-      {
-        callback: () => void
-        options?: { enabled?: boolean; ignoreInputs?: boolean }
-      }
-    >(),
-)
+function Editor(props: Omit<ComponentProps<typeof AdvancedActions>, 'target'>) {
+  const target = useRef<HTMLDivElement>(null)
+  return (
+    <div ref={target}>
+      <input aria-label="Property name" />
+      <AdvancedActions {...props} target={target} />
+    </div>
+  )
+}
 
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (
-      hotkey: string,
-      callback: () => void,
-      options?: { enabled?: boolean; ignoreInputs?: boolean },
-    ) => {
-      hotkeyRegistrations.set(hotkey, { callback, options })
-    },
-  }
-})
+function submit(target: HTMLElement, options: KeyboardEventInit = {}) {
+  const event = new KeyboardEvent('keydown', {
+    key: 'Enter',
+    ctrlKey: true,
+    bubbles: true,
+    cancelable: true,
+    ...options,
+  })
+  fireEvent(target, event)
+  fireEvent.keyUp(target, { key: 'Enter', ctrlKey: true })
+  return event
+}
 
 describe('AdvancedActions', () => {
-  beforeEach(() => {
-    hotkeyRegistrations.clear()
-  })
-
-  it('runs the matching actions from the buttons', async () => {
-    const user = userEvent.setup()
+  it('confirms from the property input and the confirm button', () => {
+    const onConfirm = vi.fn()
     const onCancel = vi.fn()
-    const onConfirm = vi.fn()
-    render(<AdvancedActions isConfirmDisabled={false} onCancel={onCancel} onConfirm={onConfirm} />)
-
-    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    await user.click(screen.getByRole('button', { name: /^common\.operation\.confirm/ }))
-
+    render(<Editor onConfirm={onConfirm} onCancel={onCancel} isConfirmDisabled={false} />)
+    expect(submit(screen.getByRole('textbox')).defaultPrevented).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: /operation.confirm/ }))
+    fireEvent.click(screen.getByRole('button', { name: /operation.cancel/ }))
+    expect(onConfirm).toHaveBeenCalledTimes(2)
     expect(onCancel).toHaveBeenCalledOnce()
-    expect(onConfirm).toHaveBeenCalledOnce()
   })
 
-  it('registers the confirm shortcut for input fields', () => {
+  it('does not submit from outside the property editor or while disabled', () => {
     const onConfirm = vi.fn()
-    render(<AdvancedActions isConfirmDisabled={false} onCancel={vi.fn()} onConfirm={onConfirm} />)
-
-    const registration = hotkeyRegistrations.get('Mod+Enter')
-    registration?.callback()
-
-    expect(onConfirm).toHaveBeenCalledOnce()
-    expect(registration?.options).toEqual({ enabled: true, ignoreInputs: false })
+    const { rerender } = render(
+      <Editor onConfirm={onConfirm} onCancel={vi.fn()} isConfirmDisabled={false} />,
+    )
+    expect(submit(document.body).defaultPrevented).toBe(false)
+    rerender(<Editor onConfirm={onConfirm} onCancel={vi.fn()} isConfirmDisabled />)
+    expect(screen.getByRole('button', { name: /operation.confirm/ })).toBeDisabled()
+    expect(submit(screen.getByRole('textbox')).defaultPrevented).toBe(false)
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 
-  it('disables both confirmation paths when confirmation is unavailable', () => {
-    render(<AdvancedActions isConfirmDisabled onCancel={vi.fn()} onConfirm={vi.fn()} />)
-
-    expect(screen.getByRole('button', { name: /^common\.operation\.confirm/ })).toBeDisabled()
-    expect(hotkeyRegistrations.get('Mod+Enter')?.options?.enabled).toBe(false)
+  it('preserves claimed and IME events', () => {
+    const onConfirm = vi.fn()
+    render(<Editor onConfirm={onConfirm} onCancel={vi.fn()} isConfirmDisabled={false} />)
+    const input = screen.getByRole('textbox')
+    expect(submit(input, { isComposing: true }).defaultPrevented).toBe(false)
+    input.addEventListener('keydown', (event) => event.preventDefault(), { once: true })
+    submit(input)
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 })

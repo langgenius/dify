@@ -1,17 +1,19 @@
 import type { AppImportPayload, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppIconType } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useRef, useState } from 'react'
+import { createElement, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
+import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { userProfileIdAtom } from '@/context/account-state'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 
@@ -24,18 +26,26 @@ type ResponseCallback = {
   onFailed?: () => void
   skipRedirectOnSuccess?: boolean
 }
+
 export const useImportDSL = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { push } = useRouter()
-  const { mutateAsync: importApp } = useMutation(consoleQuery.apps.imports.post.mutationOptions())
+  const { mutateAsync: importApp } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+  )
   const { mutateAsync: confirmImport } = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const actionInFlightRef = useRef(false)
   const [isFetching, setIsFetching] = useState(false)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
@@ -77,7 +87,10 @@ export const useImportDSL = () => {
           )
           const description =
             status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-              ? t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
+              ? createElement(DSLImportWarningDescription, {
+                  warnings: response.warnings,
+                  fallback: t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
+                })
               : undefined
 
           if (status === DSLImportStatus.COMPLETED) toast.success(message)
@@ -105,11 +118,21 @@ export const useImportDSL = () => {
           importIdRef.current = id
           onPending?.(response)
         } else {
-          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+          toast.error(
+            t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+            {
+              description: response.error || undefined,
+            },
+          )
           onFailed?.()
         }
-      } catch {
-        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      } catch (error) {
+        toast.error(
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          {
+            description: await getAppTransferErrorMessage(error),
+          },
+        )
         onFailed?.()
       } finally {
         actionInFlightRef.current = false
@@ -144,6 +167,16 @@ export const useImportDSL = () => {
         })
 
         const { status, app_id, app_mode, permission_keys } = response
+        if (status === DSLImportStatus.FAILED) {
+          toast.error(
+            t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+            {
+              description: response.error || undefined,
+            },
+          )
+          onFailed?.()
+          return
+        }
         if (!app_id) return
 
         if (
@@ -159,7 +192,10 @@ export const useImportDSL = () => {
           )
           const description =
             status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-              ? t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
+              ? createElement(DSLImportWarningDescription, {
+                  warnings: response.warnings,
+                  fallback: t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
+                })
               : undefined
 
           if (status === DSLImportStatus.COMPLETED) toast.success(message)
@@ -178,12 +214,14 @@ export const useImportDSL = () => {
               isRbacEnabled,
             })
           }
-        } else if (status === DSLImportStatus.FAILED) {
-          toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-          onFailed?.()
         }
-      } catch {
-        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      } catch (error) {
+        toast.error(
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          {
+            description: await getAppTransferErrorMessage(error),
+          },
+        )
         onFailed?.()
       } finally {
         actionInFlightRef.current = false

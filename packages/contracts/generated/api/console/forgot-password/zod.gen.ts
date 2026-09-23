@@ -14,7 +14,6 @@ export const zForgotPasswordSendPayload = z.object({
  * ForgotPasswordEmailResponse
  */
 export const zForgotPasswordEmailResponse = z.object({
-  code: z.string().nullish(),
   data: z.string().nullish(),
   result: z.string(),
 })

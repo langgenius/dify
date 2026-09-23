@@ -8,7 +8,7 @@ import type {
 } from '@/app/components/base/form/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useForm, useStore } from '@tanstack/react-form'
-import { memo, useCallback, useImperativeHandle, useMemo, useState } from 'react'
+import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useGetFormValues, useGetValidators } from '@/app/components/base/form/hooks'
 import { FormItemValidateStatusEnum } from '@/app/components/base/form/types'
 import { BaseField } from '.'
@@ -58,7 +58,25 @@ const BaseForm = ({
     defaultValues: initialDefaultValues,
   })
   const form: any = formFromProps || formFromHook
-  const { getFormValues } = useGetFormValues(form, formSchemas)
+  const formElementRef = useRef<HTMLFormElement>(null)
+  const focusInvalidField = useCallback(
+    (name: string) => {
+      form.setFieldMeta(name, (meta: AnyFieldApi['state']['meta']) => ({
+        ...meta,
+        isTouched: true,
+      }))
+      const fieldElement = Array.from(
+        formElementRef.current?.querySelectorAll<HTMLElement>('[data-form-field]') ?? [],
+      ).find((element) => element.dataset.formField === name)
+      fieldElement
+        ?.querySelector<HTMLElement>(
+          'input:not([type="hidden"]):not(:disabled), button:not(:disabled), textarea:not(:disabled), [role="checkbox"]:not([aria-disabled="true"]), [role="radio"]:not([aria-disabled="true"])',
+        )
+        ?.focus()
+    },
+    [form],
+  )
+  const { getFormValues } = useGetFormValues(form, formSchemas, focusInvalidField)
   const { getValidators } = useGetValidators()
 
   const [fieldStates, setFieldStates] = useState<Record<string, FieldState>>({})
@@ -183,7 +201,7 @@ const BaseForm = ({
   }
 
   return (
-    <form className={cn(formClassName)} onSubmit={handleSubmit}>
+    <form ref={formElementRef} className={cn(formClassName)} onSubmit={handleSubmit}>
       {formSchemas.map(renderFieldWrapper)}
     </form>
   )

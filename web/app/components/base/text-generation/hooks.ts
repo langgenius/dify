@@ -1,6 +1,6 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { ssePost } from '@/service/base'
 
 type SendOptions = {
@@ -8,7 +8,7 @@ type SendOptions = {
 }
 
 export const useTextGeneration = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [isResponding, setIsResponding] = useState(false)
   const [completion, setCompletion] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)

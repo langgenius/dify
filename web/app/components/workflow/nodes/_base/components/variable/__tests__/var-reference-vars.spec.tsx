@@ -1,5 +1,6 @@
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferenceVars from '../var-reference-vars'
 
@@ -27,7 +28,13 @@ vi.mock('../manage-input-field', () => ({
 }))
 
 describe('VarReferenceVars', () => {
+  let keyboardTarget: HTMLInputElement
   const createVars = (vars: NodeOutPutVar[]) => vars
+
+  beforeEach(() => {
+    render(<input aria-label="Variable owner" />)
+    keyboardTarget = screen.getByRole('textbox', { name: 'Variable owner' })
+  })
 
   const baseVars = createVars([
     {
@@ -37,16 +44,24 @@ describe('VarReferenceVars', () => {
     },
   ])
 
-  it('should filter vars through the search box and call onClose on escape', () => {
+  it('should filter, clear without leaving the search group, and close on escape', async () => {
+    const user = userEvent.setup()
     const onClose = vi.fn()
-    render(<VarReferenceVars vars={baseVars} onChange={vi.fn()} onClose={onClose} />)
+    const onBlur = vi.fn()
+    render(
+      <VarReferenceVars vars={baseVars} onChange={vi.fn()} onClose={onClose} onBlur={onBlur} />,
+    )
 
-    fireEvent.change(screen.getByPlaceholderText('workflow.common.searchVar'), {
-      target: { value: 'valid' },
-    })
+    const searchBox = screen.getByRole('searchbox', { name: 'workflow.common.searchVar' })
+    await user.type(searchBox, 'valid')
     expect(screen.getByText('valid_name')).toBeInTheDocument()
 
-    fireEvent.keyDown(screen.getByPlaceholderText('workflow.common.searchVar'), { key: 'Escape' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    expect(searchBox).toHaveValue('')
+    expect(searchBox).toHaveFocus()
+    expect(onBlur).not.toHaveBeenCalled()
+
+    await user.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -56,6 +71,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         vars={createVars([
           {
             title: 'Node A',
@@ -76,12 +92,15 @@ describe('VarReferenceVars', () => {
     expect(firstItem).toHaveAttribute('data-selected', 'true')
     expect(secondItem).toHaveAttribute('data-selected', 'false')
 
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    fireEvent.keyDown(document.body, { key: 'ArrowDown' })
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown', isComposing: true })
+    expect(firstItem).toHaveAttribute('data-selected', 'true')
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown' })
 
     expect(firstItem).toHaveAttribute('data-selected', 'false')
     expect(secondItem).toHaveAttribute('data-selected', 'true')
 
-    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
 
     expect(onChange).toHaveBeenCalledWith(
       ['node-a', 'second_value'],
@@ -128,6 +147,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         preferSchemaType
         vars={createVars([
           {
@@ -154,6 +174,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         vars={createVars([
           {
             title: 'Flat',
@@ -171,7 +192,7 @@ describe('VarReferenceVars', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.debug.lastOutput')).toBeInTheDocument()
+    expect(screen.getByText('workflowDebug.debug.lastOutput')).toBeInTheDocument()
     expect(screen.getByText('current_prompt')).toBeInTheDocument()
   })
 
@@ -181,6 +202,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         isSupportFileVar
         vars={createVars([
           {
@@ -231,6 +253,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         isSupportFileVar
         vars={createVars([
           {
@@ -248,13 +271,13 @@ describe('VarReferenceVars', () => {
       />,
     )
 
-    fireEvent.keyDown(document, { key: 'Enter' })
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-    fireEvent.keyDown(document, { key: 'Enter' })
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-    fireEvent.keyDown(document, { key: 'Enter' })
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
 
     expect(onChange).toHaveBeenNthCalledWith(
       1,
@@ -284,6 +307,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         vars={createVars([
           {
             title: 'Object vars',
@@ -314,6 +338,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         searchText="child"
         vars={createVars([
           {
@@ -372,6 +397,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         vars={createVars([
           {
             title: 'Files',
@@ -383,7 +409,7 @@ describe('VarReferenceVars', () => {
       />,
     )
 
-    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
 
     expect(onChange).not.toHaveBeenCalled()
   })

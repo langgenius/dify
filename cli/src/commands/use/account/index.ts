@@ -1,3 +1,4 @@
+import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { Flags } from '@/framework/flags'
 import { realStreams } from '@/sys/io/streams'
@@ -5,6 +6,8 @@ import { runUseAccount } from './use-account'
 
 export default class UseAccount extends DifyCommand {
   static override description = 'Switch the active account on the current host'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> use account',

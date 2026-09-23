@@ -1,6 +1,6 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { Role } from './access-control'
-import type { I18nText } from '@/i18n-config/language'
+import type { I18nText } from '@/i18n/language'
 import type { Model } from '@/types/app'
 
 export type CommonResponse = {

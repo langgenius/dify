@@ -4,7 +4,7 @@ import type { ButtonProps } from '@langgenius/dify-ui/button'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { useAgentOrchestrateReadOnly } from '../read-only-context'
+import { useAgentOrchestrateViewingVersion } from '../read-only-context'
 
 type ConfigureSectionAddButtonProps = Omit<
   ButtonProps,
@@ -18,10 +18,10 @@ export function ConfigureSectionAddButton({
   className,
   ...props
 }: ConfigureSectionAddButtonProps) {
-  const { t } = useTranslation('common')
-  const readOnly = useAgentOrchestrateReadOnly()
+  const { t } = useTranslation(['common'])
+  const isViewingVersion = useAgentOrchestrateViewingVersion()
 
-  if (readOnly) return null
+  if (isViewingVersion) return null
 
   return (
     <Button

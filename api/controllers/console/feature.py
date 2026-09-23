@@ -41,7 +41,7 @@ register_response_schema_models(
 @console_ns.route("/features")
 class FeatureApi(Resource):
     @console_ns.doc("get_tenant_features")
-    @console_ns.doc(description="Get feature configuration for current tenant")
+    @console_ns.doc(description="Get feature availability and limits for the current workspace")
     @console_ns.response(
         200,
         "Success",
@@ -50,10 +50,8 @@ class FeatureApi(Resource):
     @console_account_admission()
     @cloud_utm_record
     def get(self, request_context: RequestContext):
-        """Get feature configuration for current tenant"""
-        payload = application_services().feature_queries.get_features(request_context).model_dump()
-        payload.pop("vector_space", None)
-        return payload
+        """Get current workspace features."""
+        return dump_response(FeatureModel, application_services().feature_queries.get_features(request_context))
 
 
 @console_ns.route("/features/vector-space")
@@ -75,18 +73,18 @@ class FeatureVectorSpaceApi(Resource):
 @console_ns.route("/trial-models")
 class TrialModelsApi(Resource):
     @console_ns.doc("get_trial_models")
-    @console_ns.doc(description="Get hosted trial model provider configuration")
+    @console_ns.doc(description="Get hosted credit model provider configuration for the current workspace")
     @console_ns.response(
         200,
         "Success",
         console_ns.models[TrialModelsResponse.__name__],
     )
     @console_account_admission()
-    def get(self, _request_context: RequestContext):
-        """Get hosted trial model provider configuration for model-provider pages."""
+    def get(self, request_context: RequestContext):
+        """Get hosted credit provider configuration for the current workspace."""
         return dump_response(
             TrialModelsResponse,
-            {"trial_models": application_services().feature_queries.get_trial_models()},
+            {"trial_models": application_services().feature_queries.get_trial_models(request_context)},
         )
 
 
@@ -125,7 +123,7 @@ class SystemFeatureApi(Resource):
         Authentication configuration must be available before the authentication flow can be selected.
         Authenticated license detail is served separately by SystemFeatureLicenseApi.
         """
-        return dump_response(SystemFeatureModel, application_services().feature_queries.get_system_features())
+        return dump_response(SystemFeatureModel, application_services().feature_queries.get_public_system_features())
 
 
 @console_ns.route("/system-features/license")

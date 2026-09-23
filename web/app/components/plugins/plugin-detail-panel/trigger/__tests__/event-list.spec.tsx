@@ -1,6 +1,6 @@
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerEventsList } from '../event-list'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({

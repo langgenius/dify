@@ -1,5 +1,5 @@
 import type { AppDescribeResponse } from '@dify/contracts/api/openapi/types.gen'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
   covers,
   FieldInfo,

@@ -1,17 +1,17 @@
-/* oxlint-disable react/only-export-components */
 'use client'
 import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
 import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
 import type { ChartRow } from './app-chart-utils'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useQuery } from '@tanstack/react-query'
-import ReactECharts from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react/esm/core'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
-import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { echarts } from '@/app/components/base/line-chart/echarts'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { consoleQuery } from '@/service/console'
 import {
   buildChartOptions,
   CHART_TYPE_CONFIG,
@@ -69,7 +69,9 @@ const Chart: React.FC<IChartProps> = ({
   yMax,
   className,
 }) => {
-  const { t } = useTranslation()
+  const titleId = React.useId()
+
+  const { t } = useTranslation(['appOverview'])
   const statistics = chartData.data
   const yField = getChartValueField(statistics, valueKey)
   const options = buildChartOptions({
@@ -96,12 +98,19 @@ const Chart: React.FC<IChartProps> = ({
     >
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center">
-          <div className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary">
+          <div
+            id={titleId}
+            className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary"
+            title={title}
+          >
             {title}
           </div>
           {explanation && (
-            <Infotip aria-label={explanation} className="ml-1" popupClassName="w-[240px]">
-              {explanation}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+              <InfotipContent aria-labelledby={titleId} className="w-60">
+                {explanation}
+              </InfotipContent>
             </Infotip>
           )}
         </div>
@@ -123,6 +132,7 @@ const Chart: React.FC<IChartProps> = ({
       </div>
       <div className="h-60 shrink-0 px-6 pb-4">
         <ReactECharts
+          echarts={echarts}
           option={options}
           opts={ECHARTS_RENDER_OPTIONS}
           style={{ height: '100%', width: '100%' }}
@@ -194,10 +204,10 @@ const createBizChartComponent = <TData extends ChartResponse>({
   className,
 }: BizChartConfig<TData>): FC<IBizChartProps> => {
   const BizChart: FC<IBizChartProps> = ({ id, period }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['appOverview'])
     const { data: response, isLoading } = useQuery(queryOptions(id, period.query))
 
-    if (isLoading || !response) return <Loading />
+    if (isLoading || !response) return <LoadingPlaceholder />
 
     const noDataFlag = !response.data || response.data.length === 0
     const fallbackKey = emptyValueKey ?? valueKey

@@ -2,6 +2,7 @@ import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-
 import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as reactI18next from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { withSelectorKey } from '@/test/i18n-mock'
@@ -26,7 +27,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apiBasedExtension: {
       post: {
@@ -50,7 +51,7 @@ vi.mock('@tanstack/react-query', () => ({
   })),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -295,11 +296,13 @@ describe('ApiBasedExtensionModal', () => {
     })
 
     it('should request closing when clicking close button', async () => {
+      const user = userEvent.setup()
+
       // Arrange
       renderModal()
 
       // Act
-      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       // Assert
       await waitFor(() => {
@@ -355,7 +358,7 @@ describe('ApiBasedExtensionModal', () => {
         t: withSelectorKey((key: string) => {
           if (missingKeys.includes(key)) return ''
           return `common.${key}`
-        }, 'common') as unknown as TFunction,
+        }, 'common') as unknown as TFunction<['common']>,
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act

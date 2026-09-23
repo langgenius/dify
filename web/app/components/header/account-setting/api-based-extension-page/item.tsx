@@ -11,7 +11,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type ItemProps = {
   apiBasedExtension: ApiBasedExtensionResponse
@@ -19,7 +19,7 @@ type ItemProps = {
   canManage?: boolean
 }
 export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const deleteApiBasedExtensionMutation = useMutation(
     consoleQuery.apiBasedExtension.byId.delete.mutationOptions(),

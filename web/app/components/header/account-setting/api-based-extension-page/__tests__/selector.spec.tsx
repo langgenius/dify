@@ -22,7 +22,7 @@ vi.mock('@/context/i18n', () => ({
       `https://docs.dify.ai${path}`,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apiBasedExtension: {
       get: {

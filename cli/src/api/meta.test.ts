@@ -1,7 +1,7 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { MetaClient } from './meta.js'
 
 describe('MetaClient', () => {
@@ -38,7 +38,7 @@ describe('MetaClient', () => {
     const info = await client.serverVersion()
 
     expect(info.version).toBe('')
-    expect(info.edition).toBe('SELF_HOSTED')
+    expect(info.edition).toBe('COMMUNITY')
   })
 
   it('throws when the host has no Dify on it', async () => {

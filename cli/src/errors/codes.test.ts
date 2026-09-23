@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { ALL_ERROR_CODES, CODE_TO_EXIT_MAP, ErrorCode, ExitCode, exitFor } from './codes'
 
 describe('error codes', () => {

@@ -1,9 +1,11 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { createContext, use } from 'react'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import { consoleQuery } from '@/service/console'
 
 export type AgentConfigApiContext = {
   agentId: string
@@ -34,6 +36,26 @@ export const useAgentConfigSkills = () => {
     apiContext,
     skills,
   }
+}
+
+export const useAgentWorkspaceSkillBindings = () => {
+  const { agentId } = useAgentConfigApiContext()
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
+
+  return useQuery({
+    ...consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryOptions({
+      input: {
+        params: {
+          agent_id: agentId,
+        },
+      },
+    }),
+    enabled: enableSkill === true,
+  })
 }
 
 export const useAgentConfigFiles = () => {

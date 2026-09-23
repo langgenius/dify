@@ -1,10 +1,8 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import useDocumentTitle from '@/hooks/use-document-title'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import TryApp from '../index'
 
-vi.mock('@/hooks/use-document-title', () => ({ default: vi.fn() }))
 vi.mock('../chat', () => ({
   default: () => <section aria-label="Chat preview" />,
 }))
@@ -40,9 +38,11 @@ describe('TryApp', () => {
     expect(screen.getByRole('region', { name })).toBeInTheDocument()
   })
 
-  it('sets the document title from the shared app metadata', () => {
+  it('preserves document title ownership for the underlying route', () => {
+    document.title = 'Apps - Dify'
+
     render(<TryApp appId="app-id" appDetail={createApp('chat')} />)
 
-    expect(useDocumentTitle).toHaveBeenCalledWith('Try App')
+    expect(document.title).toBe('Apps - Dify')
   })
 })

@@ -41,6 +41,48 @@ class AgentBuildSandboxNotFoundError(BaseHTTPException):
     code = 404
 
 
+class AgentHomeSnapshotCreateFailedError(BaseHTTPException):
+    error_code = "agent_home_snapshot_create_failed"
+    description = "Failed to capture the Agent Home Snapshot."
+    code = 502
+
+
+class AgentHomeSnapshotTooLargeError(BaseHTTPException):
+    error_code = "agent_home_snapshot_too_large"
+    description = "The Agent Home Snapshot exceeds the configured size limit."
+    code = 413
+
+
+class InvalidRosterAgentPackageError(BaseHTTPException):
+    error_code = "invalid_roster_agent_package"
+    description = "The Roster Agent package is invalid."
+    code = 400
+
+
+class RosterAgentPackageTooLargeError(BaseHTTPException):
+    error_code = "roster_agent_package_too_large"
+    description = "The Roster Agent package exceeds the size limit."
+    code = 413
+
+
+class RosterAgentPackageExportFailedError(BaseHTTPException):
+    error_code = "roster_agent_package_export_failed"
+    description = "The Roster Agent package could not be exported."
+    code = 500
+
+
+class RosterAgentPackageImportFailedError(BaseHTTPException):
+    error_code = "roster_agent_package_import_failed"
+    description = "The Roster Agent package could not be imported."
+    code = 500
+
+
+class RosterAgentPackageResourceUnavailableError(BaseHTTPException):
+    error_code = "roster_agent_package_resource_unavailable"
+    description = "The Roster Agent package resources could not be stored."
+    code = 503
+
+
 class AgentSoulLockedError(BadRequest):
     description = "Agent Soul is locked for this workflow node."
 

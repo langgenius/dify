@@ -3,12 +3,12 @@ import type { SchemaRoot } from '../../../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useAutoGenModel } from '@/app/components/app/configuration/config/auto-gen-model-storage'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import useTheme from '@/hooks/use-theme'
 import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import { ModelModeType, Theme } from '@/types/app'
@@ -155,7 +155,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
         placement="bottom-end"
         sideOffset={4}
         alignOffset={crossAxisOffset ?? 0}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         {view === GENERATOR_VIEWS.promptEditor && (
           <PromptEditor

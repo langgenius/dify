@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
+    StopFlagCommandChannel,
 )
 from graphon.graph_engine.entities.commands import AbortCommand, PauseCommand
 
@@ -95,13 +97,23 @@ def test_celery_signal_command_channel_emits_abort_once_per_instance() -> None:
     assert channel.fetch_commands() == []
 
 
-def test_celery_signal_command_channel_send_command_is_noop() -> None:
-    channel = CelerySignalCommandChannel(
-        shutdown_state_getter=lambda: False,
-        abort_reason="worker shutdown",
-    )
-    command = PauseCommand(reason="pause")
+def test_stop_flag_command_channel_emits_abort_when_flag_is_set() -> None:
+    channel = StopFlagCommandChannel(task_id="task-1", abort_reason="User requested stop")
 
-    channel.send_command(command)
+    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=False):
+        assert channel.fetch_commands() == []
 
-    assert channel.fetch_commands() == []
+    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=True):
+        commands = channel.fetch_commands()
+
+    assert len(commands) == 1
+    assert isinstance(commands[0], AbortCommand)
+    assert commands[0].reason == "User requested stop"
+
+
+def test_stop_flag_command_channel_emits_abort_once_per_instance() -> None:
+    channel = StopFlagCommandChannel(task_id="task-1")
+
+    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=True):
+        assert len(channel.fetch_commands()) == 1
+        assert channel.fetch_commands() == []

@@ -7,7 +7,7 @@ type ErrorHandleTipProps = {
   type?: ErrorHandleTypeEnum
 }
 const ErrorHandleTip = ({ type }: ErrorHandleTipProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const text = useMemo(() => {
     if (type === ErrorHandleTypeEnum.failBranch)

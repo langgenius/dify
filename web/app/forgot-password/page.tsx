@@ -4,13 +4,11 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
 import Header from '../signin/_header'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
 const ForgotPassword = () => {
-  useDocumentTitle('')
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

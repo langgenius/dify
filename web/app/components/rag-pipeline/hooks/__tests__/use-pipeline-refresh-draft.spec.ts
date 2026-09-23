@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { usePipelineRefreshDraft } from '../use-pipeline-refresh-draft'
 
 const mockWorkflowStoreGetState = vi.fn()

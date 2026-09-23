@@ -1,15 +1,8 @@
 import type { Page } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
-import {
-  createConfiguredTestAgent,
-  createTestAgent,
-  getAgentConfigurePath,
-  saveAgentComposerDraft,
-} from '../../agent-v2/support/agent'
-import { getAgentDriveSkills, uploadAgentDriveSkill } from '../../agent-v2/support/agent-drive'
+import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure.ts'
 import {
   concurrentFirstAgentPrompt,
   concurrentSecondAgentPrompt,
@@ -18,21 +11,29 @@ import {
   normalAgentPrompt,
   normalAgentSoulConfig,
   updatedAgentPrompt,
-} from '../../agent-v2/support/agent-soul'
+} from '../../agent-v2/support/agent-soul.ts'
 import {
-  agentBuilderTestMaterials,
-  getAgentBuilderTestMaterialPath,
-} from '../../agent-v2/support/test-materials'
+  createConfiguredTestAgent,
+  createTestAgent,
+  getAgentConfigurePath,
+  saveAgentComposerDraft,
+} from '../../agent-v2/support/agent.ts'
 import {
   expectNormalAgentPromptDraft,
   getCurrentAgentId,
   getPreseededAgent,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 const concurrentAgentPrompts = [concurrentFirstAgentPrompt, concurrentSecondAgentPrompt]
 
 const getPromptEditor = (page: Page) =>
   page.getByRole('region', { name: 'Prompt' }).getByRole('textbox', { name: 'Prompt' })
+
+const getAgentModelSelector = (page: Page) =>
+  page
+    .getByRole('region', { name: 'Configure' })
+    .getByRole('group', { name: 'Model' })
+    .getByRole('button', { name: /^(?!Model Settings$).+/ })
 
 async function fillAgentPromptEditor(page: Page, prompt: string) {
   const promptSection = page.getByRole('region', { name: 'Prompt' })
@@ -42,10 +43,10 @@ async function fillAgentPromptEditor(page: Page, prompt: string) {
 }
 
 async function selectAgentModel(page: Page, modelName: string) {
-  await page.getByRole('combobox').first().click()
+  await getAgentModelSelector(page).click()
   await page.getByPlaceholder('Search model').fill(modelName)
   const escapedModelName = modelName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  await page.getByRole('option', { name: new RegExp(`${escapedModelName}(?:\\s|$)`) }).click()
+  await page.getByRole('button', { name: new RegExp(`${escapedModelName}(?:\\s|$)`) }).click()
 }
 
 async function expectAgentComposerPrompt(world: DifyWorld, agentId: string, prompt: string) {
@@ -136,30 +137,6 @@ Given('the Agent v2 composer draft is publishable', async function (this: DifyWo
     createPublishableAgentSoulConfig(normalAgentSoulConfig),
   )
 })
-
-Given(
-  'the e2e-summary-skill Skill is available to the Agent v2 test agent',
-  async function (this: DifyWorld) {
-    const agentId = getCurrentAgentId(this)
-    const upload = await uploadAgentDriveSkill(this.getConsoleClient(), {
-      agentId,
-      fileName: agentBuilderTestMaterials.summarySkill,
-      filePath: getAgentBuilderTestMaterialPath('summarySkill'),
-    })
-    this.createdAgentDriveFiles.push({ agentId, key: upload.skill.skill_md_key })
-    if (upload.skill.archive_key)
-      this.createdAgentDriveFiles.push({ agentId, key: upload.skill.archive_key })
-  },
-)
-
-Then(
-  'the Agent v2 test agent should include drive skill {string}',
-  async function (this: DifyWorld, skillName: string) {
-    const skills = await getAgentDriveSkills(this.getConsoleClient(), getCurrentAgentId(this))
-
-    expect(skills.map((skill) => skill.name)).toContain(skillName)
-  },
-)
 
 When('I open the Agent v2 configure page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentConfigurePath(getCurrentAgentId(this)))
@@ -320,13 +297,27 @@ Then(
 )
 
 Then(
+  'I should see the workspace default chat model in the Agent v2 model selector',
+  async function (this: DifyWorld) {
+    const response = await this.getConsoleClient().workspaces.current.defaultModel.get({
+      query: { model_type: 'llm' },
+    })
+    if (!response.data) throw new Error('The workspace default chat model is not configured.')
+
+    await expect(getAgentModelSelector(this.getPage())).toContainText(response.data.model, {
+      timeout: 30_000,
+    })
+  },
+)
+
+Then(
   'I should see the stable E2E model in the Agent v2 model selector',
   async function (this: DifyWorld) {
     const stableModel = this.agentBuilder.fixtures.stableModel
     if (!stableModel)
       throw new Error('Stable chat model fixture setup must run before asserting the Agent model.')
 
-    await expect(this.getPage().getByText(stableModel.name, { exact: true })).toBeVisible({
+    await expect(getAgentModelSelector(this.getPage())).toContainText(stableModel.name, {
       timeout: 30_000,
     })
   },
@@ -341,7 +332,7 @@ Then(
         'Agent-decision chat model fixture setup must run before asserting the Agent model.',
       )
 
-    await expect(this.getPage().getByText(model.name, { exact: true })).toBeVisible({
+    await expect(getAgentModelSelector(this.getPage())).toContainText(model.name, {
       timeout: 30_000,
     })
   },

@@ -73,8 +73,8 @@ def disable_segment_from_index_task(segment_id: str):
                     segment_ids=[segment.id],
                     disabled_by=segment.disabled_by,
                 )
-            except Exception as e:
-                logger.warning("Failed to disable summary for segment %s: %s", segment.id, str(e))
+            except Exception:
+                logger.warning("Failed to disable summary for segment %s", segment.id, exc_info=True)
 
             end_at = time.perf_counter()
             logger.info(

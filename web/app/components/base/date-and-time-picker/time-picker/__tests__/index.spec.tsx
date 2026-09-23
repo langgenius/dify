@@ -690,7 +690,7 @@ describe('TimePicker', () => {
 
       const timezoneLabel = screen.getByTitle(/Timezone: Asia\/Shanghai/)
       expect(timezoneLabel)!.toBeInTheDocument()
-      expect(timezoneLabel)!.toHaveTextContent(/UTC[+-]\d+/)
+      expect(timezoneLabel.textContent).toMatch(/UTC[+-]\d+/)
     })
 
     it('should not display timezone label when showTimezone is true but timezone is not provided', () => {

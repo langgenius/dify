@@ -55,8 +55,8 @@ class PdfExtractor(BaseExtractor):
     def __init__(
         self,
         file_path: str,
-        tenant_id: str,
-        user_id: str,
+        tenant_id: str | None = None,
+        user_id: str | None = None,
         file_cache_key: str | None = None,
         *,
         session: Session | None = None,
@@ -127,6 +127,12 @@ class PdfExtractor(BaseExtractor):
         Returns:
             Markdown string containing links to the extracted images.
         """
+        if not self._tenant_id or not self._user_id:
+            # No tenant context (e.g. file loaded from a URL rather than an
+            # uploaded file): extracted images cannot be persisted, so skip
+            # image extraction and return text only.
+            return ""
+
         image_content = []
         upload_files = []
         base_url = dify_config.FILES_URL

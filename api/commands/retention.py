@@ -10,6 +10,8 @@ import click
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
@@ -126,14 +128,12 @@ def _get_archive_candidate_tenant_ids_by_prefix(
 
 
 def _filter_paid_workflow_archive_tenant_ids(tenant_ids: list[str]) -> tuple[list[str], list[str]]:
-    from configs import dify_config
-    from enums.cloud_plan import CloudPlan
     from services.billing_service import BillingService
 
     tenant_ids = sorted(set(tenant_ids))
     if not tenant_ids:
         return [], []
-    if not dify_config.BILLING_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return tenant_ids, []
 
     plans = BillingService.get_plan_bulk_with_cache(tenant_ids)
@@ -1462,7 +1462,7 @@ def cleanup_orphaned_draft_variables(
     "--graceful-period",
     default=21,
     show_default=True,
-    help="Graceful period in days after subscription expiration, will be ignored when billing is disabled.",
+    help="Graceful period in days after subscription expiration; ignored outside the Cloud edition.",
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleting")
 def clean_expired_messages(
@@ -1514,8 +1514,8 @@ def clean_expired_messages(
                 if from_days_ago <= before_days:
                     raise click.UsageError("--from-days-ago must be greater than --before-days.")
 
-        # Create policy based on billing configuration
-        # NOTE: graceful_period will be ignored when billing is disabled.
+        # Create the policy for the configured deployment edition.
+        # NOTE: graceful_period is ignored outside the Cloud edition.
         policy = create_message_clean_policy(graceful_period_days=graceful_period)
 
         if from_days_ago is not None and before_days is not None:

@@ -1,18 +1,9 @@
-'use client'
-import type { FC } from 'react'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-import useDocumentTitle from '@/hooks/use-document-title'
+import type { ReactNode } from 'react'
 
 export type IAppDetail = {
-  children: React.ReactNode
+  children: ReactNode
 }
 
-const AppDetail: FC<IAppDetail> = ({ children }) => {
-  const { t } = useTranslation()
-  useDocumentTitle(t(($) => $['menus.appDetail'], { ns: 'common' }))
+const AppDetail = ({ children }: IAppDetail) => children
 
-  return <>{children}</>
-}
-
-export default React.memo(AppDetail)
+export default AppDetail

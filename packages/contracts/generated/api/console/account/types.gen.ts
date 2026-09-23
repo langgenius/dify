@@ -87,6 +87,10 @@ export type EducationActivatePayload = {
   token: string
 }
 
+export type EducationActivateResponse = {
+  message: string
+}
+
 export type EducationAutocompleteResponse = {
   curr_page?: number | null
   data?: Array<string>
@@ -123,6 +127,14 @@ export type AccountPasswordPayload = {
   new_password: string
   password?: string | null
   repeat_new_password: string
+}
+
+export type AccountProfilePatchPayload = {
+  avatar?: string
+  interface_language?: string
+  interface_theme?: 'dark' | 'light'
+  name?: string
+  timezone?: string
 }
 
 export type AccountTimezonePayload = {
@@ -297,9 +309,7 @@ export type PostAccountEducationData = {
 }
 
 export type PostAccountEducationResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EducationActivateResponse
 }
 
 export type PostAccountEducationResponse =
@@ -431,6 +441,20 @@ export type GetAccountProfileResponses = {
 }
 
 export type GetAccountProfileResponse = GetAccountProfileResponses[keyof GetAccountProfileResponses]
+
+export type PatchAccountProfileData = {
+  body: AccountProfilePatchPayload
+  path?: never
+  query?: never
+  url: '/account/profile'
+}
+
+export type PatchAccountProfileResponses = {
+  200: AccountResponse
+}
+
+export type PatchAccountProfileResponse =
+  PatchAccountProfileResponses[keyof PatchAccountProfileResponses]
 
 export type PostAccountTimezoneData = {
   body: AccountTimezonePayload
