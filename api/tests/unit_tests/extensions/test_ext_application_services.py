@@ -86,8 +86,8 @@ from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
-from services.installed_app_completion_adapters import AppGenerateServiceCompletionRuntime
-from services.installed_app_completion_service import InstalledAppCompletionService
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
+from services.installed_app_generation_service import InstalledAppGenerationService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
@@ -199,13 +199,13 @@ def test_build_application_services_preserves_composed_boundaries(
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
     assert redis.register_script.call_count == 3
 
-    assert isinstance(services.installed_app_completion, InstalledAppCompletionService)
+    assert isinstance(services.installed_app_generation, InstalledAppGenerationService)
     installed_apps = services.installed_app_access._installed_apps
     assert isinstance(installed_apps, SQLAlchemyInstalledAppRepository)
-    assert services.installed_app_completion._usage is installed_apps
-    assert services.installed_app_completion._app_definitions is services.app_definitions
-    runtime = services.installed_app_completion._runtime
-    assert isinstance(runtime, AppGenerateServiceCompletionRuntime)
+    assert services.installed_app_generation._usage is installed_apps
+    assert services.installed_app_generation._app_definitions is services.app_definitions
+    runtime = services.installed_app_generation._runtime
+    assert isinstance(runtime, InstalledAppGenerateServiceRuntime)
     assert runtime._session_factory is sqlite_session_factory
 
 

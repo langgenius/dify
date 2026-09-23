@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.model import App, InstalledApp
 from services.installed_app_access_service import InstalledAppAccessStore, InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_completion_service import InstalledAppUsageRecorder
+from services.installed_app_generation_service import InstalledAppUsageRecorder
 
 
 class SQLAlchemyInstalledAppRepository(InstalledAppAccessStore, InstalledAppUsageRecorder):
