@@ -1,19 +1,25 @@
 """OTP authorization and audit transactions against actual SQLite persistence."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import timedelta
 from hashlib import sha256
+from pathlib import Path
+from sqlite3 import Connection as SQLiteConnection
 from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import event
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import ConnectionPoolEntry
 
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import ContactId, NormalizedEmail, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from core.workflow.nodes.human_input_v2.entities import OnetimeEmail
+from core.workflow.nodes.human_input_v2.entities import DynamicEmail, OnetimeEmail
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from models.account import Account, Tenant, TenantAccountJoin
@@ -25,6 +31,7 @@ from models.human_input_v2 import (
     HumanInputForm,
     HumanInputPlatformContactWorkspaceEntry,
     HumanInputRecipient,
+    OtpVerificationEvent,
 )
 from models.model import App, AppMode
 from repositories.human_input_v2.contact import ExternalContact
@@ -45,7 +52,7 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemy
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
-from services.human_input_v2.email_otp_service import EmailOtpError, EmailOtpService, OtpFailure, OtpMail
+from services.human_input_v2.email_otp_service import EmailOtpError, EmailOtpService, OtpFailure, OtpMail, VerifiedEmail
 
 
 @dataclass
@@ -60,17 +67,17 @@ class Context:
     token: str
 
 
-@pytest.fixture(params=["email", "external_contact"])
-def context(request, tmp_path):
+@pytest.fixture(params=["email", "dynamic_email", "external_contact"])
+def context(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[Context]:
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'otp.sqlite3'}", connect_args={"timeout": 10})
     # Explicit BEGIN keeps repository savepoints inside the caller's transaction.
 
-    @sa.event.listens_for(engine, "connect")
-    def configure(connection, _record):
+    @event.listens_for(engine, "connect")
+    def configure(connection: SQLiteConnection, _record: ConnectionPoolEntry) -> None:
         connection.isolation_level = None
 
-    @sa.event.listens_for(engine, "begin")
-    def begin(connection):
+    @event.listens_for(engine, "begin")
+    def begin(connection: Connection) -> None:
         connection.exec_driver_sql("BEGIN")
 
     for model in (
@@ -86,7 +93,7 @@ def context(request, tmp_path):
         HumanInputExternalContactProfile,
         HumanInputPlatformContactWorkspaceEntry,
     ):
-        model.__table__.create(engine)
+        model.metadata.tables[model.__tablename__].create(engine)
     sessions = sessionmaker(engine, expire_on_commit=False)
     tenant, app_id, token = TenantId(str(uuid4())), str(uuid4()), "form-secret"
     now = naive_utc_now()
@@ -123,7 +130,17 @@ def context(request, tmp_path):
         else:
             subject = EmailRecipientSubject(NormalizedEmail("approver@example.com"))
         recipient = SQLAlchemyRecipientRepository(session, tenant, form.id).create_recipients(
-            [RecipientCreateParams(subject=subject, sources=(OnetimeEmail(email="approver@example.com"),), name=None)]
+            [
+                RecipientCreateParams(
+                    subject=subject,
+                    sources=(
+                        (DynamicEmail(selector=["input", "email"]),)
+                        if request.param == "dynamic_email"
+                        else (OnetimeEmail(email="approver@example.com"),)
+                    ),
+                    name=None,
+                )
+            ]
         )[0]
         delivery = SQLAlchemyDeliveryRepository(session).create_delivery(
             tenant_id=tenant,
@@ -152,7 +169,7 @@ def context(request, tmp_path):
     engine.dispose()
 
 
-def test_send_uses_frozen_email_and_six_digit_code_without_tokens(context):
+def test_send_uses_frozen_email_and_six_digit_code_without_tokens(context: Context) -> None:
     response = context.service.request_access(context.token)
     address, code = context.send.call_args.args
     assert address == "approver@example.com"
@@ -173,7 +190,9 @@ def test_send_uses_frozen_email_and_six_digit_code_without_tokens(context):
         (VerificationStatus.EXPIRED, OtpFailure.CHALLENGE_EXPIRED),
     ],
 )
-def test_rejected_proof_persists_failure_audit(context, status, reason):
+def test_rejected_proof_persists_failure_audit(
+    context: Context, status: VerificationStatus, reason: OtpFailure
+) -> None:
     context.challenges.verify.return_value = status
     with pytest.raises(EmailOtpError) as error:
         context.service.verify(
@@ -182,6 +201,8 @@ def test_rejected_proof_persists_failure_audit(context, status, reason):
     assert error.value.reason == reason
     with context.sessions() as session:
         audit = session.scalar(sa.select(HumanInputAuditEvent))
+        assert audit is not None
+        assert isinstance(audit.payload, OtpVerificationEvent)
         assert audit.payload.succeeded is False
         assert audit.payload.reason == reason.value
         assert audit.payload.recipient_id == context.delivery.recipient_id
@@ -189,7 +210,7 @@ def test_rejected_proof_persists_failure_audit(context, status, reason):
         assert "000000" not in audit.payload.model_dump_json()
 
 
-def test_missing_proof_is_audited_without_spending_guesses(context):
+def test_missing_proof_is_audited_without_spending_guesses(context: Context) -> None:
     with pytest.raises(EmailOtpError) as error:
         context.service.verify(context.token, challenge_token=None, otp_code=None, ip_address=None)
     assert error.value.reason == OtpFailure.INVALID
@@ -198,7 +219,7 @@ def test_missing_proof_is_audited_without_spending_guesses(context):
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 1
 
 
-def test_rate_limit_does_not_send_email(context):
+def test_rate_limit_does_not_send_email(context: Context) -> None:
     context.limiter.acquire.return_value = 32
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
@@ -207,7 +228,7 @@ def test_rate_limit_does_not_send_email(context):
     context.send.assert_not_called()
 
 
-def test_send_failure_removes_only_its_challenge(context):
+def test_send_failure_removes_only_its_challenge(context: Context) -> None:
     context.send.side_effect = EmailOtpError(OtpFailure.DELIVERY)
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
@@ -217,7 +238,7 @@ def test_send_failure_removes_only_its_challenge(context):
     context.challenges.delete.assert_called_once_with(created_delivery, created_token)
 
 
-def test_storage_failure_does_not_send(context):
+def test_storage_failure_does_not_send(context: Context) -> None:
     from redis.exceptions import ConnectionError
 
     context.challenges.create.side_effect = ConnectionError("secret-command")
@@ -229,7 +250,7 @@ def test_storage_failure_does_not_send(context):
 
 
 @pytest.mark.parametrize("status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.EXPIRED])
-def test_terminal_form_cannot_issue_or_verify_proof(context, status):
+def test_terminal_form_cannot_issue_or_verify_proof(context: Context, status: HumanInputFormStatus) -> None:
     with context.sessions.begin() as session:
         session.execute(sa.update(HumanInputForm).values(status=status))
     with pytest.raises(EmailOtpError):
@@ -240,7 +261,7 @@ def test_terminal_form_cannot_issue_or_verify_proof(context, status):
     context.challenges.verify.assert_not_called()
 
 
-def test_wrong_auth_type_does_not_issue_otp(context):
+def test_wrong_auth_type_does_not_issue_otp(context: Context) -> None:
     with context.sessions.begin() as session:
         session.execute(sa.update(HumanInputDelivery).values(auth_type=SubmissionAuthType.CONSOLE))
     with pytest.raises(EmailOtpError) as error:
@@ -249,10 +270,10 @@ def test_wrong_auth_type_does_not_issue_otp(context):
     context.send.assert_not_called()
 
 
-def test_submission_and_success_audit_commit_or_rollback_together(context):
+def test_submission_and_success_audit_commit_or_rollback_together(context: Context) -> None:
     verified = context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
 
-    def submit(session):
+    def submit(session: Session) -> Form | FormSubmissionFailure:
         return SQLAlchemyFormRepository(session, context.form.tenant_id, context.form.app_id).submit_form(
             context.form.id,
             submitted_by_recipient_id=context.delivery.recipient_id,
@@ -277,10 +298,12 @@ def test_submission_and_success_audit_commit_or_rollback_together(context):
     context.service.cleanup(context.delivery.id, "proof")
     with context.sessions() as session:
         assert submit(session) == FormSubmissionFailure.ALREADY_SUBMITTED
-        assert session.scalar(sa.select(HumanInputAuditEvent)).payload.succeeded is True
+        audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+        assert isinstance(audit.payload, OtpVerificationEvent)
+        assert audit.payload.succeeded is True
 
 
-def test_current_contact_email_change_invalidates_only_contact_proof(context):
+def test_current_contact_email_change_invalidates_only_contact_proof(context: Context) -> None:
     with context.sessions.begin() as session:
         profile = session.scalar(sa.select(HumanInputExternalContactProfile))
         if profile is None:
@@ -295,7 +318,9 @@ def test_current_contact_email_change_invalidates_only_contact_proof(context):
             context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
         assert error.value.reason == OtpFailure.STALE
         with context.sessions() as session:
-            assert session.scalar(sa.select(HumanInputAuditEvent)).payload.reason == OtpFailure.STALE.value
+            audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+            assert isinstance(audit.payload, OtpVerificationEvent)
+            assert audit.payload.reason == OtpFailure.STALE.value
         with pytest.raises(EmailOtpError) as error:
             context.service.request_access(context.token)
         assert error.value.reason == OtpFailure.NOT_FOUND
@@ -305,7 +330,7 @@ def test_current_contact_email_change_invalidates_only_contact_proof(context):
         assert verified.subject.email == "approver@example.com"
 
 
-def test_recreated_contact_with_same_email_does_not_restore_old_delivery(context):
+def test_recreated_contact_with_same_email_does_not_restore_old_delivery(context: Context) -> None:
     with context.sessions.begin() as session:
         profile = session.scalar(sa.select(HumanInputExternalContactProfile))
         if profile is not None:
@@ -331,7 +356,7 @@ def test_recreated_contact_with_same_email_does_not_restore_old_delivery(context
         assert context.send.call_args.args[0] == "approver@example.com"
 
 
-def test_form_deadline_is_checked_independently_of_proof(context):
+def test_form_deadline_is_checked_independently_of_proof(context: Context) -> None:
     with context.sessions.begin() as session:
         session.execute(sa.update(HumanInputForm).values(expiration_time=naive_utc_now() - timedelta(seconds=1)))
     with pytest.raises(EmailOtpError) as error:
@@ -340,7 +365,9 @@ def test_form_deadline_is_checked_independently_of_proof(context):
     context.challenges.verify.assert_not_called()
 
 
-def test_cleanup_failure_does_not_undo_submission_or_log_secrets(context, caplog):
+def test_cleanup_failure_does_not_undo_submission_or_log_secrets(
+    context: Context, caplog: pytest.LogCaptureFixture
+) -> None:
     from redis.exceptions import ConnectionError
 
     context.challenges.delete.side_effect = ConnectionError("proof-secret otp-secret")
@@ -350,7 +377,7 @@ def test_cleanup_failure_does_not_undo_submission_or_log_secrets(context, caplog
     assert "otp-secret" not in caplog.text
 
 
-def test_audit_failure_does_not_repeat_verification_or_restore_budget(context):
+def test_audit_failure_does_not_repeat_verification_or_restore_budget(context: Context) -> None:
     from sqlalchemy.exc import OperationalError
 
     context.challenges.verify.return_value = VerificationStatus.INVALID
@@ -362,7 +389,7 @@ def test_audit_failure_does_not_repeat_verification_or_restore_budget(context):
     context.challenges.create.assert_not_called()
 
 
-def test_field_validation_failure_does_not_write_success_audit(context):
+def test_field_validation_failure_does_not_write_success_audit(context: Context) -> None:
     context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
     # The caller rejects its form input and therefore never accepts a submission.
     with context.sessions() as session:
@@ -371,7 +398,9 @@ def test_field_validation_failure_does_not_write_success_audit(context):
     context.challenges.delete.assert_not_called()
 
 
-def test_deployment_mail_content_and_provider_failure_redaction(context, monkeypatch, caplog):
+def test_deployment_mail_content_and_provider_failure_redaction(
+    context: Context, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     from services.human_input_v2 import email_otp_composition as composition
 
     mail = Mock()
@@ -393,7 +422,7 @@ def test_deployment_mail_content_and_provider_failure_redaction(context, monkeyp
     assert context.token not in sent["html"]
 
 
-def test_unconfigured_deployment_mail_does_not_spend_sending_budget(context):
+def test_unconfigured_deployment_mail_does_not_spend_sending_budget(context: Context) -> None:
     service = EmailOtpService(
         session_factory=context.sessions,
         challenges=context.challenges,
@@ -407,7 +436,7 @@ def test_unconfigured_deployment_mail_does_not_spend_sending_budget(context):
     context.send.assert_not_called()
 
 
-def test_two_verified_challenges_accept_one_submission_and_success_audit(context):
+def test_two_verified_challenges_accept_one_submission_and_success_audit(context: Context) -> None:
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
 
@@ -417,7 +446,7 @@ def test_two_verified_challenges_accept_one_submission_and_success_audit(context
     ]
     barrier = Barrier(2)
 
-    def accept(verified):
+    def accept(verified: VerifiedEmail) -> Form | FormSubmissionFailure:
         barrier.wait()
         with context.sessions.begin() as session:
             result = SQLAlchemyFormRepository(session, context.form.tenant_id, context.form.app_id).submit_form(
@@ -439,15 +468,15 @@ def test_two_verified_challenges_accept_one_submission_and_success_audit(context
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 1
 
 
-def test_mail_is_sent_after_authorization_session_closes(context):
+def test_mail_is_sent_after_authorization_session_closes(context: Context) -> None:
     opened = []
 
-    def sessions():
+    def sessions() -> Session:
         session = context.sessions()
         opened.append(session)
         return session
 
-    def send(_email, _code):
+    def send(_email: str, _code: str) -> None:
         assert opened
         assert all(not session.in_transaction() for session in opened)
 
@@ -461,7 +490,7 @@ def test_mail_is_sent_after_authorization_session_closes(context):
 
 
 @pytest.mark.parametrize("owner", ["delivery", "app"])
-def test_cross_tenant_owner_chain_is_rejected(context, owner):
+def test_cross_tenant_owner_chain_is_rejected(context: Context, owner: str) -> None:
     with context.sessions.begin() as session:
         if owner == "delivery":
             session.execute(sa.update(HumanInputDelivery).values(tenant_id=str(uuid4())))
@@ -473,14 +502,16 @@ def test_cross_tenant_owner_chain_is_rejected(context, owner):
     context.send.assert_not_called()
 
 
-def test_no_access_token_is_returned_if_challenge_expires_during_send(context):
+def test_no_access_token_is_returned_if_challenge_expires_during_send(context: Context) -> None:
     context.challenges.remaining_seconds.return_value = 0
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
 
 
-def test_redis_verification_outage_is_audited_without_logging_its_command(context, caplog):
+def test_redis_verification_outage_is_audited_without_logging_its_command(
+    context: Context, caplog: pytest.LogCaptureFixture
+) -> None:
     from redis.exceptions import ConnectionError
 
     context.challenges.verify.side_effect = ConnectionError("secret-command otp-secret")
@@ -490,8 +521,30 @@ def test_redis_verification_outage_is_audited_without_logging_its_command(contex
     with context.sessions() as session:
         audit = session.scalar(sa.select(HumanInputAuditEvent))
         assert audit is not None
+        assert audit is not None
+        assert isinstance(audit.payload, OtpVerificationEvent)
         assert audit.payload.succeeded is False
         assert audit.payload.reason == OtpFailure.UNAVAILABLE.value
     assert "secret-command" not in caplog.text
     assert "proof-secret" not in caplog.text
     assert "001234" not in caplog.text
+
+
+def test_deleted_tenant_email_channel_does_not_block_deployment_otp(context: Context) -> None:
+    from core.human_input_v2.entities import EmailProviderType
+    from models.human_input_v2 import HumanInputEmailProvider, ResendEmailProviderEncryptedCredentials
+
+    with context.sessions.begin() as session:
+        HumanInputEmailProvider.metadata.tables[HumanInputEmailProvider.__tablename__].create(session.connection())
+        channel = HumanInputEmailProvider(
+            tenant_id=context.form.tenant_id,
+            provider=EmailProviderType.RESEND,
+            sender_email="old-sender@example.com",
+            encrypted_credentials=ResendEmailProviderEncryptedCredentials(encrypted_api_key="unused-ciphertext"),
+        )
+        session.add(channel)
+        session.flush()
+        session.delete(channel)
+    response = context.service.request_access(context.token)
+    assert response.expires_in_seconds == 600
+    assert context.send.call_args.args[0] == "approver@example.com"

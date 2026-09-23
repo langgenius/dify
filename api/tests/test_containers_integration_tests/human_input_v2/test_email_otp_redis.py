@@ -1,6 +1,7 @@
 """CI-only acceptance of the real Redis scripts, including simultaneous callers."""
 
 import runpy
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
@@ -12,8 +13,9 @@ from uuid import uuid4
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy import create_engine, delete, func, select, text
-from sqlalchemy.orm import sessionmaker
+from flask import Flask
+from sqlalchemy import Engine, create_engine, delete, func, select, text
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import NormalizedEmail, TenantId
@@ -46,13 +48,13 @@ from repositories.human_input_v2.redis_email_otp_repository import RedisEmailOtp
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
-from services.human_input_v2.email_otp_service import EmailOtpError, EmailOtpService, OtpFailure, OtpMail
+from services.human_input_v2.email_otp_service import EmailOtpError, EmailOtpService, OtpFailure, OtpMail, VerifiedEmail
 
 pytestmark = pytest.mark.usefixtures("flask_app_with_containers")
 
 
 @pytest.mark.parametrize("external", [False, True])
-def test_challenges_are_independent_and_fifth_mismatch_deletes_only_one(external):
+def test_challenges_are_independent_and_fifth_mismatch_deletes_only_one(external: bool) -> None:
     first, second = RedisEmailOtpRepository(redis_client), RedisEmailOtpRepository(redis_client)
     delivery = str(uuid4())
     if external:
@@ -77,7 +79,7 @@ def test_challenges_are_independent_and_fifth_mismatch_deletes_only_one(external
     second.delete(delivery, "second")
 
 
-def test_contact_identity_and_email_mismatch_do_not_consume_guesses():
+def test_contact_identity_and_email_mismatch_do_not_consume_guesses() -> None:
     store = RedisEmailOtpRepository(redis_client)
     delivery = str(uuid4())
     subject = ExternalContactSubject(contact_id="original", email="approver@example.com")
@@ -89,14 +91,14 @@ def test_contact_identity_and_email_mismatch_do_not_consume_guesses():
     store.delete(delivery, "challenge")
 
 
-def test_concurrent_guesses_cannot_exceed_budget():
+def test_concurrent_guesses_cannot_exceed_budget() -> None:
     store = RedisEmailOtpRepository(redis_client)
     delivery = str(uuid4())
     subject = EmailSubject(email="approver@example.com")
     store.create(delivery, "challenge", EmailChallenge(email=subject.email, otp="001234"))
     barrier = Barrier(12)
 
-    def guess(_):
+    def guess(_: int) -> VerificationStatus:
         barrier.wait()
         return store.verify(delivery, "challenge", subject, "000000")
 
@@ -107,11 +109,11 @@ def test_concurrent_guesses_cannot_exceed_budget():
     assert results.count(VerificationStatus.EXPIRED) == 7
 
 
-def test_concurrent_sends_consume_one_slot_and_rejections_do_not_count():
+def test_concurrent_sends_consume_one_slot_and_rejections_do_not_count() -> None:
     limiter = RateLimiter(prefix=f"otp-test:{uuid4()}", max_attempts=5, time_window=3600)
     barrier = Barrier(12)
 
-    def acquire(_):
+    def acquire(_: int) -> int:
         barrier.wait()
         return limiter.acquire("delivery", cooldown_seconds=60)
 
@@ -124,7 +126,7 @@ def test_concurrent_sends_consume_one_slot_and_rejections_do_not_count():
     redis_client.delete(f"{limiter.prefix}:delivery", f"{limiter.prefix}:other-delivery")
 
 
-def test_hourly_window_and_cooldown_return_combined_delay():
+def test_hourly_window_and_cooldown_return_combined_delay() -> None:
     limiter = RateLimiter(prefix=f"otp-test:{uuid4()}", max_attempts=5, time_window=3600)
     key = serialize_redis_name(f"{limiter.prefix}:delivery")
     # Redis controls time; seed recent history without waiting an hour in CI.
@@ -142,7 +144,7 @@ def test_hourly_window_and_cooldown_return_combined_delay():
     redis_client.delete(f"{limiter.prefix}:delivery")
 
 
-def test_verification_does_not_refresh_ttl():
+def test_verification_does_not_refresh_ttl() -> None:
     store = RedisEmailOtpRepository(redis_client)
     delivery = str(uuid4())
     subject = EmailSubject(email="approver@example.com")
@@ -157,7 +159,7 @@ def test_verification_does_not_refresh_ttl():
 
 @dataclass
 class OtpCase:
-    sessions: sessionmaker
+    sessions: sessionmaker[Session]
     form: Form
     delivery: Delivery
     token: str
@@ -165,7 +167,7 @@ class OtpCase:
     limiter: RateLimiter
     sent: list[tuple[str, str]]
 
-    def service(self, send=None) -> EmailOtpService:
+    def service(self, send: Callable[[str, str], None] | None = None) -> EmailOtpService:
         return EmailOtpService(
             session_factory=self.sessions,
             challenges=self.store,
@@ -189,7 +191,7 @@ class OtpCase:
 
 
 @pytest.fixture
-def migrated_otp_engine(flask_app_with_containers):
+def migrated_otp_engine(flask_app_with_containers: Flask) -> Iterator[Engine]:
     # Business acceptance uses the migration-created schema rather than letting
     # metadata.create_all conceal a missing production table or column.
     with flask_app_with_containers.app_context():
@@ -201,7 +203,7 @@ def migrated_otp_engine(flask_app_with_containers):
     try:
         # App and Tenant are unrelated prerequisites already migrated by Dify.
         for model in (Tenant, App):
-            model.__table__.create(engine)
+            model.metadata.tables[model.__tablename__].create(engine)
         migrations = Path(__file__).resolve().parents[3] / "migrations" / "versions"
         names = (
             "2026_09_09_1200-a7c9e1f3b5d8_add_human_input_v2_forms.py",
@@ -221,7 +223,7 @@ def migrated_otp_engine(flask_app_with_containers):
 
 
 @pytest.fixture
-def otp_case(migrated_otp_engine):
+def otp_case(migrated_otp_engine: Engine) -> Iterator[OtpCase]:
     engine = migrated_otp_engine
     sessions = sessionmaker(engine, expire_on_commit=False)
     tenant_id, app_id, token = TenantId(str(uuid4())), str(uuid4()), str(uuid4())
@@ -281,7 +283,7 @@ def otp_case(migrated_otp_engine):
             session.execute(delete(Tenant).where(Tenant.id == tenant_id))
 
 
-def test_verified_challenges_accept_one_form_on_postgres(otp_case):
+def test_verified_challenges_accept_one_form_on_postgres(otp_case: OtpCase) -> None:
     store, delivery, form, token = otp_case.store, otp_case.delivery, otp_case.form, otp_case.token
     sessions = otp_case.sessions
     tenant_id, app_id, recipient_id = form.tenant_id, form.app_id, delivery.recipient_id
@@ -294,7 +296,7 @@ def test_verified_challenges_accept_one_form_on_postgres(otp_case):
     ]
     barrier = Barrier(2)
 
-    def submit(proof):
+    def submit(proof: VerifiedEmail) -> Form | FormSubmissionFailure:
         barrier.wait()
         with sessions.begin() as session:
             result = SQLAlchemyFormRepository(session, tenant_id, app_id).submit_form(
@@ -321,7 +323,7 @@ def test_verified_challenges_accept_one_form_on_postgres(otp_case):
         )
 
 
-def test_lost_response_and_failed_resend_preserve_earlier_proof_and_budget(otp_case):
+def test_lost_response_and_failed_resend_preserve_earlier_proof_and_budget(otp_case: OtpCase) -> None:
     service = otp_case.service()
     first = service.request_access(otp_case.token)
     first_code = otp_case.sent[0][1]
@@ -335,12 +337,13 @@ def test_lost_response_and_failed_resend_preserve_earlier_proof_and_budget(otp_c
     )
     otp_case.release_cooldown()
 
-    def fail(_email, _code):
+    def fail(_email: str, _code: str) -> None:
         raise EmailOtpError(OtpFailure.DELIVERY)
 
     with pytest.raises(EmailOtpError) as error:
         otp_case.service(fail).request_access(otp_case.token)
     assert error.value.reason == OtpFailure.DELIVERY
+    assert error.value.retry_after is not None
     assert error.value.retry_after > 0
     service.verify(otp_case.token, challenge_token=first.challenge_token, otp_code=first_code, ip_address=None)
     assert redis_client.zcard(f"{otp_case.limiter.prefix}:{otp_case.delivery.id}") == 3
@@ -348,13 +351,13 @@ def test_lost_response_and_failed_resend_preserve_earlier_proof_and_budget(otp_c
     assert len(list(redis_client.scan_iter(match=pattern))) == 2
 
 
-def test_older_mail_finishing_last_does_not_replace_newer_challenge(otp_case):
+def test_older_mail_finishing_last_does_not_replace_newer_challenge(otp_case: OtpCase) -> None:
     from threading import Event
 
     started, release = Event(), Event()
     first_code = []
 
-    def slow_send(_email, code):
+    def slow_send(_email: str, code: str) -> None:
         first_code.append(code)
         started.set()
         assert release.wait(10)
@@ -373,7 +376,7 @@ def test_older_mail_finishing_last_does_not_replace_newer_challenge(otp_case):
     service.verify(otp_case.token, challenge_token=newer.challenge_token, otp_code=otp_case.sent[0][1], ip_address=None)
 
 
-def test_hourly_slot_recovers_without_discarding_recent_sends():
+def test_hourly_slot_recovers_without_discarding_recent_sends() -> None:
     limiter = RateLimiter(prefix=f"otp-test:{uuid4()}", max_attempts=5, time_window=3600)
     key = serialize_redis_name(f"{limiter.prefix}:delivery")
     redis_client.eval(
