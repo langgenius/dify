@@ -212,7 +212,9 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
           <div className="space-y-2">
             {inputs.user_actions.map((action, index) => (
               <UserActionItem
-                key={action.id || index}
+                // Action IDs are editable; keep each input mounted while its ID changes.
+                // oxlint-disable-next-line react/no-array-index-key
+                key={`${id}-${index}`}
                 data={action}
                 onChange={(data) => handleUserActionChange(index, data)}
                 onDelete={handleUserActionDelete}
