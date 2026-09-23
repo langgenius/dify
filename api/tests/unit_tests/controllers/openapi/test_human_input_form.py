@@ -21,9 +21,9 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 
-from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.openapi._contract import op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
-from controllers.openapi._models import FormSubmitResponse
+from controllers.openapi._models import FormSubmitResponse, OpenApiFormSubmitPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Rank
 from controllers.openapi.auth.subjects import Subject
@@ -31,7 +31,10 @@ from controllers.openapi.human_input_form import (
     CheckFormSurface,
     OpenApiWorkflowHumanInputFormApi,
     OpenApiWorkflowHumanInputFormSubmitApi,
+    with_form_hints,
 )
+from core.app.entities.task_entities import HumanInputRequiredResponse
+from core.workflow.nodes.human_input import ParagraphInputConfig, UserActionConfig
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.human_input import RecipientType
@@ -165,7 +168,7 @@ class TestOpenApiHumanInputFormPost:
                 _context(_make_account("acct-42"), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 form_token="tok-1",
-                body=HumanInputFormSubmitPayload(action="approve", inputs={"field1": "val"}),
+                body=OpenApiFormSubmitPayload(action="approve", inputs={"field1": "val"}),
             )
 
         service_mock.submit_form_by_token.assert_called_once_with(
@@ -192,7 +195,7 @@ class TestOpenApiHumanInputFormPost:
                 _context(_make_end_user("eu-7"), CreatorUserRole.END_USER),
                 app_id="app-1",
                 form_token="tok-1",
-                body=HumanInputFormSubmitPayload(action="approve", inputs={}),
+                body=OpenApiFormSubmitPayload(action="approve", inputs={}),
             )
 
         service_mock.submit_form_by_token.assert_called_once_with(
@@ -248,3 +251,48 @@ class TestCheckFormSurface:
         """
         foreign = _make_form(app_id=str(uuid.uuid4()), recipient_type=RecipientType.CONSOLE)
         self._run(monkeypatch, foreign if form == "foreign" else None)
+
+
+def _paused(*, form_token: str | None, inputs: list, actions: list) -> dict:
+    response = HumanInputRequiredResponse(
+        task_id="t1",
+        workflow_run_id="r1",
+        data=HumanInputRequiredResponse.Data(
+            form_id="f1",
+            node_id="n1",
+            node_title="Review",
+            form_content="",
+            inputs=inputs,
+            actions=actions,
+            form_token=form_token,
+            expiration_time=4102444800,
+        ),
+    )
+    return response.model_dump(mode="json")
+
+
+class TestFormHints:
+    def test_with_form_hints_adds_one_hint_per_action_targeting_the_submit_route(self):
+        event = _paused(
+            form_token="ft-1",
+            inputs=[ParagraphInputConfig(output_variable_name="comment")],
+            actions=[UserActionConfig(id="approve", title="批准"), UserActionConfig(id="reject", title="")],
+        )
+        [out] = list(with_form_hints(iter([f"data: {json.dumps(event)}\n\n"]), app_id="a1"))
+        body = json.loads(out[len("data: ") :])
+        op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
+        assert op == "run.form.submit"
+        assert body["hints"] == [
+            {
+                "summary": "批准",
+                "op": op,
+                "input": {"app_id": "a1", "form_token": "ft-1", "action": "approve", "inputs": {"comment": None}},
+                "form": event["data"]["inputs"],
+            },
+            {
+                "summary": "reject",
+                "op": op,
+                "input": {"app_id": "a1", "form_token": "ft-1", "action": "reject", "inputs": {"comment": None}},
+                "form": event["data"]["inputs"],
+            },
+        ]

@@ -14,7 +14,7 @@ type Props = Readonly<{
 }>
 
 const Item: FC<Props> = ({ payload, onEdit, onDelete }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="group relative rounded-lg bg-components-input-bg-normal px-2.5 py-2 hover:shadow-xs">

@@ -13,7 +13,7 @@ type InputModeSelectProps = {
   onChange: (value: string) => void
 }
 const InputModeSelect = ({ value, onChange }: InputModeSelectProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const options = [
     {
       label: 'Variable',

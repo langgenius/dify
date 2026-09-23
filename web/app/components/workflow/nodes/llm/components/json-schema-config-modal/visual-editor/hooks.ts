@@ -23,7 +23,7 @@ type AddEventParams = {
 
 export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   const { schema: jsonSchema, onChange: doOnChange } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const onChange = doOnChange || noop
   const backupSchema = useVisualEditorStore((state) => state.backupSchema)
   const setBackupSchema = useVisualEditorStore((state) => state.setBackupSchema)

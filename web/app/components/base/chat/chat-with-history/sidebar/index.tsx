@@ -30,7 +30,7 @@ type Props = Readonly<{
 }>
 
 const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const {
     isInstalledApp,
     appData,

@@ -1,4 +1,5 @@
 import type {
+  AgentAppDetailWithSite,
   AgentConfigSnapshotSummaryResponse,
   AgentReferencingWorkflowResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
@@ -14,6 +15,7 @@ import {
   agentComposerSavedDraftAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentConfigurePublishBar } from '../publish-bar'
@@ -63,6 +65,8 @@ const workflowReferences = vi.hoisted(() => ({
   data: [] as AgentReferencingWorkflowResponse[],
   shouldFail: false,
 }))
+const agentDetail = vi.hoisted(() => ({ data: {} as Partial<AgentAppDetailWithSite> }))
+
 const composerQuery = vi.hoisted(() => ({
   data: undefined as unknown,
   shouldFail: false,
@@ -102,7 +106,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({
     queryKey: ['system-features'],
-    queryFn: async () => ({ deployment_edition: 'CLOUD' }),
+    queryFn: async () => ({ deployment_edition: 'CLOUD', webapp_auth: { enabled: false } }),
   }),
 }))
 
@@ -121,6 +125,10 @@ vi.mock('@/service/console', () => ({
       byAgentId: {
         get: {
           queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent', input],
+          queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
+            queryKey: ['agent', input],
+            queryFn: async () => agentDetail.data,
+          }),
         },
         composer: {
           get: {
@@ -237,13 +245,14 @@ function createDeferredPromise() {
 }
 
 function renderPublishBar({
+  agent = {},
   activeConfigIsPublished,
   activeConfigSnapshot,
   draftSavedAt,
   composerQueryAvailable = true,
   composerQueryFails = false,
   isPublishing,
-  onPublish = vi.fn<PublishHandler>(),
+  onPublish: providedOnPublish,
   onExitVersions = vi.fn(),
   onVersionRestored = vi.fn(),
   prompt = '',
@@ -251,6 +260,7 @@ function renderPublishBar({
   setupStore,
   usedByAppReferences = [],
 }: {
+  agent?: Partial<AgentAppDetailWithSite>
   activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   draftSavedAt?: number
@@ -265,6 +275,7 @@ function renderPublishBar({
   setupStore?: (store: ReturnType<typeof createStore>) => void
   usedByAppReferences?: AgentReferencingWorkflowResponse[]
 } = {}) {
+  agentDetail.data = agent
   workflowReferences.data = usedByAppReferences
   composerQuery.shouldFail = composerQueryFails
   const queryClient = new QueryClient({
@@ -277,6 +288,15 @@ function renderPublishBar({
     billing: { subscription: { plan: restoreAccess.plan } },
   })
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: restoreAccess.onUrlUpdate })
+  queryClient.setQueryData<unknown>(
+    consoleQuery.agent.byAgentId.get.queryOptions({ input: { params: { agent_id: 'agent-1' } } })
+      .queryKey,
+    agent,
+  )
+  queryClient.setQueryData<unknown>(systemFeaturesQueryOptions().queryKey, {
+    deployment_edition: 'CLOUD',
+    webapp_auth: { enabled: false },
+  })
   const store = createStore()
   store.set(agentComposerPromptAtom, prompt)
   setupStore?.(store)
@@ -306,6 +326,13 @@ function renderPublishBar({
   if (composerQueryAvailable) {
     queryClient.setQueryData(composerQueryKey, composerState)
   }
+
+  const onPublish =
+    providedOnPublish ??
+    vi.fn<PublishHandler>(async () => ({
+      kind: 'update',
+      draft: store.get(agentComposerDraftAtom),
+    }))
 
   const renderPublishBarTree = (nextProps?: {
     isPublishing?: boolean
@@ -337,6 +364,7 @@ function renderPublishBar({
   return {
     ...view,
     queryClient,
+    store,
     onExitVersions,
     onPublish,
     onVersionRestored,
@@ -939,12 +967,17 @@ describe('AgentConfigurePublishBar', () => {
 
   it('should publish from the fixed toolbar action after affected workflow details expand', async () => {
     const publishDeferred = createDeferredPromise()
-    const onPublish = vi.fn<PublishHandler>(() => publishDeferred.promise)
-    const { rerender, rerenderPublishBar } = renderPublishBar({
+    const onPublish = vi.fn<PublishHandler>()
+    const { store, rerender, rerenderPublishBar } = renderPublishBar({
       activeConfigSnapshot,
       onPublish,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
+    })
+    onPublish.mockImplementation(async () => {
+      const draft = store.get(agentComposerDraftAtom)
+      await publishDeferred.promise
+      return { kind: 'update', draft }
     })
 
     fireEvent.click(
@@ -1101,5 +1134,229 @@ describe('AgentConfigurePublishBar', () => {
       }),
     ).not.toBeInTheDocument()
     expect(onPublish).toHaveBeenCalledTimes(1)
+  })
+  describe('publish success guidance', () => {
+    const successKey = 'agentV2.agentDetail.configure.publishSuccess.'
+    const readyAgent = {
+      access_ready: true,
+      enable_site: true,
+      site: {
+        access_token: 'published-token',
+        app_base_url: 'https://apps.example.test',
+        icon_url: null,
+      },
+    }
+
+    it.each([
+      ['first', 'firstTitle'],
+      ['update', 'updateTitle'],
+    ] as const)(
+      'uses the publication result even when cached availability disagrees (%s)',
+      async (kind, title) => {
+        const user = userEvent.setup()
+        const view = renderPublishBar({ agent: { ...readyAgent, access_ready: kind === 'first' } })
+        view.onPublish.mockImplementation(async () => {
+          agentDetail.data = readyAgent
+          view.queryClient.setQueryData<unknown>(
+            consoleQuery.agent.byAgentId.get.queryOptions({
+              input: { params: { agent_id: 'agent-1' } },
+            }).queryKey,
+            readyAgent,
+          )
+          return { kind, draft: view.store.get(agentComposerDraftAtom) }
+        })
+        expect(screen.queryByText(successKey + title, { selector: 'p' })).not.toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+        expect(await screen.findByText(successKey + title, { selector: 'p' })).toBeVisible()
+        const link = screen.getByRole('link', { name: `${successKey}openWebApp` })
+        expect(link).toHaveAttribute('href', 'https://apps.example.test/agent/published-token')
+        expect(link).toHaveAttribute('target', '_blank')
+        expect(screen.getByRole('link', { name: `${successKey}accessMethods` })).toHaveAttribute(
+          'href',
+          '/agents/agent-1/access',
+        )
+      },
+    )
+
+    it.each(['dismiss', 'openWebApp', 'accessMethods'] as const)(
+      'consumes the guidance after %s and allows the next publication to show it again',
+      async (action) => {
+        const user = userEvent.setup()
+        renderPublishBar({ agent: readyAgent })
+        await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+        await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })
+        const bar = document.activeElement as HTMLElement
+        expect(bar).toContainElement(
+          screen.getByText(`${successKey}updateTitle`, { selector: 'p' }),
+        )
+        const focus = vi.spyOn(bar, 'focus')
+        const control = screen.getByRole(action === 'dismiss' ? 'button' : 'link', {
+          name: successKey + action,
+        })
+        // Navigation is verified in Chrome; this test exercises the guidance lifetime.
+        if (action !== 'dismiss')
+          control.addEventListener('click', (event) => event.preventDefault())
+        await user.click(control)
+        if (action === 'accessMethods') {
+          expect(focus).not.toHaveBeenCalled()
+        } else {
+          expect(bar).toHaveFocus()
+          expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+        }
+        focus.mockRestore()
+        expect(
+          screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+        ).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeVisible()
+        await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+        expect(await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })).toBeVisible()
+      },
+    )
+
+    it('does not steal focus moved outside the bar while publishing', async () => {
+      const user = userEvent.setup()
+      const deferred = createDeferredPromise()
+      const onPublish = vi.fn<PublishHandler>()
+      const { store } = renderPublishBar({ agent: readyAgent, onPublish })
+      render(<input aria-label="Other editor" />)
+      onPublish.mockImplementation(async () => {
+        const draft = store.get(agentComposerDraftAtom)
+        await deferred.promise
+        return { kind: 'update', draft }
+      })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await waitFor(() => expect(onPublish).toHaveBeenCalledOnce())
+      const editor = screen.getByRole('textbox', { name: 'Other editor' })
+      await user.click(editor)
+      await act(async () => {
+        deferred.resolve()
+        await deferred.promise
+      })
+      expect(await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })).toBeVisible()
+      expect(editor).toHaveFocus()
+    })
+
+    it('does not reopen after an edit is autosaved or undone', async () => {
+      const user = userEvent.setup()
+      const { store } = renderPublishBar({ agent: readyAgent })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })
+      const publishedDraft = store.get(agentComposerDraftAtom)
+      act(() => {
+        store.set(agentComposerPromptAtom, 'New edit')
+      })
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges'),
+      ).toBeVisible()
+      act(() => {
+        store.set(agentComposerSavedDraftAtom, store.get(agentComposerDraftAtom))
+      })
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+      act(() => store.set(agentComposerDraftAtom, publishedDraft))
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('does not show success when publishing is blocked by validation', async () => {
+      const user = userEvent.setup()
+      const onPublish = vi.fn<PublishHandler>().mockResolvedValue(false)
+      renderPublishBar({ agent: readyAgent, onPublish })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await waitFor(() => expect(onPublish).toHaveBeenCalledOnce())
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('ignores repeated publication requests while the first request is pending', async () => {
+      const user = userEvent.setup()
+      const deferred = createDeferredPromise()
+      const onPublish = vi.fn<PublishHandler>()
+      const { store } = renderPublishBar({ agent: readyAgent, onPublish })
+      onPublish.mockImplementation(async () => {
+        const draft = store.get(agentComposerDraftAtom)
+        await deferred.promise
+        return { kind: 'update', draft }
+      })
+      const publishButton = screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })
+      await user.dblClick(publishButton)
+      await waitFor(() => expect(onPublish).toHaveBeenCalledOnce())
+      await act(async () => {
+        deferred.resolve()
+        await deferred.promise
+      })
+
+      expect(await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })).toBeVisible()
+      expect(onPublish).toHaveBeenCalledOnce()
+    })
+
+    it('does not show stale success over edits made during publication', async () => {
+      const user = userEvent.setup()
+      const deferred = createDeferredPromise()
+      const onPublish = vi.fn<PublishHandler>()
+      const { store } = renderPublishBar({ agent: readyAgent, onPublish })
+      onPublish.mockImplementation(async () => {
+        const draft = store.get(agentComposerDraftAtom)
+        await deferred.promise
+        return { kind: 'update', draft }
+      })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await waitFor(() => expect(onPublish).toHaveBeenCalledOnce())
+      act(() => {
+        store.set(agentComposerPromptAtom, 'Edited while publishing')
+      })
+
+      await act(async () => {
+        deferred.resolve()
+        await deferred.promise
+      })
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges'),
+      ).toBeVisible()
+    })
+
+    it.each([
+      { ...readyAgent, enable_site: false },
+      { ...readyAgent, access_ready: false },
+      { ...readyAgent, site: null },
+    ])('retains only access methods when the Web App cannot open (%j)', async (agent) => {
+      const user = userEvent.setup()
+      renderPublishBar({ agent })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      expect(await screen.findByRole('link', { name: `${successKey}accessMethods` })).toBeVisible()
+      expect(
+        screen.queryByRole('link', { name: `${successKey}openWebApp` }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText(`${successKey}accessDescription`)).toBeVisible()
+    })
+
+    it('does not show guidance just because an existing version is published', () => {
+      renderPublishBar({ agent: readyAgent, activeConfigIsPublished: true, activeConfigSnapshot })
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeVisible()
+    })
+
+    it('clears guidance when entering version history', async () => {
+      const user = userEvent.setup()
+      const { rerender, rerenderPublishBar } = renderPublishBar({ agent: readyAgent })
+      await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+      await screen.findByText(`${successKey}updateTitle`, { selector: 'p' })
+      rerender(rerenderPublishBar({ selectedVersionSnapshot: activeConfigSnapshot }))
+      rerender(rerenderPublishBar({ selectedVersionSnapshot: null }))
+      expect(
+        screen.queryByText(`${successKey}updateTitle`, { selector: 'p' }),
+      ).not.toBeInTheDocument()
+    })
   })
 })

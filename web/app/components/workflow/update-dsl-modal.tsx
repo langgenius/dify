@@ -35,7 +35,7 @@ type UpdateDSLModalProps = {
 }
 
 const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'app', 'common'])
   const appDetail = useAppStore((s) => s.appDetail)
   const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()

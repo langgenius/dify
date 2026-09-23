@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import ParamConfigContent from './param-config-content'
 
 const ParamsConfig: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
 
   return (
     <Popover>

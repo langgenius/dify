@@ -21,7 +21,7 @@ type RenameDatasetModalProps = {
   onClose: () => void
 }
 const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDatasetModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetSettings'])
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
   const [description, setDescription] = useState<string>(dataset.description)

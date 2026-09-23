@@ -23,7 +23,7 @@ type Props = Readonly<{
 }>
 
 const ChatUserInput = ({ inputs }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const baseId = useId()
   const { modelConfig, setInputs, canTestAndRun = false } = useContext(ConfigContext)
   const debugInputReadonly = !canTestAndRun

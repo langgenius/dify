@@ -5,6 +5,12 @@ reference, so the advertised and enforced contracts can't drift.
 ``view.__handler__`` as the one documented test seam. ``returns`` is still used
 bare by the unauthenticated ``index.py`` probes, which have no auth layer to
 compose with.
+
+``endpoint()`` also builds the route's ``EndpointSpec`` (``auth/spec.py``), which
+carries the catalog fields ``op``, ``kind``, ``summary``, ``internal`` and
+``deprecated`` that ``_catalog.py`` reads to describe ``/openapi/v1``. A ``list``
+op gets ``paginated`` as well, which fills the next-page hint on a bare
+``PaginationEnvelope`` result.
 """
 
 from __future__ import annotations
@@ -12,32 +18,64 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any, cast
+from typing import Any, Final, cast
 
-from flask import request
 from flask_restx import abort
 from pydantic import BaseModel, ValidationError
 
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody
+from controllers.openapi._hints import next_page_hint
+from controllers.openapi._models import PaginationEnvelope
+from controllers.openapi._multipart import body_from_request
+from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Example, Kind
 from enums import DeploymentEdition
+
+__all__ = ["Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
+
+_INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
+
+
+def paginated(op: str) -> Callable:
+    """Fill the ``Next page`` hint on a bare ``PaginationEnvelope`` result (one with no hints
+    of its own). Sits inside ``accepts`` so it sees the validated ``query`` and the path
+    kwargs the hint echoes; only this layer knows both those and the op id.
+    """
+
+    def decorator(view: Callable) -> Callable:
+        @wraps(view)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            result = view(*args, **kwargs)
+            if not isinstance(result, PaginationEnvelope) or result.hints:
+                return result
+            path_args = {name: value for name, value in kwargs.items() if name not in _INJECTED_KWARGS}
+            hint = next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), envelope=result)
+            if hint is not None:
+                result.hints = [hint]
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
     """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs."""
 
     def decorator(view: Callable) -> Callable:
+        body_file_fields = file_fields(body) if body is not None else frozenset()
+
         @wraps(view)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 if query is not None:
                     kwargs["query"] = query_params_from_request(query)
                 if body is not None:
-                    kwargs["body"] = body.model_validate(request.get_json(silent=True) or {})
+                    kwargs["body"] = body.model_validate(body_from_request(file_fields=body_file_fields))
             except ValidationError as exc:
                 # Sanitized 422 — no pydantic `url` (version) or `input` (user payload) leak.
                 abort(
@@ -100,13 +138,25 @@ def _normalize_returns(returns: ReturnSpec | Sequence[ReturnSpec] | None) -> tup
     return tuple(cast(Sequence[ReturnSpec], returns))  # pyrefly: ignore[redundant-cast]
 
 
+def op_of(view: Any) -> str:
+    """The op id a route declared on ``endpoint``; a hint targeting that route reads it here."""
+
+    return view.__spec__.catalog.op
+
+
 def endpoint(
     *,
+    op: str,
+    kind: Kind,
+    summary: str,
     requirements: Sequence[Requirement] = (),
     query: type[BaseModel] | None = None,
     body: type[BaseModel] | None = None,
     returns: ReturnSpec | Sequence[ReturnSpec] | None = None,
     edition: frozenset[DeploymentEdition] | None = None,
+    internal: bool = False,
+    deprecated: bool = False,
+    examples: Sequence[Example] = (),
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
     serialisation — auth, then ``accepts``, then ``returns``. Exposes
@@ -118,12 +168,30 @@ def endpoint(
     order and gets the identical nesting back — first entry outermost, last entry
     closest to the handler — including the N-times ``"default"`` error registration
     that stacking N ``@returns`` already produces.
+
+    ``op``/``kind``/``summary`` feed the catalog (see ``_catalog.py``); ``internal``
+    hides the op from the CLI's default listing; ``deprecated`` marks it as kept
+    for compatibility only; ``examples`` are complete inputs the catalog shows
+    next to the schema.
     """
     requirements = tuple(requirements)
     for requirement in requirements:
         if not isinstance(requirement, Requirement):
             raise TypeError(f"requirements must be instances of Requirement, not {requirement!r}")
-    spec = EndpointSpec(requirements=requirements, edition=edition)
+    spec = EndpointSpec(
+        requirements=requirements,
+        edition=edition,
+        catalog=CatalogMeta(
+            op=op,
+            kind=kind,
+            summary=summary,
+            query=query,
+            body=body,
+            internal=internal,
+            deprecated=deprecated,
+            examples=tuple(examples),
+        ),
+    )
     return_specs = _normalize_returns(returns)
 
     def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
@@ -131,6 +199,8 @@ def endpoint(
             raise TypeError(f"{view.__qualname__} must declare a 'ctx' parameter")
 
         decorated = view
+        if kind is Kind.LIST:
+            decorated = paginated(op)(decorated)
         if query is not None or body is not None:
             decorated = accepts(query=query, body=body)(decorated)
         for return_spec in reversed(return_specs):

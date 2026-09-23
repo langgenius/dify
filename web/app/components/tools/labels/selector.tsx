@@ -14,7 +14,7 @@ type LabelSelectorProps = {
 }
 
 function LabelSelector({ value, onChange }: LabelSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const { tags: labelList } = useTags()
   const [keywords, setKeywords] = useState('')
   const debouncedKeywords = useDebouncedValue(keywords, 500)

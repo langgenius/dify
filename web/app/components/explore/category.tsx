@@ -16,7 +16,7 @@ type ICategoryProps = {
 }
 
 function Category({ className, list, value, onChange, allCategoriesEn }: ICategoryProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
   const isAllCategories = !list.includes(value) || value === allCategoriesEn
   const selectedCategory = isAllCategories ? allCategoriesEn : value
 

@@ -8,7 +8,7 @@
  * 4. Values for existing keys haven't changed
  * 5. Lists newly added keys and values
  *
- * Usage: npx tsx scripts/analyze-i18n-diff.ts
+ * Usage: node scripts/analyze-i18n-diff.ts
  */
 
 import { execSync } from 'node:child_process'

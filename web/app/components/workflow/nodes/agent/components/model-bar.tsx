@@ -69,7 +69,7 @@ const useAllModel = () => {
 }
 
 export const ModelBar: FC<ModelBarProps> = (props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const modelList = useAllModel()
   if (props.provider === undefined) {
     const tooltip = t(($) => $['nodes.agent.modelNotSelected'], { ns: 'workflow' })

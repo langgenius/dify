@@ -35,7 +35,7 @@ const VarItem: FC<Props> = ({
   showLegacyBadge = false,
   canDrag,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const ref = useRef(null)
   const isHovering = useHover(ref)

@@ -166,7 +166,7 @@ describe('BaseField', () => {
       )
       expect(control).toBeInvalid()
       expect(control).toBeRequired()
-      expect(screen.getByRole('button', { name: 'Credential help' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Credential' })).toBeInTheDocument()
       await user.click(screen.getByText('Credential'))
       expect(control).toHaveFocus()
       expect(control).toHaveAttribute('aria-expanded', 'false')
@@ -527,7 +527,7 @@ describe('BaseField', () => {
 
     expect(screen.getByText('Info')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Extra info' }))
+    await user.click(screen.getByRole('button', { name: 'Info' }))
 
     expect(screen.getByText('Extra info')).toBeInTheDocument()
   })

@@ -72,7 +72,7 @@ export const TagSelector = ({
   onTagsChange,
   ...rootProps
 }: TagSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [draftTagIds, setDraftTagIds] = useState(() => value.map((tag) => tag.id))
   const [inputValue, setInputValue] = useState('')

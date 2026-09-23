@@ -104,7 +104,7 @@ describe('OutputPanel', () => {
   it('renders array text outputs as joined markdown content', () => {
     render(<OutputPanel outputs={{ answer: ['Line 1', 'Line 2'] }} />)
 
-    expect(screen.getByTestId('markdown')).toHaveTextContent(/Line 1\s+Line 2/)
+    expect(screen.getByTestId('markdown').textContent).toMatch(/Line 1\s+Line 2/)
   })
 
   it('renders a file list for a single file output', () => {

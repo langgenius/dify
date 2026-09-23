@@ -21,7 +21,7 @@ type Props = Readonly<{
 }>
 
 const Recipient = ({ data, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const wholeWorkspaceId = useId()
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),

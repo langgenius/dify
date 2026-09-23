@@ -107,8 +107,8 @@ async function downloadAppDsl(input: ExportAppDslInput, messages: ExportAppDslMe
 }
 
 function useExportAppDslMessages() {
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return {
     loading: tCommon(($) => $['operation.exporting']),

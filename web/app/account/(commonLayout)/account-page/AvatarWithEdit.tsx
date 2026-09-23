@@ -24,7 +24,7 @@ type InputImageInfo =
 type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
 
 const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)

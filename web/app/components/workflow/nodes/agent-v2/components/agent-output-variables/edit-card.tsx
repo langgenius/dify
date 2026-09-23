@@ -56,7 +56,7 @@ export function OutputEditCard({
   onCancel: () => void
   onConfirm: (output: DeclaredOutputConfig, state: EditingState) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const nameErrorId = useId()
   const editorRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState(state.draft)

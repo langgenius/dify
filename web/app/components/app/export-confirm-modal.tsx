@@ -28,7 +28,7 @@ export const AppExportConfirmContent = ({
   onClose,
   isExporting,
 }: AppExportConfirmModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow', 'common'])
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
   const exportButtonLabelId = React.useId()

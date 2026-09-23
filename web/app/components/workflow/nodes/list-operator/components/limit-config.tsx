@@ -28,7 +28,7 @@ const LIMIT_DEFAULT: Limit = {
 }
 
 const LimitConfig: FC<Props> = ({ className, readonly, config = LIMIT_DEFAULT, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const payload = config
 
   const handleLimitEnabledChange = useCallback(

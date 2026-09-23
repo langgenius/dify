@@ -9,9 +9,11 @@ import { agentComposerDraftAtom, agentComposerSavedDraftAtom } from './store'
 export function AgentComposerProvider({
   children,
   initialDraft,
+  initialSavedDraft = initialDraft,
 }: {
   children: ReactNode
   initialDraft?: AgentSoulConfigFormState
+  initialSavedDraft?: AgentSoulConfigFormState
 }) {
   const draft = initialDraft ?? defaultAgentSoulConfigFormState
 
@@ -19,7 +21,7 @@ export function AgentComposerProvider({
     <ScopeProvider
       atoms={[
         [agentComposerDraftAtom, draft],
-        [agentComposerSavedDraftAtom, draft],
+        [agentComposerSavedDraftAtom, initialSavedDraft ?? draft],
       ]}
       name="AgentComposer"
     >

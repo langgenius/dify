@@ -12,7 +12,7 @@ const AddCondition = ({
   metadataList,
   handleAddCondition,
 }: Pick<MetadataShape, 'handleAddCondition' | 'metadataList'>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const searchLabel = t(($) => $['nodes.knowledgeRetrieval.metadata.panel.search'], {

@@ -50,7 +50,7 @@ const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore((s) => s.appId)

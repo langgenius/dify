@@ -44,7 +44,7 @@ const StartBlocks = ({
   showUserInputDisabled = false,
   disabled = false,
 }: StartBlocksProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools', 'workflow'])
   const nodes = useNodes()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<StartBlockPreviewPayload>())
   const previewDescriptionBaseId = useId()

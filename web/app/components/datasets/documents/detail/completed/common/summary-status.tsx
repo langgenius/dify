@@ -8,7 +8,7 @@ type SummaryStatusProps = {
 }
 
 const SummaryStatus = ({ status }: SummaryStatusProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   const tip = useMemo(() => {
     if (status === 'SUMMARIZING') {

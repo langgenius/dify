@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from 'react'
+import type { AgentConfigurePublishResult } from '../use-agent-configure-sync'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -12,6 +13,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import {
   agentComposerDraftAtom,
   agentComposerSavedDraftAtom,
+  isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
@@ -92,6 +94,7 @@ type PublishAgentVariables = {
 }
 
 type PublishAgentResponse = {
+  publication_kind: 'first' | 'update'
   active_config_snapshot: Record<string, unknown> | null
   active_config_snapshot_id: string
   result: string
@@ -104,6 +107,7 @@ const publishAgentMutationFn = vi.hoisted(() =>
     },
     active_config_snapshot_id: 'snapshot-1',
     result: 'success',
+    publication_kind: 'update',
   })),
 )
 
@@ -237,6 +241,7 @@ function renderUseAgentConfigureSync({
   agentName = 'Agent',
   baseConfig,
   currentModel,
+  savedDraft,
   enabled = true,
   publishEnabled,
   suspend = false,
@@ -244,6 +249,7 @@ function renderUseAgentConfigureSync({
   agentName?: Parameters<typeof useAgentConfigureSync>[0]['agentName']
   baseConfig?: Parameters<typeof useAgentConfigureSync>[0]['baseConfig']
   currentModel?: AgentSoulConfigFormState['model']
+  savedDraft?: AgentSoulConfigFormState
   enabled?: boolean
   publishEnabled?: boolean
   suspend?: boolean
@@ -263,7 +269,7 @@ function renderUseAgentConfigureSync({
     ? { ...defaultAgentSoulConfigFormState, model: currentModel }
     : defaultAgentSoulConfigFormState
   store.set(agentComposerDraftAtom, initialDraft)
-  store.set(agentComposerSavedDraftAtom, initialDraft)
+  store.set(agentComposerSavedDraftAtom, savedDraft ?? initialDraft)
   const pendingRender = new Promise<void>(() => {})
   const wrapper = ({ children }: PropsWithChildren) => (
     <QueryClientProvider client={queryClient}>
@@ -494,6 +500,105 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     )
+  })
+
+  it('autosaves an initialized default model without another edit', async () => {
+    const { store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+      savedDraft: defaultAgentSoulConfigFormState,
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            model: expect.objectContaining({
+              model_provider: configuredModel.provider,
+              model: configuredModel.model,
+            }),
+          }),
+        }),
+      }),
+    )
+    expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
+  })
+
+  it('serializes a newly selected model after an in-flight default model save', async () => {
+    const savingDefault = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(savingDefault.promise)
+    const { store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+      savedDraft: defaultAgentSoulConfigFormState,
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+
+    const selectedModel = { ...configuredModel, model: 'gpt-4o' }
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...store.get(agentComposerDraftAtom),
+        model: selectedModel,
+      })
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+
+    const savingSelection = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(savingSelection.promise)
+    await act(async () => {
+      savingDefault.resolve({ agent_soul: {} })
+    })
+
+    expect(store.get(agentComposerDraftAtom).model).toEqual(selectedModel)
+    expect(store.get(isAgentComposerDirtyAtom)).toBe(true)
+    expect(composerPutMutationFn).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            model: expect.objectContaining({ model: selectedModel.model }),
+          }),
+        }),
+      }),
+    )
+
+    await act(async () => {
+      savingSelection.resolve({ agent_soul: {} })
+    })
+    expect(store.get(agentComposerDraftAtom).model).toEqual(selectedModel)
+    expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
+  })
+
+  it('autosaves an existing dirty model when saving becomes enabled', async () => {
+    const { rerender } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+      savedDraft: defaultAgentSoulConfigFormState,
+      enabled: false,
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+
+    rerender({
+      agentName: 'Agent',
+      baseConfig: undefined,
+      currentModel: configuredModel,
+      enabled: true,
+      suspend: false,
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should cancel pending autosave when the draft returns to the saved baseline', async () => {
@@ -1075,7 +1180,7 @@ describe('useAgentConfigureSync', () => {
       }),
     )
     await act(async () => {
-      await result.current.publishDraft()
+      await expect(result.current.publishDraft()).resolves.toBe(false)
     })
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
     expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
@@ -1149,7 +1254,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     await act(async () => {
-      await result.current.publishDraft()
+      await expect(result.current.publishDraft()).resolves.toMatchObject({ kind: 'update' })
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledWith(
@@ -1180,7 +1285,7 @@ describe('useAgentConfigureSync', () => {
       app_name: 'Agent',
       app_mode: 'agent-v2',
     })
-    expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('should toast and skip publish when no model is configured', async () => {
@@ -1494,7 +1599,7 @@ describe('useAgentConfigureSync', () => {
     const { result } = renderUseAgentConfigureSync({
       currentModel: configuredModel,
     })
-    let publishPromise!: Promise<void>
+    let publishPromise!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishPromise = result.current.publishDraft()
     })
@@ -1511,6 +1616,7 @@ describe('useAgentConfigureSync', () => {
         active_config_snapshot: {},
         active_config_snapshot_id: 'snapshot-1',
         result: 'success',
+        publication_kind: 'update',
       })
       await publishPromise
       await vi.advanceTimersByTimeAsync(0)
@@ -1532,7 +1638,7 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    let publishPromise!: Promise<void>
+    let publishPromise!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishPromise = result.current.publishDraft()
     })
@@ -1559,6 +1665,7 @@ describe('useAgentConfigureSync', () => {
         active_config_snapshot: {},
         active_config_snapshot_id: 'snapshot-1',
         result: 'success',
+        publication_kind: 'update',
       })
       await publishPromise
       await vi.advanceTimersByTimeAsync(5000)
@@ -1591,7 +1698,7 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    let publishPromise!: Promise<void>
+    let publishPromise!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishPromise = result.current.publishDraft()
     })
@@ -1634,6 +1741,7 @@ describe('useAgentConfigureSync', () => {
         active_config_snapshot: {},
         active_config_snapshot_id: 'snapshot-1',
         result: 'success',
+        publication_kind: 'update',
       })
       await publishPromise
       await Promise.resolve()
@@ -1653,7 +1761,7 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    let publishPromise!: Promise<void>
+    let publishPromise!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishPromise = result.current.publishDraft()
     })
@@ -1726,11 +1834,11 @@ describe('useAgentConfigureSync', () => {
       permission_keys: [AgentPermission.ReleaseAndVersion],
     })
     await act(async () => {
-      await result.current.publishDraft()
+      await expect(result.current.publishDraft()).resolves.toMatchObject({ kind: 'update' })
     })
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).toHaveBeenCalledOnce()
-    expect(toastMock.success).toHaveBeenCalledOnce()
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('does not flush dirty configuration after edit permission is revoked before unmount', async () => {
@@ -1750,7 +1858,7 @@ describe('useAgentConfigureSync', () => {
     const saving = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
     composerPutMutationFn.mockReturnValueOnce(saving.promise)
     const { queryClient, result } = renderUseAgentConfigureSync({ currentModel: configuredModel })
-    let publishing!: Promise<void>
+    let publishing!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishing = result.current.publishDraft()
     })

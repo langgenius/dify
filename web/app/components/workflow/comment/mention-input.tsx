@@ -56,7 +56,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     forwardedRef,
   ) => {
     const params = useParams()
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflow'])
     const appId = params.appId as string
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightContentRef = useRef<HTMLDivElement>(null)

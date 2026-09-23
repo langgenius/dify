@@ -27,7 +27,7 @@ const PipelineExportConfirmContent = ({
   onClose,
   isExporting,
 }: PipelineExportConfirmModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
   const exportButtonLabelId = React.useId()

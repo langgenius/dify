@@ -16,7 +16,7 @@ type DeleteAccountProps = {
 }
 
 export default function CheckEmail(props: DeleteAccountProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,

@@ -50,7 +50,7 @@ function getLegacyRoleDescriptionKey(role: Role) {
 }
 
 export function RoleSelector({ hasServerError = false, disabled = false }: RoleSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const [open, setOpen] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)

@@ -63,7 +63,7 @@ const AppInfoModals = ({
   handleConfirmExport,
   onConfirmDelete,
 }: AppInfoModalsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const exportConfirmLabelId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
