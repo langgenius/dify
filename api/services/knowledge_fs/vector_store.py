@@ -91,6 +91,8 @@ class VectorStoreUnavailableError(Exception):
 @contextmanager
 def configured_vector_client(
     tenant_id: str,
+    *,
+    allow_create: bool = False,
 ) -> "Generator[QdrantClient | ElasticsearchVectorStore | WeaviateVectorStore, None, None]":
     # Lazy dependency: installations using other backends can still boot Dify.
     from configs import dify_config
@@ -115,31 +117,16 @@ def configured_vector_client(
         return
 
     from qdrant_client import QdrantClient
-    from sqlalchemy import select
-    from sqlalchemy.orm import Session
-
-    from extensions.ext_database import db
-    from models.dataset import TidbAuthBinding
-    from models.enums import TidbAuthBindingStatus
 
     backend = dify_config.VECTOR_STORE
     url: str | None
     api_key: str | None
     if backend == "tidb_on_qdrant":
-        # Finish the bounded DB transaction before any network I/O. Never allocate
-        # a paid cluster as a side effect of a vector read or migration.
-        with Session(db.engine) as session:
-            binding = session.scalar(
-                select(TidbAuthBinding).where(
-                    TidbAuthBinding.tenant_id == tenant_id,
-                    TidbAuthBinding.active.is_(True),
-                    TidbAuthBinding.status == TidbAuthBindingStatus.ACTIVE,
-                )
-            )
-            if binding is None:
-                raise VectorStoreUnavailableError("Dify workspace has no active vector backend binding")
-            url = binding.qdrant_endpoint or dify_config.TIDB_ON_QDRANT_URL
-            api_key = f"{binding.account}:{binding.password}"
+        from services.tidb_binding_service import resolve_tidb_auth_binding
+
+        binding = resolve_tidb_auth_binding(tenant_id, allow_create=allow_create)
+        url = binding.qdrant_endpoint or dify_config.TIDB_ON_QDRANT_URL
+        api_key = f"{binding.account}:{binding.password}"
         timeout = dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT
         prefer_grpc = dify_config.TIDB_ON_QDRANT_GRPC_ENABLED
         grpc_port = dify_config.TIDB_ON_QDRANT_GRPC_PORT
@@ -160,8 +147,25 @@ def configured_vector_client(
         client.close()
 
 
+def admit_vector_request(payload: VectorRequest) -> None:
+    """Check quota before a write can allocate infrastructure or store points."""
+    if payload.operation == "upsert":
+        from services.vector_space_admission_service import VectorSpaceAdmissionService
+
+        batch_id = hashlib.sha256(json.dumps(sorted(point.id for point in payload.points)).encode()).hexdigest()
+        VectorSpaceAdmissionService().ensure_external_points_can_be_indexed(
+            tenant_id=payload.scope.tenant_id,
+            batch_id=batch_id,
+            point_count=len(payload.points),
+            dimension=payload.scope.dimension,
+        )
+
+
 def execute_vector_request(
-    client: "QdrantClient | ElasticsearchVectorStore | WeaviateVectorStore", payload: VectorRequest
+    client: "QdrantClient | ElasticsearchVectorStore | WeaviateVectorStore",
+    payload: VectorRequest,
+    *,
+    check_admission: bool = True,
 ) -> dict[str, object]:
     from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
     from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
@@ -169,13 +173,8 @@ def execute_vector_request(
     scope = payload.scope
     point_ids: list[int | str] = list(payload.ids)
     collection = scope.collection_name
-    if payload.operation == "upsert":
-        from services.vector_space_admission_service import VectorSpaceAdmissionService
-
-        batch_id = hashlib.sha256(json.dumps(sorted(point.id for point in payload.points)).encode()).hexdigest()
-        VectorSpaceAdmissionService().ensure_external_points_can_be_indexed(
-            tenant_id=scope.tenant_id, batch_id=batch_id, point_count=len(payload.points), dimension=scope.dimension
-        )
+    if check_admission:
+        admit_vector_request(payload)
     if isinstance(client, (ElasticsearchVectorStore, WeaviateVectorStore)):
         return client.execute(payload)
 

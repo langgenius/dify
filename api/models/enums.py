@@ -297,6 +297,7 @@ class TidbAuthBindingStatus(StrEnum):
 
     CREATING = "CREATING"
     ACTIVE = "ACTIVE"
+    FAILED = "FAILED"
 
 
 class MessageFileBelongsTo(StrEnum):

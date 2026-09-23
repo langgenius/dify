@@ -130,11 +130,11 @@ def test_collection_creation_race_accepts_only_compatible_existing_collection(cl
 
 
 def test_no_binding_never_allocates_a_paid_cluster(config_overrides):
+    from services.tidb_binding_service import TidbBindingUnavailableError
+
     config_overrides(VECTOR_STORE="tidb_on_qdrant")
-    session = MagicMock()
-    session.__enter__.return_value.scalar.return_value = None
-    with patch("sqlalchemy.orm.Session", return_value=session), patch("extensions.ext_database.db"):
-        with pytest.raises(VectorStoreUnavailableError, match="no active"):
+    with patch("services.tidb_binding_service._load_binding", return_value=None):
+        with pytest.raises(TidbBindingUnavailableError, match="no active"):
             with configured_vector_client(TENANT):
                 pytest.fail("unconfigured backend was opened")
 
@@ -146,27 +146,26 @@ def test_unsupported_backend_fails_explicitly(config_overrides):
             pytest.fail("unsupported backend was opened")
 
 
-def test_tidb_client_uses_tenant_binding_after_sql_session_closes(config_overrides):
+@pytest.mark.parametrize("allow_create", [True, False])
+def test_tidb_client_uses_tenant_binding(config_overrides, allow_create):
     config_overrides(VECTOR_STORE="tidb_on_qdrant", TIDB_ON_QDRANT_URL="https://global.invalid")
-    session = MagicMock()
-    session.__enter__.return_value.scalar.return_value = SimpleNamespace(
+    binding = SimpleNamespace(
         account="tenant-account", password="tenant-secret", qdrant_endpoint="https://tenant.invalid"
     )
     client = MagicMock()
 
     def open_client(**kwargs):
-        assert session.__exit__.called
         assert kwargs["url"] == "https://tenant.invalid"
         assert kwargs["api_key"] == "tenant-account:tenant-secret"
         return client
 
     with (
-        patch("sqlalchemy.orm.Session", return_value=session),
-        patch("extensions.ext_database.db"),
+        patch("services.tidb_binding_service.resolve_tidb_auth_binding", return_value=binding) as resolve,
         patch("qdrant_client.QdrantClient", side_effect=open_client),
     ):
-        with configured_vector_client(TENANT) as configured:
+        with configured_vector_client(TENANT, allow_create=allow_create) as configured:
             assert configured is client
+    resolve.assert_called_once_with(TENANT, allow_create=allow_create)
     client.close.assert_called_once()
 
 

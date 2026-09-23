@@ -1,4 +1,5 @@
 import inspect
+from contextlib import nullcontext
 from unittest.mock import patch
 
 import pytest
@@ -79,7 +80,7 @@ def test_vector_controller_accepts_only_configured_inner_key(app, config_overrid
         client.assert_not_called()
         with app.test_request_context(json=PAYLOAD, headers={"X-Inner-Api-Key": "trusted-key"}):
             assert KnowledgeFSVectorApi().post() == {"points": [], "matches": []}
-            client.assert_called_once_with(PAYLOAD["scope"]["tenant_id"])
+            client.assert_called_once_with(PAYLOAD["scope"]["tenant_id"], allow_create=False)
 
 
 def test_vector_controller_reports_quota_failure(app):
@@ -94,3 +95,85 @@ def test_vector_controller_reports_quota_failure(app):
     ):
         with pytest.raises(Forbidden, match="vector quota exceeded"):
             inspect.unwrap(handler.post)(handler)
+
+
+@pytest.mark.parametrize("operation", ["get", "search", "delete", "upsert"])
+def test_only_admitted_writes_can_provision(app, operation):
+    handler = KnowledgeFSVectorApi()
+    payload = {**PAYLOAD, "operation": operation}
+    if operation == "search":
+        payload["query_vector"] = [1, 0]
+    if operation == "upsert":
+        payload.pop("ids")
+        payload["points"] = [
+            {"id": PAYLOAD["ids"][0], "generation_id": PAYLOAD["ids"][0], "content_hash": "a" * 64, "vector": [1, 0]}
+        ]
+    with (
+        app.test_request_context(json=payload),
+        patch("controllers.inner_api.knowledge_fs.vectors.admit_vector_request") as admit,
+        patch("controllers.inner_api.knowledge_fs.vectors.configured_vector_client") as client,
+        patch(
+            "controllers.inner_api.knowledge_fs.vectors.execute_vector_request",
+            return_value={"points": [], "matches": []},
+        ) as execute,
+    ):
+
+        def open_client(*_args, **_kwargs):
+            admit.assert_called_once()
+            return nullcontext(object())
+
+        client.side_effect = open_client
+        inspect.unwrap(handler.post)(handler)
+        assert client.call_args.kwargs["allow_create"] is (operation == "upsert")
+        assert execute.call_args.kwargs["check_admission"] is False
+
+
+def test_quota_rejection_cannot_allocate_a_cluster(app):
+    handler = KnowledgeFSVectorApi()
+    with (
+        app.test_request_context(json=PAYLOAD),
+        patch(
+            "controllers.inner_api.knowledge_fs.vectors.admit_vector_request",
+            side_effect=VectorSpaceAdmissionError("quota"),
+        ),
+        patch("controllers.inner_api.knowledge_fs.vectors.configured_vector_client") as client,
+    ):
+        with pytest.raises(Forbidden):
+            inspect.unwrap(handler.post)(handler)
+        client.assert_not_called()
+
+
+def test_pending_cluster_returns_explicit_retry_after_without_secrets(app):
+    from services.tidb_binding_service import TidbBindingPendingError
+
+    handler = KnowledgeFSVectorApi()
+    with (
+        app.test_request_context(json=PAYLOAD),
+        patch(
+            "controllers.inner_api.knowledge_fs.vectors.configured_vector_client",
+            side_effect=TidbBindingPendingError("private endpoint"),
+        ),
+    ):
+        with pytest.raises(ServiceUnavailable) as error:
+            inspect.unwrap(handler.post)(handler)
+        assert ("Retry-After", "5") in error.value.get_headers()
+        assert "private" not in str(error.value)
+
+
+def test_http_pending_response_preserves_retry_after_header(config_overrides):
+    from flask import Flask
+    from flask_restx import Api
+
+    from services.tidb_binding_service import TidbBindingPendingError
+
+    config_overrides(PLUGIN_DAEMON_KEY="enabled", INNER_API_KEY_FOR_PLUGIN="trusted-key")
+    http_app = Flask(__name__)
+    Api(http_app).add_resource(KnowledgeFSVectorApi, "/vectors")
+    with patch(
+        "controllers.inner_api.knowledge_fs.vectors.configured_vector_client",
+        side_effect=TidbBindingPendingError("private endpoint"),
+    ):
+        response = http_app.test_client().post("/vectors", json=PAYLOAD, headers={"X-Inner-Api-Key": "trusted-key"})
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "5"
+    assert "private" not in response.get_data(as_text=True)
