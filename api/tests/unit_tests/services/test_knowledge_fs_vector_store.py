@@ -140,7 +140,7 @@ def test_no_binding_never_allocates_a_paid_cluster(config_overrides):
 
 
 def test_unsupported_backend_fails_explicitly(config_overrides):
-    config_overrides(VECTOR_STORE="weaviate")
+    config_overrides(VECTOR_STORE="milvus")
     with pytest.raises(VectorStoreUnavailableError, match="does not support"):
         with configured_vector_client(TENANT):
             pytest.fail("unsupported backend was opened")
