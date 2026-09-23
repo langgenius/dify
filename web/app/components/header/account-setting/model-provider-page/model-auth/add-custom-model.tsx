@@ -26,9 +26,16 @@ const AddCustomModel = ({
   provider,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
+  open: controlledOpen,
+  onOpenChange,
 }: AddCustomModelProps) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const setOpen = (nextOpen: boolean) => {
+    setLocalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
   const canAddedModels = useCanAddedModels(provider)
   const noModels = !canAddedModels.length
   const { canUseCredential, canCreateCredential } = useCredentialPermissions()
@@ -67,7 +74,7 @@ const AddCustomModel = ({
           )}
         >
           <span className="i-ri-add-circle-fill size-3.5" />
-          {t(($) => $['modelProvider.addModel'], { ns: 'common' })}
+          {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}
         </Button>
       )
       if ((notAllowCustomCredential && !!noModels) || disabled) {
@@ -107,7 +114,7 @@ const AddCustomModel = ({
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="max-h-76 overflow-y-auto p-1">
@@ -152,7 +159,7 @@ const AddCustomModel = ({
               }}
             >
               <span className="mr-1 i-ri-add-line size-4" />
-              {t(($) => $['modelProvider.auth.addNewModel'], { ns: 'common' })}
+              {t(($) => $['modelProvider.auth.addNewModel'], { ns: 'modelProvider' })}
             </div>
           )}
         </div>

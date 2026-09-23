@@ -28,51 +28,6 @@ class RuntimeLayout:
     workspace_dir: str
 
 
-@dataclass(frozen=True, slots=True)
-class WorkspaceFileEntry:
-    name: str
-    type: str
-    size: int | None
-    mtime: int | None
-
-
-@dataclass(frozen=True, slots=True)
-class WorkspaceListResult:
-    path: str
-    entries: tuple[WorkspaceFileEntry, ...]
-    truncated: bool
-
-
-@dataclass(frozen=True, slots=True)
-class WorkspaceReadResult:
-    path: str
-    size: int
-    truncated: bool
-    binary: bool
-    text: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class WorkspaceFileContent:
-    path: str
-    size: int
-    content: bytes
-
-
-class FileSystem(Protocol):
-    """File operations interpreted in the current RuntimeLease namespace."""
-
-    async def list_directory(self, *, path: str, limit: int) -> WorkspaceListResult: ...
-
-    async def read_file(self, *, path: str, max_bytes: int) -> WorkspaceReadResult: ...
-
-    async def read_bytes(self, *, path: str, max_bytes: int) -> WorkspaceFileContent: ...
-
-    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None: ...
-
-    async def download(self, *, remote_path: str, cwd: str | None = None) -> bytes: ...
-
-
 class RuntimeLease(Protocol):
     """Invocation-local data-plane access to one persistent Binding."""
 
@@ -81,9 +36,6 @@ class RuntimeLease(Protocol):
 
     @property
     def commands(self) -> ShellCommandProtocol: ...
-
-    @property
-    def files(self) -> FileSystem: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,14 +155,9 @@ __all__ = [
     "ExecutionBindingBackend",
     "ExecutionBindingCreateSpec",
     "ExecutionBindingDestroySpec",
-    "FileSystem",
     "HomeSnapshotBackend",
     "HomeSnapshotCreateSpec",
     "RuntimeBackendProfile",
     "RuntimeLayout",
     "RuntimeLease",
-    "WorkspaceFileContent",
-    "WorkspaceFileEntry",
-    "WorkspaceListResult",
-    "WorkspaceReadResult",
 ]

@@ -4,7 +4,7 @@ import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.ge
 import type { AgentConfigureSoulSource } from './state'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function usePrepareAgentBuildDraftBeforeRun({
   agentId,

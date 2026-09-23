@@ -6,7 +6,7 @@ import InstallFromGitHub from '../install-plugin/install-from-github'
 
 type Props = Readonly<{
   payload: UpdateFromGitHubPayload
-  onSave: () => void
+  onSave: () => void | Promise<void>
   onCancel: () => void
 }>
 

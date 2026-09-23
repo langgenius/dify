@@ -2,7 +2,6 @@ import logging
 from typing import Literal
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, func, select
@@ -11,6 +10,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
 from controllers.common.fields import SimpleResultResponse, TextFileResponse
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
@@ -25,9 +25,9 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -154,11 +154,17 @@ class ChatMessageListApi(Resource):
     @setup_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def get(self, session: Session, current_user: Account, app_model: App):
-        return _list_chat_messages(session=session, app_model=app_model, current_user=current_user)
+    @model_validate(ChatMessagesQuery)
+    def get(self, req_data: ChatMessagesQuery, session: Session, current_user: Account, app_model: App):
+        return _list_chat_messages(
+            args=req_data,
+            session=session,
+            app_model=app_model,
+            current_user=current_user,
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -173,17 +179,30 @@ class AgentChatMessageListApi(Resource):
     @account_initialization_required
     @setup_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
+    @model_validate(ChatMessagesQuery)
+    def get(
+        self,
+        req_data: ChatMessagesQuery,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
         app_model = resolve_agent_runtime_app_model(
             session=session,
             tenant_id=current_tenant_id,
             agent_id=agent_id,
         )
-        return _list_chat_messages(session=session, app_model=app_model, current_user=current_user)
+        return _list_chat_messages(
+            args=req_data,
+            session=session,
+            app_model=app_model,
+            current_user=current_user,
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
@@ -201,8 +220,14 @@ class MessageFeedbackApi(Resource):
     @with_current_user
     @with_session
     @get_app_model
-    def post(self, session: Session, current_user: Account, app_model: App):
-        return _update_message_feedback(session=session, current_user=current_user, app_model=app_model)
+    @model_validate(MessageFeedbackPayload)
+    def post(self, req_data: MessageFeedbackPayload, session: Session, current_user: Account, app_model: App):
+        return _update_message_feedback(
+            args=req_data,
+            session=session,
+            current_user=current_user,
+            app_model=app_model,
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/feedbacks")
@@ -216,16 +241,30 @@ class AgentMessageFeedbackApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
+    @model_validate(MessageFeedbackPayload)
+    def post(
+        self,
+        req_data: MessageFeedbackPayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
         app_model = resolve_agent_runtime_app_model(
             session=session,
             tenant_id=current_tenant_id,
             agent_id=agent_id,
         )
-        return _update_message_feedback(session=session, current_user=current_user, app_model=app_model)
+        return _update_message_feedback(
+            args=req_data,
+            session=session,
+            current_user=current_user,
+            app_model=app_model,
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")
@@ -241,7 +280,7 @@ class MessageAnnotationCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model
     def get(self, app_model: App):
         count = db.session.scalar(
@@ -266,7 +305,7 @@ class MessageSuggestedQuestionApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, session: Session, current_user: Account, app_model: App, message_id: UUID):
@@ -289,6 +328,7 @@ class AgentMessageSuggestedQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -318,10 +358,10 @@ class MessageFeedbackExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model
-    def get(self, app_model: App):
-        args = FeedbackExportQuery.model_validate(request.args.to_dict())
+    @model_validate(FeedbackExportQuery)
+    def get(self, req_data: FeedbackExportQuery, app_model: App):
 
         # Import the service function
         from services.feedback_service import FeedbackService
@@ -330,12 +370,12 @@ class MessageFeedbackExportApi(Resource):
             export_data = FeedbackService.export_feedbacks(
                 app_model.id,
                 session=db.session(),
-                from_source=args.from_source,
-                rating=args.rating,
-                has_comment=args.has_comment,
-                start_date=args.start_date,
-                end_date=args.end_date,
-                format_type=args.format,
+                from_source=req_data.from_source,
+                rating=req_data.rating,
+                has_comment=req_data.has_comment,
+                start_date=req_data.start_date,
+                end_date=req_data.end_date,
+                format_type=req_data.format,
             )
             return export_data
 
@@ -357,7 +397,7 @@ class MessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model
     def get(self, session: Session, app_model: App, message_id: UUID):
@@ -374,6 +414,7 @@ class AgentMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, agent_id: UUID, message_id: UUID):
@@ -385,9 +426,13 @@ class AgentMessageApi(Resource):
         return _get_message_detail(session=session, app_model=app_model, message_id=message_id)
 
 
-def _list_chat_messages(*, session: Session, app_model: App, current_user: Account | None = None):
-    args = ChatMessagesQuery.model_validate(request.args.to_dict())
-
+def _list_chat_messages(
+    *,
+    args: ChatMessagesQuery,
+    session: Session,
+    app_model: App,
+    current_user: Account | None = None,
+):
     if AppMode.value_of(app_model.mode) == AppMode.AGENT and current_user is not None:
         try:
             conversation = ConversationService.get_conversation(
@@ -464,9 +509,13 @@ def _list_chat_messages(*, session: Session, app_model: App, current_user: Accou
     )
 
 
-def _update_message_feedback(*, session: Session, current_user: Account, app_model: App):
-    args = MessageFeedbackPayload.model_validate(console_ns.payload)
-
+def _update_message_feedback(
+    *,
+    args: MessageFeedbackPayload,
+    session: Session,
+    current_user: Account,
+    app_model: App,
+):
     message_id = args.message_id
 
     message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1))

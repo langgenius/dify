@@ -56,7 +56,8 @@ const resolveAttributionSearchParams = (
 /**
  * Captures external-campaign params (utm_* + blog `slug`) from the landing URL.
  *
- * Blog links point straight at cloud.dify.ai (e.g. `/apps?utm_source=dify_blog&slug=…`),
+ * Blog links point straight at cloud.dify.ai (e.g. `/apps?utm_source=dify_blog&slug=…`
+ * or `/agents?utm_source=dify_blog&slug=…`),
  * bypassing the marketing site that normally seeds the `utm_info` cookie. A new visitor
  * is bounced to sign-up, and the URL params are lost on that redirect — so we persist
  * them here, on the landing render, before the redirect happens:

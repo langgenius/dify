@@ -12,7 +12,7 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 }))
 
 vi.mock('../../extra-info/service-api', () => ({
-  default: () => <button type="button">service api</button>,
+  ServiceApi: () => <button type="button">service api</button>,
 }))
 
 const defaultProps = {

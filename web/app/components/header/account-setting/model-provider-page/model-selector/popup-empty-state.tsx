@@ -6,24 +6,24 @@ type ModelSelectorEmptyStateProps = {
 }
 
 function ModelSelectorEmptyState({ onConfigure }: ModelSelectorEmptyStateProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="mx-2 flex flex-col gap-2 rounded-[10px] bg-linear-to-r from-state-base-hover to-background-gradient-mask-transparent p-4">
       <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
-        <span className="i-ri-brain-2-line size-5 text-text-tertiary" />
+        <span aria-hidden="true" className="i-ri-brain-2-line size-5 text-text-tertiary" />
       </div>
       <div className="flex flex-col gap-1">
         <p className="system-sm-medium text-text-secondary">
-          {t(($) => $['modelProvider.selector.noProviderConfigured'], { ns: 'common' })}
+          {t(($) => $['modelProvider.selector.noProviderConfigured'], { ns: 'modelProvider' })}
         </p>
         <p className="system-xs-regular text-text-tertiary">
-          {t(($) => $['modelProvider.selector.noProviderConfiguredDesc'], { ns: 'common' })}
+          {t(($) => $['modelProvider.selector.noProviderConfiguredDesc'], { ns: 'modelProvider' })}
         </p>
       </div>
       <Button variant="primary" className="w-27" onClick={onConfigure}>
-        {t(($) => $['modelProvider.selector.configure'], { ns: 'common' })}
-        <span className="i-ri-arrow-right-line size-4" />
+        {t(($) => $['modelProvider.selector.configure'], { ns: 'modelProvider' })}
+        <span aria-hidden="true" className="i-ri-arrow-right-line size-4" />
       </Button>
     </div>
   )

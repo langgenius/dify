@@ -13,7 +13,3 @@ const systemFeaturesAtom = atom((get) => {
 export const deploymentEditionAtom = atom((get) => {
   return get(systemFeaturesAtom).deployment_edition
 })
-
-export const brandingEnabledAtom = atom((get) => {
-  return get(systemFeaturesAtom).branding.enabled
-})

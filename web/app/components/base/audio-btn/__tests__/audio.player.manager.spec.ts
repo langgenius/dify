@@ -36,7 +36,7 @@ const MockAudioPlayer = vi.hoisted(() => {
 })
 
 vi.mock('@/app/components/base/audio-btn/audio', () => ({
-  default: MockAudioPlayer,
+  AudioPlayer: MockAudioPlayer,
 }))
 
 describe('AudioPlayerManager', () => {

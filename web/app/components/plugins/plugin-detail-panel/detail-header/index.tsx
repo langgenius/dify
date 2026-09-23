@@ -3,11 +3,12 @@
 import type { PluginDetail } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
+import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
@@ -15,12 +16,11 @@ import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/const
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { API_PREFIX } from '@/config'
-import { useGetLanguage, useLocale } from '@/context/i18n'
+import { useGetLanguage } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTheme from '@/hooks/use-theme'
 import { useAllToolProviders } from '@/service/use-tools'
 import { getMarketplaceUrl } from '@/utils/var'
-import { AutoUpdateLine } from '../../../base/icons/src/vender/system'
 import Verified from '../../base/badges/verified'
 import DeprecationNotice from '../../base/deprecation-notice'
 import Icon from '../../card/base/card-icon'
@@ -84,7 +84,7 @@ const DetailHeader = ({
   onHide,
   onUpdate,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
@@ -242,7 +242,10 @@ const DetailHeader = ({
                   render={
                     <div>
                       <Badge className="mr-1 cursor-pointer px-1">
-                        <AutoUpdateLine className="size-3" />
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-system-auto-update-line size-3"
+                        />
                       </Badge>
                     </div>
                   }
@@ -310,9 +313,12 @@ const DetailHeader = ({
               showCheckVersion={canUpdatePlugin}
               showRemove={canDeletePlugin}
             />
-            <ActionButton onClick={onHide}>
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              onClick={onHide}
+            >
               <span aria-hidden className="i-ri-close-line size-4" />
-            </ActionButton>
+            </IconButton>
           </div>
         )}
       </div>

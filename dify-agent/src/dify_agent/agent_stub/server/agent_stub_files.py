@@ -24,6 +24,7 @@ from pydantic import ValidationError
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubFileDownloadRequest,
     AgentStubFileDownloadResponse,
+    AgentStubFileMapping,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
 )
@@ -72,13 +73,38 @@ class AgentStubFileRequestError(RuntimeError):
         super().__init__(str(detail))
 
 
+def bind_sandbox_file_uri(*, sandbox_files_base_url: str, uri: str) -> str:
+    """Bind one validated origin-free Dify file URI to the Sandbox audience."""
+
+    if not is_safe_dify_file_uri(uri):
+        raise ValueError("Dify API returned an unsafe Dify file URI")
+    return f"{sandbox_files_base_url.rstrip('/')}{uri}"
+
+
+def is_safe_dify_file_uri(value: str) -> bool:
+    """Return whether a URI stays within Dify's signed ``/files/*`` data plane."""
+
+    parsed = urlsplit(value)
+    if parsed.scheme or parsed.netloc or parsed.fragment or value.startswith("//"):
+        return False
+
+    decoded_path = parsed.path
+    for _ in range(2):
+        decoded_path = unquote(decoded_path)
+    if "\\" in decoded_path:
+        return False
+    normalized_path = posixpath.normpath(decoded_path)
+    return decoded_path.startswith("/files/") and normalized_path.startswith("/files/")
+
+
 @dataclass(slots=True)
 class DifyApiAgentStubFileRequestHandler:
     """Call Dify API inner file request endpoints on behalf of the sandbox.
 
     The upload path calls ``/inner/api/agent/files/upload-request`` and injects the
-    authenticated execution context's ``tenant_id``, ``user_id``, and optional
-    ``conversation_id`` along with the requested filename and mimetype. The download path calls
+    authenticated execution context's ``tenant_id``, ``user_id``, ``user_from``, and optional
+    ``conversation_id`` along with the requested filename, mimetype, and configured upload-size
+    limit. The download path calls
     ``/inner/api/agent/files/download-request`` and injects ``tenant_id``,
     ``user_id``, ``user_from``, and ``invoke_from`` plus the validated public
     file mapping.
@@ -94,6 +120,7 @@ class DifyApiAgentStubFileRequestHandler:
     inner_api_url: str
     inner_api_key: str
     sandbox_files_base_url: str
+    max_upload_size_bytes: int
     timeout: httpx.Timeout | float = 30.0
 
     async def create_upload_request(
@@ -118,9 +145,11 @@ class DifyApiAgentStubFileRequestHandler:
         payload = {
             "tenant_id": execution_context.tenant_id,
             "user_id": execution_context.user_id,
+            "user_from": execution_context.user_from,
             "filename": request.filename,
             "mimetype": request.mimetype,
             "conversation_id": execution_context.conversation_id,
+            "max_size": self.max_upload_size_bytes,
         }
         data = await self._post_inner_api("/inner/api/agent/files/upload-request", payload)
         upload_uri = data.get("upload_uri")
@@ -149,19 +178,26 @@ class DifyApiAgentStubFileRequestHandler:
                 success payload does not contain safe download metadata.
         """
         execution_context = self._require_user_context(principal.execution_context)
+        file_mapping = request.file
+        if file_mapping is None:
+            raise AgentStubFileRequestError(400, "file mapping is required for file download requests")
         payload: dict[str, object] = {
             "tenant_id": execution_context.tenant_id,
             "user_id": execution_context.user_id,
             "user_from": execution_context.user_from,
             "invoke_from": execution_context.invoke_from,
-            "file": request.file.model_dump(mode="json", exclude_none=True),
+            "file": file_mapping.model_dump(mode="json", exclude_none=True),
         }
         payload["for_frontend"] = request.for_frontend
         data = await self._post_inner_api("/inner/api/agent/files/download-request", payload)
         download_uri = data.get("download_uri")
         if not isinstance(download_uri, str) or not download_uri:
             raise AgentStubFileRequestError(502, "Dify API download request response is missing download_uri")
-        download_url = self._resolve_download_url(request=request, download_uri=download_uri)
+        download_url = self._resolve_download_url(
+            file_mapping=file_mapping,
+            for_frontend=request.for_frontend,
+            download_uri=download_uri,
+        )
         try:
             return AgentStubFileDownloadResponse.model_validate({**data, "download_url": download_url})
         except ValidationError as exc:
@@ -196,42 +232,35 @@ class DifyApiAgentStubFileRequestHandler:
             raise AgentStubFileRequestError(502, "Dify API file request response is invalid")
         return raw_payload
 
-    def _resolve_download_url(self, *, request: AgentStubFileDownloadRequest, download_uri: str) -> str:
-        if request.file.transfer_method == "remote_url":
+    def _resolve_download_url(
+        self,
+        *,
+        file_mapping: AgentStubFileMapping,
+        for_frontend: bool,
+        download_uri: str,
+    ) -> str:
+        if file_mapping.transfer_method == "remote_url":
             if self._is_absolute_http_url(download_uri):
                 return download_uri
             raise AgentStubFileRequestError(502, "Dify API returned an invalid remote download URL")
 
-        if request.for_frontend:
-            if self._is_absolute_http_url(download_uri) or self._is_safe_dify_file_uri(download_uri):
+        if for_frontend:
+            if self._is_absolute_http_url(download_uri) or is_safe_dify_file_uri(download_uri):
                 return download_uri
             raise AgentStubFileRequestError(502, "Dify API returned an unsafe frontend download URI")
 
         return self._bind_sandbox_files_base_url(download_uri)
 
     def _bind_sandbox_files_base_url(self, uri: str) -> str:
-        if not self._is_safe_dify_file_uri(uri):
-            raise AgentStubFileRequestError(502, "Dify API returned an unsafe Dify file URI")
-        return f"{self.sandbox_files_base_url.rstrip('/')}{uri}"
+        try:
+            return bind_sandbox_file_uri(sandbox_files_base_url=self.sandbox_files_base_url, uri=uri)
+        except ValueError as exc:
+            raise AgentStubFileRequestError(502, str(exc)) from exc
 
     @staticmethod
     def _is_absolute_http_url(value: str) -> bool:
         parsed = urlsplit(value)
         return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
-
-    @staticmethod
-    def _is_safe_dify_file_uri(value: str) -> bool:
-        parsed = urlsplit(value)
-        if parsed.scheme or parsed.netloc or parsed.fragment or value.startswith("//"):
-            return False
-
-        decoded_path = parsed.path
-        for _ in range(2):
-            decoded_path = unquote(decoded_path)
-        if "\\" in decoded_path:
-            return False
-        normalized_path = posixpath.normpath(decoded_path)
-        return decoded_path.startswith("/files/") and normalized_path.startswith("/files/")
 
     @staticmethod
     def _parse_json(response: httpx.Response) -> object:
@@ -245,4 +274,6 @@ __all__ = [
     "AgentStubFileRequestError",
     "AgentStubFileRequestHandler",
     "DifyApiAgentStubFileRequestHandler",
+    "bind_sandbox_file_uri",
+    "is_safe_dify_file_uri",
 ]

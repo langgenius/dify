@@ -16,6 +16,7 @@ export type UploadConfig = {
   file_upload_limit: number
   image_file_batch_limit: number
   image_file_size_limit: number
+  knowledge_file_size_limit: number
   single_chunk_attachment_limit: number
   skill_file_size_limit: number
   video_file_size_limit: number

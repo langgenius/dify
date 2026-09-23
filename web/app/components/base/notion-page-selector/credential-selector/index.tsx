@@ -1,10 +1,13 @@
 'use client'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
@@ -48,23 +51,33 @@ const CredentialSelector = ({ value, items, onSelect }: CredentialSelectorProps)
           </span>
         </span>
       </SelectTrigger>
-      <SelectContent popupClassName="w-80" listClassName="max-h-50">
-        {items.map((item) => {
-          const displayName = getDisplayName(item)
-          return (
-            <SelectItem key={item.credentialId} value={item.credentialId} className="h-9 px-3">
-              <CredentialIcon
-                className="mr-2 shrink-0"
-                avatarUrl={item.workspaceIcon}
-                name={displayName}
-                size={20}
-              />
-              <SelectItemText title={displayName}>{displayName}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          )
-        })}
-      </SelectContent>
+      <SelectPortal>
+        <SelectPositioner>
+          <SelectPopup className="w-80">
+            <SelectList className="max-h-50">
+              {items.map((item) => {
+                const displayName = getDisplayName(item)
+                return (
+                  <SelectItem
+                    key={item.credentialId}
+                    value={item.credentialId}
+                    className="h-9 px-3"
+                  >
+                    <CredentialIcon
+                      className="mr-2 shrink-0"
+                      avatarUrl={item.workspaceIcon}
+                      name={displayName}
+                      size={20}
+                    />
+                    <SelectItemText title={displayName}>{displayName}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                )
+              })}
+            </SelectList>
+          </SelectPopup>
+        </SelectPositioner>
+      </SelectPortal>
     </Select>
   )
 }

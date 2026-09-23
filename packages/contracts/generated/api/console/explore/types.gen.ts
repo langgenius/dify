@@ -13,7 +13,15 @@ export type LearnDifyAppListResponse = {
   recommended_apps: Array<RecommendedAppResponse>
 }
 
-export type RecommendedAppDetailNullableResponse = RecommendedAppDetailResponse | null
+export type RecommendedAppDetailResponse = {
+  can_trial: boolean
+  export_data: string
+  icon?: string | null
+  icon_background?: string | null
+  id: string
+  mode: string
+  name: string
+}
 
 export type BannerListResponse = Array<BannerResponse>
 
@@ -28,16 +36,6 @@ export type RecommendedAppResponse = {
   is_listed?: boolean | null
   position?: number | null
   privacy_policy?: string | null
-}
-
-export type RecommendedAppDetailResponse = {
-  can_trial: boolean
-  export_data: string
-  icon?: string | null
-  icon_background?: string | null
-  id: string
-  mode: string
-  name: string
 }
 
 export type BannerResponse = {
@@ -139,8 +137,12 @@ export type GetExploreAppsByAppIdData = {
   url: '/explore/apps/{app_id}'
 }
 
+export type GetExploreAppsByAppIdErrors = {
+  404: unknown
+}
+
 export type GetExploreAppsByAppIdResponses = {
-  200: RecommendedAppDetailNullableResponse
+  200: RecommendedAppDetailResponse
 }
 
 export type GetExploreAppsByAppIdResponse =

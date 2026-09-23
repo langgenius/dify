@@ -102,6 +102,19 @@ class PluginModelProviderEntity(BaseModel):
     declaration: ProviderEntity = Field(description="The declaration of the model provider.")
 
 
+class PluginModelProviderBinding(BaseModel):
+    """Lightweight installation metadata for one model provider."""
+
+    provider: str
+    installation_id: str
+    plugin_id: str
+    plugin_unique_identifier: str
+    runtime_type: str
+    source: PluginInstallationSource
+    version: str
+    verified: bool = False
+
+
 class PluginTextEmbeddingNumTokensResponse(BaseModel):
     """
     Response for number of tokens.
@@ -120,6 +133,28 @@ class PluginLLMNumTokensResponse(BaseModel):
 
 class PluginStringResultResponse(BaseModel):
     result: str = Field(description="The result of the string.")
+
+
+class PluginTTSResultResponse(PluginStringResultResponse):
+    """One TTS data chunk returned by the plugin daemon."""
+
+    mime_type: str | None = Field(default=None, description="The MIME type of the audio chunk.")
+
+
+class TTSAudioChunk(bytes):
+    """A bytes-compatible TTS chunk carrying optional daemon MIME metadata.
+
+    The currently released Graphon runtime exposes TTS output as ``bytes``.
+    This carrier preserves that contract while retaining the daemon field until
+    the structured Graphon ``TTSChunk`` protocol is available in a release.
+    """
+
+    mime_type: str | None
+
+    def __new__(cls, data: bytes | bytearray | memoryview, mime_type: str | None = None):
+        instance = super().__new__(cls, data)
+        instance.mime_type = mime_type
+        return instance
 
 
 class PluginVoiceEntity(BaseModel):
@@ -213,6 +248,10 @@ class PluginOAuthCredentialsResponse(BaseModel):
 class PluginListResponse(BaseModel):
     list: list[PluginEntity]
     total: int
+
+
+class PluginInstalledIdsDaemonResponse(BaseModel):
+    plugin_ids: list[str]
 
 
 class PluginListWithoutTotalResponse(BaseModel):

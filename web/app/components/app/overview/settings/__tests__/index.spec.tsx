@@ -1,13 +1,20 @@
-import type { ReactNode } from 'react'
-import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
-import type { AppDetailResponse } from '@/models/app'
-import type { AppSSO } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Plan } from '@/app/components/billing/type'
-import { baseProviderContextValue } from '@/context/provider-context'
+import type { ReactElement, ReactNode } from 'react'
+import type { SettingsAppInfo } from '../index'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithoutPricing,
+} from '@/test/console/query-data'
+import { createAppSiteFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
+let copyrightEnabled = true
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
@@ -37,7 +44,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -58,24 +65,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 const mockOnClose = vi.fn()
 const mockOnSave = vi.fn()
-const mockSetShowPricingModal = vi.fn()
-const mockUseProviderContext = vi.fn<() => ProviderContextState>()
-
-const buildModalContext = (): ModalContextState => ({
-  hasBlockingModalOpen: false,
-  setShowModerationSettingModal: vi.fn(),
-  setShowExternalDataToolModal: vi.fn(),
-  setShowPricingModal: mockSetShowPricingModal,
-  setShowAnnotationFullModal: vi.fn(),
-  setShowModelModal: vi.fn(),
-  setShowExternalKnowledgeAPIModal: vi.fn(),
-  setShowOpeningModal: vi.fn(),
-  setShowUpdatePluginModal: vi.fn(),
-})
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => buildModalContext(),
-}))
 
 vi.mock('@/context/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/context/i18n')>('@/context/i18n')
@@ -85,17 +74,8 @@ vi.mock('@/context/i18n', async () => {
   }
 })
 
-vi.mock('@/context/provider-context', async () => {
-  const actual = await vi.importActual<typeof import('@/context/provider-context')>(
-    '@/context/provider-context',
-  )
-  return {
-    ...actual,
-    useProviderContext: () => mockUseProviderContext(),
-  }
-})
-
 const mockAppInfo = {
+  id: 'test-app',
   site: {
     title: 'Test App',
     icon_type: 'emoji',
@@ -114,40 +94,72 @@ const mockAppInfo = {
     use_icon_as_answer_icon: true,
   },
   mode: AppModeEnum.ADVANCED_CHAT,
-  enable_sso: false,
-} as unknown as AppDetailResponse & Partial<AppSSO>
+} satisfies SettingsAppInfo
 
-const renderSettingsModal = (appInfo = mockAppInfo) =>
+const renderSettingsModal = (appInfo: SettingsAppInfo = mockAppInfo, canDeploy = false) =>
   render(
-    <SettingsModal isChat isShow appInfo={appInfo} onClose={mockOnClose} onSave={mockOnSave} />,
+    <SettingsModal
+      isChat
+      canDeploy={canDeploy}
+      isShow
+      appInfo={appInfo}
+      onClose={mockOnClose}
+      onSave={mockOnSave}
+    />,
   )
 
 const inputPlaceholderName = 'appOverview.overview.appInfo.settings.more.inputPlaceholder'
+
+function render(...args: Parameters<typeof renderWithData>) {
+  const wrap = (ui: ReactElement) => (
+    <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{ui}</NuqsTestingAdapter>
+  )
+  args[0] = wrap(args[0])
+  const result = renderWithData(...args)
+  return { ...result, rerender: (ui: ReactElement) => result.rerender(wrap(ui)) }
+}
 
 describe('SettingsModal', () => {
   beforeEach(() => {
     toastMocks.call.mockClear()
     mockOnClose.mockClear()
     mockOnSave.mockClear()
-    mockSetShowPricingModal.mockClear()
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.professional,
-      },
-      webappCopyrightEnabled: true,
-    })
+    onPricingUrlUpdate.mockClear()
+    deploymentEdition = 'CLOUD'
+    copyrightEnabled = true
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
 
+  it('edits a site with nullable optional fields as empty form values', async () => {
+    renderSettingsModal({ id: 'app-null-fields', mode: 'chat', site: createAppSiteFixture() })
+
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('')
+    fireEvent.click(screen.getByText('common.operation.save'))
+
+    await waitFor(() =>
+      expect(mockOnSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'App',
+          description: '',
+          chat_color_theme: '',
+          privacy_policy: '',
+          input_placeholder: '',
+          icon: null,
+          icon_type: null,
+          icon_background: null,
+        }),
+      ),
+    )
+    expect(mockOnClose).toHaveBeenCalledOnce()
+  })
+
   it('should render the modal with all settings exposed by default', async () => {
     renderSettingsModal()
     expect(screen.getByText('appOverview.overview.appInfo.settings.title')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
     expect(
       screen.queryByText('appOverview.overview.appInfo.settings.more.entry'),
@@ -163,6 +175,14 @@ describe('SettingsModal', () => {
         'appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('should explain that Web app settings apply to every environment when ACL allows deploy', () => {
+    renderSettingsModal(mockAppInfo, true)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'appOverview.overview.appInfo.settings.multiEnvironmentNotice',
+    )
   })
 
   it('should notify the user when the name is empty', async () => {
@@ -238,7 +258,6 @@ describe('SettingsModal', () => {
         icon_background: mockAppInfo.site.icon_background,
         show_workflow_steps: mockAppInfo.site.show_workflow_steps,
         use_icon_as_answer_icon: mockAppInfo.site.use_icon_as_answer_icon,
-        enable_sso: mockAppInfo.enable_sso,
       }),
     )
     expect(mockOnClose).toHaveBeenCalled()
@@ -261,6 +280,7 @@ describe('SettingsModal', () => {
     const { rerender } = render(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -276,6 +296,7 @@ describe('SettingsModal', () => {
     rerender(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={false}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -285,6 +306,7 @@ describe('SettingsModal', () => {
     rerender(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -306,6 +328,7 @@ describe('SettingsModal', () => {
     const { rerender } = render(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -319,16 +342,15 @@ describe('SettingsModal', () => {
     rerender(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
-        appInfo={
-          {
-            ...mockAppInfo,
-            site: {
-              ...mockAppInfo.site,
-              input_placeholder: 'Updated prompt',
-            },
-          } as typeof mockAppInfo
-        }
+        appInfo={{
+          ...mockAppInfo,
+          site: {
+            ...mockAppInfo.site,
+            input_placeholder: 'Updated prompt',
+          },
+        }}
         onClose={mockOnClose}
         onSave={mockOnSave}
       />,
@@ -338,36 +360,29 @@ describe('SettingsModal', () => {
     )
   })
 
-  it('should display paid webapp settings as defaults for Cloud sandbox plans', async () => {
+  it('should preserve restricted settings when saving other Cloud settings', async () => {
     mockOnSave.mockResolvedValueOnce(undefined)
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
-      },
-      webappCopyrightEnabled: true,
-    })
+    deploymentEdition = 'CLOUD'
+    copyrightEnabled = false
 
     renderSettingsModal()
 
     const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
     expect(inputPlaceholder).toBeDisabled()
-    expect(inputPlaceholder).toHaveValue('')
+    expect(inputPlaceholder).toHaveValue(mockAppInfo.site.input_placeholder)
     expect(
       screen.queryByPlaceholderText(
         'appOverview.overview.appInfo.settings.more.copyRightPlaceholder',
       ),
-    ).not.toBeInTheDocument()
+    ).toBeDisabled()
 
     fireEvent.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
-          copyright: '',
-          input_placeholder: '',
+          copyright: undefined,
+          input_placeholder: undefined,
         }),
       )
     })
@@ -375,15 +390,8 @@ describe('SettingsModal', () => {
 
   it('should keep the input placeholder editable when billing is disabled', async () => {
     mockOnSave.mockResolvedValueOnce(undefined)
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: false,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
-      },
-      webappCopyrightEnabled: false,
-    })
+    deploymentEdition = 'COMMUNITY'
+    copyrightEnabled = false
 
     renderSettingsModal()
     const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
@@ -395,7 +403,7 @@ describe('SettingsModal', () => {
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
-          copyright: '',
+          copyright: undefined,
           input_placeholder: 'Self-hosted prompt',
         }),
       )
@@ -403,32 +411,20 @@ describe('SettingsModal', () => {
   })
 
   it('should open the pricing modal from the copyright upgrade badge for sandbox plans', async () => {
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
-      },
-      webappCopyrightEnabled: false,
-    })
+    deploymentEdition = 'CLOUD'
+    copyrightEnabled = false
 
     renderSettingsModal()
     fireEvent.click((await screen.findAllByText('billing.upgradeBtn.encourageShort'))[0]!)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it('should hide the upgrade badge for non-sandbox plans', async () => {
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.professional,
-      },
-      webappCopyrightEnabled: true,
-    })
+    deploymentEdition = 'CLOUD'
+    copyrightEnabled = true
 
     renderSettingsModal()
     await waitFor(() => {
@@ -447,7 +443,7 @@ describe('SettingsModal', () => {
         icon_background: null,
         icon_url: 'https://example.com/uploaded.png',
       },
-    } as typeof mockAppInfo
+    } satisfies SettingsAppInfo
 
     renderSettingsModal(imageAppInfo)
 
@@ -481,4 +477,41 @@ describe('SettingsModal', () => {
       )
     })
   })
+})
+
+function renderWithData(
+  ui: ReactElement,
+  options: Parameters<typeof renderWithoutPricing>[1] = {},
+) {
+  return renderWithoutPricing(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { webapp_copyright_enabled: copyrightEnabled },
+    ...options,
+  })
+}
+
+it('saves unrelated settings while entitlements are pending without clearing protected fields', async () => {
+  const queryClient = createConsoleQueryClient()
+  void queryClient.query({
+    ...consoleQuery.features.get.queryOptions(),
+    queryFn: () => new Promise(() => {}),
+  })
+  const onSave = vi.fn().mockResolvedValue(undefined)
+  render(<SettingsModal isChat isShow appInfo={mockAppInfo} onClose={vi.fn()} onSave={onSave} />, {
+    queryClient,
+    features: undefined,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeDisabled()
+  expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        copyright: undefined,
+        input_placeholder: undefined,
+        title: mockAppInfo.site.title,
+      }),
+    ),
+  )
 })

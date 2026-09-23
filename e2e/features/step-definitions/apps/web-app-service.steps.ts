@@ -1,11 +1,11 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api/apps'
-import { getAppSiteURL } from '../../../support/api/web-apps'
-import { syncRunnableWorkflowDraft } from '../../../support/api/workflows'
-import { createE2EResourceName } from '../../../support/naming'
-import { baseURL, defaultLocale } from '../../../test-env'
+import { createTestApp } from '../../../support/api/apps.ts'
+import { getAppSiteURL } from '../../../support/api/web-apps.ts'
+import { syncRunnableWorkflowDraft } from '../../../support/api/workflows.ts'
+import { createE2EResourceName } from '../../../support/naming.ts'
+import { baseURL, defaultLocale } from '../../../test-env.ts'
 
 Given('a new runnable workflow app has been published', async function (this: DifyWorld) {
   const client = this.getConsoleClient()
@@ -23,18 +23,26 @@ Given('a new runnable workflow app has been published', async function (this: Di
   this.shareURL = getAppSiteURL(appDetail)
 })
 
-When('I open the app information panel', async function (this: DifyWorld) {
-  const appName = this.lastCreatedAppName
-  if (!appName) {
-    throw new Error('No app name available. Create an app before opening its information panel.')
-  }
-
-  await this.getPage().getByRole('button', { name: appName }).click()
-})
-
 const getWebAppSwitch = (world: DifyWorld) => {
   const webAppCard = world.getPage().getByRole('region', { name: 'Web App' })
   return webAppCard.getByRole('switch', { name: 'Web App' })
+}
+
+async function waitForPersistedWebAppState(world: DifyWorld, enabled: boolean) {
+  const appId = world.createdAppIds.at(-1)
+  if (!appId) throw new Error('No workflow app has been created.')
+  const client = world.getConsoleClient()
+  // The status label updates optimistically. A different browser must wait for
+  // the saved state before reloading the published app.
+  await expect
+    .poll(
+      async () => {
+        const app = await client.apps.byAppId.get({ params: { app_id: appId } })
+        return app.enable_site
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(enabled)
 }
 
 When('an anonymous visitor opens the Web App', async function (this: DifyWorld) {
@@ -73,9 +81,10 @@ When('I enable the Web App', async function (this: DifyWorld) {
 
 Then('the Web App should be in service', async function (this: DifyWorld) {
   const webAppCard = this.getPage().getByRole('region', { name: 'Web App' })
-  await expect(webAppCard.getByText('In Service', { exact: true })).toBeVisible({
+  await expect(webAppCard.getByText(/^In service$/i)).toBeVisible({
     timeout: 10_000,
   })
+  await waitForPersistedWebAppState(this, true)
 })
 
 Then('the Web App should be disabled', async function (this: DifyWorld) {
@@ -83,6 +92,7 @@ Then('the Web App should be disabled', async function (this: DifyWorld) {
   await expect(webAppCard.getByText('Disabled', { exact: true })).toBeVisible({
     timeout: 10_000,
   })
+  await waitForPersistedWebAppState(this, false)
 })
 
 Then('the published workflow Web App should be accessible', async function (this: DifyWorld) {

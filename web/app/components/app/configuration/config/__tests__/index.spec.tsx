@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { ToolItem } from '@/types/app'
 import { render, screen } from '@testing-library/react'
@@ -108,13 +107,6 @@ const createModelConfig = (overrides: Partial<ModelConfig> = {}): ModelConfig =>
   sensitive_word_avoidance: null,
   annotation_reply: null,
   external_data_tools: null,
-  system_parameters: {
-    audio_file_size_limit: 1,
-    file_size_limit: 1,
-    image_file_size_limit: 1,
-    video_file_size_limit: 1,
-    workflow_file_upload_limit: 1,
-  },
   dataSets: [],
   agentConfig: {
     enabled: false,

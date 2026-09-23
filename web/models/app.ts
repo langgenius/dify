@@ -11,102 +11,20 @@ import type {
   TracingProvider,
   WeaveConfig,
 } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { Dependency } from '@/app/components/plugins/types'
-import type { App, AppModeEnum, SiteConfig } from '@/types/app'
 
-export enum DSLImportMode {
-  YAML_CONTENT = 'yaml-content',
-  YAML_URL = 'yaml-url',
-}
+export const DSLImportMode = {
+  YAML_CONTENT: 'yaml-content',
+  YAML_URL: 'yaml-url',
+} as const
+export type DSLImportMode = (typeof DSLImportMode)[keyof typeof DSLImportMode]
 
-export enum DSLImportStatus {
-  COMPLETED = 'completed',
-  COMPLETED_WITH_WARNINGS = 'completed-with-warnings',
-  PENDING = 'pending',
-  FAILED = 'failed',
-}
-
-export type DSLImportWarning = {
-  code: string
-  path: string
-  message: string
-  details: Record<string, unknown>
-}
-
-export type AppListResponse = {
-  data: App[]
-  has_more: boolean
-  limit: number
-  page: number
-  total: number
-}
-
-export type AppDetailResponse = App
-
-export type DSLImportResponse = {
-  id: string
-  status: DSLImportStatus
-  app_mode: AppModeEnum
-  app_id?: string
-  current_dsl_version?: string
-  imported_dsl_version?: string
-  error: string
-  leaked_dependencies: Dependency[]
-  permission_keys: string[]
-  warnings?: DSLImportWarning[]
-}
-
-export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
-
-export type AppDailyMessagesResponse = {
-  data: Array<{ date: string; message_count: number }>
-}
-
-export type AppDailyConversationsResponse = {
-  data: Array<{ date: string; conversation_count: number }>
-}
-
-export type WorkflowDailyConversationsResponse = {
-  data: Array<{ date: string; runs: number }>
-}
-
-export type AppStatisticsResponse = {
-  data: Array<{ date: string }>
-}
-
-export type AppDailyEndUsersResponse = {
-  data: Array<{ date: string; terminal_count: number }>
-}
-
-export type AppTokenCostsResponse = {
-  data: Array<{ date: string; token_count: number; total_price: number; currency: number }>
-}
-
-export type UpdateAppModelConfigResponse = { result: string }
-
-type ApiKeyItemResponse = {
-  id: string
-  token: string
-  last_used_at: string
-  created_at: string
-}
-
-export type ApiKeysListResponse = {
-  data: ApiKeyItemResponse[]
-}
-
-export type CreateApiKeyResponse = {
-  id: string
-  token: string
-  created_at: string
-}
-
-export type AppVoicesListResponse = [
-  {
-    name: string
-    value: string
-  },
-]
+export const DSLImportStatus = {
+  COMPLETED: 'completed',
+  COMPLETED_WITH_WARNINGS: 'completed-with-warnings',
+  PENDING: 'pending',
+  FAILED: 'failed',
+} as const
+export type DSLImportStatus = (typeof DSLImportStatus)[keyof typeof DSLImportStatus]
 
 export type WorkflowOnlineUser = {
   user_id?: string

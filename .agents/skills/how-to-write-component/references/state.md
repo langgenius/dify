@@ -9,18 +9,21 @@ Read this document when a change involves Jotai, form drafts, route identity, sh
 - Keep server and cache state in TanStack Query. Use existing feature stores for complex, high-frequency interaction state such as workflow canvas drag, resize, and runtime panels.
 - Use feature-owned storage only for low-frequency client preferences, dismissed notices, and UI defaults. Live application state does not belong in local storage.
 
-## Forms
+## Forms And Sessions
 
-- Prefer uncontrolled Dify UI form and field controls when values are only read at submit time. Initialize query-backed defaults with `defaultValue` and keyed remounts.
-- Promote form values to atoms only when another owner reacts to in-progress values, the draft must survive scoped unmounting, or several workflow steps edit the same draft.
+- Follow the [form contract] for field controlledness and the [overlay contract] for Root/content mounting and state lifetime. These primitive contracts also apply when reviewing a consumer.
+- Choose the Web draft owner from the required lifetime. Keep mounted-session drafts in the content owner; start with the lowest shared React owner when another component needs the draft or it must survive unmounting. Use feature-scoped atoms only when their coordination or persistence contract is needed.
+- For query-backed defaults, establish the form session after the required defaults are available. `defaultValue` initializes the current mount; a stable semantic identity key may create a fresh snapshot when the represented identity changes. Do not use a generated key as a routine reset command.
 - Keep validation, source priority, fallback behavior, dirty checks, and payload assembly in the workflow that owns submission.
+- Derive booleans, disabled flags, default tabs, and loading labels from current state. Do not mirror one value into competing prop, default, and local sources; controlled state alone is not a competing-source defect.
+- Do not use local state to fake server data or generated contract fields, or connect a feature mock shell to an unrelated API before its actual contract is confirmed.
 
 ## Route And URL State
 
 - Treat `useParams`, route arguments, and `nuqs` as the owners of URL identity and updates.
 - Hydrate a primitive atom at the route or surface boundary only when query atoms or shared derived atoms require route identity. Keep URL writes in route and query-state APIs.
 - Within one route-owned feature, choose one route-identity source. Do not hydrate route identity into atoms while also threading the same ID through multiple component layers.
-- Put shareable filters, tabs, pagination, and search state in the URL. Keep one-shot navigation signals and transient UI state out of persistent subscriptions.
+- Put shareable filters, tabs, selected panels, pagination, and search state in the URL. Keep one-shot navigation signals and transient UI state out of persistent subscriptions.
 
 ## Jotai And Query
 
@@ -36,3 +39,6 @@ Read this document when a change involves Jotai, form drafts, route identity, sh
 - Use feature-owned storage modules built on `createLocalStorageState`; callers should not scatter direct storage access or raw keys.
 - Persist high-frequency interaction state only on commit or after updates settle.
 - Do not add ad hoc global event listeners for shared state. Centralize subscriptions through the owning atom, store, or subscription hook.
+
+[form contract]: ../../../../packages/dify-ui/docs/forms.md
+[overlay contract]: ../../../../packages/dify-ui/docs/overlays.md

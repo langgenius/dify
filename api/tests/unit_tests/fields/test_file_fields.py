@@ -1,34 +1,40 @@
 from __future__ import annotations
 
 from datetime import datetime
-from types import SimpleNamespace
 
 import pytest
 
 from core.workflow.file_reference import build_file_reference
+from extensions.storage.storage_type import StorageType
 from fields import conversation_fields, message_fields
 from fields.file_fields import FileResponse, FileWithSignedUrl, RemoteFileInfo, UploadConfig
 from graphon.file import File, FileTransferMethod, FileType
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 
 
 def test_file_response_serializes_datetime() -> None:
     created_at = datetime(2024, 1, 1, 12, 0, 0)
-    file_obj = SimpleNamespace(
-        id="file-1",
+    file_obj = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="key-1",
         name="example.txt",
         size=1024,
         extension="txt",
         mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         created_at=created_at,
-        preview_url="https://preview",
         source_url="https://source",
-        original_url="https://origin",
-        user_id="user-1",
-        tenant_id="tenant-1",
-        conversation_id="conv-1",
-        file_key="key-1",
+        used=False,
     )
+    file_obj.id = "file-1"
+    file_obj.preview_url = "https://preview"
+    file_obj.original_url = "https://origin"
+    file_obj.user_id = "user-1"
+    file_obj.conversation_id = "conv-1"
+    file_obj.file_key = "key-1"
 
     serialized = FileResponse.model_validate(file_obj, from_attributes=True).model_dump(mode="json")
 
@@ -67,6 +73,7 @@ def test_remote_file_info_and_upload_config() -> None:
 
     config = UploadConfig(
         file_size_limit=1,
+        knowledge_file_size_limit=11,
         batch_count_limit=2,
         file_upload_limit=3,
         image_file_size_limit=4,
@@ -81,6 +88,7 @@ def test_remote_file_info_and_upload_config() -> None:
 
     dumped = config.model_dump(mode="json")
     assert dumped["file_upload_limit"] == 3
+    assert dumped["knowledge_file_size_limit"] == 11
     assert dumped["skill_file_size_limit"] == 7
     assert dumped["attachment_image_file_size_limit"] == 11
 

@@ -3,7 +3,7 @@ import type { Features } from '../../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import VoiceSettings from '../voice-settings'
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -17,10 +17,9 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'test-app-id' }),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  useAppVoices: () => ({
-    data: [{ name: 'alloy', value: 'alloy' }],
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => ({ data: [{ name: 'alloy', value: 'alloy' }] }),
 }))
 
 const defaultFeatures: Features = {

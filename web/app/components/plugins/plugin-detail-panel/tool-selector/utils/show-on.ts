@@ -1,5 +1,5 @@
 import type { ToolParameterShowOnCondition } from '@/app/components/tools/types'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 
 /** Inner `{ type, value }` piece stored under ReasoningConfigEntry.value when auto === 0. */
@@ -28,10 +28,10 @@ export function valuesEqualForShowOn(stored: unknown, expected: string): boolean
 }
 
 /**
- * Resolve the scalar (or object) to compare against YAML `show_on.value` for settings / `ToolVarInputs`.
+ * Resolve the scalar (or object) to compare against YAML `show_on.value` for settings / `ResourceVarInputs`.
  * Unwraps an accidental extra `{ type, value }` wrapper around the payload.
  */
-function toolSettingComparableValue(entry: ToolVarInputs[string]): unknown {
+function toolSettingComparableValue(entry: ResourceVarInputs[string]): unknown {
   let v = entry.value
   if (
     v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -46,7 +46,7 @@ function toolSettingComparableValue(entry: ToolVarInputs[string]): unknown {
 }
 
 export function toolSettingShowOnConditionMet(
-  values: ToolVarInputs,
+  values: ResourceVarInputs,
   condition: ToolParameterShowOnCondition,
 ): boolean {
   const sibling = values[condition.variable]
@@ -58,10 +58,10 @@ export function toolSettingShowOnConditionMet(
   return valuesEqualForShowOn(comparable, condition.value)
 }
 
-/** Settings form (`ToolForm`): AND semantics on sibling ToolVarInputs entries. */
+/** Settings form (`ToolForm`): AND semantics on sibling ResourceVarInputs entries. */
 export function isToolSettingShowOnSatisfied(
   conditions: ToolParameterShowOnCondition[] | undefined,
-  values: ToolVarInputs,
+  values: ResourceVarInputs,
 ): boolean {
   if (!conditions?.length)
     return true

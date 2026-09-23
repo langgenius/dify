@@ -1,6 +1,6 @@
 import type { CreateExternalAPIReq, FormSchema } from '../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Form from '../Form'
 
 vi.mock('@/context/i18n', () => ({
@@ -40,6 +40,8 @@ describe('Form', () => {
   }
 
   const defaultProps = {
+    id: 'external-api-form',
+    onSubmit: vi.fn(),
     value: defaultValue,
     onChange: vi.fn(),
     formSchemas: defaultFormSchemas,

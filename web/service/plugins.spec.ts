@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { uninstallPlugin } from './plugins'
 
 const { mockUninstallPost } = vi.hoisted(() => ({
@@ -12,7 +12,7 @@ vi.mock('./base', () => ({
   upload: vi.fn(),
 }))
 
-vi.mock('./client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     workspaces: {
       current: {

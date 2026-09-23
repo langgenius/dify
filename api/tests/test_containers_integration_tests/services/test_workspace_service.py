@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
@@ -26,9 +27,9 @@ class TestWorkspaceService:
             # Setup default mock returns
             feature = mock_feature_service.get_features.return_value
             feature.can_replace_logo = True
-            feature.billing.enabled = True
             feature.billing.subscription.plan = "professional"
             mock_tenant_service.has_roles.return_value = True
+            mock_dify_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_dify_config.FILES_URL = "https://example.com/files"
 
             yield {
@@ -333,8 +334,6 @@ class TestWorkspaceService:
 
         for config in test_configs:
             # Update tenant custom config
-            import json
-
             tenant.custom_config = json.dumps(config)
             db_session_with_containers.commit()
 
@@ -505,8 +504,6 @@ class TestWorkspaceService:
 
         for config in test_configs:
             # Update tenant custom config
-            import json
-
             tenant.custom_config = json.dumps(config)
             db_session_with_containers.commit()
 
@@ -564,8 +561,6 @@ class TestWorkspaceService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """replace_webapp_logo should be None when custom_config_dict does not have the key."""
-        import json
-
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
@@ -586,8 +581,6 @@ class TestWorkspaceService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """The logo URL should use dify_config.FILES_URL as the base."""
-        import json
-
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
@@ -618,7 +611,6 @@ class TestWorkspaceService:
         mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
-        feature.billing.enabled = False
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
         with patch("services.workspace_service.current_user", account):
@@ -779,8 +771,6 @@ class TestWorkspaceService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """When plan is SANDBOX, skip paid pool and use trial pool."""
-        from enums.cloud_plan import CloudPlan
-
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies

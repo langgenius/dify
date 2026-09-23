@@ -23,7 +23,7 @@ vi.mock('@/app/components/base/markdown-blocks', () => ({
 }))
 
 vi.mock('@/app/components/base/markdown-blocks/code-block', () => ({
-  default: ({ children }: PropsWithChildren) => <code>{children}</code>,
+  CodeBlock: ({ children }: PropsWithChildren) => <code>{children}</code>,
 }))
 
 describe('StreamdownWrapper', () => {

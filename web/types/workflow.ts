@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
@@ -118,6 +119,11 @@ export type NodeTracing = {
   agentLog?: AgentLogItemWithChildren[] // agent log
 }
 
+type VersionEnvironment = {
+  id: string
+  name: string
+}
+
 export type FetchWorkflowDraftResponse = {
   id: string
   graph: {
@@ -144,8 +150,10 @@ export type FetchWorkflowDraftResponse = {
   conversation_variables?: ConversationVariable[]
   rag_pipeline_variables?: RAGPipelineVariables
   version: string
+  version_number?: number | null
   marked_name: string
   marked_comment: string
+  environments?: VersionEnvironment[]
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
@@ -447,9 +455,9 @@ export type PublishWorkflowParams = {
   releaseNotes: string
 }
 
-export type WorkflowKind = 'standard'
-
 export type UpdateWorkflowParams = {
+  appId?: string
+  appMode?: AppMode
   url: string
   title: string
   releaseNotes: string

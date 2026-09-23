@@ -1,10 +1,16 @@
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
 
+from enums import CloudPlan, DeploymentEdition
+from extensions.storage.storage_type import StorageType
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -48,15 +54,12 @@ def test_delay_with_entities_calls_dispatch(mocker: MockerFixture, proxy) -> Non
 # --- _dispatch ---
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker: MockerFixture, proxy) -> None:
     upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
     send_mock = mocker.patch.object(proxy, "_send_to_default_tenant_queue")
 
-    from enums.cloud_plan import CloudPlan
-
-    features = SimpleNamespace(
-        billing=SimpleNamespace(enabled=True, subscription=SimpleNamespace(plan=CloudPlan.SANDBOX))
-    )
+    features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan=CloudPlan.SANDBOX)))
     mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
 
     proxy._dispatch()
@@ -65,15 +68,12 @@ def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker: MockerFixtur
     send_mock.assert_called_once_with("file-1")
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 def test_dispatch_billing_non_sandbox_uses_priority_tenant_queue(mocker: MockerFixture, proxy) -> None:
     upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
     send_mock = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
 
-    from enums.cloud_plan import CloudPlan
-
-    features = SimpleNamespace(
-        billing=SimpleNamespace(enabled=True, subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL))
-    )
+    features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL)))
     mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
 
     proxy._dispatch()
@@ -82,11 +82,12 @@ def test_dispatch_billing_non_sandbox_uses_priority_tenant_queue(mocker: MockerF
     send_mock.assert_called_once_with("file-1")
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 def test_dispatch_no_billing_uses_priority_direct_queue(mocker: MockerFixture, proxy) -> None:
     upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
     send_mock = mocker.patch.object(proxy, "_send_to_priority_direct_queue")
 
-    features = SimpleNamespace(billing=SimpleNamespace(enabled=False, subscription=SimpleNamespace(plan="free")))
+    features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="free")))
     mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
 
     proxy._dispatch()
@@ -95,10 +96,11 @@ def test_dispatch_no_billing_uses_priority_direct_queue(mocker: MockerFixture, p
     send_mock.assert_called_once_with("file-1")
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 def test_dispatch_raises_on_empty_upload_file_id(mocker: MockerFixture, proxy) -> None:
     mocker.patch.object(proxy, "_upload_invoke_entities", return_value="")
 
-    features = SimpleNamespace(billing=SimpleNamespace(enabled=False, subscription=SimpleNamespace(plan="free")))
+    features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="free")))
     mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
 
     with pytest.raises(ValueError, match="upload_file_id is empty"):
@@ -149,7 +151,20 @@ def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker: MockerFi
 
 
 def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) -> None:
-    upload_file = SimpleNamespace(id="uploaded-file-1")
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="rag-pipeline.json",
+        name="rag-pipeline.json",
+        size=1,
+        extension="json",
+        mime_type="application/json",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        created_at=datetime(2025, 1, 1),
+        used=True,
+    )
+    upload_file.id = "uploaded-file-1"
     file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
     file_service_cls.return_value.upload_text.return_value = upload_file
     mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))

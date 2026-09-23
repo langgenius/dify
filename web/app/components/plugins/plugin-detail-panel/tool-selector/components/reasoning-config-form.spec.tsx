@@ -3,7 +3,7 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import ReasoningConfigForm from './reasoning-config-form'
 
 function reasoningSchema(overrides: Partial<ToolFormSchema>): ToolFormSchema {

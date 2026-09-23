@@ -1,7 +1,6 @@
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ComponentProps } from 'react'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
@@ -15,12 +14,6 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import IndexingSection from '../indexing-section'
-
-vi.mock('@/app/components/base/divider', () => ({
-  default: ({ className }: { className?: string }) => (
-    <div data-testid="divider" className={className} />
-  ),
-}))
 
 vi.mock('@/app/components/datasets/settings/chunk-structure', () => ({
   default: ({ chunkStructure }: { chunkStructure: string }) => (
@@ -64,21 +57,21 @@ vi.mock('@/app/components/datasets/settings/index-method', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    defaultModel,
-    onSelect,
+  ModelSelector: ({
+    value,
+    onValueChange,
   }: {
-    defaultModel?: DefaultModel
-    onSelect?: (value: DefaultModel) => void
+    value?: DefaultModel
+    onValueChange?: (value: DefaultModel) => void
   }) => (
     <div
       data-testid="model-selector"
-      data-model={defaultModel?.model ?? ''}
-      data-provider={defaultModel?.provider ?? ''}
+      data-model={value?.model ?? ''}
+      data-provider={value?.provider ?? ''}
     >
       <button
         type="button"
-        onClick={() => onSelect?.({ provider: 'cohere', model: 'embed-english-v3.0' })}
+        onClick={() => onValueChange?.({ provider: 'cohere', model: 'embed-english-v3.0' })}
       >
         select-model
       </button>
@@ -222,8 +215,9 @@ describe('IndexingSection', () => {
     model: 'text-embedding-ada-002',
   }
 
-  const mockEmbeddingModelList: Model[] = [
+  const mockEmbeddingModelList: ProviderWithModelsResponse[] = [
     {
+      tenant_id: 'test-workspace',
       provider: 'openai',
       label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
       icon_small: { en_US: '', zh_Hans: '' },
@@ -248,7 +242,7 @@ describe('IndexingSection', () => {
     enable: false,
   }
 
-  const defaultProps = {
+  const defaultProps: ComponentProps<typeof IndexingSection> = {
     currentDataset: mockDataset,
     indexMethod: IndexingType.QUALIFIED,
     setIndexMethod: vi.fn(),
@@ -509,12 +503,6 @@ describe('IndexingSection', () => {
   })
 
   describe('Conditional Rendering', () => {
-    it('should render dividers between visible sections', () => {
-      renderComponent()
-
-      expect(screen.getAllByTestId('divider').length).toBeGreaterThan(0)
-    })
-
     it('should hide the index method section when the dataset lacks an indexing technique', () => {
       renderComponent({
         currentDataset: {

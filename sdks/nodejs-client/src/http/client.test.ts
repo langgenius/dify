@@ -1,5 +1,5 @@
 import { Readable, Stream } from 'node:stream'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   APIError,
   AuthenticationError,

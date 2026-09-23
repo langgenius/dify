@@ -6,11 +6,14 @@ from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDaemonInnerError,
     PluginLLMNumTokensResponse,
+    PluginModelProviderBinding,
     PluginModelProviderEntity,
     PluginModelSchemaEntity,
     PluginStringResultResponse,
     PluginTextEmbeddingNumTokensResponse,
+    PluginTTSResultResponse,
     PluginVoicesResponse,
+    TTSAudioChunk,
 )
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
@@ -47,6 +50,14 @@ class PluginModelClient(BasePluginClient):
             params={"page": 1, "page_size": 256},
         )
         return response
+
+    def fetch_model_provider_bindings(self, tenant_id: str) -> Sequence[PluginModelProviderBinding]:
+        """Fetch only model-provider installation identities from the daemon."""
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/models/bindings",
+            list[PluginModelProviderBinding],
+        )
 
     def get_model_schema(
         self,
@@ -571,14 +582,14 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         content_text: str,
         voice: str,
-    ) -> Generator[bytes, None, None]:
+    ) -> Generator[TTSAudioChunk, None, None]:
         """
         Invoke tts
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/tts/invoke",
-            type_=PluginStringResultResponse,
+            type_=PluginTTSResultResponse,
             data=jsonable_encoder(
                 self._dispatch_payload(
                     user_id=user_id,
@@ -602,7 +613,7 @@ class PluginModelClient(BasePluginClient):
         try:
             for result in response:
                 hex_str = result.result
-                yield binascii.unhexlify(hex_str)
+                yield TTSAudioChunk(binascii.unhexlify(hex_str), mime_type=result.mime_type)
         except PluginDaemonInnerError as e:
             raise ValueError(e.message + str(e.code))
 

@@ -1,5 +1,5 @@
 import type { ReasoningConfigValue } from './show-on'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import {
   isReasoningConfigShowOnSatisfied,
@@ -25,26 +25,26 @@ describe('plugin tool param show_on helpers', () => {
 
   describe('toolSettingShowOnConditionMet', () => {
     it('should fail when sibling is missing', () => {
-      const values: ToolVarInputs = {}
+      const values: ResourceVarInputs = {}
       expect(toolSettingShowOnConditionMet(values, { variable: 'mode', value: 'pro' })).toBe(false)
     })
 
     it('should fail when sibling uses variable reference mode', () => {
-      const values: ToolVarInputs = {
+      const values: ResourceVarInputs = {
         mode: { type: VarKindType.variable, value: ['n', 'x'] },
       }
       expect(toolSettingShowOnConditionMet(values, { variable: 'mode', value: 'pro' })).toBe(false)
     })
 
     it('should pass when constant sibling matches', () => {
-      const values: ToolVarInputs = {
+      const values: ResourceVarInputs = {
         mode: { type: VarKindType.constant, value: 'pro' },
       }
       expect(toolSettingShowOnConditionMet(values, { variable: 'mode', value: 'pro' })).toBe(true)
     })
 
     it('should unwrap double-wrapped FormValueInput in sibling.value', () => {
-      const values: ToolVarInputs = {
+      const values: ResourceVarInputs = {
         mode: {
           type: VarKindType.constant,
           value: { type: VarKindType.constant, value: 'pro' },
@@ -56,7 +56,7 @@ describe('plugin tool param show_on helpers', () => {
 
   describe('isToolSettingShowOnSatisfied', () => {
     it('should use AND semantics across conditions', () => {
-      const values: ToolVarInputs = {
+      const values: ResourceVarInputs = {
         a: { type: VarKindType.constant, value: '1' },
         b: { type: VarKindType.constant, value: '2' },
       }

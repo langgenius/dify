@@ -12,10 +12,12 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
+    AgentSessionConfigurationChangedError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -26,9 +28,9 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -157,14 +159,14 @@ class CompletionMessageApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, session: Session, current_user: Account, app_model: App):
-        args_model = CompletionMessagePayload.model_validate(console_ns.payload)
-        args = args_model.model_dump(exclude_none=True, by_alias=True)
+    @model_validate(CompletionMessagePayload)
+    def post(self, req_data: CompletionMessagePayload, session: Session, current_user: Account, app_model: App):
+        args = req_data.model_dump(exclude_none=True, by_alias=True)
 
-        streaming = args_model.response_mode != "blocking"
+        streaming = req_data.response_mode != "blocking"
         args["auto_generate_name"] = False
 
         try:
@@ -239,7 +241,7 @@ class ChatMessageApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
     @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     def post(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
@@ -261,7 +263,7 @@ class AgentChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -290,7 +292,7 @@ class AgentBuildChatFinalizeApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -331,6 +333,7 @@ class AgentChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session(write=False)
@@ -619,6 +622,10 @@ def _raise_agent_stream_error_before_response(response):
             if isinstance(response, _ClosableStream):
                 response.close()
             message = error_payload.get("message")
+            if error_payload.get("code") == AgentSessionConfigurationChangedError.error_code:
+                raise AgentSessionConfigurationChangedError(
+                    str(message or AgentSessionConfigurationChangedError.description)
+                )
             raise CompletionRequestError(str(message or "Agent App chat failed."))
 
         return _prepend_stream_chunks(buffered, chunk, iterator)

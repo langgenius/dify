@@ -1,6 +1,6 @@
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { bufferStreams } from '@/sys/io/streams'
 import { runDeleteMember } from './run.js'
 

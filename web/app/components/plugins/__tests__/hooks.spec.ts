@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PLUGIN_PAGE_TABS_MAP, useCategories, usePluginPageTabs, useTags } from '../hooks'
 
 describe('useTags', () => {
@@ -118,10 +118,10 @@ describe('usePluginPageTabs', () => {
     const { result } = renderHook(() => usePluginPageTabs())
 
     expect(result.current).toHaveLength(2)
-    expect(result.current[0]).toEqual({ value: 'plugins', text: 'common.menus.plugins' })
+    expect(result.current[0]).toEqual({ value: 'plugins', text: 'navigation.menus.plugins' })
     expect(result.current[1]).toEqual({
       value: 'discover',
-      text: 'common.menus.exploreMarketplace',
+      text: 'navigation.menus.exploreMarketplace',
     })
   })
 

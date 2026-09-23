@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_application_services import application_services
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset
 from models.enums import DataSourceType, TagType
@@ -338,8 +339,12 @@ def test_get_target_ids_by_tag_ids_success(
             db_session_with_containers, tags=tags_to_bind, target_id=dataset.id, tenant_id=tenant.id, user_id=account.id
         )
 
+    # The application service reads through its own repository session.
+    db_session_with_containers.commit()
     tag_ids = [tag.id for tag in tags]
-    result = TagService.get_target_ids_by_tag_ids(TagType.KNOWLEDGE, tenant.id, tag_ids, db_session_with_containers)
+    result = application_services().tags.find_target_ids(
+        tag_type=TagType.KNOWLEDGE, tenant_id=tenant.id, tag_ids=tag_ids
+    )
 
     assert result is not None
     assert len(result) == 3
@@ -361,7 +366,7 @@ def test_get_target_ids_by_tag_ids_empty_tag_ids(
     account, tenant = _create_account_with_tenant(db_session_with_containers)
     _set_current_user(current_user_stub, account, tenant)
 
-    result = TagService.get_target_ids_by_tag_ids(TagType.KNOWLEDGE, tenant.id, [], db_session_with_containers)
+    result = application_services().tags.find_target_ids(tag_type=TagType.KNOWLEDGE, tenant_id=tenant.id, tag_ids=[])
 
     assert result == []
 
@@ -372,7 +377,7 @@ def test_get_target_ids_by_tag_ids_empty_snippet_tag_ids(
     account, tenant = _create_account_with_tenant(db_session_with_containers)
     _set_current_user(current_user_stub, account, tenant)
 
-    result = TagService.get_target_ids_by_tag_ids(TagType.SNIPPET, tenant.id, [], db_session_with_containers)
+    result = application_services().tags.find_target_ids(tag_type=TagType.SNIPPET, tenant_id=tenant.id, tag_ids=[])
 
     assert result == []
 
@@ -402,19 +407,17 @@ def test_get_target_ids_by_tag_ids_match_all(
         user_id=account.id,
     )
 
+    # The application service reads through its own repository session.
+    db_session_with_containers.commit()
     tag_ids = [tag.id for tag in tags]
-    result = TagService.get_target_ids_by_tag_ids(
-        TagType.KNOWLEDGE, tenant.id, tag_ids, db_session_with_containers, match_all=True
+    result = application_services().tags.find_target_ids(
+        tag_type=TagType.KNOWLEDGE, tenant_id=tenant.id, tag_ids=tag_ids, match_all=True
     )
 
     assert result == [dataset_with_all_tags.id]
 
-    missing_tag_result = TagService.get_target_ids_by_tag_ids(
-        TagType.KNOWLEDGE,
-        tenant.id,
-        [tags[0].id, str(uuid.uuid4())],
-        db_session_with_containers,
-        match_all=True,
+    missing_tag_result = application_services().tags.find_target_ids(
+        tag_type=TagType.KNOWLEDGE, tenant_id=tenant.id, tag_ids=[tags[0].id, str(uuid.uuid4())], match_all=True
     )
     assert missing_tag_result == []
 
@@ -427,8 +430,8 @@ def test_get_target_ids_by_tag_ids_no_matching_tags(
 
     non_existent_tag_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
-    result = TagService.get_target_ids_by_tag_ids(
-        TagType.KNOWLEDGE, tenant.id, non_existent_tag_ids, db_session_with_containers
+    result = application_services().tags.find_target_ids(
+        tag_type=TagType.KNOWLEDGE, tenant_id=tenant.id, tag_ids=non_existent_tag_ids
     )
 
     assert result == []

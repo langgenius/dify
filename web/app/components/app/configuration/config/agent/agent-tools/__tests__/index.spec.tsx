@@ -1,6 +1,5 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { PropsWithChildren } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type SettingBuiltInToolType from '../setting-built-in-tool'
 import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import type ToolPickerType from '@/app/components/workflow/block-selector/tool-picker'
@@ -187,13 +186,6 @@ const createModelConfig = (tools: AgentTool[]): ModelConfig => ({
   sensitive_word_avoidance: null,
   annotation_reply: null,
   external_data_tools: [],
-  system_parameters: {
-    audio_file_size_limit: 0,
-    file_size_limit: 0,
-    image_file_size_limit: 0,
-    video_file_size_limit: 0,
-    workflow_file_upload_limit: 0,
-  },
   dataSets: [],
   agentConfig: {
     ...DEFAULT_AGENT_SETTING,

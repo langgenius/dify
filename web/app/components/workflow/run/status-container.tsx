@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 

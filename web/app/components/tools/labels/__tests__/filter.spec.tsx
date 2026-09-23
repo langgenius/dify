@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import LabelFilter from '../filter'
 
 // Mock useTags hook with controlled test data
@@ -70,7 +70,7 @@ describe('LabelFilter', () => {
       await act(async () => fireEvent.click(trigger!))
 
       expect(screen.getByText('Agent')).toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
     })
   })
 
@@ -147,10 +147,10 @@ describe('LabelFilter', () => {
         fireEvent.click(screen.getByText('common.tag.tags'))
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'rag' } })
       })
 
@@ -165,10 +165,10 @@ describe('LabelFilter', () => {
         fireEvent.click(screen.getByText('common.tag.tags'))
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
       })
 
@@ -182,10 +182,10 @@ describe('LabelFilter', () => {
         fireEvent.click(screen.getByText('common.tag.tags'))
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'rag' } })
       })
 
@@ -193,7 +193,7 @@ describe('LabelFilter', () => {
       expect(screen.queryByRole('button', { name: 'Agent' })).not.toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: '' } })
       })
 

@@ -1,45 +1,14 @@
-import type { ComponentType, SVGProps } from 'react'
+import type { SearchMethodOptionProps } from '../search-method-option'
 import { Field } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { HybridSearchModeEnum, RetrievalSearchMethodEnum, WeightedScoreEnum } from '../../../types'
 import { SearchMethodOption } from '../search-method-option'
 
-const mockUseModelListAndDefaultModel = vi.hoisted(() => vi.fn())
-const mockUseProviderContext = vi.hoisted(() => vi.fn())
-const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/hooks',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
-      >()
-    return {
-      ...actual,
-      useModelListAndDefaultModel: (
-        ...args: Parameters<typeof actual.useModelListAndDefaultModel>
-      ) => mockUseModelListAndDefaultModel(...args),
-    }
-  },
-)
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+vi.mock('../reranking-model-selector', () => ({
+  default: () => <button type="button">plugin.detailPanel.configureModel</button>,
 }))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
-  () => ({
-    useCredentialPanelState: (...args: unknown[]) => mockUseCredentialPanelState(...args),
-  }),
-)
-
-const SearchIcon: ComponentType<SVGProps<SVGSVGElement>> = (props) => (
-  <svg aria-hidden="true" {...props} />
-)
 
 const hybridSearchModeOptions = [
   {
@@ -69,7 +38,7 @@ const weightedScore = {
 const createProps = () => ({
   option: {
     id: RetrievalSearchMethodEnum.semantic,
-    icon: SearchIcon,
+    iconClassName: 'i-custom-vender-knowledge-vector-search',
     title: 'Semantic title',
     description: 'Semantic description',
     effectColor: 'purple',
@@ -107,7 +76,11 @@ const createProps = () => ({
   },
 })
 
-function renderSearchMethodOption(props: ReturnType<typeof createProps>) {
+function renderSearchMethodOption(
+  props: SearchMethodOptionProps & {
+    onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
+  },
+) {
   const { onRetrievalSearchMethodChange, ...optionProps } = props
 
   render(
@@ -128,40 +101,15 @@ function renderSearchMethodOption(props: ReturnType<typeof createProps>) {
 }
 
 describe('SearchMethodOption', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseModelListAndDefaultModel.mockReturnValue({
-      modelList: [],
-      defaultModel: undefined,
-    })
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [],
-    })
-    mockUseCredentialPanelState.mockReturnValue({
-      variant: 'api-active',
-      priority: 'apiKeyOnly',
-      supportsCredits: false,
-      showPrioritySwitcher: false,
-      hasCredentials: true,
-      isCreditsExhausted: false,
-      credentialName: undefined,
-      credits: 0,
-    })
-  })
-
-  it('should render semantic search controls and notify retrieval and reranking changes', () => {
+  it('should render semantic search controls', () => {
     const props = createProps()
 
     renderSearchMethodOption(props)
 
     expect(screen.getByText('Semantic title'))!.toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
     expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
     expect(screen.getAllByRole('switch')).toHaveLength(2)
-
-    fireEvent.click(screen.getAllByRole('switch')[0]!)
-
-    expect(props.reranking.onEnabledChange).toHaveBeenCalledWith(true)
   })
 
   it('should notify retrieval changes when an inactive option is selected', () => {
@@ -210,9 +158,11 @@ describe('SearchMethodOption', () => {
 
     expect(screen.getByText('Weighted mode'))!.toBeInTheDocument()
     expect(screen.getByText('Rerank mode'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
+    expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
+    expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.rerankModel.key'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),
     ).not.toBeInTheDocument()
@@ -247,7 +197,9 @@ describe('SearchMethodOption', () => {
     renderSearchMethodOption(hybridProps)
 
     expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.rerankModel.key'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('dataset.weightedScore.semantic')).not.toBeInTheDocument()
     expect(
       screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'),

@@ -1,13 +1,15 @@
 import type { AgentInlineBinding } from '../../block-selector/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { useInlineAgentScope } from '@/features/agent-v2/analytics'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getDefaultAgentSoul } from './agent-soul-config'
 
 type CreatedInlineAgentBinding = AgentInlineBinding & {
@@ -97,8 +99,9 @@ export function useWorkflowInlineAgentDetail(
 }
 
 export function useCreateInlineAgentBinding() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const configsMap = useHooksStore((state) => state.configsMap)
+  const agentScope = useInlineAgentScope()
   const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
   const queryClient = useQueryClient()
   const { isPending: isAppComposerPending, mutateAsync: mutateAppComposerAsync } = useMutation(
@@ -115,7 +118,7 @@ export function useCreateInlineAgentBinding() {
         !configsMap?.flowId ||
         (configsMap.flowType !== FlowType.appFlow && configsMap.flowType !== FlowType.snippet)
       ) {
-        toast.error(t(($) => $['roster.nodeSelector.createInlineFailed']))
+        toast.error(t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' }))
         options?.onError?.()
         return
       }
@@ -155,7 +158,7 @@ export function useCreateInlineAgentBinding() {
           !binding.agent_id ||
           !binding.current_snapshot_id
         ) {
-          toast.error(t(($) => $['roster.nodeSelector.createInlineFailed']))
+          toast.error(t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' }))
           options?.onError?.()
           return
         }
@@ -187,6 +190,11 @@ export function useCreateInlineAgentBinding() {
             composerState,
           )
         }
+        trackCreateApp({
+          source: 'studio_blank',
+          appMode: 'agent-v2',
+          agentScope,
+        })
         options?.onSuccess?.({
           binding_type: 'inline_agent',
           agent_id: binding.agent_id,
@@ -197,6 +205,7 @@ export function useCreateInlineAgentBinding() {
       }
     },
     [
+      agentScope,
       configsMap?.flowId,
       configsMap?.flowType,
       defaultModel,

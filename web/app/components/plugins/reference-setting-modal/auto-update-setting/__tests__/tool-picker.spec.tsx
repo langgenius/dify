@@ -1,6 +1,6 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import ToolPicker from '../tool-picker'
 
@@ -15,8 +15,8 @@ vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => mockInstalledPluginList,
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading">loading</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div data-testid="loading">loading</div>,
 }))
 
 vi.mock('@/app/components/plugins/marketplace/search-box', () => ({

@@ -262,6 +262,32 @@ def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime():
     assert runtime_provider.last_agent_tool.provider_type.value == "plugin"
 
 
+def test_normalizes_fully_qualified_builtin_plugin_provider_for_daemon_transport():
+    runtime_provider = FakeRuntimeProvider(_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "plugin_id": "langgenius/google",
+                    "provider_id": "langgenius/google/google",
+                    "provider": "langgenius/google/google",
+                    "provider_type": "builtin",
+                    "tool_name": "google_search",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = _build(builder, tools)
+
+    assert result is not None
+    prepared = result.tools[0]
+    assert prepared.plugin_id == "langgenius/google"
+    assert prepared.provider == "google"
+
+
 def test_builds_core_tool_with_file_llm_parameter():
     runtime_provider = FakeRuntimeProvider(_file_tool())
     builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
@@ -813,6 +839,7 @@ def test_credential_validation_error_maps_to_credential_invalid():
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
     assert exc_info.value.error_code == "agent_tool_credential_invalid"
+    assert "credential validation failed" in str(exc_info.value)
 
 
 def test_generic_value_error_maps_to_config_invalid():
@@ -891,6 +918,50 @@ def test_rejects_unknown_provider_type_at_config_boundary():
                         "provider_id": "future-provider",
                         "provider_type": "future-provider",
                         "credential_type": "unauthorized",
+                    }
+                ]
+            }
+        )
+
+
+@pytest.mark.parametrize("provider_type", ["api", "workflow"])
+def test_provider_scoped_tool_accepts_authorized_without_credential_id(provider_type: str):
+    """``api`` / ``workflow`` credentials live on the provider record, so the
+    runtime resolves them from ``provider_id`` alone. An authorized tool of
+    these types must validate without a fabricated ``credential_ref.id``."""
+    config = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "api-provider-1",
+                    "provider_type": provider_type,
+                    "tool_name": "get_pet",
+                    "credential_type": "api-key",
+                }
+            ]
+        }
+    )
+
+    tool = config.dify_tools[0]
+    # No id is invented; the provider_id already locates the credential.
+    assert tool.credential_ref is None
+    assert tool.credential_type == "api-key"
+
+
+@pytest.mark.parametrize("provider_type", ["plugin", "builtin"])
+def test_tool_scoped_provider_still_requires_credential_id(provider_type: str):
+    """Tool-level credential providers (plugin / builtin) select a specific
+    stored secret, so an authorized tool without a ``credential_ref.id`` is
+    still rejected at the config boundary."""
+    with pytest.raises(ValueError, match="credential_ref.id is required"):
+        AgentSoulToolsConfig.model_validate(
+            {
+                "dify_tools": [
+                    {
+                        "provider_id": "langgenius/search/search",
+                        "provider_type": provider_type,
+                        "tool_name": "search",
+                        "credential_type": "api-key",
                     }
                 ]
             }
@@ -1007,7 +1078,7 @@ def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found():
     assert exc_info.value.error_code == "agent_tool_declaration_not_found"
 
 
-def test_list_provider_tool_names_reads_builtin_provider(monkeypatch):
+def test_list_provider_tool_names_reads_builtin_provider(monkeypatch: pytest.MonkeyPatch):
     """The default provider-tools lister maps ToolManager's provider controller
     to the plain name list the expansion step consumes."""
     from types import SimpleNamespace

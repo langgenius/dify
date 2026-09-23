@@ -1,17 +1,29 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
 
+import pytest
+from sqlalchemy.orm import Session
+
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from fields.workflow_run_fields import WorkflowRunNodeExecutionListResponse
 from graphon.enums import WorkflowNodeExecutionStatus
+from models.account import Account
 from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from services.workflow_node_execution_trace_service import assemble_workflow_node_execution_traces
+
+pytestmark = pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
+
+
+@pytest.fixture(autouse=True)
+def _bind_model_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    monkeypatch.setattr("models.workflow.db", SimpleNamespace(session=sqlite_session))
 
 
 def _retry_attempt(retry_index: int, **overrides: object) -> dict[str, object]:
@@ -31,39 +43,31 @@ def _retry_attempt(retry_index: int, **overrides: object) -> dict[str, object]:
 
 
 def _execution(process_data: dict[str, object]) -> WorkflowNodeExecutionModel:
-    return cast(
-        WorkflowNodeExecutionModel,
-        SimpleNamespace(
-            id="exec-1",
-            tenant_id="tenant-1",
-            app_id="app-1",
-            workflow_id="workflow-1",
-            triggered_from="workflow-run",
-            workflow_run_id="run-1",
-            index=3,
-            predecessor_node_id="previous-node",
-            node_execution_id="node-execution-1",
-            node_id="node-1",
-            node_type="http-request",
-            title="HTTP Request",
-            inputs_dict={"attempt": 3},
-            process_data_dict=process_data,
-            outputs_dict={"status_code": 200, "body": "ok"},
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            error=None,
-            elapsed_time=3.5,
-            execution_metadata_dict={"iteration_id": "iteration-1"},
-            extras={},
-            created_at=datetime(2023, 11, 14, tzinfo=UTC),
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="account-1",
-            created_by_account=None,
-            created_by_end_user=None,
-            finished_at=datetime(2023, 11, 14, 0, 0, 4, tzinfo=UTC),
-            inputs_truncated=False,
-            outputs_truncated=False,
-            process_data_truncated=False,
-        ),
+    return WorkflowNodeExecutionModel(
+        id="exec-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        workflow_run_id="run-1",
+        index=3,
+        predecessor_node_id="previous-node",
+        node_execution_id="node-execution-1",
+        node_id="node-1",
+        node_type="http-request",
+        title="HTTP Request",
+        agent_workspace_binding_id=None,
+        inputs=json.dumps({"attempt": 3}),
+        process_data=json.dumps(process_data),
+        outputs=json.dumps({"status_code": 200, "body": "ok"}),
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=3.5,
+        execution_metadata=json.dumps({"iteration_id": "iteration-1"}),
+        created_at=datetime(2023, 11, 14, tzinfo=UTC),
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        finished_at=datetime(2023, 11, 14, 0, 0, 4, tzinfo=UTC),
     )
 
 
@@ -73,7 +77,7 @@ def _repository(full_process_data: dict[str, object] | None) -> DifyAPIWorkflowN
     return cast(DifyAPIWorkflowNodeExecutionRepository, repository)
 
 
-def test_assemble_expands_retry_history_before_terminal_trace() -> None:
+def test_assemble_expands_retry_history_before_terminal_trace(sqlite_session: Session) -> None:
     process_data = {
         "request": "successful-attempt",
         RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(2), _retry_attempt(1)],
@@ -81,7 +85,7 @@ def test_assemble_expands_retry_history_before_terminal_trace() -> None:
     execution = _execution(process_data)
     repository = _repository(process_data)
 
-    traces = assemble_workflow_node_execution_traces([execution], repository)
+    traces = assemble_workflow_node_execution_traces([execution], repository, session=sqlite_session)
 
     assert [trace.id for trace in traces] == ["exec-1:retry:1", "exec-1:retry:2", "exec-1"]
     assert [trace.status for trace in traces] == ["retry", "retry", "succeeded"]
@@ -100,18 +104,18 @@ def test_assemble_expands_retry_history_before_terminal_trace() -> None:
     repository.load_full_process_data.assert_called_once_with(execution)
 
 
-def test_assemble_keeps_old_execution_without_retry_history() -> None:
+def test_assemble_keeps_old_execution_without_retry_history(sqlite_session: Session) -> None:
     process_data = {"request": "terminal"}
     execution = _execution(process_data)
 
-    traces = assemble_workflow_node_execution_traces([execution], _repository(process_data))
+    traces = assemble_workflow_node_execution_traces([execution], _repository(process_data), session=sqlite_session)
 
     assert len(traces) == 1
     assert traces[0].id == "exec-1"
     assert traces[0].process_data == process_data
 
 
-def test_assemble_skips_malformed_and_duplicate_retry_attempts() -> None:
+def test_assemble_skips_malformed_and_duplicate_retry_attempts(sqlite_session: Session) -> None:
     process_data = {
         RETRY_HISTORY_PROCESS_DATA_KEY: [
             _retry_attempt(2),
@@ -121,35 +125,41 @@ def test_assemble_skips_malformed_and_duplicate_retry_attempts() -> None:
         ]
     }
 
-    traces = assemble_workflow_node_execution_traces([_execution(process_data)], _repository(process_data))
+    traces = assemble_workflow_node_execution_traces(
+        [_execution(process_data)], _repository(process_data), session=sqlite_session
+    )
 
     assert [trace.retry_index for trace in traces[:-1]] == [1, 2]
     assert traces[0].error == "attempt 1 failed"
 
 
-def test_assemble_truncates_retry_attempt_fields() -> None:
+def test_assemble_truncates_retry_attempt_fields(sqlite_session: Session) -> None:
     process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1, outputs={"body": "x" * 2_000_000})]}
 
-    traces = assemble_workflow_node_execution_traces([_execution(process_data)], _repository(process_data))
+    traces = assemble_workflow_node_execution_traces(
+        [_execution(process_data)], _repository(process_data), session=sqlite_session
+    )
 
     assert traces[0].outputs_truncated is True
     assert traces[-1].id == "exec-1"
 
 
-def test_assemble_falls_back_to_inline_process_data_when_loader_fails() -> None:
+def test_assemble_falls_back_to_inline_process_data_when_loader_fails(sqlite_session: Session) -> None:
     process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
     execution = _execution(process_data)
     repository = _repository(None)
     repository.load_full_process_data.side_effect = OSError("storage unavailable")
 
-    traces = assemble_workflow_node_execution_traces([execution], repository)
+    traces = assemble_workflow_node_execution_traces([execution], repository, session=sqlite_session)
 
     assert [trace.id for trace in traces] == ["exec-1:retry:1", "exec-1"]
 
 
-def test_virtual_trace_validates_through_node_execution_response() -> None:
+def test_virtual_trace_validates_through_node_execution_response(sqlite_session: Session) -> None:
     process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
-    traces = assemble_workflow_node_execution_traces([_execution(process_data)], _repository(process_data))
+    traces = assemble_workflow_node_execution_traces(
+        [_execution(process_data)], _repository(process_data), session=sqlite_session
+    )
 
     response = WorkflowRunNodeExecutionListResponse.model_validate({"data": traces}, from_attributes=True)
 

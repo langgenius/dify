@@ -83,6 +83,12 @@ class _LazyEmbeddings(Embeddings):
 
     @override
     def embed_query(self, text: str) -> list[float]:
+        provider = self._dataset.embedding_model_provider
+        model_name = self._dataset.embedding_model
+        if provider and model_name:
+            cached_embedding = CacheEmbedding.get_cached_query_embedding(provider, model_name, text)
+            if cached_embedding is not None:
+                return cached_embedding
         return self._ensure().embed_query(text)
 
     @override
@@ -128,15 +134,16 @@ class Vector:
         self._session = session
         self._vector_processor = self._init_vector(session=session)
 
-    def _init_vector(self, *, session: Session) -> BaseVector:
+    @staticmethod
+    def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
         vector_type = dify_config.VECTOR_STORE
 
-        if self._dataset.index_struct_dict:
-            vector_type = self._dataset.index_struct_dict["type"]
+        if dataset.index_struct_dict:
+            vector_type = dataset.index_struct_dict["type"]
         else:
             if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
                 stmt = select(Whitelist).where(
-                    Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
+                    Whitelist.tenant_id == dataset.tenant_id, Whitelist.category == "vector_db"
                 )
                 whitelist = session.scalars(stmt).one_or_none()
                 if whitelist:
@@ -145,6 +152,10 @@ class Vector:
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
+        return vector_type
+
+    def _init_vector(self, *, session: Session) -> BaseVector:
+        vector_type = self.resolve_vector_type(self._dataset, session=session)
         vector_factory_cls = self.get_vector_factory(vector_type)
         return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
 
@@ -169,7 +180,7 @@ class Vector:
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
-            total_batches = len(texts) + batch_size - 1
+            total_batches = (len(texts) + batch_size - 1) // batch_size
             for i in range(0, len(texts), batch_size):
                 batch = texts[i : i + batch_size]
                 batch_start = time.time()
@@ -186,7 +197,7 @@ class Vector:
             start = time.time()
             logger.info("start embedding %s files %s", len(file_documents), start)
             batch_size = 1000
-            total_batches = len(file_documents) + batch_size - 1
+            total_batches = (len(file_documents) + batch_size - 1) // batch_size
             for i in range(0, len(file_documents), batch_size):
                 batch = file_documents[i : i + batch_size]
                 batch_start = time.time()

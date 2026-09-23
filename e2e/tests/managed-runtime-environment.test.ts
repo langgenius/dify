@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getAgentBackendEnvironment } from '../scripts/setup'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { getAgentBackendEnvironment } from '../scripts/setup.ts'
 
 describe('managed runtime environment', () => {
   afterEach(() => {

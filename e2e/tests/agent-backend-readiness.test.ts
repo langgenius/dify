@@ -1,6 +1,6 @@
-import type { DifyWorld } from '../features/support/world'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { requireAgentBackendRuntime } from '../features/agent-v2/support/fixtures/agent-backend'
+import type { DifyWorld } from '../features/support/world.ts'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { requireAgentBackendRuntime } from '../features/agent-v2/support/fixtures/agent-backend.ts'
 
 describe('requireAgentBackendRuntime', () => {
   afterEach(() => {

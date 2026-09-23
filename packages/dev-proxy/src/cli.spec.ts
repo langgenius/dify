@@ -12,7 +12,7 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 const tempDirs: string[] = []
 type DevProxyCliProcess = ChildProcessByStdio<null, Readable, Readable>
@@ -99,7 +99,9 @@ const fetchTextWithRetry = async (url: string) => {
     }
   }
 
-  throw lastError
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Fetching the proxy response failed with a non-Error value.', { cause: lastError })
 }
 
 const spawnCli = (args: readonly string[], cwd: string) => {

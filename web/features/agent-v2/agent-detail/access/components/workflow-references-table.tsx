@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type WorkflowReferencesTableProps = {
   agentId: string
@@ -24,8 +24,8 @@ const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) =
   `/app/${reference.app_id}/workflow`
 
 export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowReferencesTableProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const workflowReferencesQuery = useQuery(
     consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
       input: {
@@ -109,7 +109,7 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
 }
 
 function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowResponse }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const imageUrl =
     reference.app_icon_type === 'image' || reference.app_icon_type === 'link'
@@ -123,7 +123,7 @@ function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowR
     reference.app_updated_at != null
       ? formatTime(
           reference.app_updated_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
       : t(($) => $['agentDetail.access.workflow.notAvailable'])
   const nodeCount = reference.node_ids?.length ?? 0

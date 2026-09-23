@@ -1,5 +1,5 @@
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -33,7 +33,7 @@ describe('ToolForm show_on visibility', () => {
         default: 'default-extra',
       }),
     ]
-    const value: ToolVarInputs = {
+    const value: ResourceVarInputs = {
       mode: { type: VarKindType.constant, value: 'free' },
       extra: { type: VarKindType.constant, value: 'user-filled' },
     }
@@ -61,7 +61,7 @@ describe('ToolForm show_on visibility', () => {
         show_on: [{ variable: 'mode', value: 'pro' }],
       }),
     ]
-    const value: ToolVarInputs = {
+    const value: ResourceVarInputs = {
       mode: { type: VarKindType.constant, value: 'pro' },
       extra: { type: VarKindType.constant, value: 'x' },
     }
@@ -90,7 +90,7 @@ describe('ToolForm show_on visibility', () => {
         default: 'reset-default',
       }),
     ]
-    const visibleValue: ToolVarInputs = {
+    const visibleValue: ResourceVarInputs = {
       mode: { type: VarKindType.constant, value: 'pro' },
       extra: { type: VarKindType.constant, value: 'edited' },
     }
@@ -119,7 +119,7 @@ describe('ToolForm show_on visibility', () => {
     )
 
     expect(onChange).toHaveBeenCalled()
-    const patched = onChange.mock.calls.at(-1)?.[0] as ToolVarInputs
+    const patched = onChange.mock.calls.at(-1)?.[0] as ResourceVarInputs
     expect(patched.extra).toEqual({
       type: VarKindType.mixed,
       value: 'reset-default',

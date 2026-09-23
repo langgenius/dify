@@ -1,6 +1,6 @@
 import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { addFileInfos, sortAgentSorts } from '../index'
 
 describe('tools/utils', () => {

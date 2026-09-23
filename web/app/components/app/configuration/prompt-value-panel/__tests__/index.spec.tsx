@@ -1,25 +1,13 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { IPromptValuePanelProps } from '../index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
 import PromptValuePanel from '../index'
 
-const mockSetShowAppConfigureFeaturesModal = vi.fn()
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (
-    selector: (state: {
-      setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal
-    }) => unknown,
-  ) =>
-    selector({
-      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
-    }),
-}))
+const mockOnOpenFeatures = vi.fn()
 
 // Use real store - global zustand mock will auto-reset between tests
 vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
@@ -80,6 +68,7 @@ const promptVariables = [
 ] as const
 
 const baseContextValue: any = {
+  onOpenFeatures: mockOnOpenFeatures,
   modelModeType: ModelModeType.completion,
   modelConfig: {
     configs: {
@@ -126,13 +115,13 @@ describe('PromptValuePanel', () => {
     vi.clearAllMocks()
     mockSetInputs.mockClear()
     mockOnSend.mockClear()
-    mockSetShowAppConfigureFeaturesModal.mockClear()
+    mockOnOpenFeatures.mockClear()
   })
 
   it('updates inputs, clears values, and triggers run when ready', async () => {
     renderPanel()
 
-    const textInput = screen.getByPlaceholderText('Text Var')
+    const textInput = screen.getByRole('textbox', { name: 'Text Var' })
     fireEvent.change(textInput, { target: { value: 'updated' } })
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ textVar: 'updated' }))
 
@@ -194,7 +183,7 @@ describe('PromptValuePanel', () => {
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
 
     fireEvent.click(screen.getByText('feature bar'))
-    expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalled()
+    expect(mockOnOpenFeatures).toHaveBeenCalled()
   })
 
   it('disables run for advanced completion mode when the completion prompt is empty', () => {
@@ -258,10 +247,10 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    fireEvent.change(screen.getByPlaceholderText('Paragraph Var'), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Paragraph Var' }), {
       target: { value: 'updated paragraph' },
     })
-    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('combobox', { name: 'Select Var' }))
     await user.click(await screen.findByRole('option', { name: 'b' }))
     fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
     fireEvent.click(screen.getByText('bool-input'))
@@ -311,7 +300,9 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    fireEvent.change(screen.getByPlaceholderText('Text Var'), { target: { value: 'ignored' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Text Var' }), {
+      target: { value: 'ignored' },
+    })
 
     expect(mockSetInputs).not.toHaveBeenCalled()
   })
@@ -338,7 +329,7 @@ describe('PromptValuePanel', () => {
     })
 
     expect(screen.getByText('common.placeholder.select')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Number Var')).toHaveValue(null)
+    expect(screen.getByRole('spinbutton', { name: 'Number Var' })).toHaveValue(null)
     expect(screen.queryAllByRole('option')).toHaveLength(0)
   })
 
@@ -400,7 +391,7 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox', { name: 'Text Var' })).toHaveAttribute('readonly')
     expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
   })
@@ -413,7 +404,7 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox', { name: 'Text Var' })).toHaveAttribute('readonly')
     expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
   })
