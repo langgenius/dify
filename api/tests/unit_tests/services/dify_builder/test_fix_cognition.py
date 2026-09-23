@@ -1,6 +1,8 @@
+import json
+
 from core.dify_builder.models import ChecklistError, Diagnosis, NodeOutput, Run
 from services.dify_builder import credentials
-from services.dify_builder.agent import fix
+from services.dify_builder.agent import fix, graph_prompt
 from services.dify_builder.preflight import preflight_errors
 
 
@@ -298,6 +300,62 @@ def test_culprit_config_survives_a_node_whose_data_is_not_a_mapping():
     assert fix._culprit_config("odd", graph) == "{}"
 
 
+# ---- an over-budget culprit is never shown half-rendered ----
+#
+# The op schema Fix now shares with Edit tells the model to re-send an array's
+# existing elements byte-identical "as GRAPH shows them". That is only honest
+# if what GRAPH showed is whole. ``_culprit_config`` used to hand the prompt a
+# Python repr cut at 1500 characters, so a long ``cases`` array arrived severed
+# mid-value and the model would have completed it from imagination -- while
+# believing, and looking like, it was copying. Whole keys are dropped and named
+# instead.
+
+
+def _oversized_if_else_node() -> dict:
+    """An if-else whose ``cases`` alone blows the budget several times over."""
+    cases = [
+        {
+            "case_id": f"case{i}",
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "id": f"c{i}",
+                    "varType": "string",
+                    "variable_selector": ["start1", "text"],
+                    "comparison_operator": "is",
+                    "value": f"a rather long expected value number {i}" * 3,
+                }
+            ],
+        }
+        for i in range(12)
+    ]
+    return {"id": "branch1", "data": {"type": "if-else", "title": "Score", "cases": cases}}
+
+
+def test_an_over_budget_culprit_config_drops_the_whole_key_and_names_it():
+    graph = {"nodes": [_oversized_if_else_node()], "edges": []}
+
+    block = fix._culprit_config("branch1", graph)
+
+    assert len(json.dumps(graph["nodes"][0]["data"], ensure_ascii=False)) > graph_prompt.NODE_CONFIG_LIMIT
+    kept, marker, dropped = block.partition(graph_prompt.TRUNCATION_MARKER)
+    assert marker  # it did not fit, so something had to go
+    assert dropped == "cases"  # ...and the prompt says which key went
+    # Nothing is half-rendered: what survives is whole, parseable JSON, and no
+    # fragment of a case leaked into it.
+    assert json.loads(kept) == {"type": "if-else", "title": "Score"}
+    assert "case_id" not in block
+
+
+def test_a_within_budget_culprit_config_is_rendered_whole_as_json():
+    graph = {"nodes": [{"id": "code1", "data": {"type": "code", "title": "Code", "code": "x = 1"}}], "edges": []}
+
+    block = fix._culprit_config("code1", graph)
+
+    assert graph_prompt.TRUNCATION_MARKER not in block
+    assert json.loads(block) == {"type": "code", "title": "Code", "code": "x = 1"}
+
+
 # ---- the node-data half of the check, mirroring Edit ----
 #
 # A repair that applies cleanly but leaves a node ``Graph.init`` refuses is the
@@ -436,3 +494,144 @@ def test_a_repair_that_breaks_its_already_invalid_culprit_further_is_rejected():
     assert "code_language" in m.calls[1]["prompt_messages"][1].content
     assert intents == []  # ...and refused again, so it never reaches the gate
     assert risk.level == "high"
+
+
+# ---- a connect from a branch node carries the handle that node declares ----
+#
+# Triage edit-branch-failure-2026-09-22, option (f1). ``fix._OP_SCHEMA`` listed
+# ``connect: {from_node, to_node}`` and ``fix._graph_context`` printed no
+# handles, so a repair that wired anything from an if-else /
+# question-classifier / human-input node fell back to the ``"source"`` handle,
+# ``graph_ops.apply_connect`` refused it, that refusal spent the single
+# corrective re-prompt, and ``propose_repair`` returned ``_no_fix()`` -- the
+# repair could not be proposed at all, however right it was. Edit was given the
+# same handles in 197cd9c5ad; both now render them out of ``graph_prompt``.
+#
+# The change itself is prompt text, so the regression cover for it IS the two
+# prompt assertions in the last test here -- the schema naming ``source_handle``
+# and the context printing the handles. The three behavioural tests around them
+# are what makes those assertions mean something: they show the engine
+# accepting the connect the prompt now makes writable and refusing the one it
+# used to be the only way to write.
+
+_BRANCH_GRAPH = {
+    "nodes": [
+        {
+            "id": "start1",
+            "type": "custom",
+            "data": {
+                "type": "start",
+                "title": "Start",
+                "variables": [
+                    {"variable": "score", "type": "number", "label": "Score", "required": True, "options": []}
+                ],
+            },
+        },
+        {
+            "id": "branch1",
+            "type": "custom",
+            "data": {
+                "type": "if-else",
+                "title": "Score",
+                "cases": [
+                    {
+                        "case_id": "true",
+                        "logical_operator": "and",
+                        "conditions": [
+                            {
+                                "id": "c1",
+                                "varType": "number",
+                                "variable_selector": ["start1", "score"],
+                                "comparison_operator": "≥",
+                                "value": "60",
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+        {
+            "id": "pass1",
+            "type": "custom",
+            "data": {"type": "template-transform", "title": "Pass", "template": "pass", "variables": []},
+        },
+        {
+            "id": "excellent1",
+            "type": "custom",
+            "data": {"type": "template-transform", "title": "Excellent", "template": "excellent", "variables": []},
+        },
+    ],
+    "edges": [
+        {"id": "e1", "source": "start1", "target": "branch1"},
+        {"id": "e2", "source": "branch1", "target": "pass1", "sourceHandle": "true"},
+    ],
+}
+_BRANCH_DIAG = Diagnosis(culprit_node_id="branch1", root_cause="the else arm goes nowhere", severity="medium")
+
+
+def _branch_connect(source_handle: str | None) -> str:
+    """A repair wiring the orphan node onto the branch's ELSE arm, with or
+    without the handle the engine demands."""
+    args: dict = {"from_node": "branch1", "to_node": "excellent1"}
+    if source_handle is not None:
+        args["source_handle"] = source_handle
+    return json.dumps(
+        {
+            "intents": [{"op": "connect", "args": args}],
+            "risk": {"level": "low", "reason": "wire the else arm", "has_external_side_effect": False},
+        }
+    )
+
+
+def test_a_branch_connect_with_a_declared_handle_is_accepted_first_time():
+    m = _RecordingInstance([_branch_connect("false")])
+
+    intents, risk = fix.propose_repair(m, _BRANCH_DIAG, _BRANCH_GRAPH)
+
+    assert len(m.calls) == 1  # accepted outright: the one re-prompt was never spent
+    assert [(i.op, i.args["source_handle"]) for i in intents] == [("connect", "false")]
+    assert risk.level == "high"  # a connect is structural -> the human still sees it
+
+
+def test_a_branch_connect_without_a_handle_is_refused_and_the_retry_recovers_it():
+    m = _RecordingInstance([_branch_connect(None), _branch_connect("false")])
+
+    intents, _risk = fix.propose_repair(m, _BRANCH_DIAG, _BRANCH_GRAPH)
+
+    assert len(m.calls) == 2  # the handle-less connect was rejected by the engine's own check
+    retry_prompt = m.calls[1]["prompt_messages"][1].content
+    assert "has no handle 'source'" in retry_prompt
+    assert "['true', 'false']" in retry_prompt
+    assert [i.args["source_handle"] for i in intents] == ["false"]
+
+
+def test_a_handle_less_branch_connect_twice_still_surfaces_to_the_human():
+    """The dead end itself is unchanged -- a model that ignores the rule twice
+    still ends at ``_no_fix()``. What changed is that it is now reachable only
+    by ignoring the rule: before, EVERY Fix branch connect landed here,
+    whatever the model wrote."""
+    m = _RecordingInstance([_branch_connect(None), _branch_connect(None)])
+
+    intents, risk = fix.propose_repair(m, _BRANCH_DIAG, _BRANCH_GRAPH)
+
+    assert len(m.calls) == 2
+    assert intents == []
+    assert risk.level == "high"
+    assert "manual" in risk.reason.lower()
+
+
+def test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles():
+    """The prompt half of the three tests above, which are its behaviour.
+
+    On its own ``assert "source_handle" in _OP_SCHEMA`` pins a wording and
+    proves nothing; what makes it meaningful is that the same connect is
+    accepted with a declared handle and refused without one.
+    """
+    assert "source_handle" in fix._OP_SCHEMA
+    assert "if-else" in fix._OP_SCHEMA
+
+    context = fix._graph_context(_BRANCH_GRAPH)
+
+    assert "  branch1 (if-else): Score handles=['true', 'false']" in context
+    assert "  branch1 -[true]-> pass1" in context
+    assert "  start1 -> branch1" in context  # a default handle stays unnamed
