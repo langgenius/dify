@@ -1,0 +1,23 @@
+id: db-session-mock
+language: python
+severity: error
+message: |
+  Tests must not construct their own SQLAlchemy session via `MagicMock(spec=Session)`
+  or `MagicMock()` against a variable named `session`/`db_session`/`mock_session`/
+  `read_session`/`write_session`. The conftest-provided `db_session_with_tenant`
+  fixture and the session-injection refactor (see `api/tests/conftest.py`) own the
+  session lifecycle. Mocks that look like a Session leak the wrong type into the
+  code under test, which is the root cause of the 2026-08 `db.session.query().filter()`
+  → `db.session.query().where()` autofix migration.
+note: |
+  Allowed: passing an existing Session mock as a parameter (e.g. `MagicMock(spec=Session)`).
+  Disallowed: assigning a fresh MagicMock to a `session`/`db_session`/`mock_session`/
+  `read_session`/`write_session` variable, which is the pattern the autofix migration
+  leaves behind when an existing test still constructs its own session.
+constraints:
+  SESSION:
+    regex: ^(session|db_session|mock_session|read_session|write_session)$
+rule:
+  any:
+    - pattern: $SESSION = MagicMock($$$ARGS)
+    - pattern: $SESSION = Mock($$$ARGS)

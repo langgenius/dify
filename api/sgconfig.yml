@@ -1,0 +1,5 @@
+# ast-grep configuration for the API Python source tree.
+# Loaded by `ast-grep scan` invocations under api/ when scanning API code
+# or test files. Rules live under `ruleDir` so they are versioned with the
+# repository and easy for reviewers to extend.
+ruleDir: sg-rules

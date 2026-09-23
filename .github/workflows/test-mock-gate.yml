@@ -1,0 +1,91 @@
+name: Test Session Mock Gate
+
+# CI gate that prevents new `MagicMock(spec=Session)` / bare `MagicMock()`
+# constructions against a `session`-named variable from being introduced in
+# the API unit tests. This is the enforcement half of the #40071 task;
+# cleanup of the existing occurrences that predate this gate is a separate
+# effort and is intentionally NOT blocked by this workflow — the scan is
+# scoped to PR-introduced files only.
+#
+# See api/sg-rules/db-session-mock.yml for the rule definition and the
+# rationale (session-injection refactor + autofix migration of
+# `db.session.query().filter()` → `db.session.query().where()`).
+
+on:
+  pull_request:
+    paths:
+      - 'api/tests/unit_tests/**'
+      - 'api/sg-rules/**'
+      - 'api/sgconfig.yml'
+      - '.github/workflows/test-mock-gate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-mock-gate-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  session-mock-gate:
+    name: Session-mock gate (PR-changed files)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: List PR-changed Python files under api/tests/unit_tests
+        id: changed
+        run: |
+          # Only scan Python files that were actually touched by this PR.
+          # Existing pre-gate violations are left to a follow-up cleanup PR
+          # rather than blocked here, per the scope of #40071.
+          mapfile -t files < <(
+            git diff --name-only --diff-filter=ACMR \
+              "${{ github.event.pull_request.base.sha }}"...HEAD \
+              -- 'api/tests/unit_tests/**/*.py' \
+            | sed 's|^api/||'
+          )
+          printf '%s\n' "${files[@]}" > "$RUNNER_TEMP/changed.txt"
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "no PR-changed test files; skipping scan"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "scanning ${#files[@]} PR-changed file(s):"
+            printf '  - %s\n' "${files[@]}"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install ast-grep via uvx
+        if: steps.changed.outputs.changed == 'true'
+        run: uvx --from ast-grep-cli ast-grep --version
+
+      - name: Scan PR-changed files for new session-mock assignments
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          mapfile -t files < "$RUNNER_TEMP/changed.txt"
+          # ast-grep scan prints one JSON object per match when --json=stream
+          # is set, then exits 1 if any match was found. We capture the stream,
+          # echo it back for the GitHub Actions log, and propagate the exit
+          # code so the workflow fails on a new violation.
+          set +e
+          matches=$(uvx --from ast-grep-cli ast-grep scan \
+            -r sg-rules/db-session-mock.yml \
+            --json=stream \
+            "${files[@]}" 2>&1)
+          rc=$?
+          set -e
+          printf '%s\n' "$matches"
+          if [ "$rc" -ne 0 ]; then
+            count=$(printf '%s\n' "$matches" | grep -c '"file":' || true)
+            echo "::error::Introduced ${count} new session-mock assignment(s); see findings above. Rule: api/sg-rules/db-session-mock.yml."
+            exit 1
+          fi
+          echo "OK: no new session-mock assignments in changed test files."
