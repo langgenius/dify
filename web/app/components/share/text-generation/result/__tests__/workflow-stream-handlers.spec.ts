@@ -181,11 +181,11 @@ describe('workflow state transformations', () => {
     expect(second.resultText).toBe('Hello world')
   })
 
-  it('updates pending forms by node and retains submitted form metadata separately', () => {
+  it('updates pending forms by identity and retains submitted form metadata separately', () => {
     let process = upsertWorkflowNode(undefined, createTrace())!
     process = updateHumanInputRequired(process, createHumanInput())
     process = updateHumanInputRequired(process, createHumanInput({ expiration_time: 300 }))
-    process = updateHumanInputRequired(process, createHumanInput({ node_id: 'node-2' }))
+    process = updateHumanInputRequired(process, createHumanInput({ node_id: 'node-2', form_id: 'form-2' }))
     expect(process.tracing[0]?.status).toBe(NodeRunningStatus.Paused)
     expect(process.humanInputFormDataList?.map((form) => form.node_id)).toEqual([
       'node-1',
@@ -193,12 +193,14 @@ describe('workflow state transformations', () => {
     ])
     expect(process.humanInputFormDataList?.[0]?.expiration_time).toBe(300)
     process = updateHumanInputTimeout(process, {
+      form_id: 'form-2',
       node_id: 'node-2',
       node_title: 'Node',
       expiration_time: 400,
     })
     expect(process.humanInputFormDataList?.[1]?.expiration_time).toBe(400)
     process = updateHumanInputFilled(process, {
+      form_id: 'form-1',
       action_id: 'submit',
       action_text: 'Submit',
       node_id: 'node-1',
@@ -409,6 +411,7 @@ describe('createWorkflowStreamHandlers', () => {
         workflow_run_id: 'run-1',
         event: 'human_input_form_filled',
         data: {
+          form_id: 'form-1',
           node_id: 'node-1',
           node_title: 'Node',
           rendered_content: 'Done',
@@ -421,6 +424,7 @@ describe('createWorkflowStreamHandlers', () => {
         workflow_run_id: 'run-1',
         event: 'human_input_form_timeout',
         data: {
+          form_id: 'form-1',
           node_id: 'node-1',
           node_title: 'Node',
           expiration_time: 200,
@@ -472,6 +476,14 @@ describe('createWorkflowStreamHandlers', () => {
       })
     })
 
+    expect(setup.workflowProcessData()?.humanInputFormDataList).toEqual([])
+    expect(setup.workflowProcessData()?.humanInputFilledFormDataList).toEqual([
+      expect.objectContaining({
+        form_id: 'form-1',
+        rendered_content: 'Done',
+        form_content: 'content',
+      }),
+    ])
     expect(setup.currentTaskId()).toBe('task-1')
     expect(setup.isStopping()).toBe(false)
     expect(setup.workflowProcessData()).toEqual(
