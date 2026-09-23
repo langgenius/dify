@@ -42,7 +42,7 @@ function AgentKnowledgeRetrievalRow({
   onEdit: () => void
   item: AgentKnowledgeRetrievalItem
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const itemName = getKnowledgeRetrievalName(item, t)
 
   return (
@@ -62,7 +62,7 @@ function AgentKnowledgeRetrievalRow({
 }
 
 export function AgentKnowledgeRetrieval() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addKnowledgeRetrieval = useSetAtom(addKnowledgeRetrievalAtom)
   const updateKnowledgeRetrieval = useSetAtom(updateKnowledgeRetrievalAtom)

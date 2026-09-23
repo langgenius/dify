@@ -16,7 +16,7 @@ type DropdownProps = {
 }
 
 const Dropdown = ({ startIndex, breadcrumbs, onBreadcrumbClick }: DropdownProps) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>

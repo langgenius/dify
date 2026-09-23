@@ -20,7 +20,7 @@ type IndexingProgressItemProps = {
 
 // Status icon component for completed/error states
 const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   if (status === 'completed')
     return <RiCheckboxCircleFill aria-hidden="true" className="size-4 shrink-0 text-text-success" />

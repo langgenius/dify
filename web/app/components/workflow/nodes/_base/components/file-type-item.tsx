@@ -35,7 +35,7 @@ const FileTypeItem: FC<Props> = ({
   typeErrorId,
   customFileTypesErrorId,
 }) => {
-  const { t } = useTranslation('appDebug')
+  const { t } = useTranslation(['appDebug'])
 
   const handleOnSelect = useCallback(() => {
     onToggle(type)

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 export const useGetValidators = () => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const renderI18nObject = useRenderI18nObject()
   const getLabel = useCallback((label: string | Record<string, string> | ReactNode) => {
     if (isValidElement(label)) return ''

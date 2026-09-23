@@ -7,7 +7,7 @@ type BrandingFooterProps = {
 }
 
 const BrandingFooter = ({ removeWebappBrand, replaceWebappLogo }: BrandingFooterProps) => {
-  const { t } = useTranslation('share')
+  const { t } = useTranslation(['share'])
 
   if (removeWebappBrand) return null
 

@@ -89,7 +89,7 @@ function AppIconPickerContent({
   onOpenChange,
   onSelect,
 }: AppIconPickerContentProps) {
-  const { t } = useTranslation('app')
+  const { t } = useTranslation(['app'])
 
   const tabs = [
     {

@@ -20,7 +20,7 @@ const PluginAuthInAgent = ({
   credentialId,
   onAuthorizationItemClick,
 }: PluginAuthInAgentProps) => {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const [isOpen, setIsOpen] = useState(false)
   const {
     isAuthorized,

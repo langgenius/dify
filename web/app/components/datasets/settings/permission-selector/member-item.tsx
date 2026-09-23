@@ -19,7 +19,7 @@ const MemberItem = ({
   isMe = false,
   onClick,
 }: MemberItemProps) => {
-  const { t } = useTranslation('datasetSettings')
+  const { t } = useTranslation(['datasetSettings'])
 
   const content = (
     <>

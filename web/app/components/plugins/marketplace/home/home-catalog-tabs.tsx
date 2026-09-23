@@ -20,8 +20,8 @@ const HomeCatalogTabs = ({
   labels,
   language,
 }: HomeCatalogTabsProps) => {
-  const { t } = useTranslation('common')
-  const { t: tPlugin } = useTranslation('plugin')
+  const { t } = useTranslation(['common'])
+  const { t: tPlugin } = useTranslation(['plugin'])
   const catalogParams = language ? { language } : undefined
   const getRelativeCatalogHref = (path: string) => {
     const searchParams = new URLSearchParams(catalogParams)

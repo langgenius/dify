@@ -26,7 +26,7 @@ const i18nCommonPrefix = 'common'
 const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => {
   const instructionLabelId = React.useId()
 
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   const {
     readOnly,

@@ -18,7 +18,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     props.data,
   )
   const renderI18nObject = useRenderI18nObject()
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const models = useMemo(() => {
     if (!inputs) return []
     // if selected, show in node

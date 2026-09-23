@@ -20,7 +20,7 @@ const MailBodyInput = ({
   value = '',
   onChange,
 }: MailBodyInputProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   return (
     <PromptEditor

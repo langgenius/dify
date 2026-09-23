@@ -30,7 +30,7 @@ const APIKeyInfoPanel: FC = () => {
   )
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
-  const { t } = useTranslation('appOverview')
+  const { t } = useTranslation(['appOverview'])
 
   const [isShow, setIsShow] = useState(true)
 

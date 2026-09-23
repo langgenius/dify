@@ -115,7 +115,7 @@ const EmbeddedContent = ({
   hiddenInputs,
 }: Required<Pick<Props, 'accessToken' | 'appBaseUrl'>> &
   Pick<Props, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
-  const { t } = useTranslation('appOverview')
+  const { t } = useTranslation(['appOverview'])
   const supportedHiddenInputs = useMemo<WorkflowHiddenStartVariable[]>(
     () => (hiddenInputs ?? []).filter(isWorkflowLaunchInputSupported),
     [hiddenInputs],

@@ -49,8 +49,8 @@ function CreateAgentFormSession({
   onCancel,
   onSubmit,
 }: CreateAgentFormSessionProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(defaultAgentIcon)
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
 

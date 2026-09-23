@@ -15,7 +15,7 @@ type RowProps = {
 }
 
 const Row = ({ className, name, description, roleCategory, role, onView, onEdit }: RowProps) => {
-  const { t } = useTranslation('permission')
+  const { t } = useTranslation(['permission'])
 
   return (
     <div

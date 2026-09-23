@@ -18,7 +18,7 @@ type IRenameModalProps = {
 }
 
 const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose, onSave }) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const [tempName, setTempName] = useState(name)
   const conversationNamePlaceholder =
     t(($) => $['chat.conversationNamePlaceholder'], { ns: 'common' }) || ''

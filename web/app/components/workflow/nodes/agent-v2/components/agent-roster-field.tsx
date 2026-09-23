@@ -303,7 +303,7 @@ function AgentRosterInlineConfigureDialog({
   trigger: ReactElement
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>

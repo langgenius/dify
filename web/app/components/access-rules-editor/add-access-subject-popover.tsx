@@ -170,7 +170,7 @@ function AddAccessSubjectPopover({
   updatingAccountId,
   onAddAccessSubject,
 }: AddAccessSubjectPopoverProps) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const isOpen = !disabled && open
 

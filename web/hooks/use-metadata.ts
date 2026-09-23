@@ -443,7 +443,7 @@ export const useMetadataMap = (): MetadataMap => {
 const langPrefix = 'metadata.languageMap.'
 
 export const useLanguages = () => {
-  const { t } = useTranslation('datasetDocuments')
+  const { t } = useTranslation(['datasetDocuments'])
   return {
     zh: t(($) => $[`${langPrefix}zh`], { ns: 'datasetDocuments' }),
     en: t(($) => $[`${langPrefix}en`], { ns: 'datasetDocuments' }),

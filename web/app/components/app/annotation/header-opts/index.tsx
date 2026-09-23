@@ -68,7 +68,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
   onClearAll,
   onExportJsonl,
 }) => {
-  const { t } = useTranslation('appAnnotation')
+  const { t } = useTranslation(['appAnnotation'])
   const locale = useLocale()
   const annotationUnavailable = list.length === 0
 

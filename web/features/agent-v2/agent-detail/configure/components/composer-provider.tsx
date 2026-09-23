@@ -20,7 +20,7 @@ export function AgentConfigureComposerProvider({
   initialConfig?: AgentSoulConfig
   initializeDefaultModel: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [session, setSession] = useState<{
     draft: AgentSoulConfigFormState
     savedDraft: AgentSoulConfigFormState

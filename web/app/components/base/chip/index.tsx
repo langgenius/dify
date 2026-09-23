@@ -44,7 +44,7 @@ function Chip<T extends ItemValue>({
   onSelect,
   onClear,
 }: Props<T>) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const selectedItem = items.find((item) => Object.is(item.value, value))
   const triggerContent = selectedItem?.triggerName || selectedItem?.name || ''
   const hasValue = selectedItem !== undefined && value !== ''

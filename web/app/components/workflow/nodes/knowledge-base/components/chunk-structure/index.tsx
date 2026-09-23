@@ -20,7 +20,7 @@ const ChunkStructure = ({
   warningDot = false,
   readonly = false,
 }: ChunkStructureProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const { options, optionMap } = useChunkStructure()
 
   return (

@@ -12,7 +12,7 @@ type UserInputProps = {
 }
 
 const UserInput = ({ variables = [], initialExpanded = true }: UserInputProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const [expanded, setExpanded] = useState(initialExpanded)
 
   if (!variables.length) return null

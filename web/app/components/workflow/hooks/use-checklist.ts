@@ -942,7 +942,7 @@ export const useChecklistBeforePublish = () => {
 }
 
 export const useWorkflowRunValidation = () => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const nodes = useNodes()
   const edges = useEdges<CommonEdgeType>()
   const flowType = useHooksStore((s) => s.configsMap?.flowType)

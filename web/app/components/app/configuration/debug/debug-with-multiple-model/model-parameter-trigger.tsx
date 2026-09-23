@@ -31,7 +31,7 @@ const DebugModelParameterTrigger: FC<DebugModelParameterTriggerProps> = ({
   className,
   ...triggerProps
 }) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const { currentProvider, currentModel } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: modelAndParameter.provider,
     model: modelAndParameter.model,

@@ -65,7 +65,7 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
   }>
 
 function CatalogSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="relative grow" role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>

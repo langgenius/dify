@@ -37,7 +37,7 @@ type ILogs = {
 const defaultValue = 'N/A'
 
 const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
-  const { t } = useTranslation('appLog')
+  const { t } = useTranslation(['appLog'])
   const { formatTime } = useTimestamp()
 
   const media = useBreakpoints()

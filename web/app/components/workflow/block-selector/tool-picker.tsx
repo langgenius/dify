@@ -209,7 +209,7 @@ function ToolPicker({
   onShowChange,
   ...contentProps
 }: Props) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen && disabled) return
     onShowChange(nextOpen)

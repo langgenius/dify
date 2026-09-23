@@ -28,7 +28,7 @@ const Editor = ({
   containerElement,
   setHistoryShortcutsEnabled,
 }: EditorProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const handleEditorChange = useCallback(
     (editorState: EditorState) => {
       onChange?.(editorState)

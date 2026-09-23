@@ -41,7 +41,7 @@ function lintFixture(source, rules) {
   }
 }
 
-it('rejects missing and empty namespaces through named and namespace imports', () => {
+it('rejects missing, empty, string, and dynamic namespaces through named and namespace imports', () => {
   const source = [
     "import { useTranslation as translate } from 'react-i18next'",
     "import { useTranslation } from '#i18n'",
@@ -55,37 +55,35 @@ it('rejects missing and empty namespaces through named and namespace imports', (
     "i18n.useTranslation('')",
     "i18n['useTranslation']()",
     "translate('' satisfies string)",
+    "translate('common')",
+    'function dynamic(namespace: string) { translate(namespace) }',
+    "const namespace = 'common'; translate(namespace)",
+    "const namespaces = ['common']; translate(namespaces)",
+    'translate(getNamespaces())',
   ].join('\n')
   const diagnostics = lintFixture(source, { 'dify/require-i18n-namespace': 'error' })
   expect(diagnostics.map(({ code, labels }) => ({ code, line: labels[0].span.line }))).toEqual(
-    [4, 5, 6, 7, 8, 9, 10, 11, 12].map((line) => ({
+    [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].map((line) => ({
       code: 'dify(require-i18n-namespace)',
       line,
     })),
   )
 })
 
-it('allows explicit and dynamic namespaces without reporting unrelated or shadowed bindings', () => {
+it('allows explicit namespace arrays without reporting unrelated or shadowed bindings', () => {
   const source = [
     "import { useTranslation as translate } from 'react-i18next'",
     "import { useTranslation } from './unrelated'",
     "import * as i18n from '#i18n'",
-    "translate('common')",
+    "translate(['common'])",
     "translate(['common', 'workflow'] as const)",
-    "i18n.useTranslation('common')",
+    "i18n.useTranslation(['common'])",
     "i18n['useTranslation'](['common'])",
-    'function dynamic(namespace: string) { translate(namespace) }',
     'function shadowed(translate: Function) { translate() }',
     'function shadowedObject(i18n: any) { i18n.useTranslation() }',
-    'function shadowedUndefined(undefined: string) { translate(undefined) }',
     'useTranslation()',
     'const unrelated = { useTranslation() {} }',
     'unrelated.useTranslation()',
-    "const namespace = 'common'",
-    'translate(namespace)',
-    'const namespaces: string[] = []',
-    "namespaces.push('common')",
-    'translate(namespaces)',
   ].join('\n')
   expect(lintFixture(source, { 'dify/require-i18n-namespace': 'error' })).toEqual([])
 })

@@ -107,7 +107,7 @@ function WorkspaceCardTrigger({
   onPrefetchWorkspaces: () => void
   onPlanClick: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
   const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })
   const isUnlimited = credits === -1

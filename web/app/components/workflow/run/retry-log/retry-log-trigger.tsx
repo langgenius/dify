@@ -8,7 +8,7 @@ type RetryLogTriggerProps = {
   onShowRetryResultList: (detail: NodeTracing[]) => void
 }
 const RetryLogTrigger = ({ nodeInfo, onShowRetryResultList }: RetryLogTriggerProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const { retryDetail } = nodeInfo
 
   const handleShowRetryResultList = (e: React.MouseEvent<HTMLButtonElement>) => {

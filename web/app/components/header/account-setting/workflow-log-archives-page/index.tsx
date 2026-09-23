@@ -64,7 +64,7 @@ function buildArchiveDownloadFileUrl(downloadId: string) {
 }
 
 export default function WorkflowLogArchivesPage() {
-  const { t } = useTranslation('appLog')
+  const { t } = useTranslation(['appLog'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

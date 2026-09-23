@@ -25,7 +25,7 @@ const StatusHeader: FC<StatusHeaderProps> = React.memo(
     isPauseLoading,
     isResumeLoading,
   }) => {
-    const { t } = useTranslation('datasetDocuments')
+    const { t } = useTranslation(['datasetDocuments'])
 
     const getStatusText = () => {
       if (isEmbedding) return t(($) => $['embedding.processing'], { ns: 'datasetDocuments' })

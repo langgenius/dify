@@ -18,7 +18,7 @@ type MailAndCodeAuthProps = {
 }
 
 export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
-  const { t } = useTranslation('login')
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

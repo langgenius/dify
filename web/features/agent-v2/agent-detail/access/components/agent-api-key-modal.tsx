@@ -36,7 +36,7 @@ export function AgentApiKeyModal({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation(['appApi', 'appLog', 'common'])
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const [newKey, setNewKey] = useState<ApiKeyItem | null>(null)

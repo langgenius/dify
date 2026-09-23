@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const EmailItem = ({ email, data, onDelete, disabled = false, isError }: Props) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div

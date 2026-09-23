@@ -293,7 +293,7 @@ function AgentActivityDisclosure({
   responding?: boolean
   defaultOpen?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const workingDuration = useWorkingDuration(responding)
   const latency = Number(item.more?.latency)
   const duration = responding

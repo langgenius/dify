@@ -58,7 +58,7 @@ export function AgentLogSourcePicker({
   onChange: (value: SourceFilterValue) => void
 }) {
   const { t } = useTranslation(['agentV2', 'common'])
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const [inputValue, setInputValue] = useState('')
   const sourceGroups = useMemo<AgentLogSourceComboboxGroup[]>(
     () => groups.map(({ sources, ...group }) => ({ ...group, items: sources ?? [] })),

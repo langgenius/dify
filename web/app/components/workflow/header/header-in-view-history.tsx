@@ -12,7 +12,7 @@ export type HeaderInHistoryProps = {
   viewHistoryProps?: ViewHistoryProps
 }
 const HeaderInHistory = ({ viewHistoryProps }: HeaderInHistoryProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const workflowStore = useWorkflowStore()
 
   const { handleLoadBackupDraft } = useWorkflowRun()

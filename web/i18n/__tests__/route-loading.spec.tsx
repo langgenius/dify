@@ -29,7 +29,7 @@ const makeResources = () => ({
 })
 let resources = makeResources()
 function Label() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   return (
     <span>
       {t(($) => $['operation.save'], { ns: 'common' })} /{' '}
@@ -117,7 +117,7 @@ describe('route translation loading', () => {
 
   it('retains committed content and shared state until destination translations are ready', async () => {
     function Destination() {
-      const { t } = useTranslation('common')
+      const { t } = useTranslation(['workflow'])
       return <span>{t(($) => $['blocks.agent'], { ns: 'workflow' })}</span>
     }
     const user = userEvent.setup()

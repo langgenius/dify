@@ -17,7 +17,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   onSelectUserInput,
   onSelectTrigger,
 }) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
 
   const handleTriggerSelect = useCallback(

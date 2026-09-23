@@ -27,7 +27,7 @@ type DatasetDetailSectionProps = {
 }
 
 const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

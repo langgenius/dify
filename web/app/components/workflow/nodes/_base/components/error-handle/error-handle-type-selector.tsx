@@ -20,7 +20,7 @@ const ErrorHandleTypeSelector = ({
   onSelected,
   allowDefaultValue = true,
 }: ErrorHandleTypeSelectorProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const options = [
     {
       value: ErrorHandleTypeEnum.none,

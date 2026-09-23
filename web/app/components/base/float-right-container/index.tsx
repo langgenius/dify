@@ -36,7 +36,7 @@ const FloatRightContainer = ({
   mask = true,
   finalFocus,
 }: IFloatRightContainerProps) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>

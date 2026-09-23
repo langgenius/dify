@@ -41,7 +41,7 @@ const UpgradeBtn: FC<Props> = ({
   loc,
   labelKey,
 }) => {
-  const { t } = useTranslation('billing')
+  const { t } = useTranslation(['billing'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

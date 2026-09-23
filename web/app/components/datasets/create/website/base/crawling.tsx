@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const Crawling: FC<Props> = ({ className = '', crawledNum, totalNum }) => {
-  const { t } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
     <div className={className}>

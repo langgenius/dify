@@ -30,7 +30,7 @@ import { useEmbeddedChatbotContext } from './context'
 import { isDify } from './utils'
 
 const ChatWrapper = () => {
-  const { t } = useTranslation('share')
+  const { t } = useTranslation(['share'])
   const {
     appData,
     appParams,

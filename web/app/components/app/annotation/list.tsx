@@ -31,7 +31,7 @@ function AnnotationTableRow({
   onView,
   onRemoveClick,
 }: AnnotationTableRowProps) {
-  const { t } = useTranslation('appDebug')
+  const { t } = useTranslation(['appDebug'])
   const questionId = React.useId()
 
   return (

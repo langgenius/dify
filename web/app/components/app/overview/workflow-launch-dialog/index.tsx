@@ -86,7 +86,7 @@ export function WorkflowLaunchDialog({
   targetUrl,
   onOpenChange,
 }: WorkflowLaunchDialogProps) {
-  const { t } = useTranslation('appOverview')
+  const { t } = useTranslation(['appOverview'])
   const supportedVariables = hiddenVariables.filter(isWorkflowLaunchInputSupported)
 
   if (!hiddenVariables.length) return null

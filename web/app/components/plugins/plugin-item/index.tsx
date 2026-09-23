@@ -44,7 +44,7 @@ const PluginItem: FC<Props> = ({
   className,
   plugin,
 }) => {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const { theme } = useTheme()
   const selectedPluginID = usePluginPageContext((v) =>
     v.selectedItem?.type === 'plugin' ? v.selectedItem.id : undefined,

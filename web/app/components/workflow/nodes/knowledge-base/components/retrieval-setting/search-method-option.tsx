@@ -143,7 +143,7 @@ function SearchMethodRadioCard({
   isRecommended,
   children,
 }: SearchMethodRadioCardProps) {
-  const { t } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['datasetCreation'])
   const isActive = option.id === searchMethod
 
   return (

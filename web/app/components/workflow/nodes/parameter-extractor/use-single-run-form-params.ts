@@ -30,7 +30,7 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const { inputs } = useNodeCrud<ParameterExtractorNodeType>(id, payload)
 
   const model = inputs.model

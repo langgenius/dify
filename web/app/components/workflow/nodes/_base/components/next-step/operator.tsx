@@ -23,7 +23,7 @@ type ChangeItemProps = {
   sourceHandle: string
 }
 const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   const { handleNodeChange } = useNodesInteractions()
   const nodeCatalogType = getNodeCatalogType(data)

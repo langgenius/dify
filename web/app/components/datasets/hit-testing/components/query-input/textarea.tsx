@@ -10,7 +10,7 @@ type TextareaProps = {
 }
 
 const Textarea = ({ text, handleTextChange }: TextareaProps) => {
-  const { t } = useTranslation('datasetHitTesting')
+  const { t } = useTranslation(['datasetHitTesting'])
 
   return (
     <div

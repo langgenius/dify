@@ -49,14 +49,9 @@ function isTranslationHook(sourceCode, callee) {
   )
 }
 
-function isEmptyNamespace(sourceCode, node) {
+function isNamespaceArray(node) {
   node = unwrap(node)
-  if (!node) return true
-  if (node.type === 'Literal') return node.value === null || node.value === ''
-  if (node.type === 'Identifier' && node.name === 'undefined')
-    return !getVariable(sourceCode, node)?.defs.length
-  if (node.type === 'ArrayExpression') return node.elements.length === 0
-  return false
+  return node?.type === 'ArrayExpression' && node.elements.length > 0
 }
 
 function onlyReadsI18n(node) {
@@ -81,10 +76,12 @@ function onlyReadsI18n(node) {
 export default {
   meta: {
     type: 'problem',
-    docs: { description: 'Require an explicit namespace unless only the i18n instance is read.' },
+    docs: {
+      description: 'Require an explicit namespace array unless only the i18n instance is read.',
+    },
     schema: [],
     messages: {
-      emptyNamespace: 'Declare the namespaces used by useTranslation when requesting translations.',
+      emptyNamespace: 'Declare the namespaces used by useTranslation as a non-empty inline array.',
     },
   },
   create(context) {
@@ -103,7 +100,7 @@ export default {
         if (!importedNames.has(identifier.name)) return
         if (
           isTranslationHook(context.sourceCode, node.callee) &&
-          isEmptyNamespace(context.sourceCode, node.arguments[0]) &&
+          !isNamespaceArray(node.arguments[0]) &&
           !onlyReadsI18n(node)
         )
           context.report({ node, messageId: 'emptyNamespace' })

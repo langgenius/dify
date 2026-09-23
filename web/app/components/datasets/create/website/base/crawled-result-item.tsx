@@ -22,7 +22,7 @@ const CrawledResultItem: FC<Props> = ({
   onCheckChange,
   onPreview,
 }) => {
-  const { t } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['datasetCreation'])
   return (
     <div
       className={cn(

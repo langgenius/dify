@@ -10,7 +10,7 @@ type LoadingPlaceholderProps = {
 }
 
 function LoadingPlaceholder({ label, className }: LoadingPlaceholderProps) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div className={cn('flex w-full items-center justify-center', className)}>

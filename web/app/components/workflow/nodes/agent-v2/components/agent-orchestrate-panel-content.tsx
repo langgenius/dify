@@ -291,8 +291,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   agentSoulConfig: AgentSoulConfig
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
 }) {
-  const { t } = useTranslation('common')
-  const { t: tAgent } = useTranslation('agentV2')
+  const { t } = useTranslation(['common'])
+  const { t: tAgent } = useTranslation(['agentV2'])
   const agentScope = useInlineAgentScope()
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()

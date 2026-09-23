@@ -16,7 +16,7 @@ function getVersionFromMarketplaceIdentifier(identifier: string): string | undef
 }
 
 export const ChecklistPluginGroup = memo(({ items }: { items: ChecklistItem[] }) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   const identifiers = useMemo(
     () =>

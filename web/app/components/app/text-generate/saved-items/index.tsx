@@ -27,7 +27,7 @@ const SavedItems: FC<ISavedItemsProps> = ({
   onRemove,
   onStartCreateContent,
 }) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div className={cn('space-y-4', className)}>

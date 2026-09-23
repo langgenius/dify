@@ -47,8 +47,8 @@ function DuplicateAgentFormSession({
   onCancel,
   onSubmit,
 }: DuplicateAgentFormSessionProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [initialValues] = useState(() => ({
     fields: {
       description: agent.description ?? '',

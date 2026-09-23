@@ -33,7 +33,7 @@ type EmojiPickerContentProps = {
 }
 
 function EmojiPickerContent({ className, onOpenChange, onSelect }: EmojiPickerContentProps) {
-  const { t } = useTranslation('app')
+  const { t } = useTranslation(['app'])
   const [selectedEmoji, setSelectedEmoji] = useState('')
   const [selectedBackground, setSelectedBackground] = useState(defaultEmojiBackground)
   const [, setRecentEmojis] = useRecentEmojis()

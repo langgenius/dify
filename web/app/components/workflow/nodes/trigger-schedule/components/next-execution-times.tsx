@@ -8,7 +8,7 @@ type NextExecutionTimesProps = {
 }
 
 const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   if (!data.frequency) return null
 

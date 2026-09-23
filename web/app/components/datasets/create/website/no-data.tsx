@@ -19,7 +19,7 @@ type Props = Readonly<{
 }>
 
 const NoData: FC<Props> = ({ onConfig, provider }) => {
-  const { t } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['datasetCreation'])
 
   const providerConfig: Record<
     DataSourceProvider,

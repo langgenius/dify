@@ -10,7 +10,7 @@ type IFormattingChangedProps = {
 }
 
 const FormattingChanged: FC<IFormattingChangedProps> = ({ onConfirm }) => {
-  const { t } = useTranslation('appDebug')
+  const { t } = useTranslation(['appDebug'])
 
   return (
     <WarningMask

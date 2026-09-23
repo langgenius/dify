@@ -206,7 +206,7 @@ type BannerProps = {
 }
 
 export function Banner({ banners }: BannerProps) {
-  const { t } = useTranslation('explore')
+  const { t } = useTranslation(['explore'])
   const locale = useLocale()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),

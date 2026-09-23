@@ -178,8 +178,8 @@ export function FileTree({
   skillId: string
 }) {
   const { t } = useTranslation(['skill', 'common'])
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
   const filesTitleId = useId()

@@ -181,9 +181,9 @@ export function MarketplaceSearchAutocomplete({
   scope,
   value,
 }: MarketplaceSearchAutocompleteProps) {
-  const { t } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tPlugin } = useTranslation('plugin')
+  const { t } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tPlugin } = useTranslation(['plugin'])
   const [isOpen, setIsOpen] = useState(false)
   const searchRootRef = useRef<HTMLDivElement>(null)
   const resultsPanelRef = useRef<HTMLDivElement>(null)

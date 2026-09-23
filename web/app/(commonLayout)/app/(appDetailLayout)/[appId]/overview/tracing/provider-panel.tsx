@@ -43,7 +43,7 @@ const ProviderPanel: FC<Props> = ({
   hasConfigured,
   onConfig,
 }) => {
-  const { t } = useTranslation('app')
+  const { t } = useTranslation(['app'])
   const iconClassName = getIconClassName(type)
 
   const handleConfigBtnClick = useCallback(

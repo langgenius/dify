@@ -98,7 +98,7 @@ const MultiSteps = ({
   currentStep: EditStep
   onStepClick?: (step: EditStep) => void
 }) => {
-  const { t } = useTranslation('pluginTrigger')
+  const { t } = useTranslation(['pluginTrigger'])
   return (
     <div className="mb-6 flex w-1/3 items-center gap-2">
       <StatusStep

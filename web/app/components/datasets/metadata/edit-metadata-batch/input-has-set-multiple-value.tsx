@@ -11,7 +11,7 @@ type Props = Readonly<{
 }>
 
 const InputHasSetMultipleValue: FC<Props> = ({ onClear, readOnly }) => {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   return (
     <div className="h-6 grow rounded-md bg-components-input-bg-normal p-0.5 text-[0]">
       <div

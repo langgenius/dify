@@ -60,7 +60,7 @@ const OptionCard = memo(
     onClick,
     readonly,
   }) => {
-    const { t } = useTranslation('datasetCreation')
+    const { t } = useTranslation(['datasetCreation'])
     const isActive = useMemo(() => {
       return id === selectedId
     }, [id, selectedId])

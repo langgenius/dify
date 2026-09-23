@@ -19,7 +19,7 @@ type Props = Readonly<{
 }>
 
 const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, readonly }) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const currentStyle = useMemo(() => {
     switch (data) {

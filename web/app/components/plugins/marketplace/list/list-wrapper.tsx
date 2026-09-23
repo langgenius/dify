@@ -29,8 +29,8 @@ const ListWrapper = ({
   showInstallButton,
   linkToMarketplaceDetail,
 }: ListWrapperProps) => {
-  const { t } = useTranslation('common')
-  const { t: tPlugin } = useTranslation('plugin')
+  const { t } = useTranslation(['common'])
+  const { t: tPlugin } = useTranslation(['plugin'])
 
   const {
     plugins,

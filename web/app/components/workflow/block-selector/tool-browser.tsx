@@ -47,7 +47,7 @@ function ToolsEmptyState({ title, action }: { title: string; action?: ReactNode 
 }
 
 function ToolCategoryEmptyState({ type }: { type: ToolType }) {
-  const { t } = useTranslation('tools')
+  const { t } = useTranslation(['tools'])
   const title = t(($) => $[`addToolModal.${type}.title`], { ns: 'tools' })
   const tip = t(($) => $[`addToolModal.${type}.tip`], { ns: 'tools' })
   const href = (() => {

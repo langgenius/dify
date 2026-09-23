@@ -68,7 +68,7 @@ function ToolSelector({
   nodeId = '',
   triggerRef,
 }: Props) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const {
     isShow,
     setIsShow,

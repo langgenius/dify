@@ -78,7 +78,7 @@ type ListeningProps = {
 }
 
 const Listening: FC<ListeningProps> = ({ onStop, message }) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
 
   // Get the current trigger type and node ID from store

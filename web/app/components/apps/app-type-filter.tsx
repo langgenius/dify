@@ -25,7 +25,7 @@ type AppTypeFilterProps = {
 }
 
 export function AppTypeFilter({ value, onChange }: AppTypeFilterProps) {
-  const { t } = useTranslation('app')
+  const { t } = useTranslation(['app'])
 
   const options = useMemo(() => {
     const optionsByCategory = {

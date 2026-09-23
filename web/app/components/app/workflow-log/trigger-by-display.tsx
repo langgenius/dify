@@ -117,7 +117,7 @@ const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
   showText = true,
   triggerMetadata,
 }) => {
-  const { t } = useTranslation('appLog')
+  const { t } = useTranslation(['appLog'])
   const { theme } = useTheme()
 
   const displayName = getTriggerDisplayName(triggeredFrom, t, triggerMetadata)

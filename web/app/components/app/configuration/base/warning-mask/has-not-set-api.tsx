@@ -8,7 +8,7 @@ type IHasNotSetAPIProps = {
 }
 
 const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({ onSetting }) => {
-  const { t } = useTranslation('appDebug')
+  const { t } = useTranslation(['appDebug'])
 
   return (
     <div className="flex grow flex-col items-center justify-center pb-30">

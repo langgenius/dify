@@ -780,7 +780,7 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
  * Conversation list component including basic information
  */
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
-  const { t } = useTranslation('appLog')
+  const { t } = useTranslation(['appLog'])
   const { formatTime } = useTimestamp()
   const [conversationIdInUrl, setConversationIdInUrl] = useQueryState(
     'conversation_id',

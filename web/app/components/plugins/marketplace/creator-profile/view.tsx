@@ -49,7 +49,7 @@ export default function CreatorProfileView({
   locale,
   onRecordsLoaded,
 }: CreatorProfileViewProps) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
 
   return (
     <div className="flex min-h-full shrink-0 flex-col bg-background-default">

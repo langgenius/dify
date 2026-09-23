@@ -124,6 +124,13 @@ Explain the concrete reason after `--`: which external contract, lifecycle, or r
 
 ### Translation Function Types
 
+`dify/require-i18n-namespace` requires translation hook calls to use non-empty
+inline namespace arrays, including single namespaces: `useTranslation(['common'])`.
+Strings and indirect arguments are rejected; only calls reading the `i18n`
+instance alone may omit namespaces. Both `react-i18next` and `#i18n` are checked.
+The shared client/server adapter accepts typed non-empty tuples and forwards them
+through one documented lint exception in its client implementation.
+
 `dify/require-t-function-namespace` requires i18next `TFunction` types to declare a
 non-empty inline tuple of namespace string literals. Use `TFunction<['common']>`
 or `TFunction<['common', 'workflow']>`; readonly tuples are also supported.

@@ -38,7 +38,7 @@ export const useAuth = (
   } = {},
 ) => {
   const { isModelCredential, onUpdate, onRemove, mode } = extra
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const {
     getDeleteCredentialService,
     getActiveCredentialService,

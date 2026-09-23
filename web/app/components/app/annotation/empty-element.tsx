@@ -25,7 +25,7 @@ const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
 }
 
 const EmptyElement: FC = () => {
-  const { t } = useTranslation('appAnnotation')
+  const { t } = useTranslation(['appAnnotation'])
 
   return (
     <div className="flex h-full items-center justify-center">

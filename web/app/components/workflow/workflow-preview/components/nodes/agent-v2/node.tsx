@@ -7,7 +7,7 @@ import { NodeSourceHandle } from '../../node-handle'
 
 const Node = (props: NodeProps) => {
   const { data } = props
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   if (!hasAgentV2OutputRoutes(data)) return null
 

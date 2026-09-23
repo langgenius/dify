@@ -9,7 +9,7 @@ type ExpirationTimeProps = {
 }
 
 const ExpirationTime = ({ expirationTime }: ExpirationTimeProps) => {
-  const { t } = useTranslation('share')
+  const { t } = useTranslation(['share'])
   const locale = useLocale()
   const relativeTime = getRelativeTime(expirationTime, locale)
   const isSameOrAfter = isRelativeTimeSameOrAfter(expirationTime)

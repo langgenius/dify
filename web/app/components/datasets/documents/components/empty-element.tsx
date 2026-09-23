@@ -13,7 +13,7 @@ type EmptyElementProps = {
 }
 
 const EmptyElement: FC<EmptyElementProps> = ({ canAdd = false, onClick, type = 'upload' }) => {
-  const { t } = useTranslation('datasetDocuments')
+  const { t } = useTranslation(['datasetDocuments'])
   return (
     <div className={s.emptyWrapper}>
       <div className={s.emptyElement}>

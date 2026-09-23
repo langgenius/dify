@@ -11,7 +11,7 @@ type Props = Readonly<{
 const prefixEmbedded = 'overview.appInfo.embedded'
 
 const CopyIcon = ({ content }: Props) => {
-  const { t } = useTranslation('appOverview')
+  const { t } = useTranslation(['appOverview'])
   const { copied, copy, reset } = useClipboard()
 
   const handleCopy = useCallback(() => {

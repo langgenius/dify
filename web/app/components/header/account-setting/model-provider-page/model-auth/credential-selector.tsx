@@ -21,7 +21,7 @@ const CredentialSelector = ({
   disabled,
   notAllowAddNewCredential,
 }: CredentialSelectorProps) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const handleSelect = useCallback(
     (credential: Credential & { addNewCredential?: boolean }) => {

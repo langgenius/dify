@@ -124,7 +124,7 @@ export function AgentOutputVariables({
   collapsed,
   onCollapse,
 }: AgentOutputVariablesProps) {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const [editingState, setEditingState] = useState<EditingState | null>(null)
   const [internalCollapsed, setInternalCollapsed] = useState(true)
   const isCollapsed = collapsed ?? internalCollapsed

@@ -17,7 +17,7 @@ import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from './tip-popup'
 
 function MoreActions() {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const { getNodesReadOnly } = useNodesReadOnly()
   const reactFlow = useReactFlow()
 

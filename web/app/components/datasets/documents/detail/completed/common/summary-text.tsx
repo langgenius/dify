@@ -9,7 +9,7 @@ type SummaryTextProps = {
   disabled?: boolean
 }
 const SummaryText = ({ value, onChange, disabled }: SummaryTextProps) => {
-  const { t } = useTranslation('datasetDocuments')
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
     <div className="space-y-1">

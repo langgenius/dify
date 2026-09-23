@@ -117,7 +117,7 @@ function MarketplaceDetailDialog({
   plugin,
   onOpenChange,
 }: MarketplaceDetailDialogProps) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
   const { canInstallPlugin } = useOptionalPluginInstallPermission()
   // resolvedTheme maps the "system" preference to the concrete light/dark

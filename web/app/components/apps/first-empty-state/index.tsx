@@ -40,7 +40,7 @@ function FirstEmptyState({
   onTryLearnDify,
   showLearnDify,
 }: Props) {
-  const { t } = useTranslation('app')
+  const { t } = useTranslation(['app'])
 
   const actions: EmptyCreateAction[] = [
     {

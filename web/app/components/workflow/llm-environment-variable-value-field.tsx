@@ -23,7 +23,7 @@ export function LLMEnvironmentVariableValueField({
   value?: LLMEnvironmentVariableValue
   onChange: (value: LLMEnvironmentVariableValue) => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const { activeTextGenerationModelList } = useTextGenerationCurrentProviderAndModelAndModelList()
   const selectableModelList = requiredMode
     ? activeTextGenerationModelList

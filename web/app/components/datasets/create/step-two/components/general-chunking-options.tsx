@@ -85,7 +85,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
 }) => {
   const qaLabelId = useId()
 
-  const { t } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['datasetCreation'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

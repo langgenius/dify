@@ -24,7 +24,7 @@ const ResultText: FC<ResultTextProps> = ({
   onClick,
   allFiles,
 }) => {
-  const { t } = useTranslation('runLog')
+  const { t } = useTranslation(['runLog'])
   return (
     <div className="bg-background-section-burn">
       {isRunning && !outputs && (

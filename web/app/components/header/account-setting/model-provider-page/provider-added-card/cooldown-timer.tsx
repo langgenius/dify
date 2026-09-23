@@ -9,7 +9,7 @@ type CooldownTimerProps = {
 }
 
 const CooldownTimer = ({ secondsRemaining = 0, onFinish }: CooldownTimerProps) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   const [countdown, setCountdown] = useState({ secondsRemaining, displayTime: secondsRemaining })
   if (countdown.secondsRemaining !== secondsRemaining) {

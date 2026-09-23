@@ -69,7 +69,7 @@ const ComponentPicker = ({
   lastRunBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',

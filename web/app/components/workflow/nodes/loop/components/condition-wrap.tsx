@@ -72,7 +72,7 @@ const ConditionWrap: FC<Props> = ({
   availableNodes = [],
   availableVars = [],
 }) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   const getAvailableVars = useGetAvailableVars()
 

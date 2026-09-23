@@ -307,7 +307,7 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
 export default React.memo(Apps)
 
 function NoTemplateFound() {
-  const { t } = useTranslation('app')
+  const { t } = useTranslation(['app'])
   return (
     <div className="w-full rounded-lg bg-workflow-process-bg p-4">
       <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">

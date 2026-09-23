@@ -80,7 +80,7 @@ function ModelSelectorRoot({
   surface: 'default' | 'workflow'
   shape: 'standalone' | 'split'
 }) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [settingsDestination, setSettingsDestination] = useQueryState(

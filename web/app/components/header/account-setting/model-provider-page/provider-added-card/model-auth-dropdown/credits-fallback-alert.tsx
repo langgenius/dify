@@ -5,7 +5,7 @@ type CreditsFallbackAlertProps = {
 }
 
 export default function CreditsFallbackAlert({ hasCredentials }: CreditsFallbackAlertProps) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   const titleKey = hasCredentials
     ? 'modelProvider.card.apiKeyUnavailableFallback'

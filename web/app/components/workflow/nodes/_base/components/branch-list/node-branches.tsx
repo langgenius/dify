@@ -72,7 +72,7 @@ export function NodeBranches({
   branches: Topic[]
   defaultLabel?: (index: number) => string
 }) {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   return (
     <div className="mt-2 space-y-0.5">
       {branches.map((topic, index) => (

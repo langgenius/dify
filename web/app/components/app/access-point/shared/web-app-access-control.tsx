@@ -11,7 +11,7 @@ type WebAppAccessControlEntryProps = {
 }
 
 export function WebAppAccessControlEntrySkeleton({ loading }: { loading: boolean }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="-mt-1 px-4 pb-3">
@@ -39,7 +39,7 @@ export function WebAppAccessControlEntry({
   disabled,
   onClick,
 }: WebAppAccessControlEntryProps) {
-  const { t } = useTranslation('app')
+  const { t } = useTranslation(['app'])
 
   return (
     <div className="-mt-1 px-4 pb-3">

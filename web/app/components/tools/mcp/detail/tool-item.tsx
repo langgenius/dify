@@ -14,7 +14,7 @@ type Props = Readonly<{
 const MCPToolItem = ({ tool }: Props) => {
   const locale = useLocale()
   const language = getPluginLanguage(locale)
-  const { t } = useTranslation('tools')
+  const { t } = useTranslation(['tools'])
 
   const renderParameters = () => {
     const parameters = tool.parameters

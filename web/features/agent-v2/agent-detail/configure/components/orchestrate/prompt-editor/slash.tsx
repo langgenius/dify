@@ -103,7 +103,7 @@ export function AgentPromptSlashMenu({
   onOpenCategory,
   onInsertToken,
 }: AgentPromptSlashMenuProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const title = categories.find((category) => category.key === view)?.label
   const handleAddFromFooter = (skillSource?: 'library' | 'upload') => {
     if (view === 'skills') {
@@ -357,7 +357,7 @@ function AgentPromptToolRows({
   onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onInsertToken: (token: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const language = useGetLanguage()
   const { getProviderIcon, getProviderIcons } = useAgentPromptToolIconResolver()
   const [activeTab, setActiveTab] = useState<ToolPromptTab>('all')
@@ -744,7 +744,7 @@ function AgentPromptCliToolRow({
   tool: Extract<AgentTool, { kind: 'cli' }>
   onClick: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <button
@@ -775,7 +775,7 @@ function AgentPromptKnowledgeRows({
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   onInsertToken: (token: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <>
