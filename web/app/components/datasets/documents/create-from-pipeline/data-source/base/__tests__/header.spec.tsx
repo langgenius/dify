@@ -2,10 +2,6 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import Header from '../header'
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <span data-testid="divider" />,
-}))
-
 vi.mock('../credential-selector', () => ({
   default: () => <div data-testid="credential-selector" />,
 }))

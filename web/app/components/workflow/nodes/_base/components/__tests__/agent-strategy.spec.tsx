@@ -1,199 +1,170 @@
-import type { ReactNode } from 'react'
-import type {
-  CredentialFormSchema,
-  CredentialFormSchemaNumberInput,
-  CredentialFormSchemaTextInput,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { render, screen } from '@testing-library/react'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { createDocLinkMock } from '../../../../__tests__/i18n'
+import type { AgentStrategyParameter } from '@dify/contracts/api/console/workspaces/types.gen'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { createWorkflowStore } from '@/app/components/workflow/store'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createProvider, createStrategy } from '../../../agent/__tests__/strategy-fixture'
 import { AgentStrategy } from '../agent-strategy'
 
-const createI18nLabel = (text: string) => ({ en_US: text, zh_Hans: text })
-const mockDocLink = createDocLinkMock('/docs')
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: () => ({ data: null }),
+const { request } = vi.hoisted(() => ({ request: vi.fn() }))
+vi.mock('@/service/base', () => ({ request }))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/hooks',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
+    >()),
+    useDefaultModel: () => ({ data: null }),
+  }),
+)
+vi.mock('@/app/components/workflow/hooks/use-workflow-variables', () => ({
+  useWorkflowVariableType: () => vi.fn(),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => mockDocLink,
+vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+  useMarketplacePlugins: () => ({ queryPluginsWithDebounced: vi.fn(), plugins: [] }),
 }))
-
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (value: unknown) => {
-    if (typeof value === 'string') return value
-    if (value && typeof value === 'object' && 'en_US' in value) return value.en_US
-    return 'label'
-  },
-}))
-
-vi.mock('../../../../store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setControlPromptEditorRerenderKey: vi.fn(),
-    }),
+vi.mock('@/service/use-plugins', () => ({
+  useFetchPluginsInMarketPlaceByIds: () => ({
+    isLoading: false,
+    data: { data: { plugins: [] } },
+    refetch: vi.fn(),
   }),
 }))
 
-vi.mock('../agent-strategy-selector', () => ({
-  AgentStrategySelector: () => <div data-testid="agent-strategy-selector" />,
-}))
-
-vi.mock('../field', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('../prompt/editor', () => ({
-  default: ({ value }: { value: string }) => <div data-testid="agent-strategy-editor">{value}</div>,
-}))
-
-type MockFormRenderProps = {
-  value: Record<string, unknown>
-  onChange: (value: Record<string, unknown>) => void
-  nodeId?: string
-  nodeOutputVars?: unknown[]
-  availableNodes?: unknown[]
+const strategy = {
+  agent_strategy_provider_name: 'langgenius/agent/provider',
+  agent_strategy_name: 'react',
+  agent_strategy_label: 'ReAct',
+  agent_output_schema: null,
 }
-
-type MockFormProps = {
-  formSchemas: Array<{ variable: string }>
-  value: Record<string, unknown>
-  onChange: (value: Record<string, unknown>) => void
-  override?: [unknown, (schema: unknown, props: MockFormRenderProps) => ReactNode]
-  nodeId?: string
-  nodeOutputVars?: unknown[]
-  availableNodes?: unknown[]
-}
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: ({
-    formSchemas,
-    value,
-    onChange,
-    override,
-    nodeId,
-    nodeOutputVars,
-    availableNodes,
-  }: MockFormProps) => {
-    const renderOverride = override?.[1]
-
+const createParameter = (overrides: Partial<AgentStrategyParameter>): AgentStrategyParameter => ({
+  name: 'count',
+  type: 'number',
+  label: { en_US: 'Count' },
+  default: '3',
+  min: 0,
+  max: 10,
+  ...overrides,
+})
+const renderForm = (
+  parameters: AgentStrategyParameter[],
+  initialValue: Record<string, unknown> = {},
+) => {
+  const onChange = vi.fn()
+  request.mockImplementation((url: string) =>
+    Promise.resolve(
+      Response.json(
+        url.endsWith('/agent-providers')
+          ? [createProvider()]
+          : createProvider([createStrategy({ parameters })]),
+      ),
+    ),
+  )
+  const workflowStore = createWorkflowStore({})
+  function Harness() {
+    const [value, setValue] = useState(initialValue)
     return (
-      <div data-testid="mock-form">
-        {formSchemas.map((schema) => (
-          <div key={schema.variable}>
-            {renderOverride?.(schema, {
-              value,
-              onChange,
-              nodeId,
-              nodeOutputVars,
-              availableNodes,
-            })}
-          </div>
-        ))}
-      </div>
+      <WorkflowContext value={workflowStore}>
+        <AgentStrategy
+          strategy={strategy}
+          onStrategyChange={vi.fn()}
+          formSchema={parameters}
+          formValue={value}
+          onFormValueChange={(next) => {
+            setValue(next)
+            onChange(next)
+          }}
+        />
+      </WorkflowContext>
     )
-  },
-}))
-
-describe('AgentStrategy', () => {
-  const defaultProps = {
-    strategy: {
-      agent_strategy_provider_name: 'provider',
-      agent_strategy_name: 'strategy',
-      agent_strategy_label: 'Strategy',
-      agent_output_schema: {},
-      plugin_unique_identifier: 'plugin',
-    },
-    onStrategyChange: vi.fn(),
-    formValue: {},
-    onFormValueChange: vi.fn(),
-    nodeOutputVars: [],
-    availableNodes: [],
-    nodeId: 'node-1',
   }
+  const result = render(<Harness />, { systemFeatures: { enable_marketplace: false } })
+  return { ...result, onChange }
+}
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+beforeEach(() => vi.clearAllMocks())
 
-  const createTextNumberSchema = (
-    overrides: Partial<CredentialFormSchemaNumberInput> = {},
-  ): CredentialFormSchema =>
-    ({
-      name: 'count',
-      variable: 'count',
-      label: createI18nLabel('Count'),
-      type: FormTypeEnum.textNumber,
-      required: false,
-      show_on: [],
-      default: '1',
-      ...overrides,
-    }) as unknown as CredentialFormSchema
+it('renders typed number and boolean defaults through the real form without requiring an installation identifier', async () => {
+  const user = userEvent.setup()
+  const { onChange } = renderForm([
+    createParameter({ default: 0 }),
+    createParameter({
+      name: 'enabled',
+      type: 'boolean',
+      label: { en_US: 'Enabled' },
+      default: false,
+    }),
+  ])
+  expect(screen.getByRole('textbox', { name: 'Count' })).toHaveValue('0')
+  expect(screen.getByRole('radio', { name: 'False' })).toBeChecked()
+  await user.click(screen.getByRole('radio', { name: 'True' }))
+  expect(onChange).toHaveBeenLastCalledWith({ count: 0, enabled: true })
+})
 
-  const createTextInputSchema = (
-    overrides: Partial<CredentialFormSchemaTextInput> = {},
-  ): CredentialFormSchema => ({
-    name: 'prompt',
-    variable: 'prompt',
-    label: createI18nLabel('Prompt'),
-    type: FormTypeEnum.textInput,
-    required: false,
-    show_on: [],
-    default: 'hello',
-    ...overrides,
-  })
+it.each([
+  { value: undefined, expected: '3' },
+  { value: '4', expected: '4' },
+  { value: 0, expected: '0' },
+])('preserves numeric strings and zero: $value', ({ value, expected }) => {
+  renderForm([createParameter({})], value === undefined ? {} : { count: value })
+  expect(screen.getByRole('textbox', { name: 'Count' })).toHaveValue(expected)
+})
 
-  it('should render text-number schemas when min and max are zero', () => {
-    render(
-      <AgentStrategy
-        {...defaultProps}
-        formSchema={[
-          createTextNumberSchema({
-            min: 0,
-            max: 0,
-            default: '0',
-          }),
-        ]}
-      />,
+it('preserves a one-sided numeric constraint through fallback input and blur', async () => {
+  const user = userEvent.setup()
+  const { onChange } = renderForm([createParameter({ min: 0, max: null })])
+  const input = screen.getByRole('spinbutton')
+  await user.clear(input)
+  await user.type(input, '-2')
+  await user.tab()
+  expect(input).toHaveValue(0)
+  expect(onChange).toHaveBeenLastCalledWith({ count: '0' })
+})
+
+it('does not select a boolean value when the declaration default is null', () => {
+  renderForm([
+    createParameter({
+      name: 'enabled',
+      type: 'boolean',
+      label: { en_US: 'Enabled' },
+      default: null,
+    }),
+  ])
+  expect(screen.getByRole('radio', { name: 'False' })).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: 'True' })).not.toBeChecked()
+})
+
+it.each(['', null])(
+  'displays the declared default for a cleared prompt %s, matching runtime initialization',
+  async (prompt) => {
+    renderForm(
+      [
+        createParameter({
+          name: 'prompt',
+          type: 'string',
+          label: { en_US: 'Prompt' },
+          default: 'Default prompt',
+        }),
+      ],
+      { prompt },
     )
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveTextContent('Default prompt'))
+  },
+)
 
-    expect(screen.getByRole('textbox', { name: 'Count' })).toBeInTheDocument()
-  })
-
-  it('should skip text-number schemas when min is missing', () => {
-    render(
-      <AgentStrategy
-        {...defaultProps}
-        formSchema={[
-          createTextNumberSchema({
-            max: 5,
-          }),
-        ]}
-      />,
-    )
-
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-  })
-
-  it('should skip text-number schemas when max is missing', () => {
-    render(
-      <AgentStrategy
-        {...defaultProps}
-        formSchema={[
-          createTextNumberSchema({
-            min: 0,
-          }),
-        ]}
-      />,
-    )
-
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-  })
-
-  it('should render text-input schemas through the editor override', () => {
-    render(<AgentStrategy {...defaultProps} formSchema={[createTextInputSchema()]} />)
-
-    expect(screen.getByTestId('agent-strategy-editor')).toHaveTextContent('hello')
-  })
+it('uses the declaration default for an explicitly undefined form value', async () => {
+  renderForm(
+    [
+      createParameter({
+        name: 'prompt',
+        type: 'string',
+        label: { en_US: 'Prompt' },
+        default: 'Default prompt',
+      }),
+    ],
+    { prompt: undefined },
+  )
+  await waitFor(() => expect(screen.getByRole('textbox')).toHaveTextContent('Default prompt'))
 })

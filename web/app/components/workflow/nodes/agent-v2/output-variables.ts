@@ -1,4 +1,7 @@
-import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  DeclaredOutputConfig,
+  WorkflowOutputRoutes,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentV2NodeType } from './types'
 import type { Var } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
@@ -15,15 +18,6 @@ export const AGENT_V2_RESERVED_OUTPUT_NAMES: ReadonlySet<string> = new Set([
   'switch',
   '_session',
 ])
-
-const outputTypeLabels: Record<DeclaredOutputConfig['type'], string> = {
-  array: 'Array',
-  boolean: 'Boolean',
-  file: 'File',
-  number: 'Number',
-  object: 'Object',
-  string: 'String',
-}
 
 const outputVarTypes: Record<DeclaredOutputConfig['type'], VarType> = {
   array: VarType.array,
@@ -44,26 +38,29 @@ const arrayItemVarTypes: Record<DeclaredOutputConfig['type'], VarType> = {
 }
 
 export function getAgentV2DeclaredOutputs(data: AgentV2NodeType) {
-  return normalizeAgentV2DeclaredOutputs(data.agent_declared_outputs ?? [])
+  return normalizeAgentV2DeclaredOutputs(
+    data.agent_declared_outputs ?? [],
+    data.agent_output_routes,
+  )
 }
 
 export function getAgentV2CustomDeclaredOutputs(outputs: readonly DeclaredOutputConfig[]) {
   return outputs.filter((output) => !AGENT_V2_RESERVED_OUTPUT_NAMES.has(output.name))
 }
 
-export function normalizeAgentV2DeclaredOutputs(outputs: readonly DeclaredOutputConfig[]) {
-  return [agentV2SystemTextOutput, ...getAgentV2CustomDeclaredOutputs(outputs)]
-}
-
-/**
- * @public
- */
-// TODO: Remove this marker after the output type label consumer is wired.
-export function getDeclaredOutputTypeLabel(output: DeclaredOutputConfig) {
-  if (output.type === 'array')
-    return `Array[${output.array_item ? outputTypeLabels[output.array_item.type] : 'Object'}]`
-
-  return outputTypeLabels[output.type]
+export function normalizeAgentV2DeclaredOutputs(
+  outputs: readonly DeclaredOutputConfig[],
+  routes?: WorkflowOutputRoutes,
+) {
+  const systemOutputs: DeclaredOutputConfig[] = [agentV2SystemTextOutput]
+  if (routes?.enabled)
+    systemOutputs.push({
+      name: 'switch',
+      type: 'string',
+      required: true,
+      description: 'Selected output route ID.',
+    })
+  return [...systemOutputs, ...getAgentV2CustomDeclaredOutputs(outputs)]
 }
 
 function getDeclaredOutputVarType(output: DeclaredOutputConfig) {

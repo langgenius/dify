@@ -16,7 +16,7 @@ def _build_mcp_provider_entity() -> MCPProviderEntity:
     now = datetime(2025, 1, 1, tzinfo=UTC)
     return MCPProviderEntity(
         id="provider-1",
-        provider_id="server-1",
+        server_identifier="server-1",
         name="Example MCP",
         tenant_id="tenant-1",
         user_id="user-1",
@@ -60,7 +60,7 @@ def test_from_db_model_maps_fields() -> None:
     entity = MCPProviderEntity.from_db_model(db_provider)
 
     # Assert
-    assert entity.provider_id == "server-1"
+    assert entity.server_identifier == "server-1"
     assert entity.tools == [{"name": "search"}]
     assert entity.icon == ""
 

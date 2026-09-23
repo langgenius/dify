@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum, Resolution } from '@/types/app'
@@ -26,7 +26,10 @@ const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
 
 const FILE_INPUT_TYPES = new Set(['file-list', 'file'])
 
-const WORKFLOW_FILE_VAR_TYPES = new Set([InputVarType.multiFiles, InputVarType.singleFile])
+const WORKFLOW_FILE_VAR_TYPES = new Set<InputVarType>([
+  InputVarType.multiFiles,
+  InputVarType.singleFile,
+])
 
 type InputSchemaItem = {
   label?: string

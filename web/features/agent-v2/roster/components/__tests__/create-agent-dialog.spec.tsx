@@ -24,7 +24,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
@@ -38,7 +38,7 @@ vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: trackCreateAppMock,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       post: {

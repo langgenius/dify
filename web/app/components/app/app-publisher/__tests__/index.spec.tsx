@@ -1,11 +1,10 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { EnvironmentStatus, RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { AccessMode } from '@/models/access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { appWorkflowVersionsInfiniteQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
@@ -149,7 +148,6 @@ vi.mock('@/service/use-tools', () => ({
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
-    isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
@@ -162,7 +160,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
     success: (...args: unknown[]) => mockToastSuccess(...args),
@@ -634,7 +632,7 @@ describe('AppPublisher', () => {
       expect(environmentDeploymentListRequests.length).toBeGreaterThan(0)
     })
     expect(environmentDeploymentDetailRequests).toHaveLength(0)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText(/studio\.accessPoint\.noPublishedTitle/)).not.toBeInTheDocument()
     expect(screen.queryByText(/studio\.publisher\.notDeployedYet/)).not.toBeInTheDocument()
 

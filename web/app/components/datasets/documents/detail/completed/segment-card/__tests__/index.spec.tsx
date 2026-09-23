@@ -7,14 +7,16 @@ import type {
   SegmentDetailModel,
 } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ChunkingMode } from '@/models/datasets'
 import SegmentCard from '../index'
 
 // Context Mocks - need to control test scenarios
 
-const mockDocForm = { current: ChunkingMode.text }
+const mockDocForm: { current: ChunkingMode } = { current: ChunkingMode.text }
 const mockParentMode = { current: 'paragraph' as ParentMode }
+const mockCanEdit = { current: true }
 
 vi.mock('../../../context', () => ({
   useDocumentContext: (selector: (value: DocumentContextValue) => unknown) => {
@@ -23,6 +25,7 @@ vi.mock('../../../context', () => ({
       documentId: 'test-document-id',
       docForm: mockDocForm.current,
       parentMode: mockParentMode.current,
+      canEdit: mockCanEdit.current,
     }
     return selector(value)
   },
@@ -157,7 +160,47 @@ describe('SegmentCard', () => {
     mockDocForm.current = ChunkingMode.text
     mockParentMode.current = 'paragraph'
     mockIsCollapsed.current = true
+    mockCanEdit.current = true
   })
+
+  it.each([true, false])(
+    'should disable single chunk mutations without edit permission (enabled: %s)',
+    async (enabled) => {
+      mockCanEdit.current = false
+      const user = userEvent.setup()
+      const onClickEdit = vi.fn()
+      const onChangeSwitch = vi.fn()
+      const onDelete = vi.fn()
+
+      render(
+        <SegmentCard
+          loading={false}
+          detail={createMockSegmentDetail({ enabled })}
+          embeddingAvailable
+          focused={defaultFocused}
+          onClickEdit={onClickEdit}
+          onChangeSwitch={onChangeSwitch}
+          onDelete={onDelete}
+        />,
+      )
+
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
+      const statusSwitch = screen.getByRole('switch')
+      expect(editButton).toBeDisabled()
+      expect(deleteButton).toBeDisabled()
+      expect(statusSwitch).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(editButton)
+      await user.click(deleteButton)
+      await user.click(statusSwitch)
+
+      expect(onClickEdit).not.toHaveBeenCalled()
+      expect(onChangeSwitch).not.toHaveBeenCalled()
+      expect(onDelete).not.toHaveBeenCalled()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    },
+  )
 
   describe('Rendering', () => {
     it('should render loading skeleton when loading is true', () => {

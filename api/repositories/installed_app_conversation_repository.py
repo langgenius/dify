@@ -133,11 +133,11 @@ class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore
             conversation = self._get_conversation(
                 session=session, app_id=app.id, account_id=account_id, conversation_id=conversation_id
             )
-            retired_binding_id = retire_conversation(app_model=app, conversation=conversation, session=session)
+            retired_workspace_ids = retire_conversation(app_model=app, conversation=conversation, session=session)
             return ConversationDeletion(
                 tenant_id=app.tenant_id,
                 conversation_id=conversation.id,
-                retired_binding_id=retired_binding_id,
+                retired_workspace_ids=retired_workspace_ids,
             )
 
     @override

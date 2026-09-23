@@ -37,7 +37,6 @@ type IDebugConfiguration = {
   readonly?: boolean
   canTestAndRun?: boolean
   appId: string
-  isAPIKeySet: boolean
   isTrailFinished: boolean
   mode: AppModeEnum
   modelModeType: ModelModeType
@@ -120,7 +119,6 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   readonly: false,
   canTestAndRun: false,
   appId: '',
-  isAPIKeySet: false,
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,

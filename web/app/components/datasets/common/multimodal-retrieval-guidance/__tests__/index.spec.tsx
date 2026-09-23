@@ -1,3 +1,4 @@
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
@@ -9,7 +10,10 @@ import {
 import { MultimodalRetrievalGuidance, MultimodalRetrievalGuidanceLearnMore } from '../index'
 import { MULTIMODAL_RETRIEVAL_GUIDANCE_DISMISSED_STORAGE_KEY } from '../storage'
 
-const createEmbeddingModelProvider = (features: ModelFeatureEnum[] = []) => ({
+const createEmbeddingModelProvider = (
+  features: ModelFeatureEnum[] = [],
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'test-provider',
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: 'Test Provider', zh_Hans: 'Test Provider' },

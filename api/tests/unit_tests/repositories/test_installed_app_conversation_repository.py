@@ -9,6 +9,7 @@ from sqlalchemy import Engine, event, inspect, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorkspaceOwnerType
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation, InstalledApp, Message
 from models.web import PinnedConversation
@@ -16,7 +17,7 @@ from repositories.installed_app_conversation_repository import SQLAlchemyInstall
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_conversation_service import ConversationDeletion, ConversationPage
+from services.installed_app_conversation_service import ConversationPage
 
 _ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 _OWNER_TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -429,21 +430,43 @@ def test_existing_pin_and_unpin_do_not_require_live_conversation(
         assert session.scalars(select(PinnedConversation)).all() == []
 
 
+@pytest.mark.parametrize("workspace_count", [0, 2])
 def test_delete_commits_soft_deletion_and_returns_owner_tenant_for_cleanup(
-    sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
+    sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef, workspace_count: int
 ) -> None:
     with sqlite_session_factory.begin() as session:
         conversation = _conversation(session, installation)
+        workspaces = [
+            AgentWorkspace(
+                id=str(uuid4()),
+                tenant_id=_OWNER_TENANT_ID,
+                app_id=conversation.app_id,
+                owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                owner_id=conversation.id,
+                owner_scope_key=f"node-{index}:workflow-binding-{index}",
+                backend_workspace_ref=f"backend-workspace-{index}",
+                status=AgentWorkingResourceStatus.ACTIVE,
+                active_guard=1,
+            )
+            for index in range(workspace_count)
+        ]
+        session.add_all(workspaces)
     repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
     deleted = repository.delete(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
 
-    assert deleted == ConversationDeletion(
-        tenant_id=_OWNER_TENANT_ID, conversation_id=conversation.id, retired_binding_id=None
-    )
+    assert deleted.tenant_id == _OWNER_TENANT_ID
+    assert deleted.conversation_id == conversation.id
+    assert set(deleted.retired_workspace_ids) == {workspace.id for workspace in workspaces}
     with sqlite_session_factory() as session:
         stored = session.get(Conversation, conversation.id)
         assert stored is not None
         assert stored.is_deleted is True
+        for workspace in workspaces:
+            stored_workspace = session.get(AgentWorkspace, workspace.id)
+            assert stored_workspace is not None
+            assert stored_workspace.status == AgentWorkingResourceStatus.RETIRED
+            assert stored_workspace.retired_at is not None
+            assert stored_workspace.active_guard is None
     with pytest.raises(ConversationNotExistsError):
         repository.delete(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
 

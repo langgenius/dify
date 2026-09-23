@@ -16,8 +16,8 @@ import dayjs from 'dayjs'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import { useLocale } from '@/context/i18n'
 import { formatToLocalTime } from '@/utils/format'
 
 export type AgentMonitoringPeriod = {
@@ -140,7 +140,7 @@ export function AgentMonitoringTimeRangePicker({
   value,
   onChange,
 }: AgentMonitoringTimeRangePickerProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const locale = useLocale()
   const [selectedRange, setSelectedRange] = useState<TimeRangeKey | 'custom'>('today')
   const [start, setStart] = useState(() => dayjs(value.query.start))

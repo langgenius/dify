@@ -9,7 +9,7 @@ import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import ExternalApiSelect from './ExternalApiSelect'
 
 type ExternalApiSelectionProps = {
@@ -23,7 +23,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
   external_knowledge_id,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const externalKnowledgeApiQueryOptions =

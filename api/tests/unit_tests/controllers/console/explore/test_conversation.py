@@ -44,7 +44,7 @@ class _Conversations:
     factory: sessionmaker[Session]
     sessions: list[Session] = field(default_factory=list)
     generation_calls: list[tuple[str, str, str, str, str]] = field(default_factory=list)
-    cleanup_calls: list[tuple[str, str, str | None]] = field(default_factory=list)
+    cleanup_calls: list[tuple[str, str, tuple[str, ...]]] = field(default_factory=list)
     generation_error: Exception | None = None
     generation_action: Callable[[], None] | None = None
 
@@ -60,13 +60,13 @@ class _Conversations:
             self.generation_action()
         return "Generated title"
 
-    def enqueue_cleanup(self, *, tenant_id: str, conversation_id: str, retired_binding_id: str | None) -> None:
+    def enqueue_cleanup(self, *, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
         self.assert_sessions_closed()
         with self.factory() as session:
             conversation = session.get(Conversation, conversation_id)
             assert conversation is not None
             assert conversation.is_deleted
-        self.cleanup_calls.append((tenant_id, conversation_id, retired_binding_id))
+        self.cleanup_calls.append((tenant_id, conversation_id, retired_workspace_ids))
 
     def request(
         self,
@@ -341,7 +341,7 @@ def test_delete_returns_empty_204_after_commit_and_closed_sessions(conversations
     assert response.data == b""
     assert response.headers["Content-Type"] == "application/json"
     assert "Content-Length" not in response.headers
-    assert conversations.cleanup_calls == [(conversations.harness.target_app.tenant_id, conversation.id, None)]
+    assert conversations.cleanup_calls == [(conversations.harness.target_app.tenant_id, conversation.id, ())]
     conversations.assert_sessions_closed()
     _error(conversations.request("delete", conversation_id=conversation.id), status=404, code="conversation_not_found")
     assert len(conversations.cleanup_calls) == 1

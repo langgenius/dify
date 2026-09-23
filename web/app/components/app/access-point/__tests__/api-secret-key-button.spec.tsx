@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { ApiSecretKeyButton } from '../shared/api-secret-key-button'
 

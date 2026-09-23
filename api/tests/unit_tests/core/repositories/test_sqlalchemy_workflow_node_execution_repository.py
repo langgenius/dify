@@ -26,21 +26,22 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _find_first,
     _replace_or_append_offload,
 )
-from extensions.storage.storage_type import StorageType
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from models import Account, EndUser, Tenant
+from models import Account, EndUser
 from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
+from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 
 
 def _account(*, tenant_id: str = "tenant-1", user_id: str = "user-1") -> Account:
-    user = Account(name="Test Account", email="test@example.com")
-    user.id = user_id
-    user._current_tenant = Tenant(name="Test Tenant")
-    user._current_tenant.id = tenant_id
-    return user
+    return make_account(
+        account_id=user_id,
+        name="Test Account",
+        email="test@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="Test Tenant"),
+    )
 
 
 def _end_user(*, tenant_id: str = "tenant-1", user_id: str = "end-user-1") -> EndUser:
@@ -48,18 +49,24 @@ def _end_user(*, tenant_id: str = "tenant-1", user_id: str = "end-user-1") -> En
 
 
 def _upload_file(*, key: str = "storage-key") -> UploadFile:
-    return UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
         key=key,
         name="offload.json",
         size=1,
         extension="json",
         mime_type="application/json",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         created_at=datetime.now(UTC),
-        used=False,
+    )
+
+
+def _offload(type_: ExecutionOffLoadType, *, file_id: str = "file-1") -> WorkflowNodeExecutionOffload:
+    return WorkflowNodeExecutionOffload(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_execution_id="execution-1",
+        type_=type_,
+        file_id=file_id,
     )
 
 
@@ -195,12 +202,10 @@ def test_helper_functions_and_truncator_configuration(
     assert _deterministic_json_dump({"b": 1, "a": 2}) == '{"a": 2, "b": 1}'
     assert _find_first([], lambda _value: True) is None
     assert _find_first([1, 2, 3], lambda value: value > 1) == 2
-    inputs = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
-    outputs = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
+    inputs = _offload(ExecutionOffLoadType.INPUTS)
+    outputs = _offload(ExecutionOffLoadType.OUTPUTS)
     assert _find_first([inputs, outputs], _filter_by_offload_type(ExecutionOffLoadType.OUTPUTS)) is outputs
-    replaced = _replace_or_append_offload(
-        [inputs, outputs], WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
-    )
+    replaced = _replace_or_append_offload([inputs, outputs], _offload(ExecutionOffLoadType.INPUTS))
     assert [item.type_ for item in replaced] == [ExecutionOffLoadType.OUTPUTS, ExecutionOffLoadType.INPUTS]
 
     created: dict[str, int] = {}
@@ -458,7 +463,7 @@ def test_to_domain_model_loads_offloaded_storage(
     )
     offloads = []
     for offload_type in ExecutionOffLoadType:
-        offload = WorkflowNodeExecutionOffload(type_=offload_type)
+        offload = _offload(offload_type)
         offload.file = _upload_file(key=offload_type.value)
         offloads.append(offload)
     db_model.offload_data = offloads

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -7,13 +8,13 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Microphone01 } from '@/app/components/base/icons/src/vender/features'
-import { Infotip } from '@/app/components/base/infotip'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 
 const ConfigAudio: FC = () => {
-  const { t } = useTranslation()
+  const titleId = React.useId()
+
+  const { t } = useTranslation(['appDebug'])
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
   const { isShowAudioConfig, readonly } = useContext(ConfigContext)
@@ -47,18 +48,21 @@ const ConfigAudio: FC = () => {
     <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-2">
       <div className="shrink-0 p-1">
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs">
-          <Microphone01 className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-microphone-01 size-4 text-text-primary-on-surface"
+          />
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">
+        <div id={titleId} className="mr-1 system-sm-semibold text-text-secondary">
           {t(($) => $['feature.audioUpload.title'], { ns: 'appDebug' })}
         </div>
-        <Infotip
-          aria-label={t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
-          popupClassName="w-[180px]"
-        >
-          {t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
+        <Infotip>
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-45">
+            {t(($) => $['feature.audioUpload.description'], { ns: 'appDebug' })}
+          </InfotipContent>
         </Infotip>
       </div>
       {!readonly && (

@@ -12,7 +12,6 @@ from controllers.console.explore.error import (
     InstalledAppInvalidCursorError,
     InstalledAppNotFoundHTTPError,
     InstalledAppUnavailableHTTPError,
-    InstalledAppUninstallForbiddenError,
     WebAppAccessUnavailableHTTPError,
 )
 from controllers.console.explore.installed_app_admission import get_installed_app
@@ -27,7 +26,6 @@ from models.model import AppMode, IconType
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_service import (
     InstalledAppCursor,
-    InstalledAppOwnedByWorkspaceError,
     InstalledAppRecord,
     InstalledAppUnavailableError,
 )
@@ -101,7 +99,6 @@ class InstalledAppResponse(ResponseModel):
     is_pinned: bool
     last_used_at: int | None
     editable: bool
-    uninstallable: bool
 
 
 class InstalledAppListResponse(ResponseModel):
@@ -113,7 +110,6 @@ class InstalledAppListResponse(ResponseModel):
 def _installed_app_response_data(
     installed_app: InstalledAppRecord,
     *,
-    current_tenant_id: str,
     editable: bool,
 ) -> InstalledAppResponse:
     return InstalledAppResponse(
@@ -123,7 +119,6 @@ def _installed_app_response_data(
         is_pinned=installed_app.is_pinned,
         last_used_at=to_timestamp(installed_app.last_used_at),
         editable=editable,
-        uninstallable=current_tenant_id == installed_app.app_owner_tenant_id,
     )
 
 
@@ -169,7 +164,6 @@ class InstalledAppsListApi(Resource):
         installed_app_list = [
             _installed_app_response_data(
                 installed_app,
-                current_tenant_id=request_context.active_workspace_id,
                 editable=page.editable,
             )
             for installed_app in page.data
@@ -188,7 +182,7 @@ class InstalledAppsListApi(Resource):
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>")
 class InstalledAppApi(Resource):
-    """Read, update, or uninstall an admitted workspace installation."""
+    """Read or update an admitted workspace installation."""
 
     @console_ns.response(200, "Success", console_ns.models[InstalledAppResponse.__name__])
     @console_account_admission()
@@ -210,23 +204,9 @@ class InstalledAppApi(Resource):
             InstalledAppResponse,
             _installed_app_response_data(
                 detail.installation,
-                current_tenant_id=request_context.active_workspace_id,
                 editable=detail.editable,
             ),
         )
-
-    @console_ns.response(204, "App uninstalled successfully")
-    @console_account_admission()
-    @get_installed_app
-    def delete(self, request_context: RequestContext, installed_app: InstalledAppRef) -> tuple[str, int]:
-        try:
-            application_services().installed_apps.uninstall(installed_app=installed_app)
-        except InstalledAppOwnedByWorkspaceError as error:
-            raise InstalledAppUninstallForbiddenError() from error
-        except InstalledAppNotFoundError as error:
-            raise InstalledAppNotFoundHTTPError() from error
-
-        return "", 204
 
     @console_ns.response(200, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
     @console_ns.expect(console_ns.models[InstalledAppUpdatePayload.__name__])

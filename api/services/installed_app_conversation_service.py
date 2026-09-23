@@ -44,7 +44,7 @@ class ConversationNameSource:
 class ConversationDeletion:
     tenant_id: str
     conversation_id: str
-    retired_binding_id: str | None
+    retired_workspace_ids: tuple[str, ...]
 
 
 class ConversationNotChatAppError(ValueError):
@@ -90,7 +90,7 @@ class ConversationNameGenerator(Protocol):
 
 
 class ConversationCleanup(Protocol):
-    def __call__(self, *, tenant_id: str, conversation_id: str, retired_binding_id: str | None) -> None: ...
+    def __call__(self, *, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None: ...
 
 
 class InstalledAppConversationService:
@@ -172,7 +172,7 @@ class InstalledAppConversationService:
         self._enqueue_delete_cleanup(
             tenant_id=deleted.tenant_id,
             conversation_id=deleted.conversation_id,
-            retired_binding_id=deleted.retired_binding_id,
+            retired_workspace_ids=deleted.retired_workspace_ids,
         )
 
     def set_pinned(

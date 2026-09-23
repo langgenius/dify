@@ -1,4 +1,3 @@
-/* oxlint-disable react/only-export-components */
 import type { TFunction } from 'i18next'
 import type { FormInputItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -181,7 +180,7 @@ const SelectPreview: React.FC<{ label: string; options: string[] }> = ({ label, 
   )
 }
 
-const FileUploadPreview: React.FC<{ methods: TransferMethod[]; t: TFunction }> = ({
+const FileUploadPreview: React.FC<{ methods: TransferMethod[]; t: TFunction<['common']> }> = ({
   methods,
   t,
 }) => {
@@ -221,7 +220,7 @@ export const Note: React.FC<{ input: FormInputItem; nodeName: (nodeId: string) =
   input,
   nodeName,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'appDebug', 'workflow'])
   if (isSelectFormInput(input)) {
     const isVariable = input.option_source.type === 'variable'
     if (isVariable) {

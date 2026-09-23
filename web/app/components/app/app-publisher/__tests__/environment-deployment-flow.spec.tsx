@@ -14,7 +14,7 @@ import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useEffect } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,
@@ -489,7 +489,7 @@ describe('PublisherEnvironmentFlow', () => {
     )
 
     expect(screen.getByText('Environment tabs')).toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
 
   it('formats deployed_at as a Unix timestamp in seconds', () => {

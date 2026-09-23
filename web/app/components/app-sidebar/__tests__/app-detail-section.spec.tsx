@@ -44,9 +44,7 @@ vi.mock('@/context/permission-state', async () => {
 })
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    isCurrentWorkspaceEditor: false,
-  }))
+  return createWorkspaceStateModuleMock(() => ({}))
 })
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
@@ -58,10 +56,6 @@ vi.mock('../app-info', () => ({
 
 vi.mock('../app-info/use-app-info-actions', () => ({
   useAppInfoActions: vi.fn(() => ({})),
-}))
-
-vi.mock('../../base/divider', () => ({
-  default: ({ className }: { className?: string }) => <hr className={className} />,
 }))
 
 vi.mock('../nav-link', () => ({

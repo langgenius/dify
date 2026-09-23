@@ -94,7 +94,9 @@ class _Store:
         self.conversation = None
         self.events.append("delete committed")
         return ConversationDeletion(
-            tenant_id=_OWNER_TENANT_ID, conversation_id=conversation_id, retired_binding_id="retired-binding"
+            tenant_id=_OWNER_TENANT_ID,
+            conversation_id=conversation_id,
+            retired_workspace_ids=("retired-workspace-1", "retired-workspace-2"),
         )
 
     def set_pinned(
@@ -109,7 +111,7 @@ class _Orchestration:
     service: InstalledAppConversationService | None = None
     generation_error: Exception | None = None
     generation_action: Callable[[], None] | None = None
-    cleanup_calls: list[tuple[str, str, str | None]] = field(default_factory=list)
+    cleanup_calls: list[tuple[str, str, tuple[str, ...]]] = field(default_factory=list)
 
     def generate_name(self, *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str:
         self.store.events.append("generate")
@@ -126,10 +128,10 @@ class _Orchestration:
             self.generation_action()
         return "Generated title"
 
-    def cleanup(self, *, tenant_id: str, conversation_id: str, retired_binding_id: str | None) -> None:
+    def cleanup(self, *, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
         assert self.store.conversation is None
         self.store.events.append("enqueue")
-        self.cleanup_calls.append((tenant_id, conversation_id, retired_binding_id))
+        self.cleanup_calls.append((tenant_id, conversation_id, retired_workspace_ids))
 
     def rename(self, *, name: str | None = None, auto_generate: bool = True) -> ConversationRecord:
         assert self.service is not None
@@ -200,10 +202,12 @@ def test_manual_rename_requires_name_before_writing(orchestration: _Orchestratio
     assert orchestration.store.events == []
 
 
-def test_cleanup_uses_deleted_app_owner_and_retired_binding_after_commit(orchestration: _Orchestration) -> None:
+def test_cleanup_uses_deleted_app_owner_and_retired_workspaces_after_commit(orchestration: _Orchestration) -> None:
     orchestration.delete()
     assert orchestration.store.events == ["delete committed", "enqueue"]
-    assert orchestration.cleanup_calls == [(_OWNER_TENANT_ID, _CONVERSATION_ID, "retired-binding")]
+    assert orchestration.cleanup_calls == [
+        (_OWNER_TENANT_ID, _CONVERSATION_ID, ("retired-workspace-1", "retired-workspace-2"))
+    ]
 
 
 def test_delete_transaction_failure_does_not_enqueue_cleanup(orchestration: _Orchestration) -> None:

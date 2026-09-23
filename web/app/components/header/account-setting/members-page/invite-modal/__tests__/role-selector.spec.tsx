@@ -73,7 +73,7 @@ describe('RoleSelector', () => {
   it('requires an explicit selection and exposes select semantics', () => {
     render(<RoleSelectorWrapper />)
 
-    expect(getTrigger()).toHaveTextContent(/members\.selectRole/i)
+    expect(getTrigger().textContent).toMatch(/members\.selectRole/i)
     expect(document.querySelector('input[name="role"]')).toBeRequired()
   })
 

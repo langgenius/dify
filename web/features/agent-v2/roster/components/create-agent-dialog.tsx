@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getAgentDetailPath } from '../../agent-detail/routes'
 import { defaultAgentIcon } from './agent-form'
@@ -49,8 +49,8 @@ function CreateAgentFormSession({
   onCancel,
   onSubmit,
 }: CreateAgentFormSessionProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(defaultAgentIcon)
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
@@ -99,7 +99,7 @@ function CreateAgentFormSession({
 }
 
 export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps = {}) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)

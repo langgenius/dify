@@ -458,7 +458,7 @@ import {
   zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse,
   zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetPath,
   zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({
@@ -1358,7 +1358,6 @@ export const delete3 = oc
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAnnotationsByAnnotationId',
     path: '/apps/{app_id}/annotations/{annotation_id}',
-    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAppsByAppIdAnnotationsByAnnotationIdPath }))
@@ -1396,7 +1395,6 @@ export const delete4 = oc
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAnnotations',
     path: '/apps/{app_id}/annotations',
-    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAppsByAppIdAnnotationsPath }))
@@ -4334,7 +4332,6 @@ export const delete14 = oc
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdWorkflowsByWorkflowId',
     path: '/apps/{app_id}/workflows/{workflow_id}',
-    successStatus: 204,
     summary: 'Delete workflow',
     tags: ['console'],
   })
@@ -4502,8 +4499,6 @@ export const byAppId2 = {
 
 /**
  * Delete an API key for an app
- *
- * Delete an API key for an app
  */
 export const delete16 = oc
   .route({
@@ -4513,7 +4508,6 @@ export const delete16 = oc
     operationId: 'deleteAppsByResourceIdApiKeysByApiKeyId',
     path: '/apps/{resource_id}/api-keys/{api_key_id}',
     successStatus: 204,
-    summary: 'Delete an API key for an app',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAppsByResourceIdApiKeysByApiKeyIdPath }))
@@ -4525,8 +4519,6 @@ export const byApiKeyId = {
 
 /**
  * Get all API keys for an app
- *
- * Get all API keys for an app
  */
 export const get85 = oc
   .route({
@@ -4535,15 +4527,12 @@ export const get85 = oc
     method: 'GET',
     operationId: 'getAppsByResourceIdApiKeys',
     path: '/apps/{resource_id}/api-keys',
-    summary: 'Get all API keys for an app',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByResourceIdApiKeysPath }))
   .output(zGetAppsByResourceIdApiKeysResponse)
 
 /**
- * Create a new API key for an app
- *
  * Create a new API key for an app
  */
 export const post63 = oc
@@ -4554,7 +4543,6 @@ export const post63 = oc
     operationId: 'postAppsByResourceIdApiKeys',
     path: '/apps/{resource_id}/api-keys',
     successStatus: 201,
-    summary: 'Create a new API key for an app',
     tags: ['console'],
   })
   .input(z.object({ params: zPostAppsByResourceIdApiKeysPath }))

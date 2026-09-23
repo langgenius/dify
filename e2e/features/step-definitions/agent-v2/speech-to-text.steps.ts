@@ -1,13 +1,13 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { voiceInputTestMaterial } from '../../../support/test-materials'
-import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
+import { voiceInputTestMaterial } from '../../../support/test-materials.ts'
 import {
   createAgentSoulConfigWithSpeechToText,
   normalAgentSoulConfig,
-} from '../../agent-v2/support/agent-soul'
-import { getCurrentAgentId } from './configure-helpers'
+} from '../../agent-v2/support/agent-soul.ts'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent.ts'
+import { getCurrentAgentId } from './configure-helpers.ts'
 
 const getAgentInput = (world: DifyWorld) =>
   world.getPage().getByPlaceholder('Describe what your agent should do')

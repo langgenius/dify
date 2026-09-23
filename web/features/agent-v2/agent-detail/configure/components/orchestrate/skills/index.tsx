@@ -17,7 +17,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -31,7 +30,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
 import {
   agentComposerSkillsAtom,
   removeAgentSkillAtom,
@@ -44,7 +43,7 @@ import {
 } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -126,7 +125,7 @@ function WorkspaceSkillRow({
   selected: boolean
   skill: SkillResponse
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const cannotAdd = unavailable || isAdded || isPending
 
   return (
@@ -164,7 +163,7 @@ function WorkspaceSkillRow({
 }
 
 function WorkspaceSkillPreview({ skill }: { skill?: SkillResponse }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   if (!skill) {
     return (
@@ -214,7 +213,7 @@ function WorkspaceSkillSelector({
   isBindingPending: boolean
   onSelect: (skill: SkillResponse) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [keyword, setKeyword] = useState('')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [previewSkillId, setPreviewSkillId] = useState<string | undefined>(undefined)
@@ -354,7 +353,7 @@ function WorkspaceAgentSkillItem({
   skill: AgentSkillBindingItemResponse
   onRemove: (skillId: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isRemoveHighlighted, setIsRemoveHighlighted] = useState(false)
@@ -455,10 +454,10 @@ function WorkspaceAgentSkillItem({
 }
 
 export function AgentSkills() {
-  const { t } = useTranslation('agentV2')
-  const { t: tSkill } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
-  const skillsTip = t(($) => $['agentDetail.configure.skills.tip'])
+  const { t } = useTranslation(['agentV2'])
+  const { t: tSkill } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
+
   const skillsListId = 'agent-configure-skills-list'
   const queryClient = useQueryClient()
   const readOnly = useAgentOrchestrateReadOnly()
@@ -467,7 +466,11 @@ export function AgentSkills() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
-  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
   const skills = useAtomValue(agentComposerSkillsAtom)
   const upsertAgentSkill = useSetAtom(upsertAgentSkillAtom)
   const removeAgentSkill = useSetAtom(removeAgentSkillAtom)
@@ -487,7 +490,7 @@ export function AgentSkills() {
     })
   const agentSkillBindingsQuery = useQuery({
     ...agentSkillBindingsQueryOptions,
-    enabled: enableSkill,
+    enabled: enableSkill === true,
   })
   const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
@@ -711,7 +714,6 @@ export function AgentSkills() {
         buildDraftChangeSection="skills"
         panelId={skillsListId}
         tip={<AgentConfigureTipContent type="skills" />}
-        tipAriaLabel={skillsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={

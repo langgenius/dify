@@ -207,7 +207,7 @@ class ConversationService:
         conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
         tenant_id = app_model.tenant_id
         try:
-            retired_binding_id = retire_conversation(app_model=app_model, conversation=conversation, session=session)
+            retired_workspace_ids = retire_conversation(app_model=app_model, conversation=conversation, session=session)
             session.commit()
         except Exception:
             session.rollback()
@@ -215,16 +215,16 @@ class ConversationService:
         cls.enqueue_delete_cleanup(
             tenant_id=tenant_id,
             conversation_id=conversation_id,
-            retired_binding_id=retired_binding_id,
+            retired_workspace_ids=retired_workspace_ids,
         )
 
     @staticmethod
-    def enqueue_delete_cleanup(*, tenant_id: str, conversation_id: str, retired_binding_id: str | None) -> None:
+    def enqueue_delete_cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
         """Dispatch resource collection only after the lifecycle transaction commits."""
-        if retired_binding_id is not None:
+        if retired_workspace_ids:
             enqueue_agent_resource_collection(
                 tenant_id=tenant_id,
-                binding_ids=(retired_binding_id,),
+                workspace_ids=retired_workspace_ids,
             )
         try:
             delete_conversation_related_data.delay(conversation_id)

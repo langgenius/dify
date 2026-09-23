@@ -62,10 +62,6 @@ class InstalledAppUnavailableError(RuntimeError):
     """The admitted installation cannot be returned as a published library app."""
 
 
-class InstalledAppOwnedByWorkspaceError(PermissionError):
-    """A workspace cannot uninstall an app it owns."""
-
-
 class InstalledAppStore(Protocol):
     def get_candidates(
         self,
@@ -78,8 +74,6 @@ class InstalledAppStore(Protocol):
     ) -> tuple[InstalledAppRecord, ...]: ...
 
     def get_published(self, *, installed_app: InstalledAppRef) -> InstalledAppRecord | None: ...
-
-    def uninstall(self, *, installed_app: InstalledAppRef) -> None: ...
 
     def set_pinned(self, *, installed_app: InstalledAppRef, is_pinned: bool) -> None: ...
 
@@ -168,9 +162,6 @@ class InstalledAppService:
             raise InstalledAppUnavailableError(f"Installed app {installed_app.id} is not available as a published app")
         role = self._get_workspace_role(account_id=account_id, tenant_id=installed_app.tenant_id)
         return InstalledAppDetail(installation=installation, editable=role in {"owner", "admin"})
-
-    def uninstall(self, *, installed_app: InstalledAppRef) -> None:
-        self._installed_apps.uninstall(installed_app=installed_app)
 
     def set_pinned(self, *, installed_app: InstalledAppRef, is_pinned: bool | None) -> None:
         if is_pinned is not None:

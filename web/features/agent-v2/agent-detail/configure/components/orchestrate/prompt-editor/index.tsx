@@ -16,11 +16,12 @@ import type {
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
+import { useQuery } from '@tanstack/react-query'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
@@ -34,11 +35,10 @@ import {
 } from 'lexical'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
@@ -49,6 +49,7 @@ import {
   ENABLE_AGENT_CLI_TOOLS,
   ENABLE_AGENT_KNOWLEDGE_RETRIEVAL,
 } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { consoleQuery } from '@/service/console'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import {
@@ -420,9 +421,13 @@ function AgentPromptSelectionBridge({
 }
 
 export function AgentPromptEditor() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
-  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
   const [value, setValue] = useAtom(agentComposerPromptAtom)
   const { skills: embeddedSkills } = useAgentConfigSkills()
   const workspaceSkillBindingsQuery = useAgentWorkspaceSkillBindings()
@@ -445,7 +450,7 @@ export function AgentPromptEditor() {
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
-  const promptTip = t(($) => $['agentDetail.configure.prompt.tip'])
+
   const promptPlaceholder = (
     <AgentPromptPlaceholder
       text={t(($) => $['agentDetail.configure.prompt.placeholder'])}
@@ -1060,7 +1065,7 @@ export function AgentPromptEditor() {
           onAddFile={addActions.files}
           onAddKnowledge={addActions.knowledge}
           onAddSkill={addActions.skills}
-          canAddWorkspaceSkill={enableSkill}
+          canAddWorkspaceSkill={enableSkill === true}
           knowledgeRetrievals={retrievals}
           onBack={returnToSlashMenuMain}
           onOpenCategory={handleOpenSlashMenuCategory}
@@ -1082,8 +1087,11 @@ export function AgentPromptEditor() {
           >
             {t(($) => $['agentDetail.configure.prompt.label'])}
           </h3>
-          <Infotip aria-label={promptTip} popupClassName="max-w-64">
-            <AgentConfigureTipContent type="prompt" />
+          <Infotip>
+            <InfotipTrigger aria-labelledby="agent-configure-prompt-label" />
+            <InfotipContent aria-labelledby="agent-configure-prompt-label" className="max-w-64">
+              <AgentConfigureTipContent type="prompt" />
+            </InfotipContent>
           </Infotip>
         </div>
         <Tooltip>

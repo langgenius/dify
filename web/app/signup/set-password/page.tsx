@@ -12,18 +12,18 @@ import {
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { toast } from '@/app/notifications'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { validPassword } from '@/config'
-import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useMailRegister } from '@/service/use-common'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
@@ -48,7 +48,7 @@ const parseUtmInfo = () => {
 }
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()

@@ -69,7 +69,7 @@ const ComponentPicker = ({
   lastRunBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
@@ -267,7 +267,6 @@ const ComponentPicker = ({
                       onBlur={handleClose}
                       showManageInputField={workflowVariableBlock.showManageInputField}
                       onManageInputField={workflowVariableBlock.onManageInputField}
-                      autoFocus={false}
                       isInCodeGeneratorInstructionEditor={
                         currentBlock?.generatorType === GeneratorType.code
                       }

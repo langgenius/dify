@@ -27,7 +27,7 @@ const Operator = ({
   showAuthor,
   onShowAuthorChange,
 }: OperatorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
 
   return (

@@ -5,7 +5,7 @@ import { memo } from 'react'
 type DatasourceIconProps = {
   size?: string
   className?: string
-  iconUrl: string
+  iconUrl?: string
 }
 
 const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
@@ -26,7 +26,7 @@ const DatasourceIcon: FC<DatasourceIconProps> = ({ size = 'sm', className, iconU
       <div
         className="size-full shrink-0 rounded-md bg-cover bg-center"
         style={{
-          backgroundImage: `url(${iconUrl})`,
+          backgroundImage: iconUrl ? `url(${iconUrl})` : undefined,
         }}
       />
     </div>

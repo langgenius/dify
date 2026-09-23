@@ -16,7 +16,6 @@ from services.installed_app_generation_service import InstalledAppUsageRecorder
 from services.installed_app_service import (
     InstalledAppCursor,
     InstalledAppInfo,
-    InstalledAppOwnedByWorkspaceError,
     InstalledAppRecord,
     InstalledAppStore,
 )
@@ -172,22 +171,6 @@ class SQLAlchemyInstalledAppRepository(InstalledAppAccessStore, InstalledAppUsag
                 .limit(1)
             ).first()
             return None if row is None else _to_record(row[0], row[1])
-
-    @override
-    def uninstall(self, *, installed_app: InstalledAppRef) -> None:
-        with self._session_factory.begin() as session:
-            installation = session.scalar(
-                select(InstalledApp).where(
-                    InstalledApp.id == installed_app.id,
-                    InstalledApp.tenant_id == installed_app.tenant_id,
-                    InstalledApp.app_id == installed_app.app_id,
-                )
-            )
-            if installation is None:
-                raise InstalledAppNotFoundError(f"Installed app {installed_app.id} no longer exists")
-            if installation.app_owner_tenant_id == installed_app.tenant_id:
-                raise InstalledAppOwnedByWorkspaceError(f"Installed app {installed_app.id} is owned by this workspace")
-            session.delete(installation)
 
     @override
     def set_pinned(self, *, installed_app: InstalledAppRef, is_pinned: bool) -> None:

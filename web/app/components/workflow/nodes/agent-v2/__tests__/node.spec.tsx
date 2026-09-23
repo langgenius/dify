@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWorkflowFlowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { ErrorHandleTypeEnum } from '../../_base/components/error-handle/types'
+import BaseNode from '../../_base/node'
 import { AgentV2Node } from '../node'
 
 const { mockUseAgentRosterDetail, mockUseWorkflowInlineAgentDetail } = vi.hoisted(() => ({
@@ -28,11 +31,28 @@ vi.mock('../../_base/components/setting-item', () => ({
   ),
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../hooks')>()),
   useAgentRosterDetail: (agentId?: string) => mockUseAgentRosterDetail(agentId),
   useWorkflowInlineAgentDetail: (nodeId?: string, agentId?: string | null) =>
     mockUseWorkflowInlineAgentDetail(nodeId, agentId),
+  useCreateInlineAgentBinding: () => ({ createInlineAgentBinding: vi.fn() }),
 }))
+
+vi.mock('../../../hooks/use-tool-icon', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../hooks/use-tool-icon')>()),
+  useToolIcon: () => undefined,
+}))
+
+vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
+  useCollaboration: () => ({ nodePanelPresence: {} }),
+}))
+
+// BaseNode reads plugin permissions even when rendering an Agent node.
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: [] }))
+})
 
 const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType => ({
   title: 'Agent',
@@ -170,5 +190,38 @@ describe('agent/node', () => {
     expect(screen.getByText(/workflow.nodes.agent.roster.label:error:/)).toHaveTextContent(
       'workflow.errorMsg.fieldRequired',
     )
+  })
+
+  it('switches the composed card between route handles and source while preserving the failure exit', () => {
+    const data = createData({
+      error_strategy: ErrorHandleTypeEnum.failBranch,
+      agent_output_routes: {
+        enabled: true,
+        routes: [
+          { id: 'accepted', name: 'Accepted' },
+          { id: 'rejected', name: 'Rejected' },
+        ],
+      },
+    })
+    const card = (data: AgentV2NodeType) => (
+      <BaseNode id="agent-node" data={data}>
+        <AgentV2Node id="agent-node" data={data} />
+      </BaseNode>
+    )
+    const { container, rerender } = render(card(data))
+    // ReactFlow consumes these IDs to connect and restore workflow edges.
+    const sourceHandles = () =>
+      Array.from(container.querySelectorAll('.react-flow__handle.source'), (handle) =>
+        handle.getAttribute('data-handleid'),
+      ).sort()
+
+    expect(sourceHandles()).toEqual(['accepted', 'fail-branch', 'rejected'])
+    rerender(
+      card({
+        ...data,
+        agent_output_routes: { ...data.agent_output_routes!, enabled: false },
+      }),
+    )
+    expect(sourceHandles()).toEqual(['fail-branch', 'source'])
   })
 })

@@ -27,7 +27,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
   }) => (open ? <span>{`${initialEmoji?.icon}:${initialEmoji?.background}`}</span> : null),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -53,6 +53,7 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
   id: 'agent-1',
   mode: 'agent',
   name: 'Research Agent',
+  permission_keys: [],
   role: 'Research Assistant',
   ...overrides,
 })

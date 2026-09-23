@@ -1,6 +1,5 @@
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
@@ -36,19 +35,19 @@ class SavedMessageListApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
+    @model_validate(SavedMessageListQuery)
     def get(
         self,
+        req_data: SavedMessageListQuery,
         request_context: RequestContext,
         installed_app: InstalledAppRef,
     ) -> dict[str, object]:
         app_id = _require_completion_app(installed_app)
-        query = SavedMessageListQuery.model_validate(request.args.to_dict())
-
         pagination = application_services().saved_messages.pagination_by_last_id(
             app_id=app_id,
             actor=SavedMessageActor.account(request_context.account_id),
-            last_id=str(query.last_id) if query.last_id else None,
-            limit=query.limit,
+            last_id=str(req_data.last_id) if req_data.last_id else None,
+            limit=req_data.limit,
         )
         return dump_response(SavedMessageInfiniteScrollPagination, pagination)
 

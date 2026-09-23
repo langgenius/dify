@@ -1,7 +1,6 @@
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useEffect, useId, useMemo } from 'react'
@@ -9,11 +8,11 @@ import { useTranslation } from 'react-i18next'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import {
   useConfigurations,
   useInitialData,
 } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import { toast } from '@/app/notifications'
 import { CrawlStep } from '@/models/datasets'
 
 const I18N_PREFIX = 'stepOne.website'
@@ -26,7 +25,7 @@ type OptionsProps = {
 }
 
 const Options = ({ variables, step, runDisabled, onSubmit }: OptionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const runButtonLabelId = useId()
   const initialData = useInitialData(variables)
   const configurations = useConfigurations(variables)
@@ -81,8 +80,12 @@ const Options = ({ variables, step, runDisabled, onSubmit }: OptionsProps) => {
           <span className="system-sm-semibold-uppercase text-text-secondary">
             {t(($) => $[`${I18N_PREFIX}.options`], { ns: 'datasetCreation' })}
           </span>
-          <ArrowDownRoundFill
-            className={cn('size-4 shrink-0 text-text-quaternary', fold && '-rotate-90')}
+          <span
+            aria-hidden
+            className={cn(
+              'i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4',
+              cn('size-4 shrink-0 text-text-quaternary', fold && '-rotate-90'),
+            )}
           />
         </div>
         <Button

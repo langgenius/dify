@@ -294,7 +294,6 @@ def test_read_responses_preserve_exact_fields_types_headers_and_signed_icons(
         "is_pinned": False,
         "last_used_at": int(last_used_at.timestamp()) if last_used_at is not None else None,
         "editable": True,
-        "uninstallable": False,
     }
 
     response = management.client.get("/installed-apps" if endpoint == "list" else management.url())
@@ -600,7 +599,7 @@ def test_patch_shared_parser_normalizes_empty_or_unreadable_body_to_noop(
 @pytest.mark.parametrize(
     ("mode", "published"), [(AppMode.CHAT, False), (AppMode.WORKFLOW, False), (AppMode.AGENT, True)]
 )
-def test_unavailable_installation_rejects_detail_but_can_be_pinned_and_removed(
+def test_unavailable_installation_rejects_detail_but_can_be_pinned(
     management: _Management, mode: AppMode, published: bool
 ) -> None:
     installed, _ = _installation(management, mode=mode, published=published)
@@ -624,31 +623,45 @@ def test_unavailable_installation_rejects_detail_but_can_be_pinned_and_removed(
         persisted = session.get(InstalledApp, installed.id)
         assert persisted is not None
         assert persisted.is_pinned is True
-    response = management.client.delete(url)
-    assert response.status_code == 204
-    assert response.data == b""
-    assert dict(response.headers) == {"Content-Type": "application/json"}
-    with management.session_factory() as session:
-        assert session.get(InstalledApp, installed.id) is None
 
 
-def test_owned_installation_preserves_uninstallable_field_but_rejects_delete(management: _Management) -> None:
-    installed, _ = _installation(management, app_owner_tenant_id=management.harness.installed_app.tenant_id)
-    response = management.client.get(management.url(installed.id))
-    assert response.status_code == 200
-    assert response.get_json()["uninstallable"] is True
+@pytest.mark.parametrize("owned", [False, True])
+def test_item_rejects_delete_and_keeps_get_and_patch_available(management: _Management, owned: bool) -> None:
+    owner_id = management.harness.installed_app.tenant_id if owned else str(uuid4())
+    installed, _ = _installation(management, app_owner_tenant_id=owner_id)
+    management.sessions.clear()
+    url = management.url(installed.id)
+
     _assert_json_response(
-        management.client.delete(management.url(installed.id)),
-        status=403,
+        management.client.delete(url),
+        status=405,
         body={
-            "code": "installed_app_uninstall_forbidden",
-            "message": "An app owned by this workspace cannot be removed from its app library.",
-            "status": 403,
-            "details": {"request_id": "request-1"},
+            "code": "method_not_allowed",
+            "message": "The method is not allowed for the requested URL.",
+            "status": 405,
         },
     )
+    options = management.client.options(url)
+    assert options.status_code == 200
+    allowed_methods = {method.strip() for method in options.headers["Allow"].split(",")}
+    assert "DELETE" not in allowed_methods
+    assert {"GET", "PATCH"} <= allowed_methods
+    assert management.sessions == []
+    assert management.harness.state.permission_calls == []
+
+    response = management.client.get(url)
+    assert response.status_code == 200
+    assert response.get_json()["id"] == installed.id
+    assert "uninstallable" not in response.get_json()
+    _assert_json_response(
+        management.client.patch(url, json={"is_pinned": True}),
+        status=200,
+        body={"result": "success", "message": "App info updated successfully"},
+    )
     with management.session_factory() as session:
-        assert session.get(InstalledApp, installed.id) is not None
+        persisted = session.get(InstalledApp, installed.id)
+        assert persisted is not None
+        assert persisted.is_pinned is True
 
 
 @pytest.mark.parametrize("payload", [{}, {"is_pinned": None}, {"is_pinned": False}, {"is_pinned": True}])
@@ -666,7 +679,7 @@ def test_patch_preserves_pin_values_and_noop_payloads(management: _Management, p
         assert persisted.last_used_at == _USED_AT
 
 
-@pytest.mark.parametrize("method", ["GET", "PATCH", "DELETE"])
+@pytest.mark.parametrize("method", ["GET", "PATCH"])
 @pytest.mark.parametrize("failure", ["tenant", "missing", "orphan", "permission"])
 def test_item_admission_precedes_management_actions_and_preserves_errors(
     management: _Management, method: str, failure: str
@@ -712,7 +725,7 @@ def test_item_admission_precedes_management_actions_and_preserves_errors(
             assert installed.is_pinned is False
 
 
-@pytest.mark.parametrize(("method", "item"), [("GET", False), ("GET", True), ("PATCH", True), ("DELETE", True)])
+@pytest.mark.parametrize(("method", "item"), [("GET", False), ("GET", True), ("PATCH", True)])
 def test_management_dependency_failure_preserves_cause_and_request_context(
     management: _Management,
     caplog: pytest.LogCaptureFixture,
@@ -763,7 +776,7 @@ def test_management_dependency_failure_preserves_cause_and_request_context(
         assert installed.is_pinned is False
 
 
-@pytest.mark.parametrize(("method", "item"), [("GET", False), ("GET", True), ("PATCH", True), ("DELETE", True)])
+@pytest.mark.parametrize(("method", "item"), [("GET", False), ("GET", True), ("PATCH", True)])
 def test_all_management_handlers_apply_setup_before_business_operations(
     management: _Management, method: str, item: bool
 ) -> None:

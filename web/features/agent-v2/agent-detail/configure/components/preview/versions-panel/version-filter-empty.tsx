@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 export function VersionFilterEmpty({ onReset }: { onReset: () => void }) {
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t: tWorkflow } = useTranslation(['workflow'])
 
   return (
     <div className="rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 py-6 text-center">

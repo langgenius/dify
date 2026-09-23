@@ -12,6 +12,7 @@ from werkzeug.exceptions import NotFound
 import controllers.console.explore.saved_message as module
 from controllers.console.explore.error import NotCompletionAppError
 from graphon.file import File, FileTransferMethod, FileType
+from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from services.errors.message import LastMessageNotExistsError, MessageNotExistsError
 from services.installed_app_access_service import InstalledAppRef
@@ -22,6 +23,7 @@ from services.saved_message_service import (
     SavedMessagePage,
     SavedMessageRecord,
 )
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 _INPUT_FILE_URL = "https://example.com/input.pdf"
 _CREATED_AT = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
@@ -31,6 +33,7 @@ _WORKSPACE_ID = "22222222-2222-4222-8222-222222222222"
 
 @dataclass(frozen=True)
 class _ApplicationServiceMocks:
+    installed_app_access: MagicMock
     saved_messages: MagicMock
 
 
@@ -125,8 +128,10 @@ def _expected_record() -> dict[str, object]:
 @pytest.fixture
 def services() -> Generator[_ApplicationServiceMocks]:
     service_mocks = _ApplicationServiceMocks(
+        installed_app_access=MagicMock(),
         saved_messages=MagicMock(),
     )
+    service_mocks.installed_app_access.get_access.return_value = _installed_app()
     with patch.object(
         module,
         "application_services",
@@ -150,6 +155,7 @@ class TestSavedMessageListApi:
         ):
             result = unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
+                module.SavedMessageListQuery.model_validate({}),
                 _REQUEST_CONTEXT,
                 installed_app,
             )
@@ -172,8 +178,9 @@ class TestSavedMessageListApi:
         services.saved_messages.pagination_by_last_id.return_value = SavedMessagePage(limit=50, has_more=True, data=())
 
         with app.test_request_context("/", query_string={"last_id": last_id, "limit": "50"}):
-            unwrap(module.SavedMessageListApi().get)(
+            result = unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
+                module.SavedMessageListQuery.model_validate({"last_id": last_id, "limit": "50"}),
                 _REQUEST_CONTEXT,
                 installed_app,
             )
@@ -184,6 +191,32 @@ class TestSavedMessageListApi:
             last_id=last_id,
             limit=50,
         )
+
+        assert result == {"limit": 50, "has_more": True, "data": []}
+
+    @pytest.mark.parametrize("query_string", [{"limit": "0"}, {"limit": "101"}, {"last_id": "invalid-uuid"}])
+    def test_get_rejects_invalid_query(self, services: _ApplicationServiceMocks, query_string: dict[str, str]) -> None:
+        http_app = Flask(__name__)
+        http_app.config["TESTING"] = True
+        ExternalApi(http_app).add_resource(module.SavedMessageListApi, "/saved-messages/<uuid:installed_app_id>")
+        account = make_account(account_id=_ACCOUNT_ID, tenant=make_tenant(tenant_id=_WORKSPACE_ID))
+        installed_app = _installed_app()
+
+        with (
+            patch("libs.login.current_user", account),
+            patch("libs.login.check_csrf_token"),
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            patch("controllers.console.explore.installed_app_admission.application_services", return_value=services),
+        ):
+            response = http_app.test_client().get(f"/saved-messages/{installed_app.id}", query_string=query_string)
+
+        assert response.status_code == 422
+        services.installed_app_access.get_access.assert_called_once_with(
+            installed_app_id=installed_app.id,
+            tenant_id=_WORKSPACE_ID,
+            account_id=_ACCOUNT_ID,
+        )
+        services.saved_messages.pagination_by_last_id.assert_not_called()
 
     def test_get_preserves_invalid_last_id_context(self, app: Flask, services: _ApplicationServiceMocks) -> None:
         installed_app = _installed_app()
@@ -197,6 +230,7 @@ class TestSavedMessageListApi:
         ):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
+                module.SavedMessageListQuery.model_validate({"last_id": last_id}),
                 _REQUEST_CONTEXT,
                 installed_app,
             )
@@ -207,6 +241,7 @@ class TestSavedMessageListApi:
         with app.test_request_context("/"), pytest.raises(NotCompletionAppError):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
+                module.SavedMessageListQuery.model_validate({}),
                 _REQUEST_CONTEXT,
                 _installed_app(app_mode="chat"),
             )

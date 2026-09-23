@@ -5,6 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from enums import DeploymentEdition
 from models import Account
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import MessageAnnotation
@@ -12,6 +13,7 @@ from services.annotation_service import AppAnnotationService
 from services.app_ref_service import AnnotationRef, AppRef
 from services.app_service import AppService, CreateAppParams
 from tests.test_containers_integration_tests.helpers import generate_valid_password
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class TestAnnotationService:
@@ -32,7 +34,6 @@ class TestAnnotationService:
             patch("services.annotation_service.current_account_with_tenant") as mock_current_account_with_tenant,
         ):
             # Setup default mock returns
-            mock_account_feature_service.get_features.return_value.billing.enabled = False
             mock_add_task.delay.return_value = None
             mock_update_task.delay.return_value = None
             mock_delete_task.delay.return_value = None
@@ -879,6 +880,7 @@ class TestAnnotationService:
         assert retrieved_annotation.content == annotation_args["answer"]
         assert retrieved_annotation.account_id == account.id
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_batch_import_app_annotations_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -899,8 +901,6 @@ class TestAnnotationService:
         file_storage = FileStorage(
             stream=BytesIO(csv_content.encode("utf-8")), filename="annotations.csv", content_type="text/csv"
         )
-
-        mock_external_service_dependencies["feature_service"].get_features.return_value.billing.enabled = False
 
         # Mock pandas to return expected DataFrame
         import pandas as pd
@@ -958,6 +958,7 @@ class TestAnnotationService:
         assert "error_msg" in result
         assert "empty" in result["error_msg"].lower()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_batch_import_app_annotations_quota_exceeded(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -989,7 +990,6 @@ class TestAnnotationService:
             mock_pd.read_csv.return_value = mock_df
 
             # Mock FeatureService to return billing enabled with quota exceeded
-            mock_external_service_dependencies["feature_service"].get_features.return_value.billing.enabled = True
             mock_external_service_dependencies[
                 "feature_service"
             ].get_features.return_value.annotation_quota_limit.limit = 1

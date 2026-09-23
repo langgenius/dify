@@ -3,10 +3,10 @@ import type { ComponentType, FC } from 'react'
 import type { Credential, ModelItem, ModelProvider } from '../declarations'
 import type { ModelLoadBalancingModalProps } from './model-load-balancing-modal'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
 import { ConfigurationMethodEnum } from '../declarations'
@@ -18,7 +18,7 @@ import ModelListItem from './model-list-item'
 const ModelLoadBalancingLoadingDialog = ({
   onClose,
 }: Pick<ModelLoadBalancingModalProps, 'onClose'>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose?.()}>
@@ -65,7 +65,7 @@ const loadModelLoadBalancingModal = () => {
 }
 
 const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const configurativeMethods = provider.configurate_methods.filter(
     (method) => method !== ConfigurationMethodEnum.fetchFromRemote,
   )

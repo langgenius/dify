@@ -1,13 +1,16 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vite-plus/test'
 import EditedBeacon from '../edited-beacon'
 
-it('reveals the reset action on hover and invokes it', async () => {
+it('provides a reset action before any pointer interaction', async () => {
+  const user = userEvent.setup()
   const onReset = vi.fn()
-  const { container } = render(<EditedBeacon onReset={onReset} />)
+  render(<EditedBeacon onReset={onReset} />)
 
-  fireEvent.mouseEnter(container.firstElementChild!)
-  fireEvent.click(await screen.findByRole('button', { name: 'common.operation.reset' }))
+  await user.tab()
+  expect(screen.getByRole('button', { name: 'common.operation.reset' })).toHaveFocus()
+  await user.keyboard('{Enter}')
 
   expect(onReset).toHaveBeenCalledOnce()
 })
