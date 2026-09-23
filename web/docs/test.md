@@ -107,7 +107,7 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 - Use fake timers only when timer behavior is part of the contract. Restore real timers after the test.
 - Control time, randomness, network responses, and shared stores so tests are deterministic.
 - `web/vitest.setup.ts` already runs Testing Library cleanup and resets Zustand stores after each test.
-- Call `vi.clearAllMocks()` in `beforeEach` when a suite relies on mock call history. Do not use `afterEach` to prepare the next test.
+- Vitest 5 clears mock call history before each test. This does not reset mock implementations or external state; set those up explicitly for each case. Do not use `afterEach` to prepare the next test.
 
 ## Dify Test Setup
 
