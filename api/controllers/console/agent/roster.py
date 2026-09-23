@@ -80,7 +80,7 @@ from services.agent.observability_service import (
     AgentStatisticsQueryParams,
 )
 from services.agent.roster_service import AgentRosterService
-from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
+from services.app_service import AgentAppPublicationCounts, AppListParams, AppResponseView, AppService, CreateAppParams
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
@@ -407,9 +407,8 @@ def _serialize_agent_app_detail(
 
     roster_service = _agent_roster_service(session)
     payload = GenericAppDetailWithSite.model_validate(
-        app_model,
+        AppResponseView(app_model, session=session),
         from_attributes=True,
-        context={"session": session},
     ).model_dump(mode="json")
     agent = (
         session.scalar(
@@ -502,9 +501,8 @@ def _serialize_agent_app_pagination(
             "limit": app_pagination.per_page,
             "total": app_pagination.total,
             "has_more": app_pagination.has_next,
-            "data": app_pagination.items,
+            "data": [AppResponseView(app, session=session) for app in app_pagination.items],
         },
-        context={"session": session},
     ).model_dump(mode="json")
     payload["publication_counts"] = {
         "published": publication_counts.published,

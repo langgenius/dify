@@ -339,6 +339,8 @@ def test_get_target_ids_by_tag_ids_success(
             db_session_with_containers, tags=tags_to_bind, target_id=dataset.id, tenant_id=tenant.id, user_id=account.id
         )
 
+    # The application service reads through its own repository session.
+    db_session_with_containers.commit()
     tag_ids = [tag.id for tag in tags]
     result = application_services().tags.find_target_ids(
         tag_type=TagType.KNOWLEDGE, tenant_id=tenant.id, tag_ids=tag_ids
@@ -405,6 +407,8 @@ def test_get_target_ids_by_tag_ids_match_all(
         user_id=account.id,
     )
 
+    # The application service reads through its own repository session.
+    db_session_with_containers.commit()
     tag_ids = [tag.id for tag in tags]
     result = application_services().tags.find_target_ids(
         tag_type=TagType.KNOWLEDGE, tenant_id=tenant.id, tag_ids=tag_ids, match_all=True
