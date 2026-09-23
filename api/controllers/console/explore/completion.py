@@ -36,7 +36,6 @@ from machinery.context import RequestContext
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotChatError, InstalledAppNotCompletionError
@@ -155,7 +154,7 @@ class CompletionStopApi(Resource):
         if app_mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        AppTaskService.stop_task(
+        application_services().app_tasks.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
             user_id=request_context.account_id,
@@ -241,7 +240,7 @@ class ChatStopApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        AppTaskService.stop_task(
+        application_services().app_tasks.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
             user_id=request_context.account_id,
