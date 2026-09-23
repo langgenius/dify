@@ -37,7 +37,9 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
+from models.provider_ids import ModelProviderID
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
@@ -57,6 +59,7 @@ from services.entities.app_entities import (
     AppListSortBy,
     CreateAppParams,
 )
+from services.model_provider_service import ModelProviderService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
@@ -359,6 +362,26 @@ class AppService:
 
         return AgentAppPublicationCounts(published=int(published_count), drafts=int(draft_count))
 
+    @staticmethod
+    def prepare_agent_soul(tenant_id: str, *, session: Session) -> AgentSoulConfig | None:
+        """Build the initial Agent Soul from the workspace default model, when available."""
+        default_model = ModelProviderService().get_default_model_selection(tenant_id, ModelType.LLM, session=session)
+        if default_model is None:
+            return None
+        agent_provider, agent_model = default_model
+        try:
+            provider_id = ModelProviderID(agent_provider)
+        except ValueError:
+            logger.warning("Invalid Agent default model, tenant_id: %s", tenant_id, exc_info=True)
+            return None
+        return AgentSoulConfig(
+            model=AgentSoulModelConfig(
+                plugin_id=provider_id.plugin_id,
+                model_provider=str(provider_id),
+                model=agent_model,
+            )
+        )
+
     def create_app(
         self,
         tenant_id: str,
@@ -375,6 +398,7 @@ class AppService:
         """
         app_mode = AppMode.value_of(params.mode)
         app_template = default_app_templates[app_mode]
+        initial_agent_soul = self.prepare_agent_soul(tenant_id, session=session) if app_mode == AppMode.AGENT else None
 
         # get model config
         default_model_config = app_template.get("model_config")
@@ -485,8 +509,7 @@ class AppService:
 
         # Agent App type is backed 1:1 by a roster Agent (linked via Agent.app_id).
         # Created in the same transaction so the App and its backing Agent persist
-        # atomically; the Agent Soul (model/prompt/tools) is configured afterward
-        # in the Composer.
+        # atomically; the Agent Soul starts with the workspace model selection.
         backing_agent: Agent | None = None
         if app_mode == AppMode.AGENT:
             from services.agent.roster_service import AgentRosterService
@@ -503,6 +526,7 @@ class AppService:
                     icon_type=icon_type,
                     icon=params.icon,
                     icon_background=params.icon_background,
+                    initial_soul=initial_agent_soul,
                 )
             except IntegrityError as exc:
                 session.rollback()

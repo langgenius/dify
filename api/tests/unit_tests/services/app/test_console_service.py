@@ -18,10 +18,13 @@ from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.tool_manager import ToolManager
 from events.app_event import app_was_updated
 from fields.app_fields import AppDetailWithSite
+from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.agent import Agent, AgentStatus
+from models.agent import Agent, AgentConfigSnapshot, AgentStatus
+from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, Site
+from models.provider import TenantDefaultModel
 from models.provider_ids import GenericProviderID
 from models.tools import ApiToolProvider
 from repositories.app.console_repository import ConsoleAppRepository
@@ -60,6 +63,7 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
+from services.model_provider_service import ModelProviderService
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")
@@ -443,6 +447,79 @@ class Lifecycle:
         del mask_credentials
         assert context is CONTEXT
         return app
+
+
+@pytest.mark.parametrize(
+    ("provider_name", "expected_model"),
+    [
+        pytest.param(
+            "langgenius/openai/openai",
+            ("langgenius/openai", "langgenius/openai/openai", "gpt-4o"),
+            id="workspace-default",
+        ),
+        pytest.param(None, None, id="no-default"),
+        pytest.param("invalid/provider", None, id="invalid-provider"),
+    ],
+)
+def test_lifecycle_agent_creation_seeds_workspace_default_model(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    provider_name: str | None,
+    expected_model: tuple[str, str, str] | None,
+) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    with factory.begin() as session:
+        account = Account(name="Creator", email=f"{uuid4()}@example.com")
+        tenant = Tenant(name="Workspace")
+        session.add_all(
+            [
+                account,
+                tenant,
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=account.id,
+                    current=True,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+        if provider_name is not None:
+            session.add(
+                TenantDefaultModel(
+                    tenant_id=tenant.id,
+                    model_type=ModelType.LLM,
+                    provider_name=provider_name,
+                    model_name="gpt-4o",
+                )
+            )
+
+    if provider_name is None:
+        monkeypatch.setattr(
+            ModelProviderService,
+            "get_default_model_selection",
+            lambda *_args, **_kwargs: None,
+        )
+
+    context = RequestContext("request", None, account.id, tenant.id)
+    app = AppLifecycleGateway(session_factory=factory).create(
+        context,
+        CreateAppParams(name="Agent", mode=AppMode.AGENT.value),
+        AppCreationSettings({"enable_site": False, "enable_api": False}, None),
+    )
+
+    with factory() as session:
+        agent = session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert agent is not None
+        snapshot = session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+        assert snapshot is not None
+        model = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).model
+        if expected_model is None:
+            assert model is None
+            assert agent.active_config_has_model is False
+        else:
+            assert model is not None
+            assert (model.plugin_id, model.model_provider, model.model) == expected_model
+            assert agent.active_config_has_model is True
 
 
 @pytest.mark.parametrize("failure", [None, "persist", "external"])

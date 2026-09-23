@@ -343,6 +343,7 @@ class AppLifecycleGateway(AppLifecycle):
                 context.active_workspace_id, params, account, settings, session=session
             )
             if app.mode == AppMode.AGENT:
+                initial_soul = AppService.prepare_agent_soul(context.active_workspace_id, session=session)
                 try:
                     AgentRosterService(session).create_backing_agent_for_app(
                         tenant_id=context.active_workspace_id,
@@ -354,6 +355,7 @@ class AppLifecycleGateway(AppLifecycle):
                         icon_type=AgentIconType(params.icon_type) if params.icon_type else None,
                         icon=params.icon,
                         icon_background=params.icon_background,
+                        initial_soul=initial_soul,
                     )
                 except IntegrityError as exc:
                     raise AgentNameConflictError() from exc

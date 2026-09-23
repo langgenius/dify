@@ -17,6 +17,7 @@ from models import Account, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
+    AgentConfigSnapshot,
     AgentIconType,
     AgentScope,
     AgentSource,
@@ -24,7 +25,9 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType
+from models.provider import TenantDefaultModel
 from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
@@ -117,6 +120,107 @@ def _persist_agent_app(
 
 
 class TestCreateAppTransactionBoundary:
+    def test_agent_app_seeds_workspace_default_model_in_initial_snapshot(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        account = _persist_account(sqlite_session)
+        tenant_id = account.current_tenant_id or ""
+        sqlite_session.add(
+            TenantDefaultModel(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+                provider_name="langgenius/openai/openai",
+                model_name="gpt-4o",
+            )
+        )
+        sqlite_session.commit()
+
+        with (
+            patch("services.app_service.app_was_created.send"),
+            patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
+        ):
+            app = AppService().create_app(
+                tenant_id,
+                CreateAppParams(name="Agent with default model", mode=AppMode.AGENT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        agent = sqlite_session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert agent is not None
+        snapshot = sqlite_session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+        assert snapshot is not None
+        model = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).model
+        assert model is not None
+        assert model.plugin_id == "langgenius/openai"
+        assert model.model_provider == "langgenius/openai/openai"
+        assert model.model == "gpt-4o"
+        assert agent.active_config_has_model is True
+
+    def test_agent_app_without_available_default_keeps_initial_model_empty(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        account = _persist_account(sqlite_session)
+        tenant_id = account.current_tenant_id or ""
+
+        with (
+            patch("services.app_service.ModelProviderService.get_default_model_selection", return_value=None),
+            patch("services.app_service.app_was_created.send"),
+            patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
+        ):
+            app = AppService().create_app(
+                tenant_id,
+                CreateAppParams(name="Agent without default model", mode=AppMode.AGENT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        agent = sqlite_session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert agent is not None
+        snapshot = sqlite_session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+        assert snapshot is not None
+        assert AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).model is None
+        assert agent.active_config_has_model is False
+
+    def test_agent_app_with_invalid_default_provider_still_creates_empty_snapshot(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        account = _persist_account(sqlite_session)
+        tenant_id = account.current_tenant_id or ""
+        sqlite_session.add(
+            TenantDefaultModel(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+                provider_name="invalid/provider",
+                model_name="gpt-4o",
+            )
+        )
+        sqlite_session.commit()
+
+        with (
+            patch("services.app_service.app_was_created.send"),
+            patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
+        ):
+            app = AppService().create_app(
+                tenant_id,
+                CreateAppParams(name="Agent with invalid default", mode=AppMode.AGENT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        agent = sqlite_session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert agent is not None
+        snapshot = sqlite_session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+        assert snapshot is not None
+        assert AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).model is None
+        assert agent.active_config_has_model is False
+
     def test_commits_database_state_before_external_side_effects(
         self, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
