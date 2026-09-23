@@ -121,10 +121,15 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     ns: 'datasetHitTesting',
     num: result?.records.length ?? 0,
   })
+  const retrievalErrorMessage = t(($) => $['api.actionFailed'], { ns: 'common' })
+  const panelTitle =
+    !isRetrievalLoading && !isRetrievalError && result
+      ? resultTitle
+      : t(($) => $.title, { ns: 'datasetHitTesting' })
   const retrievalStatus = isRetrievalLoading
     ? t(($) => $.loading, { ns: 'common' })
     : isRetrievalError
-      ? ''
+      ? retrievalErrorMessage
       : result
         ? resultTitle
         : ''
@@ -238,12 +243,16 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         isMobile={isMobile}
         isOpen={isShowRightPanel}
         onClose={hideRightPanel}
-        title={result ? resultTitle : t(($) => $.title, { ns: 'datasetHitTesting' })}
+        title={panelTitle}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
           {isRetrievalLoading ? (
             <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
               <CardSkelton />
+            </div>
+          ) : isRetrievalError ? (
+            <div className="flex h-full items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3 text-sm text-text-secondary">
+              {retrievalErrorMessage}
             </div>
           ) : (
             (() => {
