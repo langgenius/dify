@@ -10,6 +10,7 @@ from werkzeug.exceptions import NotFound, Unauthorized
 from core.logging.context import clear_request_context, get_identity_context
 from models import App, EndUser
 from models.model import AppModelConfig
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture(autouse=True)
@@ -118,7 +119,6 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
 def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, missing: str
 ) -> None:
-    from configs import dify_config
     from controllers.common.app_access_error import register_app_access_error_metadata
     from controllers.web import wraps
     from libs.external_api import ExternalApi
@@ -164,7 +164,7 @@ def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
             )
         )
     sqlite_session.commit()
-    monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", "172.18.0.0/16")
+    apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
     bp = Blueprint("web_post_fixture", __name__, url_prefix="/api")

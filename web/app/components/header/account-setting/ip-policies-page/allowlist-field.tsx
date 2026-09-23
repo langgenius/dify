@@ -25,7 +25,7 @@ export function AllowlistField({
   onRetryCurrentIp,
   onEntriesChange,
 }: AllowlistFieldProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
 
   const errorMessage = (code: IpEntryErrorCode, max?: 32 | 128) => {
     switch (code) {

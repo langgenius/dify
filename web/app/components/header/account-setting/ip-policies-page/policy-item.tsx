@@ -42,7 +42,7 @@ type PolicyItemProps = {
 }
 
 export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)

@@ -15,7 +15,7 @@ function toAppIconType(iconType: string | null | undefined): AppIconType | undef
 }
 
 export function PolicyReferencedApps({ apps, usedByCount }: PolicyReferencedAppsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
 
   if (apps.length === 0) {
     if (usedByCount <= 0) return null

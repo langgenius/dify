@@ -11,7 +11,6 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from controllers.web import app as app_controller
 from controllers.web import bp, login, passport, site, wraps
 from enums import DeploymentEdition, WebAppAccessMode
@@ -27,6 +26,7 @@ from services.entities.feature_entities import FeatureModel
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_passport_service import WebPassportService
 from services.webapp_access_query_service import WebAppAccessQueryService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _harness(
@@ -125,8 +125,8 @@ def _harness(
     monkeypatch.setattr(wraps, "PassportService", lambda: tokens)
     monkeypatch.setattr(wraps, "extract_webapp_passport", lambda *_: "old-passport")
     monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", "172.18.0.0/16")
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
     flask = Flask(__name__)
     flask.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
     flask.register_blueprint(bp)

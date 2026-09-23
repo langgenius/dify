@@ -50,7 +50,7 @@ export function AccessControlPolicyField({
   onManagePolicies,
   onSelectPolicy,
 }: AccessControlPolicyFieldProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
   const selectedPolicy = policies.find((policy) => policy.id === selectedPolicyId)
   const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.allowed_cidrs) : undefined
   const selectLabel = t(($) => $['studio.accessControl.ipPolicy'], { ns: 'deployments' })

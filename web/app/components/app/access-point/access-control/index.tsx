@@ -72,7 +72,7 @@ function AccessControlSession({
   canEditBinding,
   isPublished,
 }: AccessControlEntryProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
   const queryClient = useQueryClient()
   const canRead = useAtomValue(canReadNetworkAccessAtom)
   const canManagePolicies = useAtomValue(canManageNetworkAccessPoliciesAtom)

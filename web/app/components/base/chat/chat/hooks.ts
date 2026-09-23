@@ -21,12 +21,12 @@ import {
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import {
   captureAppAccessScope,
   hasAppAccessError,
   isAppAccessScopeCurrent,
 } from '@/features/app-access-error/state'
-import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'

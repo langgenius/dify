@@ -29,7 +29,7 @@ export function AccessControlDowngradePanel({
   availableAccessPoints,
   onTurnOn,
 }: AccessControlDowngradePanelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
   const coverage = getInServiceCoverage(assignment.scopes, availableAccessPoints)
   const protectedScopes = availableAccessPoints.filter((scope) => assignment.scopes[scope])
   const title = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })

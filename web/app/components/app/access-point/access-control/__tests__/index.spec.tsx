@@ -57,8 +57,8 @@ vi.mock('nuqs', async (importOriginal) => {
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: deploymentTranslations } = await import('@/i18n/en-US/deployments.json')
-  const { default: commonTranslations } = await import('@/i18n/en-US/common.json')
+  const { default: deploymentTranslations } = await import('@/i18n/locales/en-US/deployments.json')
+  const { default: commonTranslations } = await import('@/i18n/locales/en-US/common.json')
   return createReactI18nextMock({
     ...commonTranslations,
     ...accessControlTranslations,

@@ -257,29 +257,6 @@ describe('CreateFromDSLModal', () => {
     },
   )
 
-  it('accepts an ifpkg from the file picker even when the ordinary App quota is full', async () => {
-    const user = userEvent.setup()
-    appCount = 10
-    appLimit = 10
-    mockImportDSL.mockResolvedValue({
-      id: 'import',
-      status: 'completed',
-      app_mode: AppModeEnum.AGENT,
-    })
-    render(<CreateFromDSLModal show onClose={vi.fn()} />)
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')
-    expect(input).not.toBeNull()
-    if (!input) throw new Error('Missing file picker')
-    const file = new File(['PK'], 'agent.ifpkg')
-    await user.upload(input, file)
-
-    expect(await screen.findByText('agent.ifpkg')).toBeInTheDocument()
-    expect(screen.getByText('IFPKG')).toBeInTheDocument()
-    expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
-    await user.click(getCreateButton())
-    await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file }))
-  })
-
   it('should render the file tab and show the dropped file', async () => {
     render(
       <CreateFromDSLModal

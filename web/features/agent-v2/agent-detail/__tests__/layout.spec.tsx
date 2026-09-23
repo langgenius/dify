@@ -79,7 +79,6 @@ describe('AgentDetailLayout', () => {
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents/agent-1/configure'))
   })
 
-  it('leaves a missing agent to the app error boundary without redirecting', async () => {
   it('retries a failed access page request at the detail boundary', async () => {
     const user = userEvent.setup()
     location.pathname = '/agents/agent-1/access'
@@ -104,7 +103,7 @@ describe('AgentDetailLayout', () => {
     expect(router.replace).not.toHaveBeenCalled()
   })
 
-  it('redirects to the roster when the agent no longer exists', async () => {
+  it('leaves a missing agent to the app error boundary without redirecting', async () => {
     const { wrapper, queryClient } = setup()
     queryClient.setDefaultOptions({ queries: { retry: false, retryOnMount: false } })
     queryClient

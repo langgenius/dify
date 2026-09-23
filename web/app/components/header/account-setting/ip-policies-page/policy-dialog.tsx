@@ -55,7 +55,7 @@ export function IpPolicyDialog({
   onOpenChange,
   onSubmit,
 }: IpPolicyDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
   const currentIpQuery = useQuery(
     consoleQuery.workspaces.current.networkAccessGroups.currentIp.get.queryOptions({
       enabled: open && mode !== 'view' && currentIp === undefined,

@@ -1,17 +1,17 @@
 'use client'
 
 import type { Resource } from 'i18next'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import { Suspense, useEffect, useState } from 'react'
 import { I18nextProvider, Trans, useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import ThemeSelector from '@/app/components/base/theme-selector'
-import { loadI18nResource } from '@/i18n-config/load-resource'
-import { getInitOptions } from '@/i18n-config/settings'
+import { loadI18nResource } from '@/i18n/load-resource'
+import { getInitOptions } from '@/i18n/settings'
 import Link from '@/next/link'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { basePath } from '@/utils/var'
@@ -149,7 +149,7 @@ export default function AppNotAccessible(props: AppNotAccessibleProps) {
     return instance
   })
   return (
-    <Suspense fallback={<Loading type="app" />}>
+    <Suspense fallback={<LoadingPlaceholder className="h-full" />}>
       <I18nextProvider i18n={i18n}>
         <PageContent {...props} />
       </I18nextProvider>

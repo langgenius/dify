@@ -52,7 +52,7 @@ export function AccessControlStatusPanel({
   readOnly = false,
   onEnabledChange,
 }: AccessControlStatusPanelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments', 'appOverview', 'tools'])
   const [confirmPause, setConfirmPause] = useState(false)
   const selectedPolicy = policies.find((policy) => policy.id === draft.selectedPolicyId)
   const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.allowed_cidrs) : undefined

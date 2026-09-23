@@ -1,18 +1,18 @@
 import type { ComponentProps } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import {
   appAccessErrorAtom,
   appAccessStore,
   captureAppAccessScope,
   isAppAccessError,
 } from '@/features/app-access-error/state'
-import enCommon from '@/i18n/en-US/common.json'
-import enShare from '@/i18n/en-US/share.json'
+import enCommon from '@/i18n/locales/en-US/common.json'
+import enShare from '@/i18n/locales/en-US/share.json'
 import TryApp from '../index'
 
 vi.unmock('react-i18next')
@@ -23,7 +23,7 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('../app', () => ({ default: () => null }))
 vi.mock('../preview', () => ({ default: () => null }))
 vi.mock('../app-info', () => ({ default: () => null }))
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: { error: vi.fn() } }))
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 it('shows the unified error inside a dismissible trial dialog, retaining the parent page', async () => {
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US'])
@@ -51,8 +51,7 @@ it('shows the unified error inside a dismissible trial dialog, retaining the par
       <I18nextProvider i18n={i18n}>
         <p>Explore apps</p>
         <TryApp
-          appId="missing"
-          app={{ can_trial: true } as ComponentProps<typeof TryApp>['app']}
+          app={{ app_id: 'missing', can_trial: true } as ComponentProps<typeof TryApp>['app']}
           onClose={onClose}
           onCreate={vi.fn()}
         />

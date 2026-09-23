@@ -25,6 +25,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 pytestmark = pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
 
@@ -262,11 +263,10 @@ class TestLoginStatusApi:
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from configs import dify_config
         from controllers.web import bp
 
         mock_app_id.return_value.webapp_access.resolve_app_id.side_effect = WebAppAccessAppNotFoundError("private code")
-        monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", "172.18.0.0/16")
+        apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
         app.register_blueprint(bp)
         response = app.test_client().get(
             "/api/login/status?app_code=missing", environ_overrides={"REMOTE_ADDR": "203.0.113.42"}
@@ -339,7 +339,6 @@ class TestLoginStatusApi:
     def test_unavailable_public_identity_is_final_404_before_authentication(
         self, condition: str, app: Flask, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from configs import dify_config
         from controllers.web import bp
         from controllers.web import login as login_module
 
@@ -382,7 +381,7 @@ class TestLoginStatusApi:
         monkeypatch.setattr(login_module, "application_services", lambda: SimpleNamespace(webapp_access=service))
         decode = MagicMock()
         monkeypatch.setattr(login_module, "decode_jwt_token", decode)
-        monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", "172.18.0.0/16")
+        apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
         app.register_blueprint(bp)
         response = app.test_client().get(
             "/api/login/status?app_code=private-fixture", environ_overrides={"REMOTE_ADDR": "203.0.113.42"}

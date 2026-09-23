@@ -3,18 +3,18 @@ import { act, render, screen } from '@testing-library/react'
 import { createInstance } from 'i18next'
 import { StrictMode } from 'react'
 import { I18nextProvider, initReactI18next } from 'react-i18next'
-import enCommon from '@/i18n/en-US/common.json'
-import enShare from '@/i18n/en-US/share.json'
+import enCommon from '@/i18n/locales/en-US/common.json'
+import enShare from '@/i18n/locales/en-US/share.json'
 import AppAccessBoundary from '../boundary'
 import { captureAppAccessScope, handleAppAccessError } from '../state'
 
 vi.unmock('react-i18next')
-vi.mock('@/i18n-config/load-resource', () => ({
+vi.mock('@/i18n/load-resource', () => ({
   loadI18nResource: async (_locale: string, namespace: string) => ({
     default: namespace === 'share' ? enShare : enCommon,
   }),
 }))
-vi.mock('@/i18n-config', () => ({ setLocaleOnClient: vi.fn() }))
+vi.mock('@/i18n', () => ({ setLocaleOnClient: vi.fn() }))
 vi.mock('@/next/navigation', () => ({
   usePathname: () => window.location.pathname,
   useSearchParams: () => new URLSearchParams(window.location.search),

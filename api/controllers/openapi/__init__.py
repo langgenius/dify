@@ -4,7 +4,6 @@ from flask import Blueprint
 from flask_restx import Namespace
 
 from controllers.common.access_response import register_auth_error_response
-from controllers.openapi._version_gate import attach_version_gate
 from controllers.openapi._catalog import attach_catalog
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
 from controllers.openapi._upload import describe_multipart_bodies
@@ -13,7 +12,6 @@ from libs.external_api import ExternalApi
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
-attach_version_gate(bp)
 register_auth_error_response(bp)
 attach_catalog(bp)
 

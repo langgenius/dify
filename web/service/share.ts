@@ -5,13 +5,13 @@ import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
-import { consoleClient } from '@/service/console'
 import {
   captureAppAccessScope,
   hasAppAccessError,
   isAppAccessError,
   isAppAccessScopeCurrent,
 } from '@/features/app-access-error/state'
+import { consoleClient } from '@/service/console'
 import {
   del as consoleDel,
   get as consoleGet,

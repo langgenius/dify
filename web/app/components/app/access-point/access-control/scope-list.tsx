@@ -29,7 +29,7 @@ export function AccessControlScopeList({
   readOnly = false,
   onDraftChange,
 }: AccessControlScopeListProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments', 'appOverview', 'tools'])
 
   const labels: Record<AccessPoint, string> = {
     webApp: t(($) => $['overview.appInfo.title'], { ns: 'appOverview' }),

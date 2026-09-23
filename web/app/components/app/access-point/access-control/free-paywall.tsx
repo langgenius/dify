@@ -10,7 +10,7 @@ type AccessControlFreePaywallProps = {
 }
 
 export function AccessControlFreePaywall({ onTurnOn }: AccessControlFreePaywallProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
   const title = t(($) => $['studio.accessControl.paywallTitle'], { ns: 'deployments' })
   const turnOn = t(($) => $['studio.accessControl.turnOn'], { ns: 'deployments' })
   const pro = t(($) => $['studio.accessControl.proBadge'], { ns: 'deployments' })

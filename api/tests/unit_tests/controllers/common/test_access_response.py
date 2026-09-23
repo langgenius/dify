@@ -3,10 +3,10 @@
 import io
 import json
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from typing import Literal, Never, override
+from typing import Literal, Never, cast, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -30,6 +30,7 @@ from extensions import ext_request_logging
 from libs.external_api import ExternalApi
 from models.engine import db
 from models.enums import AppMCPServerStatus
+from tests.unit_tests.config_override import apply_config_overrides
 
 type TokenClient = tuple[FlaskClient, MagicMock, MagicMock, MagicMock]
 type MCPClient = tuple[FlaskClient, MagicMock, MagicMock, MagicMock]
@@ -270,7 +271,7 @@ def test_mcp_debug_request_logging_preserves_raw_error_id(
     session.scalar.return_value = None
     caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
     # Exercise the real existing request-started logger, including request.data caching.
-    monkeypatch.setattr(ext_request_logging.dify_config, "ENABLE_REQUEST_LOGGING", True)
+    apply_config_overrides(monkeypatch, ENABLE_REQUEST_LOGGING=True)
     ext_request_logging.init_app(client.application)
     response = client.post("/mcp/server/missing-fixture/mcp", data=b'{"id":1.2500}', content_type="application/json")
     assert response.status_code == 404
@@ -361,7 +362,7 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     remaining = iter((initial, execution))
 
     @contextmanager
-    def begin() -> Iterator[MagicMock]:
+    def begin() -> Generator[MagicMock]:
         session = next(remaining)
         opened.append(session)
         active_sessions.append(session)
@@ -390,9 +391,10 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
             return super().read(size)
 
         @override
-        def readinto(self, buffer) -> int:
-            data = self.read(len(buffer))
-            buffer[: len(data)] = data
+        def readinto(self, buffer: object) -> int:
+            writable = cast(bytearray, buffer)
+            data = self.read(len(writable))
+            writable[: len(data)] = data
             return len(data)
 
     payload = b'{"jsonrpc":"2.0","method":"ping","id":900719925474099312345678901234567890}'

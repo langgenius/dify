@@ -34,7 +34,7 @@ const mockConsoleState = vi.hoisted(() => ({
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: translations } = await import('@/i18n/en-US/deployments.json')
+  const { default: translations } = await import('@/i18n/locales/en-US/deployments.json')
   return createReactI18nextMock({
     ...translations,
     'operation.save': 'Save',

@@ -1,4 +1,4 @@
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,7 +7,7 @@ import {
   DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 
 const supportedLanguages = languages.filter((language) => language.supported)
 
