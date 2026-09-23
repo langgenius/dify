@@ -27,6 +27,7 @@ const WorkflowPreview = () => {
   const panelId = useId()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
+  const appId = useStore((s) => s.appId)
   const isListening = useStore((s) => s.isListening)
   const showInputsPanel = useStore((s) => s.showInputsPanel)
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -278,8 +279,18 @@ const WorkflowPreview = () => {
           )}
           {currentTab === 'TRACING' && (
             <TracingPanel
+              key={workflowRunningData?.result.id}
               className="bg-background-section-burn"
               list={workflowRunningData?.tracing || []}
+              workflowRun={
+                appId && workflowRunningData?.result.id
+                  ? {
+                      appId,
+                      runId: workflowRunningData.result.id,
+                      status: workflowRunningData.result.status,
+                    }
+                  : undefined
+              }
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
