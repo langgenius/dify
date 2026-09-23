@@ -1074,6 +1074,11 @@ def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing
     error = next(i for i in res.items if i.kind == "error")
     assert error.payload["title"] == "The workflow can't start"
     assert "node 'llm' (llm)" in error.payload["body"]
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert assistant.payload["reply_text"] == (
+        "I didn't apply the change: the workflow would fail before its first node. "
+        "Continue adjusting to change the rules, approve again, or discard the plan."
+    )
 
 
 def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot_start():
@@ -1108,7 +1113,8 @@ def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert assistant.payload["execution"]["status"] == "error"
     assert assistant.payload["reply_text"] == (
-        "I couldn't apply the change -- see the error above. Adjust it and approve again."
+        "I couldn't apply the change -- see the error above. "
+        "Continue adjusting to change the rules, approve again, or discard the plan."
     )
 
 
@@ -1452,3 +1458,201 @@ def test_a_huge_refusal_is_capped_before_it_is_persisted_and_re_prompted():
     res = _approve(env, *repo.get_session(s.id))
 
     assert res.context.last_edit_rejection == "x" * _MAX_REJECTION_CHARS + _REJECTION_TRUNCATED_MARKER
+
+
+# -- Task 7: the plan gate is no longer a one-button dead end ------------------
+
+
+def _gate_turn(kind: str) -> Turn:
+    return Turn(action=Action(kind=kind, base_version=1), actor=_actor())
+
+
+def test_a_refused_edit_can_be_adjusted_instead_of_only_re_approved():
+    """The dead end this closes: a refused approval left the user at the gate
+    with ``approve_plan`` as the only move, while the card told them to adjust
+    (triage edit-branch-failure-2026-09-22)."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError(_KLINGON)))
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["node2"],
+        form_fields=[{"key": "risk_threshold", "label": "Risk threshold", "type": "text"}],
+    )
+    session, fc = repo.get_session(s.id)
+    refused = handle_plan_approval(env, _gate_turn("approve_repair"), session, fc)
+    assert refused.next == PcState.EDIT_PLAN_APPROVAL
+    assert refused.context.last_edit_rejection == _KLINGON
+
+    res = handle_plan_approval(env, _gate_turn("re_fix"), session, refused.context)
+
+    assert res.next == PcState.EDIT_IMPACT_ANALYSIS
+    form = next(i for i in res.items if i.kind == "form")
+    assert form.payload["variant"] == "edit_rules"
+    assert form.payload["values"] == {"risk_threshold": "high"}  # repopulated, not blank
+    assert [f["key"] for f in form.payload["fields"]] == ["risk_threshold"]
+    assert form.payload["frozen"] is False  # editable, which is the whole point
+
+
+def test_routing_back_to_the_form_does_not_forget_the_refusal():
+    """Offering the form is not editing it: the user may change nothing and
+    resubmit, and until they do, the engine's text still describes exactly what
+    the next approval would try. Only handle_impact_analysis, which owns the
+    mutation of fc.edit_rules, may clear it."""
+    from core.dify_builder.handlers_edit import handle_plan_approval, handle_review
+
+    env, repo = _new_env()
+    at_gate = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        last_edit_rejection=_KLINGON,
+    )
+    at_review = _seed_edit_session(
+        repo,
+        PcState.EDIT_REVIEW,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        last_edit_rejection=_KLINGON,
+    )
+
+    from_gate = handle_plan_approval(env, _gate_turn("re_fix"), *repo.get_session(at_gate.id))
+    from_review = handle_review(env, _gate_turn("re_fix"), *repo.get_session(at_review.id))
+
+    assert from_gate.next == PcState.EDIT_IMPACT_ANALYSIS
+    assert from_gate.context.last_edit_rejection == _KLINGON
+    assert from_review.next == PcState.EDIT_IMPACT_ANALYSIS
+    assert from_review.context.last_edit_rejection == _KLINGON
+
+
+def _refuse_once_then_apply(error):
+    """A ``FakeEditDifyPort`` that refuses the first ``apply_repair`` and then
+    behaves normally -- the shape of the loop these sequences live in."""
+    dify = FakeEditDifyPort()
+    real_apply = dify.apply_repair
+    refused: list[bool] = []
+
+    def apply(*args, **kwargs):
+        if not refused:
+            refused.append(True)
+            raise error
+        return real_apply(*args, **kwargs)
+
+    dify.apply_repair = apply
+    return dify
+
+
+def _refused_at_the_gate(agent):
+    """Drive a real Edit session to a refused approval parked at the gate."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_edit import edit_registry
+
+    env, repo = _new_env(dify=_refuse_once_then_apply(DraftWouldNotStartError(_KLINGON)), agent=agent)
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="send_edit_goal", payload={"text": "x"}, base_version=1), actor=_actor())
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL  # refused, nothing written
+    _s, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == _KLINGON
+    return runner, repo, s, out
+
+
+def _submit(runner, s, out, kind, payload=None):
+    return runner.advance(
+        s.id, Turn(action=Action(kind=kind, payload=payload or {}, base_version=out.version), actor=_actor())
+    )
+
+
+def test_a_gate_revert_keeps_the_refusal_its_retry_still_needs():
+    """The ONE path that reaches edit.reverted carrying a refusal. A revert
+    taken at the plan gate wrote nothing, so the restored draft IS the refused
+    draft and the rules are unchanged -- and edit.reverted offers only Retry,
+    which re-proposes the identical plan. Clearing here would guarantee the
+    identical refusal and throw away the whole point of remembering it."""
+    agent = _RejectionRecordingAgent()
+    runner, repo, s, out = _refused_at_the_gate(agent)
+
+    out = _submit(runner, s, out, "undo")
+    assert out.current_state == PcState.EDIT_REVERTED
+    out = _submit(runner, s, out, "re_fix")  # Retry, the only action offered there
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+
+    _s, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == _KLINGON
+
+    _submit(runner, s, out, "approve_repair")
+    assert agent.rejections == [None, _KLINGON]  # the retry was told what the engine said
+
+
+def test_changing_the_rules_forgets_the_refusal_the_old_ones_earned():
+    """The mirror case: once the rules the engine refused are gone, its
+    complaint describes nothing the next approval will try."""
+    agent = _RejectionRecordingAgent()
+    runner, repo, s, out = _refused_at_the_gate(agent)
+
+    out = _submit(runner, s, out, "re_fix")  # continue adjusting
+    assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+    _s, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == _KLINGON  # routed to the form, rules untouched
+    assert fc.edit_rules["risk_threshold"] == "medium"
+
+    out = _submit(runner, s, out, "submit_edit_rules", {"risk_threshold": "critical"})
+
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+    _s, fc = repo.get_session(s.id)
+    assert fc.edit_rules["risk_threshold"] == "critical"
+    assert fc.last_edit_rejection == ""
+
+    _submit(runner, s, out, "approve_repair")
+    assert agent.rejections == [None, None]  # nothing stale quoted at the new rules
+
+
+def test_resubmitting_the_very_same_rules_keeps_the_refusal():
+    """Reaching the form and pressing submit without editing anything leaves
+    the inputs byte-identical, so the refusal still describes them."""
+    agent = _RejectionRecordingAgent()
+    runner, repo, s, out = _refused_at_the_gate(agent)
+
+    out = _submit(runner, s, out, "re_fix")
+    out = _submit(runner, s, out, "submit_edit_rules", {"risk_threshold": "medium"})
+
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+    _s, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == _KLINGON
+
+
+def test_the_plan_gate_reverts_through_the_checkpoint_it_already_minted():
+    """No second revert path: the gate reuses perform_revert against the
+    checkpoint handle_impact_analysis mints when it proposes the plan."""
+    from core.dify_builder.handlers_edit import edit_registry
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="send_edit_goal", payload={"text": "x"}, base_version=1), actor=_actor())
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+    _s, fc = repo.get_session(s.id)
+    assert fc.checkpoint_id  # the restore point the gate's Revert uses
+
+    out = runner.advance(s.id, Turn(action=Action(kind="undo", base_version=out.version), actor=_actor()))
+
+    assert out.current_state == PcState.EDIT_REVERTED
+    _s, fc = repo.get_session(s.id)
+    assert fc.checkpoint_id == ""  # consumed by perform_revert
+    assert any(e["event"] == "revert_checkpoint" for e in events)
+    # and edit.reverted's own Retry still leads back to the gate
+    out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL

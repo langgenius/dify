@@ -83,3 +83,20 @@ def test_the_built_headline_template_yields_to_more_specific_ones():
 
     assert "{count}" in tpl.template
     assert groups["count"] == "3"
+
+
+def test_the_refused_edit_copy_names_affordances_that_exist():
+    """The gate's card used to say "Adjust it and approve again" while approve
+    was the only control it had (triage edit-branch-failure-2026-09-22). The
+    replacement names the three buttons the gate now renders, and -- like every
+    engine literal -- has to be in the catalog to be localizable."""
+    for text in (
+        "I didn't apply the change: the workflow would fail before its first node. "
+        "Continue adjusting to change the rules, approve again, or discard the plan.",
+        "I couldn't apply the change -- see the error above. "
+        "Continue adjusting to change the rules, approve again, or discard the plan.",
+    ):
+        assert text in strings.PLAIN
+
+    stale = [s for s in strings.PLAIN if "Adjust it and approve again" in s]
+    assert stale == []
