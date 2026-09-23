@@ -307,7 +307,7 @@ describe('WorkflowAppLogList', () => {
     it('should render paused status correctly', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
-          workflow_run: createMockWorkflowRun({ status: 'paused' as WorkflowRunDetail['status'] }),
+          workflow_run: createMockWorkflowRun({ status: 'paused' }),
         }),
       ])
 
@@ -318,11 +318,25 @@ describe('WorkflowAppLogList', () => {
       expect(screen.getByText('appLog.status.paused'))!.toBeInTheDocument()
     })
 
+    it('should render scheduled status correctly', () => {
+      const logs = createMockLogsResponse([
+        createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ status: 'scheduled' }),
+        }),
+      ])
+
+      render(
+        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
+      )
+
+      expect(screen.getByText('appLog.status.scheduled'))!.toBeInTheDocument()
+    })
+
     it('should render partial-succeeded status correctly', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({
-            status: 'partial-succeeded' as WorkflowRunDetail['status'],
+            status: 'partial-succeeded',
           }),
         }),
       ])

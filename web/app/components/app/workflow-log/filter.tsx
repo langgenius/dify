@@ -69,6 +69,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
             value: 'partial-succeeded',
             name: t(($) => $['status.partial-succeeded'], { ns: 'appLog' }),
           },
+          { value: 'scheduled', name: t(($) => $['status.scheduled'], { ns: 'appLog' }) },
           { value: 'running', name: t(($) => $['status.running'], { ns: 'appLog' }) },
           { value: 'paused', name: t(($) => $['status.paused'], { ns: 'appLog' }) },
         ]}

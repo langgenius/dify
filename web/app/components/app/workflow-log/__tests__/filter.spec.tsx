@@ -180,7 +180,7 @@ describe('Filter', () => {
       })
     })
 
-    it.each(['running', 'paused'])(
+    it.each(['running', 'paused', 'scheduled'])(
       'should filter by %s without changing other filters',
       async (status) => {
         const user = userEvent.setup()
@@ -204,6 +204,7 @@ describe('Filter', () => {
 
     it.each([
       ['all', 'appLog.status.all'],
+      ['scheduled', 'appLog.status.scheduled'],
       ['running', 'appLog.status.running'],
       ['paused', 'appLog.status.paused'],
       ['succeeded', 'appLog.status.succeeded'],

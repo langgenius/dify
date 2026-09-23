@@ -109,6 +109,16 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         </div>
       )
     }
+    if (status === 'scheduled') {
+      return (
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
+          <StatusDot status="disabled" />
+          <span className="text-text-secondary">
+            {t(($) => $['status.scheduled'], { ns: 'appLog' })}
+          </span>
+        </div>
+      )
+    }
     if (status === 'running') {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
