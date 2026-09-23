@@ -24,12 +24,14 @@ does), which is why it lives in ``services/dify_builder`` and not in the
 I/O-free ``core/dify_builder``.
 """
 
+import copy
 from collections.abc import Collection, Mapping
 from typing import Any, NamedTuple
 
 from pydantic import ValidationError
 
 from core.dify_builder.models import Graph, MutationIntent
+from core.workflow.graph_normalizers import heal_nodes_for_preflight
 from core.workflow.node_factory import validate_node_config
 from services.dify_builder import credentials, graph_ops
 
@@ -494,6 +496,226 @@ def _unfed_aggregator_reasons(before: Graph, after: Graph) -> list[str]:
     return reasons
 
 
+# The keys that make an ARRAY ELEMENT the same element across two versions of a
+# node's data, INSIDE the arrays listed below. Neither key is read by the engine
+# on every array that carries it -- graphon's ``Condition``
+# (utils/condition/entities.py) has no ``id`` field at all -- which is exactly
+# why losing one is silent: pydantic validates the rewritten array happily and
+# the canvas quietly renders a different case.
+_IDENTITY_KEYS = frozenset({"id", "case_id"})
+
+# Where those keys MEAN something. Scoped by (node type, path) because ``id`` is
+# a frontend uuid in plenty of arrays where losing it costs nothing, and
+# refusing those writes blocks ordinary edits:
+#
+#   an llm ``prompt_template`` message carries an ``id`` the canvas mints and
+#   REGENERATES when it is absent (web .../llm/components/config-prompt.tsx:61,
+#   ``item.id || uuid4()``), and graphon's ``ChatModelMessage``
+#   (prompt_entities.py:8-13) is ``text`` / ``role`` / ``edition_type`` with no
+#   ``id`` field. Rewriting a prompt as a whole array without echoing those
+#   uuids loses nothing -- and editing a prompt is the commonest thing anyone
+#   asks the Builder to do.
+#
+# Each pair below was checked against the engine before being added:
+#
+# * ``if-else`` ``cases`` -- ``IfElseNodeData.Case.case_id`` is a REQUIRED
+#   engine field and is the edge ``sourceHandle`` a branch routes on
+#   (``graph_normalizers.declared_branch_handles``). Losing one orphans an arm;
+# * ``if-else`` ``cases.*.conditions`` -- the same array addressed one case
+#   down, so a rewrite of it is the same write;
+# * ``question-classifier`` ``classes`` -- ``ClassConfig.id`` is required and
+#   documented in graphon as "Stable branch identifier used for routing and edge
+#   handles" (question_classifier/entities.py:12-15). Identical in kind to
+#   ``case_id``;
+# * ``knowledge-retrieval`` ``metadata_filtering_conditions.conditions`` -- the
+#   engine ``Condition`` (core/rag/entities/metadata_entities.py:44) has no
+#   ``id``, but the canvas mints one per condition (web
+#   .../knowledge-retrieval/hooks/use-knowledge-metadata-config.ts:57) and a
+#   regenerated filter silently changes which documents are retrieved.
+#
+# Digit segments are normalized to ``*`` (see ``_normalized_path``), so an
+# indexed path matches its pattern. Deliberately NOT here: ``loop``
+# ``break_conditions`` and ``list-operator`` ``filter_by.conditions``, whose
+# elements carry no branch identity and whose engine entities have no ``id`` --
+# they would be a false-rejection surface bought for nothing.
+_IDENTITY_ARRAY_PATHS: Mapping[str, frozenset[str]] = {
+    "if-else": frozenset({"cases", "cases.*.conditions"}),
+    "question-classifier": frozenset({"classes"}),
+    "knowledge-retrieval": frozenset({"metadata_filtering_conditions.conditions"}),
+}
+
+
+def _normalized_path(path: str) -> str:
+    """``cases.0.conditions`` -> ``cases.*.conditions``: the shape of a path,
+    with every array index collapsed, so one pattern covers every element."""
+    return ".".join("*" if segment.isdigit() else segment for segment in path.split("."))
+
+
+def _carries_structural_identities(node_type: str, path: str) -> bool:
+    """Whether ``path`` on a node of ``node_type`` is one of the arrays whose
+    element identities are load-bearing (see ``_IDENTITY_ARRAY_PATHS``)."""
+    return _normalized_path(path) in _IDENTITY_ARRAY_PATHS.get(node_type, frozenset())
+
+
+def _identities(value: Any) -> set[tuple[str, str]]:
+    """Every element identity anywhere under ``value``.
+
+    The whole subtree, not just the top level, because the live clobber was one
+    level down: the rewrite kept both ``case_id``s and regenerated the surviving
+    case's CONDITIONS from scratch, losing the condition's ``id`` (and turning
+    ``= 60`` into ``≥ 60`` with it). A top-level-only comparison would have
+    called that batch clean.
+
+    Keyed on ``(key, value)`` so moving an identity from ``case_id`` to ``id``
+    is a change, and only non-empty strings count -- a generated placeholder
+    that is ``None`` or ``""`` identifies nothing.
+    """
+    found: set[tuple[str, str]] = set()
+    stack: list[Any] = [value]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, Mapping):
+            for key, item in current.items():
+                if key in _IDENTITY_KEYS and isinstance(item, str) and item:
+                    found.add((str(key), item))
+                stack.append(item)
+        elif isinstance(current, list):
+            stack.extend(current)
+    return found
+
+
+def _is_pure_deletion(existing: list, written: list) -> bool:
+    """True when ``written`` is ``existing`` with elements REMOVED and nothing
+    else done to it.
+
+    "Nothing else" is the whole test, and it is made of two halves that have to
+    hold together: every element kept is byte-identical to one of the
+    originals, and each original may be claimed only once (so re-sending one
+    element twice in place of two is not a deletion), and fewer are kept than
+    were given. A write that also modified a survivor, or added an element the
+    draft did not have, fails it -- which is exactly the regeneration this
+    guard is for.
+
+    Deliberately equality on the whole element, not on its identity: keeping a
+    case's ``case_id`` while quietly rewriting its condition is the live S6
+    clobber, and it has to stay refused.
+    """
+    if len(written) >= len(existing):
+        return False
+    unclaimed = list(existing)
+    for element in written:
+        for index, candidate in enumerate(unclaimed):
+            if candidate == element:
+                del unclaimed[index]
+                break
+        else:
+            return False
+    return True
+
+
+def _node_data(graph: Graph, node_id: str) -> dict | None:
+    for node in graph.get("nodes") or []:
+        if isinstance(node, Mapping) and str(node.get("id")) == node_id:
+            data = node.get("data")
+            return data if isinstance(data, dict) else None
+    return None
+
+
+def _dropped_identity_reasons(before: Graph, after: Graph, intents: Collection[MutationIntent]) -> list[str]:
+    """Every whole-array ``set_node_config`` in this batch that lost an element
+    the draft already had.
+
+    The second half of the live S6 clobber. Asked to ADD a case to an if-else,
+    the model re-sent the whole ``cases`` array -- the only way to append one --
+    and regenerated the case it was not asked about, dropping its condition's
+    ``id`` and its ``varType`` and rewriting ``= 60`` as ``≥ 60``. The engine
+    accepts every part of that (``id`` and ``varType`` are frontend-only,
+    ``≥ 60`` is a perfectly valid condition), ``diff_graphs`` reports one line
+    ("cases updated"), and the user's threshold has silently changed meaning.
+
+    The op schema tells the model to re-send existing elements byte-identical.
+    This is the half that does not depend on it obeying.
+
+    Narrow by construction, and the neighbouring shapes are the point:
+
+    * only the arrays whose element identities MEAN something are looked at, by
+      (node type, path) -- see ``_IDENTITY_ARRAY_PATHS``. An ``id`` is a
+      frontend uuid in plenty of other arrays, and the one that matters is an
+      llm's ``prompt_template``: the canvas regenerates a missing message id and
+      graphon has no field for it, so rewriting a prompt as a whole array is an
+      ordinary edit that this must not touch. Inside a scoped array the walk
+      stays recursive, which is what catches the S6 condition ``id`` one level
+      down;
+    * only a write that REPLACES AN EXISTING ARRAY with another array is looked
+      at. Changing one element by its index writes a scalar into the array and
+      is never compared;
+    * only identities PRESENT BEFORE and ABSENT AFTER count. An append that
+      repeats every existing element -- exactly what the schema asks for --
+      keeps them all and passes untouched, whatever else it adds;
+    * an array whose elements never carried an identity has nothing to lose, so
+      a ``variable-aggregator``'s ``variables`` (bare selector arrays, and the
+      only way to extend it is to re-send it whole) is never in scope. The
+      rejoin guard demands that write; this one must not stand in its way;
+    * a DELETION is not a clobber. Removing an if-else case is a legitimate
+      edit and a whole-array write is the only way to express one, so a guard
+      that refused it would make the feature unusable -- loudly, but unusably.
+      The two shapes are distinguishable without asking the model what it
+      meant, which is the only reason this exception exists: a deletion leaves
+      every element it KEEPS byte-identical to one of the originals and keeps
+      fewer than it was given (``_is_pure_deletion``), while a regeneration
+      loses an identity in the same write that modified or added something
+      else. The live S6 batch is the second kind -- it appended ``excellent``
+      AND rewrote the surviving case -- so it is still refused, and so is the
+      mixed write that deletes one element while editing another.
+
+    The comparison is made against a HEALED copy of ``before``, because
+    ``after`` is the dry run's already-healed graph: a draft holding ``">="``
+    or a JSON ``60`` (the ESQ1-303 shape this whole plan grew out of) would
+    otherwise make a survivor the model re-sent verbatim look modified, and a
+    genuine deletion would be refused for a difference the heal set introduced.
+    Healing can only ever make two elements MORE equal, so it can only reduce
+    false rejections.
+
+    Compared against the graph as it stands BEFORE the batch and as it stands
+    AFTER every applicable intent, so two intents writing the same array in one
+    batch are judged on the net result -- which is what gets written.
+    """
+    if not any(intent.op == "set_node_config" for intent in intents):
+        return []
+    healed_before = copy.deepcopy(before)
+    heal_nodes_for_preflight(healed_before.get("nodes") or [])
+
+    reasons: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    for intent in intents:
+        if intent.op != "set_node_config":
+            continue
+        node_id, path = intent.args.get("node_id"), intent.args.get("path")
+        if not isinstance(node_id, str) or not isinstance(path, str) or (node_id, path) in seen:
+            continue
+        seen.add((node_id, path))
+        data_before, data_after = _node_data(healed_before, node_id), _node_data(after, node_id)
+        if data_before is None or data_after is None:
+            continue
+        if not _carries_structural_identities(str(data_before.get("type") or ""), path):
+            continue
+        found_before, existing = graph_ops.value_at_path(data_before, path)
+        found_after, written = graph_ops.value_at_path(data_after, path)
+        if not (found_before and found_after) or not isinstance(existing, list) or not isinstance(written, list):
+            continue
+        lost = sorted(_identities(existing) - _identities(written))
+        if not lost or _is_pure_deletion(existing, written):
+            continue
+        named = ", ".join(f"{key} {value!r}" for key, value in lost)
+        reasons.append(
+            f"the write to {path!r} on node {node_id!r} re-sent the whole array and lost {named}: "
+            f"an element the draft already had is gone from it. To change ONE element, address it "
+            f"by index ({path}.0....) and leave its siblings alone; to ADD one, re-send every "
+            f"existing element byte-identical -- ids included -- with the new element appended."
+        )
+    return reasons
+
+
 class VettedIntents(NamedTuple):
     """A proposed batch as the engine sees it.
 
@@ -548,4 +770,5 @@ def vet_intents(
     # they are keyed on the batch's own effect on the graph instead, never on
     # anything the model said.
     rejections += [f"- {reason}" for reason in _unfed_aggregator_reasons(graph, dry_run.graph)]
+    rejections += [f"- {reason}" for reason in _dropped_identity_reasons(graph, dry_run.graph, dry_run.applicable)]
     return VettedIntents(dry_run.applicable, rejections)
