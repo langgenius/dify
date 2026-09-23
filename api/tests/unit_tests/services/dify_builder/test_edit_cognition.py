@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from core.dify_builder.models import MutationIntent
 from graphon.utils.condition.entities import Condition, SupportedComparisonOperator
 from services.dify_builder import credentials, graph_ops
-from services.dify_builder.agent import edit
+from services.dify_builder.agent import edit, graph_prompt
 from services.dify_builder.preflight import new_preflight_problems, preflight_errors
 
 
@@ -416,7 +416,7 @@ def test_graph_context_marks_an_oversized_node_config_as_truncated():
 
     context = edit._graph_context(graph, ["big"])
 
-    assert edit._TRUNCATION_MARKER in context
+    assert graph_prompt.TRUNCATION_MARKER in context
     assert len(context) < 4000
 
 
@@ -662,8 +662,8 @@ def test_truncation_names_the_keys_it_dropped():
 
     context = edit._graph_context(graph, ["big"])
 
-    assert edit._TRUNCATION_MARKER in context
-    assert "template" in context.split(edit._TRUNCATION_MARKER)[1]
+    assert graph_prompt.TRUNCATION_MARKER in context
+    assert "template" in context.split(graph_prompt.TRUNCATION_MARKER)[1]
     assert "x" * 4000 not in context
     assert len(context) < 4000
 
@@ -752,8 +752,8 @@ def test_op_schema_teaches_the_array_and_operator_rules_the_engine_enforces():
     # same members, same order. Compared as parsed tuples, not with `in schema`:
     # a substring check over 2.3kB of prose matches `=`, `is`, `in` anywhere and
     # can only ever catch an addition, never a removal or a misspelling.
-    assert _schema_operators(edit._COMPARISON_OPERATORS) == get_args(SupportedComparisonOperator.__value__)
-    assert edit._COMPARISON_OPERATORS in schema
+    assert _schema_operators(graph_prompt.COMPARISON_OPERATORS) == get_args(SupportedComparisonOperator.__value__)
+    assert graph_prompt.COMPARISON_OPERATORS in schema
     # ...and the ASCII forms the model reaches for are genuinely refused by the
     # engine. `>=`/`<=` are healed upstream by heal_nodes_for_preflight, so for
     # those the prompt is merely stricter than the port; the equality forms are
