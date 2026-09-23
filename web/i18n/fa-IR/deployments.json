@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "متوقف شده — {{name}} پیکربندی شده اما اعمال نمی‌شود",
   "studio.accessControl.tooltipPro": "کنترل دسترسی در طرح‌های Professional و Team در دسترس است.",
   "studio.accessControl.tooltipProtected": "{{n}} نقطه از {{total}} نقطهٔ دسترسی محافظت می‌شوند",
+  "studio.accessControl.tooltipProtectedPartial": "{{n}} نقطه از {{total}} نقطهٔ دسترسی محافظت می‌شوند",
   "studio.accessControl.turnOffConfirm": "خاموش کردن",
   "studio.accessControl.turnOffDescription": "همهٔ نقاط دسترسی از هر نشانی IP قابل دسترسی خواهند بود. پیکربندی شما حفظ خواهد شد.",
   "studio.accessControl.turnOffTitle": "کنترل دسترسی بر اساس IP غیرفعال شود؟",

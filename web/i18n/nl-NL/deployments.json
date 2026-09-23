@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "Gepauzeerd — {{name}} is ingesteld maar wordt niet toegepast",
   "studio.accessControl.tooltipPro": "Toegangsbeheer is beschikbaar in de Professional- en Team-abonnementen.",
   "studio.accessControl.tooltipProtected": "{{n}} van de {{total}} toegangspunten zijn beschermd",
+  "studio.accessControl.tooltipProtectedPartial": "{{n}} van de {{total}} toegangspunten zijn beschermd",
   "studio.accessControl.turnOffConfirm": "Uitschakelen",
   "studio.accessControl.turnOffDescription": "Alle toegangspunten worden bereikbaar vanaf elk IP-adres. Je configuratie blijft bewaard.",
   "studio.accessControl.turnOffTitle": "IP-toegangsbeheer uitschakelen?",

@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "În pauză — {{name}} este configurată, dar nu este aplicată",
   "studio.accessControl.tooltipPro": "Controlul accesului este disponibil în planurile Professional și Team.",
   "studio.accessControl.tooltipProtected": "{{n}} din {{total}} puncte de acces sunt protejate",
+  "studio.accessControl.tooltipProtectedPartial": "{{n}} din {{total}} puncte de acces sunt protejate",
   "studio.accessControl.turnOffConfirm": "Dezactivați",
   "studio.accessControl.turnOffDescription": "Toate punctele de acces vor fi accesibile de la orice adresă IP. Configurația va fi păstrată.",
   "studio.accessControl.turnOffTitle": "Dezactivați controlul accesului pe baza adresei IP?",

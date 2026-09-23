@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "일시 중지됨 — {{name}} 정책이 설정되었지만 적용되지 않고 있습니다",
   "studio.accessControl.tooltipPro": "접근 제어는 Professional 및 Team 요금제에서 사용할 수 있습니다.",
   "studio.accessControl.tooltipProtected": "접근 지점 {{total}}개 중 {{n}}개가 보호되고 있습니다",
+  "studio.accessControl.tooltipProtectedPartial": "접근 지점 {{total}}개 중 {{n}}개가 보호되고 있습니다",
   "studio.accessControl.turnOffConfirm": "끄기",
   "studio.accessControl.turnOffDescription": "모든 IP 주소에서 모든 접근 지점에 접근할 수 있게 됩니다. 설정은 유지됩니다.",
   "studio.accessControl.turnOffTitle": "IP 접근 제어를 끄시겠습니까?",

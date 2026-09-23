@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "ຢຸດຊົ່ວຄາວ — {{name}} ຖືກຕັ້ງຄ່າແລ້ວ ແຕ່ຍັງບໍ່ໄດ້ນຳໃຊ້",
   "studio.accessControl.tooltipPro": "ການຄວບຄຸມການເຂົ້າເຖິງມີໃຫ້ໃຊ້ໃນແຜນ Professional ແລະ Team.",
   "studio.accessControl.tooltipProtected": "{{n}} ຈາກ {{total}} ຈຸດເຂົ້າເຖິງໄດ້ຮັບການປົກປ້ອງ",
+  "studio.accessControl.tooltipProtectedPartial": "{{n}} ຈາກ {{total}} ຈຸດເຂົ້າເຖິງໄດ້ຮັບການປົກປ້ອງ",
   "studio.accessControl.turnOffConfirm": "ປິດ",
   "studio.accessControl.turnOffDescription": "ຈຸດເຂົ້າເຖິງທັງໝົດຈະສາມາດເຂົ້າເຖິງໄດ້ຈາກທຸກທີ່ຢູ່ IP. ການຕັ້ງຄ່າຂອງທ່ານຈະຖືກເກັບໄວ້.",
   "studio.accessControl.turnOffTitle": "ປິດການຄວບຄຸມການເຂົ້າເຖິງຕາມ IP ບໍ?",

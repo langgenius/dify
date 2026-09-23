@@ -191,7 +191,7 @@ describe('AccessControlEntry', () => {
       expect(within(getChip()).getByText('PRO')).toBeInTheDocument()
       await user.hover(getChip())
       expect(
-        await screen.findByText('No longer protected — available on Professional and Team plans'),
+        await screen.findByText('No longer protected. Available on Professional and Team plans.'),
       ).toBeInTheDocument()
       await user.unhover(getChip())
       await user.click(getChip())
@@ -252,13 +252,16 @@ describe('AccessControlEntry', () => {
 
   it.each(['professional', 'team'] as const)(
     'renders the unpaid-config Off chip on Cloud %s',
-    (plan) => {
+    async (plan) => {
+      const user = userEvent.setup()
       renderEntry({ plan })
 
       const chip = getChip()
       expect(chip).toBeInTheDocument()
       expect(within(chip).getByText('Off')).toBeInTheDocument()
       expect(within(chip).queryByText('PRO')).not.toBeInTheDocument()
+      await user.hover(chip)
+      expect(await screen.findByText('Not configured')).toBeInTheDocument()
     },
   )
 
@@ -458,7 +461,7 @@ describe('AccessControlEntry', () => {
       },
     })
 
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+    expect(within(getChip()).getByText('On')).toBeInTheDocument()
     await user.click(getChip())
     expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
@@ -534,7 +537,7 @@ describe('AccessControlEntry', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     })
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+    expect(within(getChip()).getByText('On')).toBeInTheDocument()
 
     await user.click(getChip())
     expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
@@ -542,7 +545,7 @@ describe('AccessControlEntry', () => {
     expect(screen.queryByRole('switch', { name: 'Trigger' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+    expect(within(getChip()).getByText('On')).toBeInTheDocument()
   })
 
   it('discards an unsaved edit on Cancel', async () => {
@@ -599,7 +602,7 @@ describe('AccessControlEntry', () => {
 
       await user.click(screen.getByRole('button', { name: 'Close' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      expect(within(getChip()).getByText(configured ? 'ON' : 'Off')).toBeInTheDocument()
+      expect(within(getChip()).getByText(configured ? 'On' : 'Off')).toBeInTheDocument()
 
       await user.click(getChip())
       expect(screen.getByRole('combobox', { name: 'IP Policy' })).toHaveTextContent(
@@ -779,7 +782,7 @@ describe('supported access points and binding permission', () => {
         groups: [createNetworkAccessGroupFixture()],
         binding: createBinding({ access_points: points }),
       })
-      expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+      expect(within(getChip()).getByText('On')).toBeInTheDocument()
       await user.click(getChip())
       expect(
         screen.getByText(`Protecting all ${points.length} access points in service.`),
@@ -928,7 +931,7 @@ describe('supported access points and binding permission', () => {
         expect(
           screen.getByText('Paused — Internal Network is configured but not enforcing'),
         ).toBeInTheDocument()
-        expect(within(getChip()).getByText('Pause')).toBeInTheDocument()
+        expect(within(getChip()).getByText('Paused')).toBeInTheDocument()
         expect(screen.queryByText(/Protecting/)).not.toBeInTheDocument()
         expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
         await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
@@ -1235,7 +1238,7 @@ describe('trusted IP checks before saving', () => {
       group_id: 'group-1',
       access_points: ['webapp', 'service_api', 'mcp'],
     })
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+    expect(within(getChip()).getByText('On')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() =>
@@ -1268,7 +1271,7 @@ describe('trusted IP checks before saving', () => {
       expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
       await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
-      expect(within(getChip()).getByText('Pause')).toBeInTheDocument()
+      expect(within(getChip()).getByText('Paused')).toBeInTheDocument()
       expect(server.writes).toHaveLength(0)
       const checksBeforeSave = server.checks
       await user.click(screen.getByRole('button', { name: 'Save' }))

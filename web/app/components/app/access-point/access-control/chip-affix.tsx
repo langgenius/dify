@@ -58,7 +58,7 @@ export function AccessControlChipAffix({
         </span>
         <span
           className={cn(
-            'system-xs-semibold uppercase',
+            'system-xs-semibold',
             kind === 'paused' ? 'text-text-warning' : 'text-text-tertiary',
           )}
         >

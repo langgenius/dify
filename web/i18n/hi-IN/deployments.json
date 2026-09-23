@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "रुका हुआ — {{name}} कॉन्फ़िगर की गई है, लेकिन लागू नहीं है",
   "studio.accessControl.tooltipPro": "ऐक्सेस कंट्रोल Professional और Team प्लान में उपलब्ध है।",
   "studio.accessControl.tooltipProtected": "{{total}} में से {{n}} एक्सेस पॉइंट सुरक्षित हैं",
+  "studio.accessControl.tooltipProtectedPartial": "{{total}} में से {{n}} एक्सेस पॉइंट सुरक्षित हैं",
   "studio.accessControl.turnOffConfirm": "बंद करें",
   "studio.accessControl.turnOffDescription": "सभी एक्सेस पॉइंट किसी भी IP पते से सुलभ हो जाएँगे। आपका कॉन्फ़िगरेशन सुरक्षित रखा जाएगा।",
   "studio.accessControl.turnOffTitle": "IP एक्सेस कंट्रोल बंद करें?",

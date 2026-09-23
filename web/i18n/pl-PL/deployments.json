@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "Wstrzymane — polityka {{name}} jest skonfigurowana, ale nie jest stosowana",
   "studio.accessControl.tooltipPro": "Kontrola dostępu jest dostępna w planach Professional i Team.",
   "studio.accessControl.tooltipProtected": "Liczba chronionych punktów dostępu: {{n}} z {{total}}",
+  "studio.accessControl.tooltipProtectedPartial": "Liczba chronionych punktów dostępu: {{n}} z {{total}}",
   "studio.accessControl.turnOffConfirm": "Wyłącz",
   "studio.accessControl.turnOffDescription": "Wszystkie punkty dostępu będą dostępne z dowolnego adresu IP. Twoja konfiguracja zostanie zachowana.",
   "studio.accessControl.turnOffTitle": "Wyłączyć kontrolę dostępu według adresu IP?",
