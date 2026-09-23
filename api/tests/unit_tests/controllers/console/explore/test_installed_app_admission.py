@@ -626,7 +626,7 @@ def test_stop_handlers_preserve_mode_specific_commands_and_response(
         command_key = f"workflow:{_TASK_ID}:commands"
         assert set(stop_redis.commands) == {command_key}
         assert [json.loads(command) for command in stop_redis.commands[command_key]] == [
-            {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+            {"command_type": "abort", "reason": "User requested stop"}
         ]
     else:
         assert stop_redis.commands == {}
@@ -662,7 +662,7 @@ def test_stop_handlers_preserve_mode_specific_behavior_when_task_ownership_does_
     if mode == AppMode.ADVANCED_CHAT:
         assert stop_redis.operations == ["graph_command"]
         assert [json.loads(command) for command in stop_redis.commands[f"workflow:{_TASK_ID}:commands"]] == [
-            {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+            {"command_type": "abort", "reason": "User requested stop"}
         ]
     else:
         assert stop_redis.operations == []

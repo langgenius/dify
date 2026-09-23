@@ -28,7 +28,7 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from models.model import App, AppMode
@@ -223,7 +223,7 @@ def _build_resumption_context_state(*, options: list[str], workflow_run_id: str)
         call_depth=0,
         workflow_execution_id=workflow_run_id,
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.variable_pool.add(("start", "options"), options)
     context = WorkflowResumptionContext(
         generate_entity=_WorkflowGenerateEntityWrapper(entity=generate_entity),
@@ -268,8 +268,31 @@ def test_resolve_form_inputs_uses_runtime_select_options(
     assert len(resolved_inputs) == 1
     resolved_input = resolved_inputs[0]
     assert isinstance(resolved_input, SelectInputConfig)
+    assert resolved_input.option_source.type == ValueSourceType.CONSTANT
+    assert resolved_input.option_source.selector == ()
     assert resolved_input.option_source.value == ["approve", "reject"]
     workflow_run_repo.get_workflow_pause.assert_called_once_with(record.workflow_run_id)
+
+
+def test_constant_select_rejects_unlisted_submission(
+    sample_form_record: HumanInputFormRecord,
+    unbound_session_factory: sessionmaker[Session],
+) -> None:
+    configured_input = SelectInputConfig(
+        output_variable_name="decision",
+        option_source=StringListSource(
+            type=ValueSourceType.CONSTANT,
+            value=["approve", "reject"],
+        ),
+    )
+    record = dataclasses.replace(
+        sample_form_record,
+        definition=sample_form_record.definition.model_copy(update={"inputs": [configured_input]}),
+    )
+    service = HumanInputService(unbound_session_factory)
+
+    with pytest.raises(InvalidFormDataError, match="Invalid value for select input 'decision': forged"):
+        service._validate_submission(Form(record), selected_action_id="submit", form_data={"decision": "forged"})
 
 
 def test_submit_form_by_token_calls_repository_and_enqueue(

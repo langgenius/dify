@@ -25,6 +25,7 @@ from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from services.file_service import FileService
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +187,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 # Since we're already in a thread pool, no need for nested threading
                 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 
-                pipeline_generator = PipelineGenerator()
+                pipeline_generator = PipelineGenerator(execution_driver=WorkflowRunAgg.run)
                 # Using protected method intentionally for async execution
                 pipeline_generator._generate(  # type: ignore[attr-defined]
                     session=session,

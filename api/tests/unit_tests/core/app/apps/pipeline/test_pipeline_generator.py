@@ -17,6 +17,7 @@ from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipe
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
+from services.workflow_run_agg import WorkflowRunAgg
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -38,7 +39,7 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine):
-    gen = module.PipelineGenerator()
+    gen = module.PipelineGenerator(execution_driver=WorkflowRunAgg.run)
 
     _patch_sqlite_engine(mocker, sqlite_engine)
     mocker.patch.object(module, "RagPipelineGenerateEntity", FakeRagPipelineGenerateEntity)
@@ -378,7 +379,7 @@ def test_generate_worker_handles_errors(
     )
 
     runner_instance = MagicMock()
-    runner_instance.run.side_effect = ValueError("bad")
+    runner_instance.prepare.side_effect = ValueError("bad")
     mocker.patch.object(module, "PipelineRunner", return_value=runner_instance)
 
     queue_manager = MagicMock()

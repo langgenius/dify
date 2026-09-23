@@ -24,23 +24,18 @@ import pytest
 
 from core.app.workflow.layers import persistence as persistence_mod
 from core.app.workflow.layers.persistence import WorkflowPersistenceLayer
+from graphon.engine_events import GraphRunPausedEvent, NodeRunStartedEvent
 
 
 @pytest.fixture
 def layer() -> WorkflowPersistenceLayer:
-    """Build a layer instance with all repository / trace deps stubbed.
-
-    We bypass ``__init__`` because constructing it for real pulls in the
-    workflow engine's app-generate-entity, repos, and a runtime state — none
-    of which matter for asserting that the publish-hook fires.
-    """
-    instance = WorkflowPersistenceLayer.__new__(WorkflowPersistenceLayer)
-    # Minimum surface the handlers touch:
-    instance._workflow_execution_repository = MagicMock()
-    instance._workflow_node_execution_repository = MagicMock()
-    instance._trace_manager = None
-    instance._workflow_info = MagicMock(workflow_id="wf-1")
-    instance._application_generate_entity = MagicMock()
+    """Use real layer initialization with repository and runtime test doubles."""
+    instance = WorkflowPersistenceLayer(
+        application_generate_entity=MagicMock(),
+        workflow_info=MagicMock(workflow_id="wf-1"),
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+    )
     # Use a SimpleNamespace-like spec so Pydantic-validated callsites (e.g.
     # ``WorkflowNodeExecution.new`` requires real strings) get the right types.
     workflow_execution = MagicMock()
@@ -51,12 +46,10 @@ def layer() -> WorkflowPersistenceLayer:
     workflow_execution.error_message = None
     workflow_execution.exceptions_count = 0
     workflow_execution.finished_at = None
+    instance.set_node_run_indices({"exec-1": 1})
     instance._workflow_execution = workflow_execution
-    instance._node_execution_cache = {}
-    instance._node_snapshots = {}
-    instance._node_sequence = 0
-    # `graph_runtime_state` is a layer-base property; stub it.
-    instance._graph_runtime_state = MagicMock(total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0)
+    # `runtime_state` is a layer-base property; stub it.
+    instance._runtime_state = MagicMock(total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0)
     return instance
 
 
@@ -114,7 +107,7 @@ def test_graph_run_aborted_publishes_workflow_completed(layer, capture_publishes
 def test_graph_run_paused_does_not_publish_completion(layer, capture_publishes):
     """Pause is not a terminal state — the Inspector keeps waiting for either
     resume or a real terminal event."""
-    layer._handle_graph_run_paused(_graph_event(outputs={}))
+    layer.on_event(GraphRunPausedEvent(outputs={}))
     assert capture_publishes["workflow"] == []
     assert capture_publishes["node"] == []
 
@@ -124,15 +117,15 @@ def test_graph_run_paused_does_not_publish_completion(layer, capture_publishes):
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _node_started_event(node_id: str = "agent-1", exec_id: str = "exec-1") -> MagicMock:
-    return MagicMock(
+def _node_started_event(node_id: str = "agent-1", exec_id: str = "exec-1") -> NodeRunStartedEvent:
+    return NodeRunStartedEvent(
         id=exec_id,
         node_id=node_id,
         node_type="agent",
         node_title="Greeter",
         predecessor_node_id=None,
-        in_iteration_id=None,
-        in_loop_id=None,
+        container_id="",
+        node_version="1",
         start_at=datetime(2026, 5, 26, 0, 0, 0),
     )
 

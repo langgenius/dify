@@ -28,6 +28,7 @@ from graphon.model_runtime.entities.message_entities import (
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
 from models.model import AppMode, Conversation, Message, StorageType, UploadFile
+from services.workflow_run_agg import WorkflowRunAgg
 
 # ==============================
 # Dummy Helper Classes
@@ -142,6 +143,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     conversation = _make_conversation()
 
     runner = FunctionCallAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
         conversation=conversation,

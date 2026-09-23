@@ -16,7 +16,9 @@ from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
-from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
+from graphon.graph import Graph
+from graphon.graph.validation import GraphValidationError
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
@@ -25,9 +27,11 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
@@ -246,6 +250,57 @@ class TestDifyGraphInitContext:
         assert result.call_depth == 2
 
 
+@pytest.mark.parametrize(
+    "invalid_kind",
+    [None, "CYCLE", "MISSING_NODE", "INVALID_EDGE", "DUPLICATE_NODE_ID", "DUPLICATE_EDGE_ID"],
+)
+def test_graph_validation_with_dify_node_factory(invalid_kind, monkeypatch):
+    graph_config = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+            *[
+                {
+                    "id": node_id,
+                    "data": {"type": "template-transform", "title": node_id, "template": node_id, "variables": []},
+                }
+                for node_id in ("left", "right")
+            ],
+            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"id": f"{source}-{target}", "source": source, "target": target}
+            for source, target in (("start", "left"), ("start", "right"), ("left", "end"), ("right", "end"))
+        ],
+    }
+    match invalid_kind:
+        case "CYCLE":
+            graph_config["edges"].append({"source": "end", "target": "left"})
+        case "MISSING_NODE":
+            graph_config["edges"][0]["target"] = "missing"
+        case "INVALID_EDGE":
+            graph_config["edges"][0]["sourceHandle"] = None
+        case "DUPLICATE_NODE_ID":
+            graph_config["nodes"].append(graph_config["nodes"][0])
+        case "DUPLICATE_EDGE_ID":
+            graph_config["edges"].append(graph_config["edges"][0])
+
+    factory = node_factory.DifyNodeFactory(
+        build_test_graph_init_params(graph_config=graph_config),
+        RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id="workflow"),
+    )
+    if invalid_kind is None:
+        graph = Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
+        assert set(graph.nodes) == {"start", "left", "right", "end"}
+        assert len(graph.edges) == 4
+    else:
+        create_node = Mock(side_effect=AssertionError("Invalid graphs must fail before node construction"))
+        monkeypatch.setattr(node_factory.DifyNodeFactory, "create_node", create_node)
+        with pytest.raises(GraphValidationError) as error:
+            Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
+        assert [issue.code for issue in error.value.issues] == [invalid_kind]
+        create_node.assert_not_called()
+
+
 class TestDefaultWorkflowCodeExecutor:
     def test_execute_delegates_to_code_executor(self, monkeypatch: pytest.MonkeyPatch):
         executor = node_factory.DefaultWorkflowCodeExecutor()
@@ -346,8 +401,8 @@ class TestDifyNodeFactoryCreateNode:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.graph_init_params = sentinel.graph_init_params
-        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        factory.init_params = sentinel.init_params
+        factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
         factory._dify_context = SimpleNamespace(
             tenant_id="tenant-id",
             app_id="app-id",
@@ -356,6 +411,7 @@ class TestDifyNodeFactoryCreateNode:
             app_type=None,
             created_by=None,
         )
+        factory._execution_driver = None
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits
         factory._jinja2_template_renderer = sentinel.jinja2_template_renderer
@@ -380,6 +436,47 @@ class TestDifyNodeFactoryCreateNode:
     def test_rejects_unknown_node_type(self, factory):
         with pytest.raises(ValueError, match="No class mapping found for node type: missing"):
             factory.create_node({"id": "node-id", "data": {"type": "missing"}})
+
+    def test_validate_node_resolves_schema_without_constructing_node(self, monkeypatch: pytest.MonkeyPatch, factory):
+        constructor = _node_constructor(return_value=sentinel.node)
+        constructor.execution_type = NodeExecutionType.BRANCH
+        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
+
+        execution_type = factory.validate_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
+
+        assert execution_type == NodeExecutionType.BRANCH
+        constructor.validate_node_data.assert_called_once()
+        constructor.assert_not_called()
+
+    def test_validate_node_rejects_invalid_human_input_delivery_config(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory,
+    ):
+        constructor = _node_constructor(return_value=sentinel.node)
+        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
+
+        with pytest.raises(ValueError):
+            factory.validate_node(
+                {
+                    "id": "human-input",
+                    "data": {
+                        "type": BuiltinNodeTypes.HUMAN_INPUT,
+                        "delivery_methods": [
+                            {
+                                "type": "email",
+                                "config": {
+                                    "recipients": {"items": []},
+                                    "subject": 123,
+                                    "body": [],
+                                },
+                            }
+                        ],
+                    },
+                }
+            )
+
+        constructor.assert_not_called()
 
     def test_rejects_missing_class_mapping(self, monkeypatch: pytest.MonkeyPatch, factory):
         monkeypatch.setattr(
@@ -418,8 +515,8 @@ class TestDifyNodeFactoryCreateNode:
         kwargs = matched_node_class.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
         _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
-        assert kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
+        assert kwargs["init_params"] is sentinel.init_params
+        assert kwargs["runtime_state"] is factory.runtime_state
         latest_node_class.assert_not_called()
 
     def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(
@@ -440,8 +537,8 @@ class TestDifyNodeFactoryCreateNode:
         kwargs = latest_node_class.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
         _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
-        assert kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
+        assert kwargs["init_params"] is sentinel.init_params
+        assert kwargs["runtime_state"] is factory.runtime_state
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name"),
@@ -477,8 +574,8 @@ class TestDifyNodeFactoryCreateNode:
         kwargs = constructor.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
         _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=node_type)
-        assert kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
+        assert kwargs["init_params"] is sentinel.init_params
+        assert kwargs["runtime_state"] is factory.runtime_state
 
         if constructor_name == "CodeNode":
             assert kwargs["code_executor"] is sentinel.code_executor
@@ -611,7 +708,7 @@ class TestDifyNodeFactoryCreateNode:
                 "vision": {"enabled": False},
             }
         )
-        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
             value={
                 "provider": "new-provider",
                 "name": "new-model",
@@ -626,7 +723,7 @@ class TestDifyNodeFactoryCreateNode:
         assert result.model.name == "new-model"
         assert result.model.mode == node_data.model.mode
         assert result.model.completion_params == {"temperature": 0.8}
-        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(("env", "for_summarize"))
+        factory.runtime_state.variable_pool.get.assert_called_once_with(("env", "for_summarize"))
 
     def test_resolve_llm_model_reference_keeps_node_parameters_for_legacy_variable(self, factory):
         node_data = LLMNodeData.model_validate(
@@ -645,7 +742,7 @@ class TestDifyNodeFactoryCreateNode:
                 "vision": {"enabled": False},
             }
         )
-        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
             value={"provider": "new-provider", "name": "new-model", "mode": "chat"}
         )
 
@@ -665,7 +762,7 @@ class TestDifyNodeFactoryCreateNode:
                 "vision": {"enabled": False},
             }
         )
-        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
             value={"provider": "provider", "name": "model", "mode": "completion"}
         )
 
@@ -684,7 +781,7 @@ class TestDifyNodeFactoryCreateNode:
                 "vision": {"enabled": False},
             }
         )
-        factory.graph_runtime_state.variable_pool.get.return_value = None
+        factory.runtime_state.variable_pool.get.return_value = None
 
         with pytest.raises(ValueError, match="shared_model.*not found"):
             factory._resolve_llm_model_reference(node_data)
@@ -705,7 +802,7 @@ class TestDifyNodeFactoryCreateNode:
         result = factory._resolve_llm_model_reference(node_data)
 
         assert result is node_data
-        factory.graph_runtime_state.variable_pool.get.assert_not_called()
+        factory.runtime_state.variable_pool.get.assert_not_called()
 
     def test_build_llm_compatible_node_init_kwargs_uses_polling_wrapper_for_polling_llm_node(self, factory):
         node_data = LLMNodeData.model_validate(
@@ -765,7 +862,7 @@ class TestDifyNodeFactoryCreateNode:
         assert type(wrapped) is DifyPreparedLLM
         assert not isinstance(wrapped, LLMPollingCapableProtocol)
 
-    def test_create_node_passes_alias_preserving_llm_data_to_constructor(self, monkeypatch, factory):
+    def test_create_node_passes_canonical_llm_data_to_constructor(self, monkeypatch, factory):
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
         constructor.validate_node_data.side_effect = lambda node_data: LLMNodeData.model_validate(
@@ -798,12 +895,12 @@ class TestDifyNodeFactoryCreateNode:
 
         data = constructor.call_args.kwargs["data"]
         assert isinstance(data, Mapping)
-        assert data["structured_output_enabled"] is True
-        assert "structured_output_switch_on" not in data
+        assert data["structured_output_switch_on"] is True
+        assert "structured_output_enabled" not in data
         assert LLMNodeData.model_validate(data).structured_output_enabled is True
 
     def test_create_node_preserves_structured_output_switch_after_graphon_constructor(self, monkeypatch, factory):
-        factory.graph_init_params = SimpleNamespace(
+        factory.init_params = SimpleNamespace(
             workflow_id="workflow-id",
             graph_config={},
             run_context={},
@@ -848,7 +945,7 @@ class TestDifyNodeFactoryCreateNode:
         assert node.node_data.structured_output_enabled is True
 
     def test_create_node_uses_dify_llm_node_for_persisted_version_one(self, monkeypatch, factory):
-        factory.graph_init_params = SimpleNamespace(
+        factory.init_params = SimpleNamespace(
             workflow_id="workflow-id",
             graph_config={},
             run_context={},
@@ -963,8 +1060,8 @@ class TestDifyNodeFactoryCreateNode:
         constructor_kwargs = constructor.call_args.kwargs
         assert constructor_kwargs["node_id"] == "node-id"
         _assert_constructor_node_data(constructor_kwargs["data"], node_id="node-id", node_type=node_type)
-        assert constructor_kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert constructor_kwargs["graph_runtime_state"] is factory.graph_runtime_state
+        assert constructor_kwargs["init_params"] is sentinel.init_params
+        assert constructor_kwargs["runtime_state"] is factory.runtime_state
         assert constructor_kwargs["credentials_provider"] is sentinel.credentials_provider
         assert constructor_kwargs["model_factory"] is sentinel.model_factory
         assert constructor_kwargs["model_instance"] is sentinel.model_instance
@@ -1014,7 +1111,7 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
         return factory
 
     def test_retriever_attachment_loader_is_typed_for_llm_node_data_only(self):
@@ -1024,7 +1121,7 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
 
     def test_build_retriever_attachment_loader_uses_llm_context_selector(self, factory):
         factory._file_reference_factory = sentinel.file_reference_factory
-        factory.graph_runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
             value=[
                 {
                     "metadata": {
@@ -1049,16 +1146,16 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
 
         assert loader._segment_access_checker is not None
         assert loader._segment_access_checker("allowed-segment") is True
-        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(["knowledge-node", "result"])
+        factory.runtime_state.variable_pool.get.assert_called_once_with(["knowledge-node", "result"])
 
     def test_checker_rejects_missing_context_selector_without_reading_variable_pool(self, factory):
         checker = factory._build_retriever_segment_access_checker(None)
 
         assert checker("segment-id") is False
-        factory.graph_runtime_state.variable_pool.get.assert_not_called()
+        factory.runtime_state.variable_pool.get.assert_not_called()
 
     def test_checker_rejects_non_knowledge_context_items(self, factory):
-        factory.graph_runtime_state.variable_pool.get.return_value = ArrayObjectSegment.model_construct(
+        factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment.model_construct(
             value=[
                 "plain-text",
                 {"metadata": "not-a-mapping"},
@@ -1070,14 +1167,14 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
         assert checker("segment-id") is False
 
     def test_checker_rejects_non_array_context_value(self, factory):
-        factory.graph_runtime_state.variable_pool.get.return_value = StringSegment(value="not knowledge context")
+        factory.runtime_state.variable_pool.get.return_value = StringSegment(value="not knowledge context")
 
         checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
 
         assert checker("segment-id") is False
 
     def test_checker_allows_only_segments_from_selected_knowledge_context(self, factory):
-        factory.graph_runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
             value=[
                 {
                     "metadata": {
@@ -1092,7 +1189,7 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
 
         assert checker("allowed-segment") is True
         assert checker("other-segment") is False
-        factory.graph_runtime_state.variable_pool.get.assert_any_call(["knowledge-node", "result"])
+        factory.runtime_state.variable_pool.get.assert_any_call(["knowledge-node", "result"])
 
 
 class TestDifyNodeFactoryModelInstance:
@@ -1145,7 +1242,7 @@ class TestDifyNodeFactoryMemory:
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory._dify_context = SimpleNamespace(app_id="app-id")
-        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
         return factory
 
     def test_returns_none_when_memory_is_not_configured(self, factory):
@@ -1155,11 +1252,11 @@ class TestDifyNodeFactoryMemory:
         )
 
         assert result is None
-        factory.graph_runtime_state.variable_pool.get.assert_not_called()
+        factory.runtime_state.variable_pool.get.assert_not_called()
 
     def test_uses_string_segment_conversation_id(self, monkeypatch: pytest.MonkeyPatch, factory):
         memory_config = sentinel.memory_config
-        factory.graph_runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
+        factory.runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
         fetch_memory = MagicMock(return_value=sentinel.memory)
         monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
 
@@ -1169,7 +1266,7 @@ class TestDifyNodeFactoryMemory:
         )
 
         assert result is sentinel.memory
-        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
+        factory.runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
         fetch_memory.assert_called_once_with(
             conversation_id="conversation-id",
             app_id="app-id",
@@ -1179,7 +1276,7 @@ class TestDifyNodeFactoryMemory:
 
     def test_ignores_non_string_segment_conversation_ids(self, monkeypatch: pytest.MonkeyPatch, factory):
         memory_config = sentinel.memory_config
-        factory.graph_runtime_state.variable_pool.get.return_value = sentinel.segment
+        factory.runtime_state.variable_pool.get.return_value = sentinel.segment
         fetch_memory = MagicMock(return_value=sentinel.memory)
         monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
 

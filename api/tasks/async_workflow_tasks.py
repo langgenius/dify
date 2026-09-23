@@ -23,7 +23,7 @@ from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
@@ -37,6 +37,7 @@ from services.workflow.entities import (
     WorkflowResumeTaskData,
     WorkflowTaskData,
 )
+from services.workflow_run_agg import WorkflowRunAgg
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
@@ -145,7 +146,7 @@ def _execute_workflow_common(
             user = _get_user(session, trigger_log)
 
             # Execute workflow using WorkflowAppGenerator
-            generator = WorkflowAppGenerator()
+            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
 
             # Adapt trigger inputs and files for the generator.
             args = _build_generator_args(trigger_data)
@@ -224,7 +225,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         )
         return
 
-    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    graph_runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     with session_factory() as session:
@@ -258,7 +259,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         state_owner_user_id=workflow.created_by,
     )
 
-    generator = WorkflowAppGenerator()
+    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
     start_time = datetime.now(UTC)
     graph_engine_layers = []
     trigger_log = _query_trigger_log_info(session_factory, task_data.workflow_run_id)

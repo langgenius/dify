@@ -41,7 +41,7 @@ def _mock_download(monkeypatch: pytest.MonkeyPatch, content: bytes | None = None
 def _roster_archive() -> io.BytesIO:
     source = io.BytesIO()
     with zipfile.ZipFile(source, "w") as archive:
-        archive.writestr("manifest.yaml", "format: dify.roster-agent")
+        archive.writestr(zipfile.ZipInfo("manifest.yaml"), "format: dify.roster-agent")
     source.seek(0)
     return source
 

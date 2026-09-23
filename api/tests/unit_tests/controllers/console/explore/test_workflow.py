@@ -425,7 +425,7 @@ def test_workflow_stop_sets_both_signals_in_order_without_reading_task_ownership
     assert stop_redis.expirations[_STOP_KEY] == 600
     assert set(stop_redis.commands) == {_COMMAND_KEY}
     assert [json.loads(command) for command in stop_redis.commands[_COMMAND_KEY]] == [
-        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+        {"command_type": "abort", "reason": "User requested stop"}
     ]
     assert stop_redis.expirations[_COMMAND_KEY] == 3600
     assert runtime.calls == []

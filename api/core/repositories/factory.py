@@ -43,6 +43,8 @@ class WorkflowNodeExecutionRepository(Protocol):
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]: ...
 
 

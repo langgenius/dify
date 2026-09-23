@@ -8,7 +8,7 @@ from graphon.graph import Graph
 from graphon.nodes.base.entities import VariableSelector
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.template_rendering import TemplateRenderError
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -16,8 +16,8 @@ from tests.workflow_test_utils import build_test_graph_init_params
 def _build_template_transform_node(
     *,
     node_data,
-    graph_init_params,
-    graph_runtime_state,
+    init_params,
+    runtime_state,
     node_id: str = "test_node",
     **kwargs,
 ) -> TemplateTransformNode:
@@ -29,8 +29,8 @@ def _build_template_transform_node(
     return TemplateTransformNode(
         node_id=node_id,
         data=typed_node_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
         **kwargs,
     )
 
@@ -40,8 +40,8 @@ class TestTemplateTransformNode:
 
     @pytest.fixture
     def mock_graph_runtime_state(self):
-        """Create a mock GraphRuntimeState with variable pool."""
-        mock_state = MagicMock(spec=GraphRuntimeState)
+        """Create a mock RuntimeState with variable pool."""
+        mock_state = MagicMock(spec=RuntimeState)
         mock_variable_pool = MagicMock()
         mock_state.variable_pool = mock_variable_pool
         return mock_state
@@ -53,7 +53,7 @@ class TestTemplateTransformNode:
 
     @pytest.fixture
     def graph_init_params(self):
-        """Create a mock GraphInitParams."""
+        """Create a mock InitParams."""
         return build_test_graph_init_params(
             workflow_id="test_workflow",
             graph_config={},
@@ -91,8 +91,8 @@ class TestTemplateTransformNode:
         with pytest.raises(ValueError, match="max_output_length must be a positive integer"):
             _build_template_transform_node(
                 node_data=basic_node_data,
-                graph_init_params=graph_init_params,
-                graph_runtime_state=mock_graph_runtime_state,
+                init_params=graph_init_params,
+                runtime_state=mock_graph_runtime_state,
                 jinja2_template_renderer=mock_renderer,
                 max_output_length=max_output_length,
             )
@@ -117,8 +117,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=basic_node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -144,8 +144,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -163,8 +163,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=basic_node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -182,8 +182,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=basic_node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
             max_output_length=10,
         )
@@ -203,8 +203,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=basic_node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
             max_output_length=10,
         )
@@ -244,8 +244,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -350,8 +350,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -388,8 +388,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -416,8 +416,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -445,8 +445,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
