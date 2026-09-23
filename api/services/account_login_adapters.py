@@ -18,7 +18,6 @@ from libs.helper import RateLimiter, TokenManager
 from libs.key_providers import generate_key_pair
 from libs.passport import PassportService
 from libs.token import generate_csrf_token
-from models import TenantCreditPool
 from models.account import (
     Account,
     AccountStatus,
@@ -30,7 +29,6 @@ from models.account import (
     TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
-from models.enums import ProviderQuotaType
 from services import account_errors
 from services.account_activation_service import AccountActivationRepository, InvitationTokenStore
 from services.account_email import normalize_email
@@ -60,6 +58,7 @@ from services.entities.account_login_entities import (
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.system_feature_service import SystemFeatureService
+from services.tenant_model_billing_service import initialize_tenant_model_billing
 from services.turnstile_service import (
     EMAIL_CODE_SEND_ACTION,
     EMAIL_CODE_VERIFY_ACTION,
@@ -412,14 +411,7 @@ class SQLAlchemyConsoleAuthProvisioningGateway(AccountProvisioningGateway, Works
                     include_plugins=[],
                 )
             )
-        session.add(
-            TenantCreditPool(
-                tenant_id=tenant.id,
-                quota_limit=dify_config.HOSTED_POOL_CREDITS,
-                quota_used=0,
-                pool_type=ProviderQuotaType.TRIAL,
-            )
-        )
+        initialize_tenant_model_billing(tenant.id, session=session)
         return tenant
 
     def _bind_owner_rbac_role(self, tenant: Tenant, account_id: str, session: Session) -> None:

@@ -10,9 +10,21 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models import TenantCreditPool
+from models.account import (
+    Account,
+    AccountStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantPluginAutoUpgradeStrategy,
+)
+from models.enums import ProviderQuotaType
+from models.model_billing import TenantModelBillingProfile
+from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from services import account_errors
 from services import account_login_adapters as adapters
 from services.email_code_login_challenge import (
@@ -293,6 +305,162 @@ def test_provisioning_gateway_rejects_equivalent_normalized_email(
             timezone="UTC",
             ip_address="127.0.0.1",
         )
+
+
+def _provision_owner_workspace(
+    gateway: adapters.SQLAlchemyConsoleAuthProvisioningGateway, *, create_account: bool
+) -> str:
+    if create_account:
+        return gateway.create_with_owner_workspace(
+            email="new-user@example.com",
+            name="New User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
+    gateway.create_owner_workspace("account-1")
+    return "account-1"
+
+
+@pytest.mark.parametrize("create_account", [True, False], ids=["signup", "existing-account"])
+@pytest.mark.parametrize("tokener_enabled", [True, False], ids=["tokener", "legacy"])
+@pytest.mark.parametrize("bootstrap_enabled", [True, False], ids=["worker-enabled", "worker-paused"])
+def test_workspace_provisioning_initializes_billing_before_emitting_created_event(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    create_account: bool,
+    tokener_enabled: bool,
+    bootstrap_enabled: bool,
+) -> None:
+    config_overrides(
+        TOKENER_NEW_TENANT_COHORT_ENABLED=tokener_enabled,
+        TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=bootstrap_enabled,
+        TOKENER_PLUGIN_UNIQUE_IDENTIFIER="  langgenius/tokener:0.1.2@checksum  ",
+        HOSTED_POOL_CREDITS=321,
+        RBAC_ENABLED=False,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+    )
+    if not create_account:
+        _persist_account(sqlite_session)
+    gateway = adapters.SQLAlchemyConsoleAuthProvisioningGateway(session_factory=sqlite_session_factory)
+    monkeypatch.setattr(adapters, "generate_key_pair", lambda _tenant_id: "public-key")
+    clean_billing_cache = MagicMock()
+    monkeypatch.setattr(adapters.BillingService, "clean_billing_info_cache", clean_billing_cache)
+    emitted_tenants: list[str] = []
+
+    def assert_committed_billing(tenant: Tenant) -> None:
+        # A fresh connection must see the entire aggregate before async bootstrap can run.
+        with sqlite_session_factory() as session:
+            assert session.get(Tenant, tenant.id) is not None
+            membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == tenant.id))
+            assert membership is not None
+            assert session.get(Account, membership.account_id) is not None
+            profile = session.get(TenantModelBillingProfile, tenant.id)
+            integration = session.scalar(
+                select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant.id)
+            )
+            pools = session.scalars(select(TenantCreditPool).where(TenantCreditPool.tenant_id == tenant.id)).all()
+            if tokener_enabled:
+                assert profile is not None
+                assert profile.model_billing_source == "tokener"
+                assert integration is not None
+                assert integration.status == TenantTokenerIntegrationStatus.PENDING
+                assert integration.plugin_unique_identifier == "langgenius/tokener:0.1.2@checksum"
+                assert integration.attempt_count == 0
+                assert pools == []
+            else:
+                assert profile is None
+                assert integration is None
+                assert len(pools) == 1
+                assert pools[0].pool_type == ProviderQuotaType.TRIAL
+                assert pools[0].quota_limit == 321
+                assert pools[0].quota_used == 0
+        emitted_tenants.append(tenant.id)
+
+    monkeypatch.setattr(adapters.tenant_was_created, "send", assert_committed_billing)
+
+    _provision_owner_workspace(gateway, create_account=create_account)
+
+    assert len(emitted_tenants) == 1
+    clean_billing_cache.assert_called_once_with(emitted_tenants[0])
+
+
+@pytest.mark.parametrize("create_account", [True, False], ids=["signup", "existing-account"])
+@pytest.mark.parametrize("tokener_enabled", [True, False], ids=["tokener", "legacy"])
+def test_workspace_provisioning_rolls_back_billing_with_workspace_on_failure(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    create_account: bool,
+    tokener_enabled: bool,
+) -> None:
+    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=tokener_enabled)
+    if not create_account:
+        _persist_account(sqlite_session)
+    gateway = adapters.SQLAlchemyConsoleAuthProvisioningGateway(session_factory=sqlite_session_factory)
+    monkeypatch.setattr(adapters, "generate_key_pair", lambda _tenant_id: "public-key")
+    after_created = MagicMock()
+    monkeypatch.setattr(gateway, "_after_workspace_created", after_created)
+
+    def fail_after_flush(_tenant: Tenant, _account_id: str, session: Session) -> None:
+        session.flush()
+        raise RuntimeError("owner role assignment failed")
+
+    monkeypatch.setattr(gateway, "_bind_owner_rbac_role", fail_after_flush)
+
+    with pytest.raises(RuntimeError, match="owner role assignment failed"):
+        _provision_owner_workspace(gateway, create_account=create_account)
+
+    with sqlite_session_factory() as session:
+        assert session.scalars(select(Tenant)).all() == []
+        assert session.scalars(select(TenantAccountJoin)).all() == []
+        assert session.scalars(select(TenantPluginAutoUpgradeStrategy)).all() == []
+        assert session.scalars(select(TenantModelBillingProfile)).all() == []
+        assert session.scalars(select(TenantTokenerIntegration)).all() == []
+        assert session.scalars(select(TenantCreditPool)).all() == []
+        if create_account:
+            assert session.scalars(select(Account)).all() == []
+        else:
+            assert session.get(Account, "account-1") is not None
+    after_created.assert_not_called()
+
+
+def test_workspace_provisioning_preserves_existing_legacy_workspace(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=True)
+    account = _persist_account(sqlite_session)
+    tenant = Tenant(name="Existing legacy workspace")
+    pool = TenantCreditPool(tenant_id=tenant.id, quota_limit=200, quota_used=37)
+    sqlite_session.add_all(
+        [
+            tenant,
+            pool,
+            TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER),
+        ]
+    )
+    sqlite_session.commit()
+    gateway = adapters.SQLAlchemyConsoleAuthProvisioningGateway(session_factory=sqlite_session_factory)
+    after_created = MagicMock()
+    monkeypatch.setattr(gateway, "_after_workspace_created", after_created)
+
+    gateway.create_owner_workspace(account.id)
+
+    with sqlite_session_factory() as session:
+        assert [existing.id for existing in session.scalars(select(Tenant)).all()] == [tenant.id]
+        assert session.get(TenantModelBillingProfile, tenant.id) is None
+        assert session.scalars(select(TenantTokenerIntegration)).all() == []
+        existing_pool = session.get(TenantCreditPool, pool.id)
+        assert existing_pool is not None
+        assert existing_pool.quota_limit == 200
+        assert existing_pool.quota_used == 37
+    after_created.assert_not_called()
 
 
 def test_email_code_gateway_sends_and_maps_shared_challenge_status(monkeypatch: pytest.MonkeyPatch) -> None:

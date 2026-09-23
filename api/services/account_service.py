@@ -47,8 +47,6 @@ from models.account import (
 )
 from models.dataset import Dataset
 from models.model import App, DifySetup
-from models.model_billing import TenantModelBillingProfile
-from models.tokener import TenantTokenerIntegration
 from services.account_email import normalize_email
 from services.account_forgot_password_service import (
     FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
@@ -84,6 +82,7 @@ from services.errors.workspace import WorkSpaceNotAllowedCreateError, Workspaces
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.system_feature_service import SystemFeatureService
 from services.telemetry_service import CommunityTelemetryService
+from services.tenant_model_billing_service import initialize_tenant_model_billing
 from tasks.mail_change_mail_task import (
     send_change_mail_completed_notification_task,
     send_change_mail_task,
@@ -1034,22 +1033,9 @@ class TenantService:
 
             raise NotAllowedCreateWorkspace()
         tenant = Tenant(name=name)
-        uses_tokener_billing = dify_config.TOKENER_NEW_TENANT_COHORT_ENABLED
 
         session.add(tenant)
-        if uses_tokener_billing:
-            session.add_all(
-                [
-                    TenantModelBillingProfile(
-                        tenant_id=tenant.id,
-                        model_billing_source="tokener",
-                    ),
-                    TenantTokenerIntegration(
-                        tenant_id=tenant.id,
-                        plugin_unique_identifier=dify_config.TOKENER_PLUGIN_UNIQUE_IDENTIFIER.strip() or None,
-                    ),
-                ]
-            )
+        initialize_tenant_model_billing(tenant.id, session=session)
         session.commit()
 
         for category in TenantPluginAutoUpgradeCategory:
@@ -1067,11 +1053,6 @@ class TenantService:
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
         session.commit()
-
-        if not uses_tokener_billing:
-            from services.credit_pool_service import CreditPoolService
-
-            CreditPoolService.create_default_pool(tenant.id, session=session)
 
         return tenant
 
