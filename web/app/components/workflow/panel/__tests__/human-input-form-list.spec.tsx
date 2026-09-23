@@ -129,6 +129,44 @@ describe('HumanInputFormList', () => {
     })
   })
 
+  it('submits same-Tool forms with separate tokens and preserves the remaining draft', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const first = createFormData({ node_id: 'tool', node_title: 'First approval' })
+    const second = createFormData({
+      node_id: 'tool',
+      form_id: 'form-2',
+      form_token: 'token-2',
+      node_title: 'Second approval',
+    })
+    const { rerender } = render(
+      <HumanInputFormList
+        humanInputFormDataList={[first, second]}
+        onHumanInputFormSubmit={onSubmit}
+      />,
+    )
+    const inputs = screen.getAllByRole('textbox')
+    await user.clear(inputs[0]!)
+    await user.type(inputs[0]!, 'first decision')
+    await user.clear(inputs[1]!)
+    await user.type(inputs[1]!, 'second decision')
+    await user.click(screen.getAllByRole('button', { name: 'Approve' })[0]!)
+    expect(onSubmit).toHaveBeenCalledWith('token-1', {
+      inputs: { reason: 'first decision' },
+      action: 'approve',
+    })
+
+    rerender(
+      <HumanInputFormList humanInputFormDataList={[second]} onHumanInputFormSubmit={onSubmit} />,
+    )
+    expect(screen.getByRole('textbox')).toHaveValue('second decision')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onSubmit).toHaveBeenLastCalledWith('token-2', {
+      inputs: { reason: 'second decision' },
+      action: 'approve',
+    })
+  })
+
   it('should omit delivery tips when the node has no enabled delivery methods', () => {
     mockNodes.push({
       id: 'human-node-1',
