@@ -59,15 +59,32 @@ function isEmptyNamespace(sourceCode, node) {
   return false
 }
 
+function onlyReadsI18n(node) {
+  while (node.parent && unwrap(node.parent) === unwrap(node)) node = node.parent
+  const parent = node.parent
+  const isI18nProperty = (property, computed) =>
+    property.type === 'Literal' ? property.value === 'i18n' : !computed && property.name === 'i18n'
+  if (parent.type === 'MemberExpression' && parent.object === node)
+    return isI18nProperty(parent.property, parent.computed)
+  const pattern =
+    parent.type === 'VariableDeclarator' && parent.init === node
+      ? parent.id
+      : parent.type === 'AssignmentExpression' && parent.right === node
+        ? parent.left
+        : undefined
+  if (pattern?.type !== 'ObjectPattern' || pattern.properties.length !== 1) return false
+  const property = pattern.properties[0]
+  return property.type === 'Property' && isI18nProperty(property.key, property.computed)
+}
+
 /** @type {import('eslint').Rule.RuleModule} */
 export default {
   meta: {
     type: 'problem',
-    docs: { description: 'Require an explicit, non-empty namespace in translation hooks.' },
+    docs: { description: 'Require an explicit namespace unless only the i18n instance is read.' },
     schema: [],
     messages: {
-      emptyNamespace:
-        'Declare the namespaces used by useTranslation. Use useLocale when only the current locale is needed.',
+      emptyNamespace: 'Declare the namespaces used by useTranslation when requesting translations.',
     },
   },
   create(context) {
@@ -86,7 +103,8 @@ export default {
         if (!importedNames.has(identifier.name)) return
         if (
           isTranslationHook(context.sourceCode, node.callee) &&
-          isEmptyNamespace(context.sourceCode, node.arguments[0])
+          isEmptyNamespace(context.sourceCode, node.arguments[0]) &&
+          !onlyReadsI18n(node)
         )
           context.report({ node, messageId: 'emptyNamespace' })
       },

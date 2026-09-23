@@ -89,3 +89,23 @@ it('allows explicit and dynamic namespaces without reporting unrelated or shadow
   ].join('\n')
   expect(lintFixture(source, { 'dify/require-i18n-namespace': 'error' })).toEqual([])
 })
+
+it('allows reading only i18n but still requires namespaces when t or the rest is extracted', () => {
+  const source = [
+    "import { useTranslation } from 'react-i18next'",
+    'const { i18n } = useTranslation(); const { "i18n": quoted } = useTranslation()',
+    'const { i18n: instance } = useTranslation()',
+    "const { ['i18n']: computed } = useTranslation()",
+    'const language = useTranslation().i18n.language',
+    "const language2 = useTranslation()['i18n'].language",
+    'const { i18n: wrapped } = (useTranslation() as any)!',
+    'let assigned; ({ i18n: assigned } = useTranslation())',
+    'const { t } = useTranslation()',
+    'const { i18n: mixed, t: translate } = useTranslation()',
+    'const { i18n: withRest, ...rest } = useTranslation()',
+    'const translate2 = useTranslation().t',
+    'const { t: i18nAlias } = useTranslation()',
+  ].join('\n')
+  const diagnostics = lintFixture(source, { 'dify/require-i18n-namespace': 'error' })
+  expect(diagnostics.map(({ labels }) => labels[0].span.line)).toEqual([9, 10, 11, 12, 13])
+})
