@@ -33,8 +33,6 @@
   "sidebar.action.pin": "고정",
   "sidebar.action.rename": "이름 변경",
   "sidebar.action.unpin": "고정 해제",
-  "sidebar.delete.content": "이 앱을 삭제해도 괜찮습니까?",
-  "sidebar.delete.title": "앱 삭제",
   "sidebar.webApps": "웹 앱",
   "tryApp.category": "카테고리",
   "tryApp.createFromSampleApp": "이 샘플 앱에서 만들기",

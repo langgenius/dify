@@ -33,8 +33,6 @@
   "sidebar.action.pin": "เข็มกลัด",
   "sidebar.action.rename": "ตั้งชื่อใหม่",
   "sidebar.action.unpin": "ปลดหมุด",
-  "sidebar.delete.content": "คุณแน่ใจหรือไม่ว่าต้องการลบแอปนี้?",
-  "sidebar.delete.title": "ลบแอป",
   "sidebar.webApps": "แอปเว็บ",
   "tryApp.category": "หมวดหมู่",
   "tryApp.createFromSampleApp": "สร้างจากแอปตัวอย่างนี้",

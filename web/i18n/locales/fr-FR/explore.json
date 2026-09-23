@@ -33,8 +33,6 @@
   "sidebar.action.pin": "Épingle",
   "sidebar.action.rename": "Renommer",
   "sidebar.action.unpin": "Détacher",
-  "sidebar.delete.content": "Êtes-vous sûr de vouloir supprimer cette application ?",
-  "sidebar.delete.title": "Supprimer l'application",
   "sidebar.webApps": "Applications web",
   "tryApp.category": "Catégorie",
   "tryApp.createFromSampleApp": "Créer à partir de cette application exemple",
