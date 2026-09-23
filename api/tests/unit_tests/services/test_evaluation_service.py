@@ -56,22 +56,22 @@ def test_generated_template_uses_workflow_variable_names() -> None:
     assert [cell.value for cell in worksheet[1]] == ["index", "customer_question"]
 
 
-def test_parse_csv_dataset_preserves_node_specific_references() -> None:
+def test_parse_csv_dataset_preserves_node_id_scoped_references() -> None:
     items = EvaluationService._parse_dataset(
-        b"index,query,Judge: final : expected_output\n7,hello,world\n",
+        b"index,query,llm-node-7 : expected_output\n7,hello,world\n",
         "dataset.csv",
     )
 
     assert len(items) == 1
     assert items[0].index == 7
     assert items[0].inputs == {"query": "hello"}
-    assert items[0].expected_outputs == {"Judge: final": "world"}
+    assert items[0].expected_outputs == {"llm-node-7": "world"}
 
 
 def test_parse_dataset_preserves_node_specific_expected_tool_calls() -> None:
     items = EvaluationService._rows_to_dataset_items(
         [
-            ["index", "query", "Research Agent : expected_tool_calls"],
+            ["index", "query", "agent-1 : expected_tool_calls"],
             [
                 7,
                 "weather in Paris",
@@ -82,11 +82,11 @@ def test_parse_dataset_preserves_node_specific_expected_tool_calls() -> None:
 
     assert items[0].inputs == {"query": "weather in Paris"}
     assert items[0].expected_tool_calls_by_node == {
-        "Research Agent": [AgentToolCall(name="weather", arguments={"city": "Paris"})]
+        "agent-1": [AgentToolCall(name="weather", arguments={"city": "Paris"})]
     }
     assert items[0].iter_expected_output_columns() == [
         (
-            "Research Agent : expected_tool_calls",
+            "agent-1 : expected_tool_calls",
             '[{"arguments": {"city": "Paris"}, "name": "weather"}]',
         )
     ]
@@ -96,7 +96,7 @@ def test_parse_dataset_rejects_invalid_expected_tool_calls() -> None:
     with pytest.raises(EvaluationDatasetInvalidError, match="JSON array of tool calls.*7"):
         EvaluationService._rows_to_dataset_items(
             [
-                ["index", "query", "Agent : expected_tool_calls"],
+                ["index", "query", "agent-1 : expected_tool_calls"],
                 [7, "hello", '{"name": "weather"}'],
             ]
         )
@@ -163,6 +163,45 @@ def test_dataset_validation_allows_reference_free_metrics() -> None:
     EvaluationService._validate_dataset_expected_outputs(items, metrics)
 
 
+def test_dataset_validation_resolves_duplicate_titles_by_node_id() -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.return_value = True
+    metrics = [
+        DefaultMetric(
+            metric="answer_correctness",
+            node_info_list=[
+                NodeInfo(node_id="llm-1", type="llm", title="Answer"),
+                NodeInfo(node_id="llm-2", type="llm", title="Answer"),
+            ],
+        )
+    ]
+
+    EvaluationService._validate_dataset_expected_outputs(
+        [
+            EvaluationDatasetInput(
+                index=7,
+                inputs={"query": "hello"},
+                expected_outputs={"llm-1": "first", "llm-2": "second"},
+            )
+        ],
+        metrics,
+        evaluation_instance=evaluation_instance,
+    )
+
+    with pytest.raises(EvaluationDatasetInvalidError, match="expected_output.*7"):
+        EvaluationService._validate_dataset_expected_outputs(
+            [
+                EvaluationDatasetInput(
+                    index=7,
+                    inputs={"query": "hello"},
+                    expected_outputs={"llm-1": "first"},
+                )
+            ],
+            metrics,
+            evaluation_instance=evaluation_instance,
+        )
+
+
 def test_dataset_validation_requires_reference_tool_calls_for_ragas_agent_metric() -> None:
     evaluation_instance = MagicMock()
     evaluation_instance.metric_requires_expected_output.return_value = False
@@ -181,14 +220,27 @@ def test_dataset_validation_requires_reference_tool_calls_for_ragas_agent_metric
             evaluation_instance=evaluation_instance,
         )
 
+    with pytest.raises(EvaluationDatasetInvalidError, match="expected_tool_calls.*7"):
+        EvaluationService._validate_dataset_expected_outputs(
+            [
+                EvaluationDatasetInput(
+                    index=7,
+                    inputs={"query": "hello"},
+                    expected_tool_calls_by_node={
+                        "agent-2": [AgentToolCall(name="search", arguments={"query": "hello"})]
+                    },
+                )
+            ],
+            metrics,
+            evaluation_instance=evaluation_instance,
+        )
+
     EvaluationService._validate_dataset_expected_outputs(
         [
             EvaluationDatasetInput(
                 index=7,
                 inputs={"query": "hello"},
-                expected_tool_calls_by_node={
-                    "Research Agent": [AgentToolCall(name="search", arguments={"query": "hello"})]
-                },
+                expected_tool_calls_by_node={"agent-1": [AgentToolCall(name="search", arguments={"query": "hello"})]},
             )
         ],
         metrics,
@@ -204,7 +256,10 @@ def test_expected_tool_call_columns_are_generated_for_reference_based_agent_metr
         [
             DefaultMetric(
                 metric="tool_call_accuracy",
-                node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
+                node_info_list=[
+                    NodeInfo(node_id="agent-1", type="agent", title="Research Agent"),
+                    NodeInfo(node_id="agent-2", type="agent", title="Research Agent"),
+                ],
             ),
             DefaultMetric(
                 metric="argument_correctness",
@@ -214,7 +269,33 @@ def test_expected_tool_call_columns_are_generated_for_reference_based_agent_metr
         evaluation_instance=evaluation_instance,
     )
 
-    assert columns == [{"name": "Research Agent : expected_tool_calls", "type": "string"}]
+    assert columns == [
+        {"name": "agent-1 : expected_tool_calls", "type": "string"},
+        {"name": "agent-2 : expected_tool_calls", "type": "string"},
+    ]
+
+
+def test_expected_output_columns_use_node_ids_when_titles_are_duplicated() -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.return_value = True
+
+    columns = EvaluationService._get_expected_output_columns(
+        [
+            DefaultMetric(
+                metric="answer_correctness",
+                node_info_list=[
+                    NodeInfo(node_id="llm-1", type="llm", title="Answer"),
+                    NodeInfo(node_id="llm-2", type="llm", title="Answer"),
+                ],
+            )
+        ],
+        evaluation_instance=evaluation_instance,
+    )
+
+    assert columns == [
+        {"name": "llm-1 : expected_output", "type": "string"},
+        {"name": "llm-2 : expected_output", "type": "string"},
+    ]
 
 
 def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPatch) -> None:
