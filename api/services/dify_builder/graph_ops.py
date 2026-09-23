@@ -149,6 +149,24 @@ def _resolve_path(container: dict[str, Any], path: str) -> tuple[Any, str | int]
     return cursor, last
 
 
+def value_at_path(data: dict[str, Any], path: str) -> tuple[bool, Any]:
+    """``(True, value)`` for the value ``path`` addresses inside a node's
+    ``data``, or ``(False, None)`` when nothing is there.
+
+    The read half of ``apply_set_node_config``, through the same
+    ``_resolve_path`` walk, so a caller comparing what a path held BEFORE a
+    write against what it holds after cannot disagree with the write about
+    which slot the path names. ``_resolve_path`` returns the parent for a final
+    segment that does not exist yet -- that is the key being created -- so the
+    read is attempted and its absence reported rather than raised.
+    """
+    try:
+        parent, key = _resolve_path(data, path)
+        return True, parent[key]
+    except (ValueError, KeyError, IndexError, TypeError):
+        return False, None
+
+
 def apply_set_node_config(graph: Graph, node_id: str, path: str, value: Any) -> tuple[Graph, list[str]]:
     """Set the value at ``path`` inside ``node["data"]`` for the node whose
     ``id == node_id``. ``path`` is dot-separated (``"code"``,
