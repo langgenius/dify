@@ -3,8 +3,8 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zGetTrialAppsByAppIdAgentPreviewPath,
-  zGetTrialAppsByAppIdAgentPreviewResponse,
+  zGetTrialAppsByAppIdAgentComposerPath,
+  zGetTrialAppsByAppIdAgentComposerResponse,
   zGetTrialAppsByAppIdDatasetsPath,
   zGetTrialAppsByAppIdDatasetsQuery,
   zGetTrialAppsByAppIdDatasetsResponse,
@@ -51,14 +51,14 @@ export const get = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getTrialAppsByAppIdAgentPreview',
-    path: '/trial-apps/{app_id}/agent-preview',
+    operationId: 'getTrialAppsByAppIdAgentComposer',
+    path: '/trial-apps/{app_id}/agent-composer',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetTrialAppsByAppIdAgentPreviewPath }))
-  .output(zGetTrialAppsByAppIdAgentPreviewResponse)
+  .input(z.object({ params: zGetTrialAppsByAppIdAgentComposerPath }))
+  .output(zGetTrialAppsByAppIdAgentComposerResponse)
 
-export const agentPreview = {
+export const agentComposer = {
   get,
 }
 
@@ -406,7 +406,7 @@ export const get8 = oc
 
 export const byAppId = {
   get: get8,
-  agentPreview,
+  agentComposer,
   audioToText,
   chatMessages,
   completionMessages,

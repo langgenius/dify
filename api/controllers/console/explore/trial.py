@@ -72,6 +72,7 @@ from core.errors.error import (
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from extensions.ext_application_services import application_services
+from fields.agent_fields import AgentAppComposerResponse
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.file_fields import FileResponse, FileWithSignedUrl
@@ -91,7 +92,6 @@ from services.app_preview_query_service import (
     AppPreviewRef,
     AppPreviewSiteUnavailableError,
     AppPreviewUnavailableError,
-    TrialAgentPreview,
 )
 from services.audio_types import AudioAppRef, AudioUpload
 from services.errors.audio import (
@@ -164,10 +164,6 @@ class TrialAppModel(ResponseModel):
     name: str
     mode: str | None = None
     completion_params: JsonObject = Field(default_factory=dict)
-
-
-class TrialAgentPreviewResponse(TrialAgentPreview, ResponseModel):
-    pass
 
 
 class TrialAppAgentMode(ResponseModel):
@@ -453,7 +449,7 @@ register_response_schema_models(
     SiteResponse,
     SuggestedQuestionsResponse,
     TrialAppDetailResponse,
-    TrialAgentPreviewResponse,
+    AgentAppComposerResponse,
     TrialDatasetListResponse,
     TrialWorkflowResponse,
 )
@@ -858,16 +854,16 @@ class AppApi(Resource):
         return dump_response(TrialAppDetailResponse, source)
 
 
-@console_ns.route("/trial-apps/<uuid:app_id>/agent-preview")
-class TrialAgentPreviewApi(Resource):
-    @console_ns.response(200, "Published Agent configuration", console_ns.models[TrialAgentPreviewResponse.__name__])
+@console_ns.route("/trial-apps/<uuid:app_id>/agent-composer")
+class TrialAgentComposerApi(Resource):
+    @console_ns.response(200, "Published Agent configuration", console_ns.models[AgentAppComposerResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef):
         try:
-            preview = application_services().app_previews.get_agent_preview(app=app)
+            preview = application_services().app_previews.get_agent_composer(app=app)
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
-        return dump_response(TrialAgentPreviewResponse, preview)
+        return dump_response(AgentAppComposerResponse, preview)
 
 
 class AppWorkflowApi(Resource):

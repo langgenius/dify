@@ -8,19 +8,17 @@ from pydantic import JsonValue, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.uuid_utils import is_valid_uuid
 from models.account import Account, Tenant
-from models.agent import AgentConfigSnapshot
-from models.agent_config_entities import AgentSoulConfig
 from models.dataset import Dataset
 from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
-from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
 from repositories.app_definition_query_repository import map_site_configuration
 from services.account_errors import AccountNotFoundError
+from services.agent.composer_service import AgentComposerService
+from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_details_service import (
     AppPreviewAccount,
@@ -41,20 +39,27 @@ from services.app_preview_query_service import (
     AppPreviewSite,
     AppPreviewSiteUnavailableError,
     AppPreviewUnavailableError,
-    TrialAgentModelPreview,
-    TrialAgentPreview,
-    TrialAgentResourcePreview,
 )
 
 
 class AppPreviewQueryRepository(AppPreviewQuery, AppPreviewDetailsQuery):
-    def get_agent_preview(self, *, app: AppPreviewRef) -> TrialAgentPreview | None:
+    def get_agent_composer(self, *, app: AppPreviewRef) -> Mapping[str, object] | None:
         with self._session_factory() as session:
             try:
                 model = self._get_app(session=session, app=app)
             except AppPreviewUnavailableError:
                 return None
-            return _get_agent_preview(session=session, app=model)
+            if model.mode != AppMode.AGENT:
+                return None
+            agent = model.agent_app_binding_with_session(session=session)
+            if agent is None:
+                return None
+            try:
+                return AgentComposerService.load_published_agent_composer(
+                    session=session, tenant_id=app.tenant_id, agent_id=agent.id
+                )
+            except (AgentNotFoundError, AgentVersionNotFoundError, ValidationError, ValueError):
+                return None
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
@@ -336,70 +341,3 @@ class AppPreviewQueryRepository(AppPreviewQuery, AppPreviewDetailsQuery):
             updated_by=site.updated_by,
             updated_at=site.updated_at,
         )
-
-
-def _get_agent_preview(*, session: Session, app: App) -> TrialAgentPreview | None:
-    if app.mode != AppMode.AGENT:
-        return None
-    agent = app.agent_app_binding_with_session(session=session)
-    if agent is None:
-        return None
-    if not agent_has_workflow_callable_active_snapshot(session=session, agent=agent):
-        return None
-    snapshot = session.scalar(
-        select(AgentConfigSnapshot).where(
-            AgentConfigSnapshot.tenant_id == app.tenant_id,
-            AgentConfigSnapshot.agent_id == agent.id,
-            AgentConfigSnapshot.id == agent.active_config_snapshot_id,
-        )
-    )
-    if snapshot is None:
-        return None
-    try:
-        soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
-    except (ValidationError, ValueError):
-        return None
-    workspace_skills = session.scalars(
-        select(SkillVersion)
-        .join(Skill, (Skill.latest_published_version_id == SkillVersion.id) & (Skill.id == SkillVersion.skill_id))
-        .join(AgentSkillBindingSnapshot, AgentSkillBindingSnapshot.skill_id == Skill.id)
-        .where(
-            Skill.tenant_id == app.tenant_id,
-            AgentSkillBindingSnapshot.tenant_id == app.tenant_id,
-            AgentSkillBindingSnapshot.agent_id == agent.id,
-            AgentSkillBindingSnapshot.config_snapshot_id == snapshot.id,
-        )
-        .order_by(AgentSkillBindingSnapshot.priority)
-    ).all()
-    return TrialAgentPreview(
-        system_prompt=soul.prompt.system_prompt,
-        model=TrialAgentModelPreview(provider=soul.model.model_provider, model=soul.model.model)
-        if soul.model
-        else None,
-        tools=[
-            TrialAgentResourcePreview(name=tool.tool_name or "*", description=tool.description or "")
-            for tool in soul.tools.dify_tools
-            if tool.enabled
-        ]
-        + [
-            TrialAgentResourcePreview(
-                name=tool.name or tool.tool_name or tool.label or "CLI", description=tool.description or ""
-            )
-            for tool in soul.tools.cli_tools
-            if tool.enabled
-        ],
-        knowledge=[
-            TrialAgentResourcePreview(name=item.name, description=item.description or "")
-            for item in soul.knowledge.sets
-        ],
-        skills=[TrialAgentResourcePreview(name=item.name, description=item.description) for item in soul.config_skills]
-        + [
-            TrialAgentResourcePreview(
-                name=item.manifest.display_name or item.manifest.name,
-                description=item.manifest.description or "",
-            )
-            for item in workspace_skills
-            if item.manifest.name
-        ],
-        files=[TrialAgentResourcePreview(name=item.name) for item in soul.config_files],
-    )
