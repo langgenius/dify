@@ -60,8 +60,8 @@ const TriggerFormItem: FC<Props> = ({
           )}
           {!showDescription && tooltip && (
             <Infotip>
-              <InfotipTrigger aria-label={tooltip[language] || tooltip.en_US} className="ml-1" />
-              <InfotipContent aria-label={tooltip[language] || tooltip.en_US} className="w-50">
+              <InfotipTrigger aria-labelledby={labelId} className="ml-1" />
+              <InfotipContent aria-labelledby={labelId} className="w-50">
                 {tooltip[language] || tooltip.en_US}
               </InfotipContent>
             </Infotip>

@@ -418,9 +418,7 @@ class AppApi(AppResource):
     @console_ns.doc(description="Get application details")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppDetailWithSite.__name__])
-    @console_account_admission(
-        require_valid_enterprise_license=True, rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())]
-    )
+    @console_account_admission(require_valid_enterprise_license=True)
     def get(self, context: RequestContext, app_id: uuid.UUID):
         response = _app_detail_response(application_services().apps.console.get(context, str(app_id)))
         return dump_response(AppDetailWithSite, response)

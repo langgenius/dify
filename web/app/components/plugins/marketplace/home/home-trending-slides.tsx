@@ -30,6 +30,7 @@ import {
 import MarketplaceDetailDialog from '../detail-dialog'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
 import { useOptionalTemplateDetailRoute } from '../templates/use-optional-template-detail-route'
+import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
 import {
   getPluginLinkInMarketplace,
   getTemplateDetailLinkInMarketplace,
@@ -329,7 +330,26 @@ function RecommendCardFace({ card }: { card: BannerRecommendCard }) {
   )
 }
 
-function EmbeddedRecommendPluginCard({
+function EmbeddedRecommendPluginCard(props: Parameters<typeof CloudRecommendPluginCard>[0]) {
+  const navigation = useMarketplaceDetailNavigation()
+  const href = navigation.pluginHref(props.initialPlugin)
+  if (!href) return <CloudRecommendPluginCard {...props} />
+
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={props.card.display_name}
+      className={recommendCardClassName}
+      onClick={() => trackRecommendCardClick(props.banner, props.card, props.page, href)}
+    >
+      <RecommendCardFace card={props.card} />
+    </Link>
+  )
+}
+
+function CloudRecommendPluginCard({
   banner,
   card,
   initialPlugin,
@@ -390,7 +410,26 @@ function EmbeddedRecommendPluginCard({
   )
 }
 
-function EmbeddedRecommendTemplateCard({
+function EmbeddedRecommendTemplateCard(props: Parameters<typeof CloudRecommendTemplateCard>[0]) {
+  const navigation = useMarketplaceDetailNavigation()
+  const href = navigation.templateHref(props.template)
+  if (!href) return <CloudRecommendTemplateCard {...props} />
+
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={props.card.display_name}
+      className={recommendCardClassName}
+      onClick={() => trackRecommendCardClick(props.banner, props.card, props.page, href)}
+    >
+      <RecommendCardFace card={props.card} />
+    </Link>
+  )
+}
+
+function CloudRecommendTemplateCard({
   banner,
   card,
   template,

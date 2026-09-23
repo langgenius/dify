@@ -54,6 +54,8 @@ const StatusItem = ({
   onUpdate,
   canEdit = false,
 }: StatusItemProps) => {
+  const statusLabelId = React.useId()
+
   const { t } = useTranslation()
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
@@ -105,13 +107,16 @@ const StatusItem = ({
       )}
     >
       <StatusDot status={statusItem.status} className={reverse ? 'ml-2' : 'mr-2'} />
-      <span className={cn(`${STATUS_TEXT_COLOR_MAP[statusItem.status]} text-sm`, textCls)}>
+      <span
+        id={statusLabelId}
+        className={cn(`${STATUS_TEXT_COLOR_MAP[statusItem.status]} text-sm`, textCls)}
+      >
         {statusItem.text}
       </span>
       {errorMessage && (
         <Infotip>
-          <InfotipTrigger aria-label={errorMessage} className="ml-1" />
-          <InfotipContent aria-label={errorMessage} className="max-w-65">
+          <InfotipTrigger aria-labelledby={statusLabelId} className="ml-1" />
+          <InfotipContent aria-labelledby={statusLabelId} className="max-w-65">
             {errorMessage}
           </InfotipContent>
         </Infotip>

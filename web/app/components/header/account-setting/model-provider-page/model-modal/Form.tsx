@@ -159,8 +159,14 @@ function Form<
     const infotipText = infotip?.[language] || infotip?.en_US
     const infotipContent = infotipText && (
       <Infotip>
-        <InfotipTrigger aria-label={infotipText} className="ml-1" />
-        <InfotipContent aria-label={infotipText} className="w-50">
+        <InfotipTrigger
+          aria-label={formSchema.label[language] || formSchema.label.en_US}
+          className="ml-1"
+        />
+        <InfotipContent
+          aria-label={formSchema.label[language] || formSchema.label.en_US}
+          className="w-50"
+        >
           {infotipText}
         </InfotipContent>
       </Infotip>

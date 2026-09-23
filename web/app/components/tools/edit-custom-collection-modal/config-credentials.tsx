@@ -60,6 +60,9 @@ function SelectItem<Value = string>({ text, value, isChecked }: ItemProps<Value>
 }
 
 export default function ConfigCredential({ positionCenter, credential, onChange, onHide }: Props) {
+  const queryLabelId = useId()
+  const headerLabelId = useId()
+
   const { t } = useTranslation()
   const apiKeyHeaderInputId = useId()
   const apiKeyHeaderValueInputId = useId()
@@ -210,22 +213,12 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                         </Field>
                         <div>
                           <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                            <label htmlFor={apiKeyHeaderInputId}>
+                            <label id={headerLabelId} htmlFor={apiKeyHeaderInputId}>
                               {t(($) => $['createTool.authMethod.key'], { ns: 'tools' })}
                             </label>
                             <Infotip>
-                              <InfotipTrigger
-                                aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
-                                  ns: 'tools',
-                                })}
-                                className="ml-0.5"
-                              />
-                              <InfotipContent
-                                aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
-                                  ns: 'tools',
-                                })}
-                                className="w-65.25"
-                              >
+                              <InfotipTrigger aria-labelledby={headerLabelId} className="ml-0.5" />
+                              <InfotipContent aria-labelledby={headerLabelId} className="w-65.25">
                                 {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
                               </InfotipContent>
                             </Infotip>
@@ -277,22 +270,12 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                       <>
                         <div>
                           <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                            <label htmlFor={apiKeyQueryInputId}>
+                            <label id={queryLabelId} htmlFor={apiKeyQueryInputId}>
                               {t(($) => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
                             </label>
                             <Infotip>
-                              <InfotipTrigger
-                                aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
-                                  ns: 'tools',
-                                })}
-                                className="ml-0.5"
-                              />
-                              <InfotipContent
-                                aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
-                                  ns: 'tools',
-                                })}
-                                className="w-65.25"
-                              >
+                              <InfotipTrigger aria-labelledby={queryLabelId} className="ml-0.5" />
+                              <InfotipContent aria-labelledby={queryLabelId} className="w-65.25">
                                 {t(($) => $['createTool.authMethod.queryParamTooltip'], {
                                   ns: 'tools',
                                 })}

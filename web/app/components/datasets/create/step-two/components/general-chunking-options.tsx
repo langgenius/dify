@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, MouseEventHandler } from 'react'
 import type {
   PreProcessingRule,
   SummaryIndexSetting as SummaryIndexSettingType,
@@ -11,6 +11,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiAlertFill, RiSearchEyeLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -49,7 +50,7 @@ type GeneralChunkingOptionsProps = {
   onRuleToggle: (id: string) => void
   onDocFormChange: (form: ChunkingMode) => void
   onDocLanguageChange: (lang: string) => void
-  onPreview: () => void
+  onPreview: MouseEventHandler<HTMLButtonElement>
   onReset: () => void
   // Locale
   locale: string
@@ -82,6 +83,8 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
   summaryIndexSetting,
   onSummaryIndexSettingChange,
 }) => {
+  const qaLabelId = useId()
+
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -113,7 +116,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
       description={t(($) => $['stepTwo.generalTip'], { ns: 'datasetCreation' })}
       isActive={isActive}
-      onSwitched={() => onDocFormChange(ChunkingMode.text)}
+      value={ChunkingMode.text}
       actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
@@ -167,7 +170,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
             {isNonCloudEdition && (
               <>
                 <Separator orientation="horizontal" className="my-4 h-[0.5px] bg-divider-subtle" />
-                <div className="flex items-center py-0.5">
+                <div className="flex flex-wrap items-center gap-y-2 py-0.5">
                   <label
                     className={`flex items-center ${hasCurrentDatasetDocForm ? '' : 'cursor-pointer'}`}
                   >
@@ -180,7 +183,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                         else onDocFormChange(ChunkingMode.qa)
                       }}
                     />
-                    <span className="ml-2 system-sm-regular text-text-secondary">
+                    <span id={qaLabelId} className="ml-2 system-sm-regular text-text-secondary">
                       {t(($) => $['stepTwo.useQALanguage'], { ns: 'datasetCreation' })}
                     </span>
                   </label>
@@ -190,13 +193,8 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
                   <Infotip>
-                    <InfotipTrigger
-                      aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
-                      className="size-3.5"
-                    />
-                    <InfotipContent
-                      aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
-                    >
+                    <InfotipTrigger aria-labelledby={qaLabelId} className="size-3.5" />
+                    <InfotipContent aria-labelledby={qaLabelId}>
                       {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                     </InfotipContent>
                   </Infotip>
@@ -207,7 +205,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                       background:
                         'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
                     }}
-                    className="mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
+                    className="mt-2 flex min-h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
                   >
                     <RiAlertFill className="size-4 text-text-warning-secondary" />
                     <span className="system-xs-medium text-text-primary">
