@@ -91,7 +91,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dehydratedState = dehydrateSystemFeatures()
 
   return (
-    <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
+    <html lang={locale} className="h-full" suppressHydrationWarning>
       <head>
         <ReactScanLoader />
       </head>

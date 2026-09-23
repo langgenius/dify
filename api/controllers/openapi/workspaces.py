@@ -19,6 +19,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
+from constants.oauth_bearer import Scope
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
@@ -46,7 +47,6 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.subjects import AccountSubject
 from enums import DeploymentEdition
-from libs.oauth_bearer import Scope
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService

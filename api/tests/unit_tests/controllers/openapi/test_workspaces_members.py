@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 from werkzeug.test import TestResponse
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi import workspaces as workspaces_module
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
@@ -50,7 +51,7 @@ from controllers.openapi.auth.loaders import load_caller, load_workspace
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.workspaces import WorkspaceMemberApi, WorkspaceMembersApi, WorkspaceSwitchApi
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, TokenType
+from libs.oauth_bearer import AuthContext
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from services.account_service import TenantService as RealTenantService

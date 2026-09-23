@@ -737,6 +737,32 @@ def test_export_snippet_dsl_uses_requested_published_workflow(
     get_draft_workflow.assert_not_called()
 
 
+def test_extract_dependencies_from_workflow_graph_covers_plugin_and_model_nodes(service: SnippetDslService) -> None:
+    graph = {
+        "nodes": [
+            {"data": {"type": BuiltinNodeTypes.TOOL, "provider_type": "builtin", "provider_id": "acme/search/search"}},
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.TOOL,
+                    "tool_configurations": {"provider_type": "builtin", "provider": "acme/legacy"},
+                }
+            },
+            {"data": {"type": BuiltinNodeTypes.TOOL, "provider_type": "api", "provider_id": "custom-api"}},
+            {"data": {"type": BuiltinNodeTypes.LLM, "model": {"provider": "acme/llm/llm"}}},
+            {"data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
+            {"data": {"type": BuiltinNodeTypes.AGENT, "agent_strategy_provider_name": "acme/agent/agent"}},
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == [
+        "acme/search",
+        "acme/legacy",
+        "acme/llm",
+        "acme/trigger",
+        "acme/agent",
+    ]
+
+
 def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
 ):
