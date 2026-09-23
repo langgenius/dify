@@ -18,13 +18,13 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from constants.oauth_bearer import Scope
 from controllers.common.rbac import RBACCheck, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
-from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
