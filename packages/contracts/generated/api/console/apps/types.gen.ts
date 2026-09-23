@@ -612,7 +612,7 @@ export type McpServerUpdatePayload = {
   parameters: {
     [key: string]: unknown
   }
-  status?: string | null
+  status?: AppMcpServerStatus | null
 }
 
 export type AppSiteUpdatePayload = {
@@ -4626,6 +4626,7 @@ export type PostAppsByAppIdServerData = {
 
 export type PostAppsByAppIdServerErrors = {
   403: unknown
+  409: unknown
 }
 
 export type PostAppsByAppIdServerResponses = {

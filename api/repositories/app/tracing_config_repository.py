@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import AppStatus
 from models.model import App, TraceAppConfig
+from repositories.app.console_visibility import console_visible_condition
 from services.app_tracing_config_service import (
     AppTracingConfigAppNotFoundError,
     AppTracingConfigRecord,
@@ -97,6 +98,7 @@ class SQLAlchemyAppTracingConfigRepository(AppTracingConfigStore):
                 App.id == app_id,
                 App.tenant_id == workspace_id,
                 App.status == AppStatus.NORMAL,
+                console_visible_condition(),
             )
             .limit(1)
         )

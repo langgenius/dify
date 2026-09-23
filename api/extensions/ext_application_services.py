@@ -38,11 +38,12 @@ from repositories.account_oauth_repository import (
     RegisterServiceOAuthInvitationGateway,
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app.mcp_server_repository import AppMCPServerRepository
+from repositories.app.site_command_repository import AppSiteCommandRepository
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
-from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -136,6 +137,7 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.app.mcp_server_service import AppMCPServerService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_details_service import AppPreviewDetails
@@ -264,6 +266,7 @@ class ApplicationServices:
     accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
+    app_mcp_servers: AppMCPServerService
     app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
@@ -629,6 +632,9 @@ def build_application_services(
             builtin_icon_url_prefix=(
                 dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
             ),
+        ),
+        app_mcp_servers=AppMCPServerService(
+            servers=AppMCPServerRepository(session_factory=database_client),
         ),
         app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
         app_previews=AppPreviewQueryService(

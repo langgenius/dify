@@ -1,32 +1,31 @@
 import json
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Conflict, NotFound
 
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import (
-    RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-)
-from extensions.ext_database import db
+from controllers.console.app.error import AppNotFoundError
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission, validate_request
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
-from libs.login import login_required
-from models.enums import AppMCPServerStatus
-from models.model import App, AppMCPServer
-from services.app_ref_service import AppRefService
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
+from services.app.mcp_server_service import (
+    AppMCPServerAlreadyExistsError,
+    AppMCPServerAppNotFoundError,
+    AppMCPServerNotFoundError,
+    AppMCPServerStatus,
+)
+
+_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 
 
 class MCPServerCreatePayload(BaseModel):
@@ -38,13 +37,13 @@ class MCPServerCreatePayload(BaseModel):
 
 
 class MCPServerUpdatePayload(BaseModel):
-    id: str = Field(..., description="Server ID")
+    id: UUID = Field(..., description="Server ID")
     description: str | None = Field(default=None, description="Server description")
     parameters: dict[str, Any] = Field(
         ...,
         description="Server parameters configuration",
     )
-    status: str | None = Field(default=None, description="Server status")
+    status: AppMCPServerStatus | None = Field(default=None, description="Server status")
 
 
 class AppMCPServerResponse(ResponseModel):
@@ -84,13 +83,12 @@ class AppMCPServerController(Resource):
     @console_ns.response(
         200, "MCP server configuration retrieved successfully", console_ns.models[AppMCPServerResponse.__name__]
     )
-    @login_required
-    @account_initialization_required
-    @setup_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model
-    def get(self, app_model: App):
-        server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())])
+    def get(self, request_context: RequestContext, app_id: UUID):
+        try:
+            server = application_services().app_mcp_servers.get(request_context, str(app_id))
+        except AppMCPServerAppNotFoundError as error:
+            raise AppNotFoundError() from error
         if server is None:
             return {}
         return dump_response(AppMCPServerResponse, server)
@@ -103,30 +101,18 @@ class AppMCPServerController(Resource):
         201, "MCP server configuration created successfully", console_ns.models[AppMCPServerResponse.__name__]
     )
     @console_ns.response(403, "Insufficient permissions")
-    @account_initialization_required
-    @login_required
-    @setup_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_current_tenant_id
-    @get_app_model
-    @model_validate(MCPServerCreatePayload)
-    def post(self, req_data: MCPServerCreatePayload, current_tenant_id: str, app_model: App):
-        description = req_data.description
-        if not description:
-            description = app_model.description or ""
-
-        server = AppMCPServer(
-            name=app_model.name,
-            description=description,
-            parameters=json.dumps(req_data.parameters, ensure_ascii=False),
-            status=AppMCPServerStatus.ACTIVE,
-            app_id=app_model.id,
-            tenant_id=current_tenant_id,
-            server_code=AppMCPServer.generate_server_code(16, session=db.session()),
-        )
-        db.session.add(server)
-        db.session.commit()
+    @console_ns.response(409, "MCP server already exists for this app")
+    @console_account_admission(allowed_roles=_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_EDIT, PlainApp())])
+    def post(self, request_context: RequestContext, app_id: UUID):
+        payload = validate_request(MCPServerCreatePayload)
+        try:
+            server = application_services().app_mcp_servers.create(
+                request_context, str(app_id), description=payload.description, parameters=payload.parameters
+            )
+        except AppMCPServerAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        except AppMCPServerAlreadyExistsError as error:
+            raise Conflict(str(error)) from error
         return dump_response(AppMCPServerResponse, server), 201
 
     @console_ns.doc("update_app_mcp_server")
@@ -138,43 +124,22 @@ class AppMCPServerController(Resource):
     )
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "Server not found")
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @get_app_model
-    @model_validate(MCPServerUpdatePayload)
-    def put(self, req_data: MCPServerUpdatePayload, app_model: App):
-        app_ref = AppRefService.create_app_ref(app_model)
-        server_ref = AppRefService.create_mcp_server_ref(app_ref, req_data.id)
-        server = db.session.scalar(
-            select(AppMCPServer)
-            .where(
-                AppMCPServer.id == server_ref.server_id,
-                AppMCPServer.tenant_id == server_ref.app.tenant_id,
-                AppMCPServer.app_id == server_ref.app.app_id,
+    @console_account_admission(allowed_roles=_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_EDIT, PlainApp())])
+    def put(self, request_context: RequestContext, app_id: UUID):
+        payload = validate_request(MCPServerUpdatePayload)
+        try:
+            server = application_services().app_mcp_servers.update(
+                request_context,
+                str(app_id),
+                server_id=str(payload.id),
+                description=payload.description,
+                parameters=payload.parameters,
+                status=payload.status,
             )
-            .limit(1)
-        )
-        if not server:
-            raise NotFound()
-
-        description = req_data.description
-        if description is None or not description:
-            server.description = app_model.description or ""
-        else:
-            server.description = description
-
-        server.name = app_model.name
-
-        server.parameters = json.dumps(req_data.parameters, ensure_ascii=False)
-        if req_data.status:
-            try:
-                server.status = AppMCPServerStatus(req_data.status)
-            except ValueError:
-                raise ValueError("Invalid status")
-        db.session.commit()
+        except AppMCPServerAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        except AppMCPServerNotFoundError as error:
+            raise NotFound from error
         return dump_response(AppMCPServerResponse, server)
 
 
@@ -186,21 +151,12 @@ class AppMCPServerRefreshController(Resource):
     @console_ns.response(200, "MCP server refreshed successfully", console_ns.models[AppMCPServerResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "Server not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_current_tenant_id
-    @get_app_model
-    def post(self, current_tenant_id: str, app_model: App):
-        server = db.session.scalar(
-            select(AppMCPServer)
-            .where(AppMCPServer.app_id == app_model.id, AppMCPServer.tenant_id == current_tenant_id)
-            .limit(1)
-        )
-        if not server:
-            raise NotFound()
-        server.server_code = AppMCPServer.generate_server_code(16, session=db.session())
-        db.session.commit()
+    @console_account_admission(allowed_roles=_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_EDIT, PlainApp())])
+    def post(self, request_context: RequestContext, app_id: UUID):
+        try:
+            server = application_services().app_mcp_servers.refresh(request_context, str(app_id))
+        except AppMCPServerAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        except AppMCPServerNotFoundError as error:
+            raise NotFound from error
         return dump_response(AppMCPServerResponse, server)
