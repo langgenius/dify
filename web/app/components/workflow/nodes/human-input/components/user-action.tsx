@@ -2,9 +2,9 @@ import type { FC } from 'react'
 import type { UserAction } from '../types'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -19,7 +19,7 @@ type UserActionItemProps = {
 }
 
 const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, readonly }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const handleIDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value

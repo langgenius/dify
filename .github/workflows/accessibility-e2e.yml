@@ -52,7 +52,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
           python-version: '3.12'
@@ -80,7 +80,7 @@ jobs:
           if [[ "$WCAG_PAGE" == "all" ]]; then
             vp run e2e:accessibility:${{ inputs.level }}
           else
-            pnpm exec tsx ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-${{ inputs.level }} and @wcag-page-$WCAG_PAGE"
+            pnpm exec node ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-${{ inputs.level }} and @wcag-page-$WCAG_PAGE"
           fi
 
       - name: Upload accessibility Cucumber report

@@ -32,7 +32,6 @@ type DocumentsHeaderProps = {
   canManageMetadata?: boolean
   canAddDocument?: boolean
   canEditDocument?: boolean
-  isFreePlan: boolean
 
   // Filter & sort
   statusFilterValue: string
@@ -66,7 +65,6 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   canManageMetadata = false,
   canAddDocument = false,
   canEditDocument = false,
-  isFreePlan,
   statusFilterValue,
   sortValue,
   inputValue,
@@ -86,7 +84,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   onBuiltInEnabledChange,
   onAddDocument,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetDocuments'])
   const docLink = useDocLink()
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
 
@@ -174,7 +172,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
 
         {/* Right: Actions */}
         <div className="flex h-8! items-center justify-center gap-2">
-          {!isFreePlan && canEditDocument && <AutoDisabledDocument datasetId={datasetId} />}
+          {canEditDocument && <AutoDisabledDocument datasetId={datasetId} />}
           {canEditDocument && <IndexFailed datasetId={datasetId} />}
           {!embeddingAvailable && (
             <StatusWithAction

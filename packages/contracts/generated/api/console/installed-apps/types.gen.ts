@@ -17,7 +17,6 @@ export type InstalledAppResponse = {
   id: string
   is_pinned: boolean
   last_used_at: number | null
-  uninstallable: boolean
 }
 
 export type InstalledAppUpdatePayload = {
@@ -760,7 +759,6 @@ export type InstalledAppResponseWritable = {
   id: string
   is_pinned: boolean
   last_used_at: number | null
-  uninstallable: boolean
 }
 
 export type ExploreMessageInfiniteScrollPaginationWritable = {
@@ -822,22 +820,6 @@ export type GetInstalledAppsResponses = {
 }
 
 export type GetInstalledAppsResponse = GetInstalledAppsResponses[keyof GetInstalledAppsResponses]
-
-export type DeleteInstalledAppsByInstalledAppIdData = {
-  body?: never
-  path: {
-    installed_app_id: string
-  }
-  query?: never
-  url: '/installed-apps/{installed_app_id}'
-}
-
-export type DeleteInstalledAppsByInstalledAppIdResponses = {
-  204: void
-}
-
-export type DeleteInstalledAppsByInstalledAppIdResponse =
-  DeleteInstalledAppsByInstalledAppIdResponses[keyof DeleteInstalledAppsByInstalledAppIdResponses]
 
 export type GetInstalledAppsByInstalledAppIdData = {
   body?: never

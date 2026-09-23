@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type { ConversationItem } from '@/models/share'
 import {
   AlertDialog,
@@ -23,12 +24,13 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = Readonly<{
+  toggleButtonRef?: Ref<HTMLButtonElement>
   isPanel?: boolean
   panelVisible?: boolean
 }>
 
-const Sidebar = ({ isPanel }: Props) => {
-  const { t } = useTranslation()
+const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const {
     isInstalledApp,
     appData,
@@ -116,6 +118,7 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
         {!isMobile && !isSidebarCollapsed && (
           <IconButton
+            ref={toggleButtonRef}
             aria-label={t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })}
             size="lg"
             onClick={() => handleSidebarCollapse(true)}

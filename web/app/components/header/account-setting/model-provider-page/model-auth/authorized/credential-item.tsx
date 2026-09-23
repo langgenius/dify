@@ -35,7 +35,7 @@ const CredentialItem = ({
   showSelectedIcon,
   selectedCredentialId,
 }: CredentialItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete)
   }, [disableRename, disableEdit, disableDelete])

@@ -7,7 +7,7 @@ export async function transcribeAudio(
   signal?: AbortSignal,
 ): Promise<{ text: string }> {
   if (target.type === 'agent' || target.type === 'consoleApp') {
-    const { consoleClient } = await import('@/service/client')
+    const { consoleClient } = await import('@/service/console')
     if (target.type === 'agent') {
       return consoleClient.agent.byAgentId.audioToText.post(
         {

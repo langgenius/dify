@@ -58,6 +58,7 @@
   <a href="./docs/sl-SI/README.md"><img alt="README Slovenščina" src="https://img.shields.io/badge/Sloven%C5%A1%C4%8Dina-d9d9d9"></a>
   <a href="./docs/bn-BD/README.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
   <a href="./docs/hi-IN/README.md"><img alt="README in हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
+  <a href="./docs/id-ID/README.md"><img alt="README dalam Bahasa Indonesia" src="https://img.shields.io/badge/Bahasa%20Indonesia-d9d9d9"></a>
 </p>
 
 Dify is an open-source LLM app development platform. Its intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features (including [Opik](https://www.comet.com/docs/opik/integrations/dify), [Langfuse](https://docs.langfuse.com), and [Arize Phoenix](https://docs.arize.com/phoenix)) and more, letting you quickly go from prototype to production. Here's a list of the core features:
@@ -104,8 +105,7 @@ Intuitive interface for crafting prompts, comparing model performance, and addin
 **4. RAG Pipeline**:
 Extensive RAG capabilities that cover everything from document ingestion to retrieval, with out-of-box support for text extraction from PDFs, PPTs, and other common document formats.
 
-**5. Agent capabilities**:
-You can define agents based on LLM Function Calling or ReAct, and add pre-built or custom tools for the agent. Dify provides 50+ built-in tools for AI agents, such as Google Search, DALL·E, Stable Diffusion and WolframAlpha.
+**5. Agent**: Autonomous agents with a sandbox of their own: they run commands, install software, and handle files to get open-ended tasks done. Describe the agent you want and it builds itself. Give it skills, connect tools from [Dify Marketplace](https://marketplace.dify.ai/?category=tool), MCP servers, or your own APIs, and put it to work as a chat app or as a step in any workflow.
 
 **6. LLMOps**:
 Monitor and analyze application logs and performance over time. You could continuously improve prompts, datasets, and models based on production data and annotations.
@@ -122,8 +122,8 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
   Quickly get Dify running in your environment with this [starter guide](#quick-start).
   Use our [documentation](https://docs.dify.ai) for further references and more in-depth instructions.
 
-- **Dify for enterprise / organizations<br/>**
-  We provide additional enterprise-centric features. [Send us an email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) to discuss your enterprise needs. <br/>
+- **[Dify Enterprise](https://dify.ai/dify-enterprise)<br/>**
+  For organizations requiring self-hosting, SSO, RBAC Security and Enterprise Support SLAs, please fill out [this form](https://share-na2.hsforms.com/14-09ff5HS92Sh4m3f4yrcw40s9fk) to speak to a solution representative. <br/>
 
 ## Staying ahead
 
@@ -141,7 +141,7 @@ Dify welcomes contributions of all kinds:
 
 - **Code**: Read the [Contribution Guide](CONTRIBUTING.md), then browse [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Ideas and feedback**: Start or join a [GitHub Discussion](https://github.com/langgenius/dify/discussions).
-- **Translations**: Follow the [internationalization guide](web/i18n-config/README.md) to add or update a locale.
+- **Translations**: Follow the [internationalization guide](web/i18n/README.md) to add or update a locale.
 - **Community**: Share the apps you build, help other users, and spread the word about Dify.
 
 ### Contributors

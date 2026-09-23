@@ -3,9 +3,12 @@ import type { DataSourceAuth } from '@/app/components/header/account-setting/dat
 import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DataSourceType } from '@/models/datasets'
-import { consoleQuery } from '@/service/client'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import StepOne from '../index'
 
 let mockPlan: {
@@ -28,6 +31,8 @@ let mockPlan: {
   total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
 }
 
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
+
 const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
@@ -35,9 +40,17 @@ const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
     limit: mockPlan.total.vectorSpace,
     usage_unknown: vectorSpaceUsageUnknown,
   })
-  return renderWithConsoleQuery(ui, {
-    systemFeatures: { deployment_edition: 'CLOUD' },
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition },
     queryClient,
+    features: { billing: { subscription: { plan: mockPlan.type } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
   })
 }
 
@@ -60,14 +73,6 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock provider context
-let mockEnableBilling = false
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: mockPlan,
-    enableBilling: mockEnableBilling,
-  }),
-}))
 
 vi.mock('../../file-uploader', () => ({
   default: ({ onPreview, fileList }: { onPreview: (file: File) => void; fileList: FileItem[] }) => (
@@ -242,6 +247,26 @@ const defaultProps = {
 
 // StepOne Component Tests
 describe('StepOne', () => {
+  it('returns keyboard focus to the file preview trigger when closing the preview', async () => {
+    const user = userEvent.setup()
+    render(<StepOne {...defaultProps} />)
+    const trigger = screen.getByRole('button', { name: 'Preview' })
+    await user.click(trigger)
+    await user.click(screen.getByRole('button', { name: 'Hide' }))
+    expect(screen.queryByTestId('file-preview')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
+  it('keeps focus on the newly selected data source when clearing a file preview', async () => {
+    const user = userEvent.setup()
+    render(<StepOne {...defaultProps} />)
+    await user.click(screen.getByRole('button', { name: 'Preview' }))
+    const source = screen.getByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.web' })
+    await user.click(source)
+    expect(screen.queryByTestId('file-preview')).not.toBeInTheDocument()
+    expect(source).toHaveFocus()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockDatasetDetail = undefined
@@ -250,7 +275,7 @@ describe('StepOne', () => {
       usage: { vectorSpace: 50, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
       total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
     }
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
   })
 
   describe('Rendering', () => {
@@ -430,7 +455,7 @@ describe('StepOne', () => {
     })
 
     it('should show plan upgrade modal when batch upload not supported and multiple files', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.type = 'sandbox'
       const files = [createMockFileItem(), createMockFileItem()]
       render(<StepOne {...defaultProps} files={files} />)
@@ -441,7 +466,7 @@ describe('StepOne', () => {
     })
 
     it('should show upgrade card immediately when in sandbox plan', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.type = 'sandbox'
 
       render(<StepOne {...defaultProps} files={[]} />)
@@ -453,7 +478,7 @@ describe('StepOne', () => {
   // Vector Space Full Tests
   describe('Vector Space Full', () => {
     it('should show VectorSpaceFull when vector space is full and billing is enabled', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.usage.vectorSpace = 100
       mockPlan.total.vectorSpace = 100
       const files = [createMockFileItem()]
@@ -464,7 +489,7 @@ describe('StepOne', () => {
     })
 
     it('should disable next button when vector space is full', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.usage.vectorSpace = 100
       mockPlan.total.vectorSpace = 100
       const files = [createMockFileItem()]
@@ -475,7 +500,7 @@ describe('StepOne', () => {
     })
 
     it('should require sandbox users to retry when vector space usage is unknown', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.type = 'sandbox'
       mockPlan.usage.vectorSpace = 100
       mockPlan.total.vectorSpace = 100
@@ -490,7 +515,7 @@ describe('StepOne', () => {
     })
 
     it('should allow paid users to continue when vector space usage is unknown', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.type = 'professional'
       const files = [createMockFileItem()]
 

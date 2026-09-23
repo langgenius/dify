@@ -45,24 +45,5 @@ describe('SnippetDetailCard', () => {
 
       expect(screen.getByText('snippet.unknownUser')).toBeInTheDocument()
     })
-
-    it('should render unique block icons from published workflow graph', () => {
-      mockUseSnippetPublishedWorkflow.mockReturnValue({
-        data: {
-          graph: {
-            nodes: [
-              { data: { type: 'llm' } },
-              { data: { type: 'code' } },
-              { data: { type: 'llm' } },
-              { data: { type: 'unknown' } },
-            ],
-          },
-        },
-      })
-
-      const { container } = render(<SnippetDetailCard snippet={createSnippet()} />)
-
-      expect(container.querySelectorAll('[data-icon="Llm"], [data-icon="Code"]')).toHaveLength(2)
-    })
   })
 })

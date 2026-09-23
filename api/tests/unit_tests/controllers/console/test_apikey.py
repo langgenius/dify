@@ -57,9 +57,9 @@ def _make_account(role: TenantAccountRole) -> Account:
     return account
 
 
-def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT) -> App:
+def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT, app_id: str = "app-1") -> App:
     app = App(
-        id="app-1",
+        id=app_id,
         tenant_id="tenant-1",
         name="API key app",
         mode=mode,
@@ -260,15 +260,23 @@ def test_api_key_lists_require_matching_rbac_permission(config_overrides: Callab
     cases = [
         (
             lambda: AppApiKeyListResource().get(resource_id=api_id),
-            [(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION, True)],
+            {
+                "scene": RBACPermission.APP_RELEASE_AND_VERSION,
+                "resource_type": RBACResourceScope.APP,
+                "resource_id": str(api_id),
+            },
         ),
         (
             lambda: DatasetApiKeyApi().get(),
-            [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, False)],
+            {"scene": RBACPermission.DATASET_API_KEY_MANAGE, "resource_type": None, "resource_id": None},
         ),
         (
             lambda: DatasetApiKeyListResource().get(resource_id=api_id),
-            [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, True)],
+            {
+                "scene": RBACPermission.DATASET_API_KEY_MANAGE,
+                "resource_type": RBACResourceScope.DATASET,
+                "resource_id": str(api_id),
+            },
         ),
     ]
 
@@ -276,20 +284,25 @@ def test_api_key_lists_require_matching_rbac_permission(config_overrides: Callab
         app.test_request_context("/"),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
         patch("controllers.common.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+        patch("controllers.common.rbac.locators.agent_binding", return_value=None),
+        patch("controllers.common.rbac.locators.PlainApp.owner_id", return_value=None),
+        patch("controllers.common.rbac.locators.DatasetId.owner_id", return_value=None),
         patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
     ):
-        for invoke, expected_gates in cases:
+        for invoke, expected_kwargs in cases:
             with patch(
-                "controllers.common.wraps.enforce_rbac_access",
-                side_effect=[None] * (len(expected_gates) - 1) + [Forbidden()],
-            ) as enforce_rbac_access:
+                "controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False
+            ) as check_access:
                 with pytest.raises(Forbidden):
                     invoke()
 
-            assert [
-                (kwargs["resource_type"], kwargs["scene"], kwargs["resource_required"])
-                for _, kwargs in enforce_rbac_access.call_args_list
-            ] == expected_gates
+            check_access.assert_called_once_with(
+                "tenant-1",
+                account.id,
+                scene=expected_kwargs["scene"],
+                resource_type=expected_kwargs["resource_type"],
+                resource_id=expected_kwargs["resource_id"],
+            )
 
     get_api_key_list.assert_not_called()
 

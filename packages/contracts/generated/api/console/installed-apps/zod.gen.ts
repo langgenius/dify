@@ -605,7 +605,6 @@ export const zInstalledAppResponse = z.object({
   id: z.string(),
   is_pinned: z.boolean(),
   last_used_at: z.int().nullable(),
-  uninstallable: z.boolean(),
 })
 
 /**
@@ -927,7 +926,6 @@ export const zInstalledAppResponseWritable = z.object({
   id: z.string(),
   is_pinned: z.boolean(),
   last_used_at: z.int().nullable(),
-  uninstallable: z.boolean(),
 })
 
 /**
@@ -988,15 +986,6 @@ export const zGetInstalledAppsQuery = z.object({
  * Success
  */
 export const zGetInstalledAppsResponse = zInstalledAppListResponse
-
-export const zDeleteInstalledAppsByInstalledAppIdPath = z.object({
-  installed_app_id: z.uuid(),
-})
-
-/**
- * App uninstalled successfully
- */
-export const zDeleteInstalledAppsByInstalledAppIdResponse = z.void()
 
 export const zGetInstalledAppsByInstalledAppIdPath = z.object({
   installed_app_id: z.uuid(),

@@ -6,11 +6,11 @@ import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/ty
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
-import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import {
   getStepByStepTourPermissionVariant,
@@ -26,13 +26,12 @@ import {
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/tasks'
-import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { HomeBanner } from '../banner/home-banner'
@@ -54,7 +53,7 @@ const DSLConfirmModal = dynamic(
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
 export function HomeContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
   const locale = useLocale()
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -110,8 +109,6 @@ export function HomeContent() {
   )
 
   const [keywords, setKeywords] = useState('')
-  const debouncedKeywords = useDebouncedValue(keywords, 500)
-  const searchKeywords = keywords ? debouncedKeywords : ''
 
   const [currCategory, setCurrCategory] = useQueryState('category', {
     defaultValue: allCategoriesEn,
@@ -137,15 +134,15 @@ export function HomeContent() {
   }, [templatesData, activeCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
-    if (!searchKeywords || !filteredList || filteredList.length === 0) return filteredList
+    if (!keywords || !filteredList || filteredList.length === 0) return filteredList
 
-    const lowerCaseSearchKeywords = searchKeywords.toLowerCase()
+    const lowerCaseSearchKeywords = keywords.toLowerCase()
 
     return filteredList.filter(
       (item) =>
         item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
     )
-  }, [searchKeywords, filteredList])
+  }, [keywords, filteredList])
 
   const [currApp, setCurrApp] = useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
@@ -477,10 +474,8 @@ export function HomeContent() {
 
       {currentTryApp && (
         <TryApp
-          appId={currentTryApp.app_id}
           app={currentTryApp}
           canCreate={canCreateApp}
-          categories={currentTryApp.categories ?? []}
           createButtonStepByStepTourTarget={
             canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal
               ? STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate

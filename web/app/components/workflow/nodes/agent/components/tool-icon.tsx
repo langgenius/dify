@@ -5,7 +5,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { Group } from '@/app/components/base/icons/src/vender/other'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -13,6 +12,7 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { matchesProviderReference } from '@/utils/provider-reference'
 
 type Status = 'not-installed' | 'not-authorized' | undefined
 
@@ -36,7 +36,10 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       ...(mcpTools || []),
     ]
     return mergedTools.find((toolWithProvider) => {
-      return toolWithProvider.name === providerName || toolWithProvider.id === providerName
+      return (
+        toolWithProvider.name === providerName ||
+        matchesProviderReference(toolWithProvider, providerName)
+      )
     })
   }, [buildInTools, customTools, providerName, workflowTools, mcpTools])
 
@@ -58,7 +61,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const indicator =
     status === 'not-installed' ? 'error' : status === 'not-authorized' ? 'warning' : undefined
   const notSuccess = (['not-installed', 'not-authorized'] as Array<Status>).includes(status)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const tooltip = useMemo(() => {
     if (!notSuccess) return undefined
     if (status === 'not-installed')
@@ -68,7 +71,9 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
     throw new Error('Unknown status')
   }, [name, notSuccess, status, t])
   const [iconFetchError, setIconFetchError] = useState(false)
-  let iconContent: ReactNode = <Group className="size-3 opacity-35" />
+  let iconContent: ReactNode = (
+    <span aria-hidden className="i-custom-vender-other-group size-3 opacity-35" />
+  )
 
   if (!iconFetchError && icon) {
     if (typeof icon === 'string') {

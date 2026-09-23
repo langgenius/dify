@@ -14,7 +14,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ApiBasedExtensionModal } from './modal'
 
 type ApiBasedExtensionSelectorProps = {
@@ -23,7 +23,7 @@ type ApiBasedExtensionSelectorProps = {
 }
 
 export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtensionSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)

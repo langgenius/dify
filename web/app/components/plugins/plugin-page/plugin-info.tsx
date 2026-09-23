@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const labelWidthClassName = 'w-[96px]'
   return (
     <Dialog

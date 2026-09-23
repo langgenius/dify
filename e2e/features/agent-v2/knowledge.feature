@@ -36,7 +36,7 @@ Feature: Agent v2 Knowledge Retrieval
     Then the Agent v2 Agent decide Knowledge Retrieval should be saved in the Agent v2 draft
     And the Agent v2 configuration should be saved automatically
     When I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
+    Then the Agent v2 first publication should succeed
     Given an Agent v2 Backend service API key has been created via API
     When I send the Agent v2 Backend service API knowledge request
     Then the Agent v2 Backend service API response should include the knowledge E2E marker
@@ -53,7 +53,7 @@ Feature: Agent v2 Knowledge Retrieval
     Then the Agent v2 Custom query Knowledge Retrieval should be saved in the Agent v2 draft
     And the Agent v2 configuration should be saved automatically
     When I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
+    Then the Agent v2 first publication should succeed
     Given an Agent v2 Backend service API key has been created via API
     When I send the Agent v2 Backend service API knowledge request
     Then the Agent v2 Backend service API response should include the knowledge E2E marker

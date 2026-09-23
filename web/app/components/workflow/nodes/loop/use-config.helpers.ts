@@ -7,13 +7,15 @@ import { LogicalOperator } from './types'
 import { getOperators } from './utils'
 
 export const canUseAsLoopInput = (variable: Var) => {
-  return [
+  const arrayVariableTypes: readonly VarType[] = [
     VarType.array,
     VarType.arrayString,
     VarType.arrayNumber,
     VarType.arrayObject,
     VarType.arrayFile,
-  ].includes(variable.type)
+  ]
+
+  return arrayVariableTypes.includes(variable.type)
 }
 
 export const updateErrorHandleMode = (inputs: LoopNodeType, mode: ErrorHandleMode) =>

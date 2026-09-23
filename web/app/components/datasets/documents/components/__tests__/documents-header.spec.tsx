@@ -36,7 +36,6 @@ describe('DocumentsHeader', () => {
     canManageMetadata: true,
     canAddDocument: true,
     canEditDocument: true,
-    isFreePlan: false,
     statusFilterValue: 'all',
     sortValue: 'created_at' as SortType,
     inputValue: '',
@@ -64,7 +63,7 @@ describe('DocumentsHeader', () => {
   describe('Rendering', () => {
     it('should render title', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/list\.title/i)
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/list\.title/i)
     })
 
     it('should render description text', () => {
@@ -75,7 +74,7 @@ describe('DocumentsHeader', () => {
     it('should render learn more link', () => {
       render(<DocumentsHeader {...defaultProps} />)
       const link = screen.getByRole('link')
-      expect(link).toHaveTextContent(/list\.learnMore/i)
+      expect(link.textContent).toMatch(/list\.learnMore/i)
       expect(link).toHaveAttribute('href', expect.stringContaining('use-dify/knowledge'))
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
@@ -104,16 +103,6 @@ describe('DocumentsHeader', () => {
   })
 
   describe('AutoDisabledDocument', () => {
-    it('should show AutoDisabledDocument when not free plan', () => {
-      render(<DocumentsHeader {...defaultProps} isFreePlan={false} />)
-      expect(screen.getByTestId('auto-disabled-document')).toBeInTheDocument()
-    })
-
-    it('should not show AutoDisabledDocument when on free plan', () => {
-      render(<DocumentsHeader {...defaultProps} isFreePlan={true} />)
-      expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
-    })
-
     it('should not show AutoDisabledDocument without document edit permission', () => {
       render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
       expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()

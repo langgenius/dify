@@ -2,9 +2,10 @@
 
 import type { AgentMonitoringChartRow, AgentMonitoringChartType } from './chart-utils'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import ReactECharts from 'echarts-for-react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { buildChartOptions, getChartValueField, getTokenSummary } from './chart-utils'
 
 type AgentMonitoringChartProps = {
@@ -32,7 +33,9 @@ export function AgentMonitoringChart({
   unitKey,
   yMaxWhenEmpty,
 }: AgentMonitoringChartProps) {
-  const { t } = useTranslation('agentV2')
+  const titleId = useId()
+
+  const { t } = useTranslation(['agentV2'])
   const yField = getChartValueField(rows, valueKey)
   const tokenSummary = getTokenSummary(rows)
   const shouldUseEmptyYAxis = !hasChartData(rows, yField)
@@ -48,10 +51,13 @@ export function AgentMonitoringChart({
     <article className="flex h-79 w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg">
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center gap-1">
-          <h3 className="truncate system-md-semibold text-text-secondary">
+          <h3 id={titleId} className="truncate system-md-semibold text-text-secondary">
             {t(($) => $[titleKey])}
           </h3>
-          <Infotip aria-label={t(($) => $[explanationKey])}>{t(($) => $[explanationKey])}</Infotip>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={titleId} />
+            <InfotipContent aria-labelledby={titleId}>{t(($) => $[explanationKey])}</InfotipContent>
+          </Infotip>
         </div>
       </div>
 

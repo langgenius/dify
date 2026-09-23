@@ -44,7 +44,7 @@ class SQLAlchemyOAuthAccessTokenRepository(AccountSessionRepository):
                 .offset(offset)
                 .limit(limit)
             ).all()
-            return int(total), tuple(self._to_snapshot(row) for row in rows)
+            return total, tuple(self._to_snapshot(row) for row in rows)
 
     @override
     def revoke(
@@ -79,7 +79,7 @@ class SQLAlchemyOAuthAccessTokenRepository(AccountSessionRepository):
     @staticmethod
     def _to_snapshot(row: OAuthAccessToken) -> AccountSessionSnapshot:
         return AccountSessionSnapshot(
-            id=str(row.id),
+            id=row.id,
             prefix=row.prefix,
             client_id=row.client_id,
             device_label=row.device_label,

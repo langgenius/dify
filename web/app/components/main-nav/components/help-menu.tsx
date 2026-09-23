@@ -50,7 +50,7 @@ import {
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import styles from './help-menu.module.css'
 import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
@@ -91,7 +91,7 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
 )
 
 const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const docLink = useDocLink()
   const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

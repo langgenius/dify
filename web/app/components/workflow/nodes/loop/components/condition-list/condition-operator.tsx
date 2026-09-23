@@ -32,7 +32,7 @@ const ConditionOperator = ({
   value,
   onSelect,
 }: ConditionOperatorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const options = useMemo(() => {
     return getOperators(varType, file).map((o) => {

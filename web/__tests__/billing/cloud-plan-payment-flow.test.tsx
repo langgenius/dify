@@ -9,12 +9,13 @@
  */
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import { CloudPlanItem } from '@/app/components/billing/pricing/plans/cloud-plan-item'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 
@@ -30,8 +31,8 @@ vi.mock('@/context/workspace-state', async () => {
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleClient: new Proxy(actual.consoleClient, {
@@ -86,12 +87,11 @@ const renderCloudPlanItem = ({
   const { wrapper } = createConsoleQueryWrapper()
   return render(
     <>
-      <ToastHost timeout={0} />
+      <AppToastHost timeout={0} />
       <CloudPlanItem
-        currentPlan={currentPlan}
         plan={plan}
         billingInterval={billingInterval}
-        isEducationDiscountEligible={isEducationDiscountEligible}
+        billing={{ currentPlan, isEducationDiscountEligible }}
       />
     </>,
     { wrapper },

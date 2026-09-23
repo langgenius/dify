@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -10,10 +9,16 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithState } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
+
+const render = (ui: React.ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({ features: { enable_skill: true } })
+  return renderWithState(ui, { wrapper })
+}
 
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockCopy = vi.hoisted(() => vi.fn())
@@ -103,6 +108,36 @@ const mockBuiltInTools = vi.hoisted(() => [
   },
 ])
 
+const mockMCPTools = vi.hoisted(() => ({
+  current: [] as Array<Record<string, unknown>>,
+}))
+const mondayMCPProvider = {
+  id: '1e9b5c9c-0a3f-4a2b-8f6f-2f7a0d3c4b51',
+  server_identifier: 'monday_mcp',
+  name: 'Monday MCP',
+  author: 'Dify',
+  description: { en_US: 'Monday MCP server' },
+  icon: 'monday.svg',
+  label: { en_US: 'Monday MCP' },
+  type: 'mcp',
+  team_credentials: {},
+  is_team_authorization: true,
+  allow_delete: true,
+  labels: [],
+  meta: {},
+  tools: [
+    {
+      name: 'list_boards',
+      author: 'Dify',
+      label: { en_US: 'List Boards' },
+      description: { en_US: 'List all boards.' },
+      parameters: [],
+      labels: [],
+      output_schema: {},
+    },
+  ],
+}
+
 const wikipediaProvider = {
   id: 'wikipedia',
   name: 'Wikipedia',
@@ -179,10 +214,6 @@ vi.mock('lexical', () => ({
   SELECTION_CHANGE_COMMAND: Symbol('selection-change-command'),
 }))
 
-vi.mock('@/app/components/base/infotip', () => ({
-  Infotip: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-}))
-
 vi.mock('foxact/use-clipboard', () => ({
   useClipboard: mockUseClipboard,
 }))
@@ -199,16 +230,11 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: { enableSkill: boolean }) => unknown) =>
-    selector({ enableSkill: true }),
-}))
-
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
   useAllCustomTools: () => ({ data: [] }),
   useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({ data: mockMCPTools.current }),
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
@@ -304,6 +330,7 @@ describe('AgentPromptEditor', () => {
     vi.clearAllMocks()
     window.getSelection()?.removeAllRanges()
     mockConfigFiles.current = []
+    mockMCPTools.current = []
     mockLexical.selection = null
     mockLexical.rootChildren = []
     mockLexical.rootSelectEnd.mockClear()
@@ -1008,6 +1035,76 @@ describe('AgentPromptEditor', () => {
           ],
         }),
       ])
+    })
+
+    it('should reference MCP tools by the same server identifier the configuration stores', async () => {
+      mockMCPTools.current = [mondayMCPProvider]
+      const { store, setPromptValue } = renderAgentPromptEditor('Research /', { tools: [] })
+
+      await openSlashMenuFromEditor()
+      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
+      fireEvent.click(screen.getByRole('button', { name: 'Monday MCP' }))
+      fireEvent.click(screen.getByRole('button', { name: /List Boards/i }))
+
+      expect(store.get(agentComposerPromptAtom)).toBe(
+        'Research [§tool:monday_mcp/list_boards:List Boards§] ',
+      )
+      expect(store.get(agentComposerDraftAtom).tools).toEqual([
+        expect.objectContaining({ id: 'monday_mcp' }),
+      ])
+
+      setPromptValue('Research /')
+      await openSlashMenuFromEditor()
+      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /Monday MCP.*agentDetail\.configure\.tools\.toolTabs\.mcp/i,
+        }),
+      )
+
+      expect(store.get(agentComposerPromptAtom)).toBe('Research [§tool:monday_mcp/*:Monday MCP§] ')
+    })
+
+    it('should render reference icons for MCP tools saved before the provider was renamed', () => {
+      mockMCPTools.current = [mondayMCPProvider]
+      renderAgentPromptEditor('Run tools', {
+        tools: [
+          {
+            id: 'monday_mcp',
+            name: 'Monday Boards',
+            kind: 'provider',
+            iconClassName: 'i-custom-public-other-default-tool-icon',
+            providerType: 'mcp',
+            credentialVariant: 'authorized',
+            actions: [
+              {
+                id: 'monday_mcp-list_boards',
+                name: 'List Boards',
+                toolName: 'list_boards',
+                description: 'List all boards.',
+              },
+            ],
+          },
+        ],
+      })
+
+      const promptEditorProps = mockPromptEditor.mock.calls.at(-1)?.[0] as PromptEditorProps
+      const { container } = render(
+        <>
+          {promptEditorProps.rosterReferenceBlock?.renderIcon?.({
+            kind: 'tool',
+            id: 'monday_mcp/list_boards',
+            label: 'List Boards',
+          })}
+        </>,
+      )
+
+      const providerIcon = Array.from(container.querySelectorAll<HTMLElement>('[style]')).find(
+        (element) => element.style.backgroundImage,
+      )
+      expect(providerIcon).toHaveStyle({
+        backgroundImage: `url(${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=monday.svg)`,
+      })
     })
 
     it('should show configured providers and actions before other available tools', () => {

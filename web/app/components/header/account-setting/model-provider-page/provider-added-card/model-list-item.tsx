@@ -3,17 +3,16 @@ import type { ModelItem, ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { disableModel, enableModel } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelStatusEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
@@ -40,12 +39,18 @@ const ModelListItem = ({
   onChange,
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
-  const { t } = useTranslation()
-  const { plan } = useProviderContext()
-  const modelLoadBalancingEnabled = useProviderContextSelector(
-    (state) => state.modelLoadBalancingEnabled,
+  const { t } = useTranslation(['common'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: features } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => ({
+        plan: features.billing.subscription.plan,
+        model_load_balancing_enabled: features.model_load_balancing_enabled,
+      }),
+    }),
   )
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const configurableStatuses: ModelStatusEnum[] = [ModelStatusEnum.active, ModelStatusEnum.disabled]
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
@@ -122,18 +127,23 @@ const ModelListItem = ({
         showFeaturesLabel
       ></ModelName>
       <div className="flex shrink-0 items-center">
-        {modelLoadBalancingEnabled &&
+        {features?.model_load_balancing_enabled &&
           !model.deprecated &&
           model.load_balancing_enabled &&
           !model.has_invalid_load_balancing_configs && (
             <Badge className="mr-1 h-4.5 w-4.5 items-center justify-center border-text-accent-secondary p-0">
-              <Balance className="size-3 text-text-accent-secondary" />
+              <span
+                aria-hidden
+                className="i-custom-vender-line-financeAndECommerce-balance size-3 text-text-accent-secondary"
+              />
             </Badge>
           )}
         {canConfigureModels &&
-          (modelLoadBalancingEnabled || plan.type === 'sandbox') &&
+          (deploymentEdition !== 'CLOUD' ||
+            features?.model_load_balancing_enabled ||
+            features?.plan === 'sandbox') &&
           !model.deprecated &&
-          [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
+          configurableStatuses.includes(model.status) && (
             <ConfigModel
               onClick={() => onModifyLoadBalancing?.(model)}
               loading={isLoadingLoadBalancing}
@@ -163,7 +173,7 @@ const ModelListItem = ({
             <Switch
               className="ml-2"
               checked={model?.status === ModelStatusEnum.active}
-              disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
+              disabled={!configurableStatuses.includes(model.status)}
               size="md"
               onCheckedChange={onEnablingStateChange}
             />

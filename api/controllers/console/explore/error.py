@@ -23,12 +23,6 @@ class InstalledAppUnavailableHTTPError(InstalledAppHTTPError):
     code = 404
 
 
-class InstalledAppUninstallForbiddenError(InstalledAppHTTPError):
-    error_code = "installed_app_uninstall_forbidden"
-    description = "An app owned by this workspace cannot be removed from its app library."
-    code = 403
-
-
 class InstalledAppInvalidCursorError(InstalledAppHTTPError):
     error_code = "invalid_cursor"
     description = "The app list cursor is invalid. Refresh the list and try again."
@@ -75,6 +69,18 @@ class RecommendedAppNotFoundError(BaseHTTPException):
     error_code = "recommended_app_not_found"
     description = "Recommended app not found."
     code = 404
+
+
+class AppPreviewSiteUnavailableError(BaseHTTPException):
+    error_code = "app_site_unavailable"
+    description = "The app preview site is unavailable."
+    code = 403
+
+
+class AppPreviewOwnerUnavailableError(BaseHTTPException):
+    error_code = "app_owner_unavailable"
+    description = "The app preview owner is unavailable."
+    code = 403
 
 
 class TrialAppNotAllowed(BaseHTTPException):

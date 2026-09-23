@@ -6,15 +6,11 @@ import pytest
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, RecommendedApp
+from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_service import (
-    InstalledAppInfo,
-    InstalledAppOwnedByWorkspaceError,
-    InstalledAppRecord,
-)
+from services.installed_app_service import InstalledAppInfo, InstalledAppRecord
 
 _USED_AT = datetime(2026, 9, 6, 12, 30, 45)
 _VIEWER_TENANT_ID = "11111111-1111-4111-8111-111111111111"
@@ -255,20 +251,6 @@ def _app_with_publication(
     return app
 
 
-def _recommend(session: Session, app_id: str) -> RecommendedApp:
-    recommended = RecommendedApp(
-        app_id=app_id,
-        description={"en-US": "recommended"},
-        copyright="copyright",
-        privacy_policy="",
-        category="productivity",
-        install_count=4,
-    )
-    session.add(recommended)
-    session.flush()
-    return recommended
-
-
 @pytest.mark.parametrize("mode", list(AppMode))
 @pytest.mark.parametrize("publication", ["present", "missing", "dangling"])
 def test_candidate_and_detail_publication_filters_preserve_mode_and_reference_rules(
@@ -411,7 +393,7 @@ def test_candidates_filter_literal_case_insensitive_name_and_app_with_workspace_
 
 
 @pytest.mark.parametrize("field", ["id", "tenant_id", "app_id"])
-@pytest.mark.parametrize("operation", ["get_published", "uninstall", "set_pinned"])
+@pytest.mark.parametrize("operation", ["get_published", "set_pinned"])
 def test_management_operations_require_all_admitted_reference_fields(
     sqlite_session_factory: sessionmaker[Session], field: str, operation: str
 ) -> None:
@@ -425,9 +407,6 @@ def test_management_operations_require_all_admitted_reference_fields(
 
     if operation == "get_published":
         assert repository.get_published(installed_app=reference) is None
-    elif operation == "uninstall":
-        with pytest.raises(InstalledAppNotFoundError, match=reference.id):
-            repository.uninstall(installed_app=reference)
     else:
         with pytest.raises(InstalledAppNotFoundError, match=reference.id):
             repository.set_pinned(installed_app=reference, is_pinned=True)
@@ -436,44 +415,6 @@ def test_management_operations_require_all_admitted_reference_fields(
         stored = session.get(InstalledApp, installation.id)
         assert stored is not None
         assert stored.is_pinned is False
-
-
-def test_uninstall_removes_only_foreign_installation_even_when_app_is_unpublished(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    with sqlite_session_factory.begin() as session:
-        app = _app_with_publication(session, published=False)
-        recommended = _recommend(session, app.id)
-        installation = _installation(app_id=app.id)
-        session.add(installation)
-        session.flush()
-    repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
-
-    repository.uninstall(installed_app=_reference(installation))
-
-    with sqlite_session_factory() as session:
-        assert session.get(InstalledApp, installation.id) is None
-        assert session.get(App, app.id) is not None
-        stored = session.get(RecommendedApp, recommended.id)
-        assert stored is not None
-        assert stored.install_count == 4
-
-
-def test_uninstall_respects_stored_installation_ownership(sqlite_session_factory: sessionmaker[Session]) -> None:
-    with sqlite_session_factory.begin() as session:
-        app = _app_with_publication(session)
-        installation = _installation(app_id=app.id)
-        # The installation's stored owner is the existing policy source.
-        installation.app_owner_tenant_id = _VIEWER_TENANT_ID
-        session.add(installation)
-        session.flush()
-    repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
-
-    with pytest.raises(InstalledAppOwnedByWorkspaceError, match=installation.id):
-        repository.uninstall(installed_app=_reference(installation))
-
-    with sqlite_session_factory() as session:
-        assert session.get(InstalledApp, installation.id) is not None
 
 
 @pytest.mark.parametrize("is_pinned", [True, False])
@@ -494,9 +435,8 @@ def test_pin_updates_only_pin_state_including_unpublished_apps(
         assert stored.app_owner_tenant_id == installed_app.app_owner_tenant_id
 
 
-@pytest.mark.parametrize("operation", ["uninstall", "set_pinned"])
-def test_management_mutations_roll_back_and_preserve_database_failure(
-    sqlite_session_factory: sessionmaker[Session], installed_app: InstalledApp, operation: str
+def test_pin_rolls_back_and_preserves_database_failure(
+    sqlite_session_factory: sessionmaker[Session], installed_app: InstalledApp
 ) -> None:
     failure = RuntimeError("installation commit unavailable")
     repository_factory = sessionmaker(bind=sqlite_session_factory.kw["bind"], expire_on_commit=False)
@@ -507,12 +447,8 @@ def test_management_mutations_roll_back_and_preserve_database_failure(
         raise failure
 
     repository = SQLAlchemyInstalledAppRepository(session_factory=repository_factory)
-    if operation == "uninstall":
-        with pytest.raises(RuntimeError, match="installation commit unavailable") as caught:
-            repository.uninstall(installed_app=_reference(installed_app))
-    else:
-        with pytest.raises(RuntimeError, match="installation commit unavailable") as caught:
-            repository.set_pinned(installed_app=_reference(installed_app), is_pinned=False)
+    with pytest.raises(RuntimeError, match="installation commit unavailable") as caught:
+        repository.set_pinned(installed_app=_reference(installed_app), is_pinned=False)
 
     assert caught.value is failure
     with sqlite_session_factory() as session:

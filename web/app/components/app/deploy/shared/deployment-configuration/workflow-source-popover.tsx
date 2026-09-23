@@ -102,7 +102,7 @@ export function WorkflowDependencyPreview({
   paths: WorkflowPath[]
   subjectName: string
 }) {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments'])
   const validPaths = uniqueWorkflowPaths(paths)
   const firstLeafWorkflow = validPaths[0]?.workflows.at(-1)
 

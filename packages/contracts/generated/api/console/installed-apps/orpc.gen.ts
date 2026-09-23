@@ -5,8 +5,6 @@ import * as z from 'zod'
 import {
   zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath,
   zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse,
-  zDeleteInstalledAppsByInstalledAppIdPath,
-  zDeleteInstalledAppsByInstalledAppIdResponse,
   zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath,
   zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse,
   zGetInstalledAppsByInstalledAppIdConversationsPath,
@@ -67,7 +65,7 @@ import {
   zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const post = oc
   .route({
@@ -508,18 +506,6 @@ export const workflows = {
   tasks,
 }
 
-export const delete3 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteInstalledAppsByInstalledAppId',
-    path: '/installed-apps/{installed_app_id}',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdPath }))
-  .output(zDeleteInstalledAppsByInstalledAppIdResponse)
-
 export const get8 = oc
   .route({
     inputStructure: 'detailed',
@@ -548,7 +534,6 @@ export const patch3 = oc
   .output(zPatchInstalledAppsByInstalledAppIdResponse)
 
 export const byInstalledAppId = {
-  delete: delete3,
   get: get8,
   patch: patch3,
   audioToText,

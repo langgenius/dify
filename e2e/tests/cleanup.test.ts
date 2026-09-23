@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
-import { runCleanupTasks, shouldFailForCleanupErrors } from '../support/cleanup'
+import { runCleanupTasks, shouldFailForCleanupErrors } from '../support/cleanup.ts'
 
 describe('runCleanupTasks', () => {
   it('runs every task in order', async () => {

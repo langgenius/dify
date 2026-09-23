@@ -1,5 +1,6 @@
+import { TabsPanel, Tabs as TabsRoot } from '@langgenius/dify-ui/tabs'
 import { memo, useState } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { useStore } from '@/app/components/workflow/store'
@@ -16,14 +17,10 @@ const Result = () => {
   }
 
   return (
-    <div className="flex grow flex-col">
-      <Tabs
-        currentTab={currentTab}
-        workflowRunningData={workflowRunningData}
-        switchTab={switchTab}
-      />
+    <TabsRoot value={currentTab} onValueChange={setCurrentTab} className="flex grow flex-col">
+      <Tabs workflowRunningData={workflowRunningData} />
       <div className="flex h-0 grow flex-col overflow-y-auto">
-        {currentTab === 'RESULT' && (
+        <TabsPanel value="RESULT" className="flex grow flex-col">
           <ResultPreview
             isRunning={
               !workflowRunningData?.result ||
@@ -33,8 +30,8 @@ const Result = () => {
             error={workflowRunningData?.result?.error}
             onSwitchToDetail={() => switchTab('DETAIL')}
           />
-        )}
-        {currentTab === 'DETAIL' && (
+        </TabsPanel>
+        <TabsPanel value="DETAIL" className="flex grow flex-col">
           <ResultPanel
             inputs={workflowRunningData?.result?.inputs}
             outputs={workflowRunningData?.result?.outputs}
@@ -47,25 +44,25 @@ const Result = () => {
             steps={workflowRunningData?.result?.total_steps}
             exceptionCounts={workflowRunningData?.result?.exceptions_count}
           />
-        )}
-        {currentTab === 'DETAIL' && !workflowRunningData?.result && (
-          <div className="flex grow items-center justify-center">
-            <Loading />
-          </div>
-        )}
-        {currentTab === 'TRACING' && (
+          {!workflowRunningData?.result && (
+            <div className="flex grow items-center justify-center">
+              <LoadingPlaceholder />
+            </div>
+          )}
+        </TabsPanel>
+        <TabsPanel value="TRACING" className="flex grow flex-col">
           <TracingPanel
             className="bg-background-section-burn"
             list={workflowRunningData?.tracing || []}
           />
-        )}
-        {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-          <div className="flex grow items-center justify-center">
-            <Loading />
-          </div>
-        )}
+          {!workflowRunningData?.tracing?.length && (
+            <div className="flex grow items-center justify-center">
+              <LoadingPlaceholder />
+            </div>
+          )}
+        </TabsPanel>
       </div>
-    </div>
+    </TabsRoot>
   )
 }
 

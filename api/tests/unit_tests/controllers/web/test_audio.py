@@ -22,7 +22,6 @@ from controllers.web.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from models.enums import EndUserType
 from models.model import App, AppMode, EndUser, IconType
 from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import (
@@ -32,6 +31,7 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _app_model() -> App:
@@ -51,15 +51,7 @@ def _app_model() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=EndUserType.BROWSER,
-        external_user_id="ext-1",
-        name="Web User",
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1", app_id="app-1", external_user_id="ext-1", name="Web User")
 
 
 # ---------------------------------------------------------------------------

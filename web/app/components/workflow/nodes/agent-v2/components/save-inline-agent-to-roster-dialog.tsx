@@ -24,12 +24,12 @@ import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { createAgentIconSelection } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 
 type SaveInlineAgentToRosterDialogProps = {
   flowId: string
-  flowType: FlowType.appFlow | FlowType.snippet
+  flowType: typeof FlowType.appFlow | typeof FlowType.snippet
   initialAgent: AgentComposerAgentResponse
   nodeId: string
   open: boolean
@@ -52,8 +52,8 @@ function SaveInlineAgentToRosterFormSession({
   onCancel,
   onSubmit,
 }: SaveInlineAgentToRosterFormSessionProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [initialValues] = useState(() => ({
     fields: {
       description: initialAgent.description ?? '',
@@ -118,7 +118,7 @@ export function SaveInlineAgentToRosterDialog({
   onOpenChange,
   onSaved,
 }: SaveInlineAgentToRosterDialogProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const appSaveToRosterMutation = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(),
