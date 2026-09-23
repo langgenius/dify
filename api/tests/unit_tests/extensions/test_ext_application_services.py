@@ -90,8 +90,8 @@ from services.installed_app_access_service import (
     InstalledAppAccessService,
     InstalledAppRef,
 )
-from services.installed_app_completion_adapters import AppGenerateServiceCompletionRuntime
-from services.installed_app_completion_service import InstalledAppCompletionService
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime
+from services.installed_app_generation_service import InstalledAppGenerationService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
@@ -427,12 +427,12 @@ def test_build_application_services_reuses_installed_app_dependencies(
     )
 
     assert isinstance(services.installed_app_access, InstalledAppAccessService)
-    assert isinstance(services.installed_app_completion, InstalledAppCompletionService)
+    assert isinstance(services.installed_app_generation, InstalledAppGenerationService)
     assert isinstance(services.installed_app_access._installed_apps, SQLAlchemyInstalledAppRepository)
-    assert services.installed_app_completion._usage is services.installed_app_access._installed_apps
-    assert services.installed_app_completion._app_definitions is services.app_definitions
-    assert isinstance(services.installed_app_completion._runtime, AppGenerateServiceCompletionRuntime)
-    assert services.installed_app_completion._runtime._session_factory is sqlite_session_factory
+    assert services.installed_app_generation._usage is services.installed_app_access._installed_apps
+    assert services.installed_app_generation._app_definitions is services.app_definitions
+    assert isinstance(services.installed_app_generation._runtime, AppGenerateServiceRuntime)
+    assert services.installed_app_generation._runtime._session_factory is sqlite_session_factory
 
 
 def test_build_application_services_wires_app_tracing_config_boundary(
