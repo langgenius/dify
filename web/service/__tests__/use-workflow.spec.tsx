@@ -20,8 +20,8 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
-import { consoleQuery } from '../client'
 import { useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,

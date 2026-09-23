@@ -41,6 +41,8 @@ from core.helper.trace_id_helper import (
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.trigger.constants import is_trigger_node_type
+from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.filters import ResponseStreamFilter
@@ -57,8 +59,6 @@ from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDra
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
-
-SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
 
 logger = logging.getLogger(__name__)
 
@@ -88,10 +88,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         if snippet is None:
             return workflow
         return SnippetGenerateService.ensure_start_node_for_worker(workflow, snippet)
-
-    @staticmethod
-    def _should_prepare_user_inputs(args: Mapping[str, Any]) -> bool:
-        return not bool(args.get(SKIP_PREPARE_USER_INPUTS_KEY))
 
     @overload
     def generate(
@@ -201,9 +197,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 **extract_trace_session_id_from_args(args),
             }
             workflow_run_id = str(workflow_run_id or uuid.uuid4())
-            # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args
-            # trigger shouldn't prepare user inputs
-            if self._should_prepare_user_inputs(args):
+            root_node_id = root_node_id or get_default_root_node_id(workflow.graph_dict)
+            root_node_config = workflow.get_node_config_by_id(root_node_id)
+            root_node_type = workflow.get_node_type_from_node_config(root_node_config)
+            # Trigger inputs are already adapted event data, not Start form fields.
+            if not is_trigger_node_type(root_node_type):
                 inputs = self._prepare_user_inputs(
                     user_inputs=inputs,
                     variables=app_config.variables,

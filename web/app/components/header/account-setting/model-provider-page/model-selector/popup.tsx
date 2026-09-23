@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelSelectorPreviewPayload } from './popup-item'
 import type {
   ModelSelectorModel,
@@ -19,10 +20,9 @@ import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { renderI18nObject } from '@/i18n-config'
-import { consoleQuery } from '@/service/client'
+import { renderI18nObject } from '@/i18n/metadata'
+import { consoleQuery } from '@/service/console'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelTypeEnum } from '../declarations'
@@ -50,6 +50,9 @@ import {
   ModelSelectorSearchHeader,
   ShowIncompatibleModelsButton,
 } from './popup-layout'
+
+const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryListResponse['data'] = []
+const EMPTY_MODEL_PROVIDER_PLUGINS: ModelProviderSummaryListResponse['plugins'] = {}
 
 export type PopupProps = {
   defaultModel?: ModelSelectorValue
@@ -79,7 +82,7 @@ function Popup({
   onOpenMarketplace,
   onHide,
 }: PopupProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { theme } = useTheme()
   const language = useLanguage()
   const previewCardHandle = useMemo(
@@ -88,7 +91,11 @@ function Popup({
   )
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const [showIncompatibleModels, setShowIncompatibleModels] = useState(false)
-  const { modelProviders, modelProviderPlugins = {} } = useProviderContext()
+  const { data: providerSummary } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
+  )
+  const modelProviders = providerSummary?.data ?? EMPTY_MODEL_PROVIDERS
+  const modelProviderPlugins = providerSummary?.plugins ?? EMPTY_MODEL_PROVIDER_PLUGINS
   const { data: enableMarketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.enable_marketplace,
@@ -343,6 +350,11 @@ function ModelSelectorPreviewCard({
   if (!payload) return null
 
   const { provider, modelItem } = payload
+  const modelTypesWithCapabilities: ModelTypeEnum[] = [
+    ModelTypeEnum.textGeneration,
+    ModelTypeEnum.textEmbedding,
+    ModelTypeEnum.rerank,
+  ]
 
   return (
     <PreviewCardContent
@@ -369,9 +381,7 @@ function ModelSelectorPreviewCard({
             <ModelBadge>{sizeFormat(modelItem.model_properties.context_size as number)}</ModelBadge>
           )}
         </div>
-        {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(
-          modelItem.model_type as ModelTypeEnum,
-        ) &&
+        {modelTypesWithCapabilities.includes(modelItem.model_type as ModelTypeEnum) &&
           modelItem.features?.some((feature) =>
             [
               ModelFeatureEnum.vision,

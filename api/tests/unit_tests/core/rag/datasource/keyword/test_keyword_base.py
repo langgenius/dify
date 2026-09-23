@@ -7,10 +7,11 @@ from sqlalchemy.orm import Session
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from models import Dataset
+from tests.unit_tests.model_factories import make_dataset
 
 
 def _dataset() -> Dataset:
-    return Dataset(id="dataset-1", tenant_id="tenant-1", name="Dataset", created_by="account-1")
+    return make_dataset()
 
 
 class _KeywordThatRaises(BaseKeyword):

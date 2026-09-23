@@ -15,6 +15,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -27,7 +28,6 @@ from controllers.console.agent.app_helpers import resolve_agent_runtime_app_mode
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -285,6 +285,7 @@ def _resolve_console_version(
     account_id: str,
     version_id: str | None,
     draft_type: str | None,
+    for_write: bool = False,
 ) -> tuple[str, AgentConfigVersionKind]:
     if version_id:
         return version_id, AgentConfigVersionKind.SNAPSHOT
@@ -301,15 +302,27 @@ def _resolve_console_version(
             if isinstance(draft_id, str) and draft_id:
                 return draft_id, AgentConfigVersionKind.BUILD_DRAFT
         else:
+            if for_write:
+                prepared_draft = AgentComposerService.prepare_agent_composer_draft(
+                    session=session, tenant_id=tenant_id, agent_id=agent_id, account_id=account_id
+                )
+                # Asset services open an independent session for the mutation.
+                draft_id = prepared_draft.id
+                session.commit()
+                return draft_id, AgentConfigVersionKind.DRAFT
             state = AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=agent_id)
             draft = state.get("draft") or {}
             draft_id = draft.get("id")
-            if isinstance(draft_id, str) and draft_id:
-                # load_agent_composer creates the normal draft on first access.
-                # Config asset services use their own SQLAlchemy session, so the
-                # draft must be visible before we hand its id across that boundary.
-                session.commit()
+            snapshot_id = (state.get("active_config_snapshot") or {}).get("id")
+            stale_inline_draft = (
+                (state.get("agent") or {}).get("scope") == "workflow_only"
+                and isinstance(snapshot_id, str)
+                and draft.get("base_snapshot_id") != snapshot_id
+            )
+            if isinstance(draft_id, str) and draft_id and not stale_inline_draft:
                 return draft_id, AgentConfigVersionKind.DRAFT
+            if isinstance(snapshot_id, str) and snapshot_id:
+                return snapshot_id, AgentConfigVersionKind.SNAPSHOT
     except AgentVersionNotFoundError as exc:
         raise AgentConfigServiceError(
             "config_version_not_found",
@@ -339,6 +352,7 @@ def _resolve_target(
         account_id=account_id,
         version_id=version_id,
         draft_type=draft_type,
+        for_write=request.method in {"POST", "PUT", "PATCH", "DELETE"},
     )
     return _ResolvedConsoleTarget(
         tenant_id=tenant_id,
@@ -659,6 +673,7 @@ class AgentConfigManifestByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -704,6 +719,7 @@ class AgentConfigSkillUploadByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -733,7 +749,7 @@ class AgentConfigSkillUploadApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=_WORKFLOW_APP_MODES)
@@ -751,6 +767,7 @@ class AgentConfigSkillsByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -789,6 +806,7 @@ class AgentConfigFilesByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -808,6 +826,7 @@ class AgentConfigFilesByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -853,7 +872,7 @@ class AgentConfigFilesApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=_WORKFLOW_APP_MODES)
@@ -877,6 +896,7 @@ class AgentConfigSkillInspectByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -928,6 +948,7 @@ class AgentConfigSkillFilePreviewByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -988,6 +1009,7 @@ class AgentConfigSkillDownloadByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1037,6 +1059,7 @@ class AgentConfigSkillFileDownloadByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1106,6 +1129,7 @@ class AgentConfigSkillFileDownloadContentByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1158,6 +1182,7 @@ class AgentConfigSkillByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1182,7 +1207,7 @@ class AgentConfigSkillApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=_WORKFLOW_APP_MODES)
@@ -1205,6 +1230,7 @@ class AgentConfigFilePreviewByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1250,6 +1276,7 @@ class AgentConfigFileDownloadByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1295,6 +1322,7 @@ class AgentConfigFileByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1319,7 +1347,7 @@ class AgentConfigFileApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=_WORKFLOW_APP_MODES)

@@ -1,8 +1,8 @@
 import type { AccessControlGroup, Subject } from '@/models/access-control'
 import { useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import { get } from '../base'
-import { consoleQuery } from '../client'
 import { getUserCanAccess } from '../share'
 
 const NAME_SPACE = 'access-control'

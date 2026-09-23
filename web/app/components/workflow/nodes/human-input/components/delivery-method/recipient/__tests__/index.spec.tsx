@@ -111,7 +111,7 @@ describe('Recipient', () => {
     fireEvent.click(screen.getByText('add-email-member'))
     fireEvent.click(screen.getByText('delete-member'))
     fireEvent.click(screen.getByText('delete-external'))
-    fireEvent.click(screen.getByRole('switch'))
+    fireEvent.click(screen.getByRole('switch', { name: 'Dify’s Lab' }))
 
     expect(onChange).toHaveBeenNthCalledWith(1, {
       whole_workspace: false,

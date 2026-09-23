@@ -7,6 +7,7 @@ from controllers.common.schema import query_params_from_model, register_schema_m
 from controllers.console import console_ns
 from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
+from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from libs.helper import EmailStr, dump_response, timezone
 from libs.login import current_account_with_tenant
@@ -88,8 +89,8 @@ class ActivateCheckApi(Resource):
         "Success",
         console_ns.models[ActivationCheckResponse.__name__],
     )
-    def get(self):
-        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(ActivateCheckQuery)
+    def get(self, args: ActivateCheckQuery):
         result = application_services().account_activation.check(
             InvitationLookup(
                 workspace_id=args.workspace_id,

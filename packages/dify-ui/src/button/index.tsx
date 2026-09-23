@@ -5,6 +5,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const buttonVariants = cva(
   'inline-flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-disabled:cursor-not-allowed',
@@ -103,7 +104,7 @@ const buttonVariants = cva(
   },
 )
 
-type ButtonProps = Omit<BaseButtonNS.Props, 'className'> &
+type ButtonProps = BaseButtonNS.Props &
   VariantProps<typeof buttonVariants> & {
     /**
      * Marks an action as pending, blocks activation, and keeps the button focusable by default.
@@ -111,7 +112,6 @@ type ButtonProps = Omit<BaseButtonNS.Props, 'className'> &
      * reference it with `aria-labelledby` so it remains the explicit accessible name.
      */
     loading?: boolean
-    className?: string
   }
 
 function Button({
@@ -129,7 +129,9 @@ function Button({
   return (
     <BaseButton
       type={type}
-      className={cn(buttonVariants({ variant, size, tone, className }))}
+      className={(state) =>
+        cn(buttonVariants({ variant, size, tone, className: resolveClassName(className, state) }))
+      }
       disabled={disabled || loading}
       focusableWhenDisabled={focusableWhenDisabled ?? loading}
       {...props}

@@ -137,21 +137,17 @@ export const getAppACLCapabilities = (
     AppACLPermission.Edit,
     hasMaintainerPermissions,
   )
-  const canManageAccessPoint = hasResourcePermission(
-    permissionKeys,
-    AppACLPermission.AccessPointManage,
-    hasMaintainerPermissions,
-  )
-
   return {
-    canManageAccessPoint,
-    canViewAccessPoint:
-      canManageAccessPoint ||
-      hasResourcePermission(
-        permissionKeys,
-        AppACLPermission.AccessPointView,
-        hasMaintainerPermissions,
-      ),
+    canManageAccessPoint: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.AccessPointManage,
+      hasMaintainerPermissions,
+    ),
+    canViewAccessPoint: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.AccessPointView,
+      hasMaintainerPermissions,
+    ),
     canViewLayout,
     canTestAndRun,
     canEdit,

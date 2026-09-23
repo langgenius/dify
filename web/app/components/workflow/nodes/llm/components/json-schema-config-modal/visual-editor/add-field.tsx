@@ -7,7 +7,7 @@ import { useMittContext } from './context'
 import { useVisualEditorStore } from './store'
 
 const AddField = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const setIsAddingNewField = useVisualEditorStore((state) => state.setIsAddingNewField)
   const { emit } = useMittContext()
 

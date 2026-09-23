@@ -69,7 +69,7 @@ jobs:
             /supported: true/ && value != \"en-US\" {
               printf \"%s \", value
             }
-          " web/i18n-config/languages.ts | sed 's/[[:space:]]*$//')
+          " web/i18n/languages.ts | sed 's/[[:space:]]*$//')
 
           generate_changes_json() {
             node .github/scripts/generate-i18n-changes.mjs
@@ -110,9 +110,9 @@ jobs:
             elif [ "$SYNC_MODE" = "incremental" ]; then
               BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || true)
               if [ -n "$BASE_SHA" ]; then
-                CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'web/i18n/en-US/*.json' 2>/dev/null | sed -n 's@^.*/@@p' | sed 's/\.json$//' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+                CHANGED_FILES=$(git diff --name-only --find-renames=100% --diff-filter=AMDT "$BASE_SHA" "$HEAD_SHA" -- 'web/i18n/' 2>/dev/null | sed -n '\@^web/i18n/locales/en-US/[^/]*\.json$@p' | sed -n 's@^.*/@@p' | sed 's/\.json$//' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
               else
-                CHANGED_FILES=$(find web/i18n/en-US -maxdepth 1 -type f -name '*.json' -print | sed -n 's@^.*/@@p' | sed 's/\.json$//' | sort | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+                CHANGED_FILES=$(find web/i18n/locales/en-US -maxdepth 1 -type f -name '*.json' -print | sed -n 's@^.*/@@p' | sed 's/\.json$//' | sort | tr '\n' ' ' | sed 's/[[:space:]]*$//')
               fi
             elif [ "$SYNC_MODE" = "full" ]; then
               echo "workflow_dispatch full mode requires the files input to stay within CI limits." >&2
@@ -162,7 +162,7 @@ jobs:
 
       - name: Run Claude Code for Translation Sync
         if: steps.context.outputs.CHANGED_FILES != ''
-        uses: anthropics/claude-code-action@833fb0f8c9f6686b33d963a8bae0a94f4936ab2a # v1.0.211
+        uses: anthropics/claude-code-action@4036a180cf690f49529f5d8c79c998855287f590 # v1.0.230
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -170,12 +170,12 @@ jobs:
           show_full_output: ${{ github.event_name == 'workflow_dispatch' }}
           prompt: |
             You are the i18n sync agent for the Dify repository.
-            Your job is to keep translations synchronized with the English source files under `${{ github.workspace }}/web/i18n/en-US/`.
+            Your job is to keep translations synchronized with the English source files under `${{ github.workspace }}/web/i18n/locales/en-US/`.
 
             Use absolute paths at all times:
             - Repo root: `${{ github.workspace }}`
             - Web directory: `${{ github.workspace }}/web`
-            - Language config: `${{ github.workspace }}/web/i18n-config/languages.ts`
+            - Language config: `${{ github.workspace }}/web/i18n/languages.ts`
 
             Inputs:
             - Files in scope: `${{ steps.context.outputs.CHANGED_FILES }}`
@@ -198,12 +198,12 @@ jobs:
             Required execution plan:
             1. Resolve target languages.
                - Use the provided `Target languages` value as the source of truth.
-               - If it is unexpectedly empty, read `${{ github.workspace }}/web/i18n-config/languages.ts` and use every language with `supported: true` except `en-US`.
+               - If it is unexpectedly empty, read `${{ github.workspace }}/web/i18n/languages.ts` and use every language with `supported: true` except `en-US`.
             2. Stay strictly in scope.
                - Only process the files listed in `Files in scope`.
                - Only process the resolved target languages, never `en-US`.
                - Do not touch unrelated i18n files.
-               - Do not modify `${{ github.workspace }}/web/i18n/en-US/`.
+               - Do not modify `${{ github.workspace }}/web/i18n/locales/en-US/`.
             3. Resolve source changes.
                - If `Structured change set available` is `true`, read `/tmp/i18n-changes.json` and use it as the source of truth for file-level and key-level changes.
                - For each file entry:
@@ -227,7 +227,7 @@ jobs:
                - Match the existing terminology and register used by each locale.
                - Prefer one Edit per file when stable, but prioritize correctness over batching.
             6. Verify only the edited files.
-               - Run `vp fmt <repo-relative edited paths such as web/i18n/...>`
+               - Run `vp fmt <repo-relative edited paths such as web/i18n/locales/...>`
                - Run `vp run dify-web#i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
                - If verification fails, fix the remaining problems before continuing.
             7. Stop after the scoped locale files are updated and verification passes.
@@ -241,7 +241,7 @@ jobs:
         if: steps.context.outputs.CHANGED_FILES != ''
         shell: bash
         run: |
-          if [ -z "$(git -C "${{ github.workspace }}" status --porcelain -- web/i18n/)" ]; then
+          if [ -z "$(git -C "${{ github.workspace }}" status --porcelain -- web/i18n/locales/)" ]; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -260,7 +260,7 @@ jobs:
         shell: bash
         run: |
           git -C "${{ github.workspace }}" checkout -B "${{ steps.pr_meta.outputs.branch_name }}"
-          git -C "${{ github.workspace }}" add web/i18n/
+          git -C "${{ github.workspace }}" add web/i18n/locales/
           git -C "${{ github.workspace }}" commit -m "chore(i18n): sync translations with en-US"
 
       - name: Push translation branch
@@ -326,7 +326,7 @@ jobs:
             '## Verification',
             '',
             `- \`vp run dify-web#i18n:check --file ${process.env.FILES_IN_SCOPE} --lang ${process.env.TARGET_LANGS}\``,
-            `- \`vp fmt <repo-relative edited paths such as web/i18n/...>\``,
+            `- \`vp fmt <repo-relative edited paths such as web/i18n/locales/...>\``,
             '',
             '## Notes',
             '',

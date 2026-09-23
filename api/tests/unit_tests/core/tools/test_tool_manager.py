@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from sqlalchemy import event
@@ -32,10 +32,44 @@ from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 
 
+class _CallableSessionProxy:
+    """Lets test code use a session directly while production obtains it from ``db.session()``."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def __call__(self) -> Session:
+        return self._session
+
+    def add(self, instance: object) -> None:
+        self._session.add(instance)
+
+    def add_all(self, instances: list[object]) -> None:
+        self._session.add_all(instances)
+
+    def commit(self) -> None:
+        self._session.commit()
+
+    def expire_all(self) -> None:
+        self._session.expire_all()
+
+    def get(self, entity: type[object], ident: object) -> object | None:
+        return self._session.get(entity, ident)
+
+    def scalar(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
+        return self._session.scalar(statement, *args, **kwargs)
+
+    def scalars(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
+        return self._session.scalars(statement, *args, **kwargs)
+
+    def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
+        return self._session.execute(statement, *args, **kwargs)
+
+
 @dataclass(frozen=True)
 class _ToolDatabase:
     engine: Engine
-    session: Session
+    session: _CallableSessionProxy
 
 
 @pytest.fixture
@@ -48,7 +82,7 @@ def tool_database(sqlite_engine: Engine) -> Iterator[_ToolDatabase]:
     ]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield _ToolDatabase(engine=sqlite_engine, session=session)
+        yield _ToolDatabase(engine=sqlite_engine, session=_CallableSessionProxy(session))
 
 
 def _builtin_provider(
@@ -962,7 +996,7 @@ def test_get_api_provider_controller_returns_controller_and_credentials(
 
     assert built_controller is controller
     assert credentials == provider.credentials
-    mock_from_db.assert_called_with(provider, ApiProviderAuthType.API_KEY_QUERY)
+    mock_from_db.assert_called_with(provider, ApiProviderAuthType.API_KEY_QUERY, session=ANY)
     controller.load_bundled_tools.assert_called_once_with(provider.tools)
 
 
@@ -1009,7 +1043,7 @@ def test_get_mcp_provider_controller_returns_controller(monkeypatch: pytest.Monk
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
         mock_service = mock_service_cls.return_value
-        mock_service.get_provider.return_value = provider_entity
+        mock_service.get_provider_by_persisted_reference.return_value = provider_entity
         with patch("core.tools.tool_manager.MCPToolProviderController.from_db", return_value=controller):
             built = ToolManager.get_mcp_provider_controller("tenant-1", "mcp-1")
         assert built is controller
@@ -1023,7 +1057,7 @@ def test_generate_mcp_tool_icon_url_returns_provider_icon(
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
         mock_service = mock_service_cls.return_value
-        mock_service.get_provider_entity.return_value = provider_entity
+        mock_service.get_provider_entity_by_persisted_reference.return_value = provider_entity
         assert ToolManager.generate_mcp_tool_icon_url("tenant-1", "mcp-1") == provider_entity.provider_icon
         assert isinstance(mock_service_cls.call_args.kwargs["session"], Session)
 
@@ -1031,7 +1065,7 @@ def test_generate_mcp_tool_icon_url_returns_provider_icon(
 def test_get_mcp_provider_controller_missing_raises(monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase):
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
-        mock_service_cls.return_value.get_provider.side_effect = ValueError("missing")
+        mock_service_cls.return_value.get_provider_by_persisted_reference.side_effect = ValueError("missing")
         with pytest.raises(ToolProviderNotFoundError, match="mcp provider mcp-1 not found"):
             ToolManager.get_mcp_provider_controller("tenant-1", "mcp-1")
 

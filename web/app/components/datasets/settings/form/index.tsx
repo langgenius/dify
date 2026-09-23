@@ -1,14 +1,14 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'
 import { useFormState } from './hooks/use-form-state'
 
 const Form = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
   const {
     // Context values
     currentDataset,
@@ -117,7 +117,7 @@ const Form = () => {
         />
       )}
 
-      <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+      <Separator decorative orientation="horizontal" className="my-1 bg-divider-subtle" />
 
       {/* Save Button */}
       <div className="flex gap-x-1">

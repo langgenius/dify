@@ -41,7 +41,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
   onDelete,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { data: email } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,

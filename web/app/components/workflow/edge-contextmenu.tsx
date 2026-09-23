@@ -6,7 +6,7 @@ import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
 export function EdgeContextmenu({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const contextMenuTarget = useStore((s) => s.contextMenuTarget)
   const edgeId = contextMenuTarget?.type === 'edge' ? contextMenuTarget.edgeId : undefined
   const { handleEdgeDeleteById } = useEdgesInteractions()

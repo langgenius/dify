@@ -1,5 +1,5 @@
 import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { loadCreatorProfile } from '../data.server'
 
 const mocks = vi.hoisted(() => ({
@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/config', () => ({ MARKETPLACE_API_PREFIX: 'https://marketplace.example/api/v1' }))
-vi.mock('@/service/client', () => ({ marketplaceClient: mocks }))
+vi.mock('@/service/marketplace', () => ({ marketplaceClient: mocks }))
 
 const plugin = {
   type: 'plugin',

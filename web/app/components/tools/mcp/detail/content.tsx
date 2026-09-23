@@ -53,7 +53,7 @@ const MCPDetailContent: FC<Props> = ({
   isTriggerAuthorize,
   onFirstCreate,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const canManageMCP = useCanManageMCP()
 
   const { data, isFetching: isGettingTools } = useMCPTools(

@@ -12,7 +12,7 @@ type Props = Readonly<{
 }>
 
 const EditedBeacon: FC<Props> = ({ onReset }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const ref = useRef(null)
   const isHovering = useHover(ref)
 

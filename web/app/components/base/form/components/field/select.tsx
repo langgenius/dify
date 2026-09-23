@@ -53,7 +53,7 @@ const SelectField = ({
   disabled,
   popupProps,
 }: SelectFieldProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const field = useFieldContext<string>()
   const placeholderText = placeholder || t(($) => $['placeholder.select'], { ns: 'common' })
 

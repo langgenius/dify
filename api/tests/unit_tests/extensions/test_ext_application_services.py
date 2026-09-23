@@ -1,6 +1,7 @@
 """Tests for application-service dependency wiring."""
 
 import json
+from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, patch
@@ -13,12 +14,14 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
-from models.model import AccountTrialAppRecord, App, AppMode, DifySetup, InstalledApp
+from models.enums import CustomizeTokenStrategy
+from models.model import AccountTrialAppRecord, App, AppMode, AppModelConfig, DifySetup, InstalledApp, Site, TrialApp
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -28,12 +31,18 @@ from repositories.account_oauth_repository import (
     RegisterServiceOAuthInvitationGateway,
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
-from services import account_forgot_password_service, recommended_app_catalog_gateway
+from services import account_forgot_password_service, audio_provider_gateway, recommended_app_catalog_gateway
 from services.account_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -57,7 +66,14 @@ from services.account_oauth_adapters import (
     DeploymentOAuthPolicyGateway,
     RedisOAuthAccountClaimLock,
 )
+from services.app_generate_service import AppGenerateService
+from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
+from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
+from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
+from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from services.app_tracing_config_service import AppTracingConfigService
+from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
@@ -65,12 +81,18 @@ from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.file_service import FileService
+from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
+from services.message_file_preview_service import MessageFilePreviewService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
+from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
+from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
+from services.tool_file_download_service import ToolFileDownloadService
+from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
@@ -146,6 +168,12 @@ def test_init_app_registers_services_for_the_current_app(
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
+        assert isinstance(services.app_scoped_end_users.commands, AppScopedEndUserService)
+        assert isinstance(services.app_scoped_end_users.queries, AppScopedEndUserQueryService)
+        repository = services.app_scoped_end_users.queries._app_scoped_end_users
+        assert isinstance(repository, AppScopedEndUserRepo)
+        assert services.app_scoped_end_users.commands._app_scoped_end_users is repository
+        assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
 
 
@@ -231,6 +259,68 @@ def test_build_application_services_reuses_file_service(
     assert services.web_app_runtime._file_service is services.files
 
 
+def test_build_application_services_wires_message_file_previews(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.message_file_previews, MessageFilePreviewService)
+    assert isinstance(services.message_file_previews._files, MessageFilePreviewQueryRepository)
+    assert services.message_file_previews._files._session_factory is sqlite_session_factory
+    assert services.message_file_previews._storage is ext_application_services.storage
+
+
+def test_build_application_services_wires_plugin_file_upload_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.plugin_file_uploads, PluginFileUploadService)
+    assert isinstance(services.plugin_file_uploads._owners, SQLAlchemyPluginFileUploadOwnerRepository)
+    assert services.plugin_file_uploads._owners._session_factory is sqlite_session_factory
+    assert isinstance(services.plugin_file_uploads._files, ToolFilePluginUploadGateway)
+
+
+def test_build_application_services_wires_tool_file_downloads(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.tool_file_downloads, ToolFileDownloadService)
+    assert isinstance(services.tool_file_downloads._tool_files, ToolFileManager)
+
+
+def test_build_application_services_wires_upload_file_delivery(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.upload_file_delivery, UploadFileDeliveryService)
+    assert isinstance(services.upload_file_delivery._files, UploadFileDeliveryQueryRepository)
+    assert services.upload_file_delivery._files._session_factory is sqlite_session_factory
+    assert services.upload_file_delivery._storage is ext_application_services.storage
+
+
 def test_build_application_services_wires_workflow_run_archives(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -253,6 +343,25 @@ def test_build_application_services_wires_workflow_run_archives(
     assert workflow_run_archives._sign_download_url is ext_application_services.sign_workflow_run_archive_download_url
 
 
+def test_build_application_services_wires_human_input_file_uploads(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    human_input_file_uploads = services.human_input_file_uploads
+    assert isinstance(human_input_file_uploads, HumanInputFileUploadService)
+    assert isinstance(human_input_file_uploads._uploads, SQLAlchemyHumanInputFileUploadRepository)
+    assert human_input_file_uploads._uploads._session_factory is sqlite_session_factory
+    assert human_input_file_uploads._remote_files is services.remote_files
+    assert human_input_file_uploads._files is services.files
+    assert services.remote_files._files is services.files
+
+
 def test_build_application_services_wires_app_site_boundary(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -266,6 +375,22 @@ def test_build_application_services_wires_app_site_boundary(
     assert isinstance(services.app_sites, AppSiteService)
     assert isinstance(services.app_sites._sites, AppSiteCommandRepository)
     assert services.app_sites._sites._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_app_tracing_config_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.app_tracing_configs, AppTracingConfigService)
+    assert isinstance(services.app_tracing_configs._configs, SQLAlchemyAppTracingConfigRepository)
+    assert services.app_tracing_configs._configs._session_factory is sqlite_session_factory
+    assert isinstance(services.app_tracing_configs._provider, OpsTraceManagerGateway)
 
 
 def test_build_application_services_wires_workflow_app_log_boundary(
@@ -570,12 +695,14 @@ def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_s
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     redis = _StopRedis(read_error=AssertionError("Workflow stop must not inspect task ownership"))
-    services = ext_application_services.build_application_services(
-        database_client=sqlite_session_factory,
-        deployment_edition=DeploymentEdition.COMMUNITY,
-        initialization_password="",
-        redis=redis,
-    )
+    script = MagicMock(side_effect=AssertionError("Workflow stop must not execute Redis scripts"))
+    with patch.object(redis, "register_script", return_value=script):
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=redis,
+        )
 
     services.app_tasks.stop_workflow_task_no_user_check(task_id="workflow-task")
 
@@ -726,6 +853,160 @@ def test_installed_app_admission_normalizes_known_enterprise_errors(
     enterprise_request.assert_called_once_with(
         "GET", "/webapp/permission", params={"userId": account_id, "appId": installed_app_ref.app_id}
     )
+
+
+def test_trial_generation_uses_configured_access_runtime_and_usage(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            App(id=app_id, tenant_id=tenant_id, name="Trial", mode="completion", enable_site=True, enable_api=False)
+        )
+        account = Account(name="Account", email="trial@example.com")
+        account.id = account_id
+        session.add(account)
+        session.add(TrialApp(app_id=app_id, tenant_id=tenant_id))
+
+    admitted = services.trial_app_access.get_access(app_id=app_id, account_id=account_id)
+    with patch.object(AppGenerateService, "generate", return_value={"answer": "hello"}):
+        response = services.trial_app_generation.generate_completion(
+            trial_app=admitted, account_id=account_id, args={"inputs": {}}
+        )
+
+    assert response == {"answer": "hello"}
+    with sqlite_session_factory() as session:
+        record = session.scalar(
+            select(AccountTrialAppRecord).where(
+                AccountTrialAppRecord.app_id == app_id, AccountTrialAppRecord.account_id == account_id
+            )
+        )
+        assert record is not None
+        assert record.count == 1
+
+
+def test_app_audio_uses_the_configured_database_and_app_owner(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        config = AppModelConfig(app_id=app_id, speech_to_text='{"enabled":true}')
+        session.add(config)
+        session.flush()
+        session.add(
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="Trial",
+                mode="chat",
+                app_model_config_id=config.id,
+                enable_site=True,
+                enable_api=False,
+            )
+        )
+        session.add(TrialApp(app_id=app_id, tenant_id=tenant_id))
+
+    def transcribe(*, app: AudioAppRef, content: bytes, end_user: str | None) -> str:
+        assert app == AudioAppRef(app_id=app_id, tenant_id=tenant_id, app_mode="chat")
+        assert content == b"audio"
+        assert end_user is None
+        return "transcript"
+
+    def synthesize(*, app: AudioAppRef, text: str, voice: str | None, end_user: str | None) -> AudioOutput:
+        assert app == AudioAppRef(app_id=app_id, tenant_id=tenant_id, app_mode="chat")
+        assert (text, voice, end_user) == ("read", "voice", None)
+        return AudioOutput(data=b"audio", mime_type="audio/mpeg")
+
+    monkeypatch.setattr(audio_provider_gateway, "speech_to_text", transcribe)
+    monkeypatch.setattr(audio_provider_gateway, "text_to_speech", synthesize)
+    admitted = services.trial_app_access.get_access(app_id=app_id, account_id=account_id)
+    assert services.app_audio.transcript_asr(
+        app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
+        audio=AudioUpload(stream=BytesIO(b"audio"), mime_type="audio/mp3"),
+    ) == {"text": "transcript"}
+    assert services.app_audio.transcript_tts(
+        app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
+        account_id=account_id,
+        text=" read ",
+        voice="voice",
+        message_id=None,
+    ) == AudioOutput(data=b"audio", mime_type="audio/mpeg")
+
+
+def test_app_previews_use_the_configured_catalog_and_app_owner(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="builtin")
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, other_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                App(id=app_id, tenant_id=tenant_id, name="Preview", mode="chat", enable_site=False, enable_api=False),
+                App(id=other_id, tenant_id=tenant_id, name="Private", mode="chat", enable_site=False, enable_api=False),
+            ]
+        )
+
+    # Catalog-only previews must work without a Trial registration or account.
+    payload = json.dumps({"app_details": {app_id: {"id": app_id}}})
+    with patch.object(recommended_app_catalog_gateway.Path, "read_text", return_value=payload):
+        assert services.app_previews.get_access(app_id=app_id) == AppPreviewRef(app_id=app_id, tenant_id=tenant_id)
+        with pytest.raises(AppPreviewUnavailableError, match=other_id):
+            services.app_previews.get_access(app_id=other_id)
+
+
+def test_app_preview_details_use_the_configured_database_without_request_globals(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, owner_id, viewer_workspace_id = str(uuid4()), str(uuid4()), str(uuid4())
+    account = Account(name="Preview viewer", email="preview@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                account,
+                App(id=app_id, tenant_id=owner_id, name="Preview", mode="chat", enable_site=True, enable_api=False),
+                Site(
+                    app_id=app_id,
+                    title="Preview site",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.UUID,
+                ),
+            ]
+        )
+
+    detail = services.app_preview_details.get_detail(
+        app=AppPreviewRef(app_id=app_id, tenant_id=owner_id),
+        account_id=account.id,
+        active_workspace_id=viewer_workspace_id,
+    )
+
+    assert detail.id == app_id
+    assert detail.name == "Preview"
+    assert detail.site.title == "Preview site"
+    assert detail.model_config is None
 
 
 def test_build_application_services_adapts_enterprise_webapp_access_mode(

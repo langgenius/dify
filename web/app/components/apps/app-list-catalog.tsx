@@ -5,10 +5,9 @@ import type {
   AppPartial,
   GetAppsData,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RefObject } from 'react'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
@@ -17,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
@@ -43,11 +42,11 @@ type AppListCatalogProps = Readonly<{
   dragging: boolean
   hasActiveFilters: boolean
   onCreateBlank: () => void
-  onCreateLearnDify?: (app: App) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onCreateTemplate: () => void
   onImportDSL: () => void
   onOpenTagManagement: () => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
   scrollViewportRef: RefObject<HTMLDivElement | null>
 }>
 
@@ -66,7 +65,7 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
   }>
 
 function CatalogSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="relative grow" role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
@@ -99,7 +98,7 @@ function AppListCatalogContent({
   scrollViewportRef,
   systemFeatures,
 }: AppListCatalogContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   const apps = useMemo(() => appListPages.flatMap(({ data: pageApps }) => pageApps), [appListPages])
   const workflowOnlineUserAppIds = useMemo(() => {

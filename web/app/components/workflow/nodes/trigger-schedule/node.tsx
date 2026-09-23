@@ -8,7 +8,7 @@ import { getNextExecutionTime } from './utils/execution-time-calculator'
 const i18nPrefix = 'nodes.triggerSchedule'
 
 const Node: FC<NodeProps<ScheduleTriggerNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="mb-1 px-3 py-1">

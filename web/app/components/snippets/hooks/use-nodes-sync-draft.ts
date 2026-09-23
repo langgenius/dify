@@ -11,7 +11,7 @@ import { useStoreApi } from 'reactflow'
 import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 // oxlint-disable-next-line no-restricted-imports
 import { postWithKeepalive } from '@/service/fetch'
 import { useSnippetDraftStore } from '../draft-store'

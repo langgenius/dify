@@ -1,10 +1,10 @@
 import type { DataSet } from '@/models/datasets'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 
@@ -21,7 +21,7 @@ type UseDatasetCardStateOptions = {
 }
 
 export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateOptions) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'dataset'])
   const { push } = useRouter()
   const queryClient = useQueryClient()
 

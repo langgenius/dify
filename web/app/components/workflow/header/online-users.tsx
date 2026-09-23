@@ -48,7 +48,7 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const appId = useStore((s) => s.appId)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
@@ -158,15 +158,10 @@ const OnlineUsers = () => {
                     )
                   }
                 />
-                <TooltipContent
-                  placement="bottom"
-                  sideOffset={4}
-                  className="flex h-7 max-w-55 min-w-0 items-center justify-center rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-1.5 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
-                >
-                  {renderDisplayName(
-                    user,
-                    'max-w-full system-xs-medium text-text-secondary',
-                    'text-text-quaternary',
+                <TooltipContent placement="bottom" sideOffset={4} className="max-w-55">
+                  {displayName}
+                  {isCurrentUser && (
+                    <span className="ml-1 text-text-quaternary">{currentUserSuffix}</span>
                   )}
                 </TooltipContent>
               </Tooltip>

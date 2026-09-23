@@ -6,8 +6,8 @@ import type { AgentChatMessageSender, AgentPreviewChatController } from './chat-
 import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
-import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { consoleQuery } from '@/service/console'
 import { getFormattedAgentDebugChatTree } from './chat-history'
 import { AgentPreviewChatSession } from './chat-session'
 
@@ -103,11 +103,7 @@ export function AgentChatRuntime({
     [historyQuery.data?.data],
   )
   if (conversationId && historyQuery.isPending && !conversationBelongsToCurrentSession) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loading type="app" />
-      </div>
-    )
+    return <LoadingPlaceholder className="h-full" />
   }
   const inputSessionKey =
     !conversationId || conversationBelongsToCurrentSession ? 'current-session' : conversationId

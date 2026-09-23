@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from constants.oauth_bearer import SubjectType
+from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.openapi._upload import UploadPart, UploadParts
 from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
+from services.app_dsl_service import Import
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
-MAX_PAGE_LIMIT = 200
+MAX_PAGE_LIMIT = 100
 
 
 class SupportedAppType(StrEnum):
@@ -50,8 +55,32 @@ class MessageMetadata(BaseModel):
     retriever_resources: list[dict[str, Any]] = []
 
 
-class PaginationEnvelope[T](BaseModel):
-    """Canonical pagination envelope for `/openapi/v1/*` list endpoints."""
+class Hint(BaseModel):
+    """A next step the caller can hand straight to `call <op> --input <input>`."""
+
+    summary: str
+    op: str
+    input: dict[str, Any] = Field(description="Ready-to-send input for `op`; unknown values are null")
+    form: list[dict[str, Any]] | None = Field(
+        default=None, description="Form fields behind `input.inputs`, copied from the pausing event"
+    )
+
+
+class Hinted(BaseModel):
+    """The one place a response carries server-built next steps; `hints` is reserved on every op input."""
+
+    hints: list[Hint] = Field(default_factory=list, description="Next steps the caller can take")
+
+
+class PageQuery(BaseModel):
+    """The two query parameters every list op takes; the next-page hint is built from this model."""
+
+    page: int = Field(1, ge=1)
+    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
+
+
+class PaginationEnvelope[T](Hinted):
+    """The one shape every paginated list on this surface answers with."""
 
     page: int
     limit: int
@@ -60,8 +89,14 @@ class PaginationEnvelope[T](BaseModel):
     data: list[T]
 
     @classmethod
-    def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> PaginationEnvelope[T]:
+    def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> Self:
         return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
+
+    @classmethod
+    def page_of(cls, items: list[T], *, query: PageQuery) -> Self:
+        """The page `query` asks for, cut from a list the service returned whole."""
+        start = (query.page - 1) * query.limit
+        return cls.build(page=query.page, limit=query.limit, total=len(items), items=items[start : start + query.limit])
 
 
 class AppListRow(BaseModel):
@@ -74,20 +109,12 @@ class AppListRow(BaseModel):
     workspace_name: str | None = None
 
 
-class AppListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[AppListRow]
+class AppListResponse(PaginationEnvelope[AppListRow]):
+    pass
 
 
-class PermittedExternalAppsListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[AppListRow]
+class PermittedExternalAppsListResponse(PaginationEnvelope[AppListRow]):
+    pass
 
 
 class AppInfo(BaseModel):
@@ -109,29 +136,6 @@ class AppDescribeResponse(BaseModel):
     input_schema: dict[str, Any] | None = Field(default=None)
 
 
-class ChatMessageResponse(BaseModel):
-    event: str
-    task_id: str
-    id: str
-    message_id: str
-    conversation_id: str
-    mode: str
-    answer: str
-    metadata: MessageMetadata = Field(default_factory=MessageMetadata)
-    created_at: int
-
-
-class CompletionMessageResponse(BaseModel):
-    event: str
-    task_id: str
-    id: str
-    message_id: str
-    mode: str
-    answer: str
-    metadata: MessageMetadata = Field(default_factory=MessageMetadata)
-    created_at: int
-
-
 class WorkflowRunData(BaseModel):
     id: str
     workflow_id: str
@@ -143,13 +147,6 @@ class WorkflowRunData(BaseModel):
     total_steps: int | None = None
     created_at: int | None = None
     finished_at: int | None = None
-
-
-class WorkflowRunResponse(BaseModel):
-    workflow_run_id: str
-    task_id: str
-    mode: Literal["workflow"] = "workflow"
-    data: WorkflowRunData
 
 
 class AccountPayload(BaseModel):
@@ -167,7 +164,7 @@ class WorkspacePayload(BaseModel):
 class DeviceTokenResponse(BaseModel):
     token: str
     expires_at: str
-    subject_type: Literal["account", "external_sso"]
+    subject_type: SubjectType
     account: AccountPayload | None = None
     workspaces: list[WorkspacePayload] = []
     default_workspace_id: str | None = None
@@ -177,7 +174,7 @@ class DeviceTokenResponse(BaseModel):
 
 
 class AccountResponse(BaseModel):
-    subject_type: str
+    subject_type: SubjectType
     subject_email: str | None = None
     subject_issuer: str | None = None
     account: AccountPayload | None = None
@@ -195,20 +192,15 @@ class SessionRow(BaseModel):
     expires_at: str | None = None
 
 
-class SessionListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[SessionRow]
+class SessionListResponse(PaginationEnvelope[SessionRow]):
+    pass
 
 
-class SessionListQuery(BaseModel):
+class SessionListQuery(PageQuery):
     """Pagination for GET /account/sessions. Strict (extra='forbid')."""
 
     model_config = ConfigDict(extra="forbid")
 
-    page: int = Field(1, ge=1)
     limit: int = Field(100, ge=1, le=MAX_PAGE_LIMIT)
 
 
@@ -224,8 +216,14 @@ class WorkspaceSummaryResponse(BaseModel):
     current: bool
 
 
-class WorkspaceListResponse(BaseModel):
-    workspaces: list[WorkspaceSummaryResponse]
+class WorkspaceListResponse(PaginationEnvelope[WorkspaceSummaryResponse]):
+    pass
+
+
+class WorkspaceListQuery(PageQuery):
+    """Strict (extra='forbid')."""
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class WorkspaceDetailResponse(BaseModel):
@@ -253,6 +251,14 @@ class DeviceLookupResponse(BaseModel):
 
 class DeviceMutateResponse(BaseModel):
     status: str
+
+
+class DeviceApprovalContextResponse(BaseModel):
+    subject_email: str
+    subject_issuer: str
+    user_code: str
+    csrf_token: str
+    expires_at: datetime
 
 
 class ServerVersionResponse(BaseModel):
@@ -304,24 +310,17 @@ class AppDescribeQuery(BaseModel):
         return members
 
 
-class AppListQuery(BaseModel):
+class AppListQuery(PageQuery):
     """mode is a closed enum of listable app types."""
 
     workspace_id: UUIDStr
-    page: int = Field(1, ge=1)
-    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
     mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
 
 
-class AppRunRequest(BaseModel):
-    inputs: dict[str, Any]
-    query: str | None = None
-    files: list[dict[str, Any]] | None = Field(default=None)
-    conversation_id: UUIDStrOrEmpty | None = None
-    auto_generate_name: bool = True
-    workflow_id: str | None = None
-    workspace_id: UUIDStrOrEmpty | None = None
+class _ConversationFields(BaseModel):
+    conversation_id: UUIDStrOrEmpty | None = Field(default=None, description="Continue an existing conversation")
+    auto_generate_name: bool = Field(default=True, description="Let the server name a new conversation")
 
     @field_validator("conversation_id", mode="before")
     @classmethod
@@ -334,6 +333,69 @@ class AppRunRequest(BaseModel):
             return uuid_value(value)
         except ValueError as exc:
             raise ValueError("conversation_id must be a valid UUID") from exc
+
+
+class _WorkflowVersionFields(BaseModel):
+    workflow_id: str | None = Field(default=None, description="Pin a published workflow version")
+
+
+class RunPayloadBase(BaseModel):
+    """What every run takes; each mode's payload adds its own fields and forbids the rest."""
+
+    inputs: dict[str, Any] = Field(
+        description=(
+            "Variables declared by the app. The exact shape is per app: read `input_schema` from "
+            "console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, "
+            "or a local file in `files`, not both."
+        )
+    )
+    files: UploadParts | None = Field(
+        default=None,
+        description=(
+            "Local files keyed by the app's file variable name; the server uploads each one and sets "
+            "`inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable"
+        ),
+    )
+    attachments: list[UploadPart] | None = Field(
+        default=None, description="Local files attached to the run itself (the app's `sys.files`), not to a variable"
+    )
+    workspace_id: UUIDStrOrEmpty | None = Field(default=None, description="Workspace that owns the app")
+
+
+class WorkflowRunPayload(RunPayloadBase, _WorkflowVersionFields):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ChatRunPayload(RunPayloadBase, _ConversationFields):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(description="User message")
+
+    @field_validator("query")
+    @classmethod
+    def _non_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("query must not be blank")
+        return value
+
+
+class AdvancedChatRunPayload(ChatRunPayload, _WorkflowVersionFields):
+    """A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CompletionRunPayload(RunPayloadBase):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(default="", description="Prompt text; most completion apps take their input through `inputs`")
+
+
+class FileUploadPayload(BaseModel):
+    file: UploadPart = Field(
+        description="The file to upload; its id can then be used in an app run's file variables",
+    )
 
 
 class DeviceCodeRequest(BaseModel):
@@ -354,33 +416,13 @@ class DeviceMutateRequest(BaseModel):
     user_code: str
 
 
-class PermittedExternalAppsListQuery(BaseModel):
+class PermittedExternalAppsListQuery(PageQuery):
     """Strict (extra='forbid')."""
 
     model_config = ConfigDict(extra="forbid")
 
-    page: int = Field(1, ge=1)
-    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
     mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
-
-
-_EMAIL_FIELD = Field(min_length=3, max_length=320, pattern=r"^[^@\s]+@[^@\s]+$")
-
-
-class ExtSubjectAssertionClaims(BaseModel):
-    email: str = _EMAIL_FIELD
-    issuer: str = Field(min_length=1, max_length=255)
-    user_code: str = Field(min_length=1, max_length=32)
-    nonce: str = Field(min_length=1, max_length=128)
-
-
-class ApprovalGrantClaimsPayload(BaseModel):
-    subject_email: str = _EMAIL_FIELD
-    subject_issuer: str = Field(min_length=1, max_length=255)
-    user_code: str = Field(min_length=1, max_length=32)
-    nonce: str = Field(min_length=1, max_length=128)
-    csrf_token: str = Field(min_length=1, max_length=128)
 
 
 # Closed enum for invite/update-role payloads. Owner is intentionally not
@@ -398,21 +440,14 @@ class MemberResponse(BaseModel):
     avatar: str | None = None
 
 
-class MemberListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[MemberResponse]
+class MemberListResponse(PaginationEnvelope[MemberResponse]):
+    pass
 
 
-class MemberListQuery(BaseModel):
+class MemberListQuery(PageQuery):
     """Strict (extra='forbid')."""
 
     model_config = ConfigDict(extra="forbid")
-
-    page: int = Field(1, ge=1)
-    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
 
 
 class MemberInvitePayload(BaseModel):
@@ -488,12 +523,25 @@ class AppDslExportResponse(BaseModel):
     data: str = Field(..., description="DSL YAML string")
 
 
+class AppDslImportResponse(Import, Hinted):
+    """`Import` plus the server-built next step for a pending import."""
+
+
 class FormSubmitResponse(BaseModel):
     """Empty 200 body for POST /apps/<id>/human-input-forms/<token>:submit. `extra='forbid'`
     pins `additionalProperties: false` so the generated contract is an exact `{}` rather
     than an under-annotated open object."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
+    """The console payload plus local file parts; `_files.merge_files` sets them on `inputs`."""
+
+    files: UploadParts | None = Field(
+        default=None,
+        description="Local files keyed by the form's file input name, same convention as the run ops' `files`",
+    )
 
 
 class HumanInputFormDefinitionResponse(BaseModel):

@@ -1,19 +1,19 @@
 'use client'
-import type { PluginDetail } from '../types'
+import type { ReadmePanelState } from './store'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { ReadmePanelContent } from './content'
 
 type ReadmeDialogProps = {
-  detail: PluginDetail
+  detail: ReadmePanelState['detail']
   open: boolean
   onOpenChange: (open: boolean) => void
   triggerId?: string
 }
 
 export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} triggerId={triggerId}>
@@ -30,8 +30,8 @@ export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDi
               render={
                 <IconButton
                   aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  size="sm"
-                  className="static size-8 rounded-lg"
+                  size="lg"
+                  className="static"
                 >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </IconButton>

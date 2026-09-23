@@ -43,6 +43,7 @@ from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, Docum
 from models.enums import IndexingStatus, SegmentType
 from services.api_token_service import CachedApiToken
 from services.dataset_service import DocumentService, SegmentService
+from tests.unit_tests.model_factories import make_account
 
 
 def _segment_response_dict(summary: str | None = None):
@@ -85,9 +86,9 @@ def mock_tenant() -> Tenant:
 
 
 def _account() -> Account:
-    account = Account(name="Segment API User", email=f"segment-api-{uuid.uuid4()}@example.com")
-    account.id = str(uuid.uuid4())
-    return account
+    return make_account(
+        account_id=str(uuid.uuid4()), name="Segment API User", email=f"segment-api-{uuid.uuid4()}@example.com"
+    )
 
 
 def _api_token(tenant_id: str) -> CachedApiToken:
@@ -1212,7 +1213,6 @@ class TestSegmentApiPost(SQLiteEndpointTest):
         mock_validate_token.return_value = _api_token(tenant_id)
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()
@@ -1555,7 +1555,6 @@ class TestDatasetSegmentApiUpdate(SQLiteEndpointTest):
         """Configure mocks to neutralise billing/auth decorators."""
         mock_validate_token.return_value = _api_token(tenant_id)
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
         mock_vector_space = Mock()
         mock_vector_space.limit = 10
@@ -2054,7 +2053,6 @@ class TestChildChunkApiPost(SQLiteEndpointTest):
     def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
         mock_validate_token.return_value = _api_token(tenant_id)
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
         mock_vector_space = Mock()
         mock_vector_space.limit = 10
@@ -2368,7 +2366,6 @@ class TestModelValidateDecorator(SQLiteEndpointTest):
         mock_validate_token.return_value = _api_token(tenant_id)
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()

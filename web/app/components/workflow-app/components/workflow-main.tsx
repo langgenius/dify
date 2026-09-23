@@ -50,7 +50,7 @@ const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore((s) => s.appId)
@@ -414,7 +414,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
-  const { exportCheck, handleExportDSL } = useDSLByCanEdit(appACLCapabilities.canEdit)
+  const { exportCheck, handleExportDSL, isExporting } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
   const configsMap = useConfigsMap()
 
@@ -459,6 +459,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
+      isExporting,
       fetchInspectVars,
       hasNodeInspectVars,
       hasSetInspectVar,
@@ -502,6 +503,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    isExporting,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

@@ -43,14 +43,11 @@ vi.mock('next-themes', () => ({
     setTheme: mockSetTheme,
   }),
 }))
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n/client', () => ({
   setLocaleOnClient: mockSetLocale,
 }))
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => true,
-}))
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
 }))
 
 vi.mock('../command-bus', () => ({

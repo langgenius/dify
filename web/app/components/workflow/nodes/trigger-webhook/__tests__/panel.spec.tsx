@@ -15,8 +15,6 @@ const {
   mockHandleParamsChange,
   mockHandleBodyChange,
   mockHandleResponseBodyChange,
-  mockToastSuccess,
-  mockCopy,
   mockIsPrivateOrLocalAddress,
 } = vi.hoisted(() => ({
   mockHandleStatusCodeChange: vi.fn(),
@@ -27,38 +25,7 @@ const {
   mockHandleParamsChange: vi.fn(),
   mockHandleBodyChange: vi.fn(),
   mockHandleResponseBodyChange: vi.fn(),
-  mockToastSuccess: vi.fn(),
-  mockCopy: vi.fn(),
   mockIsPrivateOrLocalAddress: vi.fn((_url: string) => false),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    success: mockToastSuccess,
-  },
-}))
-
-vi.mock('copy-to-clipboard', () => ({
-  default: mockCopy,
-}))
-
-vi.mock('@/app/components/base/input-with-copy', () => ({
-  default: ({
-    value,
-    placeholder,
-    onCopy,
-  }: {
-    value: string
-    placeholder: string
-    onCopy: () => void
-  }) => (
-    <div>
-      <input value={value} placeholder={placeholder} readOnly />
-      <button data-testid="copy-input" type="button" onClick={onCopy}>
-        Copy
-      </button>
-    </div>
-  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
@@ -241,14 +208,6 @@ describe('WebhookTriggerPanel', () => {
       expect(mockGenerateWebhookUrl).not.toHaveBeenCalled()
     })
 
-    it('should keep the content type selector aligned with the webhook url row width', () => {
-      render(<Panel {...panelProps} />)
-
-      const contentTypeTrigger = screen.getAllByRole('combobox')[1]
-
-      expect(contentTypeTrigger).toHaveClass('w-full')
-    })
-
     it('should request a webhook url when the node is writable and missing one', async () => {
       mockConfigState.inputs = {
         ...mockConfigState.inputs,
@@ -287,11 +246,26 @@ describe('WebhookTriggerPanel', () => {
   })
 
   describe('Interactions', () => {
-    it('should handle method, content type, table, response, and copy actions', async () => {
+    it('copies the labeled readonly webhook URL without editing it', async () => {
+      const user = userEvent.setup()
+      render(<Panel {...panelProps} />)
+      const input = screen.getByRole('textbox', {
+        name: 'workflow.nodes.triggerWebhook.webhookUrl',
+      })
+      expect(input).toHaveAttribute('readonly')
+      await user.click(screen.getByText('workflow.nodes.triggerWebhook.webhookUrl'))
+      expect(input).toHaveFocus()
+      await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
+      expect(await navigator.clipboard.readText()).toBe('https://example.com/webhook')
+      expect(
+        await screen.findByRole('button', { name: 'workflow.nodes.triggerWebhook.urlCopied' }),
+      ).toHaveFocus()
+    })
+
+    it('should handle method, content type, table, and response actions', async () => {
       const user = userEvent.setup()
       render(<Panel {...panelProps} />)
 
-      fireEvent.click(screen.getByTestId('copy-input'))
       await user.click(screen.getAllByRole('combobox')[0]!)
       await user.click(await screen.findByRole('option', { name: 'GET' }))
       await user.click(screen.getAllByRole('combobox')[1]!)
@@ -302,7 +276,6 @@ describe('WebhookTriggerPanel', () => {
       fireEvent.change(screen.getByDisplayValue('ok'), { target: { value: 'updated body' } })
       fireEvent.click(screen.getByTestId('toggle-output-vars'))
 
-      expect(mockToastSuccess).toHaveBeenCalledWith('workflow.nodes.triggerWebhook.urlCopied')
       expect(mockHandleMethodChange).toHaveBeenCalledWith('GET')
       expect(mockHandleContentTypeChange).toHaveBeenCalledWith('text/plain')
       expect(mockHandleParamsChange).toHaveBeenCalledWith([
@@ -317,8 +290,8 @@ describe('WebhookTriggerPanel', () => {
       expect(mockHandleResponseBodyChange).toHaveBeenCalledWith('updated body')
     })
 
-    it('should render the debug url card, copy it, and show the private-address warning', () => {
-      vi.useFakeTimers()
+    it('copies the debug URL from the keyboard and announces success while keeping its visible name', async () => {
+      const user = userEvent.setup()
       mockIsPrivateOrLocalAddress.mockReturnValue(true)
       mockConfigState.inputs = {
         ...mockConfigState.inputs,
@@ -327,15 +300,26 @@ describe('WebhookTriggerPanel', () => {
 
       render(<Panel {...panelProps} />)
 
-      fireEvent.click(screen.getByText('http://127.0.0.1:8000/debug'))
-
-      expect(mockCopy).toHaveBeenCalledWith('http://127.0.0.1:8000/debug')
+      const button = screen.getByRole('button', {
+        name: 'workflow.nodes.triggerWebhook.debugUrlTitle http://127.0.0.1:8000/debug workflow.nodes.triggerWebhook.debugUrlCopy',
+      })
+      await user.click(
+        screen.getByRole('textbox', { name: 'workflow.nodes.triggerWebhook.webhookUrl' }),
+      )
+      await user.tab()
+      await user.tab()
+      expect(button).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(await navigator.clipboard.readText()).toBe('http://127.0.0.1:8000/debug')
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'workflow.nodes.triggerWebhook.debugUrlCopied',
+        ),
+      )
+      expect(button).toHaveFocus()
       expect(
         screen.getByText('workflow.nodes.triggerWebhook.debugUrlPrivateAddressWarning'),
       ).toBeInTheDocument()
-
-      vi.runAllTimers()
-      vi.useRealTimers()
     })
   })
 })

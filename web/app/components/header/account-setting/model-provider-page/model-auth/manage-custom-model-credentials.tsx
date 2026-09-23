@@ -25,7 +25,7 @@ const ManageCustomModelCredentials = ({
   isOpen,
   onOpenChange,
 }: ManageCustomModelCredentialsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const customModels = useCustomModels(provider)
   const noModels = !customModels.length
 

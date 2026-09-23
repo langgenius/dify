@@ -27,7 +27,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
   fixedWidth,
   onCancel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const ref = useRef(null)
   const appDetail = useStore((state) => state.appDetail)
 

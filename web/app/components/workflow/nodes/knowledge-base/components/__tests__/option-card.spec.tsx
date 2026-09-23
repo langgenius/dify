@@ -46,24 +46,44 @@ describe('OptionCard', () => {
       expect(onClick).not.toHaveBeenCalled()
     })
 
-    it('should support function-based wrapper, class, and icon props without enabling selection', () => {
-      render(
-        <OptionCard
-          id="inactive"
-          selectedId="qualified"
-          title="Inactive card"
-          enableSelect={false}
-          wrapperClassName={(isActive) => (isActive ? 'wrapper-active' : 'wrapper-inactive')}
-          className={(isActive) => (isActive ? 'body-active' : 'body-inactive')}
-          icon={(isActive) => (
-            <span data-testid="option-icon">{isActive ? 'active' : 'inactive'}</span>
-          )}
-        />,
+    it('should expose selection to keyboard users while keeping expanded inputs separate', async () => {
+      const user = userEvent.setup()
+      const onClick = vi.fn()
+      const { rerender } = render(
+        <OptionCard id="economical" title="Economical" onClick={onClick} />,
       )
 
-      expect(screen.getByText('Inactive card').closest('.wrapper-inactive')).toBeInTheDocument()
-      expect(screen.getByTestId('option-icon')).toHaveTextContent('inactive')
-      expect(screen.getByText('Inactive card').closest('.body-inactive')).toBeInTheDocument()
+      const choice = screen.getByRole('button', { name: 'Economical' })
+      expect(choice).toHaveAttribute('aria-pressed', 'false')
+      await user.tab()
+      expect(choice).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(onClick).toHaveBeenCalledWith('economical')
+
+      rerender(
+        <OptionCard id="economical" selectedId="economical" title="Economical" onClick={onClick}>
+          <label>
+            Keywords
+            <input type="number" defaultValue={5} />
+          </label>
+        </OptionCard>,
+      )
+
+      expect(choice).toHaveAttribute('aria-pressed', 'true')
+      onClick.mockClear()
+      await user.tab()
+      const input = screen.getByRole('spinbutton', { name: 'Keywords' })
+      expect(input).toHaveFocus()
+      await user.clear(input)
+      await user.type(input, '10')
+      expect(input).toHaveValue(10)
+      expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('should keep a nonselectable summary outside the tab order', () => {
+      render(<OptionCard id="general" title="General" enableSelect={false} />)
+      expect(screen.getByText('General')).toBeInTheDocument()
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
 })
