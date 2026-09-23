@@ -1,5 +1,6 @@
 import type * as React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import SummaryText from '../summary-text'
 
@@ -40,5 +41,27 @@ describe('SummaryText', () => {
   it('should disable textarea when disabled', () => {
     render(<SummaryText value="text" disabled />)
     expect(screen.getByTestId('textarea')).toBeDisabled()
+  })
+
+  it('shows the focus ring only after tabbing into the summary', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">Before summary</button>
+        <SummaryText />
+      </>,
+    )
+
+    const textarea = screen.getByRole('textbox')
+    await user.click(textarea)
+    expect(textarea).toHaveAttribute('data-tab-focus', 'false')
+
+    await user.click(screen.getByRole('button', { name: 'Before summary' }))
+    await user.tab()
+    expect(textarea).toHaveFocus()
+    expect(textarea).toHaveAttribute('data-tab-focus', 'true')
+
+    await user.click(textarea)
+    expect(textarea).toHaveAttribute('data-tab-focus', 'false')
   })
 })

@@ -5,20 +5,31 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { ChunkingMode } from '@/models/datasets'
+import { useTabFocusRing } from './use-tab-focus-ring'
 
 type IContentProps = ComponentProps<'textarea'>
 
 const Textarea: FC<IContentProps> = React.memo(
-  ({ value, placeholder, className, disabled, ...rest }) => {
+  ({ value, placeholder, className, disabled, onFocus, onBlur, ...rest }) => {
+    const tabFocus = useTabFocusRing()
     return (
       <textarea
         className={cn(
-          'inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-hidden data-[tab-focus=true]:ring-2 data-[tab-focus=true]:ring-state-accent-solid data-[tab-focus=true]:ring-inset',
           className,
         )}
+        data-tab-focus={tabFocus.isTabFocused}
         placeholder={placeholder}
         value={value}
         disabled={disabled}
+        onFocus={(event) => {
+          tabFocus.onFocus()
+          onFocus?.(event)
+        }}
+        onBlur={(event) => {
+          tabFocus.onBlur()
+          onBlur?.(event)
+        }}
         {...rest}
       />
     )
@@ -33,10 +44,21 @@ type IAutoResizeTextAreaProps = ComponentProps<'textarea'> & {
 }
 
 const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(
-  ({ className, placeholder, value, disabled, containerRef, labelRef, ...rest }) => {
+  ({
+    className,
+    placeholder,
+    value,
+    disabled,
+    containerRef,
+    labelRef,
+    onFocus,
+    onBlur,
+    ...rest
+  }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const observerRef = useRef<ResizeObserver>(null)
     const [maxHeight, setMaxHeight] = useState(0)
+    const tabFocus = useTabFocusRing()
 
     useEffect(() => {
       const textarea = textareaRef.current
@@ -71,15 +93,24 @@ const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(
       <textarea
         ref={textareaRef}
         className={cn(
-          'inset-0 w-full resize-none appearance-none border-none bg-transparent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'inset-0 w-full resize-none appearance-none border-none bg-transparent outline-hidden data-[tab-focus=true]:ring-2 data-[tab-focus=true]:ring-state-accent-solid data-[tab-focus=true]:ring-inset',
           className,
         )}
+        data-tab-focus={tabFocus.isTabFocused}
         style={{
           maxHeight,
         }}
         placeholder={placeholder}
         value={value}
         disabled={disabled}
+        onFocus={(event) => {
+          tabFocus.onFocus()
+          onFocus?.(event)
+        }}
+        onBlur={(event) => {
+          tabFocus.onBlur()
+          onBlur?.(event)
+        }}
         {...rest}
       />
     )

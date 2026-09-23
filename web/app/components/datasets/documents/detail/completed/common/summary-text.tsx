@@ -2,6 +2,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
+import { useTabFocusRing } from './use-tab-focus-ring'
 
 type SummaryTextProps = {
   value?: string
@@ -10,6 +11,7 @@ type SummaryTextProps = {
 }
 const SummaryText = ({ value, onChange, disabled }: SummaryTextProps) => {
   const { t } = useTranslation(['datasetDocuments'])
+  const tabFocus = useTabFocusRing()
 
   return (
     <div className="space-y-1">
@@ -18,13 +20,16 @@ const SummaryText = ({ value, onChange, disabled }: SummaryTextProps) => {
       </div>
       <Textarea
         className={cn(
-          'w-full resize-none bg-transparent body-sm-regular leading-6 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'w-full resize-none bg-transparent body-sm-regular leading-6 text-text-secondary outline-hidden data-[tab-focus=true]:ring-2 data-[tab-focus=true]:ring-state-accent-solid data-[tab-focus=true]:ring-inset',
         )}
+        data-tab-focus={tabFocus.isTabFocused}
         placeholder={t(($) => $['segment.summaryPlaceholder'], { ns: 'datasetDocuments' })}
         minRows={1}
         value={value ?? ''}
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
+        onFocus={tabFocus.onFocus}
+        onBlur={tabFocus.onBlur}
       />
     </div>
   )

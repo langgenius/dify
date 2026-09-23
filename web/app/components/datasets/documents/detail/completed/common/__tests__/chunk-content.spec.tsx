@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import ChunkContent from '../chunk-content'
@@ -75,6 +76,52 @@ describe('ChunkContent', () => {
       // Assert - In view mode, textarea should not be present, Markdown renders instead
       expect(container.querySelector('textarea')).not.toBeInTheDocument()
     })
+  })
+
+  it('does not show a focus ring on autofocus, but shows one after Tab', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">Before content</button>
+        <ChunkContent {...defaultProps} isEditMode={true} />
+      </>,
+    )
+
+    const textarea = screen.getByRole('textbox')
+    expect(textarea).toHaveAttribute('data-tab-focus', 'false')
+
+    await user.click(screen.getByRole('button', { name: 'Before content' }))
+    await user.tab()
+    expect(textarea).toHaveFocus()
+    expect(textarea).toHaveAttribute('data-tab-focus', 'true')
+  })
+
+  it('shows the focus ring when tabbing through question and answer fields', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">Before QA</button>
+        <ChunkContent
+          {...defaultProps}
+          docForm={ChunkingMode.qa}
+          answer="Test answer"
+          onAnswerChange={vi.fn()}
+          isEditMode={true}
+        />
+      </>,
+    )
+
+    const [question, answer] = screen.getAllByRole('textbox')
+    await user.click(question!)
+    expect(question).toHaveAttribute('data-tab-focus', 'false')
+
+    await user.click(screen.getByRole('button', { name: 'Before QA' }))
+    await user.tab()
+    expect(question).toHaveAttribute('data-tab-focus', 'true')
+
+    await user.tab()
+    expect(answer).toHaveFocus()
+    expect(answer).toHaveAttribute('data-tab-focus', 'true')
   })
 
   // QA mode tests
