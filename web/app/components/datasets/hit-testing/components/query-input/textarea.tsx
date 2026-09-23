@@ -1,5 +1,6 @@
 import type { ChangeEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -55,16 +56,24 @@ const Textarea = ({
             cn('text-background-section-burn', isOverLimit && 'text-util-colors-red-red-100'),
           )}
         />
-        <div
-          className={cn(
-            'py-1 pr-2 system-2xs-medium-uppercase',
-            isOverLimit
-              ? 'bg-util-colors-red-red-100 text-util-colors-red-red-600'
-              : 'bg-background-section-burn text-text-tertiary',
-          )}
-        >
-          {`${text.length}/200`}
-        </div>
+        {isOverLimit ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <div className="bg-util-colors-red-red-100 py-1 pr-2 system-2xs-medium-uppercase text-util-colors-red-red-600">
+                  {`${text.length}/200`}
+                </div>
+              }
+            />
+            <TooltipContent>
+              {t(($) => $['input.countWarning'], { ns: 'datasetHitTesting' })}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <div className="bg-background-section-burn py-1 pr-2 system-2xs-medium-uppercase text-text-tertiary">
+            {`${text.length}/200`}
+          </div>
+        )}
       </div>
       <div
         id={errorId}
