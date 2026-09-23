@@ -103,7 +103,7 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 @openapi_ns.route("/apps/<string:app_id>")
 class AppDescribeApi(Resource):
     @endpoint(
-        op="console_app.describe",
+        op="describe.console_app",
         kind=Kind.OBJECT,
         summary="App detail, parameters and runtime input_schema",
         examples=(
@@ -131,7 +131,7 @@ class AppDescribeApi(Resource):
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
-        op="console_app.list",
+        op="list.console_app",
         kind=Kind.LIST,
         summary="List apps in a workspace",
         examples=(
