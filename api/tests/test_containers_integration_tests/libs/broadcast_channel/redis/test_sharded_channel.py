@@ -237,6 +237,7 @@ class TestShardedRedisBroadcastChannelIntegration:
         def consumer_thread() -> set[bytes]:
             received_msgs: set[bytes] = set()
             with subscription:
+                subscription.receive(timeout=0.1)
                 consumer_ready.set()
                 while True:
                     try:
@@ -260,7 +261,10 @@ class TestShardedRedisBroadcastChannelIntegration:
             for future in as_completed(producer_futures, timeout=30.0):
                 sent_msgs.update(future.result())
 
-            consumer_received_msgs = consumer_future.result(timeout=60.0)
+            try:
+                consumer_received_msgs = consumer_future.result(timeout=60.0)
+            finally:
+                subscription.close()
 
         assert sent_msgs == consumer_received_msgs
 
