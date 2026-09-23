@@ -1487,18 +1487,25 @@ class ConversationVariable(TypeBase):
     )
 
     @classmethod
-    def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> "ConversationVariable":
-        # The table primary key is a UUID. Draft and DSL ids are namespaced strings
-        # such as ``opt-comp-prompt-var`` and must not be inserted as-is. The
-        # replacement is uuid5-stable for the variable name. The in-memory workflow
-        # variable keeps the author id so draft reads still round-trip.
+    def storage_id(cls, variable: VariableBase) -> str:
+        """UUID primary key for ``variable``.
+
+        Draft and DSL ids such as ``opt-comp-prompt-var`` are not UUIDs and cannot
+        be inserted. Those become a uuid5 of the variable name, so the same variable
+        keeps one row. An id that is already a UUID is stored unchanged. The
+        in-memory workflow variable keeps the author id.
+        """
         row_id = variable.id
-        stored = variable
         try:
             UUID(str(row_id))
         except (ValueError, TypeError, AttributeError):
-            row_id = str(uuid5(NAMESPACE_URL, f"dify:conversation-variable:{variable.name}"))
-            stored = variable.model_copy(update={"id": row_id})
+            return str(uuid5(NAMESPACE_URL, f"dify:conversation-variable:{variable.name}"))
+        return str(row_id)
+
+    @classmethod
+    def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> "ConversationVariable":
+        row_id = cls.storage_id(variable)
+        stored = variable if row_id == str(variable.id) else variable.model_copy(update={"id": row_id})
         return cls(
             id=row_id,
             app_id=app_id,

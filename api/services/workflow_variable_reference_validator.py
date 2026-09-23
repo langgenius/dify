@@ -6,8 +6,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from graphon.enums import ErrorStrategy
-from graphon.nodes import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 
 _RESERVED_SELECTOR_HEADS: frozenset[str] = frozenset({"sys", "env", "conversation", "start"})
 

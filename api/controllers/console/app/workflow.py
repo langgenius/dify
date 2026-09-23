@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, NotRequired, Self, TypedDict
 
@@ -1274,9 +1274,14 @@ class DraftWorkflowNodeRunApi(Resource):
         ).model_dump(mode="json")
 
 
-def _advisory_variable_reference_warning(graph: Mapping[str, Any]) -> str | None:
+def _advisory_variable_reference_warning(graph_text: str | None) -> str | None:
     """Return a non-blocking publish warning. A checker failure must not fail publish."""
+    if not graph_text:
+        return None
     try:
+        graph = json.loads(graph_text)
+        if not isinstance(graph, dict):
+            return None
         issues = validate_variable_references(graph)
     except Exception:
         logger.warning("Skipped advisory variable reference check", exc_info=True)
@@ -1350,11 +1355,9 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
-            published_graph = getattr(workflow, "graph_dict", None)
+            graph_text = workflow.graph
 
-        warning = (
-            _advisory_variable_reference_warning(published_graph) if isinstance(published_graph, Mapping) else None
-        )
+        warning = _advisory_variable_reference_warning(graph_text)
         payload: dict[str, object] = {
             "result": "success",
             "created_at": workflow_created_at,

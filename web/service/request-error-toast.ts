@@ -1,4 +1,5 @@
-import { createElement, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { createElement } from 'react'
 import { toast } from '@/app/notifications'
 
 const DEDUPE_WINDOW_MS = 10000
