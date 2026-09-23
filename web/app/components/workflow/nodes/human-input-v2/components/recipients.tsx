@@ -355,6 +355,9 @@ const RecipientsContent = ({
     return recipient.email
   }
 
+  const editorNodeId = editor?.draft.type === 'dynamic_email' ? editor.draft.selector[0] : undefined
+  const editorNode = availableNodes.find((node) => node.id === editorNodeId)
+
   return (
     <section className="px-4 pt-2" aria-labelledby={`${nodeId}-recipients-label`}>
       <div className="mb-1 flex h-6 items-center gap-0.5">
@@ -997,13 +1000,19 @@ const RecipientsContent = ({
 
           {editor.draft.type === 'dynamic_email' && (
             <div className="flex items-center justify-between gap-2 rounded-md bg-components-input-bg-normal px-2 py-1">
-              <span className="min-w-0 truncate system-xs-regular text-text-secondary">
-                {editor.draft.selector.length
-                  ? editor.draft.selector.join(' / ')
-                  : t(($) => $['nodes.humanInputV2.recipients.variableRequired'], {
-                      ns: 'workflow',
-                    })}
-              </span>
+              <div className="min-w-0 flex-1 system-xs-regular text-text-secondary">
+                {editor.draft.selector.length ? (
+                  <VariableLabelInEditor
+                    variables={editor.draft.selector}
+                    nodeType={editorNode?.data.type}
+                    nodeTitle={editorNode?.data.title}
+                  />
+                ) : (
+                  t(($) => $['nodes.humanInputV2.recipients.variableRequired'], {
+                    ns: 'workflow',
+                  })
+                )}
+              </div>
               <VarReferencePicker
                 nodeId={nodeId}
                 readonly={false}

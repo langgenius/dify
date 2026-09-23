@@ -290,6 +290,46 @@ describe('Human Input v2 Recipients', () => {
     expect(screen.queryByText('Request details')).not.toBeInTheDocument()
   })
 
+  it('shows the source node in the dynamic recipient editor and preserves the selector on save', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    const source: Node = {
+      id: '1790152799766',
+      position: { x: 0, y: 0 },
+      data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+    }
+    const initial: HumanInputV2Recipient[] = [
+      { type: 'dynamic_email', selector: [source.id, 'email'] },
+    ]
+    const { rerender } = render(
+      <Harness initial={initial} availableNodes={[source]} observe={observe} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /recipients\.edit:.*Start \/ email/ }))
+    const editor = screen.getByRole('group', {
+      name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
+    })
+    expect(within(editor).getByText('Start')).toBeInTheDocument()
+    expect(within(editor).getByText('email')).toBeInTheDocument()
+    expect(within(editor).queryByText(/1790152799766/)).not.toBeInTheDocument()
+
+    rerender(
+      <Harness
+        initial={initial}
+        availableNodes={[{ ...source, data: { ...source.data, title: 'User input' } }]}
+        observe={observe}
+      />,
+    )
+    expect(within(editor).getByText('User input')).toBeInTheDocument()
+    expect(within(editor).queryByText('Start')).not.toBeInTheDocument()
+    await user.click(
+      within(editor).getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.confirm',
+      }),
+    )
+    expect(observe).toHaveBeenLastCalledWith(initial)
+  })
+
   it.each(['owner', 'editor'] as const)(
     'shows the actual workspace and respects the %s permission boundary for its contact count',
     async (role) => {
