@@ -13,7 +13,6 @@ from core.model_manager import ModelInstance
 from core.rag.embedding.embedding_base import Embeddings
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from libs import helper
@@ -33,7 +32,6 @@ class CacheEmbedding(Embeddings):
         return f"{provider}_{model_name}_{query_hash}"
 
     @classmethod
-    @trace_span()
     def get_cached_query_embedding(cls, provider: str, model_name: str, text: str) -> list[float] | None:
         """Return a cached query vector without requiring a model instance."""
         query_hash = helper.generate_text_hash(text)
@@ -213,7 +211,6 @@ class CacheEmbedding(Embeddings):
         return multimodel_embeddings
 
     @override
-    @trace_span()
     def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists

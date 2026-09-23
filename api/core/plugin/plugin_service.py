@@ -25,7 +25,6 @@ from threading import Lock
 from typing import Literal, Protocol
 
 import zstandard
-from opentelemetry.trace import get_current_span
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from redis import RedisError
 from redis.exceptions import LockError
@@ -65,7 +64,6 @@ from core.plugin.impl.plugin import PluginInstaller
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from extensions.otel import trace_span
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from models.provider_ids import GenericProviderID, ModelProviderID
 from services.enterprise.plugin_manager_service import (
@@ -261,26 +259,17 @@ class PluginService:
                 cls._parsed_plugin_model_providers_cache.popitem(last=False)
 
     @classmethod
-    @trace_span()
     def _parse_plugin_model_providers_cache_payload(
         cls, payload: bytes | bytearray | str
     ) -> tuple[PluginModelProviderDeclaration, ...]:
         decoded_payload = cls._decode_plugin_model_providers_cache_payload(payload)
-        span = get_current_span()
-        span.set_attribute("dify.plugin.model_providers.payload_bytes", len(payload))
-        span.set_attribute("dify.plugin.model_providers.decoded_payload_bytes", len(decoded_payload))
-
-        providers = tuple(_provider_entities_adapter.validate_json(decoded_payload))
-        span.set_attribute("dify.plugin.model_providers.count", len(providers))
-        return providers
+        return tuple(_provider_entities_adapter.validate_json(decoded_payload))
 
     @classmethod
-    @trace_span()
     def _get_or_parse_plugin_model_providers_cache_payload(
         cls, payload: bytes | bytearray | str
     ) -> tuple[PluginModelProviderDeclaration, ...]:
         providers = cls._get_parsed_plugin_model_providers_from_local_cache(payload)
-        get_current_span().set_attribute("dify.plugin.model_providers.local_cache.hit", providers is not None)
         if providers is not None:
             return providers
 
@@ -319,28 +308,21 @@ class PluginService:
             return None
 
     @classmethod
-    @trace_span()
     def _load_cached_plugin_model_providers_for_generation(
         cls, tenant_id: str, generation: int | None
     ) -> tuple[tuple[PluginModelProviderDeclaration, ...] | None, bool]:
-        span = get_current_span()
         if generation is None:
-            span.set_attribute("dify.plugin.model_providers.cache.available", False)
             return None, False
-
-        span.set_attribute("dify.plugin.model_providers.generation", generation)
 
         cache_keys = [cls._get_plugin_model_providers_cache_key(tenant_id, generation)]
 
         try:
             cached_provider_entries = redis_client.mget(cache_keys)
         except (LockError, RedisError, RuntimeError):
-            span.set_attribute("dify.plugin.model_providers.cache.available", False)
             logger.warning("Failed to read cached plugin model providers for tenant %s.", tenant_id, exc_info=True)
             return None, False
 
         if len(cached_provider_entries) != len(cache_keys):
-            span.set_attribute("dify.plugin.model_providers.cache.available", False)
             logger.warning(
                 "Unexpected cached plugin model providers response size for tenant %s.",
                 tenant_id,
@@ -352,8 +334,6 @@ class PluginService:
                 continue
 
             try:
-                span.set_attribute("dify.plugin.model_providers.redis_cache.hit", True)
-                span.set_attribute("dify.plugin.model_providers.redis_payload_bytes", len(cached_providers))
                 providers = cls._get_or_parse_plugin_model_providers_cache_payload(cached_providers)
                 return providers, True
             except (TypeError, ValueError, ValidationError):
@@ -372,12 +352,9 @@ class PluginService:
                         exc_info=True,
                     )
 
-        span.set_attribute("dify.plugin.model_providers.cache.available", True)
-        span.set_attribute("dify.plugin.model_providers.redis_cache.hit", False)
         return None, True
 
     @classmethod
-    @trace_span()
     def _store_cached_plugin_model_providers(
         cls, tenant_id: str, generation: int, providers: Sequence[PluginModelProviderDeclaration]
     ) -> None:
@@ -562,13 +539,11 @@ class PluginService:
                 )
 
     @classmethod
-    @trace_span()
     def _fetch_plugin_model_providers_uncached(
         cls, tenant_id: str, client: PluginModelClient | None
     ) -> tuple[PluginModelProviderDeclaration, ...]:
         model_client = client or PluginModelClient()
         providers = model_client.fetch_model_providers(tenant_id)
-        get_current_span().set_attribute("dify.plugin.model_providers.daemon_provider_count", len(providers))
         installation_sources = cls._resolve_model_provider_installation_sources(tenant_id, providers)
         return tuple(
             cls._to_provider_entity(
@@ -602,7 +577,6 @@ class PluginService:
             logger.warning("Failed to invalidate plugin model providers cache for tenant %s.", tenant_id, exc_info=True)
 
     @classmethod
-    @trace_span()
     def fetch_plugin_model_providers(
         cls, *, tenant_id: str, client: PluginModelClient | None = None
     ) -> Sequence[PluginModelProviderDeclaration]:
@@ -613,12 +587,7 @@ class PluginService:
         are intentionally owned by this service so tenant isolation and cache
         expiry are handled in one place.
         """
-        span = get_current_span()
-        span.set_attribute(
-            "dify.plugin.model_providers.redis_cache.enabled", dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED
-        )
         if not dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED:
-            span.set_attribute("dify.plugin.model_providers.source", "daemon_cache_disabled")
             return cls._fetch_plugin_model_providers_uncached(tenant_id, client)
 
         deadline = time.monotonic() + cls.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT
@@ -629,11 +598,9 @@ class PluginService:
                 tenant_id, generation
             )
             if cached_providers is not None:
-                span.set_attribute("dify.plugin.model_providers.source", "cache")
                 return cached_providers
 
             if generation is None or not cache_available:
-                span.set_attribute("dify.plugin.model_providers.source", "daemon_cache_unavailable")
                 return cls._fetch_and_cache_plugin_model_providers(
                     tenant_id,
                     client,
@@ -642,7 +609,6 @@ class PluginService:
 
             wait_timeout = deadline - time.monotonic()
             if wait_timeout < 0:
-                span.set_attribute("dify.plugin.model_providers.source", "daemon_refresh_timeout")
                 logger.warning(
                     "Provider refresh lock timed out; direct daemon fallback. tenant_id=%s generation=%s",
                     tenant_id,
@@ -660,7 +626,6 @@ class PluginService:
                 wait_timeout=wait_timeout,
             ) as lock_acquired:
                 if not lock_acquired:
-                    span.set_attribute("dify.plugin.model_providers.source", "daemon_lock_unavailable")
                     return cls._fetch_and_cache_plugin_model_providers(
                         tenant_id,
                         client,
@@ -672,10 +637,8 @@ class PluginService:
                     tenant_id, latest_generation
                 )
                 if cached_providers is not None:
-                    span.set_attribute("dify.plugin.model_providers.source", "cache_after_refresh_wait")
                     return cached_providers
                 if latest_generation is None or not cache_available:
-                    span.set_attribute("dify.plugin.model_providers.source", "daemon_cache_unavailable_after_wait")
                     return cls._fetch_and_cache_plugin_model_providers(
                         tenant_id,
                         client,
@@ -684,7 +647,6 @@ class PluginService:
                 if latest_generation != generation:
                     continue
 
-                span.set_attribute("dify.plugin.model_providers.source", "daemon_refresh_owner")
                 return cls._fetch_and_cache_plugin_model_providers(
                     tenant_id,
                     client,
