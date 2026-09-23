@@ -6770,32 +6770,6 @@ Request body:
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [InstalledAppListResponse](#installedapplistresponse)<br> |
 
-### [POST] /installed-apps
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [InstalledAppCreatePayload](#installedappcreatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleMessageResponse](#simplemessageresponse)<br> |
-
-### [DELETE] /installed-apps/{installed_app_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 204 | App uninstalled successfully |
-
 ### [GET] /installed-apps/{installed_app_id}
 #### Parameters
 
@@ -19169,12 +19143,6 @@ Input field definition for snippet parameters.
 | required | boolean |  | No |
 | type | string |  | No |
 
-#### InstalledAppCreatePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_id | string |  | Yes |
-
 #### InstalledAppInfoResponse
 
 | Name | Type | Description | Required |
@@ -19207,7 +19175,6 @@ Input field definition for snippet parameters.
 | id | string |  | Yes |
 | is_pinned | boolean |  | Yes |
 | last_used_at | integer |  | Yes |
-| uninstallable | boolean |  | Yes |
 
 #### InstalledAppUpdatePayload
 
@@ -22224,12 +22191,6 @@ Resource types understood by access policies.
 | inputs | object |  | Yes |
 | message | string |  | Yes |
 | query | string |  | Yes |
-
-#### SimpleMessageResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| message | string |  | Yes |
 
 #### SimpleModelConfig
 
