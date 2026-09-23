@@ -34,8 +34,6 @@ export type TestWorldOptions = {
   readonly reuseDirOf?: TestWorld
 }
 
-const ENV_NO_KEYRING = 'DIFY_E2E_NO_KEYRING'
-const NO_KEYRING = '1'
 const TEMP_PREFIX = 'difyctl-world-'
 const FILE_EMAIL = 'me@x'
 const FILE_WORKSPACE_ID = 'ws-1'
@@ -83,7 +81,6 @@ export async function testContext(opts: TestWorldOptions): Promise<TestWorld> {
   const restoreEnv = applyEnv({
     [ENV.ConfigDir]: dir,
     [ENV.CacheDir]: dir,
-    [ENV_NO_KEYRING]: NO_KEYRING,
     [ENV.Server]: opts.env === true ? mock.url : undefined,
     [ENV.Token]: opts.env === true ? ENV_LOGIN_TOKEN : undefined,
     [ENV.WorkspaceId]: undefined,

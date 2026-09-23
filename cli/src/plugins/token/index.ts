@@ -7,11 +7,13 @@ import { session } from '@/plugins/session'
 import { detectTokenStore, getTokenStore } from '@/store/manager'
 import { bareHost } from '@/util/host'
 
+export type DetectOptions = Readonly<{ skipKeyring: boolean }>
+
 export type TokenService = {
   readonly get: () => Promise<string>
   readonly write: (login: Login, bearer: string) => Promise<void>
   readonly remove: (login: Login) => Promise<void>
-  readonly detect: () => Promise<StorageMode>
+  readonly detect: (opts: DetectOptions) => Promise<StorageMode>
 }
 
 export const token = definePlugin({
@@ -46,7 +48,7 @@ export const token = definePlugin({
         await store.remove(bareHost(login.server), login.email)
         cached = ''
       },
-      detect: async () => (await detectTokenStore()).mode,
+      detect: async (opts) => (await detectTokenStore(opts)).mode,
     }
   },
 })

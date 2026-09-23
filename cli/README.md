@@ -59,7 +59,7 @@ difyctl has no built-in business commands. Every operation the server publishes 
 | `skills list`              | List the skills in the collection                               |
 | `skills install <dir>`     | Write skills from the collection into a skills root (`--skill`) |
 
-`login` blocks until the browser approval arrives. An agent runs it in the background, relays the `open <url>` and `code <code>` lines from its stderr to the user, and does not cancel the job.
+`login` blocks until the browser approval arrives. An agent runs it in the background, relays the `open <url>` and `code <code>` lines from its stderr to the user, and does not cancel the job. In a sandbox it adds `--no-keyring` and sets `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session.
 
 `--verbose` is global: it may appear on any command, and it keeps the raw server
 response in the error envelope instead of dropping it.
@@ -87,7 +87,7 @@ The same files install through the Vercel skills installer: `npx skills add lang
 
 `config get [key]` prints the whole local config or one key; `config set <key> <value>` and `config unset <key>` change it. The only config key today is `http.timeout` (request timeout in milliseconds).
 
-Tokens use the OS keychain by default, falling back to a sealed file on hosts without one. Config and cache files are written `0600`, their directory `0700`.
+Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts without one; `login --no-keyring` chooses the file outright. Config and cache files are written `0600`, their directory `0700`.
 
 | Env var             | Effect                                                      |
 | ------------------- | ----------------------------------------------------------- |

@@ -19,11 +19,9 @@ let dir: string
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'difyctl-tok-'))
   process.env.DIFY_CONFIG_DIR = dir
-  process.env.DIFY_E2E_NO_KEYRING = '1'
 })
 afterEach(() => {
-  for (const k of ['DIFY_CONFIG_DIR', 'DIFY_E2E_NO_KEYRING', 'DIFY_SERVER', 'DIFY_TOKEN'])
-    delete process.env[k]
+  for (const k of ['DIFY_CONFIG_DIR', 'DIFY_SERVER', 'DIFY_TOKEN']) delete process.env[k]
 })
 
 it('writes, reads and removes through the file store', async () => {

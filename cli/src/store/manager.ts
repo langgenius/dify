@@ -29,6 +29,10 @@ export type GetTokenStoreOptions = {
   }
 }
 
+export type DetectTokenStoreOptions = GetTokenStoreOptions & {
+  readonly skipKeyring?: boolean
+}
+
 const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => TokenStore> = {
   file: (opts) =>
     opts.factory?.file?.() ?? new FileTokenStore(join(resolveConfigDir(), TOKENS_FILE)),
@@ -41,12 +45,9 @@ const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => T
  * only where a credential is about to be written anyway (login).
  */
 export async function detectTokenStore(
-  opts: GetTokenStoreOptions = {},
+  opts: DetectTokenStoreOptions = {},
 ): Promise<{ store: TokenStore; mode: StorageMode }> {
-  // DIFY_E2E_NO_KEYRING=1 forces file-based storage in E2E tests to avoid
-  // macOS keychain UI prompts blocking child processes spawned by vitest.
-  if (process.env.DIFY_E2E_NO_KEYRING === '1')
-    return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
+  if (opts.skipKeyring === true) return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
   try {
     const k = TOKEN_STORE_OPENERS.keychain(opts)
     await k.write(PROBE_HOST, PROBE_EMAIL, PROBE_VALUE)

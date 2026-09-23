@@ -15,7 +15,7 @@ it('logs the previous login out, runs the device flow, saves the pin and the tok
   worlds.push(seed)
   const w = await testContext({
     login: true,
-    argv: ['login', '--server', seed.mock.url, '--no-browser', '--insecure'],
+    argv: ['login', '--server', seed.mock.url, '--no-browser', '--no-keyring', '--insecure'],
     reuseDirOf: seed,
   })
   worlds.push(w)
@@ -50,7 +50,7 @@ it('checks the verification uri before inviting the operator to open it', async 
   worlds.push(seed)
   const w = await testContext({
     login: false,
-    argv: ['login', '--server', seed.mock.url, '--no-browser', '--insecure'],
+    argv: ['login', '--server', seed.mock.url, '--no-browser', '--no-keyring', '--insecure'],
     reuseDirOf: seed,
   })
   worlds.push(w)
@@ -68,7 +68,7 @@ it('rejects a login response with no usable email and saves nothing', async () =
   worlds.push(seed)
   const w = await testContext({
     login: false,
-    argv: ['login', '--server', seed.mock.url, '--no-browser', '--insecure'],
+    argv: ['login', '--server', seed.mock.url, '--no-browser', '--no-keyring', '--insecure'],
     reuseDirOf: seed,
   })
   worlds.push(w)
@@ -85,7 +85,7 @@ it('falls back to the external-SSO subject email when there is no account', asyn
   worlds.push(seed)
   const w = await testContext({
     login: false,
-    argv: ['login', '--server', seed.mock.url, '--no-browser', '--insecure'],
+    argv: ['login', '--server', seed.mock.url, '--no-browser', '--no-keyring', '--insecure'],
     reuseDirOf: seed,
   })
   worlds.push(w)

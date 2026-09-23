@@ -46,9 +46,9 @@ Errors are one envelope on stderr: `{"error":{"code","message","hint"?,"details"
 
 ## Login and environment
 
-`difyctl login --server https://...` (device flow; `--no-browser` prints the URL and code; `--insecure` skips TLS verification). One login at a time. `difyctl workspace use <id>` pins a workspace; `difyctl workspace list` shows them. Scripts skip login with `DIFY_SERVER` and `DIFY_TOKEN`; `DIFY_WORKSPACE_ID` overrides the pin; `DIFY_CONFIG_DIR` and `DIFY_CACHE_DIR` move the files.
+`difyctl login --server https://...` (device flow; `--no-browser` prints the URL and code; `--no-keyring` keeps the token in a file; `--insecure` skips TLS verification). One login at a time. `difyctl workspace use <id>` pins a workspace; `difyctl workspace list` shows them. Scripts skip login with `DIFY_SERVER` and `DIFY_TOKEN`; `DIFY_WORKSPACE_ID` overrides the pin; `DIFY_CONFIG_DIR` and `DIFY_CACHE_DIR` move the files.
 
-`login` blocks until the browser approval arrives. Run `difyctl login --server <url> --no-browser` as a background job, relay the `open <url>` and `code <code>` lines from its stderr to the user, and do not cancel the job. Its exit code reports the result.
+`login` blocks until the browser approval arrives. Run `difyctl login --server <url> --no-browser` as a background job, relay the `open <url>` and `code <code>` lines from its stderr to the user, and do not cancel the job. Its exit code reports the result. In a sandbox, add `--no-keyring` and set `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session.
 
 ## Destructive operations
 

@@ -88,9 +88,6 @@ export function run(argv: string[], opts: RunOptions = {}): Promise<RunResult> {
       // Suppress interactive prompts in all E2E tests.
       CI: '1',
       NO_COLOR: '1',
-      // Force file-based token storage to avoid macOS keychain UI prompts
-      // blocking child processes spawned by vitest workers.
-      DIFY_E2E_NO_KEYRING: '1',
       // Point the CLI at the isolated config directory.
       ...(opts.configDir !== undefined ? { DIFY_CONFIG_DIR: opts.configDir } : {}),
       ...opts.env,
