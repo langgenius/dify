@@ -64,7 +64,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
-from services import dataset_api_key_service
+from repositories.knowledge import dataset_api_key_bindings
 from services.dataset_ref_service import DatasetRef, DatasetRefService, SegmentRef
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
@@ -89,6 +89,7 @@ from services.errors.file import FileNotExistsError
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
 from services.file_service import FileService
+from services.knowledge.dataset_access import DatasetAccess
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.tag_service import TagService
 from services.vector_service import VectorService
@@ -1363,7 +1364,7 @@ class DatasetService:
 
         # Remove any dataset API key scoped only to this knowledge base, so it cannot
         # silently degrade to unrestricted (access-all) once its last binding is gone.
-        dataset_api_key_service.delete_keys_scoped_only_to(session, str(dataset.id))
+        dataset_api_key_bindings.delete_keys_scoped_only_to(session, str(dataset.id))
 
         session.delete(dataset)
         session.commit()
@@ -1380,25 +1381,29 @@ class DatasetService:
         if dataset.tenant_id != user.current_tenant_id:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
-        if user.current_role != TenantAccountRole.OWNER:
-            if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.maintainer != user.id:
-                logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
-                raise NoPermissionError("You do not have permission to access this dataset.")
-            if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
-                # For partial team permission, user needs explicit permission or be the maintainer.
-                if dataset.maintainer != user.id:
-                    user_permission = session.scalar(
-                        select(DatasetPermission)
-                        .where(
-                            DatasetPermission.dataset_id == dataset.id,
-                            DatasetPermission.account_id == user.id,
-                            DatasetPermission.tenant_id == dataset.tenant_id,
-                        )
-                        .limit(1)
+        has_permission = False
+        if (
+            user.current_role != TenantAccountRole.OWNER
+            and dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM
+            and dataset.maintainer != user.id
+        ):
+            has_permission = (
+                session.scalar(
+                    select(DatasetPermission.id)
+                    .where(
+                        DatasetPermission.dataset_id == dataset.id,
+                        DatasetPermission.account_id == user.id,
+                        DatasetPermission.tenant_id == dataset.tenant_id,
+                        DatasetPermission.has_permission.is_(True),
                     )
-                    if not user_permission:
-                        logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
-                        raise NoPermissionError("You do not have permission to access this dataset.")
+                    .limit(1)
+                )
+                is not None
+            )
+        access = DatasetAccess(dataset.permission, dataset.maintainer, user.current_role, has_permission)
+        if not access.allows(user.id):
+            logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
+            raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
     def check_dataset_operator_permission(

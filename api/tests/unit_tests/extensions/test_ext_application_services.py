@@ -68,6 +68,7 @@ from services.account_oauth_adapters import (
     RedisOAuthAccountClaimLock,
 )
 from services.account_service import AccountService
+from services.app.api_key_service import AppApiKeyService
 from services.app_generate_service import AppGenerateService
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
@@ -90,9 +91,11 @@ from services.installed_app_access_service import (
     InstalledAppAccessService,
     InstalledAppRef,
 )
-from services.installed_app_generation_adapters import AppGenerateServiceRuntime
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
+from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
@@ -113,6 +116,7 @@ from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.services.test_app_task_service import _StopRedis
 
 
 @pytest.mark.parametrize(
@@ -189,6 +193,33 @@ def test_init_app_registers_services_for_the_current_app(
         assert services.app_scoped_end_users.commands._app_scoped_end_users is repository
         assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
+
+
+def test_build_application_services_preserves_composed_boundaries(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+
+    assert isinstance(services.app_api_keys, AppApiKeyService)
+    assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
+    assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
+    assert redis.register_script.call_count == 3
+
+    assert isinstance(services.installed_app_generation, InstalledAppGenerationService)
+    installed_apps = services.installed_app_access._installed_apps
+    assert isinstance(installed_apps, SQLAlchemyInstalledAppRepository)
+    assert services.installed_app_generation._usage is installed_apps
+    assert services.installed_app_generation._app_definitions is services.app_definitions
+    runtime = services.installed_app_generation._runtime
+    assert isinstance(runtime, InstalledAppGenerateServiceRuntime)
+    assert runtime._session_factory is sqlite_session_factory
 
 
 @pytest.mark.parametrize(
@@ -431,7 +462,7 @@ def test_build_application_services_reuses_installed_app_dependencies(
     assert isinstance(services.installed_app_access._installed_apps, SQLAlchemyInstalledAppRepository)
     assert services.installed_app_generation._usage is services.installed_app_access._installed_apps
     assert services.installed_app_generation._app_definitions is services.app_definitions
-    assert isinstance(services.installed_app_generation._runtime, AppGenerateServiceRuntime)
+    assert isinstance(services.installed_app_generation._runtime, InstalledAppGenerateServiceRuntime)
     assert services.installed_app_generation._runtime._session_factory is sqlite_session_factory
 
 
@@ -747,6 +778,31 @@ def test_build_application_services_wires_data_source_api_key_auth(
     )
 
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
+
+
+def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = _StopRedis(read_error=AssertionError("Workflow stop must not inspect task ownership"))
+    script = MagicMock(side_effect=AssertionError("Workflow stop must not execute Redis scripts"))
+    with patch.object(redis, "register_script", return_value=script):
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=redis,
+        )
+
+    services.app_tasks.stop_workflow_task_no_user_check(task_id="workflow-task")
+
+    assert redis.reads == []
+    assert redis.operations == ["legacy_flag", "graph_command"]
+    assert redis.values["generate_task_stopped:workflow-task"] == b"1"
+    assert redis.expirations["generate_task_stopped:workflow-task"] == 600
+    assert [json.loads(command) for command in redis.commands["workflow:workflow-task:commands"]] == [
+        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+    ]
+    assert redis.expirations["workflow:workflow-task:commands"] == 3600
 
 
 def test_build_application_services_wires_trial_app_usage(

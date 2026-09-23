@@ -27,6 +27,7 @@ from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse
 
 _ARGS: dict[str, object] = {"inputs": {"count": 0}, "query": "hello", "auto_generate_name": False}
+_WORKFLOW_ARGS: dict[str, object] = {"inputs": {"count": 0}, "files": []}
 
 
 @dataclass
@@ -455,28 +456,67 @@ def test_visible_conversation_uses_shared_chat_dispatch_after_preflight_session_
     assert result.closed is True
 
 
-def test_advanced_chat_dispatch_starts_task_after_subscription_with_runtime_session_closed(
+def _generate_workflow(
+    harness: _RuntimeHarness,
+    session_factory: sessionmaker[Session],
+    args: Mapping[str, object],
+) -> GenerationResponse:
+    # WorkflowService also creates its repository factory from Flask's db.engine.
+    # Bind it to the same real database without replacing workflow lookup or dispatch.
+    runtime_app = Flask(__name__)
+    runtime_app.config["SQLALCHEMY_DATABASE_URI"] = str(session_factory.kw["bind"].url)
+    db.init_app(runtime_app)
+    with runtime_app.app_context():
+        try:
+            return harness.runtime.generate(
+                app_id=harness.app_id, account_id=harness.account_id, args=args, streaming=True
+            )
+        finally:
+            db.engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("mode", "trigger"),
+    [
+        pytest.param(AppMode.ADVANCED_CHAT, False, id="advanced-chat"),
+        pytest.param(AppMode.WORKFLOW, False, id="workflow"),
+        pytest.param(AppMode.WORKFLOW, True, id="explore-trigger-workflow"),
+    ],
+)
+def test_workflow_dispatch_starts_task_after_subscription_with_runtime_session_closed(
     harness: _RuntimeHarness,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
+    mode: AppMode,
+    trigger: bool,
 ) -> None:
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
         ENABLE_OTEL=False,
+        APP_DEFAULT_ACTIVE_REQUESTS=0,
         APP_MAX_ACTIVE_REQUESTS=0,
         PUBSUB_REDIS_CHANNEL_TYPE="streams",
     )
-    conversation_id = _seed_chat_conversation(harness, sqlite_session_factory, mode=AppMode.ADVANCED_CHAT)
+    args = _WORKFLOW_ARGS
+    if mode == AppMode.ADVANCED_CHAT:
+        conversation_id = _seed_chat_conversation(harness, sqlite_session_factory, mode=mode)
+        args = {**_ARGS, "conversation_id": conversation_id}
     with sqlite_session_factory.begin() as session:
         app = session.get(App, harness.app_id)
         assert app is not None
+        app.mode = mode
         workflow = Workflow(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type=WorkflowType.CHAT,
+            type=WorkflowType.WORKFLOW if mode == AppMode.WORKFLOW else WorkflowType.CHAT,
             version="2026-09-07 00:00:00",
-            graph='{"nodes": [], "edges": []}',
+            graph=json.dumps(
+                {
+                    "nodes": [{"id": "schedule", "data": {"type": "trigger-schedule"}}] if trigger else [],
+                    "edges": [],
+                }
+            ),
             _features="{}",
             created_by=harness.account_id,
         )
@@ -503,7 +543,6 @@ def test_advanced_chat_dispatch_starts_task_after_subscription_with_runtime_sess
     subscription.__enter__.side_effect = activate_subscription
     subscription.receive.return_value = b'{"event":"workflow_finished"}'
     monkeypatch.setattr(message_based_app_generator, "get_pubsub_broadcast_channel", lambda: channel)
-    args = {**_ARGS, "conversation_id": conversation_id}
     submitted: list[generation_module.AppExecutionParams] = []
 
     def enqueue(payload_json: str) -> None:
@@ -515,21 +554,11 @@ def test_advanced_chat_dispatch_starts_task_after_subscription_with_runtime_sess
 
     monkeypatch.setattr(generation_module.workflow_based_app_execution_task, "delay", enqueue)
 
-    # WorkflowService also creates its repository factory from Flask's db.engine.
-    # Bind it to the same real database without replacing workflow lookup or dispatch.
-    runtime_app = Flask(__name__)
-    runtime_app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_session_factory.kw["bind"].url)
-    db.init_app(runtime_app)
-    with runtime_app.app_context():
-        try:
-            result = harness.runtime.generate(
-                app_id=harness.app_id, account_id=harness.account_id, args=args, streaming=True
-            )
-        finally:
-            db.engine.dispose()
+    result = _generate_workflow(harness, sqlite_session_factory, args)
 
     assert isinstance(result, RateLimitGenerator)
     assert len(harness.closed_sessions) == 2
+    assert harness.committed_sessions == [harness.closed_sessions[1]]
     assert submitted == []
     subscriber.prepare_subscription.assert_called_once_with()
     subscription.__enter__.assert_not_called()
@@ -541,10 +570,54 @@ def test_advanced_chat_dispatch_starts_task_after_subscription_with_runtime_sess
     assert len(submitted) == 1
     payload = submitted[0]
     assert (payload.app_id, payload.workflow_id, payload.tenant_id) == (harness.app_id, workflow_id, tenant_id)
-    assert payload.app_mode == AppMode.ADVANCED_CHAT
+    assert payload.app_mode == mode
     assert payload.user.model_dump(mode="json") == {"TYPE": "account", "user_id": harness.account_id}
     assert payload.args == args
     assert payload.invoke_from == InvokeFrom.EXPLORE
     assert payload.streaming is True
     subscription.__exit__.assert_called_once()
     assert result.closed is True
+
+
+def test_unpublished_workflow_raises_before_subscription_or_task_creation(
+    harness: _RuntimeHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        ENABLE_OTEL=False,
+        APP_DEFAULT_ACTIVE_REQUESTS=0,
+        APP_MAX_ACTIVE_REQUESTS=0,
+    )
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, harness.app_id)
+        assert app is not None
+        app.mode = AppMode.WORKFLOW
+        session.add(
+            Workflow(
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                type=WorkflowType.WORKFLOW,
+                version="draft",
+                graph='{"nodes": [], "edges": []}',
+                _features="{}",
+                created_by=harness.account_id,
+            )
+        )
+
+    channel = MagicMock(spec=BroadcastChannel)
+    monkeypatch.setattr(message_based_app_generator, "get_pubsub_broadcast_channel", lambda: channel)
+    enqueue = MagicMock()
+    monkeypatch.setattr(generation_module.workflow_based_app_execution_task, "delay", enqueue)
+
+    with pytest.raises(ValueError, match="^Workflow not published$") as raised:
+        _generate_workflow(harness, sqlite_session_factory, _WORKFLOW_ARGS)
+
+    assert type(raised.value) is ValueError
+    assert len(harness.closed_sessions) == 2
+    assert all(not session.in_transaction() for session in harness.closed_sessions)
+    assert harness.committed_sessions == []
+    channel.topic.assert_not_called()
+    enqueue.assert_not_called()
