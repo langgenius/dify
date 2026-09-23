@@ -1,6 +1,6 @@
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { act, fireEvent, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import MCPList from '../index'
 

@@ -918,11 +918,18 @@ class RetrievalService:
     def get_segment_attachment_info(
         cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session
     ) -> SegmentAttachmentResult | None:
-        upload_file = session.scalar(select(UploadFile).where(UploadFile.id == attachment_id).limit(1))
+        """Resolve an attachment only through its tenant and dataset ownership chain."""
+        upload_file = session.scalar(
+            select(UploadFile).where(UploadFile.id == attachment_id, UploadFile.tenant_id == tenant_id).limit(1)
+        )
         if upload_file:
             attachment_binding = session.scalar(
                 select(SegmentAttachmentBinding)
-                .where(SegmentAttachmentBinding.attachment_id == upload_file.id)
+                .where(
+                    SegmentAttachmentBinding.attachment_id == upload_file.id,
+                    SegmentAttachmentBinding.tenant_id == tenant_id,
+                    SegmentAttachmentBinding.dataset_id == dataset_id,
+                )
                 .limit(1)
             )
             if attachment_binding:

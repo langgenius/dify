@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import Chart, { MessagesChart } from '../app-chart'
 
 const reactEChartsMock = vi.fn()
-vi.mock('echarts-for-react', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: (props: { option: unknown; opts?: unknown }) => {
     reactEChartsMock(props)
     return <div role="img" aria-label="Chart" />
@@ -40,7 +40,7 @@ describe('app-chart', () => {
         />,
       )
 
-      expect(screen.getByText('Cost title'))!.toBeInTheDocument()
+      expect(screen.getByText('Cost title')).toHaveAttribute('title', 'Cost title')
       expect(screen.getByText('300'))!.toBeInTheDocument()
       expect(screen.queryByText('Last 7 days'))!.not.toBeInTheDocument()
       expect(screen.getByText(/\$3\.7500/))!.toBeInTheDocument()

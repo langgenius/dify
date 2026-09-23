@@ -1,8 +1,8 @@
 'use client'
 
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useLocale } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
+import { useLocale } from '#i18n'
+import { consoleQuery } from '@/service/console'
 import { Banner } from './banner'
 
 export function HomeBanner() {

@@ -1,7 +1,7 @@
 name: '⭐ Feature or enhancement request'
 description: Propose something new.
 labels:
-  - enhancement
+  - 💪 enhancement
 body:
   - type: checkboxes
     attributes:

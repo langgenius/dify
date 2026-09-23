@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import types
 from types import SimpleNamespace
@@ -7,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_clickhouse_connect_module():
@@ -92,12 +94,10 @@ def test_delete_by_ids_short_circuits_on_empty_list(myscale_module):
 
 def test_factory_initializes_lower_case_collection_name(myscale_module, monkeypatch: pytest.MonkeyPatch):
     factory = myscale_module.MyScaleVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(myscale_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(myscale_module.dify_config, "MYSCALE_HOST", "localhost")

@@ -9,7 +9,7 @@ import ChatItem from '../chat-item'
 
 const mockConsoleStateReader = vi.fn()
 const mockUseDebugConfigurationContext = vi.fn()
-const mockUseProviderContext = vi.fn()
+const mockModelListQuery = vi.fn()
 const mockUseFeatures = vi.fn()
 const mockUseConfigFromDebugContext = vi.fn()
 const mockUseFormattingChangedSubscription = vi.fn()
@@ -39,8 +39,9 @@ vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => mockModelListQuery(),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
@@ -137,8 +138,8 @@ const createDefaultMocks = () => {
     canTestAndRun: true,
   })
 
-  mockUseProviderContext.mockReturnValue({
-    textGenerationModelList: [
+  mockModelListQuery.mockReturnValue({
+    data: [
       {
         provider: 'openai',
         models: [
@@ -429,8 +430,8 @@ describe('ChatItem', () => {
     })
 
     it('should not include files when vision is not supported', () => {
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [
+      mockModelListQuery.mockReturnValue({
+        data: [
           {
             provider: 'openai',
             models: [
@@ -624,8 +625,8 @@ describe('ChatItem', () => {
 
   describe('edge cases', () => {
     it('should handle missing provider in textGenerationModelList', () => {
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [],
+      mockModelListQuery.mockReturnValue({
+        data: [],
       })
 
       const handleSend = vi.fn()

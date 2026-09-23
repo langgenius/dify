@@ -19,7 +19,7 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import Column, Engine, Integer, MetaData, String, Table, delete, event, func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, registry, sessionmaker
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models.enums import CreatorUserRole
@@ -535,10 +535,13 @@ class TestGetModelColumnInfo:
             Column("defaulted_field", String(255), nullable=False, default="x"),
         )
 
-        class MockModel:
+        mapper_registry = registry()
+
+        @mapper_registry.mapped
+        class _AutoincrementModel:
             __table__ = test_table
 
-        _, required_columns, non_nullable_with_default = restore._get_model_column_info(MockModel)
+        _, required_columns, non_nullable_with_default = restore._get_model_column_info(_AutoincrementModel)
 
         assert required_columns == {"required_field"}
         assert "id" in non_nullable_with_default

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 
 type CardProps = {
   log: { role: string; text: string }[]
@@ -21,10 +21,7 @@ const Card: FC<CardProps> = ({ log }) => {
             >
               <div className="flex h-8 items-center justify-between">
                 <div className="font-semibold text-indigo-800">{item.role.toUpperCase()}</div>
-                <CopyFeedbackNew
-                  className="hidden size-6 group-hover/card:block"
-                  content={item.text}
-                />
+                <CopyFeedback className="hidden group-hover/card:block" content={item.text} />
               </div>
               <div className="whitespace-pre-line text-text-secondary">{item.text}</div>
             </div>

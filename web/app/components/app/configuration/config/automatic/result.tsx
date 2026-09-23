@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { GenRes } from '@/service/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiClipboardLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,15 +35,15 @@ const Result: FC<Props> = ({
   onApply,
   generatorType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'appGeneration'])
   const isGeneratorPrompt = generatorType === GeneratorType.prompt
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-3 flex shrink-0 items-center justify-between">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-y-3">
         <div>
           <div className="shrink-0 text-base leading-[160%] font-semibold text-text-secondary">
-            {t(($) => $['generate.resTitle'], { ns: 'appDebug' })}
+            {t(($) => $['generate.resTitle'], { ns: 'appGeneration' })}
           </div>
           <VersionSelector
             versionLen={versions.length}
@@ -52,17 +52,19 @@ const Result: FC<Props> = ({
           />
         </div>
         <div className="flex items-center space-x-2">
-          <Button
-            className="px-2"
+          <IconButton
+            aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+            variant="secondary"
+            size="lg"
             onClick={() => {
               copy(current.modified)
               toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
             }}
           >
-            <RiClipboardLine className="size-4 text-text-secondary" />
-          </Button>
+            <span aria-hidden="true" className="i-ri-clipboard-line size-4 text-text-secondary" />
+          </IconButton>
           <Button variant="primary" onClick={onApply}>
-            {t(($) => $['generate.apply'], { ns: 'appDebug' })}
+            {t(($) => $['generate.apply'], { ns: 'appGeneration' })}
           </Button>
         </div>
       </div>

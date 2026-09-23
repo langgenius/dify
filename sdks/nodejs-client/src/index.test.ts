@@ -1,5 +1,5 @@
 import { Readable } from 'node:stream'
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BASE_URL, ChatClient, DifyClient, WorkflowClient, routes } from './index'
 
 const stubFetch = (): ReturnType<typeof vi.fn> => {

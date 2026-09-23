@@ -1,5 +1,15 @@
-import { describe, expect, it } from 'vitest'
-import { resolveBuildInfo } from '../../scripts/lib/resolve-buildinfo.js'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { afterAll, describe, expect, it } from 'vite-plus/test'
+import { BUILD_CHANNELS, resolveBuildInfo } from '../../scripts/lib/resolve-buildinfo.js'
+import { ENV_CACHE_DIR, ENV_CONFIG_DIR } from '../../src/store/dir.js'
+
+const CLI_ROOT = new URL('../../', import.meta.url)
+const RELEASE_NAMING = fileURLToPath(new URL('scripts/release-naming.mjs', CLI_ROOT))
+const DEV_ENTRY = fileURLToPath(new URL('bin/dev.js', CLI_ROOT))
 
 const FIXED_DATE = new Date('2026-05-09T12:00:00.000Z')
 const fixedNow = () => FIXED_DATE
@@ -78,6 +88,16 @@ describe('resolveBuildInfo', () => {
         pkg: noPkg,
       }),
     ).toThrow(/invalid DIFYCTL_CHANNEL: nightly/)
+  })
+
+  it('accepts alpha channel', () => {
+    const info = resolveBuildInfo({
+      env: { DIFYCTL_CHANNEL: 'alpha' },
+      git: noGit,
+      now: fixedNow,
+      pkg: noPkg,
+    })
+    expect(info.channel).toBe('alpha')
   })
 
   it('accepts rc channel', () => {
@@ -159,5 +179,52 @@ describe('resolveBuildInfo', () => {
     expect(info.minDify).toBe('2.0.0')
     expect(info.maxDify).toBe('2.1.0')
     expect(info.channel).toBe('stable')
+  })
+})
+
+function releaseNamingChannels(): string[] {
+  return execFileSync('node', [RELEASE_NAMING, 'channels'], { encoding: 'utf8' })
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+}
+
+const sorted = (names: readonly string[]) => [...names].sort()
+
+describe('channel list parity', () => {
+  const LOCAL_ONLY_CHANNEL = 'dev'
+
+  it('released channels are the build channels minus the local-only one', () => {
+    expect(sorted(releaseNamingChannels())).toStrictEqual(
+      sorted(BUILD_CHANNELS.filter((name) => name !== LOCAL_ONLY_CHANNEL)),
+    )
+  })
+})
+
+type ClientVersionReport = { client: { channel: string } }
+
+describe('bin/dev.js pins the local build channel', () => {
+  const ENV_CHANNEL = 'DIFYCTL_CHANNEL'
+  const stateDir = mkdtempSync(join(tmpdir(), 'difyctl-dev-channel-'))
+  afterAll(() => rmSync(stateDir, { recursive: true, force: true }))
+
+  function reportedChannel(channelOverride?: string): string {
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      [ENV_CONFIG_DIR]: stateDir,
+      [ENV_CACHE_DIR]: stateDir,
+    }
+    if (channelOverride === undefined) delete env[ENV_CHANNEL]
+    else env[ENV_CHANNEL] = channelOverride
+    const stdout = execFileSync('bun', [DEV_ENTRY, 'version', '--client', '--output', 'json'], {
+      cwd: fileURLToPath(CLI_ROOT),
+      encoding: 'utf8',
+      env,
+    })
+    return (JSON.parse(stdout) as ClientVersionReport).client.channel
+  }
+
+  it('reports dev when the env does not set a channel', { timeout: 30_000 }, () => {
+    expect(reportedChannel()).toBe('dev')
   })
 })

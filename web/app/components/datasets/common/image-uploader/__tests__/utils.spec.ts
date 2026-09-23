@@ -1,6 +1,6 @@
 import type { FileEntity } from '../types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
   DEFAULT_IMAGE_FILE_BATCH_LIMIT,
   DEFAULT_IMAGE_FILE_SIZE_LIMIT,

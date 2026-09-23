@@ -29,7 +29,7 @@ type Props = Readonly<{
 const today = dayjs()
 
 const LongTimeRangePicker: FC<Props> = ({ periodMapping, onSelect, queryDateFormat }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const items = React.useMemo<TimePeriodOption[]>(() => {
     return Object.entries(periodMapping).map(([key, period]) => ({
       value: key,

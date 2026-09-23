@@ -83,7 +83,7 @@ describe('Result', () => {
     expect(screen.getByTestId('prompt-res'))!.toHaveTextContent('generated output')
 
     fireEvent.click(screen.getByTestId('version-selector'))
-    fireEvent.click(screen.getAllByRole('button')[1]!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.copy' }))
     fireEvent.click(screen.getByText(/(?:^|\.)generate\.apply(?=$|:)/))
 
     expect(mockSetCurrentVersionIndex).toHaveBeenCalledWith(1)

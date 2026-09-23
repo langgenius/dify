@@ -4,8 +4,6 @@ Tests the visibility filtering logic, partial-member read path,
 and admin bypass behavior.
 """
 
-from types import SimpleNamespace
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -13,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType as TriggerCredentialType
-from models.account import Account
+from models.account import Account, TenantAccountRole
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import PermissionEnum
 from models.trigger import TriggerSubscription
@@ -62,7 +60,10 @@ def _subscription(
 
 
 def _user(user_id: str, *, is_admin: bool) -> Account:
-    return cast(Account, SimpleNamespace(id=user_id, is_admin_or_owner=is_admin))
+    user = Account(name="Credential User", email=f"{user_id}@example.com")
+    user.id = user_id
+    user.role = TenantAccountRole.ADMIN if is_admin else TenantAccountRole.NORMAL
+    return user
 
 
 class TestGetPartialMemberList:

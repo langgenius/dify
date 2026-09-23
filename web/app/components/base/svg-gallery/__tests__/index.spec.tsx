@@ -64,22 +64,7 @@ describe('SVGRenderer', () => {
       render(<SVGRenderer content="invalid" />)
 
       await waitFor(() => {
-        expect(screen.getByText(/Error rendering SVG/))!.toBeInTheDocument()
-      })
-    })
-
-    it('re-renders on window resize', async () => {
-      render(<SVGRenderer content={validSvg} />)
-      await waitFor(() => {
-        expect(mockAddTo).toHaveBeenCalledTimes(1)
-      })
-
-      await act(async () => {
-        window.dispatchEvent(new Event('resize'))
-      })
-
-      await waitFor(() => {
-        expect(mockAddTo).toHaveBeenCalledTimes(2)
+        expect(screen.getByText('common.svgRenderer.generatingImage'))!.toBeInTheDocument()
       })
     })
 

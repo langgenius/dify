@@ -32,7 +32,6 @@ from services.entities.dsl_entities import (
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -236,8 +235,11 @@ class SnippetDslService:
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
                 pending_data = SnippetPendingData(
-                    tenant_id=account.current_tenant_id,
+                    tenant_id=tenant_id,
                     account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
@@ -491,29 +493,34 @@ class SnippetDslService:
 
         self._session.commit()
         if workflow_data:
-            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=snippet.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
             )
-            enqueue_agent_resource_collection(
-                tenant_id=snippet.tenant_id,
-                binding_ids=binding_ids,
-                home_snapshot_ids=home_snapshot_ids,
-            )
         return snippet
 
-    def export_snippet_dsl(self, snippet: CustomizedSnippet, include_secret: bool = False) -> str:
+    def export_snippet_dsl(
+        self, snippet: CustomizedSnippet, include_secret: bool = False, workflow_id: str | None = None
+    ) -> str:
         """
         Export snippet as DSL
         :param snippet: CustomizedSnippet instance
         :param include_secret: Whether include secret variable
+        :param workflow_id: Optional published workflow version to export; defaults to the draft workflow
         :return: YAML string
         """
         snippet_service = self._snippet_service()
-        workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        workflow = (
+            snippet_service.get_published_workflow_by_id(snippet=snippet, workflow_id=workflow_id)
+            if workflow_id
+            else snippet_service.get_draft_workflow(snippet=snippet)
+        )
         if not workflow:
-            raise ValueError("Missing draft workflow configuration, please check.")
+            workflow_description = (
+                f"published workflow {workflow_id}" if workflow_id else "draft workflow configuration"
+            )
+            raise ValueError(f"Missing {workflow_description}, please check.")
 
         icon_info = snippet.icon_info or {}
         export_data = {
@@ -617,20 +624,43 @@ class SnippetDslService:
             node_data = node.get("data", {})
             if not node_data:
                 continue
+            dependencies.extend(DependenciesAnalysisService.extract_external_node_dependencies(node_data))
             data_type = node_data.get("type", "")
             if data_type == BuiltinNodeTypes.TOOL:
-                tool_config = node_data.get("tool_configurations", {})
-                provider_type = tool_config.get("provider_type")
-                provider_name = tool_config.get("provider")
-                if provider_type and provider_name:
-                    dependencies.append(f"{provider_name}/{provider_name}")
-            elif data_type == BuiltinNodeTypes.AGENT:
-                agent_parameters = node_data.get("agent_parameters", {})
-                tools = agent_parameters.get("tools", {}).get("value", [])
-                for tool in tools:
-                    provider_type = tool.get("provider_type")
-                    provider_name = tool.get("provider")
-                    if provider_type and provider_name:
-                        dependencies.append(f"{provider_name}/{provider_name}")
+                tool_config = node_data.get("tool_configurations") or {}
+                provider_type = node_data.get("provider_type") or tool_config.get("provider_type")
+                if provider_type in ("builtin", "plugin"):
+                    provider_id = (
+                        node_data.get("plugin_id") or node_data.get("provider_id") or tool_config.get("provider")
+                    )
+                    if isinstance(provider_id, str) and provider_id:
+                        dependencies.append(DependenciesAnalysisService.analyze_tool_provider_reference(provider_id))
+            elif data_type in (
+                BuiltinNodeTypes.LLM,
+                BuiltinNodeTypes.QUESTION_CLASSIFIER,
+                BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+            ):
+                model = node_data.get("model")
+                if isinstance(model, Mapping) and isinstance(model.get("provider"), str) and model["provider"]:
+                    dependencies.append(
+                        DependenciesAnalysisService.analyze_model_provider_dependency(model["provider"])
+                    )
+            elif data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+                if node_data.get("retrieval_mode") == "single":
+                    model_config = node_data.get("single_retrieval_config") or {}
+                    model = model_config.get("model") or {}
+                    provider = model.get("provider")
+                else:
+                    multiple_config = node_data.get("multiple_retrieval_config") or {}
+                    if multiple_config.get("reranking_mode") == "reranking_model":
+                        provider = (multiple_config.get("reranking_model") or {}).get("provider")
+                    elif multiple_config.get("reranking_mode") == "weighted_score":
+                        provider = ((multiple_config.get("weights") or {}).get("vector_setting") or {}).get(
+                            "embedding_provider_name"
+                        )
+                    else:
+                        provider = None
+                if isinstance(provider, str) and provider:
+                    dependencies.append(DependenciesAnalysisService.analyze_model_provider_dependency(provider))
 
         return dependencies

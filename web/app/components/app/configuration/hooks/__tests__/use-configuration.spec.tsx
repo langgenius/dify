@@ -1,9 +1,12 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { act, waitFor } from '@testing-library/react'
+import Cookies from 'js-cookie'
+import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
 import { updateAppModelConfig } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -11,6 +14,7 @@ import { useConfiguration } from '../use-configuration'
 
 const renderHook = (callback: () => ReturnType<typeof useConfiguration>) => {
   const queryClient = createTestQueryClient()
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   return {
     ...renderHookWithConsoleState(callback, {
       wrapper: createQueryClientWrapper(queryClient),
@@ -21,7 +25,6 @@ const renderHook = (callback: () => ReturnType<typeof useConfiguration>) => {
 
 const mockSetSettingsDestination = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
-const mockSetDetailSidebarMode = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -58,15 +61,6 @@ vi.mock('ahooks', async () => {
   }
 })
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -91,12 +85,6 @@ vi.mock('nuqs', async (importOriginal) => {
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    isAPIKeySet: true,
-  }),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
@@ -111,10 +99,6 @@ vi.mock('@/app/components/app/store', () => ({
       showAppConfigureFeaturesModal: false,
       setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
     }),
-}))
-
-vi.mock('@/app/components/detail-sidebar/storage', () => ({
-  useSetDetailSidebarMode: () => mockSetDetailSidebarMode,
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -207,6 +191,7 @@ vi.mock('@/utils/completion-params', () => ({
 describe('useConfiguration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
     latestAdvancedPromptConfigOptions = undefined
     mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
@@ -286,14 +271,17 @@ describe('useConfiguration', () => {
     const detailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
       input: { params: { app_id: 'app-1' } },
     })
-    queryClient.setQueryData(detailQueryKey, {
-      enable_api: false,
-      enable_site: false,
-      icon_url: null,
-      id: 'app-1',
-      mode: 'chat',
-      name: 'Cached app',
-    })
+    queryClient.setQueryData(
+      detailQueryKey,
+      createAppDetailFixture({
+        enable_api: false,
+        enable_site: false,
+        icon_url: null,
+        id: 'app-1',
+        mode: 'chat',
+        name: 'Cached app',
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.showLoading).toBe(false)
@@ -326,6 +314,175 @@ describe('useConfiguration', () => {
       }),
     )
     expect(queryClient.getQueryState(detailQueryKey)?.isInvalidated).toBe(true)
+  })
+
+  it('should publish and restore the complete configuration snapshot', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 8,
+      })
+    })
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+    expect(result.current.appPublisherProps.publishedConfig.datasetConfigs.top_k).toBe(8)
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 10,
+      })
+    })
+
+    mockSetChatPromptConfig.mockClear()
+    mockSetCompletionPromptConfig.mockClear()
+    act(() => {
+      result.current.appPublisherProps.resetAppConfig?.()
+    })
+    expect(result.current.contextValue.datasetConfigs.top_k).toBe(8)
+    expect(mockSetChatPromptConfig).toHaveBeenCalledWith({
+      prompt: [{ role: 'system', text: 'hi' }],
+    })
+    expect(mockSetCompletionPromptConfig).toHaveBeenCalledWith({
+      prompt: { text: 'completion' },
+      conversation_histories_role: {
+        assistant_prefix: 'assistant',
+        user_prefix: 'user',
+      },
+    })
+  })
+
+  it('should enable multiple-model mode', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.onEnableMultipleModelDebug()
+    })
+
+    expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalledWith(
+      true,
+      expect.arrayContaining([
+        expect.objectContaining({
+          model: 'gpt-4o',
+          provider: 'langgenius/openai/openai',
+        }),
+      ]),
+    )
+  })
+
+  it('should update multiple-model debug configs', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    const modelConfigs = [
+      {
+        id: 'model-1',
+        model: 'gpt-4o',
+        provider: 'langgenius/openai/openai',
+        parameters: { temperature: 0.7 },
+      },
+      {
+        id: 'model-2',
+        model: 'gpt-4.1',
+        provider: 'langgenius/openai/openai',
+        parameters: {},
+      },
+      {
+        id: 'model-3',
+        model: '',
+        provider: '',
+        parameters: {},
+      },
+    ]
+
+    act(() => {
+      result.current.onMultipleModelConfigsChange(true, modelConfigs)
+    })
+
+    expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalledWith(true, modelConfigs)
+  })
+
+  it('should keep multiple-model debug state when restoring published config', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.onEnableMultipleModelDebug()
+    })
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 8,
+      })
+    })
+
+    mockHandleMultipleModelConfigsChange.mockClear()
+    act(() => {
+      result.current.appPublisherProps.resetAppConfig?.()
+    })
+
+    expect(mockHandleMultipleModelConfigsChange).not.toHaveBeenCalled()
+  })
+
+  it('should sync the selected multiple-model config after publishing', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 8,
+      })
+    })
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(
+        {
+          id: 'model-2',
+          model: 'gpt-4.1',
+          provider: 'langgenius/openai/openai',
+          parameters: { temperature: 0.2 },
+        },
+        result.current.featuresData,
+      )
+    })
+
+    expect(result.current.contextValue.modelConfig.model_id).toBe('gpt-4.1')
+    expect(result.current.contextValue.modelConfig.provider).toBe('langgenius/openai/openai')
+    expect(result.current.contextValue.completionParams).toEqual({ temperature: 0.2 })
+    expect(result.current.appPublisherProps.publishedConfig.modelConfig.model_id).toBe('gpt-4.1')
+  })
+
+  it('should expose the latest published time supplied by the app detail', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.appPublisherProps.publishedAt).toBe(1710000000000)
   })
 
   it('should block publishing when app release permission is missing', async () => {
@@ -516,7 +673,7 @@ describe('useConfiguration', () => {
     expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(true)
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
-    expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
+    expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',

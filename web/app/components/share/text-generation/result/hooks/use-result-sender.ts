@@ -4,7 +4,7 @@ import type { ResultRunStateController } from './use-result-run-state'
 import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { useCallback, useEffect, useRef } from 'react'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AppSourceType, sendCompletionMessage, sendWorkflowMessage } from '@/service/share'
@@ -100,7 +100,7 @@ export const useResultSender = ({
     runState.setRespondingTrue()
 
     if (appSourceType === AppSourceType.webApp && appMode)
-      trackEvent('webapp_run', { app_mode: appMode })
+      trackWebAppEvent('webapp_run', { app_mode: appMode })
 
     let isEnd = false
     let isTimeout = false

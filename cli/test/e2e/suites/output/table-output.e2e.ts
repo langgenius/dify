@@ -38,7 +38,7 @@
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import { assertExitCode, assertNoAnsi } from '../../helpers/assert.js'
 import { withAuthFixture } from '../../helpers/cli.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -146,7 +146,6 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     const result = await fx.r(['get', 'app'])
     assertExitCode(result, 0)
     // No NUL, BEL, BS, VT, FF, SO–US, DEL bytes that would corrupt a pipe
-    // eslint-disable-next-line no-control-regex
     expect(result.stdout).not.toMatch(/[\x00-\x08\v\f\x0E-\x1F\x7F]/)
   })
 
@@ -155,7 +154,6 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     const result = await fx.r(['get', 'app'])
     assertExitCode(result, 0)
     assertNoAnsi(result.stdout, 'stdout')
-    // eslint-disable-next-line no-control-regex
     expect(result.stdout).not.toMatch(/[\x00-\x08\v\f\x0E-\x1F\x7F]/)
   })
 

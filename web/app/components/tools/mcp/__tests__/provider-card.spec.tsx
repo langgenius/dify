@@ -3,7 +3,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import MCPCard from '../provider-card'
 
@@ -192,6 +192,12 @@ describe('MCPCard', () => {
       render(<MCPCard {...defaultProps} data={dataWithNoTools} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
     })
+
+    it('should show update time when not configured', () => {
+      const dataNotConfigured = createMockData({ tools: [], is_team_authorization: false })
+      render(<MCPCard {...defaultProps} data={dataNotConfigured} />, { wrapper: createWrapper() })
+      expect(screen.getByText(/tools.mcp.updateTime/)).toBeInTheDocument()
+    })
   })
 
   describe('Selected State', () => {
@@ -240,10 +246,10 @@ describe('MCPCard', () => {
   })
 
   describe('Status Indicator', () => {
-    it('should show green indicator when authorized and has tools', () => {
+    it('should include configured status in the card button name', () => {
       const data = createMockData({ is_team_authorization: true, tools: [{ name: 'tool1' }] })
       render(<MCPCard {...defaultProps} data={data} />, { wrapper: createWrapper() })
-      // Should have green indicator (not showing red badge)
+      expect(screen.getByRole('button', { name: /tools\.mcp\.configured/ })).toBeInTheDocument()
       expect(screen.queryByText('tools.mcp.noConfigured')).not.toBeInTheDocument()
     })
 

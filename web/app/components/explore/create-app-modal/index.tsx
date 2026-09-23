@@ -2,22 +2,26 @@
 import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useProviderContext } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
-import AppIconPicker from '../../base/app-icon-picker'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -64,15 +68,18 @@ const CreateAppModal = ({
   confirmDisabled,
   onHide,
 }: CreateAppModalProps) => {
-  const { t } = useTranslation()
+  const nameInputId = React.useId()
+  const descriptionInputId = React.useId()
+  const maxActiveRequestsInputId = React.useId()
+  const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
   const [appIcon, setAppIcon] = useState(() =>
     appIconType === 'image'
-      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl }
+      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl ?? '' }
       : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground },
   )
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
 
@@ -82,10 +89,24 @@ const CreateAppModal = ({
       : '',
   )
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD' && !isEditModal,
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable =
+    deploymentEdition === 'CLOUD' && !isEditModal && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
 
   const submit = useCallback(() => {
+    if (confirmDisabled || (!isEditModal && (isAppQuotaUnavailable || isAppsFull))) return
     if (!name.trim()) {
       toast(
         t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }),
@@ -99,7 +120,7 @@ const CreateAppModal = ({
       name,
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background! : undefined,
+      icon_background: appIcon.type === 'emoji' ? (appIcon.background ?? undefined) : undefined,
       description,
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     }
@@ -108,6 +129,10 @@ const CreateAppModal = ({
     onConfirm(payload)
     onHide()
   }, [
+    confirmDisabled,
+    isEditModal,
+    isAppQuotaUnavailable,
+    isAppsFull,
     name,
     appIcon,
     description,
@@ -120,22 +145,44 @@ const CreateAppModal = ({
 
   const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
 
-  useHotkey(
-    SUBMIT_APP_HOTKEY,
-    () => {
-      handleSubmit()
-    },
-    {
-      enabled: show && !(!isEditModal && isAppsFull) && !!name.trim(),
-      ignoreInputs: false,
-    },
-  )
+  const submitDisabled =
+    isAppQuotaUnavailable || (!isEditModal && isAppsFull) || !name.trim() || !!confirmDisabled
 
   return (
     <>
       <Dialog open={show} onOpenChange={(open) => !open && onHide()} disablePointerDismissal>
-        <DialogContent backdropProps={{ forceRender: true }} className="px-8">
-          <DialogCloseButton />
+        <DialogContent
+          onKeyDown={(event) => {
+            if (
+              !show ||
+              submitDisabled ||
+              showIconPicker ||
+              event.defaultPrevented ||
+              event.nativeEvent.isComposing ||
+              !(event.target instanceof Node) ||
+              !event.currentTarget.contains(event.target) ||
+              !matchesKeyboardEvent(event.nativeEvent, SUBMIT_APP_HOTKEY)
+            )
+              return
+            event.preventDefault()
+            event.stopPropagation()
+            if (event.repeat) return
+            handleSubmit()
+          }}
+          backdropProps={{ forceRender: true }}
+          className="px-8"
+        >
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           {isEditModal && (
             <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
               {t(($) => $.editAppTitle, { ns: 'app' })}
@@ -149,14 +196,17 @@ const CreateAppModal = ({
           <div className="mb-9">
             {/* icon & name */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+              <label
+                htmlFor={nameInputId}
+                className="block py-2 text-sm leading-5 font-medium text-text-primary"
+              >
                 {t(($) => $['newApp.captionName'], { ns: 'app' })}
-              </div>
+              </label>
               <div className="flex items-center justify-between space-x-2">
                 <AppIcon
                   size="large"
                   onClick={() => {
-                    setShowAppIconPicker(true)
+                    setShowIconPicker(true)
                   }}
                   className="cursor-pointer"
                   iconType={appIcon.type}
@@ -165,6 +215,7 @@ const CreateAppModal = ({
                   imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
                 />
                 <Input
+                  id={nameInputId}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
@@ -174,11 +225,14 @@ const CreateAppModal = ({
             </div>
             {/* description */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+              <label
+                htmlFor={descriptionInputId}
+                className="block py-2 text-sm leading-5 font-medium text-text-primary"
+              >
                 {t(($) => $['newApp.captionDescription'], { ns: 'app' })}
-              </div>
+              </label>
               <Textarea
-                aria-label={t(($) => $['newApp.captionDescription'], { ns: 'app' })}
+                id={descriptionInputId}
                 className="resize-none"
                 placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
                 value={description}
@@ -207,10 +261,14 @@ const CreateAppModal = ({
               )}
             {isEditModal && (
               <div className="pt-2">
-                <div className="mt-2 mb-2 text-sm leading-5 font-medium text-text-primary">
+                <label
+                  htmlFor={maxActiveRequestsInputId}
+                  className="mt-2 mb-2 block text-sm leading-5 font-medium text-text-primary"
+                >
                   {t(($) => $.maxActiveRequests, { ns: 'app' })}
-                </div>
+                </label>
                 <Input
+                  id={maxActiveRequestsInputId}
                   type="number"
                   min={1}
                   placeholder={t(($) => $.maxActiveRequestsPlaceholder, { ns: 'app' })}
@@ -229,7 +287,7 @@ const CreateAppModal = ({
           </div>
           <div className="flex flex-row-reverse">
             <Button
-              disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
+              disabled={submitDisabled}
               className="ml-2 w-24"
               variant="primary"
               onClick={handleSubmit}
@@ -240,9 +298,9 @@ const CreateAppModal = ({
                   : t(($) => $['operation.save'], { ns: 'common' })}
               </span>
               <KbdGroup>
-                {SUBMIT_APP_HOTKEY.split('+').map((key) => (
+                {formatForDisplay(SUBMIT_APP_HOTKEY, { parts: true }).map((key) => (
                   <Kbd key={key} color="white">
-                    {formatForDisplay(key)}
+                    {key}
                   </Kbd>
                 ))}
               </KbdGroup>
@@ -253,20 +311,14 @@ const CreateAppModal = ({
           </div>
         </DialogContent>
       </Dialog>
-      {showAppIconPicker && (
-        <AppIconPicker
-          open={showAppIconPicker}
-          initialEmoji={
-            appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
-              : undefined
-          }
-          onOpenChange={setShowAppIconPicker}
-          onSelect={(payload) => {
-            setAppIcon(payload)
-          }}
-        />
-      )}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={appIcon}
+        onOpenChange={setShowIconPicker}
+        onConfirm={(payload) => {
+          setAppIcon(payload)
+        }}
+      />
     </>
   )
 }

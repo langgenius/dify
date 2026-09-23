@@ -10,8 +10,14 @@ from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
-from models.enums import DataSourceType, DocumentCreatedFrom
-from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.entities.knowledge_entities.knowledge_entities import (
+    DocumentMetadataOperation,
+    MetadataArgs,
+    MetadataDetail,
+    MetadataOperationData,
+)
+from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
 
 
@@ -300,7 +306,7 @@ class TestMetadataService:
         # Act: Execute the method under test
         new_name = "new_name"
         result = MetadataService.update_metadata_name(
-            dataset.id, metadata.id, new_name, account, tenant.id, session=db_session_with_containers
+            dataset, metadata.id, new_name, account, session=db_session_with_containers
         )
 
         # Assert: Verify the expected outcomes
@@ -340,7 +346,7 @@ class TestMetadataService:
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name cannot exceed 255 characters."):
             MetadataService.update_metadata_name(
-                dataset.id, metadata.id, long_name, account, tenant.id, session=db_session_with_containers
+                dataset, metadata.id, long_name, account, session=db_session_with_containers
             )
 
     def test_update_metadata_name_already_exists(
@@ -371,7 +377,7 @@ class TestMetadataService:
         # Try to update first metadata with second metadata's name
         with pytest.raises(ValueError, match="Metadata name already exists."):
             MetadataService.update_metadata_name(
-                dataset.id, first_metadata.id, "second_metadata", account, tenant.id, session=db_session_with_containers
+                dataset, first_metadata.id, "second_metadata", account, session=db_session_with_containers
             )
 
     def test_update_metadata_name_conflicts_with_built_in_field(
@@ -399,7 +405,7 @@ class TestMetadataService:
 
         with pytest.raises(ValueError, match="Metadata name already exists in Built-in fields."):
             MetadataService.update_metadata_name(
-                dataset.id, metadata.id, built_in_field_name, account, tenant.id, session=db_session_with_containers
+                dataset, metadata.id, built_in_field_name, account, session=db_session_with_containers
             )
 
     def test_update_metadata_name_not_found(
@@ -424,7 +430,7 @@ class TestMetadataService:
 
         # Act: Execute the method under test
         result = MetadataService.update_metadata_name(
-            dataset.id, fake_metadata_id, new_name, account, tenant.id, session=db_session_with_containers
+            dataset, fake_metadata_id, new_name, account, session=db_session_with_containers
         )
 
         # Assert: Verify the method returns None when metadata is not found
@@ -451,7 +457,7 @@ class TestMetadataService:
         )
 
         # Act: Execute the method under test
-        result = MetadataService.delete_metadata(dataset.id, metadata.id, session=db_session_with_containers)
+        result = MetadataService.delete_metadata(dataset, metadata.id, session=db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -482,7 +488,7 @@ class TestMetadataService:
         fake_metadata_id = str(uuid.uuid4())  # Use valid UUID format
 
         # Act: Execute the method under test
-        result = MetadataService.delete_metadata(dataset.id, fake_metadata_id, session=db_session_with_containers)
+        result = MetadataService.delete_metadata(dataset, fake_metadata_id, session=db_session_with_containers)
 
         # Assert: Verify the method returns None when metadata is not found
         assert result is None
@@ -528,7 +534,7 @@ class TestMetadataService:
         db_session_with_containers.commit()
 
         # Act: Execute the method under test
-        result = MetadataService.delete_metadata(dataset.id, metadata.id, session=db_session_with_containers)
+        result = MetadataService.delete_metadata(dataset, metadata.id, session=db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -539,6 +545,69 @@ class TestMetadataService:
 
         # Note: The service attempts to update document metadata but may not succeed
         # due to mock configuration. The main functionality (metadata deletion) is verified.
+
+    @pytest.mark.parametrize("operation", ["rename", "delete"])
+    @pytest.mark.parametrize("binding_owner", ["metadata", "document"])
+    def test_metadata_changes_ignore_historical_foreign_document_binding(
+        self,
+        operation: str,
+        binding_owner: str,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MetadataServiceDeps,
+    ) -> None:
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        dataset = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, account, tenant
+        )
+        foreign_account, foreign_tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        foreign_dataset = self._create_test_dataset(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            foreign_account,
+            foreign_tenant,
+        )
+        foreign_document = self._create_test_document(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            foreign_dataset,
+            foreign_account,
+        )
+        foreign_document.enabled = True
+        foreign_document.archived = False
+        foreign_document.indexing_status = IndexingStatus.COMPLETED
+        foreign_document.doc_metadata = {"old_name": "foreign-value"}
+
+        metadata = MetadataService.create_metadata(
+            dataset.id,
+            MetadataArgs(type="string", name="old_name"),
+            account,
+            tenant.id,
+            session=db_session_with_containers,
+        )
+        db_session_with_containers.add(
+            DatasetMetadataBinding(
+                tenant_id=dataset.tenant_id if binding_owner == "metadata" else foreign_dataset.tenant_id,
+                dataset_id=dataset.id if binding_owner == "metadata" else foreign_dataset.id,
+                metadata_id=metadata.id,
+                document_id=foreign_document.id,
+                created_by=account.id,
+            )
+        )
+        db_session_with_containers.commit()
+
+        if operation == "rename":
+            MetadataService.update_metadata_name(
+                dataset, metadata.id, "new_name", account, session=db_session_with_containers
+            )
+        else:
+            MetadataService.delete_metadata(dataset, metadata.id, session=db_session_with_containers)
+
+        db_session_with_containers.refresh(foreign_document)
+        assert foreign_document.doc_metadata == {"old_name": "foreign-value"}
 
     def test_get_built_in_fields_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies: MetadataServiceDeps
@@ -799,13 +868,6 @@ class TestMetadataService:
         # Mock DocumentService.get_document
         mock_external_service_dependencies["document_service"].get_document.return_value = document
 
-        # Create metadata operation data
-        from services.entities.knowledge_entities.knowledge_entities import (
-            DocumentMetadataOperation,
-            MetadataDetail,
-            MetadataOperationData,
-        )
-
         metadata_detail = MetadataDetail(id=metadata.id, name=metadata.name, value="test_value")
 
         operation = DocumentMetadataOperation(document_id=document.id, metadata_list=[metadata_detail])
@@ -832,6 +894,77 @@ class TestMetadataService:
         assert binding is not None
         assert binding.tenant_id == tenant.id
         assert binding.dataset_id == dataset.id
+
+    @pytest.mark.parametrize("foreign_resource", ["metadata", "document"])
+    def test_update_documents_metadata_rejects_foreign_owner_before_writes(
+        self,
+        foreign_resource: str,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MetadataServiceDeps,
+    ) -> None:
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        dataset = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, account, tenant
+        )
+        document = self._create_test_document(
+            db_session_with_containers, mock_external_service_dependencies, dataset, account
+        )
+        metadata = MetadataService.create_metadata(
+            dataset.id,
+            MetadataArgs(type="string", name="owned"),
+            account,
+            tenant.id,
+            session=db_session_with_containers,
+        )
+
+        foreign_account, foreign_tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        foreign_dataset = self._create_test_dataset(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            foreign_account,
+            foreign_tenant,
+        )
+        foreign_document = self._create_test_document(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            foreign_dataset,
+            foreign_account,
+        )
+        foreign_metadata = MetadataService.create_metadata(
+            foreign_dataset.id,
+            MetadataArgs(type="string", name="foreign"),
+            foreign_account,
+            foreign_tenant.id,
+            session=db_session_with_containers,
+        )
+        operation = DocumentMetadataOperation(
+            document_id=foreign_document.id if foreign_resource == "document" else document.id,
+            metadata_list=[
+                MetadataDetail(
+                    id=foreign_metadata.id if foreign_resource == "metadata" else metadata.id,
+                    name="ignored",
+                    value="value",
+                )
+            ],
+        )
+
+        with pytest.raises(MetadataResourceNotFoundError, match=f"{foreign_resource.capitalize()} not found"):
+            MetadataService.update_documents_metadata(
+                dataset,
+                MetadataOperationData(operation_data=[operation]),
+                account,
+                session=db_session_with_containers,
+            )
+
+        db_session_with_containers.refresh(document)
+        db_session_with_containers.refresh(foreign_document)
+        assert document.doc_metadata is None
+        assert foreign_document.doc_metadata is None
+        assert db_session_with_containers.query(DatasetMetadataBinding).count() == 0
 
     def test_update_documents_metadata_with_built_in_fields_enabled(
         self, db_session_with_containers: Session, mock_external_service_dependencies: MetadataServiceDeps
@@ -864,13 +997,6 @@ class TestMetadataService:
 
         # Mock DocumentService.get_document
         mock_external_service_dependencies["document_service"].get_document.return_value = document
-
-        # Create metadata operation data
-        from services.entities.knowledge_entities.knowledge_entities import (
-            DocumentMetadataOperation,
-            MetadataDetail,
-            MetadataOperationData,
-        )
 
         metadata_detail = MetadataDetail(id=metadata.id, name=metadata.name, value="test_value")
 
@@ -911,13 +1037,6 @@ class TestMetadataService:
             dataset.id, metadata_args, account, tenant.id, session=db_session_with_containers
         )
 
-        # Create metadata operation data
-        from services.entities.knowledge_entities.knowledge_entities import (
-            DocumentMetadataOperation,
-            MetadataDetail,
-            MetadataOperationData,
-        )
-
         metadata_detail = MetadataDetail(id=metadata.id, name=metadata.name, value="test_value")
 
         # Use a valid UUID format that does not exist in the database
@@ -927,9 +1046,7 @@ class TestMetadataService:
 
         operation_data = MetadataOperationData(operation_data=[operation])
 
-        # Act & Assert: The method should raise ValueError("Document not found.")
-        # because the exception is now re-raised after rollback
-        with pytest.raises(ValueError, match="Document not found"):
+        with pytest.raises(MetadataResourceNotFoundError, match="Document not found"):
             MetadataService.update_documents_metadata(
                 dataset, operation_data, account, session=db_session_with_containers
             )

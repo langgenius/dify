@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { platform, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Registry } from '@/auth/hosts'
 import { ENV_CONFIG_DIR } from '@/store/dir'
 import { arch } from '@/sys/index'
@@ -111,7 +111,7 @@ describe('runVersionProbe', () => {
     const report = await runVersionProbe({
       skipServer: false,
       loadActive: async () => active(),
-      probe: async () => ({ version: '99.0.0', edition: 'SELF_HOSTED' }),
+      probe: async () => ({ version: '99.0.0', edition: 'COMMUNITY' }),
     })
 
     expect(report.server.reachable).toBe(true)
@@ -122,7 +122,7 @@ describe('runVersionProbe', () => {
     const report = await runVersionProbe({
       skipServer: false,
       loadActive: async () => active(),
-      probe: async (): Promise<ServerVersionResponse> => ({ version: '', edition: 'SELF_HOSTED' }),
+      probe: async (): Promise<ServerVersionResponse> => ({ version: '', edition: 'COMMUNITY' }),
     })
 
     expect(report.server.reachable).toBe(true)
@@ -149,7 +149,7 @@ describe('runVersionProbe', () => {
     const report = await runVersionProbe({
       skipServer: false,
       loadActive: async () => active({ host: 'localhost:5001', scheme: 'http' }),
-      probe: async () => ({ version: '1.6.4', edition: 'SELF_HOSTED' }),
+      probe: async () => ({ version: '1.6.4', edition: 'COMMUNITY' }),
     })
 
     expect(report.server.endpoint).toBe('http://localhost:5001')

@@ -6,8 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.billing_service import BillingService
@@ -16,7 +15,7 @@ from services.feature_service import FeatureService
 
 @dataclass(frozen=True)
 class EffectiveCreditPool:
-    plan: str | None = None
+    plan: CloudPlan | None = None
     pool_type: Literal["paid", "trial"] | None = None
     quota_limit: int | None = None
     quota_used: int | None = None
@@ -53,11 +52,11 @@ def _set_credit_pool_info(
 class WorkspaceService:
     @classmethod
     def get_effective_credit_pool(cls, tenant_id: str, *, session: Session) -> EffectiveCreditPool:
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return EffectiveCreditPool()
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-        subscription_plan: str = billing_info["subscription"]["plan"]
+        subscription_plan = CloudPlan(billing_info["subscription"]["plan"])
 
         from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 
@@ -74,7 +73,7 @@ class WorkspaceService:
 
         if effective_pool is None:
             return EffectiveCreditPool(
-                plan=subscription_plan if billing_info["enabled"] else None,
+                plan=subscription_plan,
                 next_credit_reset_date=billing_info.get("next_credit_reset_date"),
             )
 
@@ -88,7 +87,7 @@ class WorkspaceService:
             exhausted_at = None
 
         return EffectiveCreditPool(
-            plan=subscription_plan if billing_info["enabled"] else None,
+            plan=subscription_plan,
             pool_type=effective_pool_type,
             quota_limit=effective_pool.quota_limit,
             quota_used=effective_pool.quota_used,
@@ -138,7 +137,9 @@ class WorkspaceService:
         tenant_info["role"] = tenant_account_join.role
 
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
-        tenant_info["plan"] = feature.billing.subscription.plan if feature.billing.enabled else None
+        tenant_info["plan"] = (
+            feature.billing.subscription.plan if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD else None
+        )
         can_replace_logo = feature.can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(

@@ -3,15 +3,13 @@ import { defineConfig } from 'vite-plus'
 export default defineConfig({
   pack: {
     clean: true,
-    deps: {
-      neverBundle: ['typescript'],
-    },
+    deps: { resolveDepSubpath: true, neverBundle: ['typescript'] },
     entry: ['src/cli.ts'],
     format: ['esm'],
     outDir: 'dist',
     platform: 'node',
     sourcemap: true,
-    target: 'node22',
+    target: 'node24',
     treeshake: true,
   },
 })

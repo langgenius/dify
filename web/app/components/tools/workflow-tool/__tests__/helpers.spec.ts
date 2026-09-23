@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { VarType } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import {
@@ -22,7 +22,7 @@ describe('workflow-tool helpers', () => {
   it('builds translated reserved workflow outputs', () => {
     const t = withSelectorKey(
       (key: string, options?: { ns?: string }) => `${options?.ns}:${key}`,
-    ) as TFunction
+    ) as TFunction<['workflow']>
 
     expect(getReservedWorkflowOutputParameters(t)).toEqual([
       {

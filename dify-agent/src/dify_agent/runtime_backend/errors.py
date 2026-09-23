@@ -13,8 +13,16 @@ class HomeSnapshotNotFoundError(RuntimeBackendError):
     pass
 
 
+class HomeSnapshotTooLargeError(RuntimeBackendError):
+    pass
+
+
 class BindingCreateError(RuntimeBackendError):
     pass
+
+
+class BindingCapacityExhaustedError(BindingCreateError):
+    """The selected runtime backend cannot allocate another Binding."""
 
 
 class BindingAcquireError(RuntimeBackendError):
@@ -43,11 +51,13 @@ class WorkspaceUnavailableError(RuntimeBackendError):
 
 __all__ = [
     "BindingAcquireError",
+    "BindingCapacityExhaustedError",
     "BindingCreateError",
     "BindingDestroyError",
     "BindingLostError",
     "HomeSnapshotCreateError",
     "HomeSnapshotNotFoundError",
+    "HomeSnapshotTooLargeError",
     "RuntimeBackendError",
     "SharedWorkspaceUnsupportedError",
     "WorkspacePreservationUnsupportedError",

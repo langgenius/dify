@@ -272,7 +272,7 @@ function AddToolMenu({
   onAddTools: (tools: AgentProviderToolDefaultValue[]) => void
   selectedTools: ToolValue[]
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<AddToolMenuView>(addToolDefaultView)
   const { providerById } = useAgentToolProviderCatalog()
@@ -333,16 +333,19 @@ function AddToolMenu({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <ConfigureSectionAddButton ariaLabel={t(($) => $['agentDetail.configure.tools.add'])} />
+          <ConfigureSectionAddButton
+            ariaLabel={t(($) => $['agentDetail.configure.tools.add'])}
+            className="data-popup-open:bg-state-base-hover"
+          />
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        placement="top-end"
         sideOffset={4}
-        popupClassName={
+        className={
           view === 'menu'
-            ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
-            : 'w-[400px] overflow-hidden border-none bg-transparent p-0 shadow-none'
+            ? 'w-70 bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
+            : 'w-100 overflow-hidden border-none bg-transparent p-0 shadow-none'
         }
       >
         {view === 'menu' ? (
@@ -379,7 +382,7 @@ function AddToolMenu({
 }
 
 export function AgentTools() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
@@ -509,7 +512,7 @@ export function AgentTools() {
     'cli',
     ENABLE_AGENT_CLI_TOOLS ? openCliToolDialogFromPrompt : () => {},
   )
-  const toolsTip = t(($) => $['agentDetail.configure.tools.tip'])
+
   const toolsListId = 'agent-configure-tools-list'
   const settingTargetTool = settingTarget
     ? tools.find((tool) => tool.kind === 'provider' && tool.id === settingTarget.toolId)
@@ -526,7 +529,6 @@ export function AgentTools() {
         labelId="agent-configure-tools-label"
         panelId={toolsListId}
         tip={<AgentConfigureTipContent type="tools" />}
-        tipAriaLabel={toolsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={

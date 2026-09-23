@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+from sqlalchemy.orm import Session
+
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.data_post_processor.reorder import ReorderRunner
 from core.rag.index_processor.constant.query_type import QueryType
@@ -14,10 +16,9 @@ def _doc(content: str) -> Document:
 
 
 class TestDataPostProcessor:
-    def test_init_sets_rerank_and_reorder_runners(self):
+    def test_init_sets_rerank_and_reorder_runners(self, unbound_session: Session):
         rerank_runner = object()
         reorder_runner = object()
-        session = MagicMock()
 
         with patch.object(DataPostProcessor, "_get_rerank_runner", return_value=rerank_runner) as rerank_mock:
             with patch.object(DataPostProcessor, "_get_reorder_runner", return_value=reorder_runner) as reorder_mock:
@@ -27,7 +28,7 @@ class TestDataPostProcessor:
                     reranking_model={"config": "value"},
                     weights={"weight": "value"},
                     reorder_enabled=True,
-                    session=session,
+                    session=unbound_session,
                 )
 
         assert processor.rerank_runner is rerank_runner
@@ -37,7 +38,7 @@ class TestDataPostProcessor:
             "tenant-1",
             {"config": "value"},
             {"weight": "value"},
-            session=session,
+            session=unbound_session,
         )
         reorder_mock.assert_called_once_with(True)
 
@@ -79,7 +80,7 @@ class TestDataPostProcessor:
 
         assert processor.invoke(query="query", documents=documents) == documents
 
-    def test_get_rerank_runner_for_weighted_score(self):
+    def test_get_rerank_runner_for_weighted_score(self, unbound_session: Session):
         weights_config = {
             "vector_setting": {
                 "vector_weight": 0.7,
@@ -90,7 +91,6 @@ class TestDataPostProcessor:
         }
         expected_runner = object()
         processor = DataPostProcessor.__new__(DataPostProcessor)
-        session = MagicMock()
 
         with patch(
             "core.rag.data_post_processor.data_post_processor.RerankRunnerFactory.create_rerank_runner",
@@ -101,7 +101,7 @@ class TestDataPostProcessor:
                 tenant_id="tenant-1",
                 reranking_model=None,
                 weights=weights_config,
-                session=session,
+                session=unbound_session,
             )
 
         assert result is expected_runner
@@ -113,13 +113,12 @@ class TestDataPostProcessor:
         assert kwargs["weights"].vector_setting.embedding_model_name == "embedding-y"
         assert kwargs["weights"].keyword_setting.keyword_weight == 0.3
 
-    def test_get_rerank_runner_for_reranking_model_returns_none_without_model_instance(self):
+    def test_get_rerank_runner_for_reranking_model_returns_none_without_model_instance(self, unbound_session: Session):
         processor = DataPostProcessor.__new__(DataPostProcessor)
         reranking_model = {
             "reranking_provider_name": "provider-x",
             "reranking_model_name": "model-y",
         }
-        session = MagicMock()
 
         with patch.object(DataPostProcessor, "_get_rerank_model_instance", return_value=None) as model_mock:
             with patch(
@@ -130,18 +129,17 @@ class TestDataPostProcessor:
                     tenant_id="tenant-1",
                     reranking_model=reranking_model,
                     weights=None,
-                    session=session,
+                    session=unbound_session,
                 )
 
         assert result is None
         model_mock.assert_called_once_with("tenant-1", reranking_model)
         factory_mock.assert_not_called()
 
-    def test_get_rerank_runner_for_reranking_model_creates_runner_with_model_instance(self):
+    def test_get_rerank_runner_for_reranking_model_creates_runner_with_model_instance(self, unbound_session: Session):
         processor = DataPostProcessor.__new__(DataPostProcessor)
         model_instance = object()
         expected_runner = object()
-        session = MagicMock()
 
         with patch.object(DataPostProcessor, "_get_rerank_model_instance", return_value=model_instance):
             with patch(
@@ -156,22 +154,24 @@ class TestDataPostProcessor:
                         "reranking_model_name": "model-y",
                     },
                     weights=None,
-                    session=session,
+                    session=unbound_session,
                 )
 
         assert result is expected_runner
         factory_mock.assert_called_once_with(
             runner_type=RerankMode.RERANKING_MODEL,
             rerank_model_instance=model_instance,
-            session=session,
+            session=unbound_session,
         )
 
-    def test_get_rerank_runner_returns_none_for_unsupported_mode(self):
+    def test_get_rerank_runner_returns_none_for_unsupported_mode(self, unbound_session: Session):
         processor = DataPostProcessor.__new__(DataPostProcessor)
-        session = MagicMock()
 
-        assert processor._get_rerank_runner("unsupported", "tenant-1", None, None, session=session) is None
-        assert processor._get_rerank_runner(RerankMode.WEIGHTED_SCORE, "tenant-1", None, None, session=session) is None
+        assert processor._get_rerank_runner("unsupported", "tenant-1", None, None, session=unbound_session) is None
+        assert (
+            processor._get_rerank_runner(RerankMode.WEIGHTED_SCORE, "tenant-1", None, None, session=unbound_session)
+            is None
+        )
 
     def test_get_reorder_runner_by_flag(self):
         processor = DataPostProcessor.__new__(DataPostProcessor)

@@ -49,10 +49,6 @@ type TriggerMockData = {
   triggerPlugins?: unknown[]
 }
 
-type StrategyMockData = {
-  strategyProviders?: unknown[]
-}
-
 export function createToolServiceMock(data?: ToolMockData) {
   return {
     useAllBuiltInTools: vi.fn(() => ({ data: data?.buildInTools ?? [] })),
@@ -65,11 +61,5 @@ export function createToolServiceMock(data?: ToolMockData) {
 export function createTriggerServiceMock(data?: TriggerMockData) {
   return {
     useAllTriggerPlugins: vi.fn(() => ({ data: data?.triggerPlugins ?? [] })),
-  }
-}
-
-export function createStrategyServiceMock(data?: StrategyMockData) {
-  return {
-    useStrategyProviders: vi.fn(() => ({ data: data?.strategyProviders ?? [] })),
   }
 }

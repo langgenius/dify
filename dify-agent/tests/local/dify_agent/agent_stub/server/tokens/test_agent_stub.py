@@ -12,6 +12,7 @@ from dify_agent.agent_stub.server.tokens.agent_stub import (
     AGENT_STUB_TOKEN_TTL_SECONDS,
     AgentStubTokenCodec,
     AgentStubTokenError,
+    AgentStubTokenExpiredError,
     decode_server_secret_key,
 )
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -54,11 +55,24 @@ def test_agent_stub_token_codec_rejects_expired_tokens() -> None:
     codec = _codec()
     token = codec.encode_connection_token(_execution_context(), now=1_780_395_720)
 
-    with pytest.raises(AgentStubTokenError, match="expired"):
+    with pytest.raises(AgentStubTokenExpiredError, match="expired"):
         _ = codec.decode_authorization_header(
             f"Bearer {token}",
-            now=1_780_395_720 + AGENT_STUB_TOKEN_TTL_SECONDS + 1,
+            now=1_780_395_720 + AGENT_STUB_TOKEN_TTL_SECONDS,
         )
+
+
+@pytest.mark.parametrize("expiration_offset", [0, AGENT_STUB_TOKEN_TTL_SECONDS + 1])
+def test_agent_stub_token_codec_rejects_invalid_declared_lifetime(expiration_offset: int) -> None:
+    codec = _codec()
+    issued_at = 1_780_395_720
+    claims = codec.build_connection_claims(_execution_context(), now=issued_at)
+    token = codec.encode_claims(claims.model_copy(update={"exp": issued_at + expiration_offset}))
+
+    with pytest.raises(AgentStubTokenError) as exc_info:
+        _ = codec.decode_authorization_header(f"Bearer {token}", now=issued_at)
+
+    assert not isinstance(exc_info.value, AgentStubTokenExpiredError)
 
 
 def test_agent_stub_token_codec_rejects_tokens_before_nbf() -> None:
@@ -86,6 +100,13 @@ def test_agent_stub_token_codec_rejects_wrong_audience_and_scope() -> None:
     with pytest.raises(AgentStubTokenError, match=AGENT_STUB_TOKEN_SCOPE_CONNECT):
         _ = codec.decode_authorization_header(f"Bearer {wrong_scope_token}", now=1_780_395_720)
 
+    with pytest.raises(AgentStubTokenError, match=AGENT_STUB_TOKEN_SCOPE_CONNECT) as exc_info:
+        _ = codec.decode_authorization_header(
+            f"Bearer {wrong_scope_token}",
+            now=1_780_395_720 + AGENT_STUB_TOKEN_TTL_SECONDS,
+        )
+    assert not isinstance(exc_info.value, AgentStubTokenExpiredError)
+
 
 def test_agent_stub_token_codec_rejects_wrong_key_and_malformed_authorization_header() -> None:
     codec = _codec()
@@ -107,6 +128,7 @@ def test_agent_stub_token_codec_builds_fixed_server_claims() -> None:
     assert claims.iss == AGENT_STUB_TOKEN_ISSUER
     assert claims.aud == AGENT_STUB_TOKEN_AUDIENCE
     assert claims.scope == [AGENT_STUB_TOKEN_SCOPE_CONNECT]
+    assert AGENT_STUB_TOKEN_TTL_SECONDS == 300
     assert claims.exp - claims.iat == AGENT_STUB_TOKEN_TTL_SECONDS
     assert claims.shell is not None
     assert claims.shell.session_id == "abc12ff"

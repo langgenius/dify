@@ -1,7 +1,7 @@
 import type { AddressInfo } from 'node:net'
 import { createServer } from 'node:http'
 import { Readable } from 'node:stream'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { HttpClient } from '../src/http/client'
 
 const readBody = async (stream: NodeJS.ReadableStream): Promise<Buffer> => {

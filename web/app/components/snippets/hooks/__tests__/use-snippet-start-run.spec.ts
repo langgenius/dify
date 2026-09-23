@@ -1,7 +1,7 @@
 import type { SnippetInputField } from '@/models/snippet'
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetDraftStore } from '../../draft-store'

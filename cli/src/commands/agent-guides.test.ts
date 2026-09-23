@@ -1,5 +1,5 @@
 import type { CommandConstructor } from '@/framework/command'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import Login from '@/commands/auth/login/index'
 import DescribeApp from '@/commands/describe/app/index'
 import ExportStudioApp from '@/commands/export/studio-app/index'

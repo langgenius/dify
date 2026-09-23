@@ -19,7 +19,7 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mockToast }))
+vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
 const { mockUseQueryData, createTag, bindTag, unBindTag } = vi.hoisted(() => {
   const mockUseQueryData: { current: Tag[] } = { current: [] }
@@ -54,7 +54,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       get: {
@@ -150,6 +150,12 @@ describe('TagSelector', () => {
     expect(screen.getByText('Frontend')).toBeInTheDocument()
   })
 
+  it('adds the owning app name to the combobox accessible name', () => {
+    render(<TagSelector {...defaultProps} contextLabel="Test App" />)
+
+    expect(screen.getByRole('combobox', { name: 'Frontend: Test App' })).toBeInTheDocument()
+  })
+
   it('keeps dataset tag interactions inside the tag trigger', async () => {
     const user = userEvent.setup()
     const onOuterClick = vi.fn()
@@ -160,6 +166,28 @@ describe('TagSelector', () => {
       render(<DatasetCardTags datasetId="dataset-1" embeddingAvailable tags={[]} />)
 
       await user.click(screen.getByRole('combobox', { name: i18n.noTag }))
+
+      expect(onOuterClick).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('click', onOuterClick)
+    }
+  })
+
+  it('keeps dataset tag popup option interactions inside the tag trigger', async () => {
+    const user = userEvent.setup()
+    const onOuterClick = vi.fn()
+    mockUseQueryData.current = [
+      { id: 'knowledge-tag-1', name: 'Knowledge', type: 'knowledge', binding_count: '' },
+    ]
+
+    document.addEventListener('click', onOuterClick)
+    try {
+      render(
+        <DatasetCardTags datasetId="dataset-1" embeddingAvailable tags={[]} canBindOrUnbindTags />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: i18n.addTag }))
+      await user.click(await screen.findByRole('option', { name: 'Knowledge' }))
 
       expect(onOuterClick).not.toHaveBeenCalled()
     } finally {
@@ -202,6 +230,20 @@ describe('TagSelector', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
+  })
+
+  it('matches existing tags without offering a case-only duplicate', async () => {
+    const user = userEvent.setup()
+    render(<TagSelector {...defaultProps} />)
+
+    await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
+    await user.type(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+      'frontend',
+    )
+
+    expect(screen.getByRole('option', { name: 'Frontend' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /common\.tag\.create/i })).not.toBeInTheDocument()
   })
 
   it('applies added tags only when the popup closes', async () => {

@@ -1,7 +1,7 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import { usePreviewState } from '../use-preview-state'
 

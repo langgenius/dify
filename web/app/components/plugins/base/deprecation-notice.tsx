@@ -42,7 +42,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   iconWrapperClassName,
   textClassName,
 }) => {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
 
   const deprecatedReasonKey = useMemo(() => {
     if (!deprecatedReason) return null

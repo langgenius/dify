@@ -1,15 +1,15 @@
 'use client'
-
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
-import { useLocale } from '@/context/i18n'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import AssignRolesModal from '../assign-roles-modal'
 import PermissionRoleChip from './permission-role-chip'
@@ -29,7 +29,7 @@ const MemberDetailsModal = ({
   onClose,
   onAssignSubmit,
 }: MemberDetailsModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
   const [assignOpen, setAssignOpen] = useState(false)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
@@ -47,11 +47,11 @@ const MemberDetailsModal = ({
   const assignedRolesLabel =
     selectedRoleIds.length === 1
       ? t(($) => $['members.memberDetails.assignedRole'], {
-          ns: 'common',
+          ns: 'workspaceMembers',
           defaultValue: 'Assigned Role',
         })
       : t(($) => $['members.memberDetails.assignedRoles'], {
-          ns: 'common',
+          ns: 'workspaceMembers',
           defaultValue: 'Assigned Roles',
         })
   const assignActionIconClassName = allowMultipleRoles
@@ -59,7 +59,7 @@ const MemberDetailsModal = ({
     : 'i-ri-edit-line h-3.5 w-3.5'
   const assignActionLabel = allowMultipleRoles
     ? t(($) => $['members.memberDetails.assign'], {
-        ns: 'common',
+        ns: 'workspaceMembers',
         defaultValue: 'Assign',
       })
     : t(($) => $['operation.edit'], { ns: 'common' })
@@ -109,10 +109,20 @@ const MemberDetailsModal = ({
       >
         <DialogContent className="w-110 overflow-visible p-0" backdropProps={{ forceRender: true }}>
           <div className="relative px-6 pt-6 pb-5">
-            <DialogCloseButton />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute inset-e-6 top-6"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
             <DialogTitle className="pr-8 system-xl-semibold text-text-primary">
               {t(($) => $['members.memberDetails.title'], {
-                ns: 'common',
+                ns: 'workspaceMembers',
                 defaultValue: 'Member Details',
               })}
             </DialogTitle>
@@ -146,7 +156,7 @@ const MemberDetailsModal = ({
 
             {isLoadingRolesOfMember ? (
               <div className="mt-4">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             ) : (
               <>
@@ -154,7 +164,7 @@ const MemberDetailsModal = ({
                   <div className="mt-4">
                     <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['members.memberDetails.generalGroup'], {
-                        ns: 'common',
+                        ns: 'workspaceMembers',
                       })}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -175,7 +185,7 @@ const MemberDetailsModal = ({
                   <div className="mt-4">
                     <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['members.memberDetails.customGroup'], {
-                        ns: 'common',
+                        ns: 'workspaceMembers',
                       })}
                     </div>
                     <div className="flex flex-wrap gap-1.5">

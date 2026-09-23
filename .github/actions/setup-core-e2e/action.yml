@@ -1,0 +1,29 @@
+name: Setup Core E2E Dependencies
+description: Install API dependencies alongside web dependencies and the selected browser
+
+inputs:
+  browser:
+    description: Browser to install (chromium or webkit)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup web toolchain
+      uses: ./.github/actions/setup-web
+      with:
+        run-install: 'false'
+
+    - name: Setup UV and Python
+      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      with:
+        enable-cache: true
+        python-version: '3.12'
+        cache-dependency-glob: api/uv.lock
+
+    - name: Install dependencies in parallel
+      shell: bash
+      env:
+        E2E_INSTALL_BROWSER: ${{ inputs.browser }}
+        E2E_SETUP_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$E2E_SETUP_ACTION_PATH/install.sh"

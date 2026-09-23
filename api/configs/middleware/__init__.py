@@ -335,22 +335,6 @@ class CeleryConfig(DatabaseConfig):
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
 
 
-class InternalTestConfig(BaseSettings):
-    """
-    Configuration settings for Internal Test
-    """
-
-    AWS_SECRET_ACCESS_KEY: str | None = Field(
-        description="Internal test AWS secret access key",
-        default=None,
-    )
-
-    AWS_ACCESS_KEY_ID: str | None = Field(
-        description="Internal test AWS access key ID",
-        default=None,
-    )
-
-
 class DatasetQueueMonitorConfig(BaseSettings):
     """
     Configuration settings for Dataset Queue Monitor
@@ -416,7 +400,6 @@ class MiddlewareConfig(
     WeaviateConfig,
     ElasticsearchConfig,
     CouchbaseConfig,
-    InternalTestConfig,
     VikingDBConfig,
     UpstashConfig,
     TidbOnQdrantConfig,

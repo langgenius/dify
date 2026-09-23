@@ -1,3 +1,4 @@
+import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Flags } from '@/framework/flags'
@@ -6,6 +7,8 @@ import { pluginDependencyLabel, runImportApp } from './run'
 
 export default class ImportStudioApp extends DifyCommand {
   static override description = 'Import a studio app from a DSL YAML file or URL'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> import studio-app --from-file ./app.yaml',

@@ -1,6 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -20,7 +27,7 @@ const SCORE_MIN = 0
 const SCORE_MAX = 100
 
 const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const safeValue = clamp(value, SCORE_MIN, SCORE_MAX)
 
   return (
@@ -33,8 +40,19 @@ const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
           max={SCORE_MAX}
           step={1}
           onValueChange={onChange}
-          aria-label={t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
-        />
+        >
+          <SliderLabel className="sr-only">
+            {t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
+          </SliderLabel>
+          <SliderControl>
+            <SliderTrack>
+              <SliderIndicator />
+              <SliderThumb
+                getAriaValueText={(_formattedValue, sliderValue) => (sliderValue / 100).toFixed(2)}
+              />
+            </SliderTrack>
+          </SliderControl>
+        </Slider>
         <div
           className="pointer-events-none absolute -top-4 system-sm-semibold text-text-primary"
           style={{

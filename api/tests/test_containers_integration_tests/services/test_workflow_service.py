@@ -12,7 +12,9 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from models import Account, AccountStatus, App, TenantStatus, Workflow
+from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_ref_service import WorkflowRef
@@ -158,7 +160,6 @@ class TestWorkflowService:
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         # Create a mock node execution record
-        from models.enums import CreatorUserRole
         from models.workflow import WorkflowNodeExecutionModel
 
         node_execution = WorkflowNodeExecutionModel()
@@ -870,13 +871,12 @@ class TestWorkflowService:
         from unittest.mock import patch
 
         with patch("flask_login.utils._get_user", return_value=account, autospec=True):
-            result, retirement_candidates = workflow_service.publish_workflow(
+            result = workflow_service.publish_workflow(
                 session=db_session_with_containers, app_model=app, account=account
             )
 
         # Assert
         assert result is not None
-        assert retirement_candidates == set()
         assert result.version != Workflow.VERSION_DRAFT
         # Version should be a timestamp format like '2025-08-22 00:10:24.722051'
         assert isinstance(result.version, str)
@@ -1434,7 +1434,7 @@ class TestWorkflowService:
         )
 
         # Assert
-        assert result is True
+        assert result == []
 
         # Verify workflow is actually deleted
         deleted_workflow = db_session_with_containers.query(Workflow).filter_by(id=workflow.id).first()
@@ -1637,7 +1637,6 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from graphon.graph_events import NodeRunSucceededEvent
             from graphon.node_events import NodeRunResult
             from graphon.nodes.base.node import Node
@@ -1682,12 +1681,10 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        from graphon.enums import BuiltinNodeTypes
 
         assert result.node_type == BuiltinNodeTypes.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
-        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs is not None
@@ -1712,7 +1709,6 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
             from graphon.nodes.base.node import Node
@@ -1757,7 +1753,6 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error is not None
@@ -1781,7 +1776,6 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
             from graphon.nodes.base.node import Node
@@ -1827,7 +1821,6 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.EXCEPTION  # Should be EXCEPTION, not FAILED
         assert result.outputs is not None

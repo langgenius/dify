@@ -5,12 +5,12 @@ import { ModelFeatureEnum, ModelFeatureTextEnum } from '../declarations'
 import ModelBadge from '../model-badge'
 
 type FeatureIconProps = {
-  feature: ModelFeatureEnum
+  feature: string
   className?: string
   showFeaturesLabel?: boolean
 }
 function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   if (feature === ModelFeatureEnum.vision) {
     if (showFeaturesLabel) {
@@ -26,16 +26,16 @@ function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps
       <Tooltip>
         <TooltipTrigger
           render={
-            <div className="inline-block cursor-help">
+            <span className="inline-block cursor-help">
               <ModelBadge className={cn('w-4.5 justify-center px-0!', className)}>
                 <span className="i-ri-image-circle-ai-line size-3" aria-hidden="true" />
               </ModelBadge>
-            </div>
+            </span>
           }
         />
         <TooltipContent>
           {t(($) => $['modelProvider.featureSupported'], {
-            ns: 'common',
+            ns: 'modelProvider',
             feature: ModelFeatureTextEnum.vision,
           })}
         </TooltipContent>
@@ -57,16 +57,16 @@ function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps
       <Tooltip>
         <TooltipTrigger
           render={
-            <div className="inline-block cursor-help">
+            <span className="inline-block cursor-help">
               <ModelBadge className={cn('w-4.5 justify-center px-0!', className)}>
                 <span className="i-ri-file-text-line size-3" aria-hidden="true" />
               </ModelBadge>
-            </div>
+            </span>
           }
         />
         <TooltipContent>
           {t(($) => $['modelProvider.featureSupported'], {
-            ns: 'common',
+            ns: 'modelProvider',
             feature: ModelFeatureTextEnum.document,
           })}
         </TooltipContent>
@@ -88,16 +88,16 @@ function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps
       <Tooltip>
         <TooltipTrigger
           render={
-            <div className="inline-block cursor-help">
+            <span className="inline-block cursor-help">
               <ModelBadge className={cn('w-4.5 justify-center px-0!', className)}>
                 <span className="i-ri-voice-ai-fill size-3" aria-hidden="true" />
               </ModelBadge>
-            </div>
+            </span>
           }
         />
         <TooltipContent>
           {t(($) => $['modelProvider.featureSupported'], {
-            ns: 'common',
+            ns: 'modelProvider',
             feature: ModelFeatureTextEnum.audio,
           })}
         </TooltipContent>
@@ -119,16 +119,16 @@ function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps
       <Tooltip>
         <TooltipTrigger
           render={
-            <div className="inline-block cursor-help">
+            <span className="inline-block cursor-help">
               <ModelBadge className={cn('w-4.5 justify-center px-0!', className)}>
                 <span className="i-ri-film-ai-line size-3" aria-hidden="true" />
               </ModelBadge>
-            </div>
+            </span>
           }
         />
         <TooltipContent>
           {t(($) => $['modelProvider.featureSupported'], {
-            ns: 'common',
+            ns: 'modelProvider',
             feature: ModelFeatureTextEnum.video,
           })}
         </TooltipContent>

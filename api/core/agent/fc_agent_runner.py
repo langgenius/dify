@@ -13,6 +13,8 @@ from core.agent.errors import AgentMaxIterationError
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.app.file_access import grant_upload_file_access
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.model_context import use_credit_usage_metadata
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.signature import sign_upload_file_preview_url
@@ -167,6 +169,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             session.close()
 
             # invoke model
+            request_metadata: dict[str, object] = {
+                "app_id": self.app_config.app_id,
+                "app_type": CreditUsageAppType.AGENT,
+                "created_by": CreditUsageCreatedBy.APP,
+            }
+
             chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
@@ -174,7 +182,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 stop=app_generate_entity.model_conf.stop,
                 stream=self.stream_tool_call,
                 callbacks=[],
-                request_metadata={"app_id": self.app_config.app_id},
+                request_metadata=request_metadata,
             )
 
             tool_calls: list[tuple[str, str, dict[str, Any]]] = []
@@ -315,20 +323,21 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     }
                 else:
                     # invoke tool
-                    tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
-                        session=session,
-                        tool=tool_instance,
-                        tool_parameters=tool_call_args,
-                        user_id=self.user_id,
-                        tenant_id=self.tenant_id,
-                        message=self.message,
-                        invoke_from=self.application_generate_entity.invoke_from,
-                        agent_tool_callback=self.agent_callback,
-                        trace_manager=trace_manager,
-                        app_id=self.application_generate_entity.app_config.app_id,
-                        message_id=self.message.id,
-                        conversation_id=self.conversation.id,
-                    )
+                    with use_credit_usage_metadata({"app_type": CreditUsageAppType.AGENT}):
+                        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                            session=session,
+                            tool=tool_instance,
+                            tool_parameters=tool_call_args,
+                            user_id=self.user_id,
+                            tenant_id=self.tenant_id,
+                            message=self.message,
+                            invoke_from=self.application_generate_entity.invoke_from,
+                            agent_tool_callback=self.agent_callback,
+                            trace_manager=trace_manager,
+                            app_id=self.application_generate_entity.app_config.app_id,
+                            message_id=self.message.id,
+                            conversation_id=self.conversation.id,
+                        )
                     session.commit()
                     session.close()
                     # publish files

@@ -113,7 +113,7 @@ type FlowchartProps = {
 }
 
 const Flowchart = (props: FlowchartProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const [svgString, setSvgString] = useState<string | null>(null)
   const [look, setLook] = useState<'classic' | 'handDrawn'>('classic')
   const [isInitialized, setIsInitialized] = useState(false)

@@ -5,6 +5,7 @@ from pytest_mock import MockerFixture
 
 import core.callback_handler.agent_tool_callback_handler as module
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from tests.unit_tests.config_override import apply_config_overrides
 
 # -----------------------------
 # Fixtures
@@ -12,13 +13,13 @@ from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackH
 
 
 @pytest.fixture
-def enable_debug(mocker: MockerFixture):
-    mocker.patch.object(module.dify_config, "DEBUG", True)
+def enable_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, DEBUG=True)
 
 
 @pytest.fixture
-def disable_debug(mocker: MockerFixture):
-    mocker.patch.object(module.dify_config, "DEBUG", False)
+def disable_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, DEBUG=False)
 
 
 @pytest.fixture

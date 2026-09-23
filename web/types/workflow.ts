@@ -16,7 +16,7 @@ import type {
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import type { TransferMethod } from '@/types/app'
+import type { AppModeEnum, TransferMethod } from '@/types/app'
 
 export type AgentLogItem = {
   node_execution_id: string
@@ -118,6 +118,11 @@ export type NodeTracing = {
   agentLog?: AgentLogItemWithChildren[] // agent log
 }
 
+type VersionEnvironment = {
+  id: string
+  name: string
+}
+
 export type FetchWorkflowDraftResponse = {
   id: string
   graph: {
@@ -144,8 +149,10 @@ export type FetchWorkflowDraftResponse = {
   conversation_variables?: ConversationVariable[]
   rag_pipeline_variables?: RAGPipelineVariables
   version: string
+  version_number?: number | null
   marked_name: string
   marked_comment: string
+  environments?: VersionEnvironment[]
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
@@ -450,6 +457,8 @@ export type PublishWorkflowParams = {
 export type WorkflowKind = 'standard'
 
 export type UpdateWorkflowParams = {
+  appId?: string
+  appMode?: AppModeEnum
   url: string
   title: string
   releaseNotes: string

@@ -13,6 +13,7 @@ from configs import dify_config
 from dify_app import DifyApp
 from extensions.ext_login import DifyLoginManager
 from libs.token import check_csrf_token
+from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account
 
 if TYPE_CHECKING:
@@ -52,8 +53,10 @@ def current_account_with_tenant() -> AccountWithTenant:
 
     if not isinstance(user, Account):
         raise ValueError("current_user must be an Account instance")
-    assert user.current_tenant_id is not None, "The tenant information should be loaded."
-    return AccountWithTenant(account=user, tenant_id=user.current_tenant_id)
+    tenant_id = user.current_tenant_id
+    if tenant_id is None:
+        raise ActiveWorkspaceRequiredError()
+    return AccountWithTenant(account=user, tenant_id=tenant_id)
 
 
 def current_account_with_tenant_optional() -> tuple[Account | None, str | None]:

@@ -19,7 +19,7 @@ import { useCallback, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import FormInputDynamicTreeSelect from '@/app/components/workflow/nodes/_base/components/form-input-dynamic-tree-select'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 
 type Props = Readonly<{
   schema: Partial<CredentialFormSchema>

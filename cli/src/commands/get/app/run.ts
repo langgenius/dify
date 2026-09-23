@@ -149,10 +149,10 @@ async function runAllWorkspaces(
   limit: number,
 ): Promise<AppListResponse> {
   const wsResp = await ws.list()
-  if (wsResp.workspaces.length === 0) return { page: 1, limit, total: 0, has_more: false, data: [] }
+  if (wsResp.data.length === 0) return { page: 1, limit, total: 0, has_more: false, data: [] }
 
   const merged: AppListResponse = { page: 1, limit, total: 0, has_more: false, data: [] }
-  const queue = [...wsResp.workspaces]
+  const queue = [...wsResp.data]
   const workers: Promise<void>[] = []
 
   const fetchOne = async (wsId: string): Promise<void> => {
@@ -175,7 +175,7 @@ async function runAllWorkspaces(
     }
   }
 
-  const N = Math.min(ALL_WORKSPACES_CONCURRENCY, wsResp.workspaces.length)
+  const N = Math.min(ALL_WORKSPACES_CONCURRENCY, wsResp.data.length)
   for (let i = 0; i < N; i++) workers.push(runner())
   await Promise.all(workers)
 

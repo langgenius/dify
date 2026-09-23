@@ -1,6 +1,6 @@
 import type { PluginPayload } from '../../types'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import {
   useAddPluginCredentialHook,
@@ -158,6 +158,12 @@ describe('use-credential hooks', () => {
       expect(mockUseGetPluginOAuthClientSchema).toHaveBeenCalledWith(
         `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/oauth/client-schema`,
       )
+    })
+
+    it('should disable the service query when OAuth data is provided by the caller', () => {
+      renderHook(() => useGetPluginOAuthClientSchemaHook(toolPayload, false))
+
+      expect(mockUseGetPluginOAuthClientSchema).toHaveBeenCalledWith('')
     })
   })
 

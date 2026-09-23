@@ -10,14 +10,35 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.common.rbac import DatasetId
 from controllers.console.datasets.data_source import (
     DataSourceNotionDatasetSyncApi,
     DataSourceNotionDocumentSyncApi,
     DataSourceNotionIndexingEstimateApi,
     DataSourceNotionPreviewApi,
+    DataSourceNotionPreviewQuery,
+    NotionEstimatePayload,
 )
+from controllers.console.wraps import RBACPermission
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models import Account
+from models import Account, Dataset, Document
+from models.dataset import DataSourceType
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.unit_tests.model_factories import make_dataset, make_document
+
+
+def _dataset() -> Dataset:
+    return make_dataset(dataset_id="ds-1", created_by="u1")
+
+
+def _document() -> Document:
+    return make_document(
+        document_id="d1",
+        dataset_id="ds-1",
+        data_source_type=DataSourceType.NOTION_IMPORT,
+        name="Notion page",
+        created_by="u1",
+    )
 
 
 @pytest.fixture
@@ -45,7 +66,7 @@ class TestDataSourceNotionPreviewApi:
                 return_value=extractor,
             ),
         ):
-            response, status = method(api, "tenant-1", "p1", "page")
+            response, status = method(api, DataSourceNotionPreviewQuery(credential_id="c1"), "tenant-1", "p1", "page")
 
         assert status == 200
 
@@ -80,12 +101,18 @@ class TestDataSourceNotionIndexingEstimateApi:
                 return_value=MagicMock(model_dump=lambda: {"total_pages": 1}),
             ),
         ):
-            response, status = method(api, sqlite_session, "tenant-1")
+            response, status = method(api, NotionEstimatePayload.model_validate(payload), sqlite_session, "tenant-1")
 
         assert status == 200
 
 
 class TestDataSourceNotionDatasetSyncApi:
+    def test_get_requires_dataset_edit_permission(self) -> None:
+        [check] = rbac_checks(DataSourceNotionDatasetSyncApi.get)
+
+        assert check.scene is RBACPermission.DATASET_EDIT
+        assert isinstance(check.locator, DatasetId)
+
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_get_success(self, app: Flask, sqlite_session: Session) -> None:
         api = DataSourceNotionDatasetSyncApi()
@@ -95,11 +122,11 @@ class TestDataSourceNotionDatasetSyncApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=MagicMock(),
+                return_value=_dataset(),
             ),
             patch(
                 "controllers.console.datasets.data_source.DocumentService.get_document_by_dataset_id",
-                return_value=[MagicMock(id="d1")],
+                return_value=[_document()],
             ),
             patch(
                 "controllers.console.datasets.data_source.document_indexing_sync_task.delay",
@@ -127,6 +154,12 @@ class TestDataSourceNotionDatasetSyncApi:
 
 
 class TestDataSourceNotionDocumentSyncApi:
+    def test_get_requires_dataset_edit_permission(self) -> None:
+        [check] = rbac_checks(DataSourceNotionDocumentSyncApi.get)
+
+        assert check.scene is RBACPermission.DATASET_EDIT
+        assert isinstance(check.locator, DatasetId)
+
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_get_success(self, app: Flask, sqlite_session: Session) -> None:
         api = DataSourceNotionDocumentSyncApi()
@@ -136,11 +169,11 @@ class TestDataSourceNotionDocumentSyncApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=MagicMock(),
+                return_value=_dataset(),
             ),
             patch(
                 "controllers.console.datasets.data_source.DocumentService.get_document",
-                return_value=MagicMock(),
+                return_value=_document(),
             ),
             patch(
                 "controllers.console.datasets.data_source.document_indexing_sync_task.delay",
@@ -160,7 +193,7 @@ class TestDataSourceNotionDocumentSyncApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=MagicMock(),
+                return_value=_dataset(),
             ),
             patch(
                 "controllers.console.datasets.data_source.DocumentService.get_document",

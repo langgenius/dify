@@ -1,6 +1,6 @@
 import type { PluginDetail } from '../../../../types'
 import { act } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { PluginSource } from '../../../../types'
 import { useDetailHeaderState } from '../use-detail-header-state'

@@ -64,9 +64,11 @@ class TokenBufferMemory:
         """
         match self.conversation.mode:
             case AppMode.AGENT_CHAT | AppMode.COMPLETION | AppMode.CHAT:
-                file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
+                file_extra_config = FileUploadConfigManager.convert(
+                    self.conversation.model_config_with_session(session=db.session())
+                )
             case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
-                app = self.conversation.app
+                app = self.conversation.app(session=db.session())
                 if not app:
                     raise ValueError("App not found for conversation")
 
@@ -128,7 +130,7 @@ class TokenBufferMemory:
         :param max_token_limit: max token limit
         :param message_limit: message limit
         """
-        app_record = self.conversation.app
+        app_record = self.conversation.app(session=db.session())
 
         # fetch limited messages, and return reversed
         stmt = (

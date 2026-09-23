@@ -15,9 +15,6 @@ import (
 const (
 	EnvAPIBaseURL = envvar.EnvAgentStubAPIBaseURL
 	EnvAuthJWE    = envvar.EnvAgentStubAuthJWE
-	EnvDriveBase  = envvar.EnvAgentStubDriveBase
-
-	DefaultDriveBase = envvar.DefaultDriveBase
 )
 
 // Environment holds validated Agent Stub connection parameters.
@@ -63,14 +60,6 @@ func ReadEnvironment() (*Environment, error) {
 // HasEnvironment returns whether both required env vars are set.
 func HasEnvironment() bool {
 	return os.Getenv(EnvAPIBaseURL) != "" && os.Getenv(EnvAuthJWE) != ""
-}
-
-// ReadDriveBase returns the configured drive base or the default.
-func ReadDriveBase() string {
-	if v := strings.TrimSpace(os.Getenv(EnvDriveBase)); v != "" {
-		return v
-	}
-	return DefaultDriveBase
 }
 
 // ParseEndpoint parses an Agent Stub URL and normalizes it.

@@ -6,28 +6,23 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.datasource.datasource_file_manager import DatasourceFileManager
-from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 from models.tools import ToolFile
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _upload_file(id: str, *, key: str, mime_type: str) -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id=id,
         key=key,
         name="file.png",
         size=4,
         extension=".png",
         mime_type=mime_type,
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         created_at=datetime.now(UTC).replace(tzinfo=None),
-        used=False,
     )
-    upload_file.id = id
-    return upload_file
 
 
 def _tool_file(id: str, *, key: str = "tool_key", mimetype: str = "image/png") -> ToolFile:
@@ -58,13 +53,18 @@ def _message_file(id: str, *, url: str | None) -> MessageFile:
 
 
 class TestDatasourceFileManager:
+    @pytest.fixture(autouse=True)
+    def _file_config(self, config_overrides) -> None:
+        config_overrides(
+            FILES_URL="http://localhost:5001",
+            SECRET_KEY="test_secret",
+            STORAGE_TYPE="local",
+        )
+
     @patch("core.datasource.datasource_file_manager.time.time")
     @patch("core.datasource.datasource_file_manager.os.urandom")
-    @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_sign_file(self, mock_config, mock_urandom, mock_time):
+    def test_sign_file(self, mock_urandom, mock_time):
         # Setup
-        mock_config.FILES_URL = "http://localhost:5001"
-        mock_config.SECRET_KEY = "test_secret"
         mock_time.return_value = 1700000000
         mock_urandom.return_value = b"1234567890abcdef"  # 16 bytes
 
@@ -82,11 +82,9 @@ class TestDatasourceFileManager:
 
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_create_file_by_raw(self, mock_config, mock_uuid, mock_storage, sqlite_session: Session):
+    def test_create_file_by_raw(self, mock_uuid, mock_storage, sqlite_session: Session):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
-        mock_config.STORAGE_TYPE = "local"
 
         user_id = "user_123"
         tenant_id = "tenant_456"
@@ -117,11 +115,9 @@ class TestDatasourceFileManager:
 
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_create_file_by_raw_filename_no_extension(self, mock_config, mock_uuid, mock_storage):
+    def test_create_file_by_raw_filename_no_extension(self, mock_uuid, mock_storage):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
-        mock_config.STORAGE_TYPE = "local"
 
         user_id = "user_123"
         tenant_id = "tenant_456"
@@ -143,13 +139,11 @@ class TestDatasourceFileManager:
 
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    @patch("core.datasource.datasource_file_manager.dify_config")
     @patch("core.datasource.datasource_file_manager.guess_extension")
-    def test_create_file_by_raw_unknown_extension(self, mock_guess_ext, mock_config, mock_uuid, mock_storage):
+    def test_create_file_by_raw_unknown_extension(self, mock_guess_ext, mock_uuid, mock_storage):
         # Setup
         mock_guess_ext.return_value = None  # Cannot guess
         mock_uuid.return_value = MagicMock(hex="unique_hex")
-        mock_config.STORAGE_TYPE = "local"
 
         # Execute
         upload_file = DatasourceFileManager.create_file_by_raw(
@@ -166,11 +160,9 @@ class TestDatasourceFileManager:
 
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
-    @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_create_file_by_raw_no_filename(self, mock_config, mock_uuid, mock_storage):
+    def test_create_file_by_raw_no_filename(self, mock_uuid, mock_storage):
         # Setup
         mock_uuid.return_value = MagicMock(hex="unique_hex")
-        mock_config.STORAGE_TYPE = "local"
 
         # Execute
         upload_file = DatasourceFileManager.create_file_by_raw(

@@ -18,7 +18,7 @@ type Props = Readonly<{
 }>
 
 const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const canManageMCP = useCanManageMCP()
   const isConfigured = data.is_team_authorization && data.tools.length > 0
@@ -64,14 +64,14 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
           </div>
         </div>
         <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
-          <div className="flex w-0 grow items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             {data.tools.length > 0 && (
-              <div className="shrink-0 system-xs-regular text-text-tertiary">
+              <div className="min-w-0 truncate system-xs-regular text-text-tertiary">
                 {t(($) => $['mcp.toolsCount'], { ns: 'tools', count: data.tools.length })}
               </div>
             )}
             {!data.tools.length && (
-              <div className="shrink-0 system-xs-regular text-text-tertiary">
+              <div className="min-w-0 truncate system-xs-regular text-text-tertiary">
                 {t(($) => $['mcp.noTools'], { ns: 'tools' })}
               </div>
             )}
@@ -87,7 +87,12 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
               </>
             )}
           </div>
-          {isConfigured && <StatusDot status="success" size="small" className="shrink-0" />}
+          {isConfigured && (
+            <span className="flex shrink-0 items-center">
+              <span className="sr-only">{t(($) => $['mcp.configured'], { ns: 'tools' })}</span>
+              <StatusDot status="success" size="small" />
+            </span>
+          )}
           {!isConfigured && (
             <div className="flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 system-xs-medium text-util-colors-red-red-500">
               {t(($) => $['mcp.noConfigured'], { ns: 'tools' })}

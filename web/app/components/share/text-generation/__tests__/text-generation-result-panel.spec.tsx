@@ -162,7 +162,7 @@ describe('TextGenerationResultPanel', () => {
     expect(
       screen.getByRole('button', { name: 'share.generation.batchFailed.retry' }),
     )!.toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'appApi.loading' }))!.toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' }))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'share.generation.batchFailed.retry' }))
     expect(handleRetryAllFailedTask).toHaveBeenCalledTimes(1)

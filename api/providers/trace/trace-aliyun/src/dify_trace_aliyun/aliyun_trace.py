@@ -29,6 +29,7 @@ from dify_trace_aliyun.data_exporter.traceclient import (
 from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from dify_trace_aliyun.entities.semconv import (
     DIFY_APP_ID,
+    DIFY_NODE_TYPE,
     GEN_AI_AGENT_NAME,
     GEN_AI_COMPLETION,
     GEN_AI_INPUT_MESSAGE,
@@ -362,7 +363,15 @@ class AliyunDataTrace(BaseTraceInstance):
     def build_workflow_task_span(
         self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
     ) -> SpanData:
-        inputs_json = serialize_json_data(node_execution.inputs)
+        inputs = node_execution.inputs
+        if node_execution.node_type == BuiltinNodeTypes.HTTP_REQUEST and isinstance(
+            node_execution.process_data, Mapping
+        ):
+            request = node_execution.process_data.get("request")
+            if isinstance(request, str) and request.strip():
+                # Reuse the node's masked request log; do not reconstruct the outbound request.
+                inputs = {"request": request}
+        inputs_json = serialize_json_data(inputs)
         outputs_json = serialize_json_data(node_execution.outputs)
         return SpanData(
             trace_id=trace_metadata.trace_id,
@@ -371,13 +380,16 @@ class AliyunDataTrace(BaseTraceInstance):
             name=node_execution.title,
             start_time=convert_datetime_to_nanoseconds(node_execution.created_at),
             end_time=convert_datetime_to_nanoseconds(node_execution.finished_at),
-            attributes=create_common_span_attributes(
-                session_id=trace_metadata.session_id,
-                user_id=trace_metadata.user_id,
-                span_kind=GenAISpanKind.TASK,
-                inputs=inputs_json,
-                outputs=outputs_json,
-            ),
+            attributes={
+                **create_common_span_attributes(
+                    session_id=trace_metadata.session_id,
+                    user_id=trace_metadata.user_id,
+                    span_kind=GenAISpanKind.TASK,
+                    inputs=inputs_json,
+                    outputs=outputs_json,
+                ),
+                DIFY_NODE_TYPE: node_execution.node_type,
+            },
             status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
         )

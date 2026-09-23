@@ -1,5 +1,5 @@
 import type { PluginDeclaration, PluginManifestInMarket } from '../../types'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../types'
 import {
   convertRepoToUrl,
@@ -36,7 +36,7 @@ describe('pluginManifestToCardPluginProps', () => {
     endpoint: { settings: [], endpoints: [] },
     model: {},
     tags: ['search', 'api'],
-    agent_strategy: {},
+    agent_strategy: null,
     meta: { version: '1.0.0' },
     trigger: {} as PluginDeclaration['trigger'],
     ...overrides,

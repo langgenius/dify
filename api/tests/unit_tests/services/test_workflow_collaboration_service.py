@@ -8,10 +8,14 @@ from socketio.exceptions import TimeoutError as SocketIOTimeoutError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
+from core.rbac import RBACPermission, RBACResourceScope
+from models.account import Account, Tenant
 from models.base import TypeBase
-from models.model import App, AppMode, IconType
+from models.model import App, AppMode
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
+from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_app
 
 
 @pytest.fixture
@@ -23,25 +27,16 @@ def db_session(sqlite_engine: Engine) -> Iterator[Session]:
         yield session
 
 
-def _app(*, app_id: str, tenant_id: str) -> App:
-    return App(
-        id=app_id,
+def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name="Workflow app",
-        description="",
         mode=AppMode.WORKFLOW,
-        icon_type=IconType.EMOJI,
-        icon="robot",
         icon_background="#ffffff",
         enable_site=False,
         enable_api=False,
-        api_rpm=0,
-        api_rph=0,
-        is_demo=False,
-        is_public=False,
-        is_universal=False,
-        max_active_requests=None,
-        use_icon_as_answer_icon=False,
+        maintainer=maintainer,
     )
 
 
@@ -64,23 +59,37 @@ class TestWorkflowCollaborationService:
             "avatar": None,
             "tenant_id": "t-1",
         }
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1", maintainer="owner-1"))
+        db_session.commit()
 
         with (
-            patch.object(collaboration_service, "_can_access_workflow", return_value=True),
-            patch.object(collaboration_service, "get_or_set_leader", return_value="sid-1"),
-            patch.object(collaboration_service, "broadcast_online_users"),
+            config_overrides_context(RBAC_ENABLED=True),
+            patch(
+                "services.workflow_collaboration_service.RBACService.CheckAccess.check", return_value=True
+            ) as check_access,
+            patch.object(collaboration_service, "get_or_set_leader", return_value="sid-1") as get_leader,
+            patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
         ):
             # Act
             result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         # Assert
         assert result == ("u-1", True)
+        check_access.assert_called_once_with(
+            "t-1",
+            "u-1",
+            scene=RBACPermission.APP_EDIT,
+            resource_type=RBACResourceScope.APP,
+            resource_id="wf-1",
+        )
         repository.set_session_info.assert_called_once()
         session_info = repository.set_session_info.call_args.args[1]
         assert session_info["server_id"] == "server-1"
         repository.refresh_server_heartbeat.assert_called_once_with("server-1")
         socketio.start_background_task.assert_called_once()
+        get_leader.assert_called_once_with("wf-1", "sid-1")
         socketio.enter_room.assert_called_once_with("sid-1", "wf-1")
+        broadcast_online_users.assert_called_once_with("wf-1")
         socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_user(
@@ -119,22 +128,43 @@ class TestWorkflowCollaborationService:
             "avatar": None,
             "tenant_id": "t-1",
         }
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1", maintainer="owner-1"))
+        db_session.commit()
 
-        with patch.object(collaboration_service, "_can_access_workflow", return_value=False):
+        with (
+            config_overrides_context(RBAC_ENABLED=True),
+            patch(
+                "services.workflow_collaboration_service.RBACService.CheckAccess.check", return_value=False
+            ) as check_access,
+            patch.object(collaboration_service, "get_or_set_leader") as get_leader,
+            patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
+        ):
             result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         assert result is None
+        check_access.assert_called_once_with(
+            "t-1",
+            "u-1",
+            scene=RBACPermission.APP_EDIT,
+            resource_type=RBACResourceScope.APP,
+            resource_id="wf-1",
+        )
+        repository.refresh_server_heartbeat.assert_not_called()
         repository.set_session_info.assert_not_called()
+        socketio.start_background_task.assert_not_called()
+        get_leader.assert_not_called()
         socketio.enter_room.assert_not_called()
+        broadcast_online_users.assert_not_called()
         socketio.emit.assert_not_called()
 
     def test_repr_and_save_socket_identity(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
         collaboration_service, _repository, socketio = service
-        user = Mock()
+        user = Account(name="Jane", email="jane@example.com")
         user.id = "u-1"
-        user.name = "Jane"
         user.avatar = "avatar.png"
-        user.current_tenant_id = "t-1"
+        tenant = Tenant(name="Tenant")
+        tenant.id = "t-1"
+        user._current_tenant = tenant
 
         assert "WorkflowCollaborationService" in repr(collaboration_service)
 
@@ -157,11 +187,34 @@ class TestWorkflowCollaborationService:
         )
         db_session.commit()
 
-        result = collaboration_service._can_access_workflow("wf-1", "tenant-1", session=db_session)
+        with config_overrides_context(RBAC_ENABLED=False):
+            result = collaboration_service._can_access_workflow("wf-1", "tenant-1", "user-1", session=db_session)
+
+            assert result is True
+            assert (
+                collaboration_service._can_access_workflow("wf-1", "tenant-other", "user-1", session=db_session)
+                is False
+            )
+            assert (
+                collaboration_service._can_access_workflow("wf-other", "tenant-other", "user-1", session=db_session)
+                is True
+            )
+
+    def test_can_access_workflow_allows_maintainer_without_rbac_call(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
+    ) -> None:
+        collaboration_service, _repository, _socketio = service
+        db_session.add(_app(app_id="wf-1", tenant_id="tenant-1", maintainer="owner-1"))
+        db_session.commit()
+
+        with (
+            config_overrides_context(RBAC_ENABLED=True),
+            patch("services.workflow_collaboration_service.RBACService.CheckAccess.check") as check_access,
+        ):
+            result = collaboration_service._can_access_workflow("wf-1", "tenant-1", "owner-1", session=db_session)
 
         assert result is True
-        assert collaboration_service._can_access_workflow("wf-1", "tenant-other", session=db_session) is False
-        assert collaboration_service._can_access_workflow("wf-other", "tenant-other", session=db_session) is True
+        check_access.assert_not_called()
 
     def test_relay_collaboration_event_unauthorized(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]

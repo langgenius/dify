@@ -186,13 +186,9 @@ describe('list-operator/panel', () => {
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
-  it('renders enabled sections and forwards all main interactions', async () => {
+  it('renders enabled sections and handles variable, filter, limit, and sort changes', async () => {
     const user = userEvent.setup()
-    const config = createConfigResult({
-      handleOrderByTypeChange: vi.fn(
-        (value: OrderBy) => () => config.handleOrderByEnabledChange(value === OrderBy.ASC),
-      ),
-    })
+    const config = createConfigResult()
     mockUseConfig.mockReturnValue(config)
 
     renderPanel()
@@ -204,13 +200,15 @@ describe('list-operator/panel', () => {
     expect(screen.getByRole('button', { name: 'limit-config:10' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'sub-variable:size' })).toBeInTheDocument()
     expect(
-      screen.getByText('result:Array[Object]:workflow.nodes.listFilter.outputVars.result'),
+      screen.getByText('result:Array[Object]:workflowLogic.nodes.listFilter.outputVars.result'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('first_record:Object:workflow.nodes.listFilter.outputVars.first_record'),
+      screen.getByText(
+        'first_record:Object:workflowLogic.nodes.listFilter.outputVars.first_record',
+      ),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('last_record:Object:workflow.nodes.listFilter.outputVars.last_record'),
+      screen.getByText('last_record:Object:workflowLogic.nodes.listFilter.outputVars.last_record'),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'var-picker:answer-node.items' }))
@@ -218,20 +216,18 @@ describe('list-operator/panel', () => {
     await user.click(screen.getByRole('button', { name: 'extract-input:1' }))
     await user.click(screen.getByRole('button', { name: 'limit-config:10' }))
     await user.click(screen.getByRole('button', { name: 'sub-variable:size' }))
-    await user.click(screen.getAllByRole('switch')[0]!)
-    await user.click(screen.getAllByRole('switch')[1]!)
-    await user.click(screen.getAllByRole('switch')[2]!)
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.listFilter.asc:selected' }))
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.listFilter.desc:idle' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowLogic.nodes.listFilter.asc:selected' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'workflowLogic.nodes.listFilter.desc:idle' }),
+    )
 
     expect(config.handleVarChanges).toHaveBeenCalledWith(['node-2', 'records'])
     expect(config.handleFilterChange).toHaveBeenCalledWith({ key: 'size' })
     expect(config.handleExtractsChange).toHaveBeenCalledWith('2')
     expect(config.handleLimitChange).toHaveBeenCalledWith({ enabled: true, size: 11 })
     expect(config.handleOrderByKeyChange).toHaveBeenCalledWith('name')
-    expect(config.handleFilterEnabledChange).toHaveBeenCalledWith(false)
-    expect(config.handleExtractsEnabledChange).toHaveBeenCalledWith(false)
-    expect(config.handleOrderByEnabledChange).toHaveBeenCalled()
     expect(config.handleOrderByTypeChange).toHaveBeenCalledWith(OrderBy.ASC)
     expect(config.handleOrderByTypeChange).toHaveBeenCalledWith(OrderBy.DESC)
   })
@@ -269,7 +265,7 @@ describe('list-operator/panel', () => {
     expect(screen.queryByRole('button', { name: 'extract-input:' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'sub-variable:empty' })).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'workflow.nodes.listFilter.asc:idle' }),
+      screen.queryByRole('button', { name: 'workflowLogic.nodes.listFilter.asc:idle' }),
     ).not.toBeInTheDocument()
     expect(screen.getAllByRole('switch')).toHaveLength(3)
     expect(

@@ -300,7 +300,7 @@ class TestOwnerTransferApiWithContainers:
         )
         assert (
             factory.get_join(db_session_with_containers, tenant=tenant, account=current_user).role
-            == TenantAccountRole.ADMIN
+            == TenantAccountRole.NORMAL
         )
         mock_new_owner_email.assert_called_once()
         mock_old_owner_email.assert_called_once()

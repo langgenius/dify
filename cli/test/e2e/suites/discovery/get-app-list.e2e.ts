@@ -8,7 +8,7 @@
  *   DIFY_E2E_WORKFLOW_APP_ID — echo-workflow app
  */
 
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import {
   assertErrorEnvelope,
   assertExitCode,
