@@ -250,9 +250,14 @@ def dispatch_triggered_workflow(
     """Process triggered workflows.
 
     Args:
+        user_id: The ID of the user who activated the trigger
         subscription: The trigger subscription
-        event: The trigger entity that was activated
+        event_name: The name of the trigger event that was activated
         request_id: The ID of the stored request in storage system
+        end_users: Provisioner that resolves or creates the end users for each app
+
+    Returns:
+        The number of workflows dispatched for the event
     """
     request = TriggerHttpRequestCachingService.get_request(request_id)
     payload = TriggerHttpRequestCachingService.get_payload(request_id)
@@ -465,12 +470,9 @@ def dispatch_triggered_workflows_async(
     Dispatch triggers asynchronously.
 
     Args:
-        endpoint_id: Endpoint ID
-        provider_id: Provider ID
-        subscription_id: Subscription ID
-        timestamp: Timestamp of the event
-        triggers: List of triggers to dispatch
-        request_id: Unique ID of the stored request
+        dispatch_data: Dispatch payload validated into PluginTriggerDispatchData,
+            carrying user_id, tenant_id, endpoint_id, provider_id,
+            subscription_id, timestamp, events, and request_id
 
     Returns:
         dict: Execution result with status and dispatched trigger count
