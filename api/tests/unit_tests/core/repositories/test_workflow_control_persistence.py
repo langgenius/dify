@@ -224,14 +224,16 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
                     )
                 )
             else:
-                node_writer.save(
-                    node.model_copy(
-                        update={
-                            "status": WorkflowNodeExecutionStatus.FAILED,
-                            "finished_at": stopped.finished_at,
-                            "error": stopped.error,
-                        }
-                    )
+                node_writer.save_many(
+                    [
+                        node.model_copy(
+                            update={
+                                "status": WorkflowNodeExecutionStatus.FAILED,
+                                "finished_at": stopped.finished_at,
+                                "error": stopped.error,
+                            }
+                        )
+                    ]
                 )
         records.append(dict(fields))
 
@@ -267,6 +269,12 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
         by_id = api.get_execution_by_id("node-1", "tenant-1")
         assert by_id is not None
         assert by_id.status == expected_status
+        assert (
+            api.get_execution_snapshots_by_workflow_run("tenant-1", "app-1", "workflow-1", "workflow-run", "run-1")[
+                0
+            ].status
+            == expected_status
+        )
         assert node_writer.get_by_workflow_execution("run-1")[0].status == expected_status
         node_writer.save(node)
     assert records[-1]["status"] == expected_status

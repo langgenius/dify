@@ -22,6 +22,7 @@ from tasks.workflow_node_execution_tasks import (
     _create_node_execution_from_domain,
     _update_node_execution_from_domain,
     save_workflow_node_execution_task,
+    save_workflow_node_executions_task,
 )
 
 TENANT_ID = "00000000-0000-0000-0000-000000000010"
@@ -343,7 +344,7 @@ def test_task_repeated_delivery_updates_one_row(
     assert persisted.created_at == created_at.replace(tzinfo=None)
 
 
-@pytest.mark.parametrize("writer", ["celery", "sql", "sql-data"])
+@pytest.mark.parametrize("writer", ["celery", "celery-batch", "sql", "sql-batch", "sql-data"])
 @pytest.mark.parametrize("existing", [False, True])
 @pytest.mark.parametrize("status", [WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED])
 def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_after_stop(
@@ -375,7 +376,7 @@ def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_afte
             node.error = "User requested stop"
             session.add(node)
     execution = _execution(status=status)
-    if writer == "celery":
+    if writer.startswith("celery"):
         kwargs: _ExecutionTaskKwargs = {
             "tenant_id": TENANT_ID,
             "app_id": APP_ID,
@@ -383,7 +384,10 @@ def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_afte
             "creator_user_id": ACCOUNT_ID,
             "creator_user_role": CreatorUserRole.ACCOUNT.value,
         }
-        assert save_workflow_node_execution_task.run(execution_data=execution.model_dump(), **kwargs)
+        if writer == "celery":
+            assert save_workflow_node_execution_task.run(execution_data=execution.model_dump(), **kwargs)
+        else:
+            assert save_workflow_node_executions_task.run(executions_data=[execution.model_dump()], **kwargs)
     else:
         user = Account(name="Test", email="test@example.com")
         user.id = ACCOUNT_ID
@@ -396,6 +400,8 @@ def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_afte
         )
         if writer == "sql":
             repository.save(execution)
+        elif writer == "sql-batch":
+            repository.save_many([execution])
         else:
             repository.save_execution_data(execution)
     with sqlite_session_factory() as session:

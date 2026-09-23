@@ -71,7 +71,7 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
         MagicMock(return_value=node_logstore),
     )
     monkeypatch.setattr(
-        "core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task.delay",
+        "core.repositories.celery_workflow_node_execution_repository.save_workflow_node_executions_task.delay",
         MagicMock(),
     )
     queued_save = MagicMock()
@@ -99,7 +99,10 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
     pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
     sqlite_session.add_all([run, pause])
     sqlite_session.commit()
-    for node_app, origin in (("app-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),):
+    for node_app, origin in (
+        ("app-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
+        ("source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+    ):
         SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=sqlite_session_factory,
             tenant_id="tenant-1",
@@ -169,6 +172,7 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
         assert all(float(record["elapsed_time"]) == 60 for record in node_history)
         assert {(record["app_id"], record["triggered_from"], record["status"]) for record in node_history} == {
             ("app-1", "workflow-run", "failed"),
+            ("source-app", "workflow-tool", "failed"),
         }
 
 
