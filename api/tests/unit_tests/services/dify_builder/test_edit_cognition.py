@@ -5,6 +5,7 @@ from typing import get_args
 import pytest
 from pydantic import ValidationError
 
+from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import MutationIntent
 from graphon.utils.condition.entities import Condition, SupportedComparisonOperator
 from services.dify_builder import credentials, graph_ops
@@ -884,3 +885,116 @@ def test_a_retry_that_returns_nothing_usable_falls_back_to_the_first_attempt():
 
     assert len(m.calls) == 2
     assert [i.args["node_id"] for i in out] == ["node2"]
+
+
+# ---- a batch the agent has already judged wrong is never handed on to be written ----
+#
+# The two semantic guards (``preflight``'s rejoin and dropped-identity checks)
+# describe defects the engine ACCEPTS: there is no ``DraftWouldNotStartError``
+# behind them and ``apply_repair`` has nothing to veto. So the agent's own
+# fallback is the last thing standing between a guard that fired and a silently
+# wrong draft -- and returning "the first attempt's applicable intents" would
+# have written exactly the batch the guard condemned.
+
+_S6_BATCH = json.dumps(
+    {
+        "intents": [
+            {
+                "op": "create_node",
+                "args": {
+                    "node_type": "template-transform",
+                    "node_id": "node7",
+                    "config": {"title": "Excellent", "template": "excellent", "variables": []},
+                },
+            },
+            {"op": "connect", "args": {"from_node": "node2", "to_node": "node7", "source_handle": "true"}},
+            {"op": "connect", "args": {"from_node": "node7", "to_node": "node5"}},
+        ]
+    }
+)
+
+_S6_BATCH_REJOINED = json.dumps(
+    {
+        "intents": [
+            {
+                "op": "create_node",
+                "args": {
+                    "node_type": "template-transform",
+                    "node_id": "node7",
+                    "config": {"title": "Excellent", "template": "excellent", "variables": []},
+                },
+            },
+            {"op": "connect", "args": {"from_node": "node2", "to_node": "node7", "source_handle": "true"}},
+            {"op": "connect", "args": {"from_node": "node7", "to_node": "node5"}},
+            {
+                "op": "set_node_config",
+                "args": {
+                    "node_id": "node5",
+                    "path": "variables",
+                    "value": [["node3", "output"], ["node4", "output"], ["node7", "output"]],
+                },
+            },
+        ]
+    }
+)
+
+
+def test_a_model_that_ignores_the_guidance_twice_surfaces_instead_of_writing():
+    """Both attempts wire a new arm into ``node5`` without extending its
+    ``variables``. The old fallback returned the first attempt's applicable
+    intents, so the guard fired and the known-bad batch was written anyway --
+    landing back in the green-run-empty-output failure the guard exists to
+    stop. Surfacing is safe now: the gate offers a revert and a keep-adjusting
+    exit, and the reason is carried into the next attempt."""
+    m = _RecordingInstance([_S6_BATCH, _S6_BATCH])
+
+    with pytest.raises(ProposalWouldRunWrongError) as raised:
+        edit.build_edit_intents(m, {"add": "an excellent branch"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    assert len(m.calls) == 2  # the one retry was spent first
+    assert "node5" in str(raised.value)
+    assert "node7" in str(raised.value)
+
+
+def test_a_model_that_takes_the_guidance_on_the_retry_is_written_as_normal():
+    """The other half: the corrective re-prompt is what this is for, and a
+    second attempt that extends the aggregator goes through untouched."""
+    m = _RecordingInstance([_S6_BATCH, _S6_BATCH_REJOINED])
+
+    out = edit.build_edit_intents(m, {"add": "an excellent branch"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    assert len(m.calls) == 2
+    assert len(out) == 4
+    assert [i.op for i in out][-1] == "set_node_config"
+
+
+def test_a_purely_structural_rejection_still_falls_back_to_the_first_attempt():
+    """The distinction that keeps this from being a blanket "any rejection
+    surfaces". A structural refusal DROPS the offending intent, so what is left
+    is a batch nobody has judged wrong -- and Task 5 chose deliberately to keep
+    it rather than lose the user's change. Only a whole-batch semantic verdict,
+    which drops nothing and condemns what remains, blocks the fallback."""
+    first = (
+        '{"intents": ['
+        + _SET_EQ % ("value", "90")
+        + ", "
+        + '{"op": "set_node_config", "args": {"node_id": "ghost", "path": "x", "value": 1}}'
+        + "]}"
+    )
+    m = _RecordingInstance([first, '{"intents": "oops"}'])
+
+    out = edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    assert [i.args["node_id"] for i in out] == ["node2"]
+
+
+def test_a_first_attempt_the_guards_condemn_surfaces_even_when_the_retry_is_unusable():
+    """The other route into the fallback: the retry comes back unparseable, so
+    there is nothing to judge but the first attempt -- which the guards already
+    condemned. It must not be written either."""
+    m = _RecordingInstance([_S6_BATCH, "not json at all"])
+
+    with pytest.raises(ProposalWouldRunWrongError):
+        edit.build_edit_intents(m, {"add": "an excellent branch"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    assert len(m.calls) >= 2  # the retry was spent before the refusal (invoke_json re-parses once of its own)
