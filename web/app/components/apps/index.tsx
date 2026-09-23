@@ -2,6 +2,7 @@
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
+import { noop, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +14,7 @@ import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { List } from './list'
@@ -30,6 +31,7 @@ const ImportFromMarketplaceTemplateModal = dynamic(
 const AppListProvider = AppListContext.Provider
 
 const AppsContent = () => {
+  const queryClient = useQueryClient()
   const { t } = useTranslation(['app'])
   const searchParams = useSearchParams()
   const { replace } = useRouter()
@@ -48,10 +50,23 @@ const AppsContent = () => {
   const hideTryAppPanel = useCallback(() => {
     setIsShowTryAppPanel(false)
   }, [])
-  const openTryAppPanel = useCallback((app: RecommendedAppResponse) => {
-    setCurrApp(app)
-    setIsShowTryAppPanel(true)
-  }, [])
+  const openTryAppPanel = useCallback(
+    (app: RecommendedAppResponse) => {
+      // Start the workflow request while the preview dialog's code and app details load.
+      if (app.app?.mode === 'workflow' || app.app?.mode === 'advanced-chat') {
+        void queryClient
+          .query(
+            consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
+              input: { params: { app_id: app.app_id } },
+            }),
+          )
+          .catch(noop)
+      }
+      setCurrApp(app)
+      setIsShowTryAppPanel(true)
+    },
+    [queryClient],
+  )
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
   const handleCreateLearnDify = (app: RecommendedAppResponse) => {

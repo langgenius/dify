@@ -9,10 +9,11 @@ import { Suspense, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useGetTryAppInfo } from '@/service/use-try-app'
-import App from './app'
 import AppInfo from './app-info'
 import Preview from './preview'
 import { TypeEnum } from './types'
+
+const App = React.lazy(() => import('./app'))
 
 type Props = Readonly<{
   appId: RecommendedAppResponse['app_id']
@@ -55,7 +56,7 @@ function TryApp({
     >
       <DialogContent
         initialFocus={detailTabRef}
-        className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-7xl overflow-hidden overflow-x-auto border-none p-2 text-left align-middle"
+        className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-full max-w-[calc(100vw-16px)] min-w-7xl overflow-hidden overflow-x-auto border-none p-2 text-left align-middle"
       >
         <DialogTitle className="sr-only">
           {templateName ?? appDetail?.name ?? t(($) => $['apps.title'], { ns: 'explore' })}
@@ -154,15 +155,17 @@ function TryApp({
               </TabsPanel>
             )}
             {appDetail && (
-              <AppInfo
-                className="w-90 shrink-0"
-                appDetail={appDetail}
-                appId={appId}
-                canCreate={canCreate}
-                categories={categories ?? []}
-                createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
-                onCreate={onCreate}
-              />
+              <Suspense fallback={<div className="w-90 shrink-0" />}>
+                <AppInfo
+                  className="w-90 shrink-0"
+                  appDetail={appDetail}
+                  appId={appId}
+                  canCreate={canCreate}
+                  categories={categories ?? []}
+                  createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
+                  onCreate={onCreate}
+                />
+              </Suspense>
             )}
           </div>
         </Tabs>

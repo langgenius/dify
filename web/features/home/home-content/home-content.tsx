@@ -5,7 +5,7 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
+import { noop, useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -250,14 +250,26 @@ export function HomeContent() {
       hideTryAppPanel()
     }
   }, [currentTryApp, hideTryAppPanel, homeTryAppCreateGuideActive, isShowCreateModal])
-  const handleTryApp = useCallback((app: RecommendedAppResponse) => {
-    isCurrentTryAppFromLearnDifyRef.current = false
-    setCurrentTryApp(app)
-  }, [])
+  const handleTryApp = useCallback(
+    (app: RecommendedAppResponse, fromLearnDify = false) => {
+      // Start the workflow request while the preview dialog's code and app details load.
+      if (app.app?.mode === 'workflow' || app.app?.mode === 'advanced-chat') {
+        void queryClient
+          .query(
+            consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
+              input: { params: { app_id: app.app_id } },
+            }),
+          )
+          .catch(noop)
+      }
+      isCurrentTryAppFromLearnDifyRef.current = fromLearnDify
+      setCurrentTryApp(app)
+    },
+    [queryClient],
+  )
   const handleTryAppFromLearnDify = useCallback(
     (app: RecommendedAppResponse) => {
-      isCurrentTryAppFromLearnDifyRef.current = true
-      setCurrentTryApp(app)
+      handleTryApp(app, true)
 
       if (
         activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
@@ -282,6 +294,7 @@ export function HomeContent() {
       canCreateApp,
       completedStepByStepTourTaskIds,
       completeHomeTourAfterOpenDetails,
+      handleTryApp,
     ],
   )
   const handleShowFromTryApp = useCallback(() => {
