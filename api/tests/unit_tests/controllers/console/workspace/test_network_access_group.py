@@ -1,15 +1,18 @@
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
+import httpx
 import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
 from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, HTTPException, NotFound, ServiceUnavailable
+from werkzeug.test import TestResponse
 
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.workspace.network_access_group import (
@@ -29,12 +32,24 @@ from controllers.console.workspace.network_access_group import (
 from core.network_access.client_ip import NetworkAccessClientIPUnavailableError
 from enums import DeploymentEdition
 from machinery.context import RequestContext
+from services.entities.network_access_group_entities import (
+    NetworkAccessAppConfig,
+    NetworkAccessBinding,
+    NetworkAccessBindingUpdate,
+    NetworkAccessCurrentIPCheck,
+    NetworkAccessGroup,
+    NetworkAccessGroupList,
+)
+from services.network_access_group_gateway import NetworkAccessGroupGateway
 from services.network_access_group_service import (
     NetworkAccessGroupAccessDeniedError,
     NetworkAccessGroupAppNotFoundError,
+    NetworkAccessGroupAppRecord,
     NetworkAccessGroupEntitlementUnavailableError,
     NetworkAccessGroupError,
     NetworkAccessGroupInvalidPolicyError,
+    NetworkAccessGroupInvalidResponseError,
+    NetworkAccessGroupService,
     NetworkAccessGroupUnsupportedAccessPointsError,
     NetworkAccessGroupUnsupportedAppModeError,
     NetworkAccessGroupUpstreamError,
@@ -57,7 +72,7 @@ def _request_context() -> RequestContext:
 
 
 @contextmanager
-def _application_services(service: MagicMock) -> Generator[None]:
+def _application_services(service: MagicMock | NetworkAccessGroupService) -> Generator[None]:
     with patch(
         "controllers.console.workspace.network_access_group.application_services",
         return_value=SimpleNamespace(network_access_groups=service),
@@ -65,23 +80,22 @@ def _application_services(service: MagicMock) -> Generator[None]:
         yield
 
 
-def _group_payload(*, app_ids: list[str] | None = None) -> dict[str, object]:
+def _group_payload(*, app_ids: list[str] | None = None) -> NetworkAccessGroup:
     app_ids = app_ids or []
-    return {
-        "id": GROUP_ID,
-        "tenantId": TENANT_ID,
-        "name": "Office network",
-        "description": "Reusable office egress addresses",
-        "allowedCidrs": ["203.0.113.7/32"],
-        "usedByCount": len(app_ids),
-        "enforcingCount": 0,
-        "usedByAppIds": app_ids,
-        "apps": [],
-        "version": "2",
-        "updatedByAccountId": ACCOUNT_ID,
-        "createdAt": datetime(2026, 8, 21, tzinfo=UTC).isoformat(),
-        "updatedAt": datetime(2026, 8, 21, tzinfo=UTC).isoformat(),
-    }
+    return NetworkAccessGroup(
+        id=GROUP_ID,
+        tenant_id=TENANT_ID,
+        name="Office network",
+        description="Reusable office egress addresses",
+        allowed_cidrs=("203.0.113.7/32",),
+        used_by_count=len(app_ids),
+        enforcing_count=0,
+        app_ids=tuple(app_ids),
+        version=2,
+        updated_by_account_id=ACCOUNT_ID,
+        created_at=datetime(2026, 8, 21, tzinfo=UTC),
+        updated_at=datetime(2026, 8, 21, tzinfo=UTC),
+    )
 
 
 def _binding_payload(
@@ -89,28 +103,24 @@ def _binding_payload(
     enabled: bool = True,
     group_id: str | None = GROUP_ID,
     access_points: list[str] | None = None,
-) -> dict[str, object]:
-    return {
-        "id": BINDING_ID,
-        "tenantId": TENANT_ID,
-        "appId": APP_ID,
-        "enabled": enabled,
-        "groupId": group_id,
-        "accessPoints": ["webapp", "service_api"] if access_points is None else access_points,
-        "version": "3",
-        "updatedByAccountId": ACCOUNT_ID,
-        "createdAt": datetime(2026, 8, 21, tzinfo=UTC).isoformat(),
-        "updatedAt": datetime(2026, 8, 21, tzinfo=UTC).isoformat(),
-    }
+) -> NetworkAccessBinding:
+    return NetworkAccessBinding(
+        id=BINDING_ID,
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        enabled=enabled,
+        group_id=group_id,
+        access_points=("webapp", "service_api") if access_points is None else tuple(access_points),
+        version=3,
+        updated_by_account_id=ACCOUNT_ID,
+        created_at=datetime(2026, 8, 21, tzinfo=UTC),
+        updated_at=datetime(2026, 8, 21, tzinfo=UTC),
+    )
 
 
 def test_list_forwards_request_context_and_serializes_response() -> None:
     service = MagicMock()
-    service.list_groups.return_value = {
-        "tenantId": TENANT_ID,
-        "entitled": True,
-        "groups": [_group_payload()],
-    }
+    service.list_groups.return_value = NetworkAccessGroupList(TENANT_ID, True, (_group_payload(),))
     api = CurrentWorkspaceNetworkAccessGroupsApi()
 
     with _application_services(service):
@@ -124,7 +134,7 @@ def test_list_forwards_request_context_and_serializes_response() -> None:
 
 def test_create_forwards_payload_and_returns_201() -> None:
     service = MagicMock()
-    service.create_group.return_value = {"group": _group_payload()}
+    service.create_group.return_value = _group_payload()
     request_payload = NetworkAccessGroupCreatePayload(
         name="Office network",
         description="Reusable office egress addresses",
@@ -151,9 +161,9 @@ def test_create_forwards_payload_and_returns_201() -> None:
 
 def test_group_detail_update_and_delete_forward_path_and_query_values() -> None:
     service = MagicMock()
-    service.get_group.return_value = {"group": _group_payload()}
-    service.update_group.return_value = {"group": _group_payload()}
-    service.delete_group.return_value = {"deleted": True}
+    service.get_group.return_value = _group_payload()
+    service.update_group.return_value = _group_payload()
+    service.delete_group.return_value = True
     update_payload = NetworkAccessGroupUpdatePayload(
         name="Office network",
         description="Updated",
@@ -194,19 +204,19 @@ def test_group_detail_update_and_delete_forward_path_and_query_values() -> None:
 
 def test_app_get_and_put_forward_app_id_without_orm_models() -> None:
     service = MagicMock()
-    service.get_app_binding.return_value = {
-        "tenantId": TENANT_ID,
-        "appId": APP_ID,
-        "entitled": True,
-        "effectiveEnabled": False,
-        "available_access_points": ["webapp", "service_api", "mcp"],
-        "binding": None,
-    }
-    service.update_app_binding.return_value = {
-        "binding": _binding_payload(),
-        "effectiveEnabled": True,
-        "available_access_points": ["webapp", "service_api", "mcp"],
-    }
+    service.get_app_binding.return_value = NetworkAccessAppConfig(
+        TENANT_ID,
+        APP_ID,
+        True,
+        False,
+        None,
+        ("webapp", "service_api", "mcp"),
+    )
+    service.update_app_binding.return_value = NetworkAccessBindingUpdate(
+        _binding_payload(),
+        True,
+        ("webapp", "service_api", "mcp"),
+    )
     request_payload = AppNetworkAccessGroupUpdatePayload(
         enabled=True,
         group_id=GROUP_ID,
@@ -286,6 +296,7 @@ def test_internal_secret_error_is_not_reported_as_tenant_input_failure() -> None
         (NetworkAccessGroupUnsupportedAppModeError("channel"), BadRequest, "channel"),
         (NetworkAccessGroupUnsupportedAccessPointsError(["trigger"]), BadRequest, "trigger"),
         (NetworkAccessGroupInvalidPolicyError(), ServiceUnavailable, "cannot be evaluated"),
+        (NetworkAccessGroupInvalidResponseError(), BadGateway, "invalid response"),
     ],
 )
 def test_application_error_mapping(
@@ -414,9 +425,9 @@ def test_current_ip_check_uses_trusted_resolver_after_service_admission_and_disa
         *,
         group_id: str,
         client_ip_supplier: Callable[[], str],
-    ) -> dict[str, object]:
+    ) -> NetworkAccessCurrentIPCheck:
         assert group_id == GROUP_ID
-        return {"client_ip": client_ip_supplier(), "allowed": True, "policy_version": 4}
+        return NetworkAccessCurrentIPCheck(client_ip_supplier(), True, 4)
 
     service.check_current_ip.side_effect = check_current_ip
     api = CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi()
@@ -487,13 +498,8 @@ def test_current_ip_check_fails_closed_when_trusted_proxy_config_is_empty(
 
 def test_group_response_rejects_enforcing_count_greater_than_used_by_count() -> None:
     service = MagicMock()
-    group = _group_payload(app_ids=[APP_ID])
-    group["enforcingCount"] = 2
-    service.list_groups.return_value = {
-        "tenantId": TENANT_ID,
-        "entitled": True,
-        "groups": [group],
-    }
+    group = replace(_group_payload(app_ids=[APP_ID]), enforcing_count=2)
+    service.list_groups.return_value = NetworkAccessGroupList(TENANT_ID, True, (group,))
 
     with _application_services(service), pytest.raises(BadGateway, match="Invalid response"):
         unwrap(CurrentWorkspaceNetworkAccessGroupsApi().get)(
@@ -522,7 +528,7 @@ def test_current_ip_read_uses_trusted_resolver_and_ignores_client_supplied_ip(
     app = Flask(__name__)
     service = MagicMock()
     config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
-    service.get_current_ip.side_effect = lambda _context, *, client_ip_supplier: {"client_ip": client_ip_supplier()}
+    service.get_current_ip.side_effect = lambda _context, *, client_ip_supplier: client_ip_supplier()
     api = CurrentWorkspaceNetworkAccessGroupCurrentIPApi()
 
     with (
@@ -566,7 +572,7 @@ def test_current_ip_read_fails_closed_with_no_store_on_503(
     app = Flask(__name__)
     service = MagicMock()
     config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS=trusted_proxies)
-    service.get_current_ip.side_effect = lambda _context, *, client_ip_supplier: {"client_ip": client_ip_supplier()}
+    service.get_current_ip.side_effect = lambda _context, *, client_ip_supplier: client_ip_supplier()
     api = CurrentWorkspaceNetworkAccessGroupCurrentIPApi()
 
     with (
@@ -644,3 +650,75 @@ def test_current_ip_read_response_schema_exposes_only_client_ip() -> None:
     assert schema["required"] == ["client_ip"]
     assert set(schema["properties"]) == {"client_ip"}
     assert schema["properties"]["client_ip"]["type"] == "string"
+
+
+@pytest.mark.parametrize("group_field", ["group_id", "groupId", "policy_id", "policyId"])
+@pytest.mark.parametrize("stale_only", [False, True])
+def test_typed_gateway_service_controller_pipeline_preserves_binding_configuration(
+    group_field: str, stale_only: bool
+) -> None:
+    wire = {
+        "tenantId": TENANT_ID,
+        "appId": APP_ID,
+        "entitled": True,
+        "effectiveEnabled": True,
+        "binding": {
+            "id": BINDING_ID,
+            "tenantId": TENANT_ID,
+            "appId": APP_ID,
+            "enabled": True,
+            group_field: GROUP_ID,
+            "accessPoints": ["future_scope"] if stale_only else ["webapp"],
+            "version": "3",
+            "createdAt": "2026-08-21T00:00:00Z",
+            "updatedAt": "2026-08-21T00:00:00Z",
+        },
+    }
+    response = _typed_binding_http_response(wire)
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["binding"]["enabled"] is True
+    assert body["binding"]["group_id"] == GROUP_ID
+    assert body["binding"]["version"] == 3
+    assert body["binding"]["access_points"] == ([] if stale_only else ["webapp"])
+    assert body["effective_enabled"] is not stale_only
+    assert wire["binding"]["accessPoints"] == (["future_scope"] if stale_only else ["webapp"])
+
+
+def test_malformed_upstream_response_maps_to_http_502_before_business_truthiness() -> None:
+    response = _typed_binding_http_response(
+        {
+            "tenantId": TENANT_ID,
+            "appId": APP_ID,
+            "entitled": "false",
+            "effectiveEnabled": False,
+        }
+    )
+    assert response.status_code == 502
+
+
+def _typed_binding_http_response(wire: Mapping[str, object]) -> TestResponse:
+    app = Flask(__name__)
+    app.testing = True
+    apps, memberships, entitlement = MagicMock(), MagicMock(), MagicMock()
+    apps.get_manageable_app.return_value = NetworkAccessGroupAppRecord(APP_ID, "workflow", "Test", None, None, None)
+    memberships.get_role_for_account.return_value = "owner"
+    entitlement.is_paid_plan.return_value = True
+    with httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json=wire))) as client:
+        gateway = NetworkAccessGroupGateway(
+            base_url="https://test.invalid",
+            fallback_base_url="",
+            secret_key="synthetic",
+            http_client=client,
+        )
+        service = NetworkAccessGroupService(
+            control_plane=gateway, apps=apps, memberships=memberships, entitlement=entitlement
+        )
+        api = AppNetworkAccessGroupApi()
+
+        @app.get("/binding")
+        def binding() -> dict[str, object]:
+            return unwrap(api.get)(api, request_context=_request_context(), app_id=UUID(APP_ID))
+
+        with _application_services(service):
+            return app.test_client().get("/binding")

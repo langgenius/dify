@@ -154,7 +154,7 @@ def test_community_app_cleanup_does_not_schedule_binding_cleanup(monkeypatch: py
 
 def test_independent_binding_cleanup_task_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
-    service.cleanup_app_binding.return_value = {"deleted": True}
+    service.cleanup_app_binding.return_value = True
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     with patch(
