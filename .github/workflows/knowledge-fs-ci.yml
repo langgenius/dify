@@ -514,7 +514,7 @@ jobs:
       - name: Exercise real write, retry, filtered search, isolation and deletion
         env:
           KNOWLEDGE_FS_VECTOR_INTEGRATION: '1'
-          DEPLOYMENT_EDITION: SELF_HOSTED
+          DEPLOYMENT_EDITION: COMMUNITY
           ELASTICSEARCH_HOST: localhost
           ELASTICSEARCH_PORT: '9200'
           WEAVIATE_ENDPOINT: http://localhost:8080
