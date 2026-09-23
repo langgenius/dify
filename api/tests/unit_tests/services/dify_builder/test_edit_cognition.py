@@ -1,3 +1,4 @@
+import copy
 import json
 from typing import get_args
 
@@ -8,7 +9,7 @@ from core.dify_builder.models import MutationIntent
 from graphon.utils.condition.entities import Condition, SupportedComparisonOperator
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import edit
-from services.dify_builder.preflight import preflight_errors
+from services.dify_builder.preflight import new_preflight_problems, preflight_errors
 
 
 class _Msg:
@@ -444,14 +445,88 @@ def test_build_edit_intents_with_no_targets_falls_back_to_the_plain_context():
     assert "config:" not in m.calls[0]["prompt_messages"][1].content
 
 
-def test_build_edit_intents_accepts_but_does_not_yet_use_last_edit_rejection():
-    # Declared now so the task that wires a refused write back into the prompt
-    # does not have to change this function's arity a second time.
+# ---- what the engine said last time reaches the next attempt ----------------
+#
+# Triage edit-branch-failure-2026-09-22, "Why every retry is blind": the gate
+# re-reads an UNCHANGED draft on every re-approval, so ``edit_rules`` and
+# ``graph`` are byte-identical each time. The engine's refusal of the previous
+# write is the only input that can make the second attempt differ from the first.
+
+
+def _with_operator(operator: str) -> dict:
+    """``_TARGET_GRAPH`` with node2's one condition using ``operator``."""
+    graph = copy.deepcopy(_TARGET_GRAPH)
+    graph["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] = operator
+    return graph
+
+
+def test_build_edit_intents_quotes_the_engines_refusal_of_the_previous_attempt():
+    m = _RecordingInstance([json.dumps({"intents": []})])
+    rejection = "the draft would not start: node 'node2' (if-else): 1 validation error for IfElseNodeData"
+
+    edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH, last_edit_rejection=rejection)
+
+    user = m.calls[0]["prompt_messages"][1].content
+    assert f"PREVIOUS ATTEMPT REJECTED BY THE ENGINE:\n{rejection}\nDo not repeat it." in user
+
+
+def test_no_previous_refusal_leaves_the_prompt_exactly_as_it_was():
     m = _RecordingInstance([json.dumps({"intents": []})])
 
-    edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH, last_edit_rejection="draft would not start")
+    edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH)
 
-    assert "draft would not start" not in m.calls[0]["prompt_messages"][1].content
+    assert "PREVIOUS ATTEMPT REJECTED" not in m.calls[0]["prompt_messages"][1].content
+
+
+def test_the_engines_text_separates_two_refusals_the_preflight_key_cannot():
+    """The hole the port-rejection feedback exists to cover.
+
+    ``new_preflight_problems`` is keyed on pydantic error LOCATIONS, so a second
+    attempt that leaves the culprit invalid at the SAME location with a
+    DIFFERENT bad value is not a new problem to it -- the dry run has nothing
+    left to say, and every retry after the first would be blind again. The
+    engine's own message names the value it refused, so carrying it forward is
+    the one thing that makes two such attempts distinguishable to the model.
+    """
+    klingon, martian = _with_operator("klingon"), _with_operator("martian")
+
+    # what the location key sees: nothing new, so the dry run cannot re-prompt...
+    assert new_preflight_problems(klingon, martian, ()) == []
+    # ...while the engine's own words name the value each time.
+    klingon_text = next(e for e in preflight_errors(klingon) if "'node2'" in e)
+    martian_text = next(e for e in preflight_errors(martian) if "'node2'" in e)
+    assert "input_value='klingon'" in klingon_text
+    assert "input_value='martian'" in martian_text
+
+    prompts = []
+    for text in (klingon_text, martian_text):
+        m = _RecordingInstance([json.dumps({"intents": []})])
+        edit.build_edit_intents(
+            m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"], last_edit_rejection=text
+        )
+        prompts.append(m.calls[0]["prompt_messages"][1].content)
+
+    assert "input_value='klingon'" in prompts[0]
+    assert "input_value='martian'" not in prompts[0]
+    assert "input_value='martian'" in prompts[1]
+    assert "input_value='klingon'" not in prompts[1]
+
+
+def test_the_previous_refusal_stays_in_front_of_the_model_through_the_retry():
+    """The corrective re-prompt is built on top of the same user turn, so a
+    model that burns its one retry still has the engine's earlier refusal in
+    view rather than only this attempt's."""
+    m = _RecordingInstance([_operator_intents("=="), _operator_intents("≥")])
+
+    edit.build_edit_intents(
+        m,
+        {"threshold": "90"},
+        _TARGET_GRAPH,
+        edit_target_node_ids=["node2"],
+        last_edit_rejection="the draft would not start: node 'node2' (if-else): input_value='klingon'",
+    )
+
+    assert "input_value='klingon'" in m.calls[1]["prompt_messages"][1].content
 
 
 # ---- credentials: withheld from the prompt, and un-writable back into the draft ----
@@ -527,7 +602,7 @@ def test_a_write_carrying_the_sentinel_leaves_the_stored_credential_intact():
         },
     )
 
-    applicable, rejected, _dry = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
+    applicable, rejected, _dry, _changed = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
 
     assert applicable == []
     assert len(rejected) == 1
@@ -545,7 +620,7 @@ def test_a_nested_sentinel_in_a_create_node_config_is_refused_too():
         },
     )
 
-    _applicable, rejected, _dry = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
+    _applicable, rejected, _dry, _changed = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
 
     assert len(rejected) == 1
 
@@ -556,7 +631,7 @@ def test_a_real_value_for_the_same_field_is_still_writable():
         args={"node_id": "http", "path": "headers", "value": "Authorization: Bearer tok-new"},
     )
 
-    applicable, rejected, _dry = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
+    applicable, rejected, _dry, _changed = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
 
     assert rejected == []
     assert applicable == [intent]
