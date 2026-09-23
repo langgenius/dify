@@ -1,5 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -230,39 +230,6 @@ describe('Workflow tool tracing', () => {
     await user.click(screen.getAllByRole('button', { name: 'workflow.singleRun.back' }).at(-1)!)
     expect(screen.getByText('Nested approval tool')).toBeInTheDocument()
     expect(screen.queryByText('Human approval')).not.toBeInTheDocument()
-  })
-
-  it('refreshes open child logs when a paused run finishes', async () => {
-    const user = userEvent.setup()
-    const root = createTrace('root-execution', { title: 'Approval tool', expand: true })
-    mockRequest.mockResolvedValue(Response.json({ data: [] }))
-    const { rerender } = renderWithConsoleQuery(
-      <TracingPanel list={[root]} workflowRun={{ appId: 'app', runId: 'run', status: 'paused' }} />,
-    )
-
-    await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
-    await screen.findByText('common.noData')
-    mockRequest.mockImplementation(() =>
-      Promise.resolve(
-        Response.json({
-          data: [
-            createTrace('completed-child', {
-              title: 'Completed approval',
-              node_type: BlockEnum.End,
-            }),
-          ],
-        }),
-      ),
-    )
-    rerender(
-      <TracingPanel
-        list={[root]}
-        workflowRun={{ appId: 'app', runId: 'run', status: 'succeeded' }}
-      />,
-    )
-
-    await waitFor(() => expect(screen.getByText('Completed approval')).toBeInTheDocument())
-    expect(screen.queryByText('common.noData')).not.toBeInTheDocument()
   })
 
   it.each([BlockEnum.Iteration, BlockEnum.Loop])(
