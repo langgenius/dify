@@ -257,6 +257,7 @@
   "segment.searchResults_one": "REZULTAT",
   "segment.searchResults_other": "REZULTATELE",
   "segment.searchResults_zero": "REZULTAT",
+  "segment.statusFilterLabel": "Filtrează segmentele după stare",
   "segment.summary": "REZUMAT",
   "segment.summaryPlaceholder": "Scrieți un rezumat scurt pentru o recuperare mai bună…"
 }

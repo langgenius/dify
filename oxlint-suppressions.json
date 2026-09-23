@@ -1667,14 +1667,6 @@
       "count": 4
     }
   },
-  "web/app/components/datasets/documents/components/list.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/documents/create-from-pipeline/data-source-options/option-card.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -1930,22 +1922,6 @@
     }
   },
   "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/metadata/edit-metadata-batch/add-row.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/metadata/edit-metadata-batch/edit-row.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -4718,7 +4694,7 @@
   },
   "web/service/use-try-app.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 4
+      "count": 3
     }
   },
   "web/service/use-workflow.ts": {

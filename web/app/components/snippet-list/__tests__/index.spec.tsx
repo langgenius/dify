@@ -115,7 +115,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(''),
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => {
     return function MockDynamicComponent(props: {
       show: boolean
