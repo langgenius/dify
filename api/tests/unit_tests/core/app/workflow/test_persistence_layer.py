@@ -58,6 +58,9 @@ from graphon.runtime.execution import ROOT_FRAME_ID
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 
 
@@ -279,6 +282,43 @@ def test_workflow_tool_agent_nodes_persist_in_source_app_under_only_root_run(sql
         assert row.status == "succeeded"
         assert row.outputs_dict == {"answer": "ok"}
         assert row.process_data_dict[WORKFLOW_TOOL_ROOT_APP_ID_KEY] == "caller-app"
+
+
+def test_nested_tool_callers_keep_distinct_invocations_in_shared_source_layers(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    ids = ["a-call-1", "a-call-2", "b-call-1", "b-call-2", "c-child"]
+    layer = _make_sql_layer(sqlite_session_factory, node_run_indices=dict.fromkeys(ids, 1))
+    source = _tool_source()
+    nested = replace(source, app_id="nested-app", workflow_id="nested-workflow")
+    first_call = layer.create_workflow_tool_event_listener(source, "workflow-id", "a-call-1")
+    second_call = layer.create_workflow_tool_event_listener(source, "workflow-id", "a-call-2")
+    nested_call = layer.create_workflow_tool_event_listener(nested, source.workflow_id, "b-call-1")
+    layer.on_event(GraphRunStartedEvent())
+    for execution_id, listener in zip(
+        ids, [layer.on_event, layer.on_event, first_call, second_call, nested_call], strict=True
+    ):
+        listener(
+            NodeRunStartedEvent(
+                id=execution_id,
+                node_id="same-canvas-node",
+                node_type=BuiltinNodeTypes.TOOL,
+                node_title="Tool",
+                start_at=_naive_utc_now(),
+            )
+        )
+    repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+    for caller, expected, source_app, source_workflow in (
+        ("a-call-1", "b-call-1", "source-app", "source-workflow"),
+        ("a-call-2", "b-call-2", "source-app", "source-workflow"),
+        ("b-call-1", "c-child", "nested-app", "nested-workflow"),
+    ):
+        children = repository.get_workflow_tool_executions("tenant", "run-id", caller)
+        assert [child.id for child in children] == [expected]
+        child = children[0]
+        assert (child.app_id, child.workflow_id, child.workflow_run_id) == (source_app, source_workflow, "run-id")
+        assert child.triggered_from_workflow_id == ("source-workflow" if caller == "b-call-1" else "workflow-id")
+        assert child.triggered_from_node_execution_id == caller
 
 
 def test_workflow_tool_resume_updates_existing_running_container(sqlite_session_factory):
