@@ -1,8 +1,6 @@
-import { cn } from '@langgenius/dify-ui/cn'
-import { memo } from 'react'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from 'react-textarea-autosize'
-import { useTabFocusRing } from './use-tab-focus-ring'
 
 type SummaryTextProps = {
   value?: string
@@ -11,25 +9,21 @@ type SummaryTextProps = {
 }
 const SummaryText = ({ value, onChange, disabled }: SummaryTextProps) => {
   const { t } = useTranslation(['datasetDocuments'])
-  const tabFocus = useTabFocusRing()
+  const labelId = useId()
 
   return (
     <div className="space-y-1">
-      <div className="system-xs-medium-uppercase text-text-tertiary">
+      <div id={labelId} className="system-xs-medium-uppercase text-text-tertiary">
         {t(($) => $['segment.summary'], { ns: 'datasetDocuments' })}
       </div>
       <Textarea
-        className={cn(
-          'w-full resize-none bg-transparent body-sm-regular leading-6 text-text-secondary outline-hidden data-[tab-focus=true]:ring-2 data-[tab-focus=true]:ring-state-accent-solid data-[tab-focus=true]:ring-inset',
-        )}
-        data-tab-focus={tabFocus.isTabFocused}
+        aria-labelledby={labelId}
+        className="field-sizing-content min-h-6 w-full resize-none rounded-none border-none bg-transparent p-0 body-sm-regular leading-6 text-text-secondary hover:border-none hover:bg-transparent focus:border-none focus:bg-transparent focus:shadow-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset disabled:bg-transparent disabled:text-text-secondary disabled:hover:bg-transparent"
         placeholder={t(($) => $['segment.summaryPlaceholder'], { ns: 'datasetDocuments' })}
-        minRows={1}
+        rows={1}
         value={value ?? ''}
-        onChange={(e) => onChange?.(e.target.value)}
+        onValueChange={(value) => onChange?.(value)}
         disabled={disabled}
-        onFocus={tabFocus.onFocus}
-        onBlur={tabFocus.onBlur}
       />
     </div>
   )
