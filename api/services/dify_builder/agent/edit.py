@@ -6,7 +6,6 @@ through preflight.vet_intents -- structure AND node data, the same two checks
 apply_repair makes -- before they can reach the approval gate.
 Degrades to an honest result on model-None / provider-error / parse-fail."""
 
-import json
 from collections.abc import Callable, Sequence
 from typing import Any
 
@@ -15,63 +14,18 @@ from core.dify_builder.node_defaults import default_config_or_empty
 from core.workflow.graph_normalizers import declared_branch_handles
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import credentials, preflight
-from services.dify_builder.agent import form_schema, llm
+from services.dify_builder.agent import form_schema, graph_prompt, llm
 
 _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
-
-# How many characters of one node's JSON config the prompt will spend. Matches
-# ``fix._culprit_config``'s budget: enough for a realistic if-else ``cases``
-# array or an LLM prompt template, small enough that a target plus its
-# neighbours still leave room for the edit rules.
-_NODE_CONFIG_LIMIT = 1500
-
-# Whole keys are dropped to fit the budget and then NAMED, rather than cutting
-# the JSON mid-string. A purpose field that happened to serialize last would
-# otherwise disappear without a trace, and the model would fill the gap from
-# imagination -- the exact failure this rendering exists to stop.
-_TRUNCATION_MARKER = "… omitted for length: "
 
 # Keys the summary line above the block already carries; a config with nothing
 # but these says nothing and is not worth a line.
 _SUMMARY_LINE_KEYS = frozenset({"type", "title"})
 
-# graphon's own comparison literals, in graphon's own order
-# (``utils/condition/entities.py``'s ``SupportedComparisonOperator``). Spelled
-# out rather than joined from the engine at import time so this module keeps no
-# runtime dependency on graphon's internals; a test asserts the two stay equal.
-_COMPARISON_OPERATORS = (
-    "for strings and arrays: contains, not contains, start with, end with, is, is not, empty, "
-    "not empty, in, not in, all of; for numbers: =, ≠, >, <, ≥, ≤, null, not null; for files: "
-    "exists, not exists"
-)
-
-_OP_SCHEMA = (
-    'Allowed ops (each as {"op": ..., "args": {...}}):\n'
-    "- set_node_config: {node_id, path, value}\n"
-    "  path is dot-separated and walks into that node's data; an all-digit segment indexes an "
-    "array, so cases.1.conditions.0.value addresses one condition of one case.\n"
-    "  To CHANGE one element of an array, address that element BY INDEX and leave its siblings "
-    "untouched. Do not re-send the array to change one element: every key you do not repeat -- id, "
-    "case_id, varType -- is lost, and a value you retype in a different shape (90 instead of "
-    '"90") is a second change nobody asked for.\n'
-    "  To ADD an element, there is no index to write to: an index past the end of the array is "
-    "rejected. Set path to the WHOLE array and send every existing element back byte-identical -- "
-    "same keys, same ids, same operators, same value spellings as GRAPH shows them -- with the new "
-    "element appended. Adding a branch to an if-else is exactly this: repeat every existing case "
-    "unchanged and append the new one.\n"
-    "- create_node: {node_type, config, node_id?}\n"
-    "- delete_node: {node_id}\n"
-    "- connect: {from_node, to_node, source_handle?}\n"
-    "  When from_node is an if-else, question-classifier or human-input node (or a node with "
-    "error_strategy fail-branch), source_handle is required and must be one of the handles "
-    "listed for that node in GRAPH.\n"
-    "- insert_between: {edge: {source, target}, node_type, config}\n"
-    "A condition's comparison_operator must be one of the engine's literals -- "
-    + _COMPARISON_OPERATORS
-    + ". The comparison forms are the unicode characters ≥ ≤ ≠, never the ASCII >= <= != <> == and "
-    "never a word form like gte or equals. Write ≠ rather than != or <>, and = rather than ==: an "
-    "equality form cannot be guessed back, because a string compares with is / is not and a number "
-    "with = / ≠, so those forms are refused outright and the whole batch is lost with them.\n"
+# The one clause that is Edit's alone: a plan that grows a branch has to say
+# where that branch rejoins. Fix repairs the single node it diagnosed and is
+# deliberately not told to reach across the graph like this.
+_REJOIN_RULE = (
     "Follow a new branch to where it rejoins the graph. If the node on the new branch feeds an "
     "existing variable-aggregator, that aggregator's variables array does not list it yet -- also "
     "append that node's selector to it, re-sending the existing selectors byte-identical. The "
@@ -82,9 +36,11 @@ _OP_SCHEMA = (
     "show you the spelling a node of the same type uses -- copy it. A selector the run cannot "
     "resolve is skipped in silence, so the wrong variable name leaves the workflow running green "
     "and producing nothing, which is the very failure this step exists to prevent.\n"
-    f"A value shown as {credentials.REDACTED} is a secret withheld from you. Never hand it back: "
-    "leave that field out of your change entirely.\n"
 )
+
+# The ops, the branch-handle rule, the operator literals and the redaction
+# sentinel are Fix's too, and are stated once in ``graph_prompt`` for both.
+_OP_SCHEMA = graph_prompt.OP_LIST + graph_prompt.CONDITION_OPERATOR_RULES + _REJOIN_RULE + graph_prompt.REDACTION_RULE
 
 
 def _node_ids(graph: dict) -> set[str]:
@@ -107,27 +63,15 @@ def _authored_config(node: dict) -> dict[str, Any]:
     return {k: v for k, v in data.items() if k not in defaults or defaults[k] != v}
 
 
-def _dumps(config: dict[str, Any]) -> str:
-    try:
-        return json.dumps(config, ensure_ascii=False, default=str)
-    except (TypeError, ValueError):
-        return str(config)
-
-
 def _config_block(node: dict) -> str:
-    """One node's authored config as JSON, with secrets withheld and any
-    over-budget keys dropped BY NAME.
+    """One node's authored config as ``graph_prompt.config_block`` renders it:
+    JSON, secrets withheld, over-budget keys dropped BY NAME.
 
-    Same shape as ``fix._culprit_config``: the node's own ``data`` inlined into
-    the prompt under a hard character budget. Two rules that are not
-    ``_culprit_config``'s:
-
-    * secrets go through ``credentials.redact_node_config`` first. Subtracting
-      the type defaults is exactly what un-hides them -- a live token never
-      equals the ``no-auth`` / ``""`` default -- and Edit renders the target
-      AND every neighbour, so the exposure is wider than Fix's one culprit.
-    * over-budget configs shed whole trailing keys and then say which ones,
-      instead of cutting the JSON mid-string.
+    The rendering is shared with ``fix._culprit_config``. What is Edit's alone
+    is what goes into it: the type defaults are subtracted first, and that
+    subtraction is exactly what un-hides a secret -- a live token never equals
+    the ``no-auth`` / ``""`` default -- so ``redact_node_config`` runs after it,
+    over a target AND every neighbour rather than Fix's one culprit.
 
     Returns ``""`` when nothing survives that the summary line above does not
     already say.
@@ -135,16 +79,7 @@ def _config_block(node: dict) -> str:
     config = credentials.redact_node_config(_authored_config(node))
     if not set(config) - _SUMMARY_LINE_KEYS:
         return ""
-    text = _dumps(config)
-    if len(text) <= _NODE_CONFIG_LIMIT:
-        return text
-    kept = dict(config)
-    dropped: list[str] = []
-    while kept and len(_dumps(kept)) > _NODE_CONFIG_LIMIT:
-        key = next(reversed(kept))
-        del kept[key]
-        dropped.insert(0, key)
-    return _dumps(kept) + _TRUNCATION_MARKER + ", ".join(dropped)
+    return graph_prompt.config_block(config)
 
 
 def _detailed_ids(graph: dict, target_node_ids: Sequence[str]) -> set[str]:
@@ -188,12 +123,7 @@ def _graph_context(graph: dict, target_node_ids: Sequence[str] = ()) -> str:
     node_lines: list[str] = []
     rendered_any_config = False
     for n in graph.get("nodes", []):
-        d = n.get("data") or {}
-        line = f"  {n.get('id')} ({d.get('type', '?')}): {d.get('title', '')}"
-        handles = declared_branch_handles(n)
-        if handles:
-            line += f" handles={handles}"
-        node_lines.append(line)
+        node_lines.append(graph_prompt.node_line(n))
         if str(n.get("id")) in detailed:
             block = _config_block(n)
             if block:
@@ -208,12 +138,7 @@ def _graph_context(graph: dict, target_node_ids: Sequence[str] = ()) -> str:
         )
     lines.extend(node_lines)
     lines.append("EDGES:")
-    for e in graph.get("edges", []):
-        handle = e.get("sourceHandle")
-        if handle and handle != "source":
-            lines.append(f"  {e.get('source')} -[{handle}]-> {e.get('target')}")
-        else:
-            lines.append(f"  {e.get('source')} -> {e.get('target')}")
+    lines.extend(graph_prompt.edge_line(e) for e in graph.get("edges", []))
     return "\n".join(lines)
 
 

@@ -21,7 +21,7 @@ from core.dify_builder.models import (
 from core.model_manager import ModelInstance
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
 from services.dify_builder import credentials, graph_ops, preflight
-from services.dify_builder.agent import llm
+from services.dify_builder.agent import graph_prompt, llm
 
 _SEVERITIES = {"low", "medium", "high"}
 
@@ -35,14 +35,14 @@ _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
 # can auto-apply.
 _EXTERNAL_SIDE_EFFECT_TYPES: set[str] = {str(BuiltinNodeTypes.HTTP_REQUEST), str(BuiltinNodeTypes.TOOL)}
 
-_OP_SCHEMA = (
-    'Allowed ops (each as {"op": ..., "args": {...}}):\n'
-    "- set_node_config: {node_id, path, value}\n"
-    "- create_node: {node_type, config, node_id?}\n"
-    "- delete_node: {node_id}\n"
-    "- connect: {from_node, to_node}\n"
-    "- insert_between: {edge: {source, target}, node_type, config}\n"
-)
+# Shared with Edit (``graph_prompt``): both agents write the same five ops
+# through the same ``graph_ops`` apply functions, so the rules the port refuses
+# on -- a branch connect's source_handle, an indexed array path, the engine's
+# comparison literals, the redaction sentinel -- are one text for both.
+# Edit's "follow a new branch to the aggregator it rejoins" clause is NOT here:
+# Fix repairs the one node it diagnosed, and a structural op of its own already
+# forces the change to a human.
+_OP_SCHEMA = graph_prompt.OP_LIST + graph_prompt.CONDITION_OPERATOR_RULES + graph_prompt.REDACTION_RULE
 
 
 def _truncate(value: Any, limit: int = 300) -> str:
@@ -51,14 +51,19 @@ def _truncate(value: Any, limit: int = 300) -> str:
 
 
 def _graph_context(graph: Graph) -> str:
-    """Compact LLM-readable view: each node as 'id (type): title' + edges."""
+    """Compact LLM-readable view: each node as 'id (type): title' plus the
+    source handles it declares, each edge plus a non-default source handle.
+
+    Rendered by ``graph_prompt`` so Fix and Edit show a branch node the same
+    way. Without the handles a repair could not see which arm to connect to,
+    ``apply_connect`` refused every connect it proposed from an if-else /
+    question-classifier / human-input node, and that refusal spent the single
+    corrective re-prompt.
+    """
     lines = ["NODES:"]
-    for node in graph.get("nodes", []):
-        data = node.get("data") or {}
-        lines.append(f"  {node.get('id')} ({data.get('type', '?')}): {data.get('title', '')}")
+    lines.extend(graph_prompt.node_line(node) for node in graph.get("nodes", []))
     lines.append("EDGES:")
-    for edge in graph.get("edges", []):
-        lines.append(f"  {edge.get('source')} -> {edge.get('target')}")
+    lines.extend(graph_prompt.edge_line(edge) for edge in graph.get("edges", []))
     return "\n".join(lines)
 
 
@@ -199,12 +204,20 @@ def _culprit_config(node_id: str, graph: Graph) -> str:
     never the secret itself. ``graph_ops.validate_intent_args`` is the other
     half: it refuses any repair intent that hands the placeholder back, so a
     redacted value cannot be written over the real one.
+
+    Rendered by ``graph_prompt.config_block``, the same way Edit renders a
+    node: JSON, and an over-budget config loses its last key ENTIRELY and says
+    which one. It used to be ``_truncate``'d -- a Python repr cut at 1500
+    characters -- which the shared op schema turned into a trap: it tells the
+    model to re-send an array's existing elements byte-identical "as GRAPH
+    shows them", so a ``cases`` array cut mid-value would have come back
+    completed from imagination, obediently, over the case nobody could see.
     """
     for node in graph.get("nodes", []):
         if node.get("id") == node_id:
             data = node.get("data")
             config = credentials.redact_node_config(data) if isinstance(data, dict) else {}
-            return _truncate(config, limit=1500)
+            return graph_prompt.config_block(config)
     return "(culprit node not found in graph)"
 
 
