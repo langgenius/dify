@@ -1,6 +1,6 @@
 import type { FormInputItem, HumanInputSharedNodeType } from './types'
 import { produce } from 'immer'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 
@@ -11,7 +11,8 @@ const useHumanInputFormContent = <T extends HumanInputSharedNodeType>(id: string
   // Existing Lexical blocks retain callbacks, so edits must read the latest node data.
   const inputsRef = useRef(inputs)
 
-  useEffect(() => {
+  // Refresh before FormContent's passive effect persists newly inserted fields.
+  useLayoutEffect(() => {
     inputsRef.current = inputs
   }, [inputs])
 
