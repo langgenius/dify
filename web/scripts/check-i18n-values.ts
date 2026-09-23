@@ -1,3 +1,5 @@
+import { getTranslationSourceKey } from './check-i18n-plurals.ts'
+
 /**
  * Value-level checks for locale files.
  *
@@ -49,9 +51,8 @@ function sameMembers(expected: string[], actual: string[]): boolean {
 /**
  * Compare one locale file against its en-US source.
  *
- * Only keys present in both files are compared; missing and extra keys are
- * already reported by the key-level check, and reporting them twice would bury
- * the value problems this is meant to surface.
+ * Locale-specific plural variants use their English family's `other` entry.
+ * Missing and unrelated extra keys are reported by the key-level check.
  *
  * A key that is present but holds something other than a string is a different
  * case: the key check sees it and is satisfied, so nothing else would notice
@@ -61,14 +62,17 @@ function sameMembers(expected: string[], actual: string[]): boolean {
 export function findValueIssues(
   source: Record<string, unknown>,
   translation: Record<string, unknown>,
+  language = 'en-US',
 ): ValueIssue[] {
   const issues: ValueIssue[] = []
+  const sourceKeys = new Set(Object.keys(source))
 
-  for (const [key, sourceValue] of Object.entries(source)) {
+  for (const [key, rawValue] of Object.entries(translation)) {
+    const sourceKey = getTranslationSourceKey(sourceKeys, key, language)
+    if (!sourceKey) continue
+    const sourceValue = source[sourceKey]
     if (typeof sourceValue !== 'string') continue
-    if (!Object.hasOwn(translation, key)) continue
 
-    const rawValue = translation[key]
     const translatedValue = typeof rawValue === 'string' ? rawValue : ''
 
     const expectedPlaceholders = extractPlaceholders(sourceValue)
