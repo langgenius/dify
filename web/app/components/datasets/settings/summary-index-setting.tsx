@@ -24,6 +24,7 @@ const SummaryIndexSetting = ({
 }: SummaryIndexSettingProps) => {
   const { t } = useTranslation(['datasetDocuments', 'datasetSettings'])
   const summaryLabelId = useId()
+  const summaryModelLabelId = useId()
   const { data: textGenerationModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textGeneration } },
@@ -93,10 +94,14 @@ const SummaryIndexSetting = ({
         </div>
         {summaryIndexSetting?.enable && (
           <div>
-            <div className="mt-2 mb-1.5 flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
+            <div
+              id={summaryModelLabelId}
+              className="mt-2 mb-1.5 flex h-6 items-center system-xs-medium-uppercase text-text-tertiary"
+            >
               {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
             </div>
             <ModelSelector
+              aria-labelledby={summaryModelLabelId}
               value={
                 summaryIndexModelConfig && {
                   provider: summaryIndexModelConfig.providerName,
@@ -161,12 +166,13 @@ const SummaryIndexSetting = ({
           <>
             <div className="flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1">
               <div className="flex shrink-0 items-center pt-1 @3xl/settings:w-45">
-                <div className="system-sm-medium text-text-tertiary">
+                <div id={summaryModelLabelId} className="system-sm-medium text-text-tertiary">
                   {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
                 </div>
               </div>
               <div className="min-w-0 grow">
                 <ModelSelector
+                  aria-labelledby={summaryModelLabelId}
                   value={
                     summaryIndexModelConfig && {
                       provider: summaryIndexModelConfig.providerName,
@@ -222,10 +228,14 @@ const SummaryIndexSetting = ({
       {summaryIndexSetting?.enable && (
         <>
           <div>
-            <div className="mb-1.5 flex h-6 items-center system-sm-medium text-text-secondary">
+            <div
+              id={summaryModelLabelId}
+              className="mb-1.5 flex h-6 items-center system-sm-medium text-text-secondary"
+            >
               {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
             </div>
             <ModelSelector
+              aria-labelledby={summaryModelLabelId}
               value={
                 summaryIndexModelConfig && {
                   provider: summaryIndexModelConfig.providerName,
