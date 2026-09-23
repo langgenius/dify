@@ -27,7 +27,7 @@ from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes
 from models import EndUser
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +165,7 @@ class MLflowDataTrace(BaseTraceInstance):
 
         try:
             # Create child spans for workflow nodes
-            for node in self._get_workflow_nodes(trace_info.workflow_run_id):
+            for node in self._get_workflow_nodes(trace_info):
                 inputs = None
                 attributes: SpanAttributes = {
                     "node_id": node.id,
@@ -476,11 +476,19 @@ class MLflowDataTrace(BaseTraceInstance):
         )
         span.end(outputs=trace_info.outputs, end_time_ns=datetime_to_nanoseconds(trace_info.end_time))
 
-    def _get_workflow_nodes(self, workflow_run_id: str):
-        """Helper method to get workflow nodes"""
+    def _get_workflow_nodes(self, trace_info: WorkflowTraceInfo):
+        """Export caller nodes without disclosing Workflow Tool source internals."""
+        app_id = trace_info.metadata.get("app_id")
+        if not isinstance(app_id, str) or not app_id:
+            raise ValueError("No app_id found in workflow trace metadata")
         workflow_nodes = db.session.scalars(
             select(WorkflowNodeExecutionModel)
-            .where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
+            .where(
+                WorkflowNodeExecutionModel.workflow_run_id == trace_info.workflow_run_id,
+                WorkflowNodeExecutionModel.tenant_id == trace_info.tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_id,
+                WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            )
             .order_by(WorkflowNodeExecutionModel.created_at)
         ).all()
         return workflow_nodes
