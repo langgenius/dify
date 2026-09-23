@@ -486,7 +486,7 @@ wheels = [
 
 [[package]]
 name = "azure-storage-blob"
-version = "12.30.1"
+version = "12.30.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-core" },
@@ -494,9 +494,9 @@ dependencies = [
     { name = "isodate" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/39/7e/834d7bfcf999ab89d1bd3a5d235ece6824686da2f3d315e2162c613fe43d/azure_storage_blob-12.30.1.tar.gz", hash = "sha256:7a24f978c51d56a0375beebffcbe8453e59ae390d2695705848edc75083e4184", size = 624787, upload-time = "2026-08-27T19:12:54.967Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/52/afb24161875c0a6fcba4ecb93d8c1c41a88898a0ed79a570724775eadfdc/azure_storage_blob-12.30.2.tar.gz", hash = "sha256:77f8e38c319d0b0efe9444c29179277157c5c2e5ddc40ec39f1f82faacebdcb4", size = 625010, upload-time = "2026-09-16T22:50:59.297Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ff/90/f06915ccf78a6d965901aae093bd7e88e486c52e0773202656fb29c2304a/azure_storage_blob-12.30.1-py3-none-any.whl", hash = "sha256:7dc09c37f4f58508e20532b4b4c178f4763f41b01e0b9063835b994fd9d2a7b3", size = 438131, upload-time = "2026-08-27T19:12:56.796Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/05/d932e048368f634a73b29385e59120aef161bea774d2f1ccddff9b2147cd/azure_storage_blob-12.30.2-py3-none-any.whl", hash = "sha256:057d1f78c7cf27a0b7ec54ffdbe2436c63474be0a0e25cc55c9ce6addcd13bae", size = 438231, upload-time = "2026-09-16T22:51:00.783Z" },
 ]
 
 [[package]]
@@ -658,16 +658,16 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.43.88"
+version = "1.43.98"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/a4/d7b6ca0c2c21722c12b6ecc942ff3e2304c40f00724182500236616c4236/boto3-1.43.88.tar.gz", hash = "sha256:b3d03fba8ace049de27e3a6ed69b25a55d752f49d563394985e805ed5f0a0a74", size = 112730, upload-time = "2026-09-03T19:24:05.814Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/4d/8164128d7a1d408f15849ada4632da37b13a5953c9bb3993998eb5d43ca1/boto3-1.43.98.tar.gz", hash = "sha256:1ec732e023fb29c12dc8520f925b5bbbed29eeb36b5764b5a5c26052d7c721f7", size = 112658, upload-time = "2026-09-18T20:10:05.921Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/04/b024d6c8ba2ae18ebaf6597981069a6f51d97ab64d769d466936f1454954/boto3-1.43.88-py3-none-any.whl", hash = "sha256:62efee681fefc9b14244d66ab66ead11dd4a32fec0a54ac9f23106003ef210ca", size = 140024, upload-time = "2026-09-03T19:24:04.27Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/46/d29efd46ecac6637065a39418c5fb95500d70ec63e76065b5a72c936172f/boto3-1.43.98-py3-none-any.whl", hash = "sha256:7454f666a9e852a56db0a7fa23be33a899f64e27828930eac43c3edba7b34e17", size = 140033, upload-time = "2026-09-18T20:10:04.513Z" },
 ]
 
 [[package]]
@@ -690,16 +690,16 @@ bedrock-runtime = [
 
 [[package]]
 name = "botocore"
-version = "1.43.89"
+version = "1.43.100"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/53/06/f63fb1befdf77af18539fb24ea01f2da0f13965ed5de091061708ac96416/botocore-1.43.89.tar.gz", hash = "sha256:f0574942970742657b0e0716cf08c2dfe6bef8e6de5fbb7081c3424e262b4cca", size = 16074206, upload-time = "2026-09-04T19:24:52.464Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/b7/6ec11bf6b07c961ab2692cc082662f7279d7860921e2d0ed14f7f6cd6cfe/botocore-1.43.100.tar.gz", hash = "sha256:b6e64e38e3c03663a0c20d3d207afd97a0409dbc27e4e43384ac3f93cb61279f", size = 16166265, upload-time = "2026-09-22T19:21:16.93Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/9d/96f9dee6d12eedf1c2b4264eefd59c7ac8cac10daadb9a7bfccc9ee881c6/botocore-1.43.89-py3-none-any.whl", hash = "sha256:d7211220c815427fe71225acc6909e4ab5dfab3b03770e72fd16cf9eb86b3d1a", size = 15768272, upload-time = "2026-09-04T19:24:49.769Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/f2/93ce07251665ed422d4ae175b65741d3c02495acbc183b84df6ca5a850c8/botocore-1.43.100-py3-none-any.whl", hash = "sha256:34c3232bc0f895091a15249903b3cab1148f5787f12389caa2d54a9175428d51", size = 15860706, upload-time = "2026-09-22T19:21:12.351Z" },
 ]
 
 [[package]]
@@ -1690,7 +1690,7 @@ requires-dist = [
     { name = "aliyun-log-python-sdk", specifier = "==0.9.44" },
     { name = "azure-identity", specifier = ">=1.25.3,<2.0.0" },
     { name = "bleach", specifier = ">=6.4.0,<7.0.0" },
-    { name = "boto3", specifier = ">=1.43.88,<2.0.0" },
+    { name = "boto3", specifier = ">=1.43.98,<2.0.0" },
     { name = "celery", specifier = ">=5.6.3,<6.0.0" },
     { name = "croniter", specifier = ">=6.2.2,<7.0.0" },
     { name = "dify-agent", editable = "../dify-agent" },
@@ -1800,15 +1800,15 @@ dev = [
 ]
 kms = [{ name = "azure-keyvault-keys", specifier = ">=4.11.2,<5.0.0" }]
 storage = [
-    { name = "azure-storage-blob", specifier = ">=12.30.1,<13.0.0" },
+    { name = "azure-storage-blob", specifier = ">=12.30.2,<13.0.0" },
     { name = "bce-python-sdk", specifier = "==0.9.79" },
     { name = "cos-python-sdk-v5", specifier = ">=1.9.44,<2.0.0" },
     { name = "esdk-obs-python", specifier = ">=3.26.6,<4.0.0" },
-    { name = "google-cloud-storage", specifier = ">=3.13.1,<4.0.0" },
+    { name = "google-cloud-storage", specifier = ">=3.14.1,<4.0.0" },
     { name = "opendal", specifier = "==0.46.0" },
     { name = "oss2", specifier = ">=2.19.1,<3.0.0" },
     { name = "supabase", specifier = ">=2.31.0,<3.0.0" },
-    { name = "tos", specifier = ">=2.9.2,<3.0.0" },
+    { name = "tos", specifier = ">=2.9.3,<3.0.0" },
 ]
 tools = [
     { name = "cloudscraper", specifier = ">=1.2.71,<2.0.0" },
@@ -2965,7 +2965,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-storage"
-version = "3.13.1"
+version = "3.14.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core" },
@@ -2975,9 +2975,9 @@ dependencies = [
     { name = "google-resumable-media" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ce/7e/73bb7512df1d1aad6ce3f9aed847cd40e0cd400ba4a85d86ab8eb412e9cc/google_cloud_storage-3.13.1.tar.gz", hash = "sha256:a80bf8cac2794808aa61c50c5f769ecbbe2d10331bacd0d69d30e59b14b346b2", size = 17341051, upload-time = "2026-08-06T06:24:42.229Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/06/33e124df40437c292c7d666616d890c12cfea5b83842acf5be7dc3fde016/google_cloud_storage-3.14.1.tar.gz", hash = "sha256:b24e74b493c60b19b83462933a83bb831e45b6ca4924b0d75eac8e176b58b3a7", size = 17348933, upload-time = "2026-09-08T17:10:11.871Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/06/6f/d69f0e185e08ddb58c323a0a935af2b492907b5de362bc08933b0a3b5644/google_cloud_storage-3.13.1-py3-none-any.whl", hash = "sha256:98208de6c21e85cecd3eb44551894efff33d98365500e178867d4305854a770a", size = 341486, upload-time = "2026-08-06T06:23:36.548Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/65/7201c1816ae46e0b4e70a3ce61e5121963315dc9df2e00fcb8897a3d0926/google_cloud_storage-3.14.1-py3-none-any.whl", hash = "sha256:8f0fe2b74bd80ddcbd67247a3b47b81035a0a4f448569ed358fa40a46c940118", size = 343228, upload-time = "2026-09-08T17:10:09.833Z" },
 ]
 
 [[package]]
@@ -3355,8 +3355,8 @@ name = "httpcore2"
 version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/ad/f4f0e57345f1870f3e8cb624e058d7eca6e5a27d33bcc3311d9b618734cd/httpcore2-2.12.0.tar.gz", hash = "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648", size = 67548, upload-time = "2026-08-18T13:22:08.211Z" }
 wheels = [
@@ -6699,7 +6699,7 @@ wheels = [
 
 [[package]]
 name = "tos"
-version = "2.9.2"
+version = "2.9.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "crcmod" },
@@ -6709,7 +6709,7 @@ dependencies = [
     { name = "six" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/89/ee/dfbbead6cca6d5a533eff9de5e33f995697fc5dc7c25f73666fdf5be492c/tos-2.9.2.tar.gz", hash = "sha256:eff764e5b41cc8573b9d2dfa7bbb9174a453cd4da698e111f426e31ca0ed1af7", size = 164263, upload-time = "2026-06-03T06:15:24.439Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/33/f680d45b8d1233596142b70c4e87ac892df00654f25ad3d5cf00455c3d2f/tos-2.9.3.tar.gz", hash = "sha256:fc048bd71f932c5c50b3098f3cb5303b856bee2b60dc5ae4b18ea4b34835e13c", size = 179445, upload-time = "2026-09-20T02:54:08.416Z" }
 
 [[package]]
 name = "tqdm"
