@@ -50,7 +50,7 @@ type BaseNodeProps = {
 }
 
 const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const translateWorkflow: WorkflowTranslator = (selector, options) => t(selector, options)
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()

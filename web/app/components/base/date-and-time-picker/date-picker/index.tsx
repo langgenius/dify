@@ -36,7 +36,7 @@ const DatePicker = ({
   noConfirm,
   getIsDateDisabled,
 }: DatePickerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'time'])
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState<ViewType>(ViewType.date)
   const dateConfirmationViews: readonly ViewType[] = [ViewType.date, ViewType.time]

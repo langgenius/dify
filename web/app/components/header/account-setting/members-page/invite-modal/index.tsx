@@ -47,7 +47,7 @@ type SubmissionError =
 type InviteFormProps = Omit<InviteModalProps, 'open' | 'trigger'>
 
 function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const locale = useLocale()
   const queryClient = useQueryClient()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
@@ -190,7 +190,7 @@ export function InviteModal({
   onOpenChange,
   onSend,
 }: InviteModalProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => onOpenChange(nextOpen)}>

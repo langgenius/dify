@@ -102,7 +102,7 @@ type ComplianceDocRowItemProps = {
 }
 
 function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common'])
   const { data: plan } = useQuery(
     consoleQuery.features.get.queryOptions({
       enabled: docName !== DocName.GDPR,
@@ -188,7 +188,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
 
 // Submenu-only: this component must be rendered within an existing DropdownMenu root.
 export default function Compliance() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <DropdownMenuSub>

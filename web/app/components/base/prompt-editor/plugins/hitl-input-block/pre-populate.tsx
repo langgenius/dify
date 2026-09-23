@@ -35,7 +35,7 @@ type PlaceholderProps = {
   onTypeClick: (isVariable: boolean) => void
 }
 const Placeholder = ({ varPickerProps, onTypeClick }: PlaceholderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <div className="mt-1 h-20 rounded-lg bg-components-input-bg-normal px-3 pt-2 system-sm-regular text-text-tertiary">
       <div className="flex flex-wrap items-center leading-5">
@@ -74,7 +74,7 @@ const PrePopulate: FC<Props> = ({
   value,
   onValueChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [onPlaceholderClicked, setOnPlaceholderClicked] = useState(false)
   const handleTypeChange = useCallback(
     (isVar: boolean) => {

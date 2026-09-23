@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const NoDataPlaceholder: FC<Props> = ({ className, noPlugins }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const icon = noPlugins ? (
     <span aria-hidden className="i-custom-vender-other-group size-6 text-text-quaternary" />
   ) : (

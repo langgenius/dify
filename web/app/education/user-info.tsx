@@ -8,7 +8,7 @@ import { useLogout } from '@/service/use-common'
 
 const UserInfo = () => {
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,

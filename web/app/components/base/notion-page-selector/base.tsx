@@ -44,7 +44,7 @@ const NotionPageSelector = ({
   credentialList,
   onSelectCredential,
 }: NotionPageSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [searchValue, setSearchValue] = useState('')
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 

@@ -102,7 +102,7 @@ const EndpointModal = ({
   pluginDetail,
 }: Props) => {
   const getValueFromI18nObject = useRenderI18nObject()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'tools'])
   const fields = [NAME_FIELD, ...settings]
   const formSchemas = fields.map(toFormSchema)
   const [tempCredential, setTempCredential] = React.useState<Record<string, unknown>>(() => {

@@ -34,7 +34,7 @@ export function PublisherEnvironmentSummarySection({
   onGoToPublish: () => void
   onShowAllVersions: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['deployments', 'workflow'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const deploymentState = deployment?.deployment
   const deployedVersion = deploymentState?.current_version

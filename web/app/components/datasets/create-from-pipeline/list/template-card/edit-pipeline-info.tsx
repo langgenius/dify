@@ -20,7 +20,7 @@ type EditPipelineInfoProps = {
 }
 
 const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const [name, setName] = useState(pipeline.name)
   const iconInfo = pipeline.icon
   const [appIcon, setAppIcon] = useState<AppIconSelection>(

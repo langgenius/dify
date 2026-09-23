@@ -50,7 +50,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   isInWorkflow,
   scope = ModelTypeEnum.textGeneration,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
   const scopeFeatures = useMemo((): ModelFeatureEnum[] => {

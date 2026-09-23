@@ -356,7 +356,7 @@ const VarReferenceVars: FC<Props> = ({
   searchInputRef: externalSearchInputRef,
   preferSchemaType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [internalSearchValue, setInternalSearchValue] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
   const internalSearchInputRef = useRef<HTMLInputElement>(null)

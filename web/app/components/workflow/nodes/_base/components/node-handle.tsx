@@ -150,7 +150,7 @@ export const NodeSourceHandle = memo(
     nodeSelectorClassName,
     showExceptionStatus,
   }: NodeHandleProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const shouldAutoOpenStartNodeSelector = useStore((s) => s.shouldAutoOpenStartNodeSelector)
     const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
     const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)

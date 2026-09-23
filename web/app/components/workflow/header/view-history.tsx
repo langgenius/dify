@@ -21,7 +21,7 @@ export type ViewHistoryProps = {
   historyUrl?: string
 }
 const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHistoryProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const isChatMode = useIsChatMode()
   const [open, setOpen] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()

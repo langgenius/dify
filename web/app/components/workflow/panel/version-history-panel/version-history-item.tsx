@@ -46,7 +46,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   isLast,
   hideActionMenu,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
 
   const formatTime = (time: number) => dayjs.unix(time).format('YYYY-MM-DD HH:mm')

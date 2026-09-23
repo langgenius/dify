@@ -45,7 +45,7 @@ type PresetsParameterProps = {
 }
 
 function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParameterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const supportedParameterNameSet = supportedParameterNames
     ? new Set(supportedParameterNames)
     : undefined

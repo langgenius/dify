@@ -23,7 +23,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
   },
   checkValid(
     payload,
-    t: TFunction<'workflow'>,
+    t: TFunction<['workflow']>,
     moreDataForCheckValid: {
       strategyProvider?: AgentProviderResponse
       strategy?: AgentStrategyEntity

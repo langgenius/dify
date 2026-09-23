@@ -18,7 +18,7 @@ type Props = Readonly<{
 }>
 
 const List: FC<Props> = ({ list, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [isShowEditModal, setIsShowEditModal] = useState(false)
 
   const handleItemChange = useCallback(

@@ -36,7 +36,7 @@ type Props = Readonly<{
 }>
 
 const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const parameterId = useId()
   const locale = useLocale()
   const language = getPluginLanguage(locale)

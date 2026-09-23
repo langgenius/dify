@@ -43,7 +43,7 @@ export const DelimiterInput: FC<
 > = ({ tooltip, onValueChange, value, ...rest }) => {
   const labelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const generatedInputId = useId()
   const inputId = rest.id ?? generatedInputId
   const isComposing = useRef(false)
@@ -163,7 +163,7 @@ type LabeledCompoundNumberInputProps = Omit<CompoundNumberInputProps, 'label'>
 export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
   const maxValue = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const label = t(($) => $['stepTwo.maxLength'], { ns: 'datasetCreation' })
   return (
     <FormField label={<div className="mb-1 system-sm-semibold">{label}</div>}>
@@ -182,7 +182,7 @@ export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
 export const OverlapInput: FC<LabeledCompoundNumberInputProps> = (props) => {
   const labelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const label = t(($) => $['stepTwo.overlap'], { ns: 'datasetCreation' })
   return (
     <FormField

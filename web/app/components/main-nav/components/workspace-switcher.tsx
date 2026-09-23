@@ -43,7 +43,7 @@ function WorkspaceSwitchControls({
   onSearchTextChange: (value: string) => void
   onSortChange: (value: WorkspaceSort) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const sortMenuLabel = t(($) => $['mainNav.workspace.sort.openMenu'], {
     ns: 'common',
@@ -152,7 +152,7 @@ export function WorkspaceSwitcher({
   isPending,
   onSwitchWorkspace,
 }: WorkspaceSwitcherProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const workspaceListLabelId = useId()
   const [workspaceSearchText, setWorkspaceSearchText] = useState('')
   const [workspaceSort, setWorkspaceSort] = useState<WorkspaceSort>('lastOpened')

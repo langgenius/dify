@@ -150,9 +150,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     useQuery: vi.fn((options: { queryKey?: readonly string[] }) => {
       const queryKey = options.queryKey?.[0]
 
-      if (queryKey === 'default-model') {
-        return { data: { data: modelHooksState.defaultTextGenerationModel }, isPending: false }
-      }
       if (queryKey === 'agent') return mocks.queryState.agent
       if (queryKey === 'composer') return mocks.queryState.composer
       if (queryKey === 'version') return mocks.queryState.version
@@ -213,13 +210,6 @@ vi.mock('@/service/console', () => ({
       get: {
         queryKey: () => ['system-features'],
         queryOptions: () => ({ queryKey: ['system-features'] }),
-      },
-    },
-    workspaces: {
-      current: {
-        defaultModel: {
-          get: { queryOptions: () => ({ queryKey: ['default-model'] }) },
-        },
       },
     },
     agent: {
@@ -327,7 +317,6 @@ vi.mock('../components/orchestrate', async () => {
   return {
     AgentOrchestratePanel: (props: {
       bottomAction?: ReactNode
-      currentModel?: { model: string }
       isBuildDraftActive?: boolean
       onExitVersions?: () => void
       onOpenVersions?: () => void
@@ -344,7 +333,6 @@ vi.mock('../components/orchestrate', async () => {
           <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
           <span>{`publish:${props.showPublishBar ? 'yes' : 'no'}`}</span>
           <span>{`prompt:${prompt}`}</span>
-          <span>{`model:${props.currentModel?.model ?? 'none'}`}</span>
           <button type="button" onClick={() => setPrompt('edited draft prompt')}>
             edit prompt
           </button>
@@ -2352,62 +2340,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
     })
 
-    it('should save the workspace default model before starting a build', async () => {
-      const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
-          },
-        },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: undefined as unknown,
-        dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
-        isFetching: false,
-        isError: true,
-        isPending: false,
-        isSuccess: false,
-        refetch: vi.fn(),
-      }
-
-      render(
-        <QueryClientProvider client={queryClient}>
-          <AgentConfigurePage agentId="agent-1" />
-        </QueryClientProvider>,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
-
-      await waitFor(() => {
-        expect(mocks.checkoutBuildDraft).toHaveBeenCalled()
-      })
-      expect(mocks.saveComposerDraft).toHaveBeenCalledWith(
-        expect.objectContaining({
-          body: expect.objectContaining({
-            agent_soul: expect.objectContaining({
-              model: expect.objectContaining({
-                model_provider: 'langgenius/openai/openai',
-                model: 'gpt-4o-mini',
-              }),
-            }),
-          }),
-        }),
-        expect.anything(),
-      )
-      expectFirstMockCallBefore(mocks.saveComposerDraft, mocks.checkoutBuildDraft)
-    })
-
-    it('should require a model when neither the draft nor the workspace has one', async () => {
-      modelHooksState.defaultTextGenerationModel = undefined
+    it('should require an explicit model even when the workspace has a default', async () => {
       const queryClient = createQueryClient()
       mocks.queryState.composer = {
         data: {
@@ -3447,9 +3380,6 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'model:none',
-      )
       await user.click(screen.getByRole('button', { name: 'discard build draft' }))
 
       await waitFor(() =>
@@ -3471,11 +3401,6 @@ describe('AgentConfigurePage', () => {
         expect.any(Object),
       )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-      await waitFor(() => {
-        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-          'model:gpt-4o-mini',
-        )
-      })
     })
 
     it('should keep exiting build draft when debug conversation refresh fails after discarding build draft', async () => {

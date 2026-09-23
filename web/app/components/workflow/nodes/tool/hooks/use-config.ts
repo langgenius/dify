@@ -29,7 +29,7 @@ const formatDisplayType = (output: Record<string, unknown>): string => {
 const useConfig = (id: string, payload: ToolNodeType) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const language = useLanguage()
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ToolNodeType>(id, payload)

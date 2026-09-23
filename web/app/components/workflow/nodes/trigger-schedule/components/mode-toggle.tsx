@@ -8,7 +8,7 @@ type ModeToggleProps = {
 }
 
 const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const handleToggle = () => {
     const newMode = mode === 'visual' ? 'cron' : 'visual'

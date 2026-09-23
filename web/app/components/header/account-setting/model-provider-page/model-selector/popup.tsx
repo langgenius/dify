@@ -82,7 +82,7 @@ function Popup({
   onOpenMarketplace,
   onHide,
 }: PopupProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { theme } = useTheme()
   const language = useLanguage()
   const previewCardHandle = useMemo(

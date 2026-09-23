@@ -49,7 +49,7 @@ const InputField: React.FC<InputFieldProps> = ({
   onCancel,
 }) => {
   const outputVariableNameInputId = React.useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const [tempPayload, setTempPayload] = useState<FormInputItem>(
     () => payload || createDefaultParagraphFormInput(),
   )

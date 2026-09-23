@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 const GlobalInputs = () => {
   const titleId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <div className="flex items-center gap-x-1">

@@ -25,14 +25,14 @@ const isValidTimeFormat = (time: string): boolean => {
   )
 }
 
-const validateHourlyConfig = (config: any, t: TFunction<'workflow'>): string => {
+const validateHourlyConfig = (config: any, t: TFunction<['workflow']>): string => {
   if (config.on_minute === undefined || config.on_minute < 0 || config.on_minute > 59)
     return t(($) => $['nodes.triggerSchedule.invalidOnMinute'], { ns: 'workflow' })
 
   return ''
 }
 
-const validateDailyConfig = (config: any, t: TFunction<'workflow'>): string => {
+const validateDailyConfig = (config: any, t: TFunction<['workflow']>): string => {
   const i18nPrefix = 'errorMsg'
 
   if (!config.time)
@@ -47,7 +47,7 @@ const validateDailyConfig = (config: any, t: TFunction<'workflow'>): string => {
   return ''
 }
 
-const validateWeeklyConfig = (config: any, t: TFunction<'workflow'>): string => {
+const validateWeeklyConfig = (config: any, t: TFunction<['workflow']>): string => {
   const dailyError = validateDailyConfig(config, t)
   if (dailyError) return dailyError
 
@@ -68,7 +68,7 @@ const validateWeeklyConfig = (config: any, t: TFunction<'workflow'>): string => 
   return ''
 }
 
-const validateMonthlyConfig = (config: any, t: TFunction<'workflow'>): string => {
+const validateMonthlyConfig = (config: any, t: TFunction<['workflow']>): string => {
   const dailyError = validateDailyConfig(config, t)
   if (dailyError) return dailyError
 
@@ -99,7 +99,7 @@ const validateMonthlyConfig = (config: any, t: TFunction<'workflow'>): string =>
 
 const validateVisualConfig = (
   payload: ScheduleTriggerNodeType,
-  t: TFunction<'workflow'>,
+  t: TFunction<['workflow']>,
 ): string => {
   const i18nPrefix = 'errorMsg'
   const { visual_config } = payload
@@ -137,7 +137,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
     ...getDefaultScheduleConfig(),
     cron_expression: '',
   } as ScheduleTriggerNodeType,
-  checkValid(payload: ScheduleTriggerNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: ScheduleTriggerNodeType, t: TFunction<['workflow']>) {
     const i18nPrefix = 'errorMsg'
     let errorMessages = ''
     if (!errorMessages && !payload.mode)

@@ -12,7 +12,7 @@ type ApiAccessProps = {
 }
 
 const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
 
   return (
