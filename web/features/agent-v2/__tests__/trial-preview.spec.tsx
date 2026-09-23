@@ -1,29 +1,34 @@
-import type { TrialAgentPreviewResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { AgentAppComposerResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentTrialPreview } from '../trial-preview'
 
 const { fetchPreview } = vi.hoisted(() => ({
-  fetchPreview: vi.fn<() => Promise<TrialAgentPreviewResponse>>(),
+  fetchPreview: vi.fn<() => Promise<AgentAppComposerResponse>>(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    trialApps: {
-      byAppId: {
-        agentPreview: {
-          get: {
-            queryOptions: ({ input }: { input: { params: { app_id: string } } }) => ({
-              queryKey: ['trial-preview', input.params.app_id],
-              queryFn: fetchPreview,
-            }),
+vi.mock('@/service/console', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...original,
+    consoleQuery: {
+      workspaces: original.consoleQuery.workspaces,
+      trialApps: {
+        byAppId: {
+          agentComposer: {
+            get: {
+              queryOptions: ({ input }: { input: { params: { app_id: string } } }) => ({
+                queryKey: ['trial-preview', input.params.app_id],
+                queryFn: fetchPreview,
+              }),
+            },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
 // The editable model picker must never be mounted by a public preview.
 vi.mock(
@@ -49,12 +54,38 @@ beforeEach(() => vi.clearAllMocks())
 
 it('shows published configuration with read-only collapsible sections', async () => {
   fetchPreview.mockResolvedValue({
-    system_prompt: 'You are a research assistant.',
-    model: { provider: 'openai', model: 'gpt-4o' },
-    tools: [{ name: 'search', description: 'Search the web' }],
-    knowledge: [{ name: 'Handbook', description: 'Product documentation' }],
-    skills: [{ name: 'Research', description: 'Research skill' }],
-    files: [{ name: 'guide.txt', description: '' }],
+    variant: 'agent_app',
+    agent: { id: 'agent-1', name: 'Research', description: '', scope: 'roster', status: 'active' },
+    active_config_is_published: true,
+    save_options: [],
+    agent_soul: {
+      prompt: { system_prompt: 'You are a research assistant.' },
+      model: { plugin_id: 'openai', model_provider: 'openai', model: 'gpt-4o' },
+      tools: {
+        dify_tools: [
+          {
+            provider_type: 'api',
+            provider_id: 'search',
+            tool_name: 'search',
+            description: 'Search the web',
+          },
+        ],
+      },
+      knowledge: {
+        sets: [
+          {
+            id: 'knowledge-1',
+            name: 'Handbook',
+            description: 'Product documentation',
+            datasets: [{ id: 'dataset-1' }],
+            query: { mode: 'user_query', value: 'query' },
+            retrieval: { mode: 'single' },
+          },
+        ],
+      },
+      config_skills: [{ name: 'Research', description: 'Research skill', file_id: 'skill-1' }],
+      config_files: [{ name: 'guide.txt', file_kind: 'upload_file', file_id: 'file-1' }],
+    },
   })
   const user = userEvent.setup()
   renderPreview()
