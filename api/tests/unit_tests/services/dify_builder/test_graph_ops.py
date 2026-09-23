@@ -24,6 +24,7 @@ from services.dify_builder.graph_ops import (
     diff_graphs,
     validate_intent_args,
 )
+from services.dify_builder.preflight import preflight_errors
 
 # ---- validate_intent_args --------------------------------------------------
 
@@ -1159,3 +1160,104 @@ def test_value_at_path_reports_an_absent_slot_instead_of_raising():
     assert graph_ops.value_at_path(data, "cases.0.logical_operator") == (False, None)  # not written yet
     assert graph_ops.value_at_path(data, "cases.7.case_id") == (False, None)  # index past the end
     assert graph_ops.value_at_path(data, "title.nested") == (False, None)  # walks into a string
+
+
+def test_a_reroute_that_changes_only_the_source_handle_is_not_already_present():
+    """The idempotent-re-entry rule keys a connect on the edge it would create,
+    HANDLE INCLUDED. Keyed on the pair alone, moving an arm of a branch from one
+    handle to another matched the edge that is already there and was dropped as
+    a no-op -- in the dry run and at the write chokepoint alike -- so a
+    legitimate repair was silently discarded on a branch whose whole theme is
+    the opposite."""
+    graph = {
+        "nodes": [
+            {"id": "branch", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}},
+            {"id": "next", "data": {"type": "end"}},
+        ],
+        "edges": [{"id": "e1", "source": "branch", "target": "next", "sourceHandle": "true"}],
+    }
+    reroute = MutationIntent(op="connect", args={"from_node": "branch", "to_node": "next", "source_handle": "false"})
+    same = MutationIntent(op="connect", args={"from_node": "branch", "to_node": "next", "source_handle": "true"})
+
+    already_present = graph_ops.already_present_predicate(graph, [reroute, same])
+
+    assert already_present(reroute) is False
+    assert already_present(same) is True  # ...and a true re-send is still a no-op
+
+
+def test_a_connect_with_no_handle_matches_an_edge_on_the_default_handle():
+    """graphon reads a missing ``sourceHandle`` as ``"source"``, so an intent
+    that omits it and an edge persisted with it are the same edge."""
+    graph = {
+        "nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}],
+        "edges": [{"id": "e1", "source": "a", "target": "b", "sourceHandle": "source"}],
+    }
+    intent = MutationIntent(op="connect", args={"from_node": "a", "to_node": "b"})
+
+    assert graph_ops.already_present_predicate(graph, [intent])(intent) is True
+
+
+def test_a_partial_model_keeps_the_rest_of_the_default_model_block():
+    """The defaults merge goes one level into a dict-valued default key. An LLM
+    writes the two fields it was thinking about (``provider``, ``name``); a
+    shallow merge dropped ``mode`` and ``completion_params`` with them, and the
+    engine refused the node for ``model.mode`` -- spending the one corrective
+    re-prompt on a field the default was already carrying."""
+    graph: dict = {"nodes": [], "edges": []}
+    config = {"model": {"provider": "openai", "name": "gpt-4o"}, "prompt_template": [{"role": "user", "text": "hi"}]}
+
+    new_graph, _ = graph_ops.apply_create_node(graph, "llm", config, node_id="llm1")
+
+    model = new_graph["nodes"][0]["data"]["model"]
+    assert model["provider"] == "openai"  # the caller's keys still win
+    assert model["name"] == "gpt-4o"
+    assert model["mode"] == "chat"  # ...and the default's survive alongside them
+    assert model["completion_params"] == {"temperature": 0.7}
+    assert preflight_errors(new_graph) == []
+
+
+def test_a_caller_that_replaces_a_dict_default_with_a_scalar_still_wins():
+    """One level deeper, not a recursive merge of everything: a caller value
+    that is NOT a dict replaces the default outright, exactly as before."""
+    graph: dict = {"nodes": [], "edges": []}
+
+    new_graph, _ = graph_ops.apply_create_node(graph, "llm", {"context": None}, node_id="llm1")
+
+    assert new_graph["nodes"][0]["data"]["context"] is None
+
+
+def test_a_partial_authorization_is_not_completed_from_the_default():
+    """The exclusion that keeps the deeper merge from inventing a purpose. The
+    http default is ``{"type": "no-auth", "config": None}``; an LLM writing only
+    ``config`` means "use this credential". Merging the default's ``type`` in
+    would produce a node that looks authorized, sends nothing, and is written in
+    silence -- so a block whose ``type`` the caller did not write keeps the
+    shallow behaviour, and the chokepoint normalizer infers the type from the
+    config that IS there."""
+    graph: dict = {"nodes": [], "edges": []}
+    config = {
+        "method": "get",
+        "url": "https://example.test",
+        "authorization": {"config": {"type": "bearer", "api_key": "{{#start.key#}}"}},
+    }
+
+    new_graph, _ = graph_ops.apply_create_node(graph, "http-request", config, node_id="h")
+
+    authorization = new_graph["nodes"][0]["data"]["authorization"]
+    assert "type" not in authorization  # left for the normalizer to infer, not defaulted to no-auth
+    assert authorization["config"]["api_key"] == "{{#start.key#}}"
+
+
+def test_an_authorization_that_does_write_its_type_still_gains_the_defaults_siblings():
+    """The other half: once the caller has written the ``type``, nothing is
+    being reinterpreted and the deeper merge applies as it does everywhere
+    else."""
+    graph: dict = {"nodes": [], "edges": []}
+    default_config = graph_ops.default_config_or_empty("http-request")["authorization"]
+    assert set(default_config) == {"type", "config"}
+
+    new_graph, _ = graph_ops.apply_create_node(
+        graph, "http-request", {"authorization": {"type": "no-auth"}}, node_id="h"
+    )
+
+    assert new_graph["nodes"][0]["data"]["authorization"] == {"type": "no-auth", "config": default_config["config"]}
