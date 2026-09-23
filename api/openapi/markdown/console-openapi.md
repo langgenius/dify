@@ -9339,6 +9339,19 @@ Remove one or more tag bindings from a target.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialAppDetailResponse](#trialappdetailresponse)<br> |
 
+### [GET] /trial-apps/{app_id}/agent-composer
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published Agent configuration | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+
 ### [POST] /trial-apps/{app_id}/audio-to-text
 #### Parameters
 
@@ -9370,6 +9383,20 @@ Remove one or more tag bindings from a target.
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
+
+### [POST] /trial-apps/{app_id}/chat-messages/{task_id}/stop
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/completion-messages
 #### Parameters
@@ -9440,6 +9467,21 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+
+### [GET] /trial-apps/{app_id}/package
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Published snapshot from the template download link | Yes | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published Agent template package | **application/zip**: binary<br> |
+| 404 | Published template unavailable |  |
 
 ### [GET] /trial-apps/{app_id}/parameters
 **Retrieve app parameters**
@@ -15894,8 +15936,11 @@ This class is used to store the schema information of an api based tool.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| mode | string | Import mode | Yes |
+| mode | string | Import mode: yaml-content, yaml-url, ifpkg-url, or template | Yes |
 | name | string |  | No |
+| package_url | string | New Agent template .ifpkg download URL for ifpkg-url mode | No |
+| template_id | string |  | No |
+| version_id | string |  | No |
 | yaml_content | string |  | No |
 | yaml_url | string |  | No |
 
@@ -21655,6 +21700,12 @@ Resource types understood by access policies.
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
 
+#### RecommendedAgentPackageQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| version_id | string (uuid) | Published snapshot from the template download link | Yes |
+
 #### RecommendedAppDetailResponse
 
 | Name | Type | Description | Required |
@@ -21666,6 +21717,8 @@ Resource types understood by access policies.
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
+| package_url | string | Download URL for a New Agent .ifpkg template | No |
+| version_id | string | Published version for direct local template creation | No |
 
 #### RecommendedAppInfoResponse
 
