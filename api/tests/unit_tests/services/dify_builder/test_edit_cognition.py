@@ -8,6 +8,7 @@ from core.dify_builder.models import MutationIntent
 from graphon.utils.condition.entities import Condition, SupportedComparisonOperator
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import edit
+from services.dify_builder.preflight import preflight_errors
 
 
 class _Msg:
@@ -526,7 +527,7 @@ def test_a_write_carrying_the_sentinel_leaves_the_stored_credential_intact():
         },
     )
 
-    applicable, rejected = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
+    applicable, rejected, _dry = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
 
     assert applicable == []
     assert len(rejected) == 1
@@ -544,7 +545,7 @@ def test_a_nested_sentinel_in_a_create_node_config_is_refused_too():
         },
     )
 
-    _applicable, rejected = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
+    _applicable, rejected, _dry = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
 
     assert len(rejected) == 1
 
@@ -555,7 +556,7 @@ def test_a_real_value_for_the_same_field_is_still_writable():
         args={"node_id": "http", "path": "headers", "value": "Authorization: Bearer tok-new"},
     )
 
-    applicable, rejected = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
+    applicable, rejected, _dry = graph_ops.filter_applicable(_SECRET_HTTP_GRAPH, [intent])
 
     assert rejected == []
     assert applicable == [intent]
@@ -708,3 +709,97 @@ def test_op_schema_teaches_the_array_and_operator_rules_the_engine_enforces():
 
     # and never hand the redaction sentinel back (Task 3's withheld secrets).
     assert credentials.REDACTED in schema
+
+
+# ---- the node-data half of the check: a proposal is engine-checked before the gate ----
+#
+# Triage edit-branch-failure-2026-09-22, "Why every retry is blind": the live
+# Edit's four intents all passed the structural filter ("applicable, 0
+# rejected"), the batch then died at ``apply_repair``'s preflight, and the one
+# corrective re-prompt could never fire because nothing had been rejected -- so
+# every re-approval re-sent a byte-identical prompt.
+#
+# ``==`` is the error these tests are built on because NO normalizer heals it and
+# none may: graphon spells string equality ``is`` / ``is not`` and number
+# equality ``=`` / ``≠``, so ``==`` is ambiguous between them (unlike ``>=``,
+# which can only mean ``≥`` and IS healed before the preflight -- which is why it
+# can no longer prove anything here).
+
+_SET_EQ = '{"op": "set_node_config", "args": {"node_id": "node2", "path": "cases.0.conditions.0.%s", "value": "%s"}}'
+
+
+def _operator_intents(operator: str) -> str:
+    return '{"intents": [' + _SET_EQ % ("comparison_operator", operator) + "]}"
+
+
+def test_build_edit_intents_reprompts_on_a_node_the_engine_would_refuse_and_recovers():
+    m = _RecordingInstance([_operator_intents("=="), _operator_intents("≥")])
+
+    out = edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    assert len(m.calls) == 2  # the batch was structurally applicable, and STILL burned the re-prompt
+    assert [i.args["value"] for i in out] == ["≥"]
+
+
+def test_the_corrective_reprompt_quotes_the_engines_own_words():
+    m = _RecordingInstance([_operator_intents("=="), _operator_intents("≥")])
+
+    edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    retry_prompt = m.calls[1]["prompt_messages"][1].content
+    assert "Your previous intents were invalid:" in retry_prompt
+    # the engine's literal message, node named and field named -- not model prose
+    assert "the draft would then not start: node 'node2' (if-else): " in retry_prompt
+    assert "cases.0.conditions.0.comparison_operator" in retry_prompt
+    assert "Input should be" in retry_prompt
+
+
+def test_a_batch_the_engine_accepts_never_spends_the_reprompt():
+    m = _RecordingInstance([_operator_intents("≥")])
+
+    out = edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    assert len(m.calls) == 1
+    assert len(out) == 1
+
+
+def test_the_drafts_pre_existing_problems_do_not_spend_the_reprompt():
+    """``_TARGET_GRAPH``'s start and end nodes are already invalid -- the user's
+    own half-finished draft. New problems only: the edit is unrelated to them and
+    must go through in one call."""
+    assert len(preflight_errors(_TARGET_GRAPH)) == 2  # the draft is already broken...
+    m = _RecordingInstance(['{"intents": [' + _SET_EQ % ("value", "90") + "]}"])
+
+    out = edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    assert len(m.calls) == 1  # ...and not one of those problems is this edit's fault
+    assert [i.args["value"] for i in out] == ["90"]
+
+
+def test_a_batch_refused_twice_still_goes_to_the_gate_where_the_write_refuses_it_loudly():
+    """The budget is ONE corrective re-prompt. A model that writes the same
+    unhealable operator twice has spent it: the batch is returned, ``apply_repair``
+    refuses it by name, and the handler parks the session with the engine's reason
+    rather than reporting an empty change set nobody can act on."""
+    m = _RecordingInstance([_operator_intents("=="), _operator_intents("==")])
+
+    out = edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    assert len(m.calls) == 2  # exactly one retry, never two
+    assert [i.args["value"] for i in out] == ["=="]
+
+
+def test_a_retry_that_returns_nothing_usable_falls_back_to_the_first_attempt():
+    first = (
+        '{"intents": ['
+        + _SET_EQ % ("value", "90")
+        + ", "
+        + '{"op": "set_node_config", "args": {"node_id": "ghost", "path": "x", "value": 1}}'
+        + "]}"
+    )
+    m = _RecordingInstance([first, '{"intents": "oops"}'])
+
+    out = edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
+
+    assert len(m.calls) == 2
+    assert [i.args["node_id"] for i in out] == ["node2"]
