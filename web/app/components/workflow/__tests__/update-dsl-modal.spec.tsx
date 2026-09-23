@@ -20,6 +20,8 @@ class MockFileReader {
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
+const mockIsCollaborationConnected = vi.hoisted(() => vi.fn(() => true))
+const mockReplaceGraphFromCommittedDraft = vi.hoisted(() => vi.fn((..._args: unknown[]) => true))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -45,6 +47,8 @@ vi.mock('@/service/workflow', () => ({
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     emitWorkflowUpdate: mockEmitWorkflowUpdate,
+    isConnected: mockIsCollaborationConnected,
+    replaceGraphFromCommittedDraft: mockReplaceGraphFromCommittedDraft,
   },
 }))
 
@@ -102,6 +106,8 @@ describe('UpdateDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
     })
+    mockIsCollaborationConnected.mockReturnValue(true)
+    mockReplaceGraphFromCommittedDraft.mockReturnValue(true)
     mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
   })
 
@@ -175,6 +181,76 @@ describe('UpdateDSLModal', () => {
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('commits the imported graph to collaboration before updating the canvas or other clients', async () => {
+    const importedNode = {
+      id: 'imported-start',
+      type: 'custom',
+      position: { x: 0, y: 0 },
+      data: { type: 'start', title: 'Start', desc: '' },
+    }
+    mockFetchWorkflowDraft.mockResolvedValueOnce({
+      graph: { nodes: [importedNode], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+      features: {},
+      hash: 'imported-hash',
+      conversation_variables: [],
+      environment_variables: [],
+    })
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
+    const [appId, nodes, edges] = mockReplaceGraphFromCommittedDraft.mock.calls[0]!
+    expect(appId).toBe('app-1')
+    expect(nodes).toEqual([expect.objectContaining({ id: 'imported-start' })])
+    expect(edges).toEqual([])
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'WORKFLOW_DATA_UPDATE',
+        payload: expect.objectContaining({ nodes, edges, hash: 'imported-hash' }),
+      }),
+    )
+    expect(mockReplaceGraphFromCommittedDraft.mock.invocationCallOrder[0]).toBeLessThan(
+      mockEmit.mock.invocationCallOrder[0]!,
+    )
+    expect(mockEmit.mock.invocationCallOrder[0]).toBeLessThan(
+      mockEmitWorkflowUpdate.mock.invocationCallOrder[0]!,
+    )
+  })
+
+  it('updates the imported canvas when collaboration is disconnected', async () => {
+    mockIsCollaborationConnected.mockReturnValue(false)
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
+    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
+    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({ type: 'WORKFLOW_DATA_UPDATE' }))
+  })
+
+  it('reloads instead of showing a graph that collaboration cannot accept', async () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    mockReplaceGraphFromCommittedDraft.mockReturnValue(false)
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
+    expect(mockEmit).not.toHaveBeenCalled()
+    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+    reload.mockRestore()
   })
 
   it('should show Agent package warnings returned by a completed import', async () => {
@@ -354,6 +430,28 @@ describe('UpdateDSLModal', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'app.newApp.Confirm' })).not.toBeInTheDocument()
     })
+  })
+
+  it('reloads the committed draft when refreshing after import fails', async () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    mockFetchWorkflowDraft.mockRejectedValueOnce(new Error('Draft refresh unavailable'))
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
+    expect(mockToastError).toHaveBeenCalledWith('common.error', {
+      description: 'Draft refresh unavailable',
+    })
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
+    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
+    expect(mockHandleCheckPluginDependencies).not.toHaveBeenCalled()
+    reload.mockRestore()
   })
 
   it('should show an error when the selected file content is invalid for the current app mode', async () => {

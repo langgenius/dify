@@ -66,18 +66,26 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
 
       const { nodes, edges, viewport } = graph
+      const importedNodes = initialNodes(nodes, edges)
+      const importedEdges = initialEdges(edges, nodes)
+      if (
+        collaborationManager.isConnected() &&
+        !collaborationManager.replaceGraphFromCommittedDraft(app_id, importedNodes, importedEdges)
+      )
+        throw new Error('Collaborative graph is not ready to apply the imported draft.')
+
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,
         payload: {
-          nodes: initialNodes(nodes, edges),
-          edges: initialEdges(edges, nodes),
+          nodes: importedNodes,
+          edges: importedEdges,
           viewport,
           features: normalizeWorkflowFeatures(features),
           hash,
           conversation_variables: conversation_variables || [],
           environment_variables: environment_variables || [],
         },
-      } as any)
+      })
     },
     [eventEmitter],
   )
@@ -90,7 +98,20 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         return
       }
 
-      await handleWorkflowUpdate(appId)
+      try {
+        await handleWorkflowUpdate(appId)
+      } catch (error) {
+        collaborationManager.emitWorkflowUpdate(appId)
+        toast.error(
+          t(($) => $.error, { ns: 'common' }),
+          {
+            description: error instanceof Error ? error.message : undefined,
+          },
+        )
+        // Reload the committed graph before the old canvas can resume autosaving.
+        window.location.reload()
+        return
+      }
       collaborationManager.emitWorkflowUpdate(appId)
       onImport?.()
       const payload = getImportNotificationPayload(status, t)
