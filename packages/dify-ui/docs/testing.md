@@ -27,6 +27,9 @@ Use regular Vitest tests for Dify integration behavior that does not need a docu
 such as submitted values, store behavior, or a known regression reached through a public API.
 Prop passthrough alone does not justify a test. Assert the resulting behavior instead of CSS class
 names or private structure, and do not duplicate behavior already owned by Base UI or the browser.
+Vitest 5 browser locators match string names exactly by default. Assert a control's accessible name
+or description when that is the contract. `toHaveTextContent` also checks the full text exactly;
+use `toMatchTextContent` only when the complete text is intentionally outside the test's scope.
 
 Storybook [accessibility testing] uses `a11y.test = 'error'`, so enabled violations fail the test.
 Color contrast is the only globally disabled rule because it is a known design-token gap. Do not

@@ -160,7 +160,7 @@ export const getKnowledgeBaseValidationIssue = (
 
 export const getKnowledgeBaseValidationMessage = (
   issue: KnowledgeBaseValidationIssue | null | undefined,
-  t: TFunction,
+  t: TFunction<['common', 'workflow']>,
 ) => {
   if (!issue) return ''
 

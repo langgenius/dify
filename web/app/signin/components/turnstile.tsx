@@ -42,7 +42,7 @@ export default function Turnstile({
   onInvalidate,
   onError,
 }: TurnstileProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const containerRef = useRef<HTMLDivElement>(null)
   const onVerifyRef = useRef(onVerify)
   const onInvalidateRef = useRef(onInvalidate)

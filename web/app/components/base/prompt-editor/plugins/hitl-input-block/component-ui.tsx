@@ -52,7 +52,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   ragVariables,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const resolvedFormInput = formInput || createDefaultParagraphFormInput(varName)
   const paragraphDefault = isParagraphFormInput(resolvedFormInput)
     ? resolvedFormInput.default

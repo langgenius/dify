@@ -22,7 +22,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   onAddContext,
   canNotAddContext,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_CONTEXT_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger<HTMLButtonElement>()
   const { eventEmitter } = useEventEmitterContextContext()

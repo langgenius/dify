@@ -23,7 +23,7 @@ const FeatureBar = ({
   onFeatureBarClick,
   hideEditEntrance = false,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const features = useFeatures((s) => s.features)
   const [modalOpen, setModalOpen] = useState(false)
 

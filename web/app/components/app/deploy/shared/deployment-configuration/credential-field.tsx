@@ -28,8 +28,8 @@ export function CredentialField({
   value?: string
   onChange: (value: string) => void
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tPlugin } = useTranslation('plugin')
+  const { t } = useTranslation(['deployments'])
+  const { t: tPlugin } = useTranslation(['plugin'])
   const { getIconUrl } = useGetIcon()
   const { theme } = useTheme()
   const selectedOption = slot.candidates.find((candidate) => candidate.credential_id === value)

@@ -1027,12 +1027,15 @@ class AppDslService:
         dependencies = []
         for node in graph.get("nodes", []):
             try:
-                typ = node.get("data", {}).get("type")
+                node_data = node.get("data", {})
+                dependencies.extend(DependenciesAnalysisService.extract_external_node_dependencies(node_data))
+                typ = node_data.get("type")
                 match typ:
                     case BuiltinNodeTypes.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
-                            DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
+                            node_data.get("plugin_id")
+                            or DependenciesAnalysisService.analyze_tool_provider_reference(tool_entity.provider_id),
                         )
                     case BuiltinNodeTypes.LLM:
                         llm_entity = LLMNodeData.model_validate(node["data"])

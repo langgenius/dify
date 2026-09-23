@@ -5,10 +5,11 @@ import type {
   ListRef,
 } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
@@ -23,17 +24,19 @@ import { consoleQuery } from '@/service/console'
 import { ViewType } from '../../../block-selector/types'
 import ViewTypeSelect from '../../../block-selector/view-type-select'
 import { useStrategyInfo } from '../../agent/use-config'
-import { AgentStrategyList } from './agent-strategy-list'
 import { InstallPluginButton } from './install-plugin-button'
 import { SwitchPluginVersion } from './switch-plugin-version'
 
 const DEFAULT_TAGS: ListProps['tags'] = []
 
+const AgentStrategyList = dynamic(
+  () => import('./agent-strategy-list').then((module) => module.AgentStrategyList),
+  { loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" /> },
+)
+
 const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
   const { title, description } = props
-  const titleId = useId()
-
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <Infotip>
       <InfotipTrigger
@@ -42,11 +45,9 @@ const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
         iconSize="large"
         className="text-text-destructive"
       />
-      <InfotipContent aria-labelledby={titleId} className="w-45">
+      <InfotipContent className="w-45">
         <div className="space-y-1">
-          <h3 id={titleId} className="font-semibold text-text-primary">
-            {title}
-          </h3>
+          <InfotipTitle className="font-semibold text-text-primary">{title}</InfotipTitle>
           <p>{description}</p>
           <p>
             <Link href="/plugins" className="text-text-accent">
@@ -111,7 +112,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   const icon = selectedProvider?.declaration.identity.icon
     ? getIconUrl(selectedProvider.declaration.identity.icon)
     : undefined
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const wrapElemRef = useRef<HTMLDivElement>(null)
 

@@ -41,7 +41,7 @@ type SnippetInfoDropdownProps = {
 }
 
 const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet', 'common'])
   const { replace } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [open, setOpen] = React.useState(false)

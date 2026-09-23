@@ -8,7 +8,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from libs.oauth_bearer import ResolvedRow, Scope, SubjectType, TokenType, _TokenTypeResolver
+from constants.oauth_bearer import Scope, SubjectType, TokenType
+from libs.oauth_bearer import ResolvedRow, _TokenTypeResolver
 
 
 def _row(account_id: uuid.UUID | None) -> ResolvedRow:

@@ -137,6 +137,27 @@ describe('ModelSelector', () => {
     mockModelProviders.current = [makeModel()]
   })
 
+  it.each([
+    { value: { provider: 'openai', model: 'gpt-4' }, name: 'Embedding Model GPT-4' },
+    { value: undefined, name: 'Embedding Model plugin.detailPanel.configureModel' },
+  ])(
+    'should include the visible field label and current value in its name ($name)',
+    ({ value, name }) => {
+      renderWithQueryClient(
+        <>
+          <div id="embedding-model-label">Embedding Model</div>
+          <ModelSelector
+            aria-labelledby="embedding-model-label"
+            value={value}
+            models={[makeModel()]}
+          />
+        </>,
+      )
+
+      expect(screen.getByRole('button', { name })).toBeInTheDocument()
+    },
+  )
+
   it('should toggle popup and close it after selecting a model', () => {
     renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
 

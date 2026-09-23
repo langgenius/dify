@@ -10,7 +10,7 @@ type MethodSelectorProps = {
   onChange: (v: string) => void
 }
 const MethodSelector: FC<MethodSelectorProps> = ({ value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const [open, setOpen] = useState(false)
   const handleSelect = (value: string) => {
     onChange(value)

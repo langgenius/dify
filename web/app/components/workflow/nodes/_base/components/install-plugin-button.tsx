@@ -17,7 +17,7 @@ type InstallPluginButtonProps = Omit<ButtonProps, 'children' | 'loading'> & {
 
 export const InstallPluginButton = (props: InstallPluginButtonProps) => {
   const { className, uniqueIdentifier, extraIdentifiers = [], onSuccess, ...rest } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { canInstallPlugin } = useWorkspacePluginInstallPermission()
   const identifiers = Array.from(
     new Set(

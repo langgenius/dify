@@ -408,6 +408,14 @@ describe('useAppInfoActions', () => {
     })
   })
 
+  it('preserves the export failure result for the confirmation dialog', async () => {
+    mockExportAppDsl.mockResolvedValue({ status: 'failed' })
+    const { result } = renderHook(() => useAppInfoActions({}))
+    await act(async () => {
+      await expect(result.current.onExport(true)).resolves.toBe(false)
+    })
+  })
+
   describe('onExport - early return', () => {
     it('should not export when appDetail is undefined', async () => {
       mockAppDetail = undefined
@@ -473,6 +481,25 @@ describe('useAppInfoActions', () => {
   })
 
   describe('handleConfirmExport', () => {
+    it('keeps the warning open after failure so the user can retry', async () => {
+      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
+      mockExportWorkflowAppDsl
+        .mockResolvedValueOnce({ status: 'failed' })
+        .mockResolvedValueOnce({ status: 'downloaded' })
+      const { result } = renderHook(() => useAppInfoActions({}))
+      await act(async () => {
+        await result.current.exportCheck()
+      })
+      await act(async () => {
+        await result.current.handleConfirmExport()
+      })
+      expect(result.current.activeModal).toBe('exportWarning')
+      await act(async () => {
+        await result.current.handleConfirmExport()
+      })
+      expect(result.current.activeModal).toBeNull()
+    })
+
     it('should export directly when no secret env variables', async () => {
       mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
       const { result } = renderHook(() => useAppInfoActions({}))

@@ -1,5 +1,6 @@
 {
   "desc": "在这里，您可以修改此知识库的属性和检索设置",
+  "form.changeIcon": "修改知识库图标",
   "form.chunkStructure.description": "关于分段模式。",
   "form.chunkStructure.learnMore": "了解更多",
   "form.chunkStructure.title": "分段模式",

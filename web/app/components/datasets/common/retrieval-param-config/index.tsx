@@ -39,7 +39,7 @@ const RetrievalParamConfig: FC<Props> = ({
   disabled = false,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetSettings', 'workflow'])
   const rerankLabelId = useId()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const isEconomical = type === RETRIEVE_METHOD.keywordSearch
@@ -130,13 +130,8 @@ const RetrievalParamConfig: FC<Props> = ({
                 {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
               </span>
               <Infotip>
-                <InfotipTrigger
-                  aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                />
-                <InfotipContent
-                  aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                  className="w-50"
-                >
+                <InfotipTrigger aria-labelledby={rerankLabelId} />
+                <InfotipContent aria-labelledby={rerankLabelId} className="w-50">
                   {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
                 </InfotipContent>
               </Infotip>

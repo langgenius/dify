@@ -13,7 +13,7 @@ import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 
 export function useAccessPointActions(appId: string, canManageAccessPoint: boolean) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const refreshAppDetail = useCallback(async () => {

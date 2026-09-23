@@ -33,7 +33,7 @@ const SwitchCredentialInLoadBalancing = ({
   onUpdate,
   onRemove,
 }: SwitchCredentialInLoadBalancingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const notAllowCustomCredential = provider.allow_custom_token === false
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canOpenCredentialMenu = canUseCredential || canCreateCredential || canManageCredential

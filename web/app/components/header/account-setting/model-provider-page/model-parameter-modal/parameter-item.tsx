@@ -53,7 +53,7 @@ function ParameterItem({
   nodesOutputVars,
   availableNodes = [],
 }: ParameterItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const language = useLanguage()
   const labelId = useId()
   const [localValue, setLocalValue] = useState(value)
@@ -448,14 +448,8 @@ function ParameterItem({
           </div>
           {parameterRule.help && (
             <Infotip>
-              <InfotipTrigger
-                aria-label={parameterRule.help[language] || parameterRule.help.en_US}
-                className="mr-1"
-              />
-              <InfotipContent
-                aria-label={parameterRule.help[language] || parameterRule.help.en_US}
-                className="w-37.5 whitespace-pre-wrap"
-              >
+              <InfotipTrigger aria-labelledby={labelId} className="mr-1" />
+              <InfotipContent aria-labelledby={labelId} className="w-37.5 whitespace-pre-wrap">
                 {parameterRule.help[language] || parameterRule.help.en_US}
               </InfotipContent>
             </Infotip>

@@ -64,7 +64,7 @@ function AllStartBlocks({
   hasTriggerNode = false,
   variant = 'popover',
 }: AllStartBlocksProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
   const { data: enable_marketplace } = useSuspenseQuery({

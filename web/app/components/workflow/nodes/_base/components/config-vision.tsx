@@ -37,7 +37,7 @@ const ConfigVision: FC<Props> = ({
   },
   onConfigChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
 
   const filterVar = useCallback((payload: Var) => {
     const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]

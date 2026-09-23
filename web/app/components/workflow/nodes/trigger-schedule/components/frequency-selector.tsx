@@ -23,7 +23,7 @@ type FrequencySelectorProps = {
 }
 
 const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const groupLabel = t(($) => $['nodes.triggerSchedule.frequency.label'], { ns: 'workflow' })
   const fieldLabel = t(($) => $['nodes.triggerSchedule.frequencyLabel'], { ns: 'workflow' })
 

@@ -34,7 +34,7 @@ export function PublisherEnvironmentSummarySection({
   onGoToPublish: () => void
   onShowAllVersions: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['deployments', 'workflow'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const deploymentState = deployment?.deployment
   const deployedVersion = deploymentState?.current_version
@@ -53,15 +53,10 @@ export function PublisherEnvironmentSummarySection({
   const versionsBehindLabel =
     versionsBehind === undefined
       ? undefined
-      : versionsBehind === 1
-        ? t(($) => $['studio.versionsBehind_one'], {
-            ns: 'deployments',
-            count: versionsBehind,
-          })
-        : t(($) => $['studio.versionsBehind_other'], {
-            ns: 'deployments',
-            count: versionsBehind,
-          })
+      : t(($) => $['studio.versionsBehind'], {
+          ns: 'deployments',
+          count: versionsBehind,
+        })
   const isLatestVersion = Boolean(
     deployedVersion &&
     (latestVersion

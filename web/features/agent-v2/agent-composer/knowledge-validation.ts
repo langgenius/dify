@@ -33,10 +33,10 @@ export const getKnowledgeRetrievalSetName = (item: AgentKnowledgeRetrievalItem) 
   getKnowledgeRetrievalConcreteName(item) || item.id
 
 export const useKnowledgeValidationMessage = () => {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tAppDebug } = useTranslation('appDebug')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tAppDebug } = useTranslation(['appDebug'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
 
   return (issueCode?: KnowledgeValidationIssueCode) => {
     switch (issueCode) {

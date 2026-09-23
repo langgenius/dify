@@ -23,7 +23,7 @@ import { useStore } from './store'
 import { WorkflowRunningStatus } from './types'
 
 export function PanelContextmenu({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow'])
   const isPanelContextMenu = useStore((s) => s.contextMenuTarget?.type === 'panel')
   const clipboardElements = useStore((s) => s.clipboardElements)
   const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
@@ -158,7 +158,7 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
               className="justify-between gap-4 px-3 text-text-secondary"
               onClick={() => exportCheck?.()}
             >
-              {t(($) => $.export, { ns: 'app' })}
+              {t(($) => $.exportApp, { ns: 'app' })}
             </ContextMenuItem>
             {!shouldHideImportApp && (
               <ContextMenuItem

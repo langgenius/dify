@@ -59,7 +59,7 @@ const ParamItem: FC<Props> = ({
     <Fieldset className={className}>
       <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
       <div className="flex items-center justify-between">
-        <div className="flex h-6 items-center">
+        <div className="flex min-h-6 flex-wrap items-center gap-y-1">
           {hasSwitch && (
             <Switch
               aria-labelledby={labelId}
@@ -77,16 +77,16 @@ const ParamItem: FC<Props> = ({
           </span>
           {!noTooltip && tip && (
             <Infotip>
-              <InfotipTrigger aria-label={tip} />
-              <InfotipContent aria-label={tip} className="w-50">
+              <InfotipTrigger aria-labelledby={labelId} />
+              <InfotipContent aria-labelledby={labelId} className="w-50">
                 {tip}
               </InfotipContent>
             </Infotip>
           )}
         </div>
       </div>
-      <div className="mt-1 flex items-center">
-        <div className="mr-3 flex shrink-0 items-center">
+      <div className="mt-1 flex flex-wrap items-center gap-3">
+        <div className="flex shrink-0 items-center">
           <NumberField
             disabled={disabled || !enable}
             min={min}
@@ -104,7 +104,7 @@ const ParamItem: FC<Props> = ({
             </NumberFieldGroup>
           </NumberField>
         </div>
-        <div className="flex grow items-center">
+        <div className="flex min-w-25 grow items-center">
           <Slider
             className="w-full"
             disabled={disabled || !enable}

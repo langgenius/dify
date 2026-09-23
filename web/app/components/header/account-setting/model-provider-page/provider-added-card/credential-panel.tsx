@@ -98,7 +98,7 @@ const TEXT_LABEL_KEYS = {
 } as const satisfies Partial<Record<CardVariant, string>>
 
 function TextLabel({ variant }: { variant: CardVariant }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const isDestructive = isDestructiveVariant(variant)
   const labelKey = TEXT_LABEL_KEYS[variant as keyof typeof TEXT_LABEL_KEYS]
 

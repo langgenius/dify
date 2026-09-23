@@ -47,8 +47,10 @@ const InfoGroup: FC<Props> = ({
   onSelect,
   onAdd,
 }) => {
+  const titleId = React.useId()
+
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const { formatTime: formatTimestamp } = useTimestamp()
 
   const handleMangeMetadata = () => {
@@ -62,6 +64,7 @@ const InfoGroup: FC<Props> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1">
             <div
+              id={titleId}
               className={cn(
                 'text-text-secondary',
                 uppercaseTitle ? 'system-xs-semibold-uppercase' : 'system-md-semibold',
@@ -71,8 +74,8 @@ const InfoGroup: FC<Props> = ({
             </div>
             {titleTooltip && (
               <Infotip>
-                <InfotipTrigger aria-label={titleTooltip} />
-                <InfotipContent aria-label={titleTooltip} className="max-w-60">
+                <InfotipTrigger aria-labelledby={titleId} />
+                <InfotipContent aria-labelledby={titleId} className="max-w-60">
                   {titleTooltip}
                 </InfotipContent>
               </Infotip>

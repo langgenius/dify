@@ -14,7 +14,7 @@ type TagsFilterProps = {
   onChange: (tags: string[]) => void
 }
 const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTags'])
   const [searchText, setSearchText] = useState('')
   const { tags: options, getTagLabel } = useTags()
   const filteredOptions = options.filter((option) =>

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 
 const UpgradeBanner: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   return (
     <div className="flex h-14 items-center rounded-xl border-[0.5px] border-black/5 bg-white p-3 shadow-md">

@@ -22,7 +22,7 @@ type FileUploaderInAttachmentProps = {
   fileConfig: FileUpload
 }
 const FileUploaderInAttachment = ({ isDisabled, fileConfig }: FileUploaderInAttachmentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const files = useStore((s) => s.files)
   const { handleRemoveFile, handleReUploadFile } = useFile(fileConfig)
   const options = [

@@ -488,6 +488,8 @@ export const lintConfig = {
     'unicorn/no-abusive-eslint-disable': 'error',
     'dify/no-file-wide-disable': 'error',
     'dify/require-disable-directive-description': 'error',
+    'dify/require-i18n-namespace': 'error',
+    'dify/require-t-function-namespace': 'error',
     'eslint-comments/no-aggregating-enable': 'error',
     'eslint-comments/no-duplicate-disable': 'error',
     'eslint-comments/no-unlimited-disable': 'error',
@@ -920,7 +922,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -987,7 +997,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },

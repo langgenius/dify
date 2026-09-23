@@ -1,8 +1,8 @@
 'use client'
+import type { TFunction } from 'i18next'
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
-import type { SelectorTranslate } from '@/app/components/app/configuration/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -25,7 +25,6 @@ import {
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
-import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
@@ -59,7 +58,7 @@ type ConfigModalFormFieldsProps = {
   showHiddenField?: boolean
   tempPayload: InputVar
   validationError?: ConfigModalValidationError
-  t: SelectorTranslate<'appDebug'>
+  t: TFunction<['appDebug']>
 }
 
 const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
@@ -79,11 +78,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   showHiddenField = true,
   tempPayload,
   validationError,
-  t: rawTranslate,
+  t,
 }) => {
+  const hiddenLabelId = React.useId()
+
   const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
 
-  const t = getStringSelectorTranslate(rawTranslate)
   const { type, label, variable } = tempPayload
   const numberDefault =
     typeof tempPayload.default === 'number' ||
@@ -100,9 +100,6 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
     'aria-invalid': !!getError(field) || undefined,
     'aria-describedby': getError(field) ? errorId : undefined,
   })
-  const hiddenDescriptionAriaLabel = t(($) => $['variableConfig.hiddenDescription'], {
-    ns: 'appDebug',
-  }).replace(/<[^>]+>/g, '')
 
   return (
     <div className="space-y-2">
@@ -406,14 +403,14 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               disabled={tempPayload.required}
               onCheckedChange={(checked) => onPayloadChange('hide')(checked)}
             />
-            <span className="system-sm-semibold text-text-secondary">
+            <span id={hiddenLabelId} className="system-sm-semibold text-text-secondary">
               {t(($) => $['variableConfig.hidden'], { ns: 'appDebug' })}
             </span>
           </label>
           <div className="flex items-center gap-1">
             <Infotip>
-              <InfotipTrigger aria-label={hiddenDescriptionAriaLabel} />
-              <InfotipContent aria-label={hiddenDescriptionAriaLabel}>
+              <InfotipTrigger aria-labelledby={hiddenLabelId} />
+              <InfotipContent aria-labelledby={hiddenLabelId}>
                 <Trans
                   i18nKey={($) => $['variableConfig.hiddenDescription']}
                   ns="appDebug"

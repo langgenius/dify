@@ -8,7 +8,7 @@ import { getImageUploadErrorMessage, imageUpload } from './utils'
 
 export const useImageFiles = () => {
   const params = useParams()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [files, setFiles] = useState<ImageFile[]>([])
   const filesRef = useRef<ImageFile[]>([])
   const handleUpload = (imageFile: ImageFile) => {
@@ -145,7 +145,7 @@ export const useLocalFileUploader = ({
   onUpload,
 }: useLocalUploaderProps) => {
   const params = useParams()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const handleLocalFileUpload = useCallback(
     (file: File) => {
       if (disabled) {
