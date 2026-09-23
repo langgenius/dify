@@ -26,7 +26,7 @@ const FileUploader = ({
   onPreview,
   supportBatchUpload = false,
 }: IFileUploaderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
 
   const {
     dropRef,

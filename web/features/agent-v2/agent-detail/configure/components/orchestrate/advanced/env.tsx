@@ -374,7 +374,7 @@ export function EnvVariablesTable({
   showDraftRow?: boolean
   showScope?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'appDebug'])
   const tableLabel = t(($) => $['agentDetail.configure.advancedSettings.envEditor.label'])
   const checkEnvVariableKey = (key: string) => {
     const { isValid, errorMessageKey } = checkKeys([key], false)

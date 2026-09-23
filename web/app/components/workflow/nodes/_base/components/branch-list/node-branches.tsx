@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { Topic } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
+import type { Namespace } from '@/i18n/resources'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import { NodeSourceHandle } from '../node-handle'
@@ -14,7 +15,7 @@ type TruncatedClassItemProps = {
   topic: { id: string; name: string; label?: string | null }
   index: number
   nodeId: string
-  t: TFunction
+  t: TFunction<Namespace>
   defaultLabel?: string
 }
 
@@ -72,7 +73,7 @@ export function NodeBranches({
   branches: Topic[]
   defaultLabel?: (index: number) => string
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
   return (
     <div className="mt-2 space-y-0.5">
       {branches.map((topic, index) => (

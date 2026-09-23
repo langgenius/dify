@@ -26,7 +26,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
   onClose,
   onDelete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   return (
     <AlertDialog

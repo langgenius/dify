@@ -39,7 +39,7 @@ const RetrievalParamConfig: FC<Props> = ({
   disabled = false,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetSettings', 'workflow'])
   const rerankLabelId = useId()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const isEconomical = type === RETRIEVE_METHOD.keywordSearch

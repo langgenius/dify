@@ -8,7 +8,7 @@ import IndexingSection from './components/indexing-section'
 import { useFormState } from './hooks/use-form-state'
 
 const Form = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('datasetSettings')
   const {
     // Context values
     currentDataset,

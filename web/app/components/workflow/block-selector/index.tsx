@@ -93,7 +93,7 @@ function BlockSelector({
   snippetInsertPayload,
   isolateKeyboardEvents = false,
 }: BlockSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [localOpen, setLocalOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const open = openFromProps === undefined ? localOpen : openFromProps

@@ -76,7 +76,7 @@ const PluginsPanelResults = ({
   showCategoryEmptyState,
   tagFilterValue,
 }: PluginsPanelResultsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'workflow'])
   const loadMoreAnchorRef = useRef<HTMLDivElement>(null)
   const loadNextPageRequestedRef = useRef(false)
 

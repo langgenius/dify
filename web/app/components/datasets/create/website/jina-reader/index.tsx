@@ -44,7 +44,7 @@ const JinaReader: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)

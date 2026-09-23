@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+import type { Namespace } from '@/i18n/resources'
 import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
@@ -19,7 +20,7 @@ const resolveListeningDescription = (
   message: string | undefined,
   triggerNode: Node | undefined,
   triggerType: BlockEnum,
-  t: TFunction,
+  t: TFunction<Namespace>,
 ): string => {
   if (message) return message
 
@@ -55,7 +56,7 @@ const resolveListeningDescription = (
   return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflow' })
 }
 
-const resolveMultipleListeningDescription = (nodes: Node[], t: TFunction): string => {
+const resolveMultipleListeningDescription = (nodes: Node[], t: TFunction<Namespace>): string => {
   if (!nodes.length)
     return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflow' })
 
@@ -78,7 +79,7 @@ type ListeningProps = {
 }
 
 const Listening: FC<ListeningProps> = ({ onStop, message }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
   const store = useStoreApi()
 
   // Get the current trigger type and node ID from store

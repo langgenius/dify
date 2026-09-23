@@ -12,7 +12,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.assigner'
 
 const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const handleAddOperationItem = useHandleAddOperationItem()
   const {
     readOnly,

@@ -1,8 +1,10 @@
 'use client'
+
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
+import type { Namespace } from '@/i18n/resources'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -29,7 +31,7 @@ type EventDetailDrawerProps = {
   onClose: () => void
 }
 
-const getType = (type: string, t: TFunction) => {
+const getType = (type: string, t: TFunction<Namespace>) => {
   if (type === 'number-input') return t(($) => $['setBuiltInTools.number'], { ns: 'tools' })
   if (type === 'text-input') return t(($) => $['setBuiltInTools.string'], { ns: 'tools' })
   if (type === 'checkbox') return 'boolean'
@@ -67,7 +69,7 @@ const convertSchemaToField = (schema: any): any => {
 export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
   const { eventInfo, providerInfo, onClose } = props
   const language = useLanguage()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'pluginTrigger', 'tools'])
   const parametersSchemas = triggerEventParametersToFormSchemas(eventInfo.parameters)
 
   // Convert output_schema properties to array for direct rendering

@@ -35,7 +35,7 @@ export function AgentApiKeyModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('appApi')
+  const { t } = useTranslation(['appApi', 'appLog', 'common'])
   const { t: tCommon } = useTranslation('common')
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
@@ -271,7 +271,7 @@ function AgentApiKeyGenerateModal({
   apiKey: ApiKeyItem | null
   onClose: () => void
 }) {
-  const { t } = useTranslation('appApi')
+  const { t } = useTranslation(['appApi', 'common'])
 
   return (
     <Dialog

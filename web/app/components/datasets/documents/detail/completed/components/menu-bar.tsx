@@ -43,7 +43,7 @@ function MenuBar({
   isCollapsed,
   toggleCollapsed,
 }: MenuBarProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('common')
   const selectedStatus = statusList.find((item) => item.value === selectDefaultValue) ?? null
 
   return (

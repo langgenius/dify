@@ -134,7 +134,7 @@ function EditAgentFormSession({
 }
 
 export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
 

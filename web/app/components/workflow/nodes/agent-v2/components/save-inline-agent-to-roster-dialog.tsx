@@ -118,7 +118,7 @@ export function SaveInlineAgentToRosterDialog({
   onOpenChange,
   onSaved,
 }: SaveInlineAgentToRosterDialogProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const appSaveToRosterMutation = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(),

@@ -1,5 +1,7 @@
 'use client'
+
 import type { TFunction } from 'i18next'
+import type { Namespace } from '@/i18n/resources'
 
 const i18nPrefix = 'nodes.questionClassifiers'
 const LEGACY_DEFAULT_LABEL_PREFIX = 'CLASS'
@@ -7,7 +9,7 @@ const DEFAULT_EQUIVALENT_PREFIXES = ['CLASS', '分类', '分類', 'クラス']
 
 const getCanonicalDefaultClassLabel = (index: number) => `${LEGACY_DEFAULT_LABEL_PREFIX} ${index}`
 
-const getTranslatedDefaultClassLabel = (t: TFunction, index: number) => {
+const getTranslatedDefaultClassLabel = (t: TFunction<Namespace>, index: number) => {
   const translated = t(($) => $[`${i18nPrefix}.defaultLabel`], { ns: 'workflow', index })
   if (typeof translated !== 'string') return undefined
 
@@ -28,13 +30,13 @@ const getTranslatedDefaultClassLabel = (t: TFunction, index: number) => {
 
 const normalizeClassLabel = (label?: string | null) => label?.trim() ?? ''
 
-export const getDefaultClassLabel = (_t: TFunction, index: number) =>
+export const getDefaultClassLabel = (_t: TFunction<Namespace>, index: number) =>
   getCanonicalDefaultClassLabel(index)
 
 export const getDisplayClassLabel = (
   label: string | null | undefined,
   index: number,
-  t: TFunction,
+  t: TFunction<Namespace>,
 ) =>
   normalizeClassLabel(label) ||
   getTranslatedDefaultClassLabel(t, index) ||
@@ -43,7 +45,7 @@ export const getDisplayClassLabel = (
 export const isDefaultClassLabel = (
   label: string | null | undefined,
   index: number,
-  t: TFunction,
+  t: TFunction<Namespace>,
 ) => {
   const normalizedLabel = normalizeClassLabel(label)
   if (!normalizedLabel) return true
@@ -57,7 +59,7 @@ export const isDefaultClassLabel = (
 export const getCanonicalClassLabel = (
   label: string | null | undefined,
   index: number,
-  t: TFunction,
+  t: TFunction<Namespace>,
 ) => {
   const normalizedLabel = normalizeClassLabel(label)
   if (!normalizedLabel) return getCanonicalDefaultClassLabel(index)

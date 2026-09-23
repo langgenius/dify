@@ -107,7 +107,7 @@ export const useCommonModalState = ({
   builder,
   onClose,
 }: UseCommonModalStateParams): UseCommonModalStateReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('pluginTrigger')
   const translatePluginTriggerKey = useCallback<PluginTriggerTranslate>(
     (selector, options) => t(selector, options),
     [t],

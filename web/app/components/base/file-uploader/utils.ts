@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next'
 import type { FileEntity } from './types'
+import type { Namespace } from '@/i18n/resources'
 import type { FileResponse } from '@/types/workflow'
 import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
@@ -18,7 +19,7 @@ import { FileAppearanceTypeEnum } from './types'
 export const getFileUploadErrorMessage = (
   error: any,
   defaultMessage: string,
-  t: TFunction,
+  t: TFunction<Namespace>,
 ): string => {
   const errorCode = error?.response?.code
 

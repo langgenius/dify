@@ -110,7 +110,7 @@ function DuplicateAgentFormSession({
 }
 
 export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAgentDialogProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const queryClient = useQueryClient()
   const latestAgent =
     queryClient.getQueryData<AgentFormSource>(

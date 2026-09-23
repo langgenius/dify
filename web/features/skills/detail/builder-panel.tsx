@@ -76,7 +76,7 @@ function BuilderModelSelector({
   selectedModel: SkillBuilderModel | undefined
   onSelect: (model: SkillBuilderModel) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('common')
 
   return (
     <div className="flex w-fit max-w-full min-w-0 items-center gap-px">

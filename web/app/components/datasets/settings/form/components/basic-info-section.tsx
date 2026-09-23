@@ -50,7 +50,7 @@ const BasicInfoSection = ({
   memberList,
   readonly = false,
 }: BasicInfoSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('datasetSettings')
 
   return (
     <>

@@ -815,7 +815,7 @@ function WorkflowInlineAgentConfigureMoreAction({
 }: {
   onSaveInlineToRoster: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common', 'agentV2'])
   const canCreateAgents = useCanCreateAgents()
 
   if (!canCreateAgents) return null

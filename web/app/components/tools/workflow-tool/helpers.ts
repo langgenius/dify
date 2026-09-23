@@ -6,6 +6,7 @@ import type {
   WorkflowToolProviderParameter,
   WorkflowToolProviderRequest,
 } from '../types'
+import type { Namespace } from '@/i18n/resources'
 import { VarType } from '@/app/components/workflow/types'
 import { buildWorkflowOutputParameters } from './utils'
 
@@ -36,7 +37,7 @@ export const isWorkflowToolNameValid = (name: string) => {
   return /^\w+$/.test(name)
 }
 
-export const getReservedWorkflowOutputParameters = (t: TFunction) => {
+export const getReservedWorkflowOutputParameters = (t: TFunction<Namespace>) => {
   return RESERVED_WORKFLOW_OUTPUTS.map((output) => ({
     ...output,
     description:

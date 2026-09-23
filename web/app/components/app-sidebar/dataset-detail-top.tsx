@@ -23,7 +23,7 @@ type DatasetDetailTopProps = {
 }
 
 export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   if (!expand) {
     return (

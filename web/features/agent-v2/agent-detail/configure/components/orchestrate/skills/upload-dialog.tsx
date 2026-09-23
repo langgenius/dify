@@ -250,7 +250,7 @@ export function AgentSkillUploadDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const { t: tCommon } = useTranslation('common')
   const [file, setFile] = useState<File>()
   const uploadAgentSkillMutation = useMutation(

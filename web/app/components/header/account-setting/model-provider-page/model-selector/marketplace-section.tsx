@@ -29,7 +29,7 @@ function MarketplaceSection({
   onInstallPlugin,
   onOpenMarketplace,
 }: MarketplaceSectionProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const headingId = useId()
 
   if (marketplaceProviders.length === 0) return null

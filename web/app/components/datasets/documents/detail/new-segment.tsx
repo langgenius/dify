@@ -35,7 +35,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   onSave,
   viewNewlyAddedChunk,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [attachments, setAttachments] = useState<FileEntity[]>([])

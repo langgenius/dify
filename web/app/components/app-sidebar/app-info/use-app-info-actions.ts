@@ -90,7 +90,7 @@ const getCurrentUiState = (state: AppInfoUiState, resetKey?: string) => {
 }
 
 export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('app')
   const { replace } = useRouter()
   const queryClient = useQueryClient()
   const { mutateAsync: copyApp } = useMutation(

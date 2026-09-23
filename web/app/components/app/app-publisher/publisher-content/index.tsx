@@ -64,7 +64,7 @@ export function PublisherContent({
   toolPublished,
   workflowToolAvailable = true,
 }: PublisherContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow'])
   const appDetail = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()

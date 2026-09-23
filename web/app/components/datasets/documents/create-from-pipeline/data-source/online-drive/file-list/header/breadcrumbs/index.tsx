@@ -23,7 +23,7 @@ const Breadcrumbs = ({
   searchResultsLength,
   isInPipeline,
 }: BreadcrumbsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('datasetPipeline')
   const dataSourceStore = useDataSourceStore()
   const hasBucket = useDataSourceStoreWithSelector((s) => s.hasBucket)
   const showSearchResult = !!keywords && searchResultsLength > 0

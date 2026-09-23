@@ -28,7 +28,7 @@ const ExternalKnowledgeSection = ({
   handleSettingsChange,
   readonly = false,
 }: ExternalKnowledgeSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('datasetSettings')
 
   return (
     <>

@@ -24,7 +24,7 @@ export function AgentLogDetailPanel({
   log?: AgentLogConversationItemResponse
   onClose: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'appLog', 'common'])
   const { t: tAgentV2 } = useTranslation('agentV2')
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()

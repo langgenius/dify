@@ -57,7 +57,7 @@ function UnauthorizedCredentialStatus({
     credentialType?: AgentProviderTool['credentialType'],
   ) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('tools')
   const [isOpen, setIsOpen] = useState(false)
   const pluginPayload = useMemo(
     () => ({
@@ -131,7 +131,7 @@ function UninstalledPluginStatus({
   extraIdentifiers: string[]
   onInstall: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('plugin')
 
   if (installInfo) {
     return (

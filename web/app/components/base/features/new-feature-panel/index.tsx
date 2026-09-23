@@ -60,7 +60,7 @@ const NewFeaturePanel = ({
   drawerClassName,
 }: Props) => {
   const [pricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { hasBlockingModalOpen } = useModalContext()

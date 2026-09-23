@@ -33,7 +33,7 @@ const descriptionClassName = `
 type AccountAppItem = AppPartial & IItem
 
 export default function AccountPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const editNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appList } = useQuery(

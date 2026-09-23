@@ -26,7 +26,7 @@ type ModalPropsType = {
 const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
   const secretLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const workflowStore = useWorkflowStore()
   const [type, setType] = React.useState<EnvironmentVariable['value_type']>('string')
   const [name, setName] = React.useState('')

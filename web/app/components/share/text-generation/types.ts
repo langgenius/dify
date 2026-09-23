@@ -1,7 +1,10 @@
-import type { Namespace, SelectorParam } from 'i18next'
+import type { SelectorParam } from 'i18next'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
-export type TextGenerationTranslate = <Ns extends Namespace, Selector extends SelectorParam<Ns>>(
+export type TextGenerationTranslate = <
+  Ns extends 'appDebug' | 'common' | 'share',
+  Selector extends SelectorParam<Ns>,
+>(
   selector: Selector,
   options: { ns: Ns } & Record<string, unknown>,
 ) => string

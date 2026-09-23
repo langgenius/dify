@@ -1,6 +1,8 @@
 'use client'
+
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
+import type { Namespace } from '@/i18n/resources'
 import type { TriggerMetadata } from '@/models/log'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +21,7 @@ type TriggerByDisplayProps = {
 
 const getTriggerDisplayName = (
   triggeredFrom: WorkflowRunTriggeredFrom,
-  t: TFunction,
+  t: TFunction<Namespace>,
   metadata?: TriggerMetadata,
 ) => {
   if (triggeredFrom === WorkflowRunTriggeredFrom.PLUGIN && metadata?.event_name)
@@ -116,7 +118,7 @@ const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
   showText = true,
   triggerMetadata,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('appLog')
   const { theme } = useTheme()
 
   const displayName = getTriggerDisplayName(triggeredFrom, t, triggerMetadata)

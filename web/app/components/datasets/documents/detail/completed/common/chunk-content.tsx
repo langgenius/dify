@@ -98,7 +98,7 @@ type IQATextAreaProps = {
 
 const QATextArea: FC<IQATextAreaProps> = React.memo(
   ({ question, answer, onQuestionChange, onAnswerChange, isEditMode = true }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation('datasetDocuments')
     const containerRef = useRef<HTMLDivElement>(null)
     const labelRef = useRef<HTMLDivElement>(null)
 
@@ -151,7 +151,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
   isEditMode,
   docForm,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('datasetDocuments')
 
   if (docForm === ChunkingMode.qa) {
     return (

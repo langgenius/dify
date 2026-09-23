@@ -42,7 +42,7 @@ export function DeployedEnvironmentAccessPoints({
   canManageAccessPoint,
   highlightedAccessPoint,
 }: DeployedEnvironmentAccessPointsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments', 'tools'])
   const unsupportedStatusLabel = useAccessPointStatusLabel('unsupported')
 
   const title = (accessPoint: (typeof UNSUPPORTED_ACCESS_POINTS)[number]) => {

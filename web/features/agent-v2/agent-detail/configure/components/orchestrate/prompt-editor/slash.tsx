@@ -678,7 +678,7 @@ function AgentPromptProviderIcon({
 }
 
 function AgentPromptToolFooter({ onAddCliTool }: { onAddCliTool?: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'plugin'])
 
   return (
     <div className="border-t border-divider-subtle p-1">

@@ -41,7 +41,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   onSave,
   onValidateBeforeSave,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const docLink = useDocLink()
   const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })

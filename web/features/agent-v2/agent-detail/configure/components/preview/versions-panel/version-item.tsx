@@ -56,7 +56,7 @@ export function VersionItem({
   exportDisabled?: boolean
   showUpgrade?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'app', 'billing'])
   const { t: tWorkflow } = useTranslation('workflow')
   const isActive = version.id === activeVersionId
   const label =

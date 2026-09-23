@@ -177,7 +177,7 @@ export function FileTree({
   selectedPath: string | undefined
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill', 'common'])
   const { t: tApp } = useTranslation('app')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()

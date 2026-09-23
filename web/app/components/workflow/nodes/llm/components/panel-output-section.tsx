@@ -31,7 +31,7 @@ const PanelOutputSection: FC<Props> = ({
 }) => {
   const structuredLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow'])
   return (
     <>
       <Split />
