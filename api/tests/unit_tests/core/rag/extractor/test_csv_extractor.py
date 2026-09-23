@@ -9,6 +9,7 @@ import pytest
 
 import core.rag.extractor.csv_extractor as csv_module
 from core.rag.extractor.csv_extractor import CSVExtractor
+from core.rag.extractor.helpers import CSV_DELIMITER_SAMPLE_CHARS
 
 
 class _ManagedStringIO(io.StringIO):
@@ -153,6 +154,38 @@ class TestCSVSeparatorDetection:
         text = 'name,note\nwidget,"a; b"\ngadget,"c; d"\n'
 
         assert self._extract(tmp_path, text) == ["name: widget;note: a; b", "name: gadget;note: c; d"]
+
+    def test_long_rows_cut_by_the_detection_sample_keep_their_separator(self, tmp_path: Path) -> None:
+        """Fewer than CSV_DELIMITER_SAMPLE_ROWS rows fit in the sample, so it ends inside a row.
+
+        That row is cut short, not written with fewer columns.
+        """
+        cell = "x" * 4000
+        text = "a;b;c\n" + "".join(f"{i};{cell};{cell}\n" for i in range(60))
+        assert not text[:CSV_DELIMITER_SAMPLE_CHARS].endswith("\n")
+
+        docs = self._extract(tmp_path, text)
+
+        assert len(docs) == 60
+        assert docs[0].startswith("a: 0;b: xxx")
+
+    def test_a_sample_that_ends_inside_a_quoted_line_break_keeps_its_separator(self, tmp_path: Path) -> None:
+        """Trimming the sample to its last line break is not enough when that line break is inside a quoted field."""
+        cell = '"' + ("y" * 70 + "\n") * 60 + '"'
+        text = "a;b;c\n" + "".join(f"{i};{cell};end\n" for i in range(40))
+        assert text[:CSV_DELIMITER_SAMPLE_CHARS].count('"') % 2 == 1
+
+        docs = self._extract(tmp_path, text)
+
+        assert len(docs) == 40
+        assert docs[0].startswith("a: 0;b: yyy")
+        assert docs[0].endswith(";c: end")
+
+    def test_the_last_row_of_a_complete_file_still_counts(self, tmp_path: Path) -> None:
+        """Guard: only a sample cut from a longer file leaves its last row out."""
+        text = "x;1\ny;2\nz\n"
+
+        assert self._extract(tmp_path, text) == ["x;1: y;2", "x;1: z"]
 
     def test_an_explicit_separator_is_not_overridden(self, tmp_path: Path) -> None:
         """A `sep` in csv_args wins, and no detection runs."""
