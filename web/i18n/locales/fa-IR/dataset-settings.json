@@ -1,5 +1,6 @@
 {
   "desc": "اینجا می‌توانید ویژگی‌ها و روش‌های کاری دانش را تغییر دهید.",
+  "form.changeIcon": "تغییر نماد دانش",
   "form.chunkStructure.description": "درباره ساختار تکه تکه است.",
   "form.chunkStructure.learnMore": "بیشتر بدانید",
   "form.chunkStructure.title": "ساختار تکه",

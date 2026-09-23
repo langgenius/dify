@@ -1,5 +1,6 @@
 {
   "desc": "ここでこのナレッジベースのプロパティと検索設定を変更できます。",
+  "form.changeIcon": "ナレッジのアイコンを変更",
   "form.chunkStructure.description": "チャンク構造について。",
   "form.chunkStructure.learnMore": "詳細はこちら",
   "form.chunkStructure.title": "チャンク構造",
