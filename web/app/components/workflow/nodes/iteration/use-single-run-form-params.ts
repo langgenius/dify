@@ -65,7 +65,9 @@ const useSingleRunFormParams = ({
       }
     > = {}
     iterationChildrenNodes.forEach((node) => {
-      const nodeVars = getNodeUsedVars(node).filter((item) => item && item.length > 0)
+      const nodeVars = getNodeUsedVars(node, { forExecution: true }).filter(
+        (item) => item && item.length > 0,
+      )
       nodeVars.forEach((varSelector) => {
         if (varSelector[0] === id) {
           // skip iteration node itself variable: item, index

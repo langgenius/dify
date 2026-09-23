@@ -9,7 +9,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { memo, useCallback, useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
@@ -48,6 +48,10 @@ const ConfigContent: FC<Props> = ({
   onSingleRetrievalModelParamsChange = noopParamsChange,
   selectedDatasets = [],
 }) => {
+  const reasoningLabelId = useId()
+  const rerankLabelId = useId()
+  const rerankOptionLabelId = useId()
+
   const { t } = useTranslation()
   const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
@@ -243,10 +247,18 @@ const ConfigContent: FC<Props> = ({
                   )}
                   onClick={() => handleRerankModeChange(option.value)}
                 >
-                  <div className="truncate">{option.label}</div>
+                  <div id={`${rerankOptionLabelId}-${option.value}`} className="truncate">
+                    {option.label}
+                  </div>
                   <Infotip>
-                    <InfotipTrigger aria-label={option.tips} className="ml-0.5 size-3.5" />
-                    <InfotipContent aria-label={option.tips} className="w-50">
+                    <InfotipTrigger
+                      aria-labelledby={`${rerankOptionLabelId}-${option.value}`}
+                      className="ml-0.5 size-3.5"
+                    />
+                    <InfotipContent
+                      aria-labelledby={`${rerankOptionLabelId}-${option.value}`}
+                      className="w-50"
+                    >
                       {option.tips}
                     </InfotipContent>
                   </Infotip>
@@ -264,18 +276,15 @@ const ConfigContent: FC<Props> = ({
                     onCheckedChange={handleManuallyToggleRerank}
                   />
                 )}
-                <div className="ml-1 system-sm-semibold leading-8 text-text-secondary">
+                <div
+                  id={rerankLabelId}
+                  className="ml-1 system-sm-semibold leading-8 text-text-secondary"
+                >
                   {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
                 </div>
                 <Infotip>
-                  <InfotipTrigger
-                    aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                    className="ml-1"
-                  />
-                  <InfotipContent
-                    aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                    className="w-50"
-                  >
+                  <InfotipTrigger aria-labelledby={rerankLabelId} className="ml-1" />
+                  <InfotipContent aria-labelledby={rerankLabelId} className="w-50">
                     {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
                   </InfotipContent>
                 </Infotip>
@@ -345,16 +354,15 @@ const ConfigContent: FC<Props> = ({
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
         <div className="mt-4">
           <div className="flex items-center space-x-0.5">
-            <div className="text-[13px] leading-8 font-medium text-text-primary">
+            <div
+              id={reasoningLabelId}
+              className="text-[13px] leading-8 font-medium text-text-primary"
+            >
               {t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'common' })}
             </div>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
-              />
-              <InfotipContent
-                aria-label={t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
-              >
+              <InfotipTrigger aria-labelledby={reasoningLabelId} />
+              <InfotipContent aria-labelledby={reasoningLabelId}>
                 {t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
               </InfotipContent>
             </Infotip>

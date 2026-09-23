@@ -1,7 +1,7 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { noop } from 'es-toolkit/function'
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import {
@@ -30,6 +30,8 @@ const MetadataFilter = ({
   handleMetadataCompletionParamsChange,
   ...restProps
 }: MetadataFilterProps) => {
+  const titleId = useId()
+
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(true)
 
@@ -54,18 +56,15 @@ const MetadataFilter = ({
       <CollapseHeader>
         <CollapseTrigger>
           <CollapseTitle>
-            {t(($) => $['nodes.knowledgeRetrieval.metadata.title'], { ns: 'workflow' })}
+            <span id={titleId}>
+              {t(($) => $['nodes.knowledgeRetrieval.metadata.title'], { ns: 'workflow' })}
+            </span>
           </CollapseTitle>
           {metadataFilterMode === MetadataFilteringModeEnum.automatic && <CollapseIndicator />}
         </CollapseTrigger>
         <Infotip>
-          <InfotipTrigger
-            aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflow' })}
-          />
-          <InfotipContent
-            aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflow' })}
-            className="w-50"
-          >
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-50">
             {t(($) => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflow' })}
           </InfotipContent>
         </Infotip>

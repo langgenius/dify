@@ -3,6 +3,7 @@ import type { CommonNodeType } from '../types'
 import { useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'reactflow'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { ErrorHandleTypeEnum } from '../nodes/_base/components/error-handle/types'
 import { BlockEnum } from '../types'
 
@@ -29,6 +30,14 @@ export const useEdgeAccessibleLabel = (
         const classLabel = `${t(($) => $['nodes.questionClassifiers.class'], { ns: 'workflow' })} ${branchIndex + 1}`
         branchName = branchName ? `${classLabel}: ${branchName}` : classLabel
       }
+    }
+    if (hasAgentV2OutputRoutes(sourceData)) {
+      const routes = sourceData.agent_output_routes?.routes ?? []
+      const index = routes.findIndex((route) => route.id === sourceHandleId)
+      if (index >= 0)
+        branchName =
+          routes[index]?.label ||
+          t(($) => $['nodes.agent.outputRoutes.route'], { ns: 'workflow', index: index + 1 })
     }
     if (sourceData.type === BlockEnum.HumanInput) {
       branchName =

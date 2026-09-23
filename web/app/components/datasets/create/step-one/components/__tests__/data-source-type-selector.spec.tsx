@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { DataSourceType } from '@/models/datasets'
 
 vi.mock('@/config', () => ({
@@ -48,6 +49,24 @@ describe('DataSourceTypeSelector', () => {
     await user.click(screen.getByText('datasetCreation.stepOne.dataSourceType.notion'))
 
     expect(defaultProps.onChange).toHaveBeenCalledWith(DataSourceType.NOTION)
+    expect(defaultProps.onClearPreviews).toHaveBeenCalledWith(DataSourceType.NOTION)
+  })
+
+  it('changes source with the keyboard and exposes the selected option', async () => {
+    const user = userEvent.setup()
+    const Example = () => {
+      const [value, setValue] = useState<DataSourceType>(DataSourceType.FILE)
+      return <DataSourceTypeSelector {...defaultProps} currentType={value} onChange={setValue} />
+    }
+    render(<Example />)
+    await user.tab()
+    expect(
+      screen.getByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.file' }),
+    ).toHaveFocus()
+    await user.keyboard('{ArrowRight}')
+    expect(
+      screen.getByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.notion' }),
+    ).toBeChecked()
     expect(defaultProps.onClearPreviews).toHaveBeenCalledWith(DataSourceType.NOTION)
   })
 

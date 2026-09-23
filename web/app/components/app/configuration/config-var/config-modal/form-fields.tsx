@@ -81,6 +81,8 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   validationError,
   t: rawTranslate,
 }) => {
+  const hiddenLabelId = React.useId()
+
   const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
 
   const t = getStringSelectorTranslate(rawTranslate)
@@ -100,9 +102,6 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
     'aria-invalid': !!getError(field) || undefined,
     'aria-describedby': getError(field) ? errorId : undefined,
   })
-  const hiddenDescriptionAriaLabel = t(($) => $['variableConfig.hiddenDescription'], {
-    ns: 'appDebug',
-  }).replace(/<[^>]+>/g, '')
 
   return (
     <div className="space-y-2">
@@ -406,14 +405,14 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               disabled={tempPayload.required}
               onCheckedChange={(checked) => onPayloadChange('hide')(checked)}
             />
-            <span className="system-sm-semibold text-text-secondary">
+            <span id={hiddenLabelId} className="system-sm-semibold text-text-secondary">
               {t(($) => $['variableConfig.hidden'], { ns: 'appDebug' })}
             </span>
           </label>
           <div className="flex items-center gap-1">
             <Infotip>
-              <InfotipTrigger aria-label={hiddenDescriptionAriaLabel} />
-              <InfotipContent aria-label={hiddenDescriptionAriaLabel}>
+              <InfotipTrigger aria-labelledby={hiddenLabelId} />
+              <InfotipContent aria-labelledby={hiddenLabelId}>
                 <Trans
                   i18nKey={($) => $['variableConfig.hiddenDescription']}
                   ns="appDebug"

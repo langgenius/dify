@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Povleci in spusti datoteke ali mape oz",
   "stepOne.uploader.buttonSingleFile": "Povleci in spusti datoteko oz",
   "stepOne.uploader.change": "Zamenjaj",
+  "stepOne.uploader.completed": "Nalaganje končano",
   "stepOne.uploader.failed": "Nalaganje ni uspelo",
   "stepOne.uploader.tip": "Podpira {{supportTypes}}. Največje število datotek v seriji: {{batchCount}}, vsaka do {{size}} MB.",
   "stepOne.uploader.tipWithTotalLimit": "Podpira {{supportTypes}}. Največje število datotek v seriji: {{batchCount}}, vsaka do {{size}} MB. Skupaj največ {{totalCount}} datotek.",

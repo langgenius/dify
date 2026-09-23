@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from flask import Flask
 
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -111,6 +112,12 @@ def account_token(workspace_account, mint_token) -> str:
         subject_issuer="dify:account",
     )
     return token
+
+
+@pytest.fixture
+def auth_headers(flask_app: Flask, account_token: str) -> dict[str, str]:
+    """What every guarded request needs: the bearer, and the fingerprint of the catalog it was built from."""
+    return {"Authorization": f"Bearer {account_token}", CATALOG_HEADER: catalog_for(flask_app)[1]}
 
 
 @pytest.fixture(autouse=True)

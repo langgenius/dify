@@ -77,6 +77,7 @@ import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -103,7 +104,6 @@ from models.enums import EndUserType
 from models.model import App, EndUser
 from models.oauth import OAuthAccessToken
 from services.account_service import AccountService
-from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus, SystemFeatureModel
 from services.rbac_resource_service import RBACResourceService
@@ -245,6 +245,8 @@ ADMIT_NO_MOUNT = Expect(
 )
 
 
+_RUN_TRAITS = frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE})
+
 ROUTES: tuple[Route, ...] = (
     Route("account.get", "GET", "/account", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("account.sessions.revoke_self", "DELETE", "/account/sessions/self", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -308,12 +310,10 @@ ROUTES: tuple[Route, ...] = (
         "/apps/{app_id}/dependencies:check",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
-    Route(
-        "app_run.run",
-        "POST",
-        "/apps/{app_id}:run",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
-    ),
+    Route("app_run.workflow", "POST", "/apps/{app_id}/workflow:run", _RUN_TRAITS),
+    Route("app_run.chat", "POST", "/apps/{app_id}/chat:run", _RUN_TRAITS),
+    Route("app_run.advanced_chat", "POST", "/apps/{app_id}/advanced-chat:run", _RUN_TRAITS),
+    Route("app_run.completion", "POST", "/apps/{app_id}/completion:run", _RUN_TRAITS),
     Route(
         "app_run.stop",
         "POST",
@@ -618,7 +618,10 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
     },
-    "app_run.run": dict(_DUAL_SUBJECT_RUN),
+    "app_run.workflow": dict(_DUAL_SUBJECT_RUN),
+    "app_run.chat": dict(_DUAL_SUBJECT_RUN),
+    "app_run.advanced_chat": dict(_DUAL_SUBJECT_RUN),
+    "app_run.completion": dict(_DUAL_SUBJECT_RUN),
     "human_input_form.get": dict(_DUAL_SUBJECT_RUN),
     "files.upload": {
         **_DUAL_SUBJECT_RUN,
@@ -754,7 +757,10 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
     "app_dsl.export": _REQ_DSL_APP,
     "app_dsl.check_dependencies": _REQ_DSL_APP,
-    "app_run.run": _REQ_RUN,
+    "app_run.workflow": _REQ_RUN,
+    "app_run.chat": _REQ_RUN,
+    "app_run.advanced_chat": _REQ_RUN,
+    "app_run.completion": _REQ_RUN,
     "app_run.stop": _REQ_RUN,
     "files.upload": _REQ_FILES,
     "human_input_form.get": _REQ_RUN_FORM,
@@ -1077,7 +1083,7 @@ def _run_case(
     )
     settings = _access_mode_settings(scenario.access_mode)
 
-    headers: dict[str, str] = {}
+    headers: dict[str, str] = {CATALOG_HEADER: catalog_for(app)[1]}
     bearer = _bearer_for(route, scenario)
     if bearer is not None:
         headers["Authorization"] = f"Bearer {world.tokens[bearer]}"
@@ -1101,13 +1107,8 @@ def _run_case(
                 return_value={"data": [], "total": 0, "hasMore": False},
             )
         )
-        stack.enter_context(
-            patch.object(
-                EndUserService,
-                "get_or_create_end_user_by_type",
-                side_effect=_end_user,
-            )
-        )
+        services = stack.enter_context(patch("controllers.openapi.auth.subjects.application_services"))
+        services.return_value.app_scoped_end_users.commands.get_or_create_end_user_by_type.side_effect = _end_user
         stack.enter_context(patch.object(RBACResourceService, "get_app_agent_binding", return_value=None))
         stack.enter_context(patch.object(RBACResourceService, "get_app_maintainer", return_value=None))
         stack.enter_context(
@@ -1192,10 +1193,10 @@ def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
 
     expected = {(route.method, _rule_path(route)) for route in ROUTES}
     assert guarded == expected
-    # The remainder is the device-flow and documentation surface. Its size is pinned
-    # rather than enumerated: a list of exemptions rots silently — the one this
+    # The remainder is the device-flow, documentation and catalog surface. Its size is
+    # pinned rather than enumerated: a list of exemptions rots silently — the one this
     # replaced still named `swagger.json`, a route that is not registered at all.
-    assert len(unguarded) == 13
+    assert len(unguarded) == 14
 
 
 @singledispatch
@@ -1252,6 +1253,7 @@ ERROR_DEFAULT_RESPONSE: dict[str, object] = {
 """Exactly what `@returns` registers as `("default", "Error", ErrorBody)`."""
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
+    ("get", "/_catalog"): frozenset({"200"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
@@ -1262,12 +1264,15 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/apps/{app_id}"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/dependencies:check"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/dsl"): frozenset({"200", "422", "default"}),
-    ("post", "/apps/{app_id}/files"): frozenset({"201", "400", "401", "413", "415", "default"}),
+    ("post", "/apps/{app_id}/files"): frozenset({"201", "400", "401", "413", "415", "422", "default"}),
     ("get", "/apps/{app_id}/human-input-forms/{form_token}"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/human-input-forms/{form_token}:submit"): frozenset({"200", "422", "default"}),
-    ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/tasks/{task_id}:stop"): frozenset({"200", "default"}),
-    ("post", "/apps/{app_id}:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/workflow:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
     # The five device-flow rows are the only operations with no `default`: they
     # document their 200 with a raw `openapi_ns.response` rather than `@returns`,
     # so no `ErrorBody` schema is registered for them.
@@ -1278,7 +1283,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/oauth/device/token"): frozenset({"200"}),
     ("get", "/permitted-external-apps"): frozenset({"200", "422", "default"}),
     ("get", "/permitted-external-apps/{app_id}"): frozenset({"200", "422", "default"}),
-    ("get", "/workspaces"): frozenset({"200", "default"}),
+    ("get", "/workspaces"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports"): frozenset({"200", "202", "400", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports/{import_id}:confirm"): frozenset({"200", "400", "default"}),
@@ -1301,6 +1306,23 @@ def openapi_document(config_overrides: Callable[..., None]) -> dict[str, object]
     response = app.test_client().get("/openapi/v1/openapi.json")
     assert response.status_code == 200
     return response.get_json()
+
+
+def test_file_bearing_bodies_are_documented_as_multipart(openapi_document: dict[str, object]) -> None:
+    """The exported contract names the wire form `_multipart.py` accepts: a body of only
+    files is multipart alone, a run body is JSON or multipart with its JSON-text parts marked."""
+    paths = openapi_document["paths"]
+    assert isinstance(paths, dict)
+    upload = paths["/apps/{app_id}/files"]["post"]["requestBody"]["content"]
+    assert set(upload) == {"multipart/form-data"}
+    assert "encoding" not in upload["multipart/form-data"]
+    run = paths["/apps/{app_id}/chat:run"]["post"]["requestBody"]["content"]
+    assert set(run) == {"application/json", "multipart/form-data"}
+    assert run["multipart/form-data"]["schema"] == run["application/json"]["schema"]
+    encoding = run["multipart/form-data"]["encoding"]
+    assert {"inputs", "query"} <= set(encoding)
+    assert {"files", "attachments"}.isdisjoint(encoding)
+    assert encoding["inputs"] == {"contentType": "application/json"}
 
 
 def _operations(document: dict[str, object]) -> Iterator[tuple[tuple[str, str], dict[str, object]]]:

@@ -10,6 +10,7 @@ import {
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { env } from '@/env'
 
@@ -54,6 +55,9 @@ export function TopKAndScoreThreshold({
   scoreThreshold,
   readonly,
 }: TopKAndScoreThresholdProps) {
+  const scoreThresholdLabelId = useId()
+  const topKLabelId = useId()
+
   const { t } = useTranslation()
   const topKLabel = t(($) => $['datasetConfig.top_k'], { ns: 'appDebug' })
   const scoreThresholdLabel = t(($) => $['datasetConfig.score_threshold'], { ns: 'appDebug' })
@@ -66,10 +70,12 @@ export function TopKAndScoreThreshold({
     <div className="grid grid-cols-2 gap-4">
       <Field name="top_k" className="gap-0">
         <div className="mb-0.5 flex h-6 items-center">
-          <FieldLabel className="py-0 system-xs-medium text-text-secondary">{topKLabel}</FieldLabel>
+          <FieldLabel id={topKLabelId} className="py-0 system-xs-medium text-text-secondary">
+            {topKLabel}
+          </FieldLabel>
           <Infotip>
-            <InfotipTrigger aria-label={topKTip} className="ml-0.5 size-3.5" />
-            <InfotipContent aria-label={topKTip}>{topKTip}</InfotipContent>
+            <InfotipTrigger aria-labelledby={topKLabelId} className="ml-0.5 size-3.5" />
+            <InfotipContent aria-labelledby={topKLabelId}>{topKTip}</InfotipContent>
           </Infotip>
         </div>
         <NumberField
@@ -101,11 +107,18 @@ export function TopKAndScoreThreshold({
                   onCheckedChange={scoreThreshold.onEnabledChange}
                   disabled={readonly}
                 />
-                <span className="grow truncate">{scoreThresholdLabel}</span>
+                <span id={scoreThresholdLabelId} className="grow truncate">
+                  {scoreThresholdLabel}
+                </span>
               </FieldLabel>
               <Infotip>
-                <InfotipTrigger aria-label={scoreThresholdTip} className="ml-0.5 size-3.5" />
-                <InfotipContent aria-label={scoreThresholdTip}>{scoreThresholdTip}</InfotipContent>
+                <InfotipTrigger
+                  aria-labelledby={scoreThresholdLabelId}
+                  className="ml-0.5 size-3.5"
+                />
+                <InfotipContent aria-labelledby={scoreThresholdLabelId}>
+                  {scoreThresholdTip}
+                </InfotipContent>
               </Infotip>
             </div>
           </Field>

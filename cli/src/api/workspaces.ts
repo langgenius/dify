@@ -5,6 +5,7 @@ import type {
 import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
 import { createOpenApiClient } from '@/http/orpc'
+import { fetchAllPages, LIMIT_MAX } from '@/limit/limit'
 
 export class WorkspacesClient {
   private readonly orpc: OpenApiClient
@@ -16,8 +17,12 @@ export class WorkspacesClient {
     this.orpc = createOpenApiClient(http)
   }
 
+  /** Every workspace the caller belongs to, all pages merged into one envelope. */
   async list(): Promise<WorkspaceListResponse> {
-    return this.orpc.workspaces.get()
+    const data = await fetchAllPages((page) =>
+      this.orpc.workspaces.get({ query: { page, limit: LIMIT_MAX } }),
+    )
+    return { page: 1, limit: LIMIT_MAX, total: data.length, has_more: false, data }
   }
 
   /**

@@ -1228,7 +1228,8 @@ const replaceOldVarInPromptItem = (
     : {}),
 })
 
-export const getNodeUsedVars = (node: Node): ValueSelector[] => {
+/** Include saved references for rename/delete/copy; execution excludes inactive route conditions. */
+export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): ValueSelector[] => {
   const { data } = node
   const { type } = data
   let res: ValueSelector[] = []
@@ -1341,7 +1342,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     case BlockEnum.Agent: {
       if (isAgentV2NodeData(data)) {
         const payload = data as AgentV2NodeType
-        res = matchNotSystemVars([payload.agent_task || ''])
+        res = matchNotSystemVars([
+          payload.agent_task || '',
+          ...(!forExecution || payload.agent_output_routes?.enabled
+            ? (payload.agent_output_routes?.routes?.map((route) => route.name ?? '') ?? [])
+            : []),
+        ])
         break
       }
 
@@ -1358,7 +1364,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
     case BlockEnum.AgentV2: {
       const payload = data as AgentV2NodeType
-      res = matchNotSystemVars([payload.agent_task || ''])
+      res = matchNotSystemVars([
+        payload.agent_task || '',
+        ...(!forExecution || payload.agent_output_routes?.enabled
+          ? (payload.agent_output_routes?.routes?.map((route) => route.name ?? '') ?? [])
+          : []),
+      ])
       break
     }
     case BlockEnum.DataSource: {
@@ -1734,6 +1745,9 @@ export const updateNodeVars = (
             oldVarSelector,
             newVarSelector,
           )
+          payload.agent_output_routes?.routes?.forEach((route) => {
+            route.name = replaceOldVarInText(route.name ?? '', oldVarSelector, newVarSelector)
+          })
           break
         }
 
@@ -1779,6 +1793,9 @@ export const updateNodeVars = (
           oldVarSelector,
           newVarSelector,
         )
+        payload.agent_output_routes?.routes?.forEach((route) => {
+          route.name = replaceOldVarInText(route.name ?? '', oldVarSelector, newVarSelector)
+        })
         break
       }
       case BlockEnum.DataSource: {

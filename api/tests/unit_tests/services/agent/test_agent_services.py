@@ -2650,7 +2650,18 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
         binding_type=WorkflowAgentBindingType.INLINE_AGENT,
         agent_id="inline-agent-1",
         current_snapshot_id="inline-version-1",
+        node_job_config=WorkflowNodeJobConfig.model_validate(
+            {
+                "workflow_prompt": "use prior output",
+                "declared_outputs": [{"name": "summary", "type": "string"}],
+                "output_routes": {
+                    "enabled": True,
+                    "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
+                },
+            }
+        ),
     )
+    original_node_job = binding.node_job_config_dict
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW.value,
@@ -2663,7 +2674,6 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
                 },
                 "prompt": {"system_prompt": "new"},
             },
-            "node_job": {"workflow_prompt": "use prior output"},
         }
     )
 
@@ -2679,7 +2689,7 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
     )
 
     assert updated_binding.current_snapshot_id == "inline-version-2"
-    assert updated_binding.node_job_config_dict["workflow_prompt"] == "use prior output"
+    assert updated_binding.node_job_config_dict == original_node_job
     assert updated_binding.updated_by == "account-1"
     assert inline_agent.active_config_snapshot_id == "inline-version-2"
     assert inline_agent.active_config_has_model is True
@@ -6993,3 +7003,40 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
         AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
         == "agent-7"
     )
+
+
+def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch):
+    job = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Keep this task",
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
+            },
+        }
+    )
+    binding = WorkflowAgentNodeBinding(agent_id="old-agent", current_snapshot_id="old-snapshot", node_job_config=job)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_create_roster_agent_for_composer",
+        lambda **kwargs: Agent(id="new-agent", active_config_snapshot_id="new-snapshot"),
+    )
+    monkeypatch.setattr(
+        "services.agent.composer_service.SkillManagementService.copy_agent_bindings", lambda self, **kwargs: None
+    )
+    result = AgentComposerService._save_as_new_agent(
+        session=MagicMock(spec=Session),
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        account_id="account-1",
+        binding=binding,
+        payload=ComposerSavePayload(
+            variant=ComposerVariant.WORKFLOW,
+            save_strategy=ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
+            agent_soul=AgentSoulConfig(),
+        ),
+    )
+    assert result.agent_id == "new-agent"
+    assert result.node_job_config_dict == job.model_dump(mode="json")

@@ -450,7 +450,7 @@ export function AgentPromptEditor() {
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
-  const promptTip = t(($) => $['agentDetail.configure.prompt.tip'])
+
   const promptPlaceholder = (
     <AgentPromptPlaceholder
       text={t(($) => $['agentDetail.configure.prompt.placeholder'])}
@@ -1088,8 +1088,8 @@ export function AgentPromptEditor() {
             {t(($) => $['agentDetail.configure.prompt.label'])}
           </h3>
           <Infotip>
-            <InfotipTrigger aria-label={promptTip} />
-            <InfotipContent aria-label={promptTip} className="max-w-64">
+            <InfotipTrigger aria-labelledby="agent-configure-prompt-label" />
+            <InfotipContent aria-labelledby="agent-configure-prompt-label" className="max-w-64">
               <AgentConfigureTipContent type="prompt" />
             </InfotipContent>
           </Infotip>
