@@ -13,7 +13,7 @@ type SnippetLayoutProps = {
 }
 
 const SnippetLayout = ({ children, snippet }: SnippetLayoutProps) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
 
   useDocumentTitle(snippet?.name || t(($) => $.typeLabel))
 

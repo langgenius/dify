@@ -8,6 +8,8 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
 import { AgentV2Panel } from '../panel'
 
+vi.mock('../components/agent-output-routes', () => ({ AgentOutputRoutes: () => null }))
+
 const {
   mockEditorFocus,
   mockEditorUpdate,
@@ -154,7 +156,7 @@ vi.mock('../../_base/hooks/use-node-crud', () => ({
 }))
 
 vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
+  useCanCreateAgents: () => true,
 }))
 
 vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
@@ -394,6 +396,7 @@ describe('agent/panel', () => {
             icon: 'N',
             icon_background: '#E9D7FE',
             icon_type: 'emoji',
+            permission_keys: ['agent.acl.edit'],
             role: 'Researcher',
           }
         : undefined,
@@ -425,7 +428,7 @@ describe('agent/panel', () => {
     expect(screen.getByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' }),
+      screen.getByRole('button', { name: 'workflow.nodes.agent.task.label' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
     expect(
@@ -445,7 +448,7 @@ describe('agent/panel', () => {
     const user = userEvent.setup()
     render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.label' }))
 
     expect(
       await screen.findByRole('link', { name: 'workflow.nodes.agent.task.learnMore' }),

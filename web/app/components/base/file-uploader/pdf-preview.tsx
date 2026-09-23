@@ -6,7 +6,7 @@ import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PdfHighlighter, PdfLoader } from './pdf-highlighter-adapter'
 
@@ -16,7 +16,7 @@ type PdfPreviewProps = {
 }
 
 const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const media = useBreakpoints()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -69,11 +69,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
           <PdfLoader
             workerSrc="/pdf.worker.min.mjs"
             url={url}
-            beforeLoad={
-              <div className="flex h-64 items-center justify-center">
-                <Loading type="app" />
-              </div>
-            }
+            beforeLoad={<LoadingPlaceholder className="h-64" />}
           >
             {(pdfDocument) => {
               return (

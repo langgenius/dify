@@ -25,7 +25,7 @@ const Item = ({
   onSelect,
   onOpen,
 }: ItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const { name, type, size } = file
 
   const isBucket = type === 'bucket'

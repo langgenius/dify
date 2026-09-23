@@ -317,6 +317,7 @@ export type BannerBlog = BannerBase & {
     blog_title: string
     subtitle?: string
     description?: string
+    cover_image?: string
     link: string
     link_target_type: 'blog' | 'github'
   }

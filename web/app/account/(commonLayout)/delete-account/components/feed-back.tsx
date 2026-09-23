@@ -4,10 +4,10 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
@@ -23,7 +23,7 @@ type FeedbackFormValues = {
 }
 
 export default function FeedBack(props: DeleteAccountProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -79,8 +79,8 @@ export default function FeedBack(props: DeleteAccountProps) {
             void handleSubmit(feedback)
           }}
         >
-          <Field name="feedback" className="mt-3">
-            <FieldLabel className="py-0 system-sm-semibold">
+          <Field name="feedback" className="mt-3 gap-0">
+            <FieldLabel className="system-sm-semibold">
               {t(($) => $['account.feedbackLabel'], { ns: 'common' })}
             </FieldLabel>
             <Textarea

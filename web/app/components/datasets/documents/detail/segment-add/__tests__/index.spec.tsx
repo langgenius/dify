@@ -2,8 +2,10 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactElement } from 'react'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { fireEvent, screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { segmentImportStatus } from '@/types/dataset'
 import { SegmentAdd } from '../index'
 
@@ -12,9 +14,16 @@ let mockPlan: { type: CloudPlan } = { type: 'professional' }
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 
 function render(ui: ReactElement) {
-  return renderWithConsoleQuery(ui, {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
     features: { billing: { subscription: { plan: mockPlan.type } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
   })
 }
 

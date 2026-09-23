@@ -4,10 +4,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { updateWorkspaceInfo } from '@/service/common'
 
@@ -15,7 +15,7 @@ type IEditWorkspaceModalProps = {
   onCancel: () => void
 }
 const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [name, setName] = useState<string>(currentWorkspace.name)

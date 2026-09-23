@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   flushMarketplaceSiteFilter,
   flushMarketplaceSiteSearch,
@@ -29,7 +29,8 @@ const ListWrapper = ({
   showInstallButton,
   linkToMarketplaceDetail,
 }: ListWrapperProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
+  const { t: tPlugin } = useTranslation(['plugin'])
 
   const {
     plugins,
@@ -82,11 +83,20 @@ const ListWrapper = ({
         className,
       )}
     >
+      <div role="status" aria-atomic="true" className="sr-only">
+        {isLoading || isRefreshing || isFetchingNextPage
+          ? t(($) => $.loading, { ns: 'common' })
+          : isError
+            ? tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })
+            : plugins
+              ? tPlugin(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })
+              : null}
+      </div>
       <div className="flex w-full grow flex-col">
         {plugins && (
           <div className="mb-4 flex items-center pt-3">
             <div className="title-xl-semi-bold text-text-primary">
-              {t(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })}
+              {tPlugin(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })}
             </div>
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
             <SortDropdown />
@@ -94,7 +104,7 @@ const ListWrapper = ({
         )}
         {isError && !plugins?.length ? (
           <div className="flex min-h-60 flex-col items-center justify-center gap-3 text-sm text-text-tertiary">
-            <span>{t(($) => $['marketplace.loadError'], { ns: 'plugin' })}</span>
+            <span>{tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })}</span>
             <Button size="small" variant="secondary" onClick={() => void refetch()}>
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>
@@ -124,10 +134,10 @@ const ListWrapper = ({
       </div>
       {isLoading && page === 1 && (
         <div className="absolute top-1/2 left-1/2 -translate-1/2">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       )}
-      {isFetchingNextPage && <Loading className="my-3" />}
+      {isFetchingNextPage && <LoadingPlaceholder className="my-3" />}
     </div>
   )
 }

@@ -142,6 +142,22 @@ describe('useWorkflowInit', () => {
     mockSyncWorkflowDraft.mockReset()
   })
 
+  it.each([undefined, { x: 120, y: -80, zoom: 0.75 }])(
+    'should preserve the initial draft viewport as %j',
+    async (viewport) => {
+      mockFetchWorkflowDraft.mockReset().mockResolvedValue({
+        ...draftResponse,
+        graph: { ...draftResponse.graph, viewport },
+      })
+
+      const { result } = renderHook(() => useWorkflowInit())
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      expect(result.current.data?.graph.viewport).toEqual(viewport)
+    },
+  )
+
   it('should create an empty backend draft and restore a local start placeholder when the workflow draft does not exist', async () => {
     mockFetchWorkflowDraft
       .mockReset()
@@ -252,6 +268,7 @@ describe('useWorkflowInit', () => {
       }),
     )
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('')
+    expect(result.current.data?.graph.viewport).toBeUndefined()
   })
 
   it('should restore a local start placeholder when an existing workflow draft has an empty graph', async () => {

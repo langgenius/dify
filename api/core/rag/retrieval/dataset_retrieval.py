@@ -11,7 +11,9 @@ from typing import Any, Union, cast
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
 from sqlalchemy import and_, func, literal, or_, select, update
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
+from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -106,6 +108,18 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 }
 
 logger = logging.getLogger(__name__)
+
+_POSTGRES_DEADLOCK_SQLSTATE = "40P01"
+_HIT_COUNT_UPDATE_MAX_ATTEMPTS = 3
+
+
+def _is_postgres_deadlock_error(exc: BaseException) -> bool:
+    if not isinstance(exc, DBAPIError) or exc.orig is None:
+        return False
+    orig = cast(Any, exc.orig)
+    return (hasattr(orig, "sqlstate") and orig.sqlstate == _POSTGRES_DEADLOCK_SQLSTATE) or (
+        hasattr(orig, "pgcode") and orig.pgcode == _POSTGRES_DEADLOCK_SQLSTATE
+    )
 
 
 class DatasetRetrieval:
@@ -915,6 +929,13 @@ class DatasetRetrieval:
                 retrieval_resource_list.append(document)
         return retrieval_resource_list
 
+    @retry(
+        retry=retry_if_exception(_is_postgres_deadlock_error),
+        stop=stop_after_attempt(_HIT_COUNT_UPDATE_MAX_ATTEMPTS),
+        wait=wait_exponential(multiplier=0.05, min=0.05, max=0.1),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     def _on_retrieval_end(
         self,
         flask_app: Flask,
@@ -1016,6 +1037,14 @@ class DatasetRetrieval:
 
                 # Batch update hit_count for all segments
                 if segment_ids_to_update:
+                    # PostgreSQL does not guarantee that an IN predicate is visited in parameter order.
+                    # Lock every target row explicitly and consistently before the multi-row update.
+                    session.scalars(
+                        select(DocumentSegment.id)
+                        .where(DocumentSegment.id.in_(segment_ids_to_update))
+                        .order_by(DocumentSegment.id)
+                        .with_for_update()
+                    ).all()
                     session.execute(
                         update(DocumentSegment)
                         .where(DocumentSegment.id.in_(segment_ids_to_update))

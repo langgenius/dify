@@ -3,9 +3,12 @@ import type { DataSourceAuth } from '@/app/components/header/account-setting/dat
 import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DataSourceType } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import StepOne from '../index'
 
 let mockPlan: {
@@ -37,10 +40,17 @@ const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
     limit: mockPlan.total.vectorSpace,
     usage_unknown: vectorSpaceUsageUnknown,
   })
-  return renderWithConsoleQuery(ui, {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
     queryClient,
     features: { billing: { subscription: { plan: mockPlan.type } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
   })
 }
 
@@ -237,6 +247,26 @@ const defaultProps = {
 
 // StepOne Component Tests
 describe('StepOne', () => {
+  it('returns keyboard focus to the file preview trigger when closing the preview', async () => {
+    const user = userEvent.setup()
+    render(<StepOne {...defaultProps} />)
+    const trigger = screen.getByRole('button', { name: 'Preview' })
+    await user.click(trigger)
+    await user.click(screen.getByRole('button', { name: 'Hide' }))
+    expect(screen.queryByTestId('file-preview')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
+  it('keeps focus on the newly selected data source when clearing a file preview', async () => {
+    const user = userEvent.setup()
+    render(<StepOne {...defaultProps} />)
+    await user.click(screen.getByRole('button', { name: 'Preview' }))
+    const source = screen.getByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.web' })
+    await user.click(source)
+    expect(screen.queryByTestId('file-preview')).not.toBeInTheDocument()
+    expect(source).toHaveFocus()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockDatasetDetail = undefined

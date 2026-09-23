@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 const EmptyFolder = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <div className="flex size-full items-center justify-center rounded-[10px] bg-background-section px-1 py-1.5">

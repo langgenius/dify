@@ -36,7 +36,7 @@ export function AgentWorkflowReferencesDropdown({
   publishedReferences: AgentAppPublishedReferenceResponse[]
   referenceCount: number
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <DropdownMenu modal={false}>

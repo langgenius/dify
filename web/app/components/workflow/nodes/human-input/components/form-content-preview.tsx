@@ -28,7 +28,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
   userActions,
   onClose,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const panelWidth = useStore((state) => state.panelWidth)
   const nodes = useNodes()
 

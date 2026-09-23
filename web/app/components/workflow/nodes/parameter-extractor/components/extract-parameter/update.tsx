@@ -16,13 +16,13 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import { ChangeType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { checkKeys } from '@/utils/var'
 import { ParamType } from '../../types'
 
@@ -54,7 +54,7 @@ const TYPES = [
 ]
 
 const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const nameLabel = t(($) => $[`${i18nPrefix}.addExtractParameterContent.name`], {
     ns: 'workflow',
   })

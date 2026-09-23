@@ -15,7 +15,7 @@ type AgentLogModalProps = Readonly<{
   onCancel: () => void
 }>
 const AgentLogModal: FC<AgentLogModalProps> = ({ currentLogItem, width, floating, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
 

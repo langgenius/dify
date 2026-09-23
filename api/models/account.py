@@ -111,9 +111,7 @@ class Account(UserMixin, TypeBase):
     last_active_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
-    status: Mapped[AccountStatus] = mapped_column(
-        EnumText(AccountStatus, length=16), server_default=sa.text("'active'"), default=AccountStatus.ACTIVE
-    )
+    status: Mapped[AccountStatus] = mapped_column(EnumText(AccountStatus, length=16), default=AccountStatus.ACTIVE)
     initialized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
@@ -259,10 +257,8 @@ class Tenant(TypeBase):
     )
     name: Mapped[str] = mapped_column(String(255))
     encrypt_public_key: Mapped[str | None] = mapped_column(LongText, default=None)
-    plan: Mapped[str] = mapped_column(String(255), server_default=sa.text("'basic'"), default="basic")
-    status: Mapped[TenantStatus] = mapped_column(
-        EnumText(TenantStatus, length=255), server_default=sa.text("'normal'"), default=TenantStatus.NORMAL
-    )
+    plan: Mapped[str] = mapped_column(String(255), default="basic")
+    status: Mapped[TenantStatus] = mapped_column(EnumText(TenantStatus, length=255), default=TenantStatus.NORMAL)
     custom_config: Mapped[str | None] = mapped_column(LongText, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
@@ -303,9 +299,9 @@ class TenantAccountJoin(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     account_id: Mapped[str] = mapped_column(StringUUID)
-    current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false(), default=False)
+    current: Mapped[bool] = mapped_column(sa.Boolean, default=False)
     role: Mapped[TenantAccountRole] = mapped_column(
-        EnumText(TenantAccountRole, length=16), server_default="normal", default=TenantAccountRole.NORMAL
+        EnumText(TenantAccountRole, length=16), default=TenantAccountRole.NORMAL
     )
     invited_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
@@ -358,7 +354,6 @@ class InvitationCode(TypeBase):
     code: Mapped[str] = mapped_column(String(32))
     status: Mapped[InvitationCodeStatus] = mapped_column(
         EnumText(InvitationCodeStatus, length=16),
-        server_default=sa.text("'unused'"),
         default=InvitationCodeStatus.UNUSED,
     )
     used_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
@@ -396,13 +391,11 @@ class TenantPluginPermission(TypeBase):
     install_permission: Mapped[TenantPluginInstallPermission] = mapped_column(
         EnumText(TenantPluginInstallPermission, length=16),
         nullable=False,
-        server_default="everyone",
         default=TenantPluginInstallPermission.EVERYONE,
     )
     debug_permission: Mapped[TenantPluginDebugPermission] = mapped_column(
         EnumText(TenantPluginDebugPermission, length=16),
         nullable=False,
-        server_default="noone",
         default=TenantPluginDebugPermission.NOBODY,
     )
 
@@ -443,19 +436,16 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
     category: Mapped[TenantPluginAutoUpgradeCategory] = mapped_column(
         EnumText(TenantPluginAutoUpgradeCategory, length=32),
         nullable=False,
-        server_default="tool",
         default=TenantPluginAutoUpgradeCategory.TOOL,
     )
     strategy_setting: Mapped[TenantPluginAutoUpgradeStrategySetting] = mapped_column(
         EnumText(TenantPluginAutoUpgradeStrategySetting, length=16),
         nullable=False,
-        server_default="fix_only",
         default=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
     )
     upgrade_mode: Mapped[TenantPluginAutoUpgradeMode] = mapped_column(
         EnumText(TenantPluginAutoUpgradeMode, length=16),
         nullable=False,
-        server_default="exclude",
         default=TenantPluginAutoUpgradeMode.EXCLUDE,
     )
     exclude_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)

@@ -70,7 +70,7 @@ def _provide_app_context(app: Flask) -> Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def _patch_redis_clients() -> Iterator[None]:
-    """Patch redis_client to MagicMock only for unit test executions."""
+    """Patch and rebind loaded Redis clients to the shared mock for each unit test."""
 
     with (
         patch.object(ext_redis, "redis_client", redis_mock),
@@ -81,8 +81,8 @@ def _patch_redis_clients() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
-def reset_redis_mock() -> None:
-    """reset the Redis mock before each test"""
+def reset_redis_mock(_patch_redis_clients: None) -> None:
+    """Reset the shared Redis mock after per-test client rebinding."""
     redis_mock.reset_mock()
     redis_mock.get.return_value = None
     redis_mock.setex.return_value = None
@@ -94,9 +94,6 @@ def reset_redis_mock() -> None:
     redis_mock.hgetall.return_value = dict[bytes, bytes]()
     redis_mock.hdel.return_value = None
     redis_mock.incr.return_value = 1
-
-    # Keep any imported modules pointing at the mock between tests
-    _patch_redis_clients_on_loaded_modules()
 
 
 @pytest.fixture(autouse=True)
@@ -242,20 +239,3 @@ def persist_service_api_dataset_owner(
     """Persist the tenant-owner mapping resolved by dataset-token authentication."""
     session.add_all([tenant, tenant_account_join])
     session.commit()
-
-
-def setup_mock_tenant_owner_execute_result(mock_db: MagicMock, mock_tenant: object, mock_owner: object) -> None:
-    """Stub the legacy owner query; SQLite-backed tests use ``persist_service_api_tenant_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_owner)
-
-
-def setup_mock_dataset_owner_execute_result(
-    mock_db: MagicMock,
-    mock_tenant: object,
-    mock_tenant_account_join: object,
-) -> None:
-    """Stub the legacy dataset-owner query; SQLite tests use ``persist_service_api_dataset_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (
-        mock_tenant,
-        mock_tenant_account_join,
-    )

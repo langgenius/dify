@@ -129,7 +129,7 @@ docker compose up -d
 
 - **الشفرة البرمجية**: اقرأ [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)، ثم تصفح [المشكلات المناسبة للمساهمين الجدد](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **الأفكار والملاحظات**: ابدأ أو انضم إلى [مناقشة على GitHub](https://github.com/langgenius/dify/discussions).
-- **الترجمات**: اتبع [دليل التدويل](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) لإضافة لغة أو تحديثها.
+- **الترجمات**: اتبع [دليل التدويل](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) لإضافة لغة أو تحديثها.
 - **المجتمع**: شارك التطبيقات التي تبنيها، وساعد المستخدمين الآخرين، وساهم في نشر Dify.
 
 ### المساهمون

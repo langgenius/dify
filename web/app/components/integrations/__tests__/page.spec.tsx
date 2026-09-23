@@ -1089,9 +1089,9 @@ describe('IntegrationsPage', () => {
   it('keeps the integrations sidebar expanded without a collapse control', () => {
     const { container } = renderIntegrationsPage({ section: 'provider' })
 
-    expect(container.firstElementChild).toHaveStyle({
-      '--model-provider-warning-left': 'calc(240px + 200px)',
-    })
+    expect(container.firstElementChild).toHaveStyle(
+      '--model-provider-warning-left: calc(240px + 200px)',
+    )
 
     expect(screen.getByText('common.settings.integrations')).toBeInTheDocument()
     expect(screen.getByText('common.settings.integrations')).toHaveClass(

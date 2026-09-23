@@ -1,9 +1,10 @@
 'use client'
 
 import type { Checkbox as BaseCheckboxNS } from '@base-ui/react/checkbox'
+import type * as React from 'react'
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox'
-import * as React from 'react'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const checkboxRootClassName = cn(
   'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-sm shadow-xs shadow-shadow-shadow-3 transition-colors motion-reduce:transition-none',
@@ -25,20 +26,21 @@ const checkboxIndicatorClassName =
 
 const checkboxSkeletonClassName = 'size-4 shrink-0 rounded-sm bg-text-quaternary opacity-20'
 
-type CheckboxRootProps = Omit<BaseCheckboxNS.Root.Props, 'className'> & {
-  className?: string
-}
+type CheckboxRootProps = BaseCheckboxNS.Root.Props
 function CheckboxRoot({ className, ...props }: CheckboxRootProps) {
-  return <BaseCheckbox.Root className={cn(checkboxRootClassName, className)} {...props} />
+  return (
+    <BaseCheckbox.Root
+      className={(state) => cn(checkboxRootClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-type CheckboxIndicatorProps = Omit<BaseCheckboxNS.Indicator.Props, 'className' | 'children'> & {
-  className?: string
-}
+type CheckboxIndicatorProps = Omit<BaseCheckboxNS.Indicator.Props, 'children'>
 function CheckboxIndicator({ className, render, ...props }: CheckboxIndicatorProps) {
   return (
     <BaseCheckbox.Indicator
-      className={cn(checkboxIndicatorClassName, className)}
+      className={(state) => cn(checkboxIndicatorClassName, resolveClassName(className, state))}
       render={
         render ??
         ((indicatorProps, state) => (

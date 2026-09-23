@@ -42,7 +42,7 @@ type IFilterProps = {
 }
 
 const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const planState = useCloudSandboxPlanStatus()
   const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
   const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING)
