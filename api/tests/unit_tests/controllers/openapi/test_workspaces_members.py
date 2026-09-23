@@ -37,6 +37,7 @@ from werkzeug.test import TestResponse
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi import workspaces as workspaces_module
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import (
     ErrorBody,
     MemberLicenseExceeded,
@@ -354,6 +355,40 @@ def test_members_list_paginates_with_query_params(database_session: Session):
     assert [d.id for d in result.data] == member_ids[2:4]
 
 
+def test_members_list_next_page_hint_reaches_the_wire(admitted_bearer: AdmittedWorld, database_session: Session):
+    for i in range(4):
+        member_id = str(uuid.uuid4())
+        database_session.add_all(
+            [
+                _account(account_id=member_id, email=f"member{i}@example.com"),
+                TenantAccountJoin(
+                    tenant_id=admitted_bearer.workspace_id,
+                    account_id=member_id,
+                    current=False,
+                    role=TenantAccountRole.NORMAL,
+                ),
+            ]
+        )
+    database_session.commit()
+
+    res = admitted_bearer.client.get(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members?page=1&limit=2",
+        headers=admitted_bearer.headers,
+    )
+
+    assert res.status_code == 200
+    body = res.get_json()
+    assert body["has_more"] is True
+    assert body["hints"] == [
+        {
+            "summary": "Next page",
+            "op": "workspace.members.list",
+            "input": {"workspace_id": admitted_bearer.workspace_id, "page": 2, "limit": 2},
+            "form": None,
+        }
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Invite endpoint
 # ---------------------------------------------------------------------------
@@ -436,7 +471,7 @@ def test_invite_commits_the_invitation(
     response = openapi_app.test_client().post(
         f"/openapi/v1/workspaces/{ws_id}/members",
         json={"email": "new@example.com", "role": "normal"},
-        headers={"Authorization": "Bearer dfoa_matrix"},
+        headers={"Authorization": "Bearer dfoa_matrix", CATALOG_HEADER: catalog_for(openapi_app)[1]},
     )
 
     assert response.status_code == 201, response.get_json()

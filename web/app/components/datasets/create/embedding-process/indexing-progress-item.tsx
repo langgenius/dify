@@ -3,6 +3,7 @@ import type { IndexingStatusResponse } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiCheckboxCircleFill } from '@remixicon/react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -22,7 +23,7 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
   const { t } = useTranslation()
 
   if (status === 'completed')
-    return <RiCheckboxCircleFill className="size-4 shrink-0 text-text-success" />
+    return <RiCheckboxCircleFill aria-hidden="true" className="size-4 shrink-0 text-text-success" />
 
   if (status === 'error') {
     const errorLabel = error || t(($) => $.error, { ns: 'common' })
@@ -74,9 +75,19 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
   sourceType,
   notionIcon,
 }) => {
+  const { t } = useTranslation()
+  const nameId = useId()
   const isEmbedding = isSourceEmbedding(detail)
   const percent = getSourcePercent(detail)
   const isError = detail.indexing_status === 'error'
+  const statusText =
+    detail.indexing_status === 'completed'
+      ? t(($) => $['embedding.completed'], { ns: 'datasetDocuments' })
+      : isError
+        ? `${t(($) => $.error, { ns: 'common' })}: ${detail.error || ''}`
+        : detail.indexing_status === 'paused'
+          ? t(($) => $['embedding.paused'], { ns: 'datasetDocuments' })
+          : ''
 
   return (
     <div
@@ -88,13 +99,23 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
       {isEmbedding && (
         <div
           className="absolute top-0 left-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
+          role="progressbar"
+          aria-labelledby={nameId}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
           style={{ width: `${percent}%` }}
         />
       )}
+      <span role="status" aria-atomic="true" className="sr-only">
+        {statusText && `${name}: ${statusText}`}
+      </span>
       <div className="z-1 flex h-full items-center gap-1 pr-2 pl-1.5">
         <SourceTypeIcon sourceType={sourceType} name={name} notionIcon={notionIcon} />
         <div className="flex w-0 grow items-center gap-1" title={name}>
-          <div className="truncate system-xs-medium text-text-secondary">{name}</div>
+          <div id={nameId} className="truncate system-xs-medium text-text-secondary">
+            {name}
+          </div>
           <PriorityLabel className="ml-0" />
         </div>
         {isEmbedding && <div className="shrink-0 text-xs text-text-secondary">{`${percent}%`}</div>}

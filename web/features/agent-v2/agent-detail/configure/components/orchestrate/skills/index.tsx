@@ -457,7 +457,7 @@ export function AgentSkills() {
   const { t } = useTranslation('agentV2')
   const { t: tSkill } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
-  const skillsTip = t(($) => $['agentDetail.configure.skills.tip'])
+
   const skillsListId = 'agent-configure-skills-list'
   const queryClient = useQueryClient()
   const readOnly = useAgentOrchestrateReadOnly()
@@ -714,7 +714,6 @@ export function AgentSkills() {
         buildDraftChangeSection="skills"
         panelId={skillsListId}
         tip={<AgentConfigureTipContent type="skills" />}
-        tipAriaLabel={skillsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={

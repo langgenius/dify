@@ -9,7 +9,7 @@ spec export fail or succeed in the same way.
 import hashlib
 import json
 from collections.abc import Mapping
-from typing import TypeGuard, cast
+from typing import Protocol, TypeGuard, cast, runtime_checkable
 
 from flask import current_app
 from flask_restx import fields
@@ -264,6 +264,17 @@ def _inline_model_name(nested_fields: dict[object, object]) -> str:
     return f"_AnonymousInlineModel_{digest}"
 
 
+@runtime_checkable
+class DocumentFinisher(Protocol):
+    """An Api that rewrites its finished OpenAPI document to say what Flask-RESTX cannot.
+
+    Runs last in ``Swagger.as_dict``, so the live ``openapi.json``, the spec generator
+    and every test that reads the document see the same result.
+    """
+
+    def finish_document(self, document: dict[str, object]) -> dict[str, object]: ...
+
+
 def install_swagger_compatibility() -> None:
     """Install Dify's Flask-RESTX OpenAPI compatibility hooks.
 
@@ -428,8 +439,10 @@ def install_swagger_compatibility() -> None:
         include_all_models = current_app.config.get("RESTX_INCLUDE_ALL_MODELS", False)
         current_app.config["RESTX_INCLUDE_ALL_MODELS"] = False
         try:
-            payload = original_as_dict(self)
-            return finalize_openapi_payload(payload, registered_models=self.api.models)
+            payload = finalize_openapi_payload(original_as_dict(self), registered_models=self.api.models)
+            if isinstance(self.api, DocumentFinisher):
+                payload = self.api.finish_document(payload)
+            return payload
         finally:
             current_app.config["RESTX_INCLUDE_ALL_MODELS"] = include_all_models
 

@@ -11,6 +11,7 @@ import { useSearchPluginText } from '../atoms'
 import MarketplaceDetailDialog from '../detail-dialog'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
 import { useOptionalTemplateDetailRoute } from '../templates/use-optional-template-detail-route'
+import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
 import { getFormattedPlugin } from '../utils'
 import { MarketplaceSearchAutocomplete } from './marketplace-search-autocomplete'
 
@@ -28,6 +29,7 @@ export default function EmbeddedMarketplaceSearch() {
   const { t } = useTranslation()
   const locale = useLocale()
   const router = useRouter()
+  const navigation = useMarketplaceDetailNavigation()
   const [query, setQuery] = useSearchPluginText()
   const [value, setValue] = useState(query ?? '')
   const [valueQuery, setValueQuery] = useState(query)
@@ -46,11 +48,13 @@ export default function EmbeddedMarketplaceSearch() {
   const handleSuggestionSelect = useCallback(
     (selection: MarketplaceSearchSelection) => {
       if (selection.kind === 'plugin') {
+        if (navigation.openPlugin(selection.plugin)) return { preserveQuery: true }
         setSelectedTemplate(null)
         setSelectedPlugin(normalizePlugin(getFormattedPlugin(selection.plugin)))
         return
       }
 
+      if (navigation.openTemplate(selection.template)) return { preserveQuery: true }
       setSelectedPlugin(null)
       if (templateDetailRoute) {
         templateDetailRoute.open(selection.template)
@@ -58,7 +62,7 @@ export default function EmbeddedMarketplaceSearch() {
       }
       setSelectedTemplate(selection.template)
     },
-    [templateDetailRoute],
+    [navigation, templateDetailRoute],
   )
 
   return (

@@ -36,6 +36,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
   onGenerate,
   onModelChange,
 }) => {
+  const instructionLabelId = React.useId()
+
   const { t } = useTranslation()
 
   const handleInstructionChange = useCallback(
@@ -82,15 +84,12 @@ const PromptEditor: FC<PromptEditorProps> = ({
       </div>
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
-          <span>{t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}</span>
+          <span id={instructionLabelId}>
+            {t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}
+          </span>
           <Infotip>
-            <InfotipTrigger
-              aria-label={t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
-              className="size-3.5"
-            />
-            <InfotipContent
-              aria-label={t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
-            >
+            <InfotipTrigger aria-labelledby={instructionLabelId} className="size-3.5" />
+            <InfotipContent aria-labelledby={instructionLabelId}>
               {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
             </InfotipContent>
           </Infotip>

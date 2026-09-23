@@ -15,7 +15,7 @@ import { Dialog } from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -244,6 +244,9 @@ export function AgentWorkingDirectoryPanel({
   onOpenChange,
   open,
 }: AgentWorkingDirectoryPanelProps) {
+  const temporaryFilesLabelId = useId()
+  const persistentFilesLabelId = useId()
+
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const persistentFilesTooltip = t(
@@ -573,14 +576,16 @@ export function AgentWorkingDirectoryPanel({
                       value={AGENT_SAVED_FILES_ROOT_PATH}
                       className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
                     >
-                      {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
+                      <span id={persistentFilesLabelId}>
+                        {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
+                      </span>
                     </TabsTab>
                     <Infotip>
                       <InfotipTrigger
-                        aria-label={persistentFilesTooltip}
+                        aria-labelledby={persistentFilesLabelId}
                         iconVariant="information"
                       />
-                      <InfotipContent aria-label={persistentFilesTooltip} className="w-64">
+                      <InfotipContent aria-labelledby={persistentFilesLabelId} className="w-64">
                         {persistentFilesTooltip}
                       </InfotipContent>
                     </Infotip>
@@ -590,14 +595,16 @@ export function AgentWorkingDirectoryPanel({
                       value={AGENT_TEMPORARY_FILES_ROOT_PATH}
                       className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
                     >
-                      {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
+                      <span id={temporaryFilesLabelId}>
+                        {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
+                      </span>
                     </TabsTab>
                     <Infotip>
                       <InfotipTrigger
-                        aria-label={temporaryFilesTooltip}
+                        aria-labelledby={temporaryFilesLabelId}
                         iconVariant="information"
                       />
-                      <InfotipContent aria-label={temporaryFilesTooltip} className="w-64">
+                      <InfotipContent aria-labelledby={temporaryFilesLabelId} className="w-64">
                         {temporaryFilesTooltip}
                       </InfotipContent>
                     </Infotip>

@@ -16,7 +16,7 @@ import {
   VarType,
 } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
-import { getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
+import { findUsedVarNodes, getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
@@ -437,6 +437,51 @@ describe('variable utils', () => {
     })
   })
 })
+
+it.each([
+  { enabled: false, count: 2 },
+  { enabled: true, count: 2 },
+])(
+  'maintains saved route references separately from execution inputs: %j',
+  ({ enabled, count }) => {
+    const node = createNode<AgentV2NodeType>({
+      type: BlockEnum.AgentV2,
+      title: 'Agent',
+      desc: '',
+      version: '2',
+      agent_node_kind: 'dify_agent',
+      agent_output_routes: {
+        enabled,
+        routes: Array.from({ length: count }, (_, index) => ({
+          id: `route-${index}`,
+          name: '{{#upstream.foo#}}',
+        })),
+      },
+    })
+    const users = findUsedVarNodes(['upstream', 'foo'], [node])
+    expect(users).toEqual([node])
+    expect(getNodeUsedVars(node, { forExecution: true })).toEqual(
+      enabled ? [['upstream', 'foo']] : [],
+    )
+    const renamed = updateNodeVars(
+      users[0]!,
+      ['upstream', 'foo'],
+      ['upstream', 'bar'],
+    ) as Node<AgentV2NodeType>
+    expect(renamed.data.agent_output_routes?.routes?.map((route) => route.name)).toEqual(
+      Array.from({ length: count }, () => '{{#upstream.bar#}}'),
+    )
+    const copied = updateNodeVars(
+      renamed,
+      ['upstream', 'bar'],
+      ['copy', 'bar'],
+    ) as Node<AgentV2NodeType>
+    expect(getNodeUsedVars(copied)).toContainEqual(['copy', 'bar'])
+    // Text references remain visible after deletion, as in Question Classifier conditions.
+    const deleted = updateNodeVars(copied, ['copy', 'bar'], [])
+    expect(findUsedVarNodes(['copy', 'bar'], [deleted])).toEqual([deleted])
+  },
+)
 
 it('keeps datasource output variables typed through the public picker projection', () => {
   const provider = createDatasourceProvider()
