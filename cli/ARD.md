@@ -14,7 +14,7 @@ src/
     global-flags/ flags any command accepts (`--verbose`, `--json`), parsed off argv before the command is resolved
     catalog/    the cached catalog document: types, parseCatalog, op lookup
     http/       the authenticated fetch wrapper with the catalog fingerprint header; refetches on 412, and on 404 when the catalog moved
-    ops/        the catalog as the CLI shows it: resolve an op (refetch once on unknown), list rows, describe one op with its pins; command.ts adapts one op to a Command, tree.ts builds their command tree
+    ops/        the catalog as a command tree (refetched on request); command.ts adapts one op to a Command, tree.ts builds their command tree
     output/     output mode per stream: text on a terminal, JSON in a pipe; `--json` or `DIFY_OUTPUT` forces one
     io/         the one way anything is printed
     commands/   command pipeline plus the command framework (command.ts, cancel.ts, registry.ts) every command imports; help.ts shapes the help views, text.ts renders them for a terminal
@@ -138,7 +138,7 @@ New scenario: extend the `Scenario` union in `scenarios.ts`, branch in the relev
 Inline string/regex/JSON checks — no golden files.
 
 ```typescript
-expect(JSON.parse(out).ops).toHaveLength(2)
+expect(JSON.parse(out).data).toHaveLength(2)
 ```
 
 ---

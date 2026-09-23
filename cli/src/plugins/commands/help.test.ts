@@ -18,8 +18,6 @@ const plain = colorScheme(false)
 it('entries are one list of statics and ops, hidden commands left out', () => {
   expect(ids).toContain('workspace use')
   expect(ids).toContain('console_app workflow run')
-  expect(ids).not.toContain('call')
-  expect(ids).not.toContain('ops')
   expect(ids).not.toContain('workspace switch') // internal
   expect(entries.find((entry) => entry.id === 'console_app chat run')).toEqual({
     id: 'console_app chat run',
@@ -68,8 +66,6 @@ it('a listing works on a namespace of any depth and nowhere else', () => {
 it('every command the tree hides comes back with includeHidden', () => {
   const all = entriesOf(tree, { includeHidden: true }).map((entry) => entry.id)
   expect(all).toContain('workspace switch') // internal op
-  expect(all).toContain('call')
-  expect(all).toContain('ops')
   expect(all).toContain('workspace use') // and everything the default already listed
 })
 

@@ -17,8 +17,7 @@ installer: `npx skills add langgenius/dify --skill difyctl -g`.
   embedded.
 - A scenario skill opens with: Read `../difyctl/SKILL.md` first.
 - Every `difyctl <command>` named in backticks must exist in the command tree.
-  Every op id after `call` or `ops describe` must exist in
-  `cli/test/fixtures/catalog.json`.
+  Every dotted op id must exist in `cli/test/fixtures/catalog.json`.
 - List every scenario skill in the base skill's "Other skills" section.
 
 Run `pnpm skills:gen` in `cli/` after any change here and commit the generated

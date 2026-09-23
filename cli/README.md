@@ -41,7 +41,7 @@ difyctl console_app list --limit 5                # list apps
 difyctl console_app workflow run --app-id <id> --inputs @vars.json --stream
 ```
 
-difyctl has no built-in business commands. Every operation the server publishes is a command: `console_app.workflow.run` is `difyctl console_app workflow run`, and its input fields are flags (`--app-id`, `--inputs`). A field named like one of difyctl's own flags (`input`, `stream`, `only`, `output`, `verbose`, `json`, `help`) is passed through `--input`. `difyctl call <id> --input '<json>'` runs an operation by its dotted id. The table lists the local commands; `difyctl help` lists the server's too. See [Agent skill] for the discovery flow.
+difyctl has no built-in business commands. Every operation the server publishes is a command: `console_app.workflow.run` is `difyctl console_app workflow run`, and its input fields are flags (`--app-id`, `--inputs`). A field named like one of difyctl's own flags (`input`, `stream`, `only`, `output`, `verbose`, `json`, `help`) is passed through `--input`. The table lists the local commands; `difyctl help` lists the server's too. See [Agent skill] for the discovery flow.
 
 ## Commands
 

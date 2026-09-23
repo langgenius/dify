@@ -4,13 +4,11 @@
 import type { CommandTree } from '@/plugins/commands/registry'
 import CacheClear from '@/commands/cache/clear/index'
 import CacheRefresh from '@/commands/cache/refresh/index'
-import Call from '@/commands/call/index'
 import ConfigGet from '@/commands/config/get/index'
 import ConfigSet from '@/commands/config/set/index'
 import ConfigUnset from '@/commands/config/unset/index'
 import Login from '@/commands/login/index'
 import Logout from '@/commands/logout/index'
-import Ops from '@/commands/ops/index'
 import SkillsInstall from '@/commands/skills/install/index'
 import SkillsList from '@/commands/skills/list/index'
 import Version from '@/commands/version/index'
@@ -23,7 +21,6 @@ export const commandTree: CommandTree = {
       refresh: { command: CacheRefresh, subcommands: {} },
     },
   },
-  call: { command: Call, subcommands: {} },
   config: {
     subcommands: {
       get: { command: ConfigGet, subcommands: {} },
@@ -33,7 +30,6 @@ export const commandTree: CommandTree = {
   },
   login: { command: Login, subcommands: {} },
   logout: { command: Logout, subcommands: {} },
-  ops: { command: Ops, subcommands: {} },
   skills: {
     subcommands: {
       install: { command: SkillsInstall, subcommands: {} },
