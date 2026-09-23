@@ -53,7 +53,7 @@ const DSLConfirmModal = dynamic(
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
 export function HomeContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
   const locale = useLocale()
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -474,10 +474,8 @@ export function HomeContent() {
 
       {currentTryApp && (
         <TryApp
-          appId={currentTryApp.app_id}
           app={currentTryApp}
           canCreate={canCreateApp}
-          categories={currentTryApp.categories ?? []}
           createButtonStepByStepTourTarget={
             canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal
               ? STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate

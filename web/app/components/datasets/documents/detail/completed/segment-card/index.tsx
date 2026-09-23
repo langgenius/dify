@@ -10,6 +10,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
@@ -17,7 +18,6 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Divider from '@/app/components/base/divider'
 import ImageList from '@/app/components/datasets/common/image-list'
 import { ChunkingMode } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
@@ -66,7 +66,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   embeddingAvailable,
   focused,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const {
     id,
     position,
@@ -207,7 +207,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                             </IconButton>
                           }
                         />
-                        <TooltipContent className="system-xs-medium text-text-secondary">
+                        <TooltipContent>
                           {t(($) => $['operation.edit'], { ns: 'common' })}
                         </TooltipContent>
                       </Tooltip>
@@ -227,11 +227,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                             </IconButton>
                           }
                         />
-                        <TooltipContent className="system-xs-medium text-text-secondary">
+                        <TooltipContent>
                           {t(($) => $['operation.delete'], { ns: 'common' })}
                         </TooltipContent>
                       </Tooltip>
-                      <Divider type="vertical" className="h-3.5 bg-divider-regular" />
+                      <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
                     </>
                   )}
                   <div

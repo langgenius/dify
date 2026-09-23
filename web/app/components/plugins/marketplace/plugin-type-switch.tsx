@@ -4,7 +4,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSetAtom } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from '#i18n'
-import PluginIcon from '@/app/components/base/icons/src/vender/plugin/Plugin'
 import { markMarketplaceSiteFilter } from '@/utils/marketplace-site-track'
 import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
@@ -15,7 +14,7 @@ type PluginTypeSwitchProps = {
   variant?: 'default' | 'hero' | 'home'
 }
 const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetAtom(searchModeAtom)
   const isHero = variant === 'hero'
@@ -32,7 +31,13 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
       text: isHero
         ? t(($) => $['marketplace.allPlugins'], { ns: 'plugin' })
         : t(($) => $['category.all'], { ns: 'plugin' }),
-      icon: isHero || isHome ? <PluginIcon className={iconClassName} /> : null,
+      icon:
+        isHero || isHome ? (
+          <span
+            aria-hidden
+            className={cn('i-custom-vender-plugin-plugin h-4 w-4', iconClassName)}
+          />
+        ) : null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,

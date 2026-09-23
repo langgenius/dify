@@ -1,12 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import OptionsWrap from '../options-wrap'
-
-vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: React.SVGProps<SVGSVGElement>) => (
-    <svg data-testid="chevron-icon" {...props} />
-  ),
-}))
 
 describe('OptionsWrap', () => {
   it('should render children when not folded', () => {

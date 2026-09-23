@@ -3,7 +3,6 @@ import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflo
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useState } from 'react'
-import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
 import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
 import { useVariableAssigner } from '../../hooks'
 
@@ -48,11 +47,15 @@ const AddVariable = ({
                   state.open && 'rounded-full! bg-primary-600!',
                 )}
               >
-                <Plus02
+                <span
+                  aria-hidden
                   className={cn(
-                    'size-2.5 text-text-tertiary',
-                    'group-hover/addvariable:text-text-primary',
-                    state.open && 'text-text-primary!',
+                    'i-custom-vender-line-general-plus-02 h-2.5 w-2.5',
+                    cn(
+                      'size-2.5 text-text-tertiary',
+                      'group-hover/addvariable:text-text-primary',
+                      state.open && 'text-text-primary!',
+                    ),
                   )}
                 />
               </div>

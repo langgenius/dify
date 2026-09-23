@@ -13,6 +13,12 @@ describe('TryToAsk', () => {
     expect(onSend).toHaveBeenCalledWith('Tell me more')
   })
 
+  it('keeps the two title ornaments out of the content structure', () => {
+    render(<TryToAsk suggestedQuestions={['What is AI?']} onSend={vi.fn()} />)
+
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument()
+  })
+
   it('offers no actions when there are no suggestions', () => {
     render(<TryToAsk suggestedQuestions={[]} onSend={vi.fn()} />)
 

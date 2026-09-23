@@ -10,7 +10,7 @@ import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useActionMenu = (props: ActionMenuProps) => {
   const { workflowId, isNamedVersion, canImportExportDSL } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const pipelineId = useStore((s) => s.pipelineId)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
@@ -48,7 +48,7 @@ const useActionMenu = (props: ActionMenuProps) => {
         ? [
             {
               key: VersionHistoryContextMenuOptions.exportDSL,
-              name: t(($) => $.export, { ns: 'app' }),
+              name: t(($) => $.exportApp, { ns: 'app' }),
               disabled: deploymentEdition === 'CLOUD' && plan === undefined,
               ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
             },

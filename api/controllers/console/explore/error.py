@@ -37,6 +37,18 @@ class RecommendedAppNotFoundError(BaseHTTPException):
     code = 404
 
 
+class AppPreviewSiteUnavailableError(BaseHTTPException):
+    error_code = "app_site_unavailable"
+    description = "The app preview site is unavailable."
+    code = 403
+
+
+class AppPreviewOwnerUnavailableError(BaseHTTPException):
+    error_code = "app_owner_unavailable"
+    description = "The app preview owner is unavailable."
+    code = 403
+
+
 class TrialAppNotAllowed(BaseHTTPException):
     """*403* `Trial App Not Allowed`
 

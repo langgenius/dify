@@ -13,7 +13,7 @@ type ConditionDateProps = {
   onChange: (date?: number) => void
 }
 const ConditionDate = ({ value, onChange }: ConditionDateProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.timezone ?? undefined,

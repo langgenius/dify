@@ -91,7 +91,7 @@ function EnvEditorScope({
   scope: EnvScope
   onChange?: (scope: EnvScope) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   if (!editable) {
     return (
@@ -201,7 +201,7 @@ function EnvEditorRow({
   onValueChange?: (value: string) => void
   showScope?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [isValueRevealed, setIsValueRevealed] = useState(false)
   const shouldMaskValue = variable.masked && !isValueRevealed
   const displayedValue = shouldMaskValue ? maskedEnvValue : variable.value
@@ -307,7 +307,7 @@ function EnvEditorDraftRow({
   onAdd?: (options?: { focusField?: 'key' | 'value'; scope?: EnvScope }) => void
   showScope?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const keyPlaceholder = t(
     ($) => $['agentDetail.configure.advancedSettings.envEditor.keyPlaceholder'],
   )
@@ -374,7 +374,7 @@ export function EnvVariablesTable({
   showDraftRow?: boolean
   showScope?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'appDebug'])
   const tableLabel = t(($) => $['agentDetail.configure.advancedSettings.envEditor.label'])
   const checkEnvVariableKey = (key: string) => {
     const { isValid, errorMessageKey } = checkKeys([key], false)
@@ -471,7 +471,7 @@ export function EnvVariablesTable({
 }
 
 export function AgentEnvEditor() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const envVariables = useAtomValue(agentComposerEnvVariablesAtom)
   const addEnvVariable = useSetAtom(addEnvVariableAtom)
@@ -485,7 +485,7 @@ export function AgentEnvEditor() {
   const starterVariable = starterVariableRef.current
   const [focusedVariable, setFocusedVariable] = useState<{ id: string; field: 'key' | 'value' }>()
   const envImportInputRef = useRef<HTMLInputElement>(null)
-  const envEditorTip = t(($) => $['agentDetail.configure.advancedSettings.envEditor.tip'])
+
   const envImportTip = t(($) => $[envImportTipKeys[getCurrentEnvImportPlatform()]])
   const envEditorTableId = 'agent-configure-env-editor-table'
   const visibleEnvVariables = envVariables.length > 0 ? envVariables : [starterVariable]
@@ -544,7 +544,6 @@ export function AgentEnvEditor() {
       headingLevel="h4"
       panelId={envEditorTableId}
       tip={<AgentConfigureTipContent type="env" />}
-      tipAriaLabel={envEditorTip}
       rootClassName="gap-1 py-3"
       headerClassName="mb-0 gap-1 px-3"
       panelContentClassName="px-3"

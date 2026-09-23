@@ -21,7 +21,7 @@ export function DetailSidebarToggleButton({
   className,
   icon,
 }: DetailSidebarToggleButtonProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['layout'])
   const label = expand
     ? t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })
     : t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })
@@ -42,15 +42,13 @@ export function DetailSidebarToggleButton({
           </IconButton>
         }
       />
-      <TooltipContent placement="right" className="rounded-lg p-1.5">
-        <div className="flex items-center gap-x-1">
-          <span className="px-0.5 system-xs-medium text-text-secondary">{label}</span>
-          <KbdGroup>
-            {detailSidebarToggleShortcutKeys.map((key) => (
-              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
-            ))}
-          </KbdGroup>
-        </div>
+      <TooltipContent placement="right" className="flex items-center gap-1">
+        <span className="px-0.5">{label}</span>
+        <KbdGroup>
+          {detailSidebarToggleShortcutKeys.map((key) => (
+            <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+          ))}
+        </KbdGroup>
       </TooltipContent>
     </Tooltip>
   )

@@ -63,8 +63,8 @@ export const EnvironmentVariableField = memo(
     ) => EnvironmentVariableSelection | undefined
     onChange: (workflowId: string, key: string, value: EnvironmentVariableSelection) => void
   }) => {
-    const { t } = useTranslation('deployments')
-    const { t: tWorkflow } = useTranslation('workflow')
+    const { t } = useTranslation(['deployments'])
+    const { t: tWorkflow } = useTranslation(['workflow'])
     const [selection, setSelection] = useState(() =>
       resolveEnvironmentVariableSelection(slot, getInitialSelection(workflowId, slot.key)),
     )

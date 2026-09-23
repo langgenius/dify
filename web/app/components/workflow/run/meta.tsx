@@ -22,7 +22,7 @@ const MetaData: FC<Props> = ({
   steps = 1,
   showSteps = true,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'runLog'])
   const { formatTime } = useTimestamp()
 
   return (

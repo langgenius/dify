@@ -12,7 +12,7 @@ type Props = Readonly<{
 }>
 
 const LargeDataAlert: FC<Props> = ({ textHasNoExport, downloadUrl, className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const text = textHasNoExport
     ? t(($) => $['debug.variableInspect.largeDataNoExport'], { ns: 'workflow' })
     : t(($) => $['debug.variableInspect.largeData'], { ns: 'workflow' })

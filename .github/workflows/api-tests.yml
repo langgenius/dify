@@ -298,13 +298,6 @@ jobs:
           set -euo pipefail
           coverage_version=$(python3 -c 'import tomllib; print(next(p["version"] for p in tomllib.load(open("api/uv.lock", "rb"))["package"] if p["name"] == "coverage"))')
 
-          {
-            echo "### API Coverage"
-            echo ""
-            echo "Merged backend coverage report generated for Codecov project status."
-            echo ""
-          } >> "$GITHUB_STEP_SUMMARY"
-
           mapfile -t unit_coverage < <(find coverage-data -type f -name 'coverage-unit-*' -print | sort)
           mapfile -t controller_coverage < <(find coverage-data -type f -name 'coverage-controllers-*' -print | sort)
           mapfile -t integration_coverage < <(find coverage-data -type f -name 'coverage-integration-*' -print | sort)
@@ -321,20 +314,27 @@ jobs:
             exit 1
           fi
 
-          report_file="$(mktemp)"
           uvx --from "coverage==$coverage_version" coverage combine "${unit_coverage[@]}" "${controller_coverage[@]}" "${integration_coverage[@]}"
-          uvx --from "coverage==$coverage_version" coverage report --show-missing | tee "$report_file"
-          echo "Summary: \`$(tail -n 1 "$report_file")\`" >> "$GITHUB_STEP_SUMMARY"
-          {
-            echo ""
-            echo "<details><summary>Coverage report</summary>"
-            echo ""
-            echo '```'
-            cat "$report_file"
-            echo '```'
-            echo "</details>"
-          } >> "$GITHUB_STEP_SUMMARY"
           uvx --from "coverage==$coverage_version" coverage xml -o coverage.xml
+
+          # Reuse the XML totals instead of analyzing every source file again for a text report.
+          python3 - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+
+          coverage = ET.parse("coverage.xml").getroot()
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("### API Coverage\n\n")
+              summary.write("Merged backend coverage report generated for Codecov project status.\n\n")
+              summary.write("| Metric | Covered | Total | Coverage |\n")
+              summary.write("| --- | ---: | ---: | ---: |\n")
+              for label, metric in (("Lines", "lines"), ("Branches", "branches")):
+                  covered = int(coverage.attrib[f"{metric}-covered"])
+                  total = int(coverage.attrib[f"{metric}-valid"])
+                  percentage = f"{covered / total:.2%}" if total else "N/A"
+                  summary.write(f"| {label} | {covered} | {total} | {percentage} |\n")
+              summary.write("\nSee Codecov for per-file coverage details.\n")
+          PY
 
       - name: Report coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

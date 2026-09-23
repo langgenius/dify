@@ -12,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getOperationItems, isOperationItem } from '../utils'
 
@@ -40,8 +39,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
   writeModeTypesArr,
   writeModeTypesNum,
 }) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['workflow'])
 
   const items = getOperationItems(
     assignedVarType,
@@ -53,7 +51,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
   const selectedItem = items.find((item) => item.value === value)
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
         className={cn(

@@ -12,6 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowDownSLine,
@@ -26,7 +27,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
-import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -187,7 +187,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
       select: (data) => data.profile,
     })
     const currentUserId = userProfile.id
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflow'])
     const [replyContent, setReplyContent] = useState('')
     const [editingCommentContent, setEditingCommentContent] = useState('')
     const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
@@ -476,7 +476,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
+                <TooltipContent placement="top">
                   {t(($) => $['comments.aria.deleteComment'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>
@@ -500,11 +500,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
+                <TooltipContent placement="top">
                   {t(($) => $['comments.aria.resolveComment'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>
-              <Divider type="vertical" className="h-3.5" />
+              <Separator orientation="vertical" className="mx-2 h-3.5" />
               <Tooltip>
                 <TooltipTrigger
                   render={
@@ -521,7 +521,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
+                <TooltipContent placement="top">
                   {t(($) => $['comments.aria.previousComment'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>
@@ -541,7 +541,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
+                <TooltipContent placement="top">
                   {t(($) => $['comments.aria.nextComment'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>

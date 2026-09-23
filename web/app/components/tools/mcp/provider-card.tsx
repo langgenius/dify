@@ -18,7 +18,7 @@ type Props = Readonly<{
 }>
 
 const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const canManageMCP = useCanManageMCP()
   const isConfigured = data.is_team_authorization && data.tools.length > 0

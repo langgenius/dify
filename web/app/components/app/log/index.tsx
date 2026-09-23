@@ -52,7 +52,7 @@ const logsStateCache = new Map<
 >()
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const docLink = useDocLink()
   const router = useRouter()
   const pathname = usePathname()

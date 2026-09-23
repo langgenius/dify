@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import builtins
 import json
 import queue
+import sys
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import UUID
 
 import pytest
@@ -18,6 +20,7 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import core.ops.ops_trace_manager as module
 from core.moderation.base import ModerationAction, ModerationInputsResult
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
 from core.rag.models.document import Document as RetrievalDocument
 from graphon.enums import WorkflowExecutionStatus
@@ -464,17 +467,20 @@ def test_message_config_lookup_uses_real_conversation_and_model_config(database:
     assert OpsTraceManager.get_app_config_through_message_id("missing") is None
 
 
-def test_update_and_get_app_tracing_config_persist_state(trace_environment: None, database: Session) -> None:
+def test_update_and_get_app_tracing_config_persist_state(
+    trace_environment: None, database: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(module, "provider_config_map", FakeProviderMap({"langfuse": PROVIDER_ENTRY}))
     app = _app(database)
     assert OpsTraceManager.get_app_tracing_config(app.id, database) == {
         "enabled": False,
         "tracing_provider": None,
     }
-    OpsTraceManager.update_app_tracing_config(app.id, True, "dummy")
+    OpsTraceManager.update_app_tracing_config(app.id, True, "langfuse")
     database.expire_all()
     assert OpsTraceManager.get_app_tracing_config(app.id, database) == {
         "enabled": True,
-        "tracing_provider": "dummy",
+        "tracing_provider": "langfuse",
     }
     with pytest.raises(ValueError, match="Invalid tracing provider"):
         OpsTraceManager.update_app_tracing_config(app.id, True, "missing")
@@ -482,6 +488,74 @@ def test_update_and_get_app_tracing_config_persist_state(trace_environment: None
         OpsTraceManager.update_app_tracing_config("missing", False, None)
     with pytest.raises(ValueError, match="App not found"):
         OpsTraceManager.get_app_tracing_config("missing", database)
+
+
+@pytest.mark.parametrize("module_name", ["dify_trace_weave", "wandb"])
+def test_provider_loader_identifies_missing_optional_dependency(
+    monkeypatch: pytest.MonkeyPatch, module_name: str
+) -> None:
+    monkeypatch.delitem(sys.modules, "dify_trace_weave.weave_trace", raising=False)
+    monkeypatch.setitem(sys.modules, module_name, None)
+    with pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught:
+        module.OpsTraceProviderConfigMap()["weave"]
+
+    cause = caught.value.__cause__
+    assert isinstance(cause, ModuleNotFoundError)
+    assert cause.name is not None
+    assert cause.name.partition(".")[0] == module_name
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        ImportError("cannot import name 'WeaveDataTrace'"),
+        ModuleNotFoundError("SDK import failed without identifying a missing module"),
+        ModuleNotFoundError("No module named 'json.missing_module'", name="json.missing_module"),
+    ],
+)
+def test_provider_loader_preserves_import_errors_in_installed_packages(failure: ImportError) -> None:
+    original_import = builtins.__import__
+
+    def broken_import(name, *args, **kwargs):
+        if name.startswith("dify_trace_weave."):
+            raise failure
+        return original_import(name, *args, **kwargs)
+
+    with patch("builtins.__import__", side_effect=broken_import), pytest.raises(ImportError) as caught:
+        module.OpsTraceProviderConfigMap()["weave"]
+
+    assert caught.value is failure
+
+
+@pytest.mark.parametrize("provider", ["weave", None])
+def test_disable_tracing_does_not_load_provider(
+    database: Session, monkeypatch: pytest.MonkeyPatch, provider: str | None
+) -> None:
+    app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "weave"}))
+    providers = MagicMock()
+    monkeypatch.setattr(module, "provider_config_map", providers)
+
+    OpsTraceManager.update_app_tracing_config(app.id, False, provider)
+
+    database.expire_all()
+    assert OpsTraceManager.get_app_tracing_config(app.id, database) == {
+        "enabled": False,
+        "tracing_provider": provider,
+    }
+    providers.__getitem__.assert_not_called()
+
+
+def test_enable_tracing_requires_provider_dependencies(database: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(database)
+    providers = MagicMock()
+    providers.__getitem__.side_effect = TraceProviderNotInstalledError("weave", "wandb")
+    monkeypatch.setattr(module, "provider_config_map", providers)
+
+    with pytest.raises(TraceProviderNotInstalledError):
+        OpsTraceManager.update_app_tracing_config(app.id, True, "weave")
+
+    database.expire_all()
+    assert app.tracing is None
 
 
 def test_message_trace_reads_real_conversation_app_and_message_file(

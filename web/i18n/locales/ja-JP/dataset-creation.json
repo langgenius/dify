@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "ファイルまたはフォルダをドラッグアンドドロップする",
   "stepOne.uploader.buttonSingleFile": "ファイルをドラッグアンドドロップする",
   "stepOne.uploader.change": "変更",
+  "stepOne.uploader.completed": "アップロード完了",
   "stepOne.uploader.failed": "アップロードに失敗しました",
   "stepOne.uploader.tip": "{{supportTypes}}をサポートしています。1バッチあたり最大{{batchCount}}ファイル、各ファイル{{size}}MB まで。",
   "stepOne.uploader.tipWithTotalLimit": "{{supportTypes}}をサポートしています。1バッチあたり最大{{batchCount}}ファイル、各ファイル{{size}}MB まで。合計最大{{totalCount}}ファイル。",
