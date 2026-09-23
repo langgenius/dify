@@ -15,6 +15,7 @@ from typing import Any
 from core.dify_builder.models import Graph, MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
 from core.workflow.graph_normalizers import declared_branch_handles
+from services.dify_builder import credentials
 
 MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
     "set_node_config": ("node_id", "path", "value"),
@@ -39,12 +40,27 @@ _NODE_ID_ARGS = ("node_id", "from_node", "to_node")
 # message instead of an actionable one.
 _STRING_ARGS = ("path",)
 
+# The args that carry a node's data into the draft, and so the args through
+# which a redaction placeholder could overwrite a real credential:
+# set_node_config's `value`, create_node's and insert_between's `config`.
+_REDACTABLE_ARGS = ("value", "config")
+
 
 def validate_intent_args(intent: MutationIntent) -> None:
     """Raise ``ValueError`` if ``intent.args`` is missing a required key for
     ``intent.op``, or if ``intent.op`` isn't one of ``MUTATION_ARG_KEYS``'s
     five recognized verbs. Optional keys (marked ``?`` on ``MutationIntent``)
     are not checked here -- each ``apply_*`` function defaults them itself.
+
+    Also refuses any ``value`` / ``config`` carrying ``credentials.REDACTED``.
+    The agents show a node's config with its secrets replaced by that sentinel;
+    a model that then rewrites the surrounding field hands the placeholder
+    straight back, and writing it would destroy a live credential. Raising
+    here is the whole guard: this function is the one chokepoint both the
+    ``filter_applicable`` dry run and ``dify_port.apply_repair``'s write loop
+    pass every intent through, so a refused value is rejected with a reason
+    the corrective re-prompt can read and the stored credential stands
+    untouched. Keyed on the exact generated string, never on model prose.
     """
     required = MUTATION_ARG_KEYS.get(intent.op)
     if required is None:
@@ -66,6 +82,22 @@ def validate_intent_args(intent: MutationIntent) -> None:
         value = intent.args[key]
         if not isinstance(value, str) or not value:
             raise ValueError(f"{key} must be a non-empty string for op {intent.op!r}, got {value!r}")
+
+    # KNOWN AND ACCEPTED, deliberately not closed here: this stops the model
+    # handing the PLACEHOLDER back, not a rewrite that simply OMITS the
+    # Authorization line. That write carries no sentinel, passes, and clobbers
+    # the credential. The difference is that its failure is LOUD -- the next
+    # verify run fails authentication and lands in the repair loop with a real
+    # error -- where the leak this guard closes was silent and unrecoverable.
+    # Closing it would need merge semantics for a free-text `headers` blob,
+    # which is a larger design change and would break legitimate deletion.
+    for key in _REDACTABLE_ARGS:
+        if key in intent.args and credentials.carries_redaction(intent.args[key]):
+            raise ValueError(
+                f"{key} for op {intent.op!r} contains the redaction placeholder "
+                f"{credentials.REDACTED!r}: that is not the real secret. Leave the field "
+                "unchanged, or set it to a real value."
+            )
 
 
 def _resolve_path(container: dict[str, Any], path: str) -> tuple[Any, str | int]:

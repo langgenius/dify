@@ -165,12 +165,14 @@ class LlmBuilderAgent:
             self._reasoning_for("propose-edit-plan"),
         )
 
-    def build_edit_intents(self, edit_rules, graph):
+    def build_edit_intents(self, edit_rules, graph, *, edit_target_node_ids=(), last_edit_rejection=None):
         return edit.build_edit_intents(
             self.model_or_none(),
             edit_rules,
             graph,
             self._reasoning_for("build-edit-intents"),
+            edit_target_node_ids=edit_target_node_ids,
+            last_edit_rejection=last_edit_rejection,
         )
 
     def respond_to_message(self, state, context, history, graph, text, on_delta=None):

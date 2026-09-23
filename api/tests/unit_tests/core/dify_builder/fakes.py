@@ -451,7 +451,9 @@ class StubAgent:
     def propose_edit_plan(self, _edit_rules, _graph):
         return []
 
-    def build_edit_intents(self, _edit_rules, _graph):
+    def build_edit_intents(self, _edit_rules, _graph, *, edit_target_node_ids=(), last_edit_rejection=None):
+        self.edit_intent_calls = getattr(self, "edit_intent_calls", [])
+        self.edit_intent_calls.append((list(edit_target_node_ids), last_edit_rejection))
         return []
 
     def respond_to_message(self, _state, _context, history, _graph, text, on_delta=None):

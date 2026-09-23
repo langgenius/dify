@@ -143,7 +143,14 @@ class _StubAgent:
     def propose_edit_plan(self, _edit_rules, _graph):
         return []
 
-    def build_edit_intents(self, _edit_rules, _graph):
+    def build_edit_intents(
+        self,
+        _edit_rules,
+        _graph,
+        *,
+        edit_target_node_ids=(),  # noqa: ARG002
+        last_edit_rejection=None,  # noqa: ARG002
+    ):
         return []
 
     def respond_to_message(self, _state, _context, _history, _graph, text, on_delta=None):

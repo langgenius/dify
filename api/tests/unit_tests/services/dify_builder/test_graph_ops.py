@@ -12,7 +12,7 @@ import copy
 import pytest
 
 from core.dify_builder.models import MutationIntent
-from services.dify_builder import graph_ops
+from services.dify_builder import credentials, graph_ops
 from services.dify_builder.graph_ops import (
     MUTATION_ARG_KEYS,
     apply_connect,
@@ -952,3 +952,54 @@ def test_validate_intent_args_rejects_a_non_string_path(bad_path):
         validate_intent_args(
             MutationIntent(op="set_node_config", args={"node_id": "n1", "path": bad_path, "value": "x"})
         )
+
+
+# ---- the redaction guard ---------------------------------------------------
+#
+# The agents show a node's config with its secrets replaced by
+# ``credentials.REDACTED``. Writing that placeholder back would destroy a live
+# credential, so validate_intent_args -- the chokepoint both filter_applicable
+# and dify_port.apply_repair pass every intent through -- refuses it.
+
+
+@pytest.mark.parametrize(
+    ("op", "args"),
+    [
+        (
+            "set_node_config",
+            {"node_id": "http", "path": "headers", "value": f"Authorization: Bearer {credentials.REDACTED}"},
+        ),
+        (
+            "set_node_config",
+            {
+                "node_id": "http",
+                "path": "authorization",
+                "value": {"type": "api-key", "config": {"api_key": credentials.REDACTED}},
+            },
+        ),
+        (
+            "create_node",
+            {"node_type": "http-request", "config": {"headers": f"X-Key:{credentials.REDACTED}"}},
+        ),
+        (
+            "insert_between",
+            {
+                "edge": {"source": "a", "target": "b"},
+                "node_type": "http-request",
+                "config": {"authorization": {"config": {"api_key": credentials.REDACTED}}},
+            },
+        ),
+    ],
+)
+def test_validate_intent_args_refuses_a_value_carrying_the_redaction_sentinel(op, args):
+    with pytest.raises(ValueError, match="redaction placeholder"):
+        validate_intent_args(MutationIntent(op=op, args=args))
+
+
+def test_validate_intent_args_still_accepts_a_real_secret_value():
+    validate_intent_args(
+        MutationIntent(
+            op="set_node_config",
+            args={"node_id": "http", "path": "headers", "value": "Authorization: Bearer tok-new"},
+        )
+    )
