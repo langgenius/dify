@@ -33,13 +33,7 @@ describe('ButtonStyleDropdown', () => {
         data={UserActionButtonType.Ghost}
         onChange={(nextStyle) => {
           onChange(nextStyle)
-          view.rerender(
-            <ButtonStyleDropdown
-              text="Approve"
-              data={nextStyle}
-              onChange={onChange}
-            />,
-          )
+          view.rerender(<ButtonStyleDropdown text="Approve" data={nextStyle} onChange={onChange} />)
         }}
       />,
     )
