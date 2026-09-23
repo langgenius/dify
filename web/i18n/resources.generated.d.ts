@@ -3075,6 +3075,7 @@ export default interface Resources {
     'segment.regenerationSuccessMessage': 'You can close this window.'
     'segment.regenerationSuccessTitle': 'Regeneration completed'
     'segment.searchResults': 'RESULT' | 'RESULTS' | 'RESULT'
+    'segment.statusFilterLabel': 'Filter segments by status'
     'segment.summary': 'SUMMARY'
     'segment.summaryPlaceholder': 'Write a brief summary for better retrieval…'
   }
