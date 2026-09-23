@@ -1,6 +1,11 @@
 import json
+from typing import get_args
+
+import pytest
+from pydantic import ValidationError
 
 from core.dify_builder.models import MutationIntent
+from graphon.utils.condition.entities import Condition, SupportedComparisonOperator
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import edit
 
@@ -585,3 +590,121 @@ def test_truncation_names_the_keys_it_dropped():
     assert "template" in context.split(edit._TRUNCATION_MARKER)[1]
     assert "x" * 4000 not in context
     assert len(context) < 4000
+
+
+# ---- what a correct array mutation looks like (triage causes (a), (c), (d)) ----
+
+
+def _schema_operators(text: str) -> tuple[str, ...]:
+    """The operator literals out of ``_COMPARISON_OPERATORS``'s prose, in order.
+
+    Its shape is ``"<group>: a, b, c; <group>: d, e"``, so each ``;`` chunk's
+    text after the ``:`` is a comma-separated list of literals. Parsing rather
+    than substring-matching is what lets the drift guard run in BOTH directions.
+    """
+    out: list[str] = []
+    for group in text.split(";"):
+        _label, _, listed = group.partition(":")
+        out.extend(item.strip() for item in listed.split(",") if item.strip())
+    return tuple(out)
+
+
+def test_op_schema_teaches_the_array_and_operator_rules_the_engine_enforces():
+    """ONE test for four clauses, deliberately -- not four substring assertions.
+
+    ``assert "<phrase>" in _OP_SCHEMA`` asserts nothing about behaviour: it pins
+    a wording, so any reword fails it and any paraphrase passes it. The clauses
+    that have real behaviour behind them are therefore checked against that
+    behaviour -- ``_resolve_path`` for indexed-vs-appended paths, graphon's own
+    ``Condition`` for the operator literals -- and only the two clauses that are
+    pure instruction to the model (keep siblings byte-identical, extend the
+    aggregator a new branch feeds) are checked as text. They live in one test
+    because they are one contract: what the Edit agent is told a correct array
+    mutation looks like.
+    """
+    schema = edit._OP_SCHEMA
+    graph = {
+        "nodes": [
+            {
+                "id": "branch",
+                "data": {
+                    "type": "if-else",
+                    "title": "Score",
+                    "cases": [
+                        {
+                            "case_id": "true",
+                            "logical_operator": "and",
+                            "conditions": [
+                                {
+                                    "id": "c1",
+                                    "varType": "number",
+                                    "variable_selector": ["start", "score"],
+                                    "comparison_operator": "=",
+                                    "value": "60",
+                                }
+                            ],
+                        }
+                    ],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    # (a) indexed paths are real: one element changes and its siblings, including
+    # the id/varType keys a whole-array rewrite would drop, survive untouched.
+    changed, _ = graph_ops.apply_set_node_config(graph, "branch", "cases.0.conditions.0.comparison_operator", "≥")
+    condition = changed["nodes"][0]["data"]["cases"][0]["conditions"][0]
+    assert condition == {
+        "id": "c1",
+        "varType": "number",
+        "variable_selector": ["start", "score"],
+        "comparison_operator": "≥",
+        "value": "60",
+    }
+    assert "cases.1.conditions.0.value" in schema
+
+    # (b) an index past the end is NOT an append -- which is the whole reason the
+    # schema tells the model to re-send the array to ADD, and only to ADD.
+    cases = graph["nodes"][0]["data"]["cases"]
+    with pytest.raises(ValueError, match="out of range"):
+        graph_ops.apply_set_node_config(graph, "branch", "cases.1", {"case_id": "excellent"})
+    grown, _ = graph_ops.apply_set_node_config(graph, "branch", "cases", [*cases, {"case_id": "excellent"}])
+    assert [c["case_id"] for c in grown["nodes"][0]["data"]["cases"]] == ["true", "excellent"]
+
+    # (c) the operator list the prompt advertises is EXACTLY graphon's Literal --
+    # same members, same order. Compared as parsed tuples, not with `in schema`:
+    # a substring check over 2.3kB of prose matches `=`, `is`, `in` anywhere and
+    # can only ever catch an addition, never a removal or a misspelling.
+    assert _schema_operators(edit._COMPARISON_OPERATORS) == get_args(SupportedComparisonOperator.__value__)
+    assert edit._COMPARISON_OPERATORS in schema
+    # ...and the ASCII forms the model reaches for are genuinely refused by the
+    # engine. `>=`/`<=` are healed upstream by heal_nodes_for_preflight, so for
+    # those the prompt is merely stricter than the port; the equality forms are
+    # ambiguous, deliberately unhealed, and this prose is all that stops them.
+    for ascii_form in (">=", "<=", "!="):
+        with pytest.raises(ValidationError):
+            Condition(variable_selector=["start", "score"], comparison_operator=ascii_form, value="90")
+    for engine_form in ("≥", "≤", "≠"):
+        assert (
+            Condition(
+                variable_selector=["start", "score"], comparison_operator=engine_form, value="90"
+            ).comparison_operator
+            == engine_form
+        )
+
+    # (d) the pure-guidance clauses -- no code path enforces these, so text is
+    # the only thing to assert: keep the untouched elements identical, and extend
+    # the variable-aggregator the new branch feeds (cause (d), the one that ends
+    # in "All checks passed" on empty output). The output-variable pairings are
+    # pinned because a single hardcoded name would RECREATE cause (d): the
+    # aggregator skips a selector it cannot resolve in silence, so ["llm", "output"]
+    # -- an llm node publishes `text` -- runs green and produces nothing.
+    assert "byte-identical" in schema
+    assert "variable-aggregator" in schema
+    assert "variables" in schema
+    for pairing in ("llm node's is text", "template-transform's is output"):
+        assert pairing in schema
+
+    # and never hand the redaction sentinel back (Task 3's withheld secrets).
+    assert credentials.REDACTED in schema
