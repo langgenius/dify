@@ -1,3 +1,4 @@
+import type { WorkflowTranslate } from '../../parallel'
 import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
@@ -116,7 +117,7 @@ describe('formatHumanInputNode', () => {
 
       const result = formatToTracingNodeList(
         [container, ...approvals],
-        withSelectorKey((key: string) => key, 'workflow'),
+        withSelectorKey((key: string) => key, 'workflow') as WorkflowTranslate,
       )
 
       expect(result[0]?.details?.map((row) => row.map((node) => node.id))).toEqual([
