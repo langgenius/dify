@@ -3276,14 +3276,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/button-style-dropdown.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/method-selector.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
