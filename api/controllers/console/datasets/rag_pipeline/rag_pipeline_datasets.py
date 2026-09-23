@@ -27,9 +27,16 @@ from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
+DEFAULT_RAG_PIPELINE_DATASET_ICON = IconInfo(
+    icon="📙",
+    icon_background="#FFF4ED",
+    icon_type="emoji",
+)
+
 
 class RagPipelineDatasetImportPayload(BaseModel):
     yaml_content: str
+    icon_info: IconInfo | None = None
 
 
 register_schema_models(console_ns, RagPipelineDatasetImportPayload)
@@ -63,11 +70,7 @@ class CreateRagPipelineDatasetApi(Resource):
         rag_pipeline_dataset_create_entity = RagPipelineDatasetCreateEntity(
             name="",
             description="",
-            icon_info=IconInfo(
-                icon="📙",
-                icon_background="#FFF4ED",
-                icon_type="emoji",
-            ),
+            icon_info=req_data.icon_info or DEFAULT_RAG_PIPELINE_DATASET_ICON,
             permission=DatasetPermissionEnum.ONLY_ME,
             partial_member_list=None,
             yaml_content=req_data.yaml_content,
@@ -120,11 +123,7 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
             rag_pipeline_dataset_create_entity=RagPipelineDatasetCreateEntity(
                 name="",
                 description="",
-                icon_info=IconInfo(
-                    icon="📙",
-                    icon_background="#FFF4ED",
-                    icon_type="emoji",
-                ),
+                icon_info=DEFAULT_RAG_PIPELINE_DATASET_ICON,
                 permission=DatasetPermissionEnum.ONLY_ME,
                 partial_member_list=None,
             ),

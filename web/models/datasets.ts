@@ -820,6 +820,7 @@ export const DOC_FORM_TEXT: Record<ChunkingMode, ChunkingModeText> = {
 
 export type CreateDatasetReq = {
   yaml_content?: string
+  icon_info?: IconInfo
 }
 
 export type CreateDatasetResponse = {
