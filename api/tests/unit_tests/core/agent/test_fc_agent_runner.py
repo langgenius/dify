@@ -1,7 +1,9 @@
 import json
 from collections.abc import Iterator
+from copy import deepcopy
 from datetime import UTC, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -17,14 +19,17 @@ from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.app.entities.queue_entities import QueueMessageFileEvent
 from core.credit_usage import CreditUsageAppType
-from graphon.model_runtime.entities.llm_entities import LLMUsage
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
-    DocumentPromptMessageContent,
+    AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessageContentType,
+    PromptMessageTool,
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
 from models.model import AppMode, Conversation, Message, StorageType, UploadFile
@@ -78,6 +83,7 @@ class DummyMessage:
     def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None):
         self.content: str | None = content
         self.tool_calls: list[Any] = tool_calls or []
+        self.opaque_body = None
 
 
 class DummyDelta:
@@ -178,7 +184,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     runner._init_prompt_tools = MagicMock(return_value=({}, []))
     runner.create_agent_thought = MagicMock(return_value="thought1")
     runner.save_agent_thought = MagicMock()
-    runner.recalc_llm_max_tokens = MagicMock()
+    runner.model_config.model_schema.model_properties = {}
     runner.update_prompt_message_tool = MagicMock()
 
     try:
@@ -296,54 +302,6 @@ class TestOrganizeUserQuery:
         mock_to_prompt.assert_called_once_with("file1", image_detail_config=ImagePromptMessageContent.DETAIL.HIGH)
 
 
-# ==============================
-# Clear User Prompt Images
-# ==============================
-
-
-class TestClearUserPromptImageMessages:
-    def test_clear_text_and_image_content(self, runner: FunctionCallAgentRunner):
-        text = MagicMock()
-        text.type = "text"
-        text.data = "hello"
-
-        image = MagicMock()
-        image.type = "image"
-        image.data = "img"
-
-        user_msg = MagicMock()
-        user_msg.__class__.__name__ = "UserPromptMessage"
-        user_msg.content = [text, image]
-
-        result = runner._clear_user_prompt_image_messages([user_msg])
-        assert isinstance(result, list)
-
-    def test_clear_includes_file_placeholder(self, runner: FunctionCallAgentRunner):
-        text = TextPromptMessageContent(data="hello")
-        image = ImagePromptMessageContent(format="url", mime_type="image/png")
-        document = DocumentPromptMessageContent(format="url", mime_type="application/pdf")
-
-        user_msg = UserPromptMessage(content=[text, image, document])
-
-        result = runner._clear_user_prompt_image_messages([user_msg])
-
-        assert result[0].content == "hello\n[image]\n[file]"
-
-    def test_keeps_knowledge_retrieval_image_message(self, runner: FunctionCallAgentRunner):
-        text = TextPromptMessageContent(data="query")
-        image = ImagePromptMessageContent(format="url", mime_type="image/png")
-        user_msg = UserPromptMessage(name="knowledge_retrieval", content=[image, text])
-
-        result = runner._clear_user_prompt_image_messages([user_msg])
-
-        assert result[0].content == [image, text]
-
-
-# ==============================
-# Dataset Tool Image Content
-# ==============================
-
-
 class TestBuildDatasetToolImageContents:
     def test_returns_empty_when_vision_disabled(self, runner: FunctionCallAgentRunner):
         tool = MagicMock()
@@ -426,6 +384,184 @@ class TestBuildDatasetToolImageContents:
 
 
 class TestRunMethod:
+    @pytest.mark.parametrize("stream", [False, True])
+    @pytest.mark.parametrize("second_snapshot", [{"responses_output": [{"type": "reasoning", "id": "r2"}]}, {}])
+    def test_tool_loop_preserves_snapshots_and_initial_prefix(
+        self, runner: FunctionCallAgentRunner, mocker: MockerFixture, stream: bool, second_snapshot: dict
+    ):
+        mocker.patch("core.agent.fc_agent_runner.LLMResultChunk", LLMResultChunk)
+        mocker.patch("core.agent.fc_agent_runner.LLMResultChunkDelta", LLMResultChunkDelta)
+        runner.stream_tool_call = stream
+        runner.vision_enabled = True
+        runner.files = ["original-image"]
+        image = ImagePromptMessageContent(format="base64", mime_type="image/png", base64_data="aW1hZ2U=")
+        convert_image = mocker.patch(
+            "core.agent.fc_agent_runner.file_manager.to_prompt_message_content", return_value=image
+        )
+        history = [UserPromptMessage(content="earlier question"), AssistantPromptMessage(content="earlier answer")]
+        transform = mocker.patch("core.agent.fc_agent_runner.AgentHistoryPromptTransform")
+        transform.return_value.get_prompt.side_effect = [history, []]
+        prompt_tool = PromptMessageTool(
+            name="tool", description="original", parameters={"type": "object", "properties": {}}
+        )
+        runner._init_prompt_tools.return_value = ({"tool": MagicMock()}, [prompt_tool])
+        first_snapshot = {"anthropic_content": [{"type": "thinking", "thinking": "summary", "signature": "sig1"}]}
+        snapshots = [first_snapshot, second_snapshot, None]
+        requests = []
+
+        def invoke(**kwargs):
+            requests.append(deepcopy(kwargs))
+            index = len(requests) - 1
+            calls = (
+                [
+                    AssistantPromptMessage.ToolCall(
+                        id=f"call-{index}",
+                        type="function",
+                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="tool", arguments="{}"),
+                    )
+                ]
+                if index < 2
+                else []
+            )
+            response = AssistantPromptMessage(content=f"answer-{index}", tool_calls=calls, opaque_body=snapshots[index])
+            if not stream:
+                return LLMResult(model="test-model", message=response, usage=build_usage())
+
+            def chunks():
+                yield LLMResultChunk(model="test-model", delta=LLMResultChunkDelta(index=0, message=response))
+                # Usage-only trailers must not replace a complete snapshot with None.
+                yield LLMResultChunk(
+                    model="test-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content=""),
+                        usage=build_usage(),
+                    ),
+                )
+
+            return chunks()
+
+        runner.model_instance.invoke_llm.side_effect = invoke
+
+        def tool_invoke(**_kwargs):
+            prompt_tool.description = "runtime schema changed"
+            return "tool result", [], MagicMock(to_dict=lambda: {})
+
+        mocker.patch("core.agent.fc_agent_runner.ToolEngine.agent_invoke", side_effect=tool_invoke)
+        list(runner.run(runner.session, _make_message(), "query"))
+
+        assert len(requests) == 3
+        initial = requests[0]["prompt_messages"]
+        for request in requests[1:]:
+            assert request["prompt_messages"][: len(initial)] == initial
+            assert request["tools"] == requests[0]["tools"]
+        assert requests[2]["tools"][0].description == "original"
+        assert requests[1]["prompt_messages"][len(initial)].opaque_body == first_snapshot
+        assert requests[2]["prompt_messages"][len(initial) + 2].opaque_body == second_snapshot
+        assert runner._current_thoughts[-1].opaque_body is None
+        assert initial[-1].content[0].base64_data == "aW1hZ2U="
+        transform.return_value.get_prompt.assert_called_once()
+        convert_image.assert_called_once()
+        runner.update_prompt_message_tool.assert_not_called()
+
+    def test_context_exhaustion_stops_before_mutating_or_resending_history(self, runner: FunctionCallAgentRunner):
+        runner.model_config.model_schema.model_properties = {"context_size": 1000}
+        runner.model_config.model_schema.parameter_rules = [SimpleNamespace(name="max_tokens", use_template=None)]
+        runner.model_config.parameters = {"max_tokens": 200}
+        runner.application_generate_entity.model_conf.parameters = runner.model_config.parameters
+        runner.model_instance.get_llm_num_tokens.side_effect = [100, 990]
+        response = AssistantPromptMessage(
+            content="",
+            opaque_body={"state": "signed"},
+            tool_calls=[
+                AssistantPromptMessage.ToolCall(
+                    id="call-1",
+                    type="function",
+                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="missing", arguments="{}"),
+                )
+            ],
+        )
+        runner.model_instance.invoke_llm.return_value = LLMResult(
+            model="test-model", message=response, usage=build_usage()
+        )
+
+        with pytest.raises(InvokeBadRequestError, match="context window exhausted"):
+            list(runner.run(runner.session, _make_message(), "query"))
+
+        assert runner.model_instance.invoke_llm.call_count == 1
+        assert runner._current_thoughts[0].opaque_body == {"state": "signed"}
+        assert runner.model_config.parameters["max_tokens"] == 200
+        assert runner.model_instance.get_llm_num_tokens.call_args.kwargs == {"tools": []}
+
+    def test_remaining_context_reduces_output_budget(self, runner: FunctionCallAgentRunner):
+        runner.model_config.model_schema.model_properties = {"context_size": 1000}
+        runner.model_config.model_schema.parameter_rules = [SimpleNamespace(name="max_tokens", use_template=None)]
+        runner.model_config.parameters = {"max_tokens": 200}
+        runner.model_instance.get_llm_num_tokens.return_value = 950
+        runner._recalc_llm_max_tokens([UserPromptMessage(content="query")], [])
+        assert runner.model_config.parameters["max_tokens"] == 50
+
+    def test_history_window_is_selected_before_the_tool_loop(
+        self, runner: FunctionCallAgentRunner, mocker: MockerFixture
+    ):
+        runner.memory = MagicMock()
+        runner.history_prompt_messages = [
+            UserPromptMessage(content="old"),
+            AssistantPromptMessage(content="old answer"),
+            UserPromptMessage(content="recent"),
+            AssistantPromptMessage(content="recent answer"),
+        ]
+        runner.model_config.provider_model_bundle.model_type_instance.get_num_tokens.side_effect = (
+            lambda _model, _credentials, messages: len(messages)
+        )
+        # Execute the real history selector; the initial budget admits only the
+        # most recent complete user turn. A second selection would remove it.
+        budget = mocker.patch.object(AgentHistoryPromptTransform, "_calculate_rest_token", side_effect=[3, 0])
+        call = AssistantPromptMessage.ToolCall(
+            id="call-1",
+            type="function",
+            function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="missing", arguments="{}"),
+        )
+        requests = []
+
+        def invoke(**kwargs):
+            requests.append(deepcopy(kwargs["prompt_messages"]))
+            return LLMResult(
+                model="test-model",
+                usage=build_usage(),
+                message=AssistantPromptMessage(
+                    content="answer",
+                    tool_calls=[call] if len(requests) == 1 else [],
+                    opaque_body={"state": "signed"},
+                ),
+            )
+
+        runner.model_instance.invoke_llm.side_effect = invoke
+        list(runner.run(runner.session, _make_message(), "query"))
+
+        assert [message.content for message in requests[0]] == ["system", "recent", "recent answer", "query"]
+        assert requests[1][: len(requests[0])] == requests[0]
+        budget.assert_called_once()
+
+    def test_interrupted_stream_does_not_save_or_replay_partial_snapshot(self, runner: FunctionCallAgentRunner):
+        runner.stream_tool_call = True
+
+        def interrupted():
+            yield LLMResultChunk(
+                model="test-model",
+                delta=LLMResultChunkDelta(
+                    index=0,
+                    message=AssistantPromptMessage(content="partial", opaque_body={"state": "partial"}),
+                ),
+            )
+            raise ConnectionError("stream interrupted")
+
+        runner.model_instance.invoke_llm.return_value = interrupted()
+        with pytest.raises(ConnectionError, match="stream interrupted"):
+            list(runner.run(runner.session, _make_message(), "query"))
+        assert runner._current_thoughts == []
+        assert runner.model_instance.invoke_llm.call_count == 1
+
     def test_run_non_streaming_no_tool_calls(self, runner: FunctionCallAgentRunner):
         message = _make_message()
         dummy_message = DummyMessage(content="hello")

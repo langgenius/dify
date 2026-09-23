@@ -5,6 +5,7 @@ from collections.abc import Generator
 from copy import deepcopy
 from typing import Any, Union
 
+from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -29,13 +30,15 @@ from graphon.model_runtime.entities import (
     LLMResultChunkDelta,
     LLMUsage,
     PromptMessage,
-    PromptMessageContentType,
+    PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models import UploadFile
 from models.model import Message
 
@@ -143,13 +146,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 llm_usage.total_price += usage.total_price
 
         model_instance = self.model_instance
+        # Resolve the history window and attachments once. Signed provider state
+        # returned below belongs to this exact prefix for the rest of the loop.
+        initial_prompt_messages = self._organize_prompt_messages()
+        prompt_messages_tools = deepcopy(prompt_messages_tools)
 
         while function_call_state and iteration_step <= max_iteration_steps:
             function_call_state = False
-
-            if iteration_step == max_iteration_steps:
-                # the last iteration, remove all tools
-                prompt_messages_tools = []
 
             message_file_ids: list[str] = []
             agent_thought_id = self.create_agent_thought(
@@ -161,8 +164,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             )
 
             # recalc llm max tokens
-            prompt_messages = self._organize_prompt_messages()
-            self.recalc_llm_max_tokens(self.model_config, prompt_messages)
+            prompt_messages = [*initial_prompt_messages, *self._current_thoughts]
+            self._recalc_llm_max_tokens(prompt_messages, prompt_messages_tools)
 
             # Release any setup/tool transaction before waiting on the provider stream.
             session.commit()
@@ -195,10 +198,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             tool_call_inputs = ""
 
             current_llm_usage = None
+            opaque_body: JsonValue | None = None
 
             if isinstance(chunks, Generator):
                 is_first_chunk = True
                 for chunk in chunks:
+                    if chunk.delta.message.opaque_body is not None:
+                        opaque_body = chunk.delta.message.opaque_body
                     if is_first_chunk:
                         self.queue_manager.publish(
                             QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
@@ -231,6 +237,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     yield chunk
             else:
                 result = chunks
+                opaque_body = result.message.opaque_body
                 # check if there is any tool call
                 if self.check_blocking_tool_calls(result):
                     function_call_state = True
@@ -273,7 +280,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     ),
                 )
 
-            assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
+            assistant_message = AssistantPromptMessage(content=response, tool_calls=[], opaque_body=opaque_body)
             if tool_calls:
                 assistant_message.tool_calls = [
                     AssistantPromptMessage.ToolCall(
@@ -403,12 +410,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
 
-            # update prompt tool
-            for prompt_tool in prompt_messages_tools:
-                tool_instance = tool_instances.get(prompt_tool.name)
-                if tool_instance:
-                    self.update_prompt_message_tool(tool_instance, prompt_tool)
-
             iteration_step += 1
 
         # publish end event
@@ -533,45 +534,40 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_messages
 
-    def _clear_user_prompt_image_messages(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
-        """
-        As for now, gpt supports both fc and vision at the first iteration.
-        We need to remove the image messages from the prompt messages at the first iteration.
-        """
-        prompt_messages = deepcopy(prompt_messages)
+    def _recalc_llm_max_tokens(self, prompt_messages: list[PromptMessage], tools: list[PromptMessageTool]) -> None:
+        """Fit the output budget without trimming the active tool loop's prefix."""
+        context_size = self.model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+        if context_size is None:
+            return
 
-        for prompt_message in prompt_messages:
-            if isinstance(prompt_message, UserPromptMessage):
-                if prompt_message.name == _KNOWLEDGE_RETRIEVAL_PROMPT_NAME:
-                    continue
-                if isinstance(prompt_message.content, list):
-                    prompt_message.content = "\n".join(
-                        [
-                            content.data
-                            if content.type == PromptMessageContentType.TEXT
-                            else "[image]"
-                            if content.type == PromptMessageContentType.IMAGE
-                            else "[file]"
-                            for content in prompt_message.content
-                        ]
-                    )
+        prompt_tokens = self.model_instance.get_llm_num_tokens(prompt_messages, tools=tools)
+        if prompt_tokens < 0:
+            return
+        remaining_tokens = context_size - prompt_tokens
+        if remaining_tokens < 16:
+            raise InvokeBadRequestError(
+                "Agent context window exhausted. Start a new conversation or reduce the tool output size."
+            )
 
-        return prompt_messages
+        for rule in self.model_config.model_schema.parameter_rules:
+            if rule.name == "max_tokens" or rule.use_template == "max_tokens":
+                max_tokens = self.model_config.parameters.get(rule.name) or self.model_config.parameters.get(
+                    rule.use_template or ""
+                )
+                if max_tokens and max_tokens > remaining_tokens:
+                    self.model_config.parameters[rule.name] = remaining_tokens
 
-    def _organize_prompt_messages(self):
+    def _organize_prompt_messages(self) -> list[PromptMessage]:
+        """Choose the initial history window before the first model response."""
         prompt_template = self.app_config.prompt_template.simple_prompt_template or ""
         self.history_prompt_messages = self._init_system_message(prompt_template, self.history_prompt_messages)
         query_prompt_messages = self._organize_user_query(self.query or "", [])
 
         self.history_prompt_messages = AgentHistoryPromptTransform(
             model_config=self.model_config,
-            prompt_messages=[*query_prompt_messages, *self._current_thoughts],
+            prompt_messages=query_prompt_messages,
             history_messages=self.history_prompt_messages,
             memory=self.memory,
         ).get_prompt()
 
-        prompt_messages = [*self.history_prompt_messages, *query_prompt_messages, *self._current_thoughts]
-        if len(self._current_thoughts) != 0:
-            # clear messages after the first iteration
-            prompt_messages = self._clear_user_prompt_image_messages(prompt_messages)
-        return prompt_messages
+        return [*self.history_prompt_messages, *query_prompt_messages]
