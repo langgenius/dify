@@ -9,6 +9,7 @@ Degrades to an honest result on model-None / provider-error / parse-fail."""
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
 from core.workflow.graph_normalizers import declared_branch_handles
@@ -242,6 +243,11 @@ def build_edit_intents(
     is keyed on pydantic error LOCATIONS, so replacing one bad value with
     another bad value at the same path is not a new problem to it, while the
     engine's message names the value.
+
+    Raises ``ProposalWouldRunWrongError`` when the batch it would otherwise
+    return still carries a whole-batch semantic verdict from ``vet_intents``
+    (see ``_refuse_a_batch_already_judged_wrong``). Nothing has been written at
+    that point; the caller surfaces the reason at the approval gate.
     """
     if model is None:
         return []
@@ -260,7 +266,7 @@ def build_edit_intents(
     intents = _invoke_intents(model, system, user, on_reasoning)
     if intents is None:
         return []
-    vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+    first = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
     # ANY rejection -- partial, total, or a node the engine would refuse to start
     # -- burns the one corrective re-prompt: a partial reject can silently drop
     # the one intent that mattered (e.g. a connect from a branch node missing its
@@ -270,17 +276,45 @@ def build_edit_intents(
     # that does not apply -- it reaches the approval gate looking healthy and
     # dies at the write. If the retry itself yields nothing usable, fall back to
     # the first attempt's applicable intents rather than losing them.
-    if vetted.rejections:
-        first_applicable = vetted.applicable
-        reasons = "\n".join(vetted.rejections)
-        retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
-        intents = _invoke_intents(model, system, retry_user, on_reasoning)
-        if intents is None:
-            return first_applicable
-        vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
-        if not vetted.applicable:
-            return first_applicable
-    return vetted.applicable
+    if not first.rejections:
+        return first.applicable
+
+    reasons = "\n".join(first.rejections)
+    retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
+    retried = _invoke_intents(model, system, retry_user, on_reasoning)
+    vetted = preflight.vet_intents(graph, retried, _ALLOWED_NODE_TYPES) if retried is not None else None
+    chosen = vetted if vetted is not None and vetted.applicable else first
+    _refuse_a_batch_already_judged_wrong(chosen)
+    return chosen.applicable
+
+
+def _refuse_a_batch_already_judged_wrong(vetted: preflight.VettedIntents) -> None:
+    """Stop here rather than hand on a batch this agent has itself judged
+    wrong.
+
+    The fallback above exists so a model that half-answers the re-prompt does
+    not cost the user their whole change. It was also the last hole in the two
+    semantic guards: those describe defects the ENGINE ACCEPTS -- a new branch
+    wired into a variable-aggregator that was never told about it, an array
+    re-sent with an element quietly dropped -- so there is no
+    ``DraftWouldNotStartError`` behind them and ``apply_repair`` has nothing to
+    veto. The guard would fire, the model would fail to answer it, and the
+    fallback would write the condemned batch anyway, landing in exactly the
+    green-run-empty-output failure the guard was built to stop.
+
+    So a whole-batch semantic verdict surfaces to the human instead. That is a
+    real exit now and not a dead end: the gate offers a revert and a
+    keep-adjusting action, and the reason travels into the next attempt through
+    ``last_edit_rejection``, so the user can change the rules and the next
+    proposal is not blind.
+
+    Only ``would_run_wrong`` does this, never ``rejections`` at large. A
+    structural refusal dropped its own intent, so the batch left over is one
+    nobody has judged wrong -- keeping it is the deliberate choice above. Read
+    off the structured list, never off the rejection text.
+    """
+    if vetted.would_run_wrong:
+        raise ProposalWouldRunWrongError("\n".join(vetted.would_run_wrong))
 
 
 def _invoke_intents(
