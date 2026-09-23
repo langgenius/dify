@@ -8,6 +8,7 @@ JSON number 60 (``Condition.value: str | Sequence[str] | bool | None``)."""
 import copy
 import json
 from pathlib import Path
+from typing import get_args
 
 import pytest
 
@@ -17,6 +18,8 @@ from core.workflow.graph_normalizers import (
     normalize_conditions,
     normalize_filter_condition_value,
 )
+from graphon.nodes.list_operator.entities import FilterOperator
+from graphon.utils.condition.entities import SupportedComparisonOperator
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -335,37 +338,41 @@ class TestCanonicalizeComparisonOperators:
         assert nodes[2]["data"]["filter_by"]["conditions"][0]["comparison_operator"] == "≤"
         assert nodes[3]["data"]["conditions"][0]["comparison_operator"] == "≥"
 
+    def _list_operator(self, operator: str, value: object = "9") -> list[dict]:
+        return [
+            {
+                "id": "node2",
+                "data": {
+                    "type": "list-operator",
+                    "filter_by": {
+                        "enabled": True,
+                        "conditions": [{"key": "n", "comparison_operator": operator, "value": value}],
+                    },
+                },
+            }
+        ]
+
     @pytest.mark.parametrize(
-        "operator",
-        [
-            "=",
-            "≠",
-            ">",
-            "<",
-            "≥",
-            "≤",
-            "is",
-            "is not",
-            "contains",
-            "not contains",
-            "start with",
-            "end with",
-            "in",
-            "not in",
-            "all of",
-            "empty",
-            "not empty",
-            "null",
-            "not null",
-            "exists",
-            "not exists",
-        ],
+        ("container", "operator"),
+        # The two containers take DIFFERENT operator sets -- graphon's
+        # ``SupportedComparisonOperator`` (if-else / loop Conditions) and the
+        # list-operator's ``FilterOperator``, which has no ``all of`` /
+        # ``null`` / ``not null`` / ``exists`` / ``not exists`` -- so each is
+        # swept over its own, or the second would be asserting a no-op on
+        # operators its own engine model rejects anyway. Read off graphon rather
+        # than transcribed: an operator added there joins the sweep with it.
+        [("if-else", op) for op in get_args(SupportedComparisonOperator.__value__)]
+        + [("list-operator", op.value) for op in FilterOperator],
     )
-    def test_an_operator_the_engine_accepts_is_left_alone(self, operator: str):
-        # ``in`` / ``not in`` / ``all of`` compare against a list, so they get a
-        # list value: this asserts the OPERATOR is untouched, not the
-        # pre-existing scalar-to-list value rule.
-        nodes = self._if_else(operator, ["9"] if operator in ("in", "not in", "all of") else "9")
+    def test_an_operator_the_engine_accepts_is_left_alone(self, container: str, operator: str):
+        # ``in`` / ``not in`` / ``all of`` compare a Condition against a list, so
+        # they get a list value: this asserts the OPERATOR is untouched, not the
+        # pre-existing scalar-to-list value rule. A FilterCondition never wraps,
+        # so its value stays a plain string throughout.
+        if container == "if-else":
+            nodes = self._if_else(operator, ["9"] if operator in ("in", "not in", "all of") else "9")
+        else:
+            nodes = self._list_operator(operator)
         before = copy.deepcopy(nodes)
 
         assert normalize_conditions(nodes) == []

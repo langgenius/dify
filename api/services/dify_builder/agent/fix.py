@@ -20,7 +20,7 @@ from core.dify_builder.models import (
 )
 from core.model_manager import ModelInstance
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
-from services.dify_builder import credentials, graph_ops
+from services.dify_builder import credentials, graph_ops, preflight
 from services.dify_builder.agent import llm
 
 _SEVERITIES = {"low", "medium", "high"}
@@ -297,16 +297,21 @@ def propose_repair(
     intents, risk = _invoke_repair(model, system, user, on_reasoning)
     if intents is None:
         return _no_fix()
-    applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
-    if rejected:
-        reasons = "\n".join(f"- {i.op} {i.args}: {why}" for i, why in rejected)
+    # Structure AND node data, the same two checks ``apply_repair`` makes: a
+    # repair that applies cleanly but leaves a node ``Graph.init`` refuses is the
+    # worst outcome there is here -- it reaches the approval gate as a real fix,
+    # the human approves it, and the write dies. One corrective re-prompt, then
+    # surface to the human; a proposal the engine still refuses is not a fix.
+    vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+    if vetted.rejections:
+        reasons = "\n".join(vetted.rejections)
         retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
         intents, risk = _invoke_repair(model, system, retry_user, on_reasoning)
         if intents is None:
             return _no_fix()
-        applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
-        if rejected:
+        vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+        if vetted.rejections:
             return _no_fix()
-    if not applicable:
+    if not vetted.applicable:
         return _no_fix()
-    return applicable, _shape_risk(applicable, graph, risk)
+    return vetted.applicable, _shape_risk(vetted.applicable, graph, risk)

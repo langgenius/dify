@@ -828,16 +828,18 @@ def undeclared_branch_handles(nodes: list[Any], edges: list[Any]) -> list[dict[s
 
 def heal_nodes_for_preflight(nodes: list[Any]) -> list[str]:
     """Run every deterministic node heal that must happen BEFORE a graph is
-    preflighted, and return the ids of the nodes that changed (in order, each
-    id once).
+    preflighted, and return the ids of the nodes that changed -- in normalizer
+    order, each id once (so a node two normalizers touched is reported once, at
+    the first normalizer that touched it, NOT in graph order).
 
     This is the single definition of "the heals a graph gets before it is
-    validated". Two callers must agree on it or the Builder contradicts
+    validated". Three callers must agree on it or the Builder contradicts
     itself: ``dify_port.apply_repair`` (the write chokepoint, which preflights
-    what it is about to write) and ``graph_ops.filter_applicable`` (the dry run
+    what it is about to write), ``graph_ops.filter_applicable`` (the dry run
     that decides which intents are applicable, which preflights the same graph
-    a step earlier). If either kept its own list, an intent could be rejected
-    as inapplicable for a defect the chokepoint would have healed -- or
+    a step earlier) and ``generator.runner._postprocess_graph`` (which hands its
+    graph to that same chokepoint). If any kept its own list, an intent could be
+    rejected as inapplicable for a defect the chokepoint would have healed -- or
     accepted for one it would not.
 
     Each member only turns a graph the engine REFUSES into one it ACCEPTS:
@@ -852,7 +854,7 @@ def heal_nodes_for_preflight(nodes: list[Any]) -> list[str]:
 
     NOT included: ``derive_if_else_var_types``. ``varType`` is a frontend-only
     operator hint the engine ignores, so it is not something a preflight can
-    turn on; the generator's postprocess calls it separately.
+    turn on; the generator's postprocess calls it separately, right after this.
     """
     changed: list[str] = []
     for node_id in (

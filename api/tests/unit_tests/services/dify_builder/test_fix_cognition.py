@@ -1,6 +1,7 @@
 from core.dify_builder.models import ChecklistError, Diagnosis, NodeOutput, Run
 from services.dify_builder import credentials
 from services.dify_builder.agent import fix
+from services.dify_builder.preflight import preflight_errors
 
 
 class _Msg:
@@ -257,3 +258,143 @@ def test_culprit_config_survives_a_node_whose_data_is_not_a_mapping():
     graph = {"nodes": [{"id": "odd", "data": "not-a-dict"}], "edges": []}
 
     assert fix._culprit_config("odd", graph) == "{}"
+
+
+# ---- the node-data half of the check, mirroring Edit ----
+#
+# A repair that applies cleanly but leaves a node ``Graph.init`` refuses is the
+# worst outcome Fix has: it reaches the approval gate looking like a real fix,
+# the human approves it, and the write dies at ``apply_repair``'s preflight.
+# ``==`` is the error used here because no normalizer heals it and none may --
+# graphon's string equality is ``is`` and its number equality is ``=``, so the
+# ASCII form is ambiguous between them (``>=`` is unambiguous and IS healed, so
+# it can no longer prove anything).
+
+_IF_ELSE_GRAPH = {
+    "nodes": [
+        {
+            "id": "start1",
+            "type": "custom",
+            "data": {
+                "type": "start",
+                "title": "Start",
+                "variables": [
+                    {"variable": "score", "type": "number", "label": "Score", "required": True, "options": []}
+                ],
+            },
+        },
+        {
+            "id": "branch1",
+            "type": "custom",
+            "data": {
+                "type": "if-else",
+                "title": "Branch",
+                "cases": [
+                    {
+                        "case_id": "true",
+                        "logical_operator": "and",
+                        "conditions": [
+                            {
+                                "id": "c1",
+                                "varType": "number",
+                                "variable_selector": ["start1", "score"],
+                                "comparison_operator": "=",
+                                "value": "60",
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+    ],
+    "edges": [{"id": "e1", "source": "start1", "target": "branch1"}],
+}
+_IF_ELSE_DIAG = Diagnosis(culprit_node_id="branch1", root_cause="threshold is wrong", severity="medium")
+
+
+def _operator_repair(operator: str) -> str:
+    return (
+        '{"intents":[{"op":"set_node_config","args":{"node_id":"branch1",'
+        f'"path":"cases.0.conditions.0.comparison_operator","value":"{operator}"}}}}],'
+        '"risk":{"level":"low","reason":"config fix","has_external_side_effect":false}}'
+    )
+
+
+def test_propose_repair_reprompts_on_a_node_the_engine_would_refuse_and_recovers():
+    m = _RecordingInstance([_operator_repair("=="), _operator_repair("≥")])
+
+    intents, risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert len(m.calls) == 2  # structurally applicable, and STILL burned the re-prompt
+    assert [i.args["value"] for i in intents] == ["≥"]
+    assert risk.level == "low"
+
+
+def test_the_fix_reprompt_quotes_the_engines_own_words():
+    m = _RecordingInstance([_operator_repair("=="), _operator_repair("≥")])
+
+    fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    retry_prompt = m.calls[1]["prompt_messages"][1].content
+    assert "the draft would then not start: node 'branch1' (if-else): " in retry_prompt
+    assert "cases.0.conditions.0.comparison_operator" in retry_prompt
+
+
+def test_a_repair_the_engine_refuses_twice_surfaces_to_the_human():
+    m = _RecordingInstance([_operator_repair("=="), _operator_repair("==")])
+
+    intents, risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert len(m.calls) == 2
+    assert intents == []  # never handed to the gate as if it were a fix
+    assert risk.level == "high"
+    assert "manual" in risk.reason.lower()
+
+
+def test_a_repair_the_engine_accepts_never_spends_the_reprompt():
+    m = _RecordingInstance([_operator_repair("≥")])
+
+    intents, _risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert len(m.calls) == 1
+    assert len(intents) == 1
+
+
+def test_a_pre_existing_broken_node_does_not_veto_a_repair_elsewhere():
+    """New problems only: the bare ``code1`` stand-in is invalid before the
+    repair and after it, so it must not cost the re-prompt or the fix."""
+    graph = {"nodes": [*_IF_ELSE_GRAPH["nodes"], {"id": "code1", "data": {"type": "code"}}], "edges": []}
+    m = _RecordingInstance([_operator_repair("≥")])
+
+    intents, _risk = fix.propose_repair(m, _IF_ELSE_DIAG, graph)
+
+    assert len(m.calls) == 1
+    assert len(intents) == 1
+
+
+def test_a_repair_that_breaks_its_already_invalid_culprit_further_is_rejected():
+    """Fix's MAIN path, and the reason the new-problems rule is keyed on pydantic
+    error locations rather than on node identity.
+
+    For the whole ESQ1-302 / ESQ1-303 / F4 family the culprit is by definition
+    already preflight-invalid -- that is why Fix was called. A rule that exempted
+    an already-refused node from every later verdict would give ``propose_repair``
+    zero node-data coverage on the one node it is repairing: this repair, which
+    leaves the culprit refused at a field it was fine at before, would pass the
+    dry run AND the port and be written and reported as applied.
+    """
+    culprit = {"id": "code1", "type": "custom", "data": {"type": "code", "title": "Code", "code_language": "python3"}}
+    graph = {"nodes": [culprit], "edges": []}
+    assert len(preflight_errors(graph)) == 1  # already refused before the repair
+    breaks_it_further = (
+        '{"intents":[{"op":"set_node_config","args":{"node_id":"code1","path":"code_language",'
+        '"value":"klingon"}}],"risk":{"level":"low","reason":"x","has_external_side_effect":false}}'
+    )
+    m = _RecordingInstance([breaks_it_further, breaks_it_further])
+
+    intents, risk = fix.propose_repair(m, Diagnosis(culprit_node_id="code1", root_cause="x", severity="high"), graph)
+
+    assert len(m.calls) == 2  # it was refused, so the re-prompt fired
+    assert "code_language" in m.calls[1]["prompt_messages"][1].content
+    assert intents == []  # ...and refused again, so it never reaches the gate
+    assert risk.level == "high"

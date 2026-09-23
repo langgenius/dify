@@ -89,11 +89,12 @@ def _mock_db():
 
 @pytest.fixture(autouse=True)
 def _skip_preflight():
-    """``apply_repair`` dry-validates the mutated graph (``preflight_errors``).
-    The ``apply_repair`` tests in THIS module build nodes from bare
-    ``config={}`` stand-ins that are not valid node data, so the check is
-    bypassed here; ``test_dify_port_preflight.py`` exercises the real one."""
-    with patch("services.dify_builder.dify_port.preflight_errors", return_value=[]):
+    """``apply_repair`` dry-validates the mutated graph
+    (``new_preflight_problems``). The ``apply_repair`` tests in THIS module build
+    nodes from bare ``config={}`` stand-ins that are not valid node data, so the
+    check is bypassed here; ``test_dify_port_preflight.py`` exercises the real
+    one."""
+    with patch("services.dify_builder.dify_port.new_preflight_problems", return_value=[]):
         yield
 
 

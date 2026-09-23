@@ -2,7 +2,8 @@
 
 Surgical config change on an existing graph. build_edit_intents follows the
 Fix pattern: the LLM proposes targeted intents which are dry-run-validated
-through graph_ops.filter_applicable before they can reach apply_repair.
+through preflight.vet_intents -- structure AND node data, the same two checks
+apply_repair makes -- before they can reach the approval gate.
 Degrades to an honest result on model-None / provider-error / parse-fail."""
 
 import json
@@ -13,7 +14,7 @@ from core.dify_builder.models import MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
 from core.workflow.graph_normalizers import declared_branch_handles
 from graphon.enums import BUILT_IN_NODE_TYPES
-from services.dify_builder import credentials, graph_ops
+from services.dify_builder import credentials, preflight
 from services.dify_builder.agent import form_schema, llm
 
 _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
@@ -321,24 +322,27 @@ def build_edit_intents(
     intents = _invoke_intents(model, system, user, on_reasoning)
     if intents is None:
         return []
-    applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
-    # ANY rejection -- partial or total -- burns the one corrective re-prompt: a
-    # partial reject can silently drop the one intent that mattered (e.g. a connect
-    # from a branch node missing its required source_handle), so it is not safe to
-    # just keep what survived without giving the model a chance to supply the rest.
-    # If the retry itself yields nothing usable, fall back to the first attempt's
-    # applicable intents rather than losing them.
-    if rejected:
-        first_applicable = applicable
-        reasons = "\n".join(f"- {i.op} {i.args}: {why}" for i, why in rejected)
+    vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+    # ANY rejection -- partial, total, or a node the engine would refuse to start
+    # -- burns the one corrective re-prompt: a partial reject can silently drop
+    # the one intent that mattered (e.g. a connect from a branch node missing its
+    # required source_handle), so it is not safe to just keep what survived
+    # without giving the model a chance to supply the rest; and a batch that
+    # applies cleanly but leaves a node ``Graph.init`` refuses is worse than one
+    # that does not apply -- it reaches the approval gate looking healthy and
+    # dies at the write. If the retry itself yields nothing usable, fall back to
+    # the first attempt's applicable intents rather than losing them.
+    if vetted.rejections:
+        first_applicable = vetted.applicable
+        reasons = "\n".join(vetted.rejections)
         retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
         intents = _invoke_intents(model, system, retry_user, on_reasoning)
         if intents is None:
             return first_applicable
-        applicable, _rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
-        if not applicable:
+        vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+        if not vetted.applicable:
             return first_applicable
-    return applicable
+    return vetted.applicable
 
 
 def _invoke_intents(

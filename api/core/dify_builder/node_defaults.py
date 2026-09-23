@@ -31,18 +31,17 @@ loud preflight refusal into a node that is written, reported as a success, and
 silently does the wrong thing -- the exact failure shape this module exists to
 eliminate.
 
-Leaving it out costs a batch, and that cost is real: TODAY the omission is not
-caught early. ``graph_ops.filter_applicable`` dry-runs the ``apply_*`` functions
-only -- it performs no graphon validation -- so a node missing a required field
-is "applicable", and the one corrective re-prompt in
-``services/dify_builder/agent/edit.py`` never sees it. The omission surfaces at
-``apply_repair``'s preflight instead, where all three handlers catch
-``DraftWouldNotStartError``, write NOTHING and park the session
-(``handlers_edit.py``, ``handlers_fix.py``, ``handlers_build.py``). That is F4
-cause (b) itself. Running ``preflight_errors`` inside ``filter_applicable`` so
-the re-prompt can name the field is Task 5's job, specified there -- not this
-module's. Until then, a refused batch is still the right trade against a written
-node that silently answers wrong; it is just more expensive than it should be.
+Leaving it out costs a re-prompt, not a batch. ``preflight.vet_intents`` puts
+the dry-run graph through ``preflight_errors`` and hands the engine's own
+message -- which names the node and the missing field -- to the one corrective
+re-prompt in ``services/dify_builder/agent/edit.py`` and
+``services/dify_builder/agent/fix.py``. Before that existed, a node missing a
+required field was simply "applicable", the re-prompt could not fire, and the
+omission surfaced at ``apply_repair``'s preflight instead, where all three
+handlers catch ``DraftWouldNotStartError``, write NOTHING and park the session
+(``handlers_edit.py``, ``handlers_fix.py``, ``handlers_build.py``) -- F4 cause
+(b) itself. A batch refused with the field named is still the right trade
+against a written node that silently answers wrong.
 
 An empty value that makes the node FAIL LOUDLY is not in the purpose category at
 all -- there is no silence to protect against, and dropping it would pay the
