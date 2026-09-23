@@ -20,6 +20,9 @@ vi.mock('@/service/use-plugins', () => ({
   useFetchDynamicOptions: () => ({
     mutateAsync: mockFetchDynamicOptions,
   }),
+  useFetchDynamicTreeOptions: () => ({
+    mutateAsync: vi.fn(),
+  }),
 }))
 
 vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {

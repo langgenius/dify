@@ -42,7 +42,7 @@ def _parameter(*, multiple: bool = False, options: list[str] | None = None) -> P
 def test_init_frontend_parameter_preserves_multiple_selection_lists(
     parameter_type: PluginParameterType,
     value: list[str],
-):
+) -> None:
     parameter = _parameter(multiple=True, options=["123", "456"])
 
     result = init_frontend_parameter(parameter, parameter_type, value)
@@ -50,7 +50,7 @@ def test_init_frontend_parameter_preserves_multiple_selection_lists(
     assert result == value
 
 
-def test_tool_parameter_init_frontend_parameter_preserves_multiple_select_list():
+def test_tool_parameter_init_frontend_parameter_preserves_multiple_select_list() -> None:
     parameter = ToolParameter(
         name="param",
         label=_label("param"),
@@ -70,14 +70,14 @@ def test_tool_parameter_init_frontend_parameter_preserves_multiple_select_list()
     assert result == ["123"]
 
 
-def test_init_frontend_parameter_rejects_invalid_multiple_select_option():
+def test_init_frontend_parameter_rejects_invalid_multiple_select_option() -> None:
     parameter = _parameter(multiple=True, options=["123"])
 
     with pytest.raises(ValueError, match="not in options"):
         init_frontend_parameter(parameter, PluginParameterType.SELECT, ["456"])
 
 
-def test_init_frontend_parameter_preserves_object_dict():
+def test_init_frontend_parameter_preserves_object_dict() -> None:
     parameter = _parameter()
     value = {"start": "2026-06-16", "end": "2026-06-17"}
 

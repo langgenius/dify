@@ -445,7 +445,6 @@ register_schema_models(
     ParserDynamicOptions,
     ParserDynamicOptionsWithCredentials,
     ParserDynamicTreeOptions,
-    ParserPreferencesChange,
     ParserAutoUpgradeChange,
     ParserAutoUpgradeFetch,
     ParserExcludePlugin,

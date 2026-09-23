@@ -28,6 +28,9 @@ vi.mock('@/service/use-plugins', () => ({
   useFetchDynamicOptions: () => ({
     mutateAsync: mockFetchDynamicOptions,
   }),
+  useFetchDynamicTreeOptions: () => ({
+    mutateAsync: vi.fn(),
+  }),
 }))
 
 vi.mock('@/service/use-triggers', () => ({

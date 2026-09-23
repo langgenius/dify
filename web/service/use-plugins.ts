@@ -1536,7 +1536,7 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
-export type FetchPluginDynamicOptionsParams = {
+type FetchPluginDynamicOptionsParams = {
   plugin_id: string
   provider: string
   action: string
@@ -1578,7 +1578,7 @@ export const useFetchDynamicOptions = (params: FetchPluginDynamicOptionsParams) 
   })
 }
 
-export type FetchPluginDynamicTreeOptionsParams = {
+type FetchPluginDynamicTreeOptionsParams = {
   plugin_id: string
   provider: string
   action: string

@@ -9,23 +9,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
-from sqlalchemy.orm import Session
 
 from services.plugin.plugin_parameter_service import PluginParameterService
-
-
-@pytest.fixture
-def plugin_parameter_db() -> Iterator[Session]:
-    """Provide the production database extension with an isolated SQLite credential table."""
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        BuiltinToolProvider.__table__.create(db.engine)
-        with Session(db.engine, expire_on_commit=False) as session:
-            yield session
 
 
 class TestGetDynamicSelectOptionsTool:

@@ -356,6 +356,7 @@ def _expected_dynamic_option_dump() -> dict[str, Any]:
         "value": "101",
         "label": _expected_i18n("Dataset 101"),
         "icon": None,
+        "children": [],
     }
 
 

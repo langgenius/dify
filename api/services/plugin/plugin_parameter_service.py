@@ -6,6 +6,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import SubscriptionBuilder
+from models.provider_ids import TriggerProviderID
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
