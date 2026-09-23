@@ -186,12 +186,42 @@ def diagnose_checklist(
     return _diagnosis_from_json(data, graph, fallback_node=fallback)
 
 
-def _no_fix() -> tuple[list[MutationIntent], Risk]:
-    return [], Risk(
-        level="high",
-        reason="No safe automatic fix found — please review the diagnosis and edit the canvas manually, or reject.",
-        has_external_side_effect=False,
-    )
+# What the gate says when Fix has nothing to stage and nothing specific to
+# blame. Every other dead end in this module -- no model, unparseable output, an
+# engine refusal the re-prompt could not answer -- ends here.
+_NO_FIX_REASON = "No safe automatic fix found — please review the diagnosis and edit the canvas manually, or reject."
+
+# ...and what it says when there IS something specific. A would-run-wrong
+# verdict is the only refusal that describes the batch STILL ON THE TABLE rather
+# than one intent that was dropped, so it is the only one worth putting in front
+# of the human in place of the sentence above.
+_WOULD_RUN_WRONG_REASON = "No safe automatic fix found — the repair would have applied cleanly and then not worked:\n"
+
+
+def _no_fix(reason: str = "") -> tuple[list[MutationIntent], Risk]:
+    """Fix's one surface-to-human result: nothing staged, high risk, and a
+    reason the gate shows.
+
+    ``reason`` replaces the generic sentence when this module knows something
+    specific -- which today means a ``would_run_wrong`` verdict. Parameterised
+    rather than joined by a second dead-end path, so there stays exactly one
+    place that says "no fix" and one shape for callers to recognise.
+    """
+    return [], Risk(level="high", reason=reason or _NO_FIX_REASON, has_external_side_effect=False)
+
+
+def _judged_wrong_reason(vetted: preflight.VettedIntents) -> str:
+    """The surface text for a batch the semantic guards condemned, or ``""``
+    when they had nothing to say (leaving ``_no_fix`` its generic sentence).
+
+    Read off ``would_run_wrong``, never off the rejection prose: the guards'
+    lines carry only node ids, paths, handle names and element ids, so this is
+    safe to show, while the structural rejections beside them inline whole
+    ``intent.args`` and belong in a re-prompt, not on a card.
+    """
+    if not vetted.would_run_wrong:
+        return ""
+    return _WOULD_RUN_WRONG_REASON + "\n".join(vetted.would_run_wrong)
 
 
 def _culprit_config(node_id: str, graph: Graph) -> str:
@@ -319,12 +349,26 @@ def propose_repair(
     if vetted.rejections:
         reasons = "\n".join(vetted.rejections)
         retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
-        intents, risk = _invoke_repair(model, system, retry_user, on_reasoning)
-        if intents is None:
-            return _no_fix()
+        retried, retried_risk = _invoke_repair(model, system, retry_user, on_reasoning)
+        if retried is None:
+            # Nothing usable came back, so the verdict that stands is the one on
+            # the FIRST attempt -- which is also the batch the human would have
+            # been asked about. Say what was wrong with it.
+            return _no_fix(_judged_wrong_reason(vetted))
+        intents, risk = retried, retried_risk
         vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
-        if vetted.rejections:
-            return _no_fix()
-    if not vetted.applicable:
+    # Parity with Edit (``agent.edit._refuse_a_batch_already_judged_wrong``), and
+    # written as its own check rather than left to the broader one below.
+    # ``would_run_wrong`` is the one refusal the ENGINE DOES NOT MAKE: the draft
+    # would start, run green and do the wrong thing, so ``apply_repair`` has
+    # nothing to veto and this is the only thing standing between the guard and
+    # a written batch. Fix happens to refuse ANY remaining rejection today,
+    # which makes this redundant -- but that is a property of the line below,
+    # not of the guard, and if Fix is ever loosened the way Edit was, this is
+    # what still holds. It also carries the reason, which the generic exit does
+    # not.
+    if vetted.would_run_wrong:
+        return _no_fix(_judged_wrong_reason(vetted))
+    if vetted.rejections or not vetted.applicable:
         return _no_fix()
     return vetted.applicable, _shape_risk(vetted.applicable, graph, risk)

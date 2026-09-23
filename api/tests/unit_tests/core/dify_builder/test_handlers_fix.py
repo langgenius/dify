@@ -1457,3 +1457,59 @@ def test_the_unknown_outcome_counter_is_exported_with_its_cap():
     from core.dify_builder import handlers_fix
 
     assert {"MAX_UNKNOWN_OUTCOMES", "note_unknown_outcome"} <= set(handlers_fix.__all__)
+
+
+_UNFED_AGGREGATOR_REASON = (
+    "No safe automatic fix found — the repair would have applied cleanly and then not worked:\n"
+    "the new branch node7 -> node5 would run and produce nothing: node5 is a variable-aggregator "
+    'and none of its selectors is rooted at node7. Append ["node7", "output"] to node5\'s variables.'
+)
+
+
+def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason():
+    """Parity with Edit's refusal. ``propose_repair`` already refused to stage a
+    batch the semantic guards condemned -- but it surfaced BLIND: the reason
+    lived on ``fc.risk`` and was shown to nobody, so the human at the gate saw
+    "No automatic fix found" with nothing to act on. The guards' text is
+    engine-grounded and names the aggregator, the node and the selector, which
+    is precisely what makes a manual fix possible."""
+    env, _ = _new_env()
+    s = _session()
+    fc = DifyBuilderContext()
+    written: list = []
+    env.dify.apply_repair = lambda *a, **k: written.append((a, k))
+    env.agent.propose_repair = lambda _diagnosis, _graph: (
+        [],
+        Risk(level="high", reason=_UNFED_AGGREGATOR_REASON, has_external_side_effect=False),
+    )
+
+    result = handle_propose(env, Turn(actor=_actor()), s, fc)
+
+    assert written == []  # nothing was written -- this step never writes, and nothing is staged for the one that does
+    assert result.context.staged_repair == []
+    assert result.next == PcState.FIX_AWAIT_APPROVAL
+    error = next(i for i in result.items if i.kind == "error")
+    assert error.payload["body"] == _UNFED_AGGREGATOR_REASON
+    assert "node5" in error.payload["body"]
+    turns = [i for i in result.items if i.kind == "assistant_turn"]
+    assert turns[-1].payload["cards"] == ["error"]
+
+
+def test_a_staged_repair_still_carries_no_error_card():
+    """The other half: the card appears only when there is nothing to stage, so
+    an ordinary proposal is unchanged."""
+    env, _ = _new_env()
+    s = _session()
+    fc = DifyBuilderContext()
+    from core.dify_builder.models import MutationIntent
+
+    env.agent.propose_repair = lambda _diagnosis, _graph: (
+        [MutationIntent(op="set_node_config", args={"node_id": "code1", "path": "code", "value": "x"})],
+        Risk(level="low", reason="Config-only fix.", has_external_side_effect=False),
+    )
+
+    result = handle_propose(env, Turn(actor=_actor()), s, fc)
+
+    assert [i for i in result.items if i.kind == "error"] == []
+    turns = [i for i in result.items if i.kind == "assistant_turn"]
+    assert turns[-1].payload["cards"] == []
