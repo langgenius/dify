@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops import trace_source
 from core.ops.exceptions import TraceProviderNotInstalledError
-from core.ops.provider_config import BaseTracingConfig, ProviderConfigFields
+from core.ops.provider_config import BaseTracingConfig
 from core.ops.trace_queue import TraceQueue
 from models.account import Tenant
 from models.dataset import Pipeline
@@ -23,9 +23,7 @@ from services.ops_trace_service import update_app_trace_settings
 
 @pytest.fixture(autouse=True)
 def use_generic_config_schema(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.ops.provider_config.get_provider_config_fields", lambda _provider: ProviderConfigFields(BaseTracingConfig)
-    )
+    monkeypatch.setattr("core.ops.provider_config.get_provider_config_class", lambda _provider: BaseTracingConfig)
 
 
 def seed_trace_owner(session: Session) -> tuple[Tenant, App, TraceAppConfig]:
@@ -402,7 +400,7 @@ def test_disable_tracing_does_not_load_provider(
     monkeypatch.setattr("extensions.ext_database.db", SimpleNamespace(engine=sqlite_engine))
     tenant, app, _ = seed_trace_owner(sqlite_session)
     load_provider = Mock()
-    monkeypatch.setattr(ops_trace_service, "get_provider_config_fields", load_provider)
+    monkeypatch.setattr(ops_trace_service, "get_provider_config_class", load_provider)
 
     ops_trace_service.update_app_trace_settings(
         tenant_id=tenant.id, app_id=app.id, enabled=False, tracing_provider=provider
@@ -423,7 +421,7 @@ def test_enable_tracing_requires_provider_dependencies(
     previous = app.tracing
     monkeypatch.setattr(
         ops_trace_service,
-        "get_provider_config_fields",
+        "get_provider_config_class",
         Mock(side_effect=TraceProviderNotInstalledError("weave", "wandb")),
     )
 

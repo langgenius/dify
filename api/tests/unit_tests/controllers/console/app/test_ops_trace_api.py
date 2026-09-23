@@ -128,7 +128,7 @@ def test_trace_config_without_sdk_can_be_read_when_absent_or_deleted(
     )
 
     with (
-        patch("services.app_tracing_config_gateway.get_provider_config_fields") as load_provider,
+        patch("services.app_tracing_config_gateway.get_provider_config_class") as load_provider,
         app.test_request_context("/"),
     ):
         result = _original(_CONTROLLER_METHODS[method_name])(

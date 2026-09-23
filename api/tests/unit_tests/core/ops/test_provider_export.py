@@ -28,7 +28,7 @@ from core.ops.otlp_trace import OtlpTraceClient, counter, histogram, otlp_span, 
 from core.ops.provider_config import (
     decrypt_provider_config,
     encrypt_provider_config,
-    get_provider_config_fields,
+    get_provider_config_class,
     mask_provider_config,
 )
 from core.ops.provider_export import (
@@ -404,13 +404,11 @@ def assert_provider_credentials_round_trip_without_exposing_or_replacing_saved_s
     original_copy = original.copy()
     saved = encrypt_provider_config(tenant_id, provider, original)
     masked = mask_provider_config(provider, saved)
-    schema = get_provider_config_fields(provider)
+    schema = get_provider_config_class(provider)
 
-    assert (
-        decrypt_provider_config(tenant_id, provider, saved) == schema.config_class.model_validate(original).model_dump()
-    )
+    assert decrypt_provider_config(tenant_id, provider, saved) == schema.model_validate(original).model_dump()
     assert encrypt_provider_config(tenant_id, provider, masked, previous=saved) == saved
-    for field in schema.secret_keys:
+    for field in schema.secret_fields():
         if original.get(field) is not None:
             assert saved[field] == f"encrypted:{tenant_id}:{original[field]}"
             assert "*" in masked[field]
@@ -419,7 +417,7 @@ def assert_provider_credentials_round_trip_without_exposing_or_replacing_saved_s
 
 def test_unknown_provider_is_rejected() -> None:
     with pytest.raises(ValueError, match="Unsupported tracing provider"):
-        get_provider_config_fields("unknown")
+        get_provider_config_class("unknown")
     with pytest.raises(ValueError, match="Unsupported tracing provider"):
         create_provider_client("unknown", {})
 

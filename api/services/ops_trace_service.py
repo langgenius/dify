@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from core.ops.provider_config import TracingProviderEnum, get_provider_config_fields
+from core.ops.provider_config import TracingProviderEnum, get_provider_config_class
 
 
 def get_app_trace_settings(*, tenant_id: str, app_id: str) -> dict[str, Any]:
@@ -31,7 +31,7 @@ def update_app_trace_settings(*, tenant_id: str, app_id: str, enabled: bool, tra
         if tracing_provider not in TracingProviderEnum:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
         if enabled:
-            get_provider_config_fields(tracing_provider)
+            get_provider_config_class(tracing_provider)
     with Session(db.engine) as session, session.begin():
         app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
         if app is None:

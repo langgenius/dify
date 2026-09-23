@@ -1,5 +1,4 @@
 import importlib.util
-from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -74,59 +73,50 @@ class BaseTracingConfig(BaseModel):
         return validate_project_name(v, default_name)
 
 
-@dataclass(frozen=True)
-class ProviderConfigFields:
-    config_class: type[BaseTracingConfig]
-
-    @property
-    def secret_keys(self) -> tuple[str, ...]:
-        return self.config_class.secret_fields()
-
-
-def get_provider_config_fields(provider_name: str) -> ProviderConfigFields:
+def get_provider_config_class(provider_name: str) -> type[BaseTracingConfig]:
     """Import only the selected configuration schema; retain no registry or client."""
     try:
         match provider_name:
             case "langfuse":
                 from dify_trace_langfuse.config import LangfuseConfig
 
-                return ProviderConfigFields(LangfuseConfig)
+                return LangfuseConfig
             case "langsmith":
                 from dify_trace_langsmith.config import LangSmithConfig
 
-                return ProviderConfigFields(LangSmithConfig)
+                return LangSmithConfig
             case "opik":
                 from dify_trace_opik.config import OpikConfig
 
-                return ProviderConfigFields(OpikConfig)
+                return OpikConfig
             case "weave":
                 from dify_trace_weave.config import WeaveConfig
 
-                return ProviderConfigFields(WeaveConfig)
+                return WeaveConfig
             case "arize":
                 from dify_trace_arize_phoenix.config import ArizeConfig
 
-                return ProviderConfigFields(ArizeConfig)
+                return ArizeConfig
             case "phoenix":
                 from dify_trace_arize_phoenix.config import PhoenixConfig
 
-                return ProviderConfigFields(PhoenixConfig)
+                return PhoenixConfig
             case "aliyun":
                 from dify_trace_aliyun.config import AliyunConfig
 
-                return ProviderConfigFields(AliyunConfig)
+                return AliyunConfig
             case "mlflow":
                 from dify_trace_mlflow.config import MLflowConfig
 
-                return ProviderConfigFields(MLflowConfig)
+                return MLflowConfig
             case "databricks":
                 from dify_trace_mlflow.config import DatabricksConfig
 
-                return ProviderConfigFields(DatabricksConfig)
+                return DatabricksConfig
             case "tencent":
                 from dify_trace_tencent.config import TencentConfig
 
-                return ProviderConfigFields(TencentConfig)
+                return TencentConfig
             case _:
                 raise ValueError(f"Unsupported tracing provider: {provider_name}")
     except ModuleNotFoundError as error:
@@ -140,9 +130,9 @@ def encrypt_provider_config(
 ) -> dict[str, Any]:
     from core.helper.encrypter import encrypt_token
 
-    fields = get_provider_config_fields(provider_name)
-    encrypted = fields.config_class.model_validate(settings).model_dump()
-    for key in fields.secret_keys:
+    config_class = get_provider_config_class(provider_name)
+    encrypted = config_class.model_validate(settings).model_dump()
+    for key in config_class.secret_fields():
         value = encrypted.get(key)
         if value is None:
             continue
@@ -156,7 +146,7 @@ def encrypt_provider_config(
 def resolve_provider_config(provider_name: str, settings: dict[str, Any]) -> dict[str, Any]:
     """Capture deployment settings for identity checks and one owned export attempt without persisting them."""
     resolved = {key: value for key, value in settings.items() if key != "_runtime_settings"}
-    runtime_settings = get_provider_config_fields(provider_name).config_class.load_runtime_settings(resolved)
+    runtime_settings = get_provider_config_class(provider_name).load_runtime_settings(resolved)
     if runtime_settings:
         resolved["_runtime_settings"] = runtime_settings
     return resolved
@@ -166,7 +156,7 @@ def provider_config_identity(provider_name: str, resolved_config: dict[str, Any]
     """Select provider-owned identity fields without changing its attempt credentials."""
     identity = dict(resolved_config)
     if "_runtime_settings" in identity:
-        schema = get_provider_config_fields(provider_name).config_class
+        schema = get_provider_config_class(provider_name)
         identity["_runtime_settings"] = schema.runtime_settings_for_identity(identity["_runtime_settings"])
     return identity
 
@@ -174,19 +164,19 @@ def provider_config_identity(provider_name: str, resolved_config: dict[str, Any]
 def decrypt_provider_config(tenant_id: str, provider_name: str, settings: dict[str, Any]) -> dict[str, Any]:
     from core.helper.encrypter import batch_decrypt_token
 
-    fields = get_provider_config_fields(provider_name)
+    config_class = get_provider_config_class(provider_name)
     decrypted = dict(settings)
-    keys = [key for key in fields.secret_keys if settings.get(key)]
+    keys = [key for key in config_class.secret_fields() if settings.get(key)]
     values = batch_decrypt_token(tenant_id, [settings[key] for key in keys]) if keys else []
     decrypted.update(zip(keys, values))
-    return fields.config_class.model_validate(decrypted).model_dump()
+    return config_class.model_validate(decrypted).model_dump()
 
 
 def mask_provider_config(provider_name: str, settings: dict[str, Any]) -> dict[str, Any]:
     from core.helper.encrypter import obfuscated_token
 
     masked = dict(settings)
-    for key in get_provider_config_fields(provider_name).secret_keys:
+    for key in get_provider_config_class(provider_name).secret_fields():
         if masked.get(key):
             masked[key] = obfuscated_token(masked[key])
     return masked

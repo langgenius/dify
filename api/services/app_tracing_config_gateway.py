@@ -9,7 +9,7 @@ from core.ops.provider_config import (
     TracingProviderEnum,
     decrypt_provider_config,
     encrypt_provider_config,
-    get_provider_config_fields,
+    get_provider_config_class,
     mask_provider_config,
 )
 from services.app_tracing_config_service import (
@@ -34,9 +34,7 @@ class TraceProviderConfigChecks(TracingConfigProviderGateway):
     ) -> dict[str, Any]:
         self.validate_provider(tracing_provider)
         try:
-            settings = (
-                get_provider_config_fields(tracing_provider).config_class.model_validate(tracing_config).model_dump()
-            )
+            settings = get_provider_config_class(tracing_provider).model_validate(tracing_config).model_dump()
         except TraceProviderNotInstalledError as error:
             raise AppTracingConfigProviderUnavailableError from error
         except ValidationError as error:

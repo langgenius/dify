@@ -12,11 +12,10 @@ from core.ops import provider_config
 from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.provider_config import (
     BaseTracingConfig,
-    ProviderConfigFields,
     TracingProviderEnum,
     decrypt_provider_config,
     encrypt_provider_config,
-    get_provider_config_fields,
+    get_provider_config_class,
     mask_provider_config,
 )
 from core.ops.provider_export import create_provider_client
@@ -49,13 +48,13 @@ class GatewayProviderConfig(BaseTracingConfig):
 
 @pytest.fixture(autouse=True)
 def use_generic_provider_schema(monkeypatch: pytest.MonkeyPatch) -> None:
-    def get_fields(provider_name: str) -> ProviderConfigFields:
+    def get_config_class(provider_name: str) -> type[BaseTracingConfig]:
         if provider_name != "langfuse":
             raise ValueError("Unknown test provider")
-        return ProviderConfigFields(GatewayProviderConfig)
+        return GatewayProviderConfig
 
-    monkeypatch.setattr(provider_config, "get_provider_config_fields", get_fields)
-    monkeypatch.setattr(app_tracing_config_gateway, "get_provider_config_fields", get_fields)
+    monkeypatch.setattr(provider_config, "get_provider_config_class", get_config_class)
+    monkeypatch.setattr(app_tracing_config_gateway, "get_provider_config_class", get_config_class)
 
 
 def test_provider_config_preserves_masked_credentials_without_mutating_inputs() -> None:
@@ -126,7 +125,7 @@ def test_invalid_configuration_never_contacts_provider() -> None:
 
 @pytest.mark.parametrize("provider", TracingProviderEnum)
 def test_validate_provider_does_not_load_optional_dependencies(provider: TracingProviderEnum) -> None:
-    with patch("services.app_tracing_config_gateway.get_provider_config_fields") as load_provider:
+    with patch("services.app_tracing_config_gateway.get_provider_config_class") as load_provider:
         TraceProviderConfigChecks().validate_provider(provider.value)
     load_provider.assert_not_called()
 
@@ -137,8 +136,8 @@ def test_prepare_config_reports_missing_provider_dependencies(update: bool) -> N
     checks = TraceProviderConfigChecks()
     prepare = partial(checks.prepare_updated_config, current_tracing_config={}) if update else checks.prepare_new_config
     with (
-        patch("core.ops.provider_config.get_provider_config_fields", side_effect=missing_dependency),
-        patch("services.app_tracing_config_gateway.get_provider_config_fields", side_effect=missing_dependency),
+        patch("core.ops.provider_config.get_provider_config_class", side_effect=missing_dependency),
+        patch("services.app_tracing_config_gateway.get_provider_config_class", side_effect=missing_dependency),
         pytest.raises(AppTracingConfigProviderUnavailableError) as caught,
     ):
         prepare(workspace_id="tenant-a", tracing_provider="weave", tracing_config={})
@@ -158,7 +157,7 @@ def test_present_config_reports_missing_provider_dependencies() -> None:
 
 
 @pytest.mark.parametrize(
-    "load_provider", [get_provider_config_fields, partial(create_provider_client, provider_config={})]
+    "load_provider", [get_provider_config_class, partial(create_provider_client, provider_config={})]
 )
 @pytest.mark.parametrize(
     ("failure", "unavailable"),
