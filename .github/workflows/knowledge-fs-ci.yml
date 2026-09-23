@@ -437,6 +437,7 @@ jobs:
     needs:
       - check-changes
       - quality
+      - vector-backends
       - skip
     runs-on: depot-ubuntu-24.04-4
     steps:
@@ -445,15 +446,16 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           KNOWLEDGE_FS_CHANGED: ${{ needs.check-changes.outputs.knowledge-fs }}
           QUALITY_RESULT: ${{ needs.quality.result }}
+          VECTOR_RESULT: ${{ needs.vector-backends.result }}
           SKIP_RESULT: ${{ needs.skip.result }}
         run: |
           if [[ "$EVENT_NAME" == 'workflow_dispatch' || "$KNOWLEDGE_FS_CHANGED" == 'true' ]]; then
-            if [[ "$QUALITY_RESULT" == 'success' ]]; then
+            if [[ "$QUALITY_RESULT" == 'success' && "$VECTOR_RESULT" == 'success' ]]; then
               echo "Dify KnowledgeFS contract and integration checks ran successfully."
               exit 0
             fi
 
-            echo "Dify KnowledgeFS integration checks failed: quality=$QUALITY_RESULT" >&2
+            echo "Dify KnowledgeFS integration checks failed: quality=$QUALITY_RESULT vectors=$VECTOR_RESULT" >&2
             exit 1
           fi
 
@@ -464,7 +466,6 @@ jobs:
 
           echo "KnowledgeFS change detection or skip reporting failed with result: $SKIP_RESULT" >&2
           exit 1
-
 
   vector-backends:
     name: Test native KnowledgeFS vector backends
