@@ -1,22 +1,28 @@
-from collections.abc import Callable
+import json
+from collections.abc import Callable, Generator
 from dataclasses import dataclass, field
 from operator import itemgetter
 from uuid import UUID, uuid4
 
 import pytest
-from flask import Flask, Request
+from flask import Flask, Request, got_request_exception
 from flask_restx import Resource
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import Connection, event, inspect
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.exceptions import Unauthorized
 from werkzeug.test import TestResponse
 
+import controllers.console.explore.completion as completion_module
 import controllers.console.explore.installed_app_admission as admission_module
 import controllers.console.explore.parameter as parameter_module
 import controllers.console.explore.saved_message as saved_message_module
 import controllers.console.flask_admission as console_admission
 import controllers.console.wraps as console_wraps
+import core.app.apps.base_app_queue_manager as app_queue_module
+import core.app.apps.execution_coordinator as coordinator_module
 import libs.login as login_module
+import services.app_task_service as app_task_module
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
 from enums import DeploymentEdition
@@ -25,10 +31,14 @@ from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from models import Account, App, AppMode, InstalledApp, Tenant
 from models.account import AccountStatus
-from repositories.installed_app_access_repository import SQLAlchemyInstalledAppAccessRepository
+from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
+from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_task_service import AppTaskControlService
 from services.installed_app_access_service import InstalledAppAccessService, InstalledAppRef
 from services.saved_message_service import SavedMessageActor, SavedMessagePage, SavedMessageRecord, SavedMessageService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from tests.unit_tests.services.test_app_task_service import _StopRedis
 
 
 @dataclass
@@ -36,6 +46,7 @@ class _AdmissionState:
     setup_completed: bool = True
     allowed: bool = True
     permission_error: Exception | None = None
+    permission_action: Callable[[], None] | None = None
     events: list[str] = field(default_factory=list)
     permission_calls: list[tuple[str, str]] = field(default_factory=list)
 
@@ -109,11 +120,13 @@ def harness(
         assert all(not session.in_transaction() and not session.identity_map for session in repository_sessions)
         if state.permission_error is not None:
             raise state.permission_error
+        if state.permission_action is not None:
+            state.permission_action()
         return state.allowed
 
     services = _ApplicationServices(
         installed_app_access=InstalledAppAccessService(
-            installed_apps=SQLAlchemyInstalledAppAccessRepository(session_factory=repository_factory),
+            installed_apps=SQLAlchemyInstalledAppRepository(session_factory=repository_factory),
             is_user_allowed=permission_check,
         )
     )
@@ -495,3 +508,276 @@ def test_migrated_saved_message_and_parameter_handlers_dispatch_through_full_adm
         body={"tool_icons": {"search": "/tools/search/icon"}},
     )
     assert harness.state.permission_calls == [(harness.account.id, harness.target_app.id)] * 5
+
+
+@dataclass(frozen=True)
+class _StopServices:
+    app_definitions: AppDefinitionQueryService
+    app_tasks: AppTaskControlService
+
+
+_TASK_ID = "task-with-non-uuid-id"
+
+
+@pytest.fixture
+def _stop_global_redis(monkeypatch: pytest.MonkeyPatch) -> Generator[_StopRedis]:
+    redis = _StopRedis(
+        read_error=AssertionError("Must use the injected Redis for ownership reads"),
+        flag_error=AssertionError("Must use the injected Redis for stop flags"),
+        command_error=AssertionError("Must use the injected Redis for GraphEngine commands"),
+    )
+    monkeypatch.setattr(app_queue_module, "redis_client", redis)
+    monkeypatch.setattr(coordinator_module, "redis_client", redis)
+    monkeypatch.setattr(app_task_module, "redis_client", redis)
+    yield redis
+    # GraphEngine catches Redis failures, so inspect the trap even after HTTP success.
+    assert redis.reads == []
+    assert redis.operations == []
+
+
+@pytest.fixture
+def stop_redis(
+    harness: _Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    _stop_global_redis: _StopRedis,
+) -> _StopRedis:
+    redis = _StopRedis(values={f"generate_task_belong:{_TASK_ID}": f"account-{harness.account.id}".encode()})
+    services = _StopServices(
+        app_definitions=AppDefinitionQueryService(
+            definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
+            builtin_icon_url_prefix="/tools/icons",
+        ),
+        app_tasks=AppTaskControlService(redis_client=redis),
+    )
+    monkeypatch.setattr(completion_module, "application_services", lambda: services)
+    harness.api.add_resource(
+        completion_module.CompletionStopApi,
+        "/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop",
+    )
+    harness.api.add_resource(
+        completion_module.ChatStopApi,
+        "/installed-apps/<uuid:installed_app_id>/chat-messages/<string:task_id>/stop",
+    )
+    return redis
+
+
+def _stop_url(harness: _Harness, message_kind: str) -> str:
+    return f"/installed-apps/{harness.installed_app.id}/{message_kind}-messages/{_TASK_ID}/stop"
+
+
+def _set_app_mode(harness: _Harness, session_factory: sessionmaker[Session], mode: AppMode) -> None:
+    with session_factory.begin() as session:
+        app = session.get(App, harness.target_app.id)
+        assert app is not None
+        app.mode = mode
+
+
+@pytest.mark.parametrize(
+    ("message_kind", "mode"),
+    [
+        ("completion", AppMode.COMPLETION),
+        ("chat", AppMode.CHAT),
+        ("chat", AppMode.AGENT_CHAT),
+        ("chat", AppMode.ADVANCED_CHAT),
+    ],
+)
+def test_stop_handlers_preserve_mode_specific_commands_and_response(
+    harness: _Harness,
+    stop_redis: _StopRedis,
+    sqlite_session_factory: sessionmaker[Session],
+    message_kind: str,
+    mode: AppMode,
+) -> None:
+    _set_app_mode(harness, sqlite_session_factory, mode)
+
+    response = harness.app.test_client().post(_stop_url(harness, message_kind))
+
+    _assert_json_response(response, status=200, body={"result": "success"})
+    assert stop_redis.reads == [f"generate_task_belong:{_TASK_ID}"]
+    assert stop_redis.values[f"generate_task_stopped:{_TASK_ID}"] == b"1"
+    assert stop_redis.expirations[f"generate_task_stopped:{_TASK_ID}"] == 600
+    if mode == AppMode.ADVANCED_CHAT:
+        command_key = f"workflow:{_TASK_ID}:commands"
+        assert set(stop_redis.commands) == {command_key}
+        assert [json.loads(command) for command in stop_redis.commands[command_key]] == [
+            {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+        ]
+    else:
+        assert stop_redis.commands == {}
+    assert harness.state.permission_calls == [(harness.account.id, harness.target_app.id)]
+
+
+@pytest.mark.parametrize(
+    ("message_kind", "mode"), [("completion", AppMode.COMPLETION), ("chat", AppMode.ADVANCED_CHAT)]
+)
+@pytest.mark.parametrize("ownership", ["missing", "different-account", "end-user"])
+def test_stop_handlers_preserve_mode_specific_behavior_when_task_ownership_does_not_match(
+    harness: _Harness,
+    stop_redis: _StopRedis,
+    sqlite_session_factory: sessionmaker[Session],
+    message_kind: str,
+    mode: AppMode,
+    ownership: str,
+) -> None:
+    _set_app_mode(harness, sqlite_session_factory, mode)
+    owner_key = f"generate_task_belong:{_TASK_ID}"
+    if ownership == "missing":
+        stop_redis.values.pop(owner_key)
+    elif ownership == "different-account":
+        stop_redis.values[owner_key] = b"account-someone-else"
+    else:
+        stop_redis.values[owner_key] = f"end-user-{harness.account.id}".encode()
+
+    response = harness.app.test_client().post(_stop_url(harness, message_kind))
+
+    _assert_json_response(response, status=200, body={"result": "success"})
+    assert stop_redis.reads == [owner_key]
+    assert f"generate_task_stopped:{_TASK_ID}" not in stop_redis.values
+    if mode == AppMode.ADVANCED_CHAT:
+        assert stop_redis.operations == ["graph_command"]
+        assert [json.loads(command) for command in stop_redis.commands[f"workflow:{_TASK_ID}:commands"]] == [
+            {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+        ]
+    else:
+        assert stop_redis.operations == []
+        assert stop_redis.commands == {}
+
+
+@pytest.mark.parametrize(
+    ("message_kind", "mode", "code", "message"),
+    [
+        ("completion", AppMode.CHAT, "not_completion_app", "Not Completion App"),
+        ("chat", AppMode.COMPLETION, "not_chat_app", "App mode is invalid."),
+        ("chat", AppMode.WORKFLOW, "not_chat_app", "App mode is invalid."),
+    ],
+)
+def test_stop_handlers_reject_wrong_modes_without_sending_commands(
+    harness: _Harness,
+    stop_redis: _StopRedis,
+    sqlite_session_factory: sessionmaker[Session],
+    message_kind: str,
+    mode: AppMode,
+    code: str,
+    message: str,
+) -> None:
+    _set_app_mode(harness, sqlite_session_factory, mode)
+
+    response = harness.app.test_client().post(_stop_url(harness, message_kind))
+
+    _assert_json_response(response, status=400, body={"code": code, "message": message, "status": 400})
+    assert stop_redis.reads == []
+    assert stop_redis.commands == {}
+    assert f"generate_task_stopped:{_TASK_ID}" not in stop_redis.values
+
+
+@pytest.mark.parametrize("message_kind", ["completion", "chat"])
+def test_stop_handlers_reject_app_removed_after_admission_before_sending_commands(
+    harness: _Harness,
+    stop_redis: _StopRedis,
+    sqlite_session_factory: sessionmaker[Session],
+    message_kind: str,
+) -> None:
+    def remove_app() -> None:
+        with sqlite_session_factory.begin() as session:
+            app = session.get(App, harness.target_app.id)
+            assert app is not None
+            session.delete(app)
+
+    harness.state.permission_action = remove_app
+
+    response = harness.app.test_client().post(_stop_url(harness, message_kind))
+
+    _assert_json_response(
+        response,
+        status=400,
+        body={
+            "code": "app_unavailable",
+            "message": "App unavailable, please check your app configurations.",
+            "status": 400,
+        },
+    )
+    assert harness.state.permission_calls == [(harness.account.id, harness.target_app.id)]
+    assert stop_redis.reads == []
+    assert stop_redis.commands == {}
+
+
+@pytest.mark.parametrize("message_kind", ["completion", "chat"])
+def test_stop_handlers_enforce_admission_before_sending_commands(
+    harness: _Harness,
+    stop_redis: _StopRedis,
+    message_kind: str,
+) -> None:
+    harness.state.allowed = False
+
+    response = harness.app.test_client().post(_stop_url(harness, message_kind))
+
+    _assert_json_response(
+        response,
+        status=403,
+        body={"code": "access_denied", "message": "App access denied.", "status": 403},
+    )
+    assert stop_redis.reads == []
+    assert stop_redis.commands == {}
+
+
+@pytest.mark.parametrize(
+    ("message_kind", "mode", "failure_stage"),
+    [
+        ("completion", AppMode.COMPLETION, "read"),
+        ("chat", AppMode.CHAT, "read"),
+        ("completion", AppMode.COMPLETION, "flag"),
+        ("chat", AppMode.ADVANCED_CHAT, "flag"),
+    ],
+)
+def test_stop_handlers_propagate_redis_failure_to_existing_http_error_handler(
+    harness: _Harness,
+    stop_redis: _StopRedis,
+    sqlite_session_factory: sessionmaker[Session],
+    message_kind: str,
+    mode: AppMode,
+    failure_stage: str,
+) -> None:
+    _set_app_mode(harness, sqlite_session_factory, mode)
+    failure = RedisConnectionError("Redis unavailable")
+    if failure_stage == "read":
+        stop_redis.read_error = failure
+    else:
+        stop_redis.flag_error = failure
+    exceptions: list[Exception] = []
+
+    def capture_exception(_sender: Flask, exception: Exception) -> None:
+        exceptions.append(exception)
+
+    with got_request_exception.connected_to(capture_exception):
+        response = harness.app.test_client().post(_stop_url(harness, message_kind))
+
+    _assert_json_response(
+        response,
+        status=500,
+        body={"code": "unknown", "message": "Internal Server Error", "status": 500},
+    )
+    assert any(exception is failure for exception in exceptions)
+    assert f"generate_task_stopped:{_TASK_ID}" not in stop_redis.values
+    assert stop_redis.commands == {}
+    assert stop_redis.operations == (["legacy_flag"] if failure_stage == "flag" else [])
+
+
+def test_chat_stop_preserves_success_and_legacy_flag_when_graph_redis_fails(
+    harness: _Harness,
+    stop_redis: _StopRedis,
+    sqlite_session_factory: sessionmaker[Session],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    _set_app_mode(harness, sqlite_session_factory, AppMode.ADVANCED_CHAT)
+    failure = RedisConnectionError("Graph channel unavailable")
+    stop_redis.command_error = failure
+
+    response = harness.app.test_client().post(_stop_url(harness, "chat"))
+
+    _assert_json_response(response, status=200, body={"result": "success"})
+    assert stop_redis.operations == ["legacy_flag", "graph_command"]
+    assert stop_redis.values[f"generate_task_stopped:{_TASK_ID}"] == b"1"
+    assert stop_redis.expirations[f"generate_task_stopped:{_TASK_ID}"] == 600
+    assert stop_redis.commands == {}
+    assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)

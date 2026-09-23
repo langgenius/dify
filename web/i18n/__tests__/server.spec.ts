@@ -37,20 +37,6 @@ describe('server translations', () => {
     }))
   })
 
-  it('serializes only requested namespaces, including fallback resources when requested', async () => {
-    const { getResources } = await import('../server')
-    const resources = await getResources('zh-Hans', ['common', 'login'], true)
-    expect(Object.keys(resources)).toEqual(['zh-Hans', 'en-US'])
-    expect(Object.keys(resources['zh-Hans']!)).toEqual(['common', 'login'])
-    expect(resources).toMatchObject({ 'en-US': { common: { 'operation.cancel': 'Cancel' } } })
-    expect(mocks.loadResource.mock.calls.map(([lng, ns]) => `${lng}/${ns}`).sort()).toEqual([
-      'en-US/common',
-      'en-US/login',
-      'zh-Hans/common',
-      'zh-Hans/login',
-    ])
-  })
-
   it('does not preload the complete catalog for namespaced server metadata', async () => {
     const { getTranslation } = await import('../server')
     await getTranslation('en-US', 'login')

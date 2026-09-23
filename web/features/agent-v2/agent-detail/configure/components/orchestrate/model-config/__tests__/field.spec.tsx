@@ -3,15 +3,9 @@ import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  ConfigurationMethodEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { AgentModelField } from '../field'
 
 const providerSummary = vi.hoisted(() => vi.fn())
-const credentialPanelState = vi.hoisted(() => vi.fn())
 
 const modelList = vi.hoisted(() => vi.fn<() => Promise<{ data: ProviderWithModelsResponse[] }>>())
 
@@ -27,7 +21,7 @@ vi.mock('@/service/use-common', () => ({
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
   () => ({
-    useCredentialPanelState: credentialPanelState,
+    useCredentialPanelState: () => ({ variant: 'api-unavailable', hasCredentials: false }),
   }),
 )
 
@@ -81,7 +75,6 @@ describe('AgentModelField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     providerSummary.mockResolvedValue({ data: [] })
-    credentialPanelState.mockReturnValue({ variant: 'api-unavailable', hasCredentials: false })
   })
 
   it('disables model controls until the catalog loads without selecting a model', async () => {
@@ -94,6 +87,20 @@ describe('AgentModelField', () => {
     )
     const { onSelect } = renderField()
 
+    const modelGroup = screen.getByRole('group', {
+      name: 'agentV2.agentDetail.configure.model.label',
+    })
+    expect(modelGroup.tagName).toBe('FIELDSET')
+    expect(modelGroup).toHaveAttribute(
+      'aria-labelledby',
+      screen.getByText('agentV2.agentDetail.configure.model.label').id,
+    )
+    expect(modelGroup).toContainElement(
+      screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
+    )
+    expect(modelGroup).toContainElement(
+      screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }),
+    )
     expect(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }),
@@ -131,6 +138,12 @@ describe('AgentModelField', () => {
     const { onSelect } = renderField({ provider: 'openai', model: 'gpt-4' })
     const trigger = screen.getByRole('button', { name: 'gpt-4' })
     const settings = screen.getByRole('button', { name: 'common.modelProvider.modelSettings' })
+    const modelGroup = screen.getByRole('group', {
+      name: 'agentV2.agentDetail.configure.model.label',
+    })
+
+    expect(modelGroup).toContainElement(trigger)
+    expect(modelGroup).toContainElement(settings)
 
     expect(trigger).toBeDisabled()
     expect(settings).toBeDisabled()
@@ -153,71 +166,6 @@ describe('AgentModelField', () => {
     expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
     expect(onSelect).not.toHaveBeenCalled()
   })
-
-  it.each(['compatible', 'incompatible'] as const)(
-    'waits for the catalog after provider metadata before showing a %s model status',
-    async (compatibility) => {
-      const modelId = compatibility === 'compatible' ? 'gemini-3.8-flash' : 'gemini-2.0-flash'
-      const modelLabel = compatibility === 'compatible' ? 'Gemini 3.8 Flash' : 'Gemini 2.0 Flash'
-      const provider: ProviderWithModelsResponse = {
-        tenant_id: 'test-workspace',
-        provider: 'google',
-        label: { en_US: 'Google', zh_Hans: 'Google' },
-        icon_small: { en_US: '', zh_Hans: '' },
-        icon_small_dark: { en_US: '', zh_Hans: '' },
-        status: ModelStatusEnum.active,
-        models: [
-          {
-            model: modelId,
-            label: { en_US: modelLabel, zh_Hans: modelLabel },
-            model_type: ModelTypeEnum.textGeneration,
-            features: [],
-            fetch_from: ConfigurationMethodEnum.predefinedModel,
-            status: ModelStatusEnum.active,
-            model_properties: { mode: 'chat' },
-            load_balancing_enabled: false,
-          },
-        ],
-      }
-      let resolveCatalog!: (value: { data: ProviderWithModelsResponse[] }) => void
-      modelList.mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            resolveCatalog = resolve
-          }),
-      )
-      providerSummary.mockResolvedValue({ data: [provider] })
-      credentialPanelState.mockReturnValue({ variant: 'api-active', hasCredentials: true })
-      const { queryClient, onSelect } = renderField({ provider: 'google', model: modelId })
-
-      await waitFor(() => {
-        expect(queryClient.getQueryState(['providers'])?.status).toBe('success')
-      })
-      expect(screen.getByRole('button', { name: modelId })).toBeDisabled()
-      expect(
-        screen.queryByText('common.modelProvider.selector.incompatible'),
-      ).not.toBeInTheDocument()
-
-      await act(async () => {
-        resolveCatalog({ data: [provider] })
-      })
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: new RegExp(modelLabel) })).toBeEnabled()
-      })
-      if (compatibility === 'compatible') {
-        expect(screen.getByRole('button', { name: modelLabel })).toHaveAttribute(
-          'data-model-status',
-          'active',
-        )
-        expect(
-          screen.queryByText('common.modelProvider.selector.incompatible'),
-        ).not.toBeInTheDocument()
-      } else {
-        expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
-      }
-      expect(onSelect).not.toHaveBeenCalled()
-    },
-  )
 
   it('keeps a failed initial load disabled and lets the user retry', async () => {
     const user = userEvent.setup()

@@ -40,6 +40,7 @@ export function CopyFeedback({
   return (
     <Tooltip>
       <TooltipTrigger
+        closeOnClick={false}
         render={
           <IconButton aria-label={safeText} className={className} onClick={handleCopy}>
             <span
