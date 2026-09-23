@@ -134,7 +134,9 @@ def _make_workflow(**overrides) -> Workflow:
     return workflow
 
 
-@pytest.mark.parametrize("advisory", ["clean", "warning", "checker-error", "formatter-error"])
+@pytest.mark.parametrize(
+    "advisory", ["clean", "warning", "checker-error", "formatter-error", "empty", "non-object", "invalid-json"]
+)
 def test_publish_workflow_returns_success(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
@@ -161,7 +163,7 @@ def test_publish_workflow_returns_success(
     workflow = SimpleNamespace(
         id="published-workflow",
         created_at=datetime(2026, 8, 17, 12, 0, 0),
-        graph="{}" if advisory == "clean" else json.dumps(graph),
+        graph={"clean": "{}", "empty": None, "non-object": "[]", "invalid-json": "{"}.get(advisory, json.dumps(graph)),
     )
     if advisory == "checker-error":
         monkeypatch.setattr(workflow_module, "validate_variable_references", Mock(side_effect=RuntimeError("checker")))

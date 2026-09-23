@@ -93,13 +93,13 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
     entries = [
         nid
         for nid in node_ids
-        if node_parent.get(nid) is None and node_type[nid] in (BuiltinNodeTypes.START, *TRIGGER_NODE_TYPES)
+        if node_parent[nid] is None and node_type[nid] in (BuiltinNodeTypes.START, *TRIGGER_NODE_TYPES)
     ]
     reachable = _reachable_from(entries, successors)
     exclusive = {
         nid
         for nid in node_ids
-        if node_type.get(nid) in _BRANCH_NODE_TYPES or node_data[nid].get("error_strategy") == ErrorStrategy.FAIL_BRANCH
+        if node_type[nid] in _BRANCH_NODE_TYPES or node_data[nid].get("error_strategy") == ErrorStrategy.FAIL_BRANCH
     }
     # A selectable handle can be unwired. It still lets the branch skip a producer.
     for nid in exclusive:
@@ -121,14 +121,14 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
 
     consumers_by_producer: dict[str, set[str]] = defaultdict(set)
     for node_id in node_ids:
-        if node_parent.get(node_id) is not None or node_id not in reachable:
+        if node_parent[node_id] is not None or node_id not in reachable:
             continue
-        if node_type.get(node_id) in _REFERENCE_EXEMPT_NODE_TYPES:
+        if node_type[node_id] in _REFERENCE_EXEMPT_NODE_TYPES:
             continue
         for referenced_id in _referenced_node_ids(node_data[node_id]):
             if referenced_id == node_id or referenced_id not in node_ids:
                 continue
-            if node_parent.get(referenced_id) is not None:
+            if node_parent[referenced_id] is not None:
                 continue
             consumers_by_producer[referenced_id].add(node_id)
 
@@ -147,9 +147,9 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
                 issues.append(
                     VariableReferenceIssue(
                         node_id=consumer,
-                        node_title=node_title.get(consumer, consumer),
+                        node_title=node_title[consumer],
                         referenced_node_id=producer,
-                        referenced_node_title=node_title.get(producer, producer),
+                        referenced_node_title=node_title[producer],
                     )
                 )
 
@@ -190,7 +190,7 @@ def _nodes_runnable_without(
     predecessors: Mapping[str, list[str]],
     successors: Mapping[str, list[str]],
     out_targets_by_handle: Mapping[str, Mapping[str | None, list[str]]],
-    exclusive: Sequence[str] | set[str],
+    exclusive: set[str],
 ) -> set[str]:
     """Return nodes that can execute in some run where ``producer`` does not."""
     forbidden = {producer}
@@ -234,42 +234,28 @@ def _nodes_runnable_without(
     return runnable
 
 
-def _referenced_node_ids(node_data: Mapping[str, Any]) -> Iterator[str]:
-    """Yield the node ids referenced by ``node_data`` via selectors and templates."""
-    for selector in _iter_value_selectors(node_data):
-        head = selector[0]
-        if isinstance(head, str) and head not in _RESERVED_SELECTOR_HEADS:
-            yield head
-    for text in _iter_strings(node_data):
-        for match in _TEMPLATE_REFERENCE_PATTERN.finditer(text):
-            head = match.group(1)
-            if head not in _RESERVED_SELECTOR_HEADS:
-                yield head
+def _referenced_node_ids(value: Any) -> Iterator[str]:
+    """Yield node ids referenced via selectors and {{#node.field#}} templates."""
+    if isinstance(value, Mapping):
+        variable = value.get("value")
+        if value.get("type") == "variable" and isinstance(variable, list) and variable:
+            yield from _reference_head(variable[0])
+        for key, child in value.items():
+            if _is_selector_key(key) and isinstance(child, list) and child:
+                yield from _reference_head(child[0])
+            yield from _referenced_node_ids(child)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _referenced_node_ids(item)
+    elif isinstance(value, str):
+        for match in _TEMPLATE_REFERENCE_PATTERN.finditer(value):
+            yield from _reference_head(match.group(1))
 
 
 def _is_selector_key(key: object) -> bool:
     return isinstance(key, str) and (key == "selector" or key.endswith("_selector"))
 
 
-def _iter_value_selectors(value: Any) -> Iterator[Sequence[Any]]:
-    if isinstance(value, Mapping):
-        if value.get("type") == "variable" and isinstance(value.get("value"), list) and value["value"]:
-            yield value["value"]
-        for key, child in value.items():
-            if _is_selector_key(key) and isinstance(child, list) and child:
-                yield child
-            yield from _iter_value_selectors(child)
-    elif isinstance(value, list):
-        for item in value:
-            yield from _iter_value_selectors(item)
-
-
-def _iter_strings(value: Any) -> Iterator[str]:
-    if isinstance(value, Mapping):
-        for child in value.values():
-            yield from _iter_strings(child)
-    elif isinstance(value, list):
-        for item in value:
-            yield from _iter_strings(item)
-    elif isinstance(value, str):
-        yield value
+def _reference_head(head: object) -> Iterator[str]:
+    if isinstance(head, str) and head not in _RESERVED_SELECTOR_HEADS:
+        yield head

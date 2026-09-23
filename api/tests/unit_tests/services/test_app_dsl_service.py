@@ -15,7 +15,7 @@ from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
-from services.app_dsl_service import AppDslService, Import, PendingData, missing_app_section_error
+from services.app_dsl_service import AppDslService, Import, PendingData
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
@@ -892,7 +892,23 @@ def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, nod
     session.add.assert_not_called()
 
 
-def test_missing_app_section_names_the_keys_that_were_present() -> None:
-    error = missing_app_section_error(["meta", "nodes", "edges"])
-    assert error.startswith("Missing app data in YAML content.")
-    assert "found: meta, nodes, edges" in error
+@pytest.mark.parametrize(
+    ("content", "found"),
+    [
+        ({"meta": {}, "nodes": [], "edges": []}, "meta, nodes, edges"),
+        ({"app": None}, "none"),
+        ({"x" * 81: {}}, "x" * 80 + "…"),
+    ],
+    ids=["original-keys", "empty-app", "bounded-key-list"],
+)
+def test_missing_app_section_names_the_keys_that_were_present(
+    unbound_session: Session, content: dict[str, object], found: str
+) -> None:
+    result = AppDslService(session=unbound_session).import_app(
+        account=_account(), import_mode="yaml-content", yaml_content=yaml.safe_dump(content, sort_keys=False)
+    )
+    assert result.status == ImportStatus.FAILED
+    assert result.error is not None
+    assert result.error.startswith("Missing app data in YAML content.")
+    assert result.error.endswith(f"(found: {found}).")
+    assert not unbound_session.in_transaction()

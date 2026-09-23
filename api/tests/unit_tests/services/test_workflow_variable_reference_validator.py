@@ -369,6 +369,73 @@ class TestValidateVariableReferences:
         }
         assert validate_variable_references(graph) == []
 
+    def test_question_classifier_unwired_class_can_skip_the_producer(self) -> None:
+        """A declared class with no edge is still an exit. The consumer is reached from start."""
+        router = _node("router", "question-classifier", "Router")
+        _node_data(router)["classes"] = [{"id": "billing"}, {"id": "shipping"}]
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                router,
+                _node("prod", "tool", "Producer"),
+                _node("cons", "llm", "Consumer", selector=["prod", "text"]),
+            ],
+            "edges": [
+                _edge("start", "router"),
+                _edge("start", "cons"),
+                _edge("router", "prod", "billing"),
+            ],
+        }
+        assert [(issue.node_id, issue.referenced_node_id) for issue in validate_variable_references(graph)] == [
+            ("cons", "prod")
+        ]
+
+    def test_human_input_unwired_timeout_can_skip_the_wired_action(self) -> None:
+        """The implicit timeout handle is an exit even when no edge uses it."""
+        review = _node("review", "human-input", "Review")
+        _node_data(review)["user_actions"] = [{"id": "approve"}]
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                review,
+                _node("prod", "tool", "Producer"),
+                _node("cons", "llm", "Consumer", selector=["prod", "text"]),
+            ],
+            "edges": [
+                _edge("start", "review"),
+                _edge("start", "cons"),
+                _edge("review", "prod", "approve"),
+            ],
+        }
+        assert [(issue.node_id, issue.referenced_node_id) for issue in validate_variable_references(graph)] == [
+            ("cons", "prod")
+        ]
+
+    def test_nested_parent_nodes_are_not_root_references(self) -> None:
+        """Nodes inside a nested graph are neither consumers nor producers of the root check."""
+        nested_prod = _node("nested-prod", "tool", "Nested producer")
+        nested_prod["parentId"] = "loop-1"
+        nested_cons = _node("nested-cons", "llm", "Nested consumer", selector=["prod", "text"])
+        nested_cons["parentId"] = "loop-1"
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                _node("router", "if-else", "Router"),
+                _node("prod", "tool", "Producer"),
+                nested_prod,
+                nested_cons,
+                _node("root-cons", "llm", "Root consumer", selector=["nested-prod", "text"]),
+            ],
+            "edges": [
+                _edge("start", "router"),
+                _edge("router", "prod", "true"),
+                _edge("router", "nested-prod", "true"),
+                _edge("router", "nested-cons", "false"),
+                _edge("router", "root-cons", "false"),
+            ],
+        }
+        assert validate_variable_references(graph) == []
+
 
 class TestFormatVariableReferenceErrors:
     def test_message_includes_titles_and_count(self) -> None:
@@ -391,3 +458,23 @@ class TestFormatVariableReferenceErrors:
         assert "Consumer" in message
         assert "Producer" in message
         assert "1 variable reference " in message
+
+    def test_message_truncates_after_ten_issues(self) -> None:
+        """Only the first ten pairs are listed; the rest are a count."""
+        nodes: list[dict[str, object]] = [_node("start", "start"), _node("router", "if-else", "Router")]
+        edges = [_edge("start", "router")]
+        for index in range(11):
+            producer_id = f"p{index:02d}"
+            consumer_id = f"c{index:02d}"
+            nodes.append(_node(producer_id, "tool", f"Producer {index:02d}"))
+            nodes.append(_node(consumer_id, "llm", f"Consumer {index:02d}", selector=[producer_id, "text"]))
+            edges.append(_edge("router", producer_id, "true"))
+            edges.append(_edge("router", consumer_id, "false"))
+        issues = validate_variable_references({"nodes": nodes, "edges": edges})
+        assert len(issues) == 11
+        message = format_variable_reference_errors(issues)
+        assert "11 variable references " in message
+        assert message.count("←") == 10
+        assert "+1 more" in message
+        assert "Consumer 10" not in message
+        assert "Producer 10" not in message
