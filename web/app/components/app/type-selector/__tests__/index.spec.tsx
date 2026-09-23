@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
-import AppTypeSelector, { AppTypeLabel } from '../index'
+import AppTypeSelector, { AppTypeIcon, AppTypeLabel } from '../index'
 
 describe('AppTypeSelector', () => {
   beforeEach(() => {
@@ -113,6 +113,7 @@ describe('AppTypeLabel', () => {
   it.each([
     [AppModeEnum.CHAT, 'app.typeSelector.chatbot'],
     [AppModeEnum.AGENT_CHAT, 'app.typeSelector.agent'],
+    [AppModeEnum.AGENT, 'app.typeSelector.agent'],
     [AppModeEnum.COMPLETION, 'app.typeSelector.completion'],
     [AppModeEnum.ADVANCED_CHAT, 'app.typeSelector.advanced'],
     [AppModeEnum.WORKFLOW, 'app.typeSelector.workflow'],
@@ -125,5 +126,15 @@ describe('AppTypeLabel', () => {
   it('should render empty label for unknown type', () => {
     const { container } = render(<AppTypeLabel type={'unknown' as AppModeEnum} />)
     expect(container.textContent).toBe('')
+  })
+})
+
+describe('AppTypeIcon', () => {
+  it('uses the Agent badge for Agent v2 templates', () => {
+    const { container } = render(<AppTypeIcon type={AppModeEnum.AGENT} />)
+
+    expect(
+      container.querySelector('.i-custom-vender-solid-communication-logic'),
+    ).toBeInTheDocument()
   })
 })

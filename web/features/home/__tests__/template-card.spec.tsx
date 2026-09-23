@@ -83,6 +83,7 @@ describe('TemplateCard', () => {
       [AppModeEnum.CHAT, 'APP.TYPES.CHATBOT'],
       [AppModeEnum.ADVANCED_CHAT, 'APP.TYPES.ADVANCED'],
       [AppModeEnum.AGENT_CHAT, 'APP.TYPES.AGENT'],
+      [AppModeEnum.AGENT, 'APP.TYPES.AGENT'],
       [AppModeEnum.WORKFLOW, 'APP.TYPES.WORKFLOW'],
       [AppModeEnum.COMPLETION, 'APP.TYPES.COMPLETION'],
     ])('should render correct mode label for %s mode', (mode, label) => {
@@ -114,7 +115,7 @@ describe('TemplateCard', () => {
         canCreate: true,
       })
 
-      const cardButton = screen.getByRole('button', { name: 'Sample App' })
+      const cardButton = screen.getByRole('button', { name: 'explore.appCard.try Sample App' })
 
       expect(cardButton).toHaveAttribute('type', 'button')
     })
@@ -123,21 +124,23 @@ describe('TemplateCard', () => {
       renderComponent({ canCreate: true })
 
       expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
-      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'explore.appCard.try' })).not.toBeInTheDocument()
     })
 
     it('should make the app card clickable outside cloud edition when create is allowed', () => {
       deploymentEdition = 'COMMUNITY'
       renderComponent({ canCreate: true })
 
-      expect(screen.getByRole('button', { name: 'Sample App' })).toHaveClass('cursor-pointer')
+      expect(
+        screen.getByRole('button', { name: 'explore.tryApp.createFromSampleApp Sample App' }),
+      ).toHaveClass('cursor-pointer')
     })
 
     it('should not make the app card clickable outside cloud edition when create is not allowed', () => {
       deploymentEdition = 'COMMUNITY'
       renderComponent({ canCreate: false })
 
-      expect(screen.queryByRole('button', { name: 'Sample App' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Sample App/ })).not.toBeInTheDocument()
     })
   })
 
@@ -170,7 +173,7 @@ describe('TemplateCard', () => {
 
       renderComponent({ app, canCreate: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+      fireEvent.click(screen.getByRole('button', { name: /Sample App/ }))
 
       expect(onTry).toHaveBeenCalledWith(app)
       expect(onCreate).not.toHaveBeenCalled()
@@ -181,7 +184,7 @@ describe('TemplateCard', () => {
 
       renderComponent({ canCreate: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+      fireEvent.click(screen.getByRole('button', { name: /Sample App/ }))
 
       expect(onCreate).toHaveBeenCalledTimes(1)
       expect(onTry).not.toHaveBeenCalled()
@@ -194,7 +197,7 @@ describe('TemplateCard', () => {
 
       renderComponent({ app, canCreate: true })
 
-      screen.getByRole('button', { name: 'Sample App' }).focus()
+      screen.getByRole('button', { name: /Sample App/ }).focus()
       await user.keyboard('{Enter}')
 
       expect(onTry).toHaveBeenCalledWith(app)
@@ -205,7 +208,7 @@ describe('TemplateCard', () => {
 
       renderComponent({ app, canCreate: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+      fireEvent.click(screen.getByRole('button', { name: /Sample App/ }))
 
       expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
         template_id: app.app_id,
