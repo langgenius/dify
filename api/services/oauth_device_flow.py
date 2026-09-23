@@ -73,18 +73,23 @@ end
 
 decoded.status = target
 decoded.token_id = transition_marker
+decoded.poll_payload = nil
 if target == 'approved' then
-    local payload_ok, payload = pcall(cjson.decode, ARGV[3])
+    local payload_ok = pcall(cjson.decode, ARGV[3])
     if not payload_ok then return -2 end
-    decoded.poll_payload = payload
-else
-    decoded.poll_payload = nil
+end
+
+-- cjson loses the distinction between [] and {} when decoding empty tables.
+-- Preserve the validated payload JSON verbatim while encoding the state fields.
+local encoded = cjson.encode(decoded)
+if target == 'approved' then
+    encoded = string.sub(encoded, 1, -2) .. ',"poll_payload":' .. ARGV[3] .. '}'
 end
 
 local ttl = redis.call('TTL', KEYS[1])
 local floor = tonumber(ARGV[4])
 if ttl < floor then ttl = floor end
-redis.call('SETEX', KEYS[1], ttl, cjson.encode(decoded))
+redis.call('SETEX', KEYS[1], ttl, encoded)
 return 1
 """
 
