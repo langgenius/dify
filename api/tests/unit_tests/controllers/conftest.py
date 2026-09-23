@@ -7,7 +7,12 @@ from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.application_services.app import AppServices
-from extensions.ext_application_services import _get_enterprise_webapp_access_mode, _is_user_allowed_to_access_webapp
+from extensions.ext_application_services import (
+    _batch_get_enterprise_webapp_access_modes,
+    _batch_get_enterprise_webapp_user_permissions,
+    _get_enterprise_webapp_access_mode,
+    _is_enterprise_webapp_user_allowed,
+)
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.app.console_service import ConsoleAppService
@@ -51,7 +56,9 @@ def app_query_services(
             access=WebAppAccessQueryRepository(session_factory=sqlite_session_factory),
             webapp_auth_enabled=True,
             access_mode_for_app=_get_enterprise_webapp_access_mode,
-            is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
+            is_user_allowed_for_app=_is_enterprise_webapp_user_allowed,
+            get_access_modes=_batch_get_enterprise_webapp_access_modes,
+            get_user_permissions=_batch_get_enterprise_webapp_user_permissions,
         ),
     )
     monkeypatch.setitem(app.extensions, "application_services", services)

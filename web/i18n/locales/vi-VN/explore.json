@@ -33,8 +33,6 @@
   "sidebar.action.pin": "Ghim",
   "sidebar.action.rename": "Đổi tên",
   "sidebar.action.unpin": "Bỏ ghim",
-  "sidebar.delete.content": "Bạn có chắc chắn muốn xóa ứng dụng này không?",
-  "sidebar.delete.title": "Xóa ứng dụng",
   "sidebar.webApps": "Ứng dụng web",
   "tryApp.category": "Danh mục",
   "tryApp.createFromSampleApp": "Tạo từ ứng dụng mẫu này",
