@@ -42,6 +42,9 @@ jobs:
             knowledge-fs:
               - 'api/knowledge-fs-contract/**'
               - 'api/tests/knowledge_fs_vector_integration/**'
+              - 'api/services/tidb_binding_service.py'
+              - 'api/tests/unit_tests/services/test_tidb_binding_service.py'
+              - 'api/providers/vdb/vdb-tidb-on-qdrant/**'
               - 'api/Dockerfile'
               - 'api/dev/generate_knowledge_fs_contract.py'
               - 'api/dev/knowledge_fs_product_contract.py'
@@ -154,12 +157,12 @@ jobs:
 
       - name: Install Dify contract dependencies
         working-directory: .
-        run: uv sync --project api --locked --dev --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate
+        run: uv sync --project api --locked --dev --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant
 
       # The standalone KnowledgeFS repository owns TypeScript, parser, image and deployment gates.
       # This repository verifies its immutable published contract and all Dify integration code.
       - name: Verify pinned KnowledgeFS contract
-        run: uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate python api/dev/generate_knowledge_fs_contract.py --check
+        run: uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant python api/dev/generate_knowledge_fs_contract.py --check
 
       - name: Collect Dify KnowledgeFS gate targets
         working-directory: .
@@ -213,6 +216,9 @@ jobs:
             api/services/enterprise/rbac_service.py
             api/services/entities/agent_tool_inner.py
             api/services/vector_space_admission_service.py
+            api/services/tidb_binding_service.py
+            api/providers/vdb/vdb-tidb-on-qdrant/src/dify_vdb_tidb_on_qdrant/tidb_service.py
+            api/providers/vdb/vdb-tidb-on-qdrant/src/dify_vdb_tidb_on_qdrant/tidb_on_qdrant_vector.py
           )
           for path in "${production_touchpoints[@]}"; do
             add_production_target "$path"
@@ -254,6 +260,7 @@ jobs:
             api/tests/unit_tests/services/test_account_service.py
             api/tests/unit_tests/services/test_agent_tool_inner_service.py
             api/tests/unit_tests/services/test_vector_space_admission_service.py
+            api/tests/unit_tests/services/test_tidb_binding_service.py
           )
           for path in "${test_touchpoints[@]}"; do
             add_test_target "$path"
@@ -307,8 +314,8 @@ jobs:
             echo "Dify KnowledgeFS production target manifest is empty" >&2
             exit 1
           fi
-          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev ruff format --check "${targets[@]}"
-          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev ruff check "${targets[@]}"
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant --dev ruff format --check "${targets[@]}"
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant --dev ruff check "${targets[@]}"
 
       - name: Type-check Dify KnowledgeFS integration
         working-directory: .
@@ -334,7 +341,7 @@ jobs:
             echo "Dify KnowledgeFS Mypy target set is empty" >&2
             exit 1
           fi
-          uv run --directory api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev mypy \
+          uv run --directory api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant --dev mypy \
             --explicit-package-bases \
             --exclude-gitignore \
             --exclude '(^|/)conftest\.py$' \
@@ -358,7 +365,7 @@ jobs:
             echo "Dify KnowledgeFS unit test target manifest is empty" >&2
             exit 1
           fi
-          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev coverage run --branch --source=api -m pytest "${targets[@]}" --no-cov -q
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant --dev coverage run --branch --source=api -m pytest "${targets[@]}" --no-cov -q
 
       - name: Enforce Dify KnowledgeFS focused coverage
         working-directory: .
@@ -378,8 +385,8 @@ jobs:
               coverage_base="$latest_merge"
             fi
           fi
-          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev coverage json --show-contexts -o "$report"
-          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev python api/dev/check_knowledge_fs_coverage.py \
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant --dev coverage json --show-contexts -o "$report"
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant --dev python api/dev/check_knowledge_fs_coverage.py \
             --coverage-json "$report" \
             --glue-manifest "${RUNNER_TEMP:?}/knowledge-fs-ci-targets/glue-files" \
             --base "$coverage_base" \
@@ -388,7 +395,7 @@ jobs:
 
       - name: Verify Dify KnowledgeFS contract
         working-directory: .
-        run: uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate python api/dev/generate_knowledge_fs_contract.py --check
+        run: uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --group vdb-tidb-on-qdrant python api/dev/generate_knowledge_fs_contract.py --check
 
       - name: Verify Dify Agent dependency lock
         working-directory: .

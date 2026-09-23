@@ -13,9 +13,11 @@ from libs.helper import dump_response
 from services.knowledge_fs.vector_store import (
     VectorPoint,
     VectorRequest,
+    admit_vector_request,
     configured_vector_client,
     execute_vector_request,
 )
+from services.tidb_binding_service import TidbBindingPendingError
 from services.vector_space_admission_service import VectorSpaceAdmissionError
 
 
@@ -45,8 +47,13 @@ class KnowledgeFSVectorApi(Resource):
         except ValidationError as error:
             raise BadRequest("Invalid KnowledgeFS vector operation") from error
         try:
-            with configured_vector_client(payload.scope.tenant_id) as client:
-                result = execute_vector_request(client, payload)
+            admit_vector_request(payload)
+            with configured_vector_client(
+                payload.scope.tenant_id, allow_create=payload.operation == "upsert"
+            ) as client:
+                result = execute_vector_request(client, payload, check_admission=False)
+        except TidbBindingPendingError:
+            raise ServiceUnavailable("KnowledgeFS vector backend is being provisioned", retry_after=5) from None
         except VectorSpaceAdmissionError as error:
             raise Forbidden(str(error)) from None
         except Exception:
