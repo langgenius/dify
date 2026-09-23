@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LIMIT_MAX } from '@/limit/limit'
 
 export const CURRENT_SCHEMA_VERSION = 1
 
@@ -8,7 +9,14 @@ export type AllowedFormat = (typeof ALLOWED_FORMATS)[number]
 export const DefaultsSchema = z
   .object({
     format: z.enum(ALLOWED_FORMATS).optional(),
-    limit: z.number().int().min(1).max(200).optional(),
+    // v1 files previously allowed 200; normalize legacy values to the server's page cap.
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .transform((value) => Math.min(value, LIMIT_MAX))
+      .optional(),
   })
   .default({})
 

@@ -96,7 +96,7 @@ describe('runApp', () => {
     const io = bufferStreams()
     await expect(
       runApp(
-        { appId: 'app-1', format: 'bogus' },
+        { appId: 'app-1', message: 'hello', format: 'bogus' },
         { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io },
       ),
     ).rejects.toThrow(/not supported/)

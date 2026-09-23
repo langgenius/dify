@@ -1,0 +1,2386 @@
+{
+  "ops": {
+    "account.get": {
+      "summary": "Current account",
+      "method": "GET",
+      "path": "/openapi/v1/account",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "bind": {},
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Show the logged-in account and its workspaces",
+          "input": {}
+        }
+      ]
+    },
+    "account.sessions.revoke_current": {
+      "summary": "Revoke the session behind this token",
+      "method": "DELETE",
+      "path": "/openapi/v1/account/sessions/self",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "bind": {},
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Log out the session behind this token",
+          "input": {}
+        }
+      ]
+    },
+    "account.sessions.list": {
+      "summary": "List login sessions of the current account",
+      "method": "GET",
+      "path": "/openapi/v1/account/sessions",
+      "kind": "list",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 100,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": []
+      },
+      "bind": {
+        "page": "query",
+        "limit": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "List login sessions, first page",
+          "input": {
+            "page": 1,
+            "limit": 20
+          }
+        }
+      ]
+    },
+    "account.sessions.revoke": {
+      "summary": "Revoke one login session by id",
+      "method": "DELETE",
+      "path": "/openapi/v1/account/sessions/{session_id}",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": ["session_id"]
+      },
+      "bind": {
+        "session_id": "path"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Log out one device by session id",
+          "input": {
+            "session_id": "<session_id>"
+          }
+        }
+      ]
+    },
+    "console_app.dsl.import": {
+      "summary": "Import an app from DSL text or URL",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          },
+          "mode": {
+            "description": "Import mode: yaml-content or yaml-url",
+            "enum": ["yaml-content", "yaml-url"],
+            "title": "Mode",
+            "type": "string"
+          },
+          "yaml_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Inline YAML DSL string (required when mode is yaml-content)",
+            "title": "Yaml Content"
+          },
+          "yaml_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Remote URL to fetch YAML from (required when mode is yaml-url)",
+            "title": "Yaml Url"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Override the app name from the DSL",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Override the app description from the DSL",
+            "title": "Description"
+          },
+          "icon_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Icon Type"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Icon"
+          },
+          "icon_background": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Icon Background"
+          },
+          "app_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Existing app ID to overwrite (workflow/advanced-chat apps only)",
+            "title": "App Id"
+          }
+        },
+        "required": ["workspace_id", "mode"]
+      },
+      "bind": {
+        "workspace_id": "path",
+        "mode": "body",
+        "yaml_content": "body",
+        "yaml_url": "body",
+        "name": "body",
+        "description": "body",
+        "icon_type": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "app_id": "body"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Import an app from inline YAML",
+          "input": {
+            "mode": "yaml-content",
+            "yaml_content": "<yaml text of the app DSL>"
+          }
+        },
+        {
+          "title": "Import an app from a URL",
+          "input": {
+            "mode": "yaml-url",
+            "yaml_url": "https://example.com/apps/release-summary.yml"
+          }
+        },
+        {
+          "title": "Overwrite an existing workflow app from YAML",
+          "input": {
+            "mode": "yaml-content",
+            "yaml_content": "<yaml text of the app DSL>",
+            "app_id": "<app_id>"
+          }
+        }
+      ]
+    },
+    "console_app.dsl.import_confirm": {
+      "summary": "Confirm a pending DSL import",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports/{import_id}:confirm",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "import_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          }
+        },
+        "required": ["import_id", "workspace_id"]
+      },
+      "bind": {
+        "import_id": "path",
+        "workspace_id": "path"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Confirm an import that is pending confirmation",
+          "input": {
+            "import_id": "<import_id>"
+          }
+        }
+      ]
+    },
+    "console_app.dsl.export": {
+      "summary": "Export app DSL as YAML text inside a JSON object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/dsl",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "include_secret": {
+            "default": false,
+            "description": "Include encrypted secret values in the exported DSL",
+            "title": "Include Secret",
+            "type": "boolean"
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Export a specific workflow version instead of the current draft",
+            "title": "Workflow Id"
+          }
+        },
+        "required": ["app_id"]
+      },
+      "bind": {
+        "app_id": "path",
+        "include_secret": "query",
+        "workflow_id": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Export the current draft as YAML",
+          "input": {
+            "app_id": "<app_id>"
+          }
+        },
+        {
+          "title": "Export a published version including secrets",
+          "input": {
+            "app_id": "<app_id>",
+            "workflow_id": "<workflow_id>",
+            "include_secret": true
+          }
+        }
+      ]
+    },
+    "console_app.dependencies.check": {
+      "summary": "Check plugin dependencies of an app",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/dependencies:check",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          }
+        },
+        "required": ["app_id"]
+      },
+      "bind": {
+        "app_id": "path"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Check which plugins an app needs",
+          "input": {
+            "app_id": "<app_id>"
+          }
+        }
+      ]
+    },
+    "run.form.get": {
+      "summary": "Read a human-input form",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/human-input-forms/{form_token}",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "form_token": {
+            "type": "string"
+          }
+        },
+        "required": ["app_id", "form_token"]
+      },
+      "bind": {
+        "app_id": "path",
+        "form_token": "path"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Read the form a paused run is waiting on",
+          "input": {
+            "app_id": "<app_id>",
+            "form_token": "<form_token>"
+          }
+        }
+      ]
+    },
+    "run.form.submit": {
+      "summary": "Submit a human-input form",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/human-input-forms/{form_token}:submit",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "form_token": {
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": {},
+            "description": "Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`.",
+            "examples": [
+              {
+                "attachment": {
+                  "transfer_method": "local_file",
+                  "type": "document",
+                  "upload_file_id": "4e0d1b87-52f2-49f6-b8c6-95cd9c954b3e"
+                },
+                "attachments": [
+                  {
+                    "transfer_method": "local_file",
+                    "type": "document",
+                    "upload_file_id": "1a77f0df-c0e6-461c-987c-e72526f341ee"
+                  },
+                  {
+                    "transfer_method": "remote_url",
+                    "type": "document",
+                    "url": "https://example.com/report.pdf"
+                  }
+                ],
+                "decision": "approve"
+              }
+            ],
+            "title": "Inputs",
+            "type": "object"
+          },
+          "action": {
+            "description": "ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list.",
+            "title": "Action",
+            "type": "string"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "format": "binary",
+                      "type": "string"
+                    },
+                    {
+                      "items": {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Local files keyed by the form's file input name, same convention as the run ops' `files`",
+            "title": "Files"
+          }
+        },
+        "required": ["app_id", "form_token", "inputs", "action"]
+      },
+      "bind": {
+        "app_id": "path",
+        "form_token": "path",
+        "inputs": "body",
+        "action": "body",
+        "files": "file"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Approve a paused run with a written comment",
+          "input": {
+            "app_id": "<app_id>",
+            "form_token": "<form_token>",
+            "action": "approve",
+            "inputs": {
+              "comment": "Looks good"
+            }
+          }
+        },
+        {
+          "title": "Submit a form answer that includes a local file",
+          "input": {
+            "app_id": "<app_id>",
+            "form_token": "<form_token>",
+            "action": "submit",
+            "inputs": {},
+            "files": {
+              "evidence": "./scan.png"
+            }
+          }
+        }
+      ]
+    },
+    "console_app.workflow.run": {
+      "summary": "Run a workflow app; streams workflow events",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/workflow:run",
+      "kind": "sse",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Pin a published workflow version",
+            "title": "Workflow Id"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "title": "Inputs",
+            "type": "object"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "format": "binary",
+                      "type": "string"
+                    },
+                    {
+                      "items": {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable",
+            "title": "Files"
+          },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "binary",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Local files attached to the run itself (the app's `sys.files`), not to a variable",
+            "title": "Attachments"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Workspace that owns the app",
+            "title": "Workspace Id"
+          }
+        },
+        "required": ["app_id", "inputs"]
+      },
+      "bind": {
+        "app_id": "path",
+        "workflow_id": "body",
+        "inputs": "body",
+        "files": "file",
+        "attachments": "file",
+        "workspace_id": "body"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Run a workflow with two variables",
+          "input": {
+            "app_id": "<app_id>",
+            "inputs": {
+              "topic": "quarterly report",
+              "language": "en"
+            }
+          }
+        },
+        {
+          "title": "Run a workflow with a local file variable",
+          "input": {
+            "app_id": "<app_id>",
+            "inputs": {},
+            "files": {
+              "document": "./report.pdf"
+            }
+          }
+        },
+        {
+          "title": "Run a pinned published workflow version",
+          "input": {
+            "app_id": "<app_id>",
+            "inputs": {},
+            "workflow_id": "<workflow_id>"
+          }
+        }
+      ]
+    },
+    "console_app.chat.run": {
+      "summary": "Run a chat or agent app; streams message events",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/chat:run",
+      "kind": "sse",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Continue an existing conversation",
+            "title": "Conversation Id"
+          },
+          "auto_generate_name": {
+            "default": true,
+            "description": "Let the server name a new conversation",
+            "title": "Auto Generate Name",
+            "type": "boolean"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "title": "Inputs",
+            "type": "object"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "format": "binary",
+                      "type": "string"
+                    },
+                    {
+                      "items": {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable",
+            "title": "Files"
+          },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "binary",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Local files attached to the run itself (the app's `sys.files`), not to a variable",
+            "title": "Attachments"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Workspace that owns the app",
+            "title": "Workspace Id"
+          },
+          "query": {
+            "description": "User message",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": ["app_id", "inputs", "query"]
+      },
+      "bind": {
+        "app_id": "path",
+        "conversation_id": "body",
+        "auto_generate_name": "body",
+        "inputs": "body",
+        "files": "file",
+        "attachments": "file",
+        "workspace_id": "body",
+        "query": "body"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Start a new conversation",
+          "input": {
+            "app_id": "<app_id>",
+            "query": "Summarise the latest release",
+            "inputs": {}
+          }
+        },
+        {
+          "title": "Reply in an existing conversation",
+          "input": {
+            "app_id": "<app_id>",
+            "query": "Make it shorter",
+            "inputs": {},
+            "conversation_id": "<conversation_id>"
+          }
+        },
+        {
+          "title": "Ask about a local file attached to the message",
+          "input": {
+            "app_id": "<app_id>",
+            "query": "What is in this file?",
+            "inputs": {},
+            "attachments": ["./report.pdf"]
+          }
+        }
+      ]
+    },
+    "console_app.advanced_chat.run": {
+      "summary": "Run an advanced-chat (chatflow) app; streams message and workflow events",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/advanced-chat:run",
+      "kind": "sse",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Pin a published workflow version",
+            "title": "Workflow Id"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Continue an existing conversation",
+            "title": "Conversation Id"
+          },
+          "auto_generate_name": {
+            "default": true,
+            "description": "Let the server name a new conversation",
+            "title": "Auto Generate Name",
+            "type": "boolean"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "title": "Inputs",
+            "type": "object"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "format": "binary",
+                      "type": "string"
+                    },
+                    {
+                      "items": {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable",
+            "title": "Files"
+          },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "binary",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Local files attached to the run itself (the app's `sys.files`), not to a variable",
+            "title": "Attachments"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Workspace that owns the app",
+            "title": "Workspace Id"
+          },
+          "query": {
+            "description": "User message",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": ["app_id", "inputs", "query"]
+      },
+      "bind": {
+        "app_id": "path",
+        "workflow_id": "body",
+        "conversation_id": "body",
+        "auto_generate_name": "body",
+        "inputs": "body",
+        "files": "file",
+        "attachments": "file",
+        "workspace_id": "body",
+        "query": "body"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Start a new conversation",
+          "input": {
+            "app_id": "<app_id>",
+            "query": "Summarise the latest release",
+            "inputs": {}
+          }
+        },
+        {
+          "title": "Reply in an existing conversation",
+          "input": {
+            "app_id": "<app_id>",
+            "query": "Make it shorter",
+            "inputs": {},
+            "conversation_id": "<conversation_id>"
+          }
+        }
+      ]
+    },
+    "console_app.completion.run": {
+      "summary": "Run a completion app; streams message events",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/completion:run",
+      "kind": "sse",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "title": "Inputs",
+            "type": "object"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "format": "binary",
+                      "type": "string"
+                    },
+                    {
+                      "items": {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable",
+            "title": "Files"
+          },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "binary",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Local files attached to the run itself (the app's `sys.files`), not to a variable",
+            "title": "Attachments"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Workspace that owns the app",
+            "title": "Workspace Id"
+          },
+          "query": {
+            "default": "",
+            "description": "Prompt text; most completion apps take their input through `inputs`",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": ["app_id", "inputs"]
+      },
+      "bind": {
+        "app_id": "path",
+        "inputs": "body",
+        "files": "file",
+        "attachments": "file",
+        "workspace_id": "body",
+        "query": "body"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Run a completion app with its variables",
+          "input": {
+            "app_id": "<app_id>",
+            "inputs": {
+              "text": "The quick brown fox"
+            }
+          }
+        },
+        {
+          "title": "Run a completion app with prompt text",
+          "input": {
+            "app_id": "<app_id>",
+            "inputs": {},
+            "query": "Write a haiku about the sea"
+          }
+        }
+      ]
+    },
+    "run.stop": {
+      "summary": "Stop a running task",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}:stop",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": ["app_id", "task_id"]
+      },
+      "bind": {
+        "app_id": "path",
+        "task_id": "path"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Stop a running task",
+          "input": {
+            "app_id": "<app_id>",
+            "task_id": "<task_id>"
+          }
+        }
+      ]
+    },
+    "console_app.describe": {
+      "summary": "App detail, parameters and runtime input_schema",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "fields": {
+            "default": null,
+            "title": "Fields",
+            "type": "string"
+          }
+        },
+        "required": ["app_id"]
+      },
+      "bind": {
+        "app_id": "path",
+        "fields": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Describe an app: info, parameters and input_schema",
+          "input": {
+            "app_id": "<app_id>"
+          }
+        },
+        {
+          "title": "Only the runtime input_schema of an app",
+          "input": {
+            "app_id": "<app_id>",
+            "fields": "input_schema"
+          }
+        }
+      ]
+    },
+    "console_app.list": {
+      "summary": "List apps in a workspace",
+      "method": "GET",
+      "path": "/openapi/v1/apps",
+      "kind": "list",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "description": "App types the ``app`` usage face (``get app``) lists and filters.\n\nA curated subset of :class:`AppMode`: the real, user-facing app categories.\nExcludes runtime-only mode tags that are not standalone apps\n(``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the\nroster-owned ``agent`` type (surfaced through the roster, not this list).\n\nMembers reference ``AppMode.*.value`` so the subset relationship is\ntype-checked: dropping a member from ``AppMode`` breaks this at import.\nThis is the single source for the listable set — params, filters, and the\ngenerated CLI whitelist all derive from it.",
+                "enum": ["completion", "chat", "advanced-chat", "workflow", "agent-chat"],
+                "title": "SupportedAppType",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          }
+        },
+        "required": ["workspace_id"]
+      },
+      "bind": {
+        "page": "query",
+        "limit": "query",
+        "workspace_id": "query",
+        "mode": "query",
+        "name": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "List apps in the pinned workspace, first page",
+          "input": {
+            "page": 1,
+            "limit": 20
+          }
+        },
+        {
+          "title": "Find workflow apps whose name contains a word",
+          "input": {
+            "mode": "workflow",
+            "name": "summary"
+          }
+        }
+      ]
+    },
+    "console_app.external.list": {
+      "summary": "List apps an external SSO subject may run",
+      "method": "GET",
+      "path": "/openapi/v1/permitted-external-apps",
+      "kind": "list",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "description": "App types the ``app`` usage face (``get app``) lists and filters.\n\nA curated subset of :class:`AppMode`: the real, user-facing app categories.\nExcludes runtime-only mode tags that are not standalone apps\n(``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the\nroster-owned ``agent`` type (surfaced through the roster, not this list).\n\nMembers reference ``AppMode.*.value`` so the subset relationship is\ntype-checked: dropping a member from ``AppMode`` breaks this at import.\nThis is the single source for the listable set — params, filters, and the\ngenerated CLI whitelist all derive from it.",
+                "enum": ["completion", "chat", "advanced-chat", "workflow", "agent-chat"],
+                "title": "SupportedAppType",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          }
+        },
+        "required": []
+      },
+      "bind": {
+        "page": "query",
+        "limit": "query",
+        "mode": "query",
+        "name": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "List the apps this SSO subject may run, first page",
+          "input": {
+            "page": 1,
+            "limit": 20
+          }
+        }
+      ]
+    },
+    "console_app.external.describe": {
+      "summary": "External-subject app detail",
+      "method": "GET",
+      "path": "/openapi/v1/permitted-external-apps/{app_id}",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "fields": {
+            "default": null,
+            "title": "Fields",
+            "type": "string"
+          }
+        },
+        "required": ["app_id"]
+      },
+      "bind": {
+        "app_id": "path",
+        "fields": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Describe a permitted app with its input_schema",
+          "input": {
+            "app_id": "<app_id>"
+          }
+        }
+      ]
+    },
+    "console_app.file.upload": {
+      "summary": "Upload a file and get a file id for later runs",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/files",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "file": {
+            "description": "The file to upload; its id can then be used in an app run's file variables",
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": ["app_id", "file"]
+      },
+      "bind": {
+        "app_id": "path",
+        "file": "file"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Upload a local PDF and get a file id",
+          "input": {
+            "app_id": "<app_id>",
+            "file": "./report.pdf"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.ls": {
+      "summary": "List an Agent Knowledge Base directory (ls)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum number of results to return (1-100).",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "List a knowledge directory",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.tree": {
+      "summary": "Traverse an Agent Knowledge Base directory (tree)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:tree",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum number of results to return (1-100).",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          },
+          "depth": {
+            "anyOf": [
+              {
+                "maximum": 8,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Maximum tree depth (1-8).",
+            "title": "Depth"
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query",
+        "depth": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Traverse a knowledge directory",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge",
+            "depth": 2
+          }
+        }
+      ]
+    },
+    "knowledge_fs.grep": {
+      "summary": "Search Agent Knowledge Base content (grep)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:grep",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum number of results to return (1-100).",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          },
+          "text": {
+            "description": "Text to find in readable entry content.",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "timeout_ms": {
+            "anyOf": [
+              {
+                "maximum": 10000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional search time budget in milliseconds (1-10000).",
+            "title": "Timeout Ms"
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path", "text"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query",
+        "text": "query",
+        "timeout_ms": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Search knowledge content",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge",
+            "text": "deployment"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.find": {
+      "summary": "Find Agent Knowledge Base entries (find)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:find",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum number of results to return (1-100).",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          },
+          "metadata_key": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Exact metadata key; metadata_value must be supplied with it.",
+            "title": "Metadata Key"
+          },
+          "metadata_value": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Exact metadata value; metadata_key must be supplied with it.",
+            "title": "Metadata Value"
+          },
+          "name_contains": {
+            "anyOf": [
+              {
+                "maxLength": 240,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name Contains"
+          },
+          "resource_type": {
+            "anyOf": [
+              {
+                "enum": ["source", "document", "node", "artifact", "evidence", "workspace"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query",
+        "metadata_key": "query",
+        "metadata_value": "query",
+        "name_contains": "query",
+        "resource_type": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Find entries by name",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge",
+            "name_contains": "guide"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.diff": {
+      "summary": "Compare two Agent Knowledge Base entries (diff)",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:diff",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "old_path": {
+            "description": "Canonical path of the baseline entry.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Old Path",
+            "type": "string"
+          },
+          "new_path": {
+            "description": "Canonical path of the entry to compare.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "New Path",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": ["line", "word"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Comparison granularity.",
+            "title": "Mode"
+          },
+          "include_semantic_summary": {
+            "default": false,
+            "description": "Whether to generate a bounded semantic change summary. This can consume model quota.",
+            "title": "Include Semantic Summary",
+            "type": "boolean"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "old_path", "new_path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "old_path": "body",
+        "new_path": "body",
+        "mode": "body",
+        "include_semantic_summary": "body",
+        "consistency_class": "body"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Compare two knowledge entries",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "old_path": "/knowledge/guide-v1",
+            "new_path": "/knowledge/guide-v2"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.cat": {
+      "summary": "Read Agent Knowledge Base entry content (cat)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:cat",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 100,
+            "description": "Maximum source segments to read (1-100); ignored when the selected entry has one bounded content value.",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Read a knowledge entry",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge/guide"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.stat": {
+      "summary": "Inspect an Agent Knowledge Base entry (stat)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Inspect a knowledge entry",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge/guide"
+          }
+        }
+      ]
+    },
+    "run.events": {
+      "summary": "Stream the events of a workflow run",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}/events",
+      "kind": "sse",
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "include_state_snapshot": {
+            "default": false,
+            "description": "Whether to include workflow state snapshots",
+            "title": "Include State Snapshot",
+            "type": "boolean"
+          },
+          "continue_on_pause": {
+            "default": false,
+            "description": "Whether to keep the event stream open on pause",
+            "title": "Continue On Pause",
+            "type": "boolean"
+          }
+        },
+        "required": ["app_id", "task_id"]
+      },
+      "bind": {
+        "app_id": "path",
+        "task_id": "path",
+        "include_state_snapshot": "query",
+        "continue_on_pause": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Follow the events of a running task",
+          "input": {
+            "app_id": "<app_id>",
+            "task_id": "<task_id>"
+          }
+        },
+        {
+          "title": "Keep the stream open across a human-input pause",
+          "input": {
+            "app_id": "<app_id>",
+            "task_id": "<task_id>",
+            "continue_on_pause": true
+          }
+        }
+      ]
+    },
+    "workspace.list": {
+      "summary": "List workspaces of the current account",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces",
+      "kind": "list",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": []
+      },
+      "bind": {
+        "page": "query",
+        "limit": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "List my workspaces, first page",
+          "input": {
+            "page": 1,
+            "limit": 20
+          }
+        }
+      ]
+    },
+    "workspace.get": {
+      "summary": "Workspace detail",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          }
+        },
+        "required": ["workspace_id"]
+      },
+      "bind": {
+        "workspace_id": "path"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Show the pinned workspace",
+          "input": {}
+        },
+        {
+          "title": "Show another workspace by id",
+          "input": {
+            "workspace_id": "<workspace_id>"
+          }
+        }
+      ]
+    },
+    "workspace.switch": {
+      "summary": "Server-side current workspace switch (shared with the web console)",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}:switch",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          }
+        },
+        "required": ["workspace_id"]
+      },
+      "bind": {
+        "workspace_id": "path"
+      },
+      "internal": true,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Make a workspace current on the server",
+          "input": {
+            "workspace_id": "<workspace_id>"
+          }
+        }
+      ]
+    },
+    "workspace.members.list": {
+      "summary": "List workspace members",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/members",
+      "kind": "list",
+      "input": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          },
+          "page": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": ["workspace_id"]
+      },
+      "bind": {
+        "workspace_id": "path",
+        "page": "query",
+        "limit": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "List members of the pinned workspace, first page",
+          "input": {
+            "page": 1,
+            "limit": 20
+          }
+        }
+      ]
+    },
+    "workspace.members.invite": {
+      "summary": "Invite a member by email",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/members",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "enum": ["normal", "admin"],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": ["workspace_id", "email", "role"]
+      },
+      "bind": {
+        "workspace_id": "path",
+        "email": "body",
+        "role": "body"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Invite a member as a normal user",
+          "input": {
+            "email": "ada@example.com",
+            "role": "normal"
+          }
+        },
+        {
+          "title": "Invite a member as an admin",
+          "input": {
+            "email": "grace@example.com",
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "workspace.members.remove": {
+      "summary": "Remove a member",
+      "method": "DELETE",
+      "path": "/openapi/v1/workspaces/{workspace_id}/members/{member_id}",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          }
+        },
+        "required": ["member_id", "workspace_id"]
+      },
+      "bind": {
+        "member_id": "path",
+        "workspace_id": "path"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Remove a member by account id",
+          "input": {
+            "member_id": "<member_id>"
+          }
+        }
+      ]
+    },
+    "workspace.members.set_role": {
+      "summary": "Change a member's role",
+      "method": "PATCH",
+      "path": "/openapi/v1/workspaces/{workspace_id}/members/{member_id}",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "role": {
+            "enum": ["normal", "admin"],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": ["member_id", "workspace_id", "role"]
+      },
+      "bind": {
+        "member_id": "path",
+        "workspace_id": "path",
+        "role": "body"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Promote a member to admin",
+          "input": {
+            "member_id": "<member_id>",
+            "role": "admin"
+          }
+        },
+        {
+          "title": "Demote an admin to a normal member",
+          "input": {
+            "member_id": "<member_id>",
+            "role": "normal"
+          }
+        }
+      ]
+    }
+  }
+}

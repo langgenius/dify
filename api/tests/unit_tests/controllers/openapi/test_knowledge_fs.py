@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import inspect
+import json
 import uuid
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 from unittest.mock import Mock
 
@@ -369,3 +371,30 @@ def test_knowledge_fs_error_adapter_uses_stable_domain_errors() -> None:
 
         with pytest.raises(openapi_error):
             fail()
+
+
+def test_cli_catalog_fixture_matches_the_registered_knowledge_fs_operations(openapi_app: Flask) -> None:
+    """CLI wire tests exercise the actual server input and binding contracts."""
+    from controllers.openapi._catalog import build_catalog
+
+    fixture = Path(__file__).resolve().parents[5] / "cli/test/fixtures/knowledge-fs-catalog.json"
+    with openapi_app.app_context():
+        operations = build_catalog(openapi_app)["ops"]
+    expected = {name: operation for name, operation in operations.items() if name.startswith("knowledge_fs.")}
+    assert json.loads(fixture.read_text()) == {"ops": expected}
+
+
+@pytest.mark.parametrize("operation", ["ls", "tree", "grep", "find", "cat", "stat", "diff"])
+def test_knowledge_fs_catalog_gate_precedes_request_validation(admitted_bearer, operation: str) -> None:
+    """A CLI request must carry the downloaded fingerprint before its handler can run."""
+    path = (
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}"
+        f"/knowledge-fs/knowledge-spaces/00000000-0000-4000-8000-000000000001/fs:{operation}"
+    )
+    method = "POST" if operation == "diff" else "GET"
+    without = {"Authorization": admitted_bearer.headers["Authorization"]}
+    refused = admitted_bearer.client.open(path, method=method, headers=without)
+    admitted = admitted_bearer.client.open(path, method=method, headers=admitted_bearer.headers)
+    assert refused.status_code == 412
+    assert refused.get_json()["code"] == "catalog_stale"
+    assert admitted.status_code == 422  # Required path/body absent; the catalog gate admitted it.

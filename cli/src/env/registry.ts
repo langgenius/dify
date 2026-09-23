@@ -24,7 +24,7 @@ const REGISTRY_UNSORTED: readonly EnvVar[] = [
   },
   {
     name: 'DIFY_LIMIT',
-    description: 'Default page size for list commands (1..200).',
+    description: 'Default page size for list commands (1..100).',
     parse: (raw: string) => parseLimit(raw, 'DIFY_LIMIT'),
   },
   {

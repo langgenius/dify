@@ -1,6 +1,8 @@
 import type { YamlStore } from '@/store/store'
 import { useTempConfigDir } from '@test/fixtures/config-dir'
 import { describe, expect, it } from 'vite-plus/test'
+import { runConfigSet } from '@/commands/config/set/run'
+import { runConfigUnset } from '@/commands/config/unset/run'
 import { isBaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { getConfigurationStore } from '@/store/manager'
@@ -34,6 +36,41 @@ describe('loadConfig', () => {
       expect(r.config.defaults.limit).toBe(100)
       expect(r.config.state.current_app).toBe('app-1')
     }
+  })
+
+  it.each([101, 200])(
+    'normalizes legacy limit %i while preserving other settings',
+    async (limit) => {
+      const store = getConfigurationStore()
+      await store.setTyped({
+        schema_version: 1,
+        defaults: { limit, format: 'json' },
+        state: { current_app: 'app-1' },
+      })
+      await expect(loadConfig(store)).resolves.toEqual({
+        found: true,
+        config: {
+          schema_version: 1,
+          defaults: { limit: 100, format: 'json' },
+          state: { current_app: 'app-1' },
+        },
+      })
+      // Reading normalizes in memory without silently rewriting the user's file.
+      expect(await store.getTyped()).toMatchObject({ defaults: { limit } })
+    },
+  )
+
+  it('allows setting and unsetting a legacy limit through the config commands', async () => {
+    const store = getConfigurationStore()
+    await store.setTyped({ schema_version: 1, defaults: { limit: 200, format: 'json' } })
+    await runConfigSet({ store, key: 'defaults.limit', value: '50' })
+    expect(await store.getTyped()).toMatchObject({ defaults: { limit: 50, format: 'json' } })
+    await store.setTyped({ schema_version: 1, defaults: { limit: 200, format: 'json' } })
+    await runConfigUnset({ store, key: 'defaults.limit' })
+    expect(await store.getTyped()).toMatchObject({ defaults: { format: 'json' } })
+    expect(
+      (await store.getTyped<{ defaults: { limit?: number } }>())?.defaults.limit,
+    ).toBeUndefined()
   })
 
   it('throws BaseError(config_schema_unsupported) when the store fails to parse the file', async () => {

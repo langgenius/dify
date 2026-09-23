@@ -2,7 +2,7 @@ import { newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 
 export const LIMIT_MIN = 1
-export const LIMIT_MAX = 200
+export const LIMIT_MAX = 100
 export const LIMIT_DEFAULT = 20
 
 const INTEGER_PATTERN = /^-?\d+$/

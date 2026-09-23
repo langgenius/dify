@@ -21,7 +21,7 @@ export default class GetMember extends DifyCommand {
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     page: Flags.integer({ description: 'page number', default: 1 }),
-    limit: Flags.string({ description: 'page size [1..200]' }),
+    limit: Flags.string({ description: 'page size [1..100]' }),
     'http-retry': httpRetryFlag,
     output: Flags.outputFormat({
       options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE],

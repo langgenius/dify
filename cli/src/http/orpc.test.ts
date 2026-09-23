@@ -1,6 +1,9 @@
 import type { StubServer } from '@test/fixtures/stub-server'
 import type { HttpClientError } from '@/errors/base'
-import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
+import {
+  jsonResponder,
+  startCatalogStubServer as startStubServer,
+} from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { isHttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
@@ -94,4 +97,26 @@ describe('createOpenApiClient error mapping', () => {
     expect(caught.httpStatus).toBe(503)
     expect(caught.message).toBe('down for maintenance')
   })
+})
+
+it('maps every guarded generated route to the matching stable catalog operation', async () => {
+  const { contract } = await import('@dify/contracts/api/openapi/orpc.gen')
+  const { ContractProcedure } = await import('@orpc/contract')
+  const { catalogOperations } = await import('./catalog-routes')
+  const { default: catalog } = await import('@test/fixtures/openapi-catalog.json')
+  const operations: Record<string, { method: string; path: string }> = catalog.ops
+  function visit(value: unknown): void {
+    if (value instanceof ContractProcedure) {
+      const route = value['~orpc'].route
+      if (route.path?.startsWith('/_') || route.path?.startsWith('/oauth/')) return
+      const operation = catalogOperations[`${route.method} ${route.path}`]
+      expect(operations[operation ?? '']).toMatchObject({
+        method: route.method,
+        path: `/openapi/v1${route.path}`,
+      })
+    } else if (value && typeof value === 'object') {
+      for (const child of Object.values(value)) visit(child)
+    }
+  }
+  visit(contract)
 })

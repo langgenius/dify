@@ -14,9 +14,8 @@ import type {
   PostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffData,
   PostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse,
 } from '@dify/contracts/api/openapi/types.gen'
-import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
-import { createOpenApiClient } from '@/http/orpc'
+import { callCatalogOperation } from '@/http/catalog'
 
 type CatQuery =
   GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatData['query']
@@ -37,10 +36,10 @@ export type KnowledgeFsConsistencyClass = NonNullable<ListQuery['consistency_cla
 export type KnowledgeFsResourceType = NonNullable<FindQuery['resource_type']>
 
 export class KnowledgeFsClient {
-  private readonly orpc: OpenApiClient
+  private readonly http: HttpClient
 
   constructor(http: HttpClient) {
-    this.orpc = createOpenApiClient(http)
+    this.http = http
   }
 
   async cat(
@@ -48,12 +47,10 @@ export class KnowledgeFsClient {
     knowledgeSpaceId: string,
     query: CatQuery,
   ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.cat.get(
-      {
-        params: pathParams(workspaceId, knowledgeSpaceId),
-        query,
-      },
-    )
+    return callCatalogOperation(this.http, 'knowledge_fs.cat', {
+      ...pathParams(workspaceId, knowledgeSpaceId),
+      ...query,
+    })
   }
 
   async diff(
@@ -61,12 +58,10 @@ export class KnowledgeFsClient {
     knowledgeSpaceId: string,
     body: DiffPayload,
   ): Promise<PostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.diff.post(
-      {
-        body,
-        params: pathParams(workspaceId, knowledgeSpaceId),
-      },
-    )
+    return callCatalogOperation(this.http, 'knowledge_fs.diff', {
+      ...pathParams(workspaceId, knowledgeSpaceId),
+      ...body,
+    })
   }
 
   async find(
@@ -74,12 +69,10 @@ export class KnowledgeFsClient {
     knowledgeSpaceId: string,
     query: FindQuery,
   ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.find.get(
-      {
-        params: pathParams(workspaceId, knowledgeSpaceId),
-        query,
-      },
-    )
+    return callCatalogOperation(this.http, 'knowledge_fs.find', {
+      ...pathParams(workspaceId, knowledgeSpaceId),
+      ...query,
+    })
   }
 
   async grep(
@@ -87,12 +80,10 @@ export class KnowledgeFsClient {
     knowledgeSpaceId: string,
     query: GrepQuery,
   ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.grep.get(
-      {
-        params: pathParams(workspaceId, knowledgeSpaceId),
-        query,
-      },
-    )
+    return callCatalogOperation(this.http, 'knowledge_fs.grep', {
+      ...pathParams(workspaceId, knowledgeSpaceId),
+      ...query,
+    })
   }
 
   async list(
@@ -100,12 +91,10 @@ export class KnowledgeFsClient {
     knowledgeSpaceId: string,
     query: ListQuery,
   ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.ls.get(
-      {
-        params: pathParams(workspaceId, knowledgeSpaceId),
-        query,
-      },
-    )
+    return callCatalogOperation(this.http, 'knowledge_fs.ls', {
+      ...pathParams(workspaceId, knowledgeSpaceId),
+      ...query,
+    })
   }
 
   async stat(
@@ -113,12 +102,10 @@ export class KnowledgeFsClient {
     knowledgeSpaceId: string,
     query: StatQuery,
   ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.stat.get(
-      {
-        params: pathParams(workspaceId, knowledgeSpaceId),
-        query,
-      },
-    )
+    return callCatalogOperation(this.http, 'knowledge_fs.stat', {
+      ...pathParams(workspaceId, knowledgeSpaceId),
+      ...query,
+    })
   }
 
   async tree(
@@ -126,12 +113,10 @@ export class KnowledgeFsClient {
     knowledgeSpaceId: string,
     query: TreeQuery,
   ): Promise<GetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeResponse> {
-    return this.orpc.workspaces.byWorkspaceId.knowledgeFs.knowledgeSpaces.byKnowledgeSpaceId.fs.tree.get(
-      {
-        params: pathParams(workspaceId, knowledgeSpaceId),
-        query,
-      },
-    )
+    return callCatalogOperation(this.http, 'knowledge_fs.tree', {
+      ...pathParams(workspaceId, knowledgeSpaceId),
+      ...query,
+    })
   }
 }
 

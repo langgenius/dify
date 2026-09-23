@@ -1,6 +1,9 @@
 import type { StubServer } from '@test/fixtures/stub-server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
+import {
+  jsonResponder,
+  startCatalogStubServer as startStubServer,
+} from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { isHttpClientError } from '@/errors/base'
 import { AppsClient } from './apps.js'
@@ -28,11 +31,11 @@ describe('AppsClient.list', () => {
   it('defaults page=1 & limit=20 and always sends workspace_id', async () => {
     stub = await startStubServer((cap) => jsonResponder(200, LIST_BODY, cap))
 
-    await makeClient(stub.url).list({ workspaceId: 'ws-1' })
+    await makeClient(stub.url).list({ workspaceId: '550e8400-e29b-41d4-a716-446655440000' })
 
     const q = queryOf(stub.captured.url)
     expect(stub.captured.method).toBe('GET')
-    expect(q.get('workspace_id')).toBe('ws-1')
+    expect(q.get('workspace_id')).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(q.get('page')).toBe('1')
     expect(q.get('limit')).toBe('20')
     // Optional filters are omitted entirely when not supplied.
@@ -44,7 +47,7 @@ describe('AppsClient.list', () => {
     stub = await startStubServer((cap) => jsonResponder(200, LIST_BODY, cap))
 
     await makeClient(stub.url).list({
-      workspaceId: 'ws-1',
+      workspaceId: '550e8400-e29b-41d4-a716-446655440000',
       page: 3,
       limit: 50,
       mode: 'chat',
@@ -61,7 +64,11 @@ describe('AppsClient.list', () => {
   it('treats empty-string filters as absent (not blank query params)', async () => {
     stub = await startStubServer((cap) => jsonResponder(200, LIST_BODY, cap))
 
-    await makeClient(stub.url).list({ workspaceId: 'ws-1', mode: '', name: '' })
+    await makeClient(stub.url).list({
+      workspaceId: '550e8400-e29b-41d4-a716-446655440000',
+      mode: '',
+      name: '',
+    })
 
     const q = queryOf(stub.captured.url)
     expect(q.has('mode')).toBe(false)
@@ -71,9 +78,9 @@ describe('AppsClient.list', () => {
   it('propagates server 403 as a classified BaseError', async () => {
     stub = await startStubServer((cap) => jsonResponder(403, { error: 'forbidden' }, cap))
 
-    await expect(makeClient(stub.url).list({ workspaceId: 'ws-1' })).rejects.toSatisfy(
-      (err) => isHttpClientError(err) && err.httpStatus === 403,
-    )
+    await expect(
+      makeClient(stub.url).list({ workspaceId: '550e8400-e29b-41d4-a716-446655440000' }),
+    ).rejects.toSatisfy((err) => isHttpClientError(err) && err.httpStatus === 403)
   })
 })
 

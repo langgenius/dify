@@ -64,6 +64,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
     let resp: Record<string, unknown>
     try {
       const events = await ctx.runClient.runStream(opts.appId, body, {
+        mode,
         signal: ctrl.signal,
         retryOnRateLimit: opts.retryOnRateLimit,
       })

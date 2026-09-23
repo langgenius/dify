@@ -190,3 +190,17 @@ def test_a_guarded_route_refuses_a_request_that_does_not_name_the_current_catalo
     assert refused.get_json()["code"] == OpenApiErrorCode.CATALOG_STALE
     assert refused.headers[CATALOG_HEADER] == current
     assert admitted.status_code == 422
+
+
+def test_cli_catalog_fixture_matches_all_server_operations(app: Flask, config_overrides) -> None:
+    """Keep the CLI's strict wire server aligned with the real route catalog."""
+    import json
+    from pathlib import Path
+
+    from controllers.openapi._catalog import build_catalog
+    from enums import DeploymentEdition
+
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    fixture = Path(__file__).resolve().parents[5] / "cli/test/fixtures/openapi-catalog.json"
+    with app.app_context():
+        assert json.loads(fixture.read_text()) == build_catalog(app)

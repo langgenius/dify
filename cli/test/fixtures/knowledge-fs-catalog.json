@@ -1,0 +1,698 @@
+{
+  "ops": {
+    "knowledge_fs.ls": {
+      "summary": "List an Agent Knowledge Base directory (ls)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum number of results to return (1-100).",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "List a knowledge directory",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.tree": {
+      "summary": "Traverse an Agent Knowledge Base directory (tree)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:tree",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum number of results to return (1-100).",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          },
+          "depth": {
+            "anyOf": [
+              {
+                "maximum": 8,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Maximum tree depth (1-8).",
+            "title": "Depth"
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query",
+        "depth": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Traverse a knowledge directory",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge",
+            "depth": 2
+          }
+        }
+      ]
+    },
+    "knowledge_fs.grep": {
+      "summary": "Search Agent Knowledge Base content (grep)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:grep",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum number of results to return (1-100).",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          },
+          "text": {
+            "description": "Text to find in readable entry content.",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "timeout_ms": {
+            "anyOf": [
+              {
+                "maximum": 10000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional search time budget in milliseconds (1-10000).",
+            "title": "Timeout Ms"
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path", "text"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query",
+        "text": "query",
+        "timeout_ms": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Search knowledge content",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge",
+            "text": "deployment"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.find": {
+      "summary": "Find Agent Knowledge Base entries (find)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:find",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 20,
+            "description": "Maximum number of results to return (1-100).",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          },
+          "metadata_key": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Exact metadata key; metadata_value must be supplied with it.",
+            "title": "Metadata Key"
+          },
+          "metadata_value": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Exact metadata value; metadata_key must be supplied with it.",
+            "title": "Metadata Value"
+          },
+          "name_contains": {
+            "anyOf": [
+              {
+                "maxLength": 240,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name Contains"
+          },
+          "resource_type": {
+            "anyOf": [
+              {
+                "enum": ["source", "document", "node", "artifact", "evidence", "workspace"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query",
+        "metadata_key": "query",
+        "metadata_value": "query",
+        "name_contains": "query",
+        "resource_type": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Find entries by name",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge",
+            "name_contains": "guide"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.diff": {
+      "summary": "Compare two Agent Knowledge Base entries (diff)",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:diff",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "old_path": {
+            "description": "Canonical path of the baseline entry.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Old Path",
+            "type": "string"
+          },
+          "new_path": {
+            "description": "Canonical path of the entry to compare.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "New Path",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": ["line", "word"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Comparison granularity.",
+            "title": "Mode"
+          },
+          "include_semantic_summary": {
+            "default": false,
+            "description": "Whether to generate a bounded semantic change summary. This can consume model quota.",
+            "title": "Include Semantic Summary",
+            "type": "boolean"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "old_path", "new_path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "old_path": "body",
+        "new_path": "body",
+        "mode": "body",
+        "include_semantic_summary": "body",
+        "consistency_class": "body"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Compare two knowledge entries",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "old_path": "/knowledge/guide-v1",
+            "new_path": "/knowledge/guide-v2"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.cat": {
+      "summary": "Read Agent Knowledge Base entry content (cat)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:cat",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          },
+          "page_size": {
+            "default": 100,
+            "description": "Maximum source segments to read (1-100); ignored when the selected entry has one bounded content value.",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token.",
+            "title": "Page Token"
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query",
+        "page_size": "query",
+        "page_token": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Read a knowledge entry",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge/guide"
+          }
+        }
+      ]
+    },
+    "knowledge_fs.stat": {
+      "summary": "Inspect an Agent Knowledge Base entry (stat)",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat",
+      "kind": "object",
+      "input": {
+        "type": "object",
+        "properties": {
+          "knowledge_space_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces.",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "^/(?:sources|knowledge|evidence|workspaces)(?:/[^/\\s]+)*$",
+            "title": "Path",
+            "type": "string"
+          },
+          "consistency_class": {
+            "anyOf": [
+              {
+                "enum": [
+                  "path-consistent",
+                  "snapshot-consistent",
+                  "cache-consistent",
+                  "eventual-preview"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Agent Knowledge Base read-consistency policy."
+          }
+        },
+        "required": ["knowledge_space_id", "workspace_id", "path"]
+      },
+      "bind": {
+        "knowledge_space_id": "path",
+        "workspace_id": "path",
+        "path": "query",
+        "consistency_class": "query"
+      },
+      "internal": false,
+      "deprecated": false,
+      "examples": [
+        {
+          "title": "Inspect a knowledge entry",
+          "input": {
+            "workspace_id": "<workspace_id>",
+            "knowledge_space_id": "<knowledge_space_id>",
+            "path": "/knowledge/guide"
+          }
+        }
+      ]
+    }
+  }
+}

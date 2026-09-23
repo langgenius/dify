@@ -35,7 +35,7 @@ export default class GetApp extends DifyCommand {
       default: false,
     }),
     page: Flags.integer({ description: 'page number', default: 1 }),
-    limit: Flags.string({ description: 'page size [1..200]' }),
+    limit: Flags.string({ description: 'page size [1..100]' }),
     mode: Flags.string({ description: 'filter by app mode', options: APP_MODE_VALUES }),
     name: Flags.string({ description: 'filter by app name (server-side substring)' }),
     'http-retry': httpRetryFlag,

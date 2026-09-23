@@ -1,9 +1,13 @@
 import type { OpenApiClient } from '@/http/orpc'
 import type { SseEvent } from '@/http/sse'
 import type { HttpClient } from '@/http/types'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { requestCatalogOperation } from '@/http/catalog'
 import { createOpenApiClient } from '@/http/orpc'
 import { parseSSE } from '@/http/sse'
 import { normalizeDifyStream } from '@/http/sse-dify'
+import { AppsClient } from './apps'
 
 export type RunBodyArgs = {
   readonly message?: string
@@ -29,6 +33,7 @@ export function buildRunBody(args: RunBodyArgs): Record<string, unknown> {
 }
 
 export type StreamOptions = {
+  mode?: string
   signal?: AbortSignal
   includeStateSnapshot?: boolean
   retryOnRateLimit?: boolean
@@ -40,9 +45,7 @@ export class AppRunClient {
 
   constructor(http: HttpClient) {
     this.http = http
-    // Mixed class (SPEC §4.4): runStream / reconnectStream are SSE and stay on the raw
-    // `http.stream` facade; stopTask / submitHumanInput are plain JSON and go through the
-    // generated oRPC contract. Both facades share this one transport.
+    // SSE and unary operations share catalog negotiation and the same HTTP transport.
     this.orpc = createOpenApiClient(http)
   }
 
@@ -51,14 +54,27 @@ export class AppRunClient {
     body: Record<string, unknown>,
     opts: StreamOptions = {},
   ): Promise<AsyncIterable<SseEvent>> {
-    const res = await this.http.stream(`apps/${encodeURIComponent(appId)}:run`, {
-      method: 'POST',
-      json: body,
-      headers: { Accept: 'text/event-stream' },
-      signal: opts.signal,
-      throwOnError: true,
-      retryOnRateLimit: opts.retryOnRateLimit,
-    })
+    const mode = opts.mode ?? (await new AppsClient(this.http).describe(appId, ['info'])).info?.mode
+    const operation = {
+      workflow: 'console_app.workflow.run',
+      chat: 'console_app.chat.run',
+      'agent-chat': 'console_app.chat.run',
+      'advanced-chat': 'console_app.advanced_chat.run',
+      completion: 'console_app.completion.run',
+    }[mode ?? '']
+    if (!operation)
+      throw new BaseError({ code: ErrorCode.VersionSkew, message: `Unsupported app mode: ${mode}` })
+    const res = await requestCatalogOperation(
+      this.http,
+      operation,
+      { ...body, app_id: appId },
+      {
+        stream: true,
+        headers: { Accept: 'text/event-stream' },
+        signal: opts.signal,
+        retryOnRateLimit: opts.retryOnRateLimit,
+      },
+    )
     if (res.body === null) throw new Error('streaming response body missing')
     return normalizeDifyStream(parseSSE(res.body, opts.signal))
   }
@@ -86,16 +102,21 @@ export class AppRunClient {
     workflowRunId: string,
     opts: StreamOptions = {},
   ): Promise<AsyncIterable<SseEvent>> {
-    const url = `apps/${encodeURIComponent(appId)}/tasks/${encodeURIComponent(workflowRunId)}/events`
-    const res = await this.http.stream(url, {
-      searchParams: {
-        include_state_snapshot: opts.includeStateSnapshot === true ? 'true' : 'false',
-        continue_on_pause: 'false',
+    const res = await requestCatalogOperation(
+      this.http,
+      'run.events',
+      {
+        app_id: appId,
+        task_id: workflowRunId,
+        include_state_snapshot: opts.includeStateSnapshot === true,
+        continue_on_pause: false,
       },
-      headers: { Accept: 'text/event-stream' },
-      signal: opts.signal,
-      throwOnError: true,
-    })
+      {
+        stream: true,
+        headers: { Accept: 'text/event-stream' },
+        signal: opts.signal,
+      },
+    )
     if (res.body === null) throw new Error('reconnect stream body missing')
     return normalizeDifyStream(parseSSE(res.body, opts.signal))
   }

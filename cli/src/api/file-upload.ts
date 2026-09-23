@@ -1,6 +1,7 @@
 import type { HttpClient } from '@/http/types'
 import { readFile } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
+import { callCatalogOperation } from '@/http/catalog'
 
 export type UploadedFile = {
   id: string
@@ -60,13 +61,14 @@ export class FileUploadClient {
   async upload(appId: string, filePath: string): Promise<UploadedFile> {
     const filename = basename(filePath)
     const content = await readFile(filePath)
-    const blob = new Blob([content], { type: mimeFromFilename(filename) })
-    const form = new FormData()
-    form.append('file', blob, filename)
-
-    return this.http.post<UploadedFile>(`apps/${encodeURIComponent(appId)}/files`, {
-      body: form,
-      timeoutMs: 60_000,
-    })
+    const file = new File([content], filename, { type: mimeFromFilename(filename) })
+    return callCatalogOperation(
+      this.http,
+      'console_app.file.upload',
+      { app_id: appId, file },
+      {
+        timeoutMs: 60_000,
+      },
+    )
   }
 }

@@ -142,3 +142,35 @@ describe('AppRunClient.submitHumanInput', () => {
     ).resolves.toBeUndefined()
   })
 })
+
+it.each([
+  ['chat', 'chat', { inputs: {}, query: 'hello' }],
+  ['agent-chat', 'chat', { inputs: {}, query: 'hello' }],
+  [
+    'advanced-chat',
+    'advanced-chat',
+    { inputs: {}, query: 'hello', workflow_id: 'published-version' },
+  ],
+  ['workflow', 'workflow', { inputs: { topic: 'hello' }, workflow_id: 'published-version' }],
+  ['completion', 'completion', { inputs: { topic: 'hello' } }],
+] as const)('runs %s through its catalog SSE operation', async (mode, segment, body) => {
+  const { startCatalogStubServer } = await import('@test/fixtures/stub-server')
+  const { catalogFingerprint } = await import('@test/fixtures/catalog-document')
+  const stub = await startCatalogStubServer((cap) => (req, res) => {
+    cap.url = req.url
+    cap.method = req.method
+    cap.headers = req.headers
+    res.writeHead(200, { 'content-type': 'text/event-stream' })
+    res.end('data: {"event":"message_end"}\n\n')
+  })
+  try {
+    const client = new AppRunClient(testHttpClient(stub.url, 'dfoa_test'))
+    const stream = await client.runStream('app/id', body, { mode })
+    for await (const event of stream) expect(event.name).toBe('message_end')
+    expect(stub.captured.url).toBe(`/openapi/v1/apps/app%2Fid/${segment}:run`)
+    expect(stub.captured.method).toBe('POST')
+    expect(stub.captured.headers?.['x-dify-catalog']).toBe(catalogFingerprint)
+  } finally {
+    await stub.stop()
+  }
+})

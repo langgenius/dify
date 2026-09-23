@@ -234,29 +234,29 @@ describe('listAllSessions', () => {
     const { client, list } = stubClient([
       {
         page: 1,
-        limit: 200,
-        total: 250,
+        limit: 100,
+        total: 150,
         has_more: true,
-        data: Array.from({ length: 200 }, (_, i) => row(`s-${i}`)),
+        data: Array.from({ length: 100 }, (_, i) => row(`s-${i}`)),
       },
       {
         page: 2,
-        limit: 200,
-        total: 250,
+        limit: 100,
+        total: 150,
         has_more: false,
-        data: Array.from({ length: 50 }, (_, i) => row(`s-${200 + i}`)),
+        data: Array.from({ length: 50 }, (_, i) => row(`s-${100 + i}`)),
       },
     ])
     const all = await listAllSessions(client)
-    expect(all.length).toBe(250)
+    expect(all.length).toBe(150)
     expect(list).toHaveBeenCalledTimes(2)
-    expect(list).toHaveBeenNthCalledWith(1, { page: 1, limit: 200 })
-    expect(list).toHaveBeenNthCalledWith(2, { page: 2, limit: 200 })
+    expect(list).toHaveBeenNthCalledWith(1, { page: 1, limit: 100 })
+    expect(list).toHaveBeenNthCalledWith(2, { page: 2, limit: 100 })
   })
 
   it('single page (has_more=false): one call', async () => {
     const { client, list } = stubClient([
-      { page: 1, limit: 200, total: 3, has_more: false, data: [row('a'), row('b'), row('c')] },
+      { page: 1, limit: 100, total: 3, has_more: false, data: [row('a'), row('b'), row('c')] },
     ])
     const all = await listAllSessions(client)
     expect(all.length).toBe(3)

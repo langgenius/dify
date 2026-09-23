@@ -1,4 +1,5 @@
 import type { StubServer } from '@test/fixtures/stub-server'
+import { withCatalog } from '@test/fixtures/catalog-server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -16,18 +17,18 @@ describe('KnowledgeFsClient command-oriented endpoints', () => {
       body: {
         content_type: 'text/markdown',
         has_more: false,
-        path: '/knowledge/read me.md',
+        path: '/knowledge/read+me.md',
         text: 'hello',
         truncated: false,
       },
       endpoint: 'fs:cat',
       invoke: (client: KnowledgeFsClient) =>
         client.cat('workspace with space', 'control/space', {
-          path: '/knowledge/read me.md',
+          path: '/knowledge/read+me.md',
           page_size: 10,
         }),
       method: 'GET',
-      query: { path: '/knowledge/read me.md', page_size: '10' },
+      query: { path: '/knowledge/read+me.md', page_size: '10' },
     },
     {
       body: {
@@ -124,7 +125,7 @@ describe('KnowledgeFsClient command-oriented endpoints', () => {
   ])(
     '$method $endpoint uses the command-specific resource contract',
     async ({ body, endpoint, invoke, method, query, requestBody }) => {
-      stub = await startStubServer((cap) => jsonResponder(200, body, cap))
+      stub = await startStubServer((cap) => withCatalog(jsonResponder(200, body, cap)))
       const client = new KnowledgeFsClient(testHttpClient(stub.url, 'dfoa_test'))
 
       await invoke(client)
@@ -155,7 +156,7 @@ describe('KnowledgeFsClient command-oriented endpoints', () => {
       path: '/knowledge',
       truncated: false,
     }
-    stub = await startStubServer((cap) => jsonResponder(200, body, cap))
+    stub = await startStubServer((cap) => withCatalog(jsonResponder(200, body, cap)))
     const client = new KnowledgeFsClient(testHttpClient(stub.url, 'dfoa_test'))
 
     await expect(

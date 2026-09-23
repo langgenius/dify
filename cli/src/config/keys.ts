@@ -30,7 +30,7 @@ const KEYS: readonly KeySpec[] = [
   },
   {
     name: 'defaults.limit',
-    description: 'Default page size for list commands (1..200).',
+    description: 'Default page size for list commands (1..100).',
     get: (c) => (c.defaults.limit === undefined ? '' : String(c.defaults.limit)),
     set: (c, v) => {
       try {

@@ -2,11 +2,13 @@ import type { AddressInfo } from 'node:net'
 import type { Scenario } from './scenarios.js'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { catalogBody, catalogFingerprint } from '../catalog-document'
 import { ACCOUNT, APPS, DSL_YAML, SESSIONS, WORKSPACES } from './scenarios.js'
 
 export type DifyMockOptions = {
   scenario?: Scenario
   port?: number
+  requireCatalog?: boolean
 }
 
 export type DifyMock = {
@@ -123,8 +125,20 @@ export type MockState = {
   lastImportBody: Record<string, unknown> | null
 }
 
-export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
+export function buildApp(
+  getScenario: () => Scenario,
+  state?: MockState,
+  requireCatalog = true,
+): Hono {
   const app = new Hono()
+
+  app.get(
+    '/openapi/v1/_catalog',
+    () =>
+      new Response(catalogBody, {
+        headers: { 'content-type': 'application/json', 'X-Dify-Catalog': catalogFingerprint },
+      }),
+  )
 
   app.get('/healthz', (c) => c.json({ ok: true }))
 
@@ -145,6 +159,8 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     if (!TOKEN_RE.test(auth)) return unauthorized()
     const scenario = getScenario()
     if (scenario === 'auth-expired') return unauthorized()
+    if (requireCatalog && c.req.header('X-Dify-Catalog') !== catalogFingerprint)
+      return c.json({ code: 'catalog_stale', message: 'Catalog changed', status: 412 }, 412)
     await next()
   })
 
@@ -387,14 +403,17 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     )
   })
 
-  app.post('/openapi/v1/apps/:id:run', async (c) => {
-    // Hono drops the param adjacent to the `:run` literal; recover the app id from the path.
-    const id = c.req.path.replace(/^.*\/apps\//, '').replace(/:run$/, '')
+  app.post('/openapi/v1/apps/:id/:mode{.+:run}', async (c) => {
+    // Only mode-specific run routes exist on the server.
+    const id = c.req.param('id')
+    const segment = c.req.param('mode')
     const body = (await c.req.json()) as { query?: string; inputs?: unknown }
     if (state !== undefined) state.lastRunBody = body as Record<string, unknown>
     const app = APPS.find((a) => a.id === id)
     if (app === undefined)
       return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
+    if (segment !== `${app.mode === 'agent-chat' ? 'chat' : app.mode}:run`)
+      return c.json({ message: 'Wrong run route' }, 400)
     const isAgent = app.is_agent === true || app.mode === 'agent-chat'
     const query = body.query ?? ''
     const scenario = getScenario()
@@ -613,7 +632,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
 export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
   let scenario: Scenario = opts.scenario ?? 'happy'
   const state: MockState = { lastRunBody: null, uploadCallCount: 0, lastImportBody: null }
-  const app = buildApp(() => scenario, state)
+  const app = buildApp(() => scenario, state, opts.requireCatalog)
   return new Promise((resolve, reject) => {
     const server = serve({
       fetch: app.fetch,

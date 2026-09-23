@@ -35,7 +35,7 @@ describe('http client', () => {
   let mock: DifyMock
 
   beforeEach(async () => {
-    mock = await startMock()
+    mock = await startMock({ requireCatalog: false })
   })
 
   afterEach(async () => {
@@ -582,7 +582,7 @@ describe('empty / No-Content bodies', () => {
 
 describe('classifyResponse internals', () => {
   it('strips Bearer from logged URLs', async () => {
-    const mock = await startMock()
+    const mock = await startMock({ requireCatalog: false })
     try {
       const logger = vi.fn()
       const client = createHttpClient({
@@ -602,7 +602,7 @@ describe('classifyResponse internals', () => {
 describe('extend()', () => {
   let mock: DifyMock
   beforeEach(async () => {
-    mock = await startMock()
+    mock = await startMock({ requireCatalog: false })
   })
   afterEach(async () => {
     await mock.stop()
@@ -660,7 +660,7 @@ describe('extend()', () => {
 describe('fetch() and stream()', () => {
   let mock: DifyMock
   beforeEach(async () => {
-    mock = await startMock()
+    mock = await startMock({ requireCatalog: false })
   })
   afterEach(async () => {
     await mock.stop()
@@ -789,7 +789,7 @@ describe('timeout + abort retry policy', () => {
 describe('hook semantics', () => {
   let mock: DifyMock
   beforeEach(async () => {
-    mock = await startMock()
+    mock = await startMock({ requireCatalog: false })
   })
   afterEach(async () => {
     await mock.stop()
@@ -859,7 +859,7 @@ describe('hook semantics', () => {
 // skip-baseURL) plus UA+bearer injection and the raw-Response-on-error contract oRPC relies on.
 describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
   it('sends to the Request URL verbatim, skipping the client baseURL', async () => {
-    const mock = await startMock()
+    const mock = await startMock({ requireCatalog: false })
     try {
       // Deliberately wrong baseURL: if request() re-joined it via joinURL, this would miss.
       const client = createHttpClient({
@@ -876,7 +876,7 @@ describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
   })
 
   it('injects UA + bearer that the pre-built Request did not carry', async () => {
-    const mock = await startMock()
+    const mock = await startMock({ requireCatalog: false })
     try {
       let auth: string | null = null
       let ua: string | null = null
@@ -900,7 +900,7 @@ describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
   })
 
   it('returns the raw Response on 4xx and does NOT throw (oRPC reads the body + maps errors)', async () => {
-    const mock = await startMock()
+    const mock = await startMock({ requireCatalog: false })
     try {
       mock.setScenario('auth-expired')
       const client = createHttpClient({ baseURL: base(mock.url), bearer: 'dfoa_test' })

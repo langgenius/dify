@@ -1,5 +1,6 @@
 import type { DifyMock } from './server.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
+import { catalogFingerprint } from '../catalog-document'
 import { startMock } from './server.js'
 
 describe('dify-mock fixture server', () => {
@@ -31,28 +32,28 @@ describe('dify-mock fixture server', () => {
 
   it('rejects malformed Bearer tokens', async () => {
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, {
-      headers: { Authorization: 'Bearer wrongprefix_abc' },
+      headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer wrongprefix_abc' },
     })
     expect(r.status).toBe(401)
   })
 
   it('accepts dfoa_ tokens (community/account)', async () => {
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
+      headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
   })
 
   it('accepts dfoe_ tokens (enterprise/external-subject)', async () => {
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, {
-      headers: { Authorization: 'Bearer dfoe_test' },
+      headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoe_test' },
     })
     expect(r.status).toBe(200)
   })
 
   it('GET /openapi/v1/workspaces returns the seeded list with status + current', async () => {
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
+      headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
     const body = (await r.json()) as {
@@ -74,7 +75,7 @@ describe('dify-mock fixture server', () => {
   it('GET /openapi/v1/workspaces returns empty list under sso scenario', async () => {
     mock.setScenario('sso')
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
+      headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
     const body = (await r.json()) as { data: unknown[] }
@@ -83,7 +84,7 @@ describe('dify-mock fixture server', () => {
 
   it('GET /openapi/v1/account returns the seeded account envelope', async () => {
     const r = await fetch(`${mock.url}/openapi/v1/account`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
+      headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
     const body = (await r.json()) as {
@@ -102,7 +103,7 @@ describe('dify-mock fixture server', () => {
     const r = await fetch(
       `${mock.url}/openapi/v1/apps?workspace_id=550e8400-e29b-41d4-a716-446655440000&mode=workflow`,
       {
-        headers: { Authorization: 'Bearer dfoa_test' },
+        headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
       },
     )
     const body = (await r.json()) as { data: Array<{ mode: string }>; total: number }
@@ -115,7 +116,7 @@ describe('dify-mock fixture server', () => {
     const r = await fetch(
       `${mock.url}/openapi/v1/apps?workspace_id=550e8400-e29b-41d4-a716-446655440001`,
       {
-        headers: { Authorization: 'Bearer dfoa_test' },
+        headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
       },
     )
     const body = (await r.json()) as { data: Array<{ id: string }> }
@@ -127,7 +128,7 @@ describe('dify-mock fixture server', () => {
     const r = await fetch(
       `${mock.url}/openapi/v1/apps/nope?workspace_id=550e8400-e29b-41d4-a716-446655440000`,
       {
-        headers: { Authorization: 'Bearer dfoa_test' },
+        headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
       },
     )
     expect(r.status).toBe(404)
@@ -137,7 +138,7 @@ describe('dify-mock fixture server', () => {
     const r = await fetch(
       `${mock.url}/openapi/v1/apps/app-1?workspace_id=550e8400-e29b-41d4-a716-446655440000`,
       {
-        headers: { Authorization: 'Bearer dfoa_test' },
+        headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
       },
     )
     expect(r.status).toBe(200)
@@ -145,10 +146,11 @@ describe('dify-mock fixture server', () => {
     expect(body.info.id).toBe('app-1')
   })
 
-  it('POST /openapi/v1/apps/:id:run returns SSE stream for chat app', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1:run`, {
+  it('POST /openapi/v1/apps/:id/<mode>:run returns SSE stream for chat app', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/chat:run`, {
       method: 'POST',
       headers: {
+        'X-Dify-Catalog': catalogFingerprint,
         Authorization: 'Bearer dfoa_test',
         'Content-Type': 'application/json',
       },
@@ -160,10 +162,11 @@ describe('dify-mock fixture server', () => {
     expect(text).toContain('"answer":"echo: "')
   })
 
-  it('POST /openapi/v1/apps/:id:run returns SSE stream for workflow app', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-2:run`, {
+  it('POST /openapi/v1/apps/:id/<mode>:run returns SSE stream for workflow app', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-2/workflow:run`, {
       method: 'POST',
       headers: {
+        'X-Dify-Catalog': catalogFingerprint,
         Authorization: 'Bearer dfoa_test',
         'Content-Type': 'application/json',
       },
@@ -179,7 +182,7 @@ describe('dify-mock fixture server', () => {
     const r = await fetch(
       `${mock.url}/openapi/v1/apps/app-1?workspace_id=550e8400-e29b-41d4-a716-446655440000&fields=info`,
       {
-        headers: { Authorization: 'Bearer dfoa_test' },
+        headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
       },
     )
     expect(r.status).toBe(200)
@@ -197,7 +200,7 @@ describe('dify-mock fixture server', () => {
     const r = await fetch(
       `${mock.url}/openapi/v1/apps/app-1?workspace_id=550e8400-e29b-41d4-a716-446655440000`,
       {
-        headers: { Authorization: 'Bearer dfoa_test' },
+        headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
       },
     )
     expect(r.status).toBe(200)
@@ -288,7 +291,7 @@ describe('dify-mock fixture server', () => {
   it('scenario:auth-expired returns 401 on bearer-protected endpoint', async () => {
     mock.setScenario('auth-expired')
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
+      headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(401)
   })
@@ -296,7 +299,7 @@ describe('dify-mock fixture server', () => {
   it('scenario:rate-limited returns 429 with retry-after', async () => {
     mock.setScenario('rate-limited')
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
+      headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(429)
     expect(r.headers.get('retry-after')).toBe('1')
@@ -305,7 +308,7 @@ describe('dify-mock fixture server', () => {
   it('scenario:server-5xx returns 503', async () => {
     mock.setScenario('server-5xx')
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
+      headers: { 'X-Dify-Catalog': catalogFingerprint, Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(503)
   })

@@ -64,12 +64,12 @@ describe('config keys', () => {
       }
     })
 
-    it('sets defaults.limit when value is 1..200', () => {
+    it('sets defaults.limit when value is 1..100', () => {
       const updated = setKey(emptyConfig(), 'defaults.limit', '50')
       expect(updated.defaults.limit).toBe(50)
     })
 
-    it('throws config_invalid_value for limit outside 1..200', () => {
+    it('throws config_invalid_value for limit outside 1..100', () => {
       let caught: unknown
       try {
         setKey(emptyConfig(), 'defaults.limit', '999')

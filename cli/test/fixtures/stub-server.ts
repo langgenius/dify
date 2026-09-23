@@ -1,6 +1,7 @@
 import type { AddressInfo } from 'node:net'
 import { Buffer } from 'node:buffer'
 import * as http from 'node:http'
+import { catalogBody, catalogFingerprint } from './catalog-document'
 
 // Records what the client actually put on the wire so API-client tests can
 // assert method / path / query / body / headers without mocking fetch.
@@ -62,5 +63,25 @@ export function startStubServer(
       })
     })
     server.on('error', reject)
+  })
+}
+
+// Unary API tests share the exported server catalog, while transport tests keep a bare server.
+export function startCatalogStubServer(
+  makeHandler: (captured: CapturedRequest) => http.RequestListener,
+): Promise<StubServer> {
+  return startStubServer((captured) => {
+    const handler = makeHandler(captured)
+    return (req, res) => {
+      if (req.url === '/openapi/v1/_catalog') {
+        res.writeHead(200, {
+          'content-type': 'application/json',
+          'X-Dify-Catalog': catalogFingerprint,
+        })
+        res.end(catalogBody)
+      } else {
+        handler(req, res)
+      }
+    }
   })
 }

@@ -1,6 +1,9 @@
 import type { StubServer } from '@test/fixtures/stub-server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
+import {
+  jsonResponder,
+  startCatalogStubServer as startStubServer,
+} from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { isHttpClientError } from '@/errors/base'
 import { WorkspacesClient } from './workspaces.js'
@@ -27,7 +30,7 @@ describe('WorkspacesClient.list', () => {
         200,
         {
           page: 1,
-          limit: 200,
+          limit: 100,
           total: 1,
           has_more: false,
           data: [{ id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true }],
@@ -39,7 +42,7 @@ describe('WorkspacesClient.list', () => {
     const res = await makeClient(stub.url).list()
 
     expect(stub.captured.method).toBe('GET')
-    expect(stub.captured.url).toBe('/openapi/v1/workspaces?page=1&limit=200')
+    expect(stub.captured.url).toBe('/openapi/v1/workspaces?page=1&limit=100')
     expect(res.data[0]?.id).toBe('ws-1')
   })
 

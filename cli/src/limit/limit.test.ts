@@ -4,17 +4,17 @@ import { ExitCode } from '@/errors/codes'
 import { LIMIT_DEFAULT, LIMIT_MAX, LIMIT_MIN, parseLimit } from './limit'
 
 describe('limit', () => {
-  it('constants match Go original', () => {
+  it('constants match the server pagination contract', () => {
     expect(LIMIT_MIN).toBe(1)
-    expect(LIMIT_MAX).toBe(200)
+    expect(LIMIT_MAX).toBe(100)
     expect(LIMIT_DEFAULT).toBe(20)
   })
 
-  it.each([1, 20, 50, 200])('accepts %d', (n) => {
+  it.each([1, 20, 50, 100])('accepts %d', (n) => {
     expect(parseLimit(String(n), '--limit')).toBe(n)
   })
 
-  it.each([0, -1, 201, 1000])('rejects %d as out of range', (n) => {
+  it.each([0, -1, 101, 1000])('rejects %d as out of range', (n) => {
     let err: unknown
     try {
       parseLimit(String(n), '--limit')
