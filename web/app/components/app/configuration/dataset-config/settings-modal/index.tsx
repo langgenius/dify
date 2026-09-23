@@ -68,7 +68,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       select: (response) => response.data,
     }),
   )
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'datasetSettings'])
   const translateRetrieval: RetrievalTranslate = (selector, options) => t(selector, options)
   const docLink = useDocLink()
   const ref = useRef(null)

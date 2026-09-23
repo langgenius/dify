@@ -63,7 +63,7 @@ type MCPModalContentProps = {
 }
 
 const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const serverUrlInputId = useId()
   const nameInputId = useId()
   const serverIdentifierInputId = useId()

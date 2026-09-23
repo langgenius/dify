@@ -14,7 +14,7 @@ type Props = Readonly<{
 }>
 
 const VarPanel: FC<Props> = ({ varList, message_files }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const [isCollapse, { toggle: toggleCollapse }] = useBoolean(false)
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 

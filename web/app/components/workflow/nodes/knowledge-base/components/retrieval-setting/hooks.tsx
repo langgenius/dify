@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { HybridSearchModeEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../../types'
 
 export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const VectorSearchOption: Option = useMemo(() => {
     return {
       id: RetrievalSearchMethodEnum.semantic,

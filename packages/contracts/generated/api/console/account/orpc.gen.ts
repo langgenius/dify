@@ -42,7 +42,7 @@ import {
   zPostAccountPasswordResponse,
   zPostAccountTimezoneBody,
   zPostAccountTimezoneResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get account avatar url

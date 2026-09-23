@@ -17,7 +17,7 @@ export const StreamingAssistantTurn = ({
   busy: boolean
   onContentChange?: () => void
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const liveExecution = useAtomValue(difyBuilderExecutionProgressAtom)
   const reasoning = useAtomValue(difyBuilderReasoningAtom)
   const streamingTurn = useAtomValue(difyBuilderStreamingTurnAtom)

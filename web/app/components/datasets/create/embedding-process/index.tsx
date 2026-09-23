@@ -35,13 +35,17 @@ const StatusHeader: FC<{ isEmbedding: boolean; isCompleted: boolean }> = ({
   isEmbedding,
   isCompleted,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
-    <div className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary">
+    <div
+      role="status"
+      aria-atomic="true"
+      className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary"
+    >
       {isEmbedding && (
         <>
-          <RiLoader2Fill className="size-4 animate-spin" />
+          <RiLoader2Fill aria-hidden="true" className="size-4 animate-spin" />
           <span>{t(($) => $['embedding.processing'], { ns: 'datasetDocuments' })}</span>
         </>
       )}
@@ -56,10 +60,10 @@ const ActionButtons: FC<{
   documentsHref: string
   onNavigateToDocuments: () => void
 }> = ({ apiReferenceUrl, documentsHref, onNavigateToDocuments }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
-    <div className="mt-6 flex items-center gap-x-2 py-2">
+    <div className="mt-6 flex flex-wrap items-center gap-2 py-2">
       <Link
         href={apiReferenceUrl}
         target="_blank"

@@ -18,7 +18,7 @@ from controllers.common.schema import (
 )
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.apikey import ApiKeyItem, ApiKeyList, BaseApiKeyListResource, BaseApiKeyResource
+from controllers.console.apikey import API_KEY_DELETE_ROLES, API_KEY_EDIT_ROLES, api_key_errors
 from controllers.console.app.app import (
     APP_LIST_QUERY_ARRAY_FIELDS,
     AppListQuery,
@@ -35,6 +35,7 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -49,6 +50,7 @@ from controllers.console.wraps import (
 )
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
@@ -63,10 +65,12 @@ from fields.agent_fields import (
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
 )
+from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
 from models.agent import Agent, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
@@ -1039,56 +1043,44 @@ class AgentApiStatusApi(Resource):
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys")
-class AgentApiKeyListApi(BaseApiKeyListResource):
-    resource_type = ApiTokenType.APP
-    resource_model = App
-    resource_id_field = "app_id"
-    token_prefix = "app-"
-
+class AgentApiKeyListApi(Resource):
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentId()))
-    @with_current_tenant_id
-    @edit_permission_required
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id, session=session))
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentId())],
+    )
+    def get(self, request_context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        with api_key_errors():
+            keys = application_services().app_api_keys.list_agent_keys(request_context, str(agent_id))
+        return dump_response(ApiKeyList, {"data": keys})
 
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
-    @with_current_tenant_id
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId()))
-    @with_session
-    def post(self, session: Session, tenant_id: str, agent_id: UUID) -> tuple[dict[str, object], int]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(
-            ApiKeyItem,
-            self._create_api_key(str(app_model.id), tenant_id, session=session),
-        ), 201
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId())],
+    )
+    def post(self, request_context: RequestContext, agent_id: UUID) -> tuple[dict[str, object], int]:
+        with api_key_errors():
+            key = application_services().app_api_keys.create_agent_key(request_context, str(agent_id))
+        return dump_response(ApiKeyItem, key), 201
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>")
-class AgentApiKeyApi(BaseApiKeyResource):
-    resource_type = ApiTokenType.APP
-    resource_model = App
-    resource_id_field = "app_id"
-
+class AgentApiKeyApi(Resource):
     @console_ns.response(204, "Agent service API key deleted")
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId()))
-    @with_session
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId())],
+    )
     def delete(
         self,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
+        request_context: RequestContext,
         agent_id: UUID,
         api_key_id: UUID,
     ) -> tuple[str, int]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user, session=session)
+        with api_key_errors():
+            application_services().app_api_keys.delete_agent_key(request_context, str(agent_id), str(api_key_id))
         return "", 204
 
 

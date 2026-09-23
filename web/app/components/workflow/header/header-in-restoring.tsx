@@ -29,7 +29,7 @@ export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
 }
 const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'workflow'])
   const { theme } = useTheme()
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)

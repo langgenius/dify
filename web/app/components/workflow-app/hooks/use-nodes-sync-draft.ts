@@ -40,7 +40,7 @@ const shouldSkipDraftSync = (
   isAppDeletingOrDeleted(appId)
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()

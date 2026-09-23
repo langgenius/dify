@@ -12,6 +12,7 @@ const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetEnvironmentVariables = vi.fn()
 const mockSetEnvSecrets = vi.fn()
+const mockSetSyncWorkflowDraftHash = vi.fn()
 const mockHandleUpdateWorkflowCanvas = vi.hoisted(() => vi.fn())
 const mockFetchWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockOnVarsAndFeaturesUpdate = vi.hoisted(() => vi.fn())
@@ -148,6 +149,7 @@ vi.mock('@/app/components/workflow/store', () => ({
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
       setEnvSecrets: mockSetEnvSecrets,
+      setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
     }),
   }),
 }))
@@ -697,6 +699,7 @@ describe('WorkflowMain', () => {
   it('subscribes collaboration listeners and handles sync/workflow update callbacks', async () => {
     collaborationRuntime.isEnabled = true
     mockFetchWorkflowDraft.mockResolvedValue({
+      hash: 'imported-hash',
       features: {
         file_upload: { enabled: true },
         opening_statement: 'hello',

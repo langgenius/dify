@@ -34,7 +34,7 @@ const AddCredentialInLoadBalancing = ({
   onUpdate,
   onRemove,
 }: AddCredentialInLoadBalancingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const { available_credentials } = modelCredential
   const canOpenCredentialMenu =

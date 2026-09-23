@@ -28,7 +28,7 @@ export default function AccessRulesBatchAction({
   onDelete,
   onCancel,
 }: AccessRulesBatchActionProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 

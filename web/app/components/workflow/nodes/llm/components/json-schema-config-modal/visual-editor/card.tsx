@@ -10,7 +10,7 @@ type CardProps = {
 }
 
 const Card: FC<CardProps> = ({ name, type, required, description }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="flex flex-col py-0.5">

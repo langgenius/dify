@@ -4807,7 +4807,7 @@ Restore a published workflow version into the draft workflow
 | 404 | Workflow not found |  |
 
 ### [GET] /apps/{resource_id}/api-keys
-**Get all API keys for an app**
+Get all API keys for an app
 
 #### Parameters
 
@@ -4822,7 +4822,7 @@ Restore a published workflow version into the draft workflow
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
 ### [POST] /apps/{resource_id}/api-keys
-**Create a new API key for an app**
+Create a new API key for an app
 
 #### Parameters
 
@@ -4838,7 +4838,7 @@ Restore a published workflow version into the draft workflow
 | 400 | Maximum keys exceeded |  |
 
 ### [DELETE] /apps/{resource_id}/api-keys/{api_key_id}
-**Delete an API key for an app**
+Delete an API key for an app
 
 #### Parameters
 
@@ -6447,7 +6447,7 @@ Check if dataset is in use
 | 200 | Dataset use status retrieved successfully | **application/json**: [UsageCheckResponse](#usagecheckresponse)<br> |
 
 ### [GET] /datasets/{resource_id}/api-keys
-**Get all API keys for a dataset**
+Get all API keys for a dataset
 
 #### Parameters
 
@@ -6462,7 +6462,7 @@ Check if dataset is in use
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
 ### [POST] /datasets/{resource_id}/api-keys
-**Create a new API key for a dataset**
+Create a new API key for a dataset
 
 #### Parameters
 
@@ -6478,7 +6478,7 @@ Check if dataset is in use
 | 400 | Maximum keys exceeded |  |
 
 ### [DELETE] /datasets/{resource_id}/api-keys/{api_key_id}
-**Delete an API key for a dataset**
+Delete an API key for a dataset
 
 #### Parameters
 
@@ -25580,6 +25580,7 @@ with every node that writes `NodeRunResult.metadata`.
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | metadata | [WorkflowNodeJobMetadata](#workflownodejobmetadata) |  | No |
 | mode | [WorkflowNodeJobMode](#workflownodejobmode) |  | No |
+| output_routes | [WorkflowOutputRoutes](#workflowoutputroutes) |  | No |
 | previous_node_output_refs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
 | workflow_prompt | string |  | No |
@@ -25623,6 +25624,25 @@ with every node that writes `NodeRunResult.metadata`.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [WorkflowOnlineUsersByApp](#workflowonlineusersbyapp) ] |  | Yes |
+
+#### WorkflowOutputRoute
+
+Stable workflow exit identity and its model-visible selection condition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| label | string |  | No |
+| name | string |  | No |
+
+#### WorkflowOutputRoutes
+
+Enabled routes require at least two exits; drafts may omit conditions.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| routes | [ [WorkflowOutputRoute](#workflowoutputroute) ] |  | No |
 
 #### WorkflowPaginationResponse
 

@@ -1,6 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   NumberField,
   NumberFieldControls,
@@ -39,7 +38,7 @@ const IndexMethod = ({
   onKeywordNumberChange,
   readonly = false,
 }: IndexMethodProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetSettings'])
   const keywordInputId = useId()
   const keywordNumberLabel = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
@@ -120,12 +119,6 @@ const IndexMethod = ({
                 >
                   {keywordNumberLabel}
                 </label>
-                <Infotip>
-                  <InfotipTrigger aria-label={keywordNumberLabel} className="ml-0.5 size-3.5" />
-                  <InfotipContent aria-label={keywordNumberLabel}>
-                    {keywordNumberLabel}
-                  </InfotipContent>
-                </Infotip>
               </div>
               <Slider
                 disabled={readonly}

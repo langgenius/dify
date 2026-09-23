@@ -62,7 +62,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   handleSubmitHumanInputForm,
   handleAfterHumanInputStepRun,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
   const translateFormError: BeforeRunFormTranslator = (selector, options) => t(selector, options)
 
   const isHumanInput = nodeType === BlockEnum.HumanInput

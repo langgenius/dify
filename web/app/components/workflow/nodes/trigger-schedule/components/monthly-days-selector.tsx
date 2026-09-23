@@ -9,7 +9,9 @@ type MonthlyDaysSelectorProps = {
 }
 
 const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProps) => {
-  const { t } = useTranslation()
+  const lastDayLabelId = React.useId()
+
+  const { t } = useTranslation(['workflow'])
 
   const handleDayClick = (day: number | 'last') => {
     const current = selectedDays || []
@@ -49,6 +51,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                   }`}
                 >
                   <button
+                    id={lastDayLabelId}
                     type="button"
                     onClick={() => handleDayClick(day)}
                     className="min-w-0 flex-1 py-1"
@@ -57,17 +60,11 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                   </button>
                   <Infotip>
                     <InfotipTrigger
-                      aria-label={t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
-                        ns: 'workflow',
-                      })}
+                      aria-labelledby={lastDayLabelId}
                       className="mr-1 size-3"
                       iconSize="small"
                     />
-                    <InfotipContent
-                      aria-label={t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
-                        ns: 'workflow',
-                      })}
-                    >
+                    <InfotipContent aria-labelledby={lastDayLabelId}>
                       {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
                     </InfotipContent>
                   </Infotip>

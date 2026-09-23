@@ -28,7 +28,7 @@ type WorkflowPreviewProps = {
 }
 
 const WorkflowPreview = ({ onFixRun, fixWithBuilderDisabled }: WorkflowPreviewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)

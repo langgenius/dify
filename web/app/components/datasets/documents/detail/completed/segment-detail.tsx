@@ -45,7 +45,7 @@ export function SegmentDetail({
   isEditMode: requestedEditMode,
   docForm,
 }: ISegmentDetailProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const canEdit = useDocumentContext((s) => s.canEdit)
   const isEditMode = requestedEditMode && canEdit
   const [question, setQuestion] = useState(segInfo?.content || '')

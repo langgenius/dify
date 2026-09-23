@@ -33,7 +33,7 @@ const Blocks = ({
   availableBlocksTypes = [],
   blocks: blocksFromProps,
 }: BlocksProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<BlockPreviewPayload>())

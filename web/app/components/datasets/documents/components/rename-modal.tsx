@@ -21,7 +21,7 @@ type Props = Readonly<{
 }>
 
 const RenameModal: FC<Props> = ({ documentId, datasetId, name, onClose, onSaved }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
 
   const [newName, setNewName] = useState(name)
   const [saveLoading, { setTrue: setSaveLoadingTrue, setFalse: setSaveLoadingFalse }] =

@@ -28,10 +28,13 @@ const Field: FC<Props> = ({
   isNumber = false,
   tooltip,
 }) => {
+  const labelId = React.useId()
+
   return (
     <div className={cn(className)}>
       <div className="flex py-1.75">
         <div
+          id={labelId}
           className={cn(
             labelClassName,
             'flex h-4 items-center text-[13px] font-semibold text-text-secondary',
@@ -44,8 +47,8 @@ const Field: FC<Props> = ({
         )}
         {tooltip && (
           <Infotip>
-            <InfotipTrigger aria-label={tooltip} className="ml-0.5" />
-            <InfotipContent aria-label={tooltip} className="w-50">
+            <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+            <InfotipContent aria-labelledby={labelId} className="w-50">
               {tooltip}
             </InfotipContent>
           </Infotip>

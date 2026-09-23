@@ -32,7 +32,7 @@ type MCPServerParam = {
 }
 
 const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo }: ModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const { mutateAsync: createMCPServer, isPending: creating } = useCreateMCPServer()
   const { mutateAsync: updateMCPServer, isPending: updating } = useUpdateMCPServer()
   const invalidateMCPServerDetail = useInvalidateMCPServerDetail()

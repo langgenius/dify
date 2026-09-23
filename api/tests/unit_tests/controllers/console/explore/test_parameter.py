@@ -6,19 +6,17 @@ import pytest
 
 import controllers.console.explore.parameter as module
 from controllers.console.app.error import AppUnavailableError
-from models.model import InstalledApp
+from machinery.context import RequestContext
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
+from services.installed_app_access_service import InstalledAppRef
+
+_REQUEST_CONTEXT = RequestContext(
+    request_id="test-request", trace_id=None, account_id="account-1", active_workspace_id="viewer-tenant"
+)
 
 
-def _installed_app() -> InstalledApp:
-    return InstalledApp(
-        tenant_id="viewer-tenant",
-        app_id="app-1",
-        app_owner_tenant_id="owner-tenant",
-        position=0,
-        is_pinned=False,
-        last_used_at=None,
-    )
+def _installed_app() -> InstalledAppRef:
+    return InstalledAppRef(id="installed-1", tenant_id="viewer-tenant", app_id="app-1")
 
 
 def _application_services() -> tuple[SimpleNamespace, MagicMock]:
@@ -36,7 +34,7 @@ class TestAppParameterApi:
             patch.object(module, "application_services", return_value=services),
             patch.object(module, "dump_response", return_value={"ok": True}) as dump_response,
         ):
-            result = unwrap(module.AppParameterApi.get)(module.AppParameterApi(), installed_app)
+            result = unwrap(module.AppParameterApi.get)(module.AppParameterApi(), _REQUEST_CONTEXT, installed_app)
 
         assert result == {"ok": True}
         app_definitions.get_parameters.assert_called_once_with("app-1")
@@ -50,7 +48,7 @@ class TestAppParameterApi:
             patch.object(module, "application_services", return_value=services),
             pytest.raises(AppUnavailableError),
         ):
-            unwrap(module.AppParameterApi.get)(module.AppParameterApi(), _installed_app())
+            unwrap(module.AppParameterApi.get)(module.AppParameterApi(), _REQUEST_CONTEXT, _installed_app())
 
 
 class TestExploreAppMetaApi:
@@ -60,7 +58,7 @@ class TestExploreAppMetaApi:
         installed_app = _installed_app()
 
         with patch.object(module, "application_services", return_value=services):
-            result = unwrap(module.ExploreAppMetaApi.get)(module.ExploreAppMetaApi(), installed_app)
+            result = unwrap(module.ExploreAppMetaApi.get)(module.ExploreAppMetaApi(), _REQUEST_CONTEXT, installed_app)
 
         assert result == {"tool_icons": {"search": "/icon"}}
         app_definitions.get_tool_icons.assert_called_once_with("app-1")
@@ -73,7 +71,7 @@ class TestExploreAppMetaApi:
             patch.object(module, "application_services", return_value=services),
             pytest.raises(AppUnavailableError) as raised,
         ):
-            unwrap(module.ExploreAppMetaApi.get)(module.ExploreAppMetaApi(), _installed_app())
+            unwrap(module.ExploreAppMetaApi.get)(module.ExploreAppMetaApi(), _REQUEST_CONTEXT, _installed_app())
 
         assert raised.value.data == {
             "code": "app_unavailable",

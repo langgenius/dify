@@ -48,7 +48,7 @@ const parseUtmInfo = () => {
 }
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()

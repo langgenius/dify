@@ -64,12 +64,7 @@ function AppTypeItem({
       <span id={descriptionId} className="sr-only">
         {description}
       </span>
-      <TooltipContent
-        role="tooltip"
-        placement="left-start"
-        sideOffset={8}
-        className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-sm"
-      >
+      <TooltipContent role="tooltip" placement="left-start" sideOffset={8} className="w-60">
         {description}
       </TooltipContent>
     </Tooltip>
@@ -80,7 +75,7 @@ function AppTypes({
   onSelectType,
   disabled,
 }: Pick<CreateAppTypeDropdownProps, 'onSelectType' | 'disabled'>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const [expanded, setExpanded] = useState(false)
   const moreTypesId = useId()
   const types = [
@@ -168,7 +163,7 @@ export function CreateAppTypeDropdown({
   stepByStepTourTarget,
   stepByStepTourHighlightPart,
 }: CreateAppTypeDropdownProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const menu = useStepByStepTourControlledDropdown({ controlledOpen: stepByStepTourControlledOpen })
 
   return (
@@ -230,7 +225,7 @@ export function CreateAppTypeDropdown({
               />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="system-md-regular text-text-secondary">
-                  {t(($) => $.importDSL, { ns: 'app' })}
+                  {t(($) => $.importApp, { ns: 'app' })}
                 </span>
                 <span className="system-xs-regular text-text-tertiary">
                   {t(($) => $['newApp.menu.importDSLHint'], { ns: 'app' })}

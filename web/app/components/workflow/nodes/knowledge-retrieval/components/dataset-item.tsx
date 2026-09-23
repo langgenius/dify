@@ -46,7 +46,7 @@ const DatasetItem: FC<Props> = ({
   settingsModalHeight,
 }) => {
   const media = useBreakpoints()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const isMobile = media === MediaType.mobile
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const [isDeleteHovered, setIsDeleteHovered] = useState(false)

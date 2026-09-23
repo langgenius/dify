@@ -189,7 +189,7 @@ class ErrorBoundaryInner extends React.Component<
 
 // Main functional component wrapper
 const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [errorBoundaryKey, setErrorBoundaryKey] = useState(0)
   const resetKeysRef = useRef(props.resetKeys)
   const prevResetKeysRef = useRef<Array<string | number> | undefined>(undefined)

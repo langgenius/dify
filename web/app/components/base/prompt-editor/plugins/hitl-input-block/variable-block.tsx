@@ -44,7 +44,7 @@ const HITLInputVariableBlockComponent = ({
   conversationVariables,
   ragVariables,
 }: HITLInputVariableBlockComponentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
   const variablesLength = variables.length
   const isRagVar = isRagVariableVar(variables)

@@ -18,10 +18,10 @@ type AgentDetailLayoutProps = {
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
 
 export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const pathname = usePathname()
   const router = useRouter()
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
   const shouldRedirectToRoster = isNotFoundResponse(agentQuery.error)
   const section = pathname.endsWith('/access-config')

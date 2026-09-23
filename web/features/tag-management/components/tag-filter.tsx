@@ -43,7 +43,7 @@ export const TagFilter = ({
   triggerClassName,
   portalProps,
 }: TagFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
 

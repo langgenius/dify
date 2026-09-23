@@ -25,7 +25,7 @@ type SnippetDetailTopProps = {
 }
 
 export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const router = useRouter()
 
   if (!expand) {

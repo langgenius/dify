@@ -28,7 +28,7 @@ import {
 
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
 const DifyBuilderPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const conversation = useAtomValue(difyBuilderConversationAtom)
   const conversationHasMore = useAtomValue(difyBuilderConversationHasMoreAtom)

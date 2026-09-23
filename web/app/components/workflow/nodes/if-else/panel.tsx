@@ -12,7 +12,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.ifElse'
 
 const Panel: FC<NodePanelProps<IfElseNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const {
     readOnly,
     inputs,

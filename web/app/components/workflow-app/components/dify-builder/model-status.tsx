@@ -26,7 +26,7 @@ export const DifyBuilderModelStatus = ({
   retry,
   rejected,
 }: ModelStatusProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const permissions = useAtomValue(workspacePermissionKeysAtom)
   const canConfigure = hasPermission(permissions, 'plugin.model_config')
   const [_settings, setSettings] = useQueryState(settingsQueryParamName, settingsQueryParser)

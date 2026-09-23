@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -15,29 +16,36 @@ type Props = Readonly<{
 }>
 
 const EconomicalRetrievalMethodConfig: FC<Props> = ({ disabled = false, value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetSettings'])
 
   return (
-    <OptionCard
-      id={RETRIEVE_METHOD.keywordSearch}
+    <RadioGroup<RETRIEVE_METHOD>
+      aria-label={t(($) => $['form.retrievalSetting.method'], { ns: 'datasetSettings' })}
+      className="block"
+      value={RETRIEVE_METHOD.keywordSearch}
       disabled={disabled}
-      icon={<span aria-hidden className="i-custom-vender-knowledge-vector-search size-4" />}
-      iconActiveColor="text-util-colors-purple-purple-600"
-      title={t(($) => $['retrieval.keyword_search.title'], { ns: 'dataset' })}
-      description={t(($) => $['retrieval.keyword_search.description'], { ns: 'dataset' })}
-      isActive
-      effectColor={EffectColor.purple}
-      showEffectColor
-      showChildren
-      className="gap-x-2"
     >
-      <RetrievalParamConfig
-        type={RETRIEVE_METHOD.keywordSearch}
-        value={value}
-        onChange={onChange}
+      <OptionCard
+        id={RETRIEVE_METHOD.keywordSearch}
         disabled={disabled}
-      />
-    </OptionCard>
+        icon={<span aria-hidden className="i-custom-vender-knowledge-vector-search size-4" />}
+        iconActiveColor="text-util-colors-purple-purple-600"
+        title={t(($) => $['retrieval.keyword_search.title'], { ns: 'dataset' })}
+        description={t(($) => $['retrieval.keyword_search.description'], { ns: 'dataset' })}
+        isActive
+        effectColor={EffectColor.purple}
+        showEffectColor
+        showChildren
+        className="gap-x-2"
+      >
+        <RetrievalParamConfig
+          type={RETRIEVE_METHOD.keywordSearch}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+        />
+      </OptionCard>
+    </RadioGroup>
   )
 }
 export default React.memo(EconomicalRetrievalMethodConfig)

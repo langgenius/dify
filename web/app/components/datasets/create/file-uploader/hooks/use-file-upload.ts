@@ -69,7 +69,7 @@ export const useFileUpload = ({
   supportBatchUpload = false,
   allowedExtensions,
 }: UseFileUploadOptions): UseFileUploadReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

@@ -12,7 +12,7 @@ import { formatFileSize } from '@/utils/format'
 import { TEXT_MAX_LENGTH } from './schema'
 
 export const useHiddenFieldNames = (type: PipelineInputVarType) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const hiddenFieldNames = useMemo(() => {
     let fieldNames = []
     switch (type) {
@@ -71,7 +71,7 @@ export const useConfigurations = (props: {
   setFieldValue: (fieldName: DeepKeys<FormData>, value: any) => void
   supportFile: boolean
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { getFieldValue, setFieldValue, supportFile } = props
 
   const handleTypeChange = useCallback(
@@ -213,7 +213,7 @@ export const useConfigurations = (props: {
 }
 
 export const useHiddenConfigurations = (props: { options: string[] | undefined }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
 
   const { options } = props
 

@@ -84,7 +84,7 @@ export const DifyBuilderConversation = memo(
     localUserMessage?: DifyBuilderLocalUserMessage | null
     onStreamingContentChange?: () => void
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const groups = useMemo(() => groupConversationItems(items), [items])
     const entries = useMemo(
       () => addLocalEntries(groups, items, localUserMessage, localInteractionResponse),

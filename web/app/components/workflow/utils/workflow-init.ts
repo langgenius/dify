@@ -6,6 +6,10 @@ import type { ToolNodeType } from '../nodes/tool/types'
 import type { Edge, Node } from '../types'
 import { cloneDeep } from 'es-toolkit/object'
 import { getConnectedEdges } from 'reactflow'
+import {
+  hasAgentV2OutputRoutes,
+  isAgentV2NodeData,
+} from '@/app/components/workflow/nodes/agent-v2/types'
 import { correctModelProvider } from '@/utils'
 import { getIterationStartNode, getLoopStartNode } from '.'
 import {
@@ -258,6 +262,13 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         return topic
       })
     }
+
+    if (hasAgentV2OutputRoutes(node.data))
+      node.data._targetBranches = (node.data.agent_output_routes?.routes ?? []).map((route) => ({
+        id: route.id,
+        name: route.name ?? '',
+      }))
+    else if (isAgentV2NodeData(node.data)) node.data._targetBranches = []
 
     if (node.data.type === BlockEnum.Iteration) {
       const iterationNodeData = node.data as IterationNodeType

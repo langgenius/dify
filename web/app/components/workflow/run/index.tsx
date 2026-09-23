@@ -31,7 +31,7 @@ const RunPanel: FC<RunProps> = ({
   runDetailUrl,
   tracingListUrl,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog'])
   const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()

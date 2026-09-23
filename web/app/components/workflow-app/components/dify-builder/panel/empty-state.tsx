@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 export const DifyBuilderPanelEmptyState = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="mx-4 flex h-full flex-col items-center justify-center gap-3 rounded-[10px] px-4 py-16 text-center">

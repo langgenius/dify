@@ -16,7 +16,7 @@ export function AppTypeSelector({
   isBuilder,
   defaultAppMode,
 }: AppTypeSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(
     defaultAppMode === AppModeEnum.CHAT ||
       defaultAppMode === AppModeEnum.AGENT_CHAT ||

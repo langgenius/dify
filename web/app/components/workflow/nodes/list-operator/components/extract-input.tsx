@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const ExtractInput: FC<Props> = ({ nodeId, readOnly, value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {

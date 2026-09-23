@@ -19,7 +19,7 @@ export const ResourceCard = memo(
     embedded?: boolean
     onActionPayloadChange: DifyBuilderActionPayloadChange
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const resources = item.payload.recommended ?? []
     const resourceListId = useId()
     const [selected, setSelected] = useState(() => resources.map((resource) => resource.id))

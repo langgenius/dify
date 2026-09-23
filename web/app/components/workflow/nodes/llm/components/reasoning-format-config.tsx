@@ -15,7 +15,7 @@ const ReasoningFormatConfig: FC<ReasoningFormatConfigProps> = ({
   onChange,
   readonly = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <Field

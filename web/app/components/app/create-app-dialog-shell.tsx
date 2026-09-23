@@ -21,7 +21,7 @@ export function CreateAppDialogShell({
   show,
   title,
 }: CreateAppDialogShellProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   return (
     <Dialog
       open={show}

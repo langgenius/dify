@@ -121,7 +121,7 @@ export function StarterTemplateEntry({
   disabled: boolean
   onClick: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <div className="group/template relative mx-auto w-160 max-w-[calc(100%-2rem)] shrink-0">

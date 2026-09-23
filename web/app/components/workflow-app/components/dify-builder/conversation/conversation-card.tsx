@@ -12,7 +12,7 @@ export const AssistantReply = ({ text }: { text: string }) => (
 )
 
 export const UserMessage = memo(({ text }: { text: string }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <article className="flex justify-end">
@@ -26,7 +26,7 @@ export const UserMessage = memo(({ text }: { text: string }) => {
 
 export const ConversationCard = memo(
   ({ item, invalidated }: { item: ConversationItem; invalidated: boolean }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
 
     if (item.kind === 'user' || item.kind === 'decision')
       return <UserMessage text={item.payload.text} />

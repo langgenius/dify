@@ -34,7 +34,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   onCancel,
   docForm,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const canEdit = useDocumentContext((s) => s.canEdit)
   const [content, setContent] = useState(childChunkInfo?.content || '')
   const { eventEmitter } = useEventEmitterContextContext()

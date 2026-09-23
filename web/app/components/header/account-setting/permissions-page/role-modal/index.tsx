@@ -35,7 +35,7 @@ type RoleModalProps = {
 }
 
 const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const [name, setName] = useState(role?.name ?? '')
