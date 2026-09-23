@@ -53,7 +53,6 @@ const {
   mockIsAgentV2Enabled,
   mockSwitchWorkspace,
   mockToastSuccess,
-  mockUninstall,
   mockUpdatePinStatus,
 } = vi.hoisted(() => ({
   mockFetchNextInstalledAppsPage: vi.fn(),
@@ -61,7 +60,6 @@ const {
   mockIsAgentV2Enabled: vi.fn(() => true),
   mockSwitchWorkspace: vi.fn(),
   mockToastSuccess: vi.fn(),
-  mockUninstall: vi.fn(),
   mockUpdatePinStatus: vi.fn(),
 }))
 const mockStepByStepTour = vi.hoisted(() => {
@@ -340,11 +338,6 @@ vi.mock('@/service/console', async (importOriginal) => {
             }),
           },
           byInstalledAppId: {
-            delete: {
-              mutationOptions: () => ({
-                mutationFn: (input: unknown) => mockUninstall(input),
-              }),
-            },
             patch: {
               mutationOptions: () => ({
                 mutationFn: (input: unknown) => mockUpdatePinStatus(input),
@@ -474,7 +467,6 @@ const createInstalledApp = (
   app_owner_tenant_id: overrides.app_owner_tenant_id ?? 'tenant-1',
   editable: overrides.editable ?? true,
   last_used_at: overrides.last_used_at ?? null,
-  uninstallable: overrides.uninstallable ?? false,
   is_pinned: overrides.is_pinned ?? false,
   app: {
     id: overrides.app?.id ?? 'app-1',
@@ -676,7 +668,6 @@ describe('MainNav', () => {
         }
       },
     )
-    mockUninstall.mockResolvedValue(undefined)
     mockUpdatePinStatus.mockResolvedValue({ result: 'success', message: 'updated' })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
   })
@@ -1694,10 +1685,9 @@ describe('MainNav', () => {
     expect(screen.getByText('Alpha App')).toBeInTheDocument()
   })
 
-  it('updates pin status and reuses the existing delete confirmation for installed web apps', async () => {
+  it('updates pin status for installed web apps', async () => {
     const user = userEvent.setup()
     mockInstalledApps = [createInstalledApp()]
-    mockUninstall.mockResolvedValue(undefined)
     mockUpdatePinStatus.mockResolvedValue(undefined)
 
     renderMainNav()
@@ -1713,20 +1703,6 @@ describe('MainNav', () => {
         params: { installed_app_id: 'installed-1' },
         body: { is_pinned: true },
       })
-    })
-
-    await user.hover(screen.getByText('Alpha App'))
-    await user.click(
-      screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*Alpha App/ }),
-    )
-    await user.click(await screen.findByText('explore.sidebar.action.delete'))
-    await user.click(await screen.findByText('common.operation.confirm'))
-
-    await waitFor(() => {
-      expect(mockUninstall).toHaveBeenCalledWith({
-        params: { installed_app_id: 'installed-1' },
-      })
-      expect(mockToastSuccess).toHaveBeenCalledWith('common.api.remove')
     })
   })
 })
