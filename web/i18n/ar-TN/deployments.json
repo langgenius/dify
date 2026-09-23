@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "متوقف مؤقتًا — تم إعداد {{name}} ولكنها غير مطبّقة",
   "studio.accessControl.tooltipPro": "التحكّم في الوصول متاح ضمن خطتَي Professional وTeam.",
   "studio.accessControl.tooltipProtected": "{{n}} من أصل {{total}} من نقاط الوصول محمية",
+  "studio.accessControl.tooltipProtectedPartial": "{{n}} من أصل {{total}} من نقاط الوصول محمية",
   "studio.accessControl.turnOffConfirm": "إيقاف",
   "studio.accessControl.turnOffDescription": "ستصبح جميع نقاط الوصول متاحة من أي عنوان IP. سيتم الاحتفاظ بإعداداتك.",
   "studio.accessControl.turnOffTitle": "هل تريد إيقاف التحكّم في الوصول حسب عنوان IP؟",

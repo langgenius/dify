@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "Začasno ustavljeno — {{name}} je nastavljen, vendar se ne uveljavlja",
   "studio.accessControl.tooltipPro": "Nadzor dostopa je na voljo v paketih Professional in Team.",
   "studio.accessControl.tooltipProtected": "Zaščitene dostopne točke: {{n}} od {{total}}",
+  "studio.accessControl.tooltipProtectedPartial": "Zaščitene dostopne točke: {{n}} od {{total}}",
   "studio.accessControl.turnOffConfirm": "Izklopi",
   "studio.accessControl.turnOffDescription": "Vse dostopne točke bodo dosegljive s katerega koli naslova IP. Vaša konfiguracija bo ohranjena.",
   "studio.accessControl.turnOffTitle": "Izklopim nadzor dostopa po naslovu IP?",

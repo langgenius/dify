@@ -29,7 +29,7 @@ vi.mock('react-i18next', async () => {
     ...translations,
     'studio.accessControl.entryLabel': 'Access Control',
     'studio.accessControl.chipOff': 'Off',
-    'studio.accessControl.chipOn': 'ON',
+    'studio.accessControl.chipOn': 'On',
     'studio.accessControl.chipPartial': '{{n}} of {{m}}',
     'studio.accessControl.restrictByIp': 'Restrict by IP address',
     'studio.accessControl.protectingAll': 'Protecting all {{count}} access points.',
@@ -155,7 +155,7 @@ describe('Agent IP access configuration', () => {
     const user = userEvent.setup()
     setup({ permission_keys: [AgentPermission.AccessPointView] }, true)
     const chip = await screen.findByRole('button', { name: /Access Control/ })
-    expect(chip).toHaveTextContent('ON')
+    expect(chip).toHaveTextContent('On')
     await user.click(chip)
     expect(screen.getByText('Protecting all 2 access points.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()

@@ -189,13 +189,19 @@ function AccessControlSession({
             ns: 'deployments',
             name: chip.policyName ?? '',
           })
-        : chip.kind === 'on' || chip.kind === 'partial'
+        : chip.kind === 'on'
           ? t(($) => $['studio.accessControl.tooltipProtected'], {
               ns: 'deployments',
               n: chip.coveredCount,
               total: chip.inServiceCount,
             })
-          : t(($) => $['studio.accessControl.tooltipOff'], { ns: 'deployments' })
+          : chip.kind === 'partial'
+            ? t(($) => $['studio.accessControl.tooltipProtectedPartial'], {
+                ns: 'deployments',
+                n: chip.coveredCount,
+                total: chip.inServiceCount,
+              })
+            : t(($) => $['studio.accessControl.tooltipOff'], { ns: 'deployments' })
 
   const handleTurnOn = () => {
     void setPricing('open')

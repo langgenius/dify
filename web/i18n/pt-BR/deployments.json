@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "Pausado — {{name}} está configurada, mas não está sendo aplicada",
   "studio.accessControl.tooltipPro": "O controle de acesso está disponível nos planos Professional e Team.",
   "studio.accessControl.tooltipProtected": "{{n}} de {{total}} pontos de acesso estão protegidos",
+  "studio.accessControl.tooltipProtectedPartial": "{{n}} de {{total}} pontos de acesso estão protegidos",
   "studio.accessControl.turnOffConfirm": "Desativar",
   "studio.accessControl.turnOffDescription": "Todos os pontos de acesso poderão ser acessados de qualquer endereço IP. Sua configuração será mantida.",
   "studio.accessControl.turnOffTitle": "Desativar o controle de acesso por IP?",

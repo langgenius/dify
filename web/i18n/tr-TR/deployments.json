@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "Duraklatıldı — {{name}} yapılandırıldı ancak uygulanmıyor",
   "studio.accessControl.tooltipPro": "Erişim kontrolü Professional ve Team planlarında kullanılabilir.",
   "studio.accessControl.tooltipProtected": "{{total}} erişim noktasından {{n}} tanesi korunuyor",
+  "studio.accessControl.tooltipProtectedPartial": "{{total}} erişim noktasından {{n}} tanesi korunuyor",
   "studio.accessControl.turnOffConfirm": "Kapat",
   "studio.accessControl.turnOffDescription": "Tüm erişim noktaları herhangi bir IP adresinden erişilebilir olacak. Yapılandırmanız korunacak.",
   "studio.accessControl.turnOffTitle": "IP erişim denetimi kapatılsın mı?",

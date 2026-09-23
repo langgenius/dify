@@ -80,6 +80,7 @@
   "studio.accessControl.tooltipPaused": "Dijeda — {{name}} sudah dikonfigurasi tetapi tidak diterapkan",
   "studio.accessControl.tooltipPro": "Kontrol akses tersedia pada paket Professional dan Team.",
   "studio.accessControl.tooltipProtected": "{{n}} dari {{total}} titik akses dilindungi",
+  "studio.accessControl.tooltipProtectedPartial": "{{n}} dari {{total}} titik akses dilindungi",
   "studio.accessControl.turnOffConfirm": "Nonaktifkan",
   "studio.accessControl.turnOffDescription": "Semua titik akses akan dapat diakses dari alamat IP mana pun. Konfigurasi Anda akan tetap disimpan.",
   "studio.accessControl.turnOffTitle": "Nonaktifkan kontrol akses IP?",
