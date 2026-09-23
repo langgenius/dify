@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Any, override
 from urllib.parse import urlsplit
 
-from opentelemetry.sdk.trace import SpanLimits
 from pydantic import ValidationInfo, field_validator
 
 from core.helper.ssl_context import read_tls_files
+from core.ops.otlp_trace import load_event_limits, load_span_attribute_limits
 from core.ops.provider_config import BaseTracingConfig
 from core.ops.utils import validate_integer_id, validate_url_with_path
 from dify_trace_mlflow.deployment_auth import resolve_aws_credentials, resolve_deployment_auth
@@ -22,36 +22,6 @@ def _load_sampling_ratio() -> float:
     ratio = float(os.environ.get("MLFLOW_TRACE_SAMPLING_RATIO", "1"))
     # The pinned SDK ignores out-of-range and NaN ratios, restoring default sampling.
     return ratio if 0 <= ratio <= 1 else 1.0
-
-
-def _load_span_attribute_limits() -> dict[str, int | None]:
-    count_configured = "OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT" in os.environ or "OTEL_ATTRIBUTE_COUNT_LIMIT" in os.environ
-    length_configured = (
-        "OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ or "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ
-    )
-    if not count_configured and not length_configured:
-        return {}
-    limits = SpanLimits()
-    return {
-        "max_attributes": limits.max_span_attributes if count_configured else None,
-        "max_value_length": limits.max_span_attribute_length if length_configured else None,
-    }
-
-
-def _load_event_limits() -> dict[str, int | None]:
-    count_configured = "OTEL_SPAN_EVENT_COUNT_LIMIT" in os.environ
-    attributes_configured = (
-        "OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT" in os.environ or "OTEL_ATTRIBUTE_COUNT_LIMIT" in os.environ
-    )
-    length_configured = "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ
-    if not count_configured and not attributes_configured and not length_configured:
-        return {}
-    limits = SpanLimits()
-    return {
-        "max_events": limits.max_events if count_configured else None,
-        "max_attributes": limits.max_event_attributes if attributes_configured else None,
-        "max_value_length": limits.max_attribute_length if length_configured else None,
-    }
 
 
 class MLflowConfig(BaseTracingConfig):
@@ -104,8 +74,8 @@ class MLflowConfig(BaseTracingConfig):
             "request_timeout": request_timeout,
             "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
             "request_headers": capture_request_headers(),
-            "span_attribute_limits": _load_span_attribute_limits(),
-            "event_limits": _load_event_limits(),
+            "span_attribute_limits": load_span_attribute_limits(),
+            "event_limits": load_event_limits(),
             "otlp": capture_otlp_settings(),
         }
         if os.environ.get("MLFLOW_TRACKING_AUTH") in {"kubernetes", "kubernetes-namespaced"}:
@@ -205,8 +175,8 @@ class DatabricksConfig(BaseTracingConfig):
             "sampling_ratio": _load_sampling_ratio(),
             "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
             "request_headers": capture_request_headers(),
-            "span_attribute_limits": _load_span_attribute_limits(),
-            "event_limits": _load_event_limits(),
+            "span_attribute_limits": load_span_attribute_limits(),
+            "event_limits": load_event_limits(),
             "otlp": capture_otlp_settings(),
         }
         sdk_enabled = os.environ.get("MLFLOW_ENABLE_DB_SDK", "true").lower()

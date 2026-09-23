@@ -34,6 +34,7 @@ from opentelemetry.proto.metrics.v1.metrics_pb2 import (
 )
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span, Status
+from opentelemetry.sdk.trace import SpanLimits
 from pydantic import JsonValue
 
 from core.ops.provider_export import (
@@ -52,6 +53,38 @@ if TYPE_CHECKING:
     import grpc  # pyrefly: ignore[untyped-import]
 
     from core.ops.trace_export_state import TraceExportState
+
+
+def load_span_attribute_limits() -> dict[str, int | None]:
+    """Capture explicit deployment limits while retaining complete attributes by default."""
+    count_configured = "OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT" in os.environ or "OTEL_ATTRIBUTE_COUNT_LIMIT" in os.environ
+    length_configured = (
+        "OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ or "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ
+    )
+    if not count_configured and not length_configured:
+        return {}
+    limits = SpanLimits()
+    return {
+        "max_attributes": limits.max_span_attributes if count_configured else None,
+        "max_value_length": limits.max_span_attribute_length if length_configured else None,
+    }
+
+
+def load_event_limits() -> dict[str, int | None]:
+    """Capture event limits separately from span-only attribute limits."""
+    count_configured = "OTEL_SPAN_EVENT_COUNT_LIMIT" in os.environ
+    attributes_configured = (
+        "OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT" in os.environ or "OTEL_ATTRIBUTE_COUNT_LIMIT" in os.environ
+    )
+    length_configured = "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ
+    if not count_configured and not attributes_configured and not length_configured:
+        return {}
+    limits = SpanLimits()
+    return {
+        "max_events": limits.max_events if count_configured else None,
+        "max_attributes": limits.max_event_attributes if attributes_configured else None,
+        "max_value_length": limits.max_attribute_length if length_configured else None,
+    }
 
 
 def otlp_value(value: Any) -> AnyValue:

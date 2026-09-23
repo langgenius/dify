@@ -4,7 +4,7 @@ from collections import Counter
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from logging import Logger
-from queue import Empty, Full, Queue
+from queue import Empty, Queue
 from threading import Event, Lock, Thread
 from time import sleep
 
@@ -79,11 +79,6 @@ class TraceQueue:
                 reason = "tenant_bytes_full"
             elif self.tenant_queued_items[tenant_id] >= max(1, self.max_items // 2):
                 reason = "tenant_items_full"
-            if reason is None:
-                try:
-                    self.pending_traces.put_nowait(queued_trace)
-                except Full:
-                    reason = "queue_items_full"
             if reason:
                 self.admission_counts[reason] += 1
                 self.dropped_traces.add(1, {"reason": reason})
@@ -91,6 +86,7 @@ class TraceQueue:
                 if count & (count - 1) == 0:
                     self.logger.warning("OPS trace rejected reason=%s count=%s tenant_id=%s", reason, count, tenant_id)
                 return False
+            self.pending_traces.put_nowait(queued_trace)
             self.queued_bytes += trace_size
             self.tenant_queued_bytes[tenant_id] += trace_size
             self.tenant_queued_items[tenant_id] += 1

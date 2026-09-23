@@ -2,7 +2,7 @@
 
 import logging
 from contextlib import nullcontext
-from queue import Empty, Full
+from queue import Empty
 from unittest.mock import Mock, call
 
 import pytest
@@ -60,15 +60,6 @@ def test_admission_rejection_does_not_charge_tenant_budget(reason: str, caplog: 
     assert f"OPS trace rejected reason={reason} count=1" in caplog.text
     assert queue.queued_bytes == charged_bytes
     assert dict(queue.tenant_queued_items) == charged_items
-
-
-def test_full_underlying_queue_does_not_charge_admission(monkeypatch: pytest.MonkeyPatch) -> None:
-    queue, _, _, _ = make_queue()
-    monkeypatch.setattr(queue.pending_traces, "put_nowait", Mock(side_effect=Full))
-    assert not queue.submit_trace(make_queued_trace())
-    assert queue.admission_counts["queue_items_full"] == 1
-    assert queue.queued_bytes == 0
-    assert not queue.tenant_queued_items
 
 
 def test_recording_reservations_cannot_release_another_tenant_budget() -> None:

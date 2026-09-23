@@ -2,11 +2,11 @@ import os
 from typing import Any, override
 from urllib.parse import urlsplit
 
-from opentelemetry.sdk.trace import SpanLimits
 from opentelemetry.sdk.trace.sampling import ALWAYS_OFF, ALWAYS_ON, ParentBased, Sampler, TraceIdRatioBased
 from pydantic import ValidationInfo, field_validator
 
 from core.helper.ssl_context import read_tls_files
+from core.ops.otlp_trace import load_event_limits, load_span_attribute_limits
 from core.ops.provider_config import BaseTracingConfig
 from core.ops.utils import validate_url_with_path
 
@@ -43,40 +43,6 @@ def load_sampling_settings() -> dict[str, Any]:
     # Native construction rejects numeric values outside [0, 1], including NaN.
     create_sampler(name, ratio)
     return {"name": name, "ratio": ratio}
-
-
-def load_span_limits() -> dict[str, int | None]:
-    """Retain explicitly configured SDK limits without imposing its default count cap."""
-    count_configured = any(
-        name in os.environ for name in ("OTEL_ATTRIBUTE_COUNT_LIMIT", "OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT")
-    )
-    length_configured = any(
-        name in os.environ for name in ("OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT", "OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT")
-    )
-    if not count_configured and not length_configured:
-        return {}
-    limits = SpanLimits()
-    return {
-        "max_attributes": limits.max_span_attributes if count_configured else None,
-        "max_value_length": limits.max_span_attribute_length if length_configured else None,
-    }
-
-
-def load_event_limits() -> dict[str, int | None]:
-    """Capture event limits separately from span-only attribute limits."""
-    count_configured = any(
-        name in os.environ for name in ("OTEL_ATTRIBUTE_COUNT_LIMIT", "OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT")
-    )
-    length_configured = "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ
-    events_configured = "OTEL_SPAN_EVENT_COUNT_LIMIT" in os.environ
-    if not any((count_configured, length_configured, events_configured)):
-        return {}
-    limits = SpanLimits()
-    return {
-        "max_events": limits.max_events if events_configured else None,
-        "max_attributes": limits.max_event_attributes if count_configured else None,
-        "max_value_length": limits.max_attribute_length if length_configured else None,
-    }
 
 
 class ArizeConfig(BaseTracingConfig):
@@ -127,7 +93,7 @@ class ArizeConfig(BaseTracingConfig):
             "tls": tls,
             "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
             "sampling": load_sampling_settings(),
-            "span_limits": load_span_limits(),
+            "span_limits": load_span_attribute_limits(),
             "event_limits": load_event_limits(),
         }
 
@@ -161,7 +127,7 @@ class PhoenixConfig(BaseTracingConfig):
     def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
         disabled = os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true"
         sampling = load_sampling_settings()
-        span_limits = load_span_limits()
+        span_limits = load_span_attribute_limits()
         event_limits = load_event_limits()
         if urlsplit(cls.model_validate(provider_config).endpoint).scheme != "https":
             return {

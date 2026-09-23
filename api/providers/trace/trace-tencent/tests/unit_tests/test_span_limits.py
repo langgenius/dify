@@ -95,7 +95,7 @@ def test_explicit_limits_match_native_projection_and_captured_configuration(
     monkeypatch.setattr(
         tencent_config.TencentConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot reread"))
     )
-    monkeypatch.setattr(tencent_config, "SpanLimits", Mock(side_effect=AssertionError("worker parsed limits")))
+    monkeypatch.setattr("core.ops.otlp_trace.SpanLimits", Mock(side_effect=AssertionError("worker parsed limits")))
 
     limited_span = create_trace_client(config).build_span(trace, trace.spans[0])
 

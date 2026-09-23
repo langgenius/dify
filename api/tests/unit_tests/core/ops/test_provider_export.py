@@ -26,6 +26,7 @@ from pydantic import JsonValue
 
 from core.ops.otlp_trace import OtlpTraceClient, counter, histogram, otlp_span, otlp_value
 from core.ops.provider_config import (
+    TracingProviderEnum,
     decrypt_provider_config,
     encrypt_provider_config,
     get_provider_config_class,
@@ -401,6 +402,7 @@ def assert_provider_credentials_round_trip_without_exposing_or_replacing_saved_s
 
     monkeypatch.setattr("core.helper.encrypter.encrypt_token", encrypt)
     monkeypatch.setattr("core.helper.encrypter.batch_decrypt_token", decrypt)
+    assert provider in TracingProviderEnum
     original_copy = original.copy()
     saved = encrypt_provider_config(tenant_id, provider, original)
     masked = mask_provider_config(provider, saved)
