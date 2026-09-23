@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Handle, Position } from 'reactflow'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import BlockSelector from '../../../block-selector'
 import { useAvailableBlocks } from '../../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
@@ -177,6 +178,7 @@ export const NodeSourceHandle = memo(
     const hasMultipleSourceHandles =
       data.type === BlockEnum.IfElse ||
       data.type === BlockEnum.QuestionClassifier ||
+      hasAgentV2OutputRoutes(data) ||
       data.type === BlockEnum.HumanInput ||
       data.error_strategy === ErrorHandleTypeEnum.failBranch
     const handleOpenChange = useCallback<NonNullable<BlockSelectorProps['onOpenChange']>>(

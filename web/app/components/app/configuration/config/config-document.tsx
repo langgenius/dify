@@ -12,6 +12,8 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 
 const ConfigDocument: FC = () => {
+  const titleId = React.useId()
+
   const { t } = useTranslation()
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
@@ -54,17 +56,12 @@ const ConfigDocument: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">
+        <div id={titleId} className="mr-1 system-sm-semibold text-text-secondary">
           {t(($) => $['feature.documentUpload.title'], { ns: 'appDebug' })}
         </div>
         <Infotip>
-          <InfotipTrigger
-            aria-label={t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
-          />
-          <InfotipContent
-            aria-label={t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
-            className="w-45"
-          >
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-45">
             {t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
           </InfotipContent>
         </Infotip>

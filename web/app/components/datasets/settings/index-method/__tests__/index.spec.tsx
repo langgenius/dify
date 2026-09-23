@@ -1,243 +1,110 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { IndexingType } from '../../../create/step-two'
 import IndexMethod from '../index'
 
+const Settings = ({
+  disabled = false,
+  currentValue = IndexingType.ECONOMICAL,
+}: {
+  disabled?: boolean
+  currentValue?: IndexingType
+}) => {
+  const [value, setValue] = useState<IndexingType>(currentValue)
+  const [keywordNumber, setKeywordNumber] = useState(10)
+  return (
+    <IndexMethod
+      value={value}
+      onChange={setValue}
+      currentValue={currentValue}
+      disabled={disabled}
+      keywordNumber={keywordNumber}
+      onKeywordNumberChange={setKeywordNumber}
+    />
+  )
+}
+
 describe('IndexMethod', () => {
-  const defaultProps = {
-    value: IndexingType.QUALIFIED,
-    onChange: vi.fn(),
-    keywordNumber: 10,
-    onKeywordNumberChange: vi.fn(),
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('hides inactive economy parameters and preserves their draft when switching back', async () => {
+    const user = userEvent.setup()
+    render(<Settings />)
+    const group = screen.getByRole('radiogroup', { name: 'datasetSettings.form.indexMethod' })
+    const economy = within(group).getByRole('radio', {
+      name: 'datasetSettings.form.indexMethodEconomy',
+    })
+    const qualified = within(group).getByRole('radio', {
+      name: 'datasetCreation.stepTwo.qualified',
+    })
+    const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
+    expect(economy).toBeChecked()
+    expect(economy).not.toContainElement(input)
+    await user.clear(input)
+    await user.type(input, '25')
+    await user.tab()
+    await user.click(qualified)
+    expect(qualified).toBeChecked()
+    expect(economy).not.toBeChecked()
+    expect(
+      screen.queryByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' }),
+    ).not.toBeInTheDocument()
+    await user.click(economy)
+    expect(
+      screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' }),
+    ).toHaveValue('25')
   })
 
-  const getKeywordSlider = () =>
-    screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
-      selector: 'input[type="range"]',
-    })
+  it.each(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'])(
+    'keeps Economy selected while editing keywords with %s',
+    async (key) => {
+      const user = userEvent.setup()
+      render(<Settings />)
+      const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
+      await user.click(input)
+      await user.keyboard(key === 'ArrowLeft' ? '{Home}' : '{End}')
+      await user.keyboard(`{${key}}`)
 
-  describe('Rendering', () => {
-    it('should render High Quality option', () => {
-      render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
-    })
+      expect(
+        screen.getByRole('radio', { name: 'datasetSettings.form.indexMethodEconomy' }),
+      ).toBeChecked()
+      expect(
+        screen.getByRole('radio', { name: 'datasetCreation.stepTwo.qualified' }),
+      ).not.toBeChecked()
+      expect(input).toBeInTheDocument()
+      expect(input).toHaveFocus()
+    },
+  )
 
-    it('should render Economy option', () => {
-      render(<IndexMethod {...defaultProps} />)
-      expect(screen.getAllByText(/form\.indexMethodEconomy/).length).toBeGreaterThan(0)
-    })
-
-    it('should render High Quality description', () => {
-      render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/form\.indexMethodHighQualityTip/))!.toBeInTheDocument()
-    })
-
-    it('should render Economy description', () => {
-      render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/form\.indexMethodEconomyTip/))!.toBeInTheDocument()
-    })
-
-    it('should render recommended badge on High Quality', () => {
-      render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/stepTwo\.recommend/))!.toBeInTheDocument()
-    })
+  it('uses arrow keys to select one index method without toggling the selected radio off', async () => {
+    const user = userEvent.setup()
+    render(<Settings />)
+    const economy = screen.getByRole('radio', { name: 'datasetSettings.form.indexMethodEconomy' })
+    const qualified = screen.getByRole('radio', { name: 'datasetCreation.stepTwo.qualified' })
+    economy.focus()
+    await user.keyboard('{ArrowUp}')
+    expect(qualified).toHaveFocus()
+    expect(qualified).toBeChecked()
+    expect(economy).not.toBeChecked()
+    await user.keyboard(' ')
+    expect(qualified).toBeChecked()
   })
 
-  describe('Active State', () => {
-    it('should mark High Quality as active when value is QUALIFIED', () => {
-      const { container } = render(<IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} />)
-      const activeCards = container.querySelectorAll('.ring-\\[1px\\]')
-      expect(activeCards).toHaveLength(1)
-    })
-
-    it('should mark Economy as active when value is ECONOMICAL', () => {
-      const { container } = render(
-        <IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} />,
-      )
-      const activeCards = container.querySelectorAll('.ring-\\[1px\\]')
-      expect(activeCards).toHaveLength(1)
-    })
+  it('prevents editing keywords or selection while settings are disabled', async () => {
+    const user = userEvent.setup()
+    render(<Settings disabled />)
+    const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
+    expect(input).toBeDisabled()
+    const qualified = screen.getByRole('radio', { name: 'datasetCreation.stepTwo.qualified' })
+    await user.click(qualified)
+    expect(qualified).not.toBeChecked()
   })
 
-  describe('User Interactions', () => {
-    it('should call onChange with QUALIFIED when High Quality is clicked', () => {
-      const handleChange = vi.fn()
-      render(
-        <IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} onChange={handleChange} />,
-      )
-
-      // Find and click High Quality option
-      const highQualityTitle = screen.getByText(/stepTwo\.qualified/)
-      const card = highQualityTitle.closest('div')?.parentElement?.parentElement?.parentElement
-      fireEvent.click(card!)
-
-      expect(handleChange).toHaveBeenCalledWith(IndexingType.QUALIFIED)
-    })
-
-    it('should call onChange with ECONOMICAL when Economy is clicked', () => {
-      const handleChange = vi.fn()
-      render(
-        <IndexMethod
-          {...defaultProps}
-          value={IndexingType.QUALIFIED}
-          onChange={handleChange}
-          currentValue={IndexingType.ECONOMICAL}
-        />,
-      )
-
-      // Find and click Economy option - use getAllByText and get the first one (title)
-      const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
-      const economyTitle = economyTitles[0]
-      const card = economyTitle!.closest('div')?.parentElement?.parentElement?.parentElement
-      fireEvent.click(card!)
-
-      expect(handleChange).toHaveBeenCalledWith(IndexingType.ECONOMICAL)
-    })
-
-    it('should not call onChange when clicking already active option', () => {
-      const handleChange = vi.fn()
-      render(
-        <IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} onChange={handleChange} />,
-      )
-
-      const highQualityTitle = screen.getByText(/stepTwo\.qualified/)
-      const card = highQualityTitle.closest('div')?.parentElement?.parentElement?.parentElement
-      fireEvent.click(card!)
-
-      expect(handleChange).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('Disabled State', () => {
-    it('should disable both options when disabled is true', () => {
-      const { container } = render(<IndexMethod {...defaultProps} disabled={true} />)
-      const disabledCards = container.querySelectorAll('.cursor-not-allowed')
-      expect(disabledCards.length).toBeGreaterThan(0)
-    })
-
-    it('should disable Economy option when currentValue is QUALIFIED', () => {
-      const handleChange = vi.fn()
-      render(
-        <IndexMethod
-          {...defaultProps}
-          currentValue={IndexingType.QUALIFIED}
-          onChange={handleChange}
-          value={IndexingType.ECONOMICAL}
-        />,
-      )
-
-      // Try to click Economy option - use getAllByText and get the first one (title)
-      const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
-      const economyTitle = economyTitles[0]
-      const card = economyTitle!.closest('div')?.parentElement?.parentElement?.parentElement
-      fireEvent.click(card!)
-
-      // Should not call onChange because Economy is disabled when current is QUALIFIED
-      expect(handleChange).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('KeywordNumber', () => {
-    it('should render KeywordNumber component inside Economy option', () => {
-      render(<IndexMethod {...defaultProps} />)
-      expect(getKeywordSlider())!.toBeInTheDocument()
-    })
-
-    it('should pass keywordNumber to KeywordNumber component', () => {
-      render(<IndexMethod {...defaultProps} keywordNumber={25} />)
-      const input = screen.getByRole('textbox')
-      expect(input)!.toHaveValue('25')
-    })
-
-    it('should keep keyword number input visible next to steppers', () => {
-      render(<IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} keywordNumber={25} />)
-
-      const input = screen.getByRole('textbox')
-
-      expect(input)!.toHaveClass('w-12')
-      expect(input)!.toHaveClass('flex-none')
-      expect(input)!.toHaveClass('text-center')
-    })
-
-    it('should call onKeywordNumberChange when KeywordNumber changes', () => {
-      const handleKeywordChange = vi.fn()
-      render(<IndexMethod {...defaultProps} onKeywordNumberChange={handleKeywordChange} />)
-
-      const input = screen.getByRole('textbox')
-      fireEvent.change(input, { target: { value: '30' } })
-
-      expect(handleKeywordChange).toHaveBeenCalled()
-    })
-  })
-
-  describe('Tooltip', () => {
-    it('should show tooltip when hovering over disabled Economy option', () => {
-      // The tooltip is shown via Popover when hovering
-      // This is controlled by useHover hook
-      render(<IndexMethod {...defaultProps} currentValue={IndexingType.QUALIFIED} />)
-      // The tooltip content should exist in DOM but may not be visible
-      // We just verify the component renders without error
-      expect(screen.getAllByText(/form\.indexMethodEconomy/).length).toBeGreaterThan(0)
-    })
-  })
-
-  describe('Effect Colors', () => {
-    it('should show orange effect color for High Quality option', () => {
-      const { container } = render(<IndexMethod {...defaultProps} />)
-      const orangeEffect = container.querySelector('.bg-util-colors-orange-orange-500')
-      expect(orangeEffect)!.toBeInTheDocument()
-    })
-
-    it('should show indigo effect color for Economy option', () => {
-      const { container } = render(<IndexMethod {...defaultProps} />)
-      const indigoEffect = container.querySelector('.bg-util-colors-indigo-indigo-600')
-      expect(indigoEffect)!.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should update active state when value prop changes', () => {
-      const { rerender, container } = render(
-        <IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} />,
-      )
-
-      let activeCards = container.querySelectorAll('.ring-\\[1px\\]')
-      expect(activeCards).toHaveLength(1)
-
-      rerender(
-        <IndexMethod
-          {...defaultProps}
-          value={IndexingType.ECONOMICAL}
-          currentValue={IndexingType.ECONOMICAL}
-        />,
-      )
-
-      activeCards = container.querySelectorAll('.ring-\\[1px\\]')
-      expect(activeCards).toHaveLength(1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle undefined currentValue', () => {
-      render(<IndexMethod {...defaultProps} currentValue={undefined} />)
-      // Should render without error
-      // Should render without error
-      expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
-    })
-
-    it('should handle minimum keywordNumber', () => {
-      render(<IndexMethod {...defaultProps} keywordNumber={0} />)
-      const input = screen.getByRole('textbox')
-      expect(input)!.toHaveValue('0')
-    })
-
-    it('should handle max keywordNumber', () => {
-      render(<IndexMethod {...defaultProps} keywordNumber={50} />)
-      const input = screen.getByRole('textbox')
-      expect(input)!.toHaveValue('50')
-    })
+  it('does not allow an existing high quality dataset to downgrade to economy', async () => {
+    const user = userEvent.setup()
+    render(<Settings currentValue={IndexingType.QUALIFIED} />)
+    const economy = screen.getByRole('radio', { name: 'datasetSettings.form.indexMethodEconomy' })
+    await user.click(economy)
+    expect(economy).not.toBeChecked()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })

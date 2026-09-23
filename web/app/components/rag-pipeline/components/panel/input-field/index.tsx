@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiEyeLine } from '@remixicon/react'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -20,6 +20,8 @@ import Datasource from './label-right-content/datasource'
 import GlobalInputs from './label-right-content/global-inputs'
 
 const InputFieldPanel = () => {
+  const uniqueInputsLabelId = useId()
+
   const { t } = useTranslation()
   const nodes = useNodes<DataSourceNodeType>()
   const { closeAllInputFieldPanels, toggleInputFieldPreviewPanel, isPreviewing, isEditing } =
@@ -130,21 +132,15 @@ const InputFieldPanel = () => {
       <div className="flex grow flex-col overflow-y-auto">
         {/* Unique Inputs for Each Entrance */}
         <div className="flex h-6 items-center gap-x-0.5 px-4 pt-2">
-          <span className="system-sm-semibold-uppercase text-text-secondary">
+          <span
+            id={uniqueInputsLabelId}
+            className="system-sm-semibold-uppercase text-text-secondary"
+          >
             {t(($) => $['inputFieldPanel.uniqueInputs.title'], { ns: 'datasetPipeline' })}
           </span>
           <Infotip>
-            <InfotipTrigger
-              aria-label={t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], {
-                ns: 'datasetPipeline',
-              })}
-            />
-            <InfotipContent
-              aria-label={t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], {
-                ns: 'datasetPipeline',
-              })}
-              className="max-w-60"
-            >
+            <InfotipTrigger aria-labelledby={uniqueInputsLabelId} />
+            <InfotipContent aria-labelledby={uniqueInputsLabelId} className="max-w-60">
               {t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
             </InfotipContent>
           </Infotip>

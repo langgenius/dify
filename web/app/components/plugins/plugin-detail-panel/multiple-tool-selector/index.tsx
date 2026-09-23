@@ -42,6 +42,8 @@ const MultipleToolSelector = ({
   availableNodes,
   nodeId,
 }: Props) => {
+  const titleId = React.useId()
+
   const { t } = useTranslation()
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const { data: mcpTools } = useAllMCPTools()
@@ -132,7 +134,10 @@ const MultipleToolSelector = ({
               aria-label={label}
               className="group/collapse flex h-6 min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0.5 rounded-lg bg-transparent system-sm-medium text-text-secondary outline-hidden select-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary"
             >
-              <span className="truncate system-sm-semibold-uppercase text-text-secondary">
+              <span
+                id={titleId}
+                className="truncate system-sm-semibold-uppercase text-text-secondary"
+              >
                 {label}
               </span>
               {required && <span className="text-red-500">*</span>}
@@ -146,7 +151,10 @@ const MultipleToolSelector = ({
             </CollapsibleTrigger>
           ) : (
             <>
-              <div className="flex h-6 min-w-0 items-center truncate system-sm-semibold-uppercase text-text-secondary">
+              <div
+                id={titleId}
+                className="flex h-6 min-w-0 items-center truncate system-sm-semibold-uppercase text-text-secondary"
+              >
                 {label}
               </div>
               {required && <div className="text-red-500">*</div>}
@@ -154,13 +162,8 @@ const MultipleToolSelector = ({
           )}
           {tooltip ? (
             <Infotip>
-              <InfotipTrigger
-                aria-label={typeof tooltip === 'string' ? tooltip : label}
-                className="size-3.5"
-              />
-              <InfotipContent aria-label={typeof tooltip === 'string' ? tooltip : label}>
-                {tooltip}
-              </InfotipContent>
+              <InfotipTrigger aria-labelledby={titleId} className="size-3.5" />
+              <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
             </Infotip>
           ) : null}
         </div>

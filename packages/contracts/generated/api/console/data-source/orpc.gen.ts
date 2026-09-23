@@ -6,7 +6,7 @@ import {
   zGetDataSourceIntegratesResponse,
   zPatchDataSourceIntegratesByBindingIdByActionPath,
   zPatchDataSourceIntegratesByBindingIdByActionResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const patch = oc
   .route({

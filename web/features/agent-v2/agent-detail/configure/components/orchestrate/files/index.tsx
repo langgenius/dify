@@ -359,20 +359,16 @@ function AgentBuildNoteBadge() {
 }
 
 function AgentBuildNoteInfotip() {
-  const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
 
   return (
     <Infotip>
       <InfotipTrigger
-        aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
+        aria-label={BUILD_NOTE_FILE_NAME}
         className="size-5 hover:text-text-quaternary"
         iconSize="large"
       />
-      <InfotipContent
-        aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
-        className="w-57.5"
-      >
+      <InfotipContent aria-label={BUILD_NOTE_FILE_NAME} className="w-57.5">
         <Trans
           i18nKey={($) => $['agentDetail.configure.files.buildNote.richTooltip']}
           ns="agentV2"
@@ -387,7 +383,7 @@ function AgentBuildNoteInfotip() {
 
 export function AgentFiles() {
   const { t } = useTranslation('agentV2')
-  const filesTip = t(($) => $['agentDetail.configure.files.tip'])
+
   const filesTreeId = 'agent-configure-files-tree'
   const readOnly = useAgentOrchestrateReadOnly()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
@@ -488,7 +484,6 @@ export function AgentFiles() {
         labelId="agent-configure-files-label"
         buildDraftChangeSection="files"
         tip={<AgentConfigureTipContent type="files" />}
-        tipAriaLabel={filesTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="pb-4"
         actions={

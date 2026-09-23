@@ -1,9 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiAedFill } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
@@ -14,7 +13,6 @@ type PriorityLabelProps = {
 
 const PriorityLabel = ({ className }: PriorityLabelProps) => {
   const { t } = useTranslation()
-  const titleId = useId()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -39,11 +37,11 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
         <InfotipTrigger
           aria-label={t(($) => $['plansCommon.documentProcessingPriority'], { ns: 'billing' })}
         />
-        <InfotipContent aria-labelledby={titleId}>
-          <div id={titleId} className="font-semibold text-text-primary">
+        <InfotipContent>
+          <InfotipTitle className="font-semibold text-text-primary">
             {t(($) => $['plansCommon.documentProcessingPriority'], { ns: 'billing' })}:{' '}
             {t(($) => $[`plansCommon.priority.${label}`], { ns: 'billing' })}
-          </div>
+          </InfotipTitle>
           {label !== 'top-priority' && (
             <div className="mt-1">
               {t(($) => $['plansCommon.documentProcessingPriorityTip'], { ns: 'billing' })}

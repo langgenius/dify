@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { downloadUrl } from '@/utils/download'
+import { downloadBlob } from '@/utils/download'
 
 type ImagePreviewProps = {
   url: string
@@ -72,13 +72,25 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
     }
   }
 
-  const downloadImage = () => {
-    // Open in a new window, considering the case when the page is inside an iframe
-    if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:image')) {
-      downloadUrl({ url, fileName: title, target: '_blank' })
-      return
+  const downloadImage = async () => {
+    try {
+      const response = await fetch(isBase64(url) ? `data:image/png;base64,${url}` : url)
+      if (!response.ok) throw new Error('Unable to load image')
+      const data = await response.blob()
+      const extensions: Record<string, string> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+        'image/avif': 'avif',
+        'image/svg+xml': 'svg',
+      }
+      const extension = extensions[data.type]
+      const fileName = title.trim() || (extension ? `image.${extension}` : 'image')
+      downloadBlob({ data, fileName })
+    } catch {
+      toast.error(t(($) => $['operation.downloadFailed'], { ns: 'common' }))
     }
-    toast.error(`Unable to open image: ${url}`)
   }
 
   const zoomIn = () => {

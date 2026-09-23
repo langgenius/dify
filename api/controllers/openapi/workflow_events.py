@@ -11,16 +11,15 @@ from __future__ import annotations
 import json
 from collections.abc import Generator
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
-from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -31,6 +30,7 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.human_input_form import with_form_hints
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -52,8 +52,17 @@ class WorkflowEventsQuery(BaseModel):
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
 class OpenApiWorkflowEventsApi(Resource):
-    @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @endpoint(
+        op="run.events",
+        kind=Kind.SSE,
+        summary="Stream the events of a workflow run",
+        examples=(
+            Example(title="Follow the events of a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),
+            Example(
+                title="Keep the stream open across a human-input pause",
+                input={"app_id": "<app_id>", "task_id": "<task_id>", "continue_on_pause": True},
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),
@@ -62,9 +71,10 @@ class OpenApiWorkflowEventsApi(Resource):
             CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
             CheckAppAccess(),
         ),
+        query=WorkflowEventsQuery,
         returns=(200, EventStreamResponse, "SSE event stream"),
     )
-    def get(self, ctx: Context, app_id: str, task_id: str):
+    def get(self, ctx: Context, app_id: str, task_id: str, *, query: WorkflowEventsQuery):
         # The router's session closes as soon as this returns, so everything the SSE
         # body needs is read off `ctx` here and the generators below close over plain
         # values only.
@@ -120,8 +130,8 @@ class OpenApiWorkflowEventsApi(Resource):
             else:
                 generator = WorkflowAppGenerator()
 
-            include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
-            continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
+            include_state_snapshot = query.include_state_snapshot
+            continue_on_pause = query.continue_on_pause
             terminal_events: list[StreamEvent] | None = [] if continue_on_pause else None
 
             def _generate_stream_events():
@@ -148,7 +158,7 @@ class OpenApiWorkflowEventsApi(Resource):
             event_generator = _generate_stream_events
 
         return Response(
-            event_generator(),
+            with_form_hints(event_generator(), app_id=owning_app_id),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )

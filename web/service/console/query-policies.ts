@@ -24,6 +24,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
+          plugin: {
+            readme: {
+              get: {
+                queryOptions: {
+                  context: { silent: true },
+                  retry: false,
+                },
+              },
+            },
+            asset: {
+              get: {
+                queryOptions: { context: { silent: true } },
+              },
+            },
+          },
           endpoints: {
             post: {
               mutationOptions: {

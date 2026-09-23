@@ -1,1 +1,1 @@
-"""Feature-scoped application-service composition roots."""
+"""Domain-specific dependency composition for application services."""

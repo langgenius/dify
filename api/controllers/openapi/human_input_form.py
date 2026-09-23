@@ -2,20 +2,27 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import override
+from collections.abc import Generator, Iterable, Mapping
+from typing import Any, override
 
 from flask import Response
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
-from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
+from controllers.common.human_input import stringify_form_default_values
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
-from controllers.common.schema import register_schema_models
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
-from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
+from controllers.openapi._files import end_read_transaction, merge_files
+from controllers.openapi._hints import attach_stream_hints
+from controllers.openapi._models import (
+    FormSubmitResponse,
+    Hint,
+    HumanInputFormDefinitionResponse,
+    OpenApiFormSubmitPayload,
+)
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import PathParam, load_app
 from controllers.openapi.auth.requirements import (
@@ -28,6 +35,7 @@ from controllers.openapi.auth.requirements import (
     Requirement,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
+from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
@@ -38,8 +46,6 @@ from models.model import App
 from services.human_input_service import FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
-
-register_schema_models(openapi_ns, HumanInputFormSubmitPayload)
 
 
 class CheckFormSurface(Requirement):
@@ -86,6 +92,15 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
+        op="run.form.get",
+        kind=Kind.OBJECT,
+        summary="Read a human-input form",
+        examples=(
+            Example(
+                title="Read the form a paused run is waiting on",
+                input={"app_id": "<app_id>", "form_token": "<form_token>"},
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),
@@ -111,6 +126,30 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>:submit")
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
+        op="run.form.submit",
+        kind=Kind.OBJECT,
+        summary="Submit a human-input form",
+        examples=(
+            Example(
+                title="Approve a paused run with a written comment",
+                input={
+                    "app_id": "<app_id>",
+                    "form_token": "<form_token>",
+                    "action": "approve",
+                    "inputs": {"comment": "Looks good"},
+                },
+            ),
+            Example(
+                title="Submit a form answer that includes a local file",
+                input={
+                    "app_id": "<app_id>",
+                    "form_token": "<form_token>",
+                    "action": "submit",
+                    "inputs": {},
+                    "files": {"evidence": "./scan.png"},
+                },
+            ),
+        ),
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),
@@ -120,10 +159,10 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             CheckAppAccess(),
             CheckFormSurface(),
         ),
-        body=HumanInputFormSubmitPayload,
+        body=OpenApiFormSubmitPayload,
         returns=(200, FormSubmitResponse, "Form submitted"),
     )
-    def post(self, ctx: Context, app_id: str, form_token: str, *, body: HumanInputFormSubmitPayload):
+    def post(self, ctx: Context, app_id: str, form_token: str, *, body: OpenApiFormSubmitPayload):
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
@@ -142,12 +181,16 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             logger.warning("Recipient type is None for form, form_token=%s", form_token)
             raise BadRequest("Form recipient type is invalid")
 
+        if body.files:
+            end_read_transaction(ctx.session)
+        inputs = merge_files(body.inputs, body.files, ctx.caller)
+
         try:
             service.submit_form_by_token(
                 recipient_type=form.recipient_type,
                 form_token=form_token,
                 selected_action_id=body.action,
-                form_data=body.inputs,
+                form_data=inputs,
                 submission_user_id=submission_user_id,
                 submission_end_user_id=submission_end_user_id,
             )
@@ -155,3 +198,33 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             raise HumanInputFormNotFound()
 
         return FormSubmitResponse()
+
+
+def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) -> list[Hint]:
+    """One hint per action button of a paused form, its `inputs` blanked to the form's fields."""
+
+    data = response.data
+    if not data.form_token:
+        return []
+    fields = [field.model_dump(mode="json") for field in data.inputs]
+    blank = {field.output_variable_name: None for field in data.inputs}
+    return [
+        Hint(
+            summary=action.title or action.id,
+            op=op,
+            input={"app_id": app_id, "form_token": data.form_token, "action": action.id, "inputs": dict(blank)},
+            form=fields,
+        )
+        for action in data.actions
+    ]
+
+
+def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str, None, None]:
+    """A run stream whose `human_input_required` events carry hints that target the submit route above."""
+
+    op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
+
+    def build(event: Mapping[str, Any]) -> list[Hint]:
+        return form_hints(op=op, app_id=app_id, response=HumanInputRequiredResponse.model_validate(event))
+
+    return attach_stream_hints(events, event=StreamEvent.HUMAN_INPUT_REQUIRED.value, build=build)

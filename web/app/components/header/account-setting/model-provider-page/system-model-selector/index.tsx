@@ -8,7 +8,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -63,6 +63,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   hideProviderSettingsFooter,
   onOpenMarketplace,
 }) => {
+  const modelLabelId = useId()
+
   const { t } = useTranslation()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: textGenerationModelList = [] } = useQuery(
@@ -213,10 +215,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 
     return (
       <div className="flex min-h-6 items-center text-[13px] font-medium text-text-secondary">
-        {t(($) => $[labelKey], { ns: 'common' })}
+        <span id={`${modelLabelId}-${labelKey}`}>{t(($) => $[labelKey], { ns: 'common' })}</span>
         <Infotip>
-          <InfotipTrigger aria-label={tipText} className="ml-0.5 text-text-tertiary" />
-          <InfotipContent aria-label={tipText} className="w-65.25">
+          <InfotipTrigger
+            aria-labelledby={`${modelLabelId}-${labelKey}`}
+            className="ml-0.5 text-text-tertiary"
+          />
+          <InfotipContent aria-labelledby={`${modelLabelId}-${labelKey}`} className="w-65.25">
             {tipText}
           </InfotipContent>
         </Infotip>

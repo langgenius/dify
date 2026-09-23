@@ -4,6 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import FileListItem from './components/file-list-item'
 import UploadDropzone from './components/upload-dropzone'
+import { PROGRESS_ERROR } from './constants'
 import { useFileUpload } from './hooks/use-file-upload'
 
 type IFileUploaderProps = {
@@ -50,9 +51,25 @@ const FileUploader = ({
   })
 
   return (
-    <div className="mb-5 w-160">
-      <div className={cn('mb-1 text-sm/6 font-semibold text-text-secondary', titleClassName)}>
+    <div className="mb-5 w-full max-w-160">
+      <h2 className={cn('mb-1 text-sm/6 font-semibold text-text-secondary', titleClassName)}>
         {t(($) => $['stepOne.uploader.title'], { ns: 'datasetCreation' })}
+      </h2>
+
+      <div role="status" aria-atomic="false" aria-relevant="additions text" className="sr-only">
+        {fileList.map(({ fileID, file, progress }) => {
+          // Transport progress can reach 100 before the server accepts the file.
+          // Keep each announcement stable until its upload state changes.
+          const message =
+            progress === PROGRESS_ERROR
+              ? t(($) => $['stepOne.uploader.failed'], { ns: 'datasetCreation' })
+              : file.id
+                ? t(($) => $['stepOne.uploader.completed'], { ns: 'datasetCreation' })
+                : progress >= 0
+                  ? t(($) => $.loading, { ns: 'common' })
+                  : undefined
+          return message ? <div key={fileID}>{`${file.name}: ${message}`}</div> : null
+        })}
       </div>
 
       {!hideUpload && (

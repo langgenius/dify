@@ -16,6 +16,7 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { replace } from 'string-ts'
 import { AudioBtn } from '@/app/components/base/audio-btn'
@@ -35,6 +36,8 @@ type VoiceParamConfigProps = {
   onChange?: OnFeaturesChange
 }
 const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
+  const languageLabelId = useId()
+
   const { t } = useTranslation()
   const params = useParams<{ appId?: string; agentId?: string }>()
   const text2speech = useFeatures((state) => state.features.text2speech)
@@ -106,15 +109,12 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
       </div>
       <div className="mb-3">
         <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
-          {t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
+          <span id={languageLabelId}>
+            {t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
+          </span>
           <Infotip>
-            <InfotipTrigger
-              aria-label={t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
-            />
-            <InfotipContent
-              aria-label={t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
-              className="w-45 whitespace-pre-wrap"
-            >
+            <InfotipTrigger aria-labelledby={languageLabelId} />
+            <InfotipContent aria-labelledby={languageLabelId} className="w-45 whitespace-pre-wrap">
               {t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
             </InfotipContent>
           </Infotip>

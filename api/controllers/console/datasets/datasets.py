@@ -425,7 +425,7 @@ class DatasetApi(Resource):
     )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
-    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    @console_account_admission()
     def get(self, request_context: RequestContext, dataset_id: UUID):
         try:
             result = application_services().knowledge.datasets.get_dataset(request_context, dataset_id=str(dataset_id))
