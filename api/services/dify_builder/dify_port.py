@@ -72,7 +72,7 @@ from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
 from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.identity import load_app, resolve_account
-from services.dify_builder.preflight import preflight_errors
+from services.dify_builder.preflight import new_preflight_problems
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.run_mapping import (
     error_from_stream_chunk,
@@ -245,28 +245,12 @@ class WorkflowServiceDifyPort:
             # (before_graph) as the reference, so an in-batch duplicate of a NEW id
             # still reaches graph_ops and raises (validation preserved).
             #
-            # Mirror handlers_build.py's M2 guard: ids targeted by a delete_node in
-            # THIS SAME batch must not count as "already present" for the filter
-            # above. A from-scratch build sends delete_node(placeholder_start) +
-            # create_node(same id) in one batch (recreating the id the placeholder
-            # occupied); without this exclusion the create_node would be dropped as
-            # already-present while the delete_node still runs, deleting the node
-            # with no re-create.
-            _deleted_ids = {i.args.get("node_id") for i in intents if i.op == "delete_node"}
-            _present_node_ids = {n.get("id") for n in before_graph.get("nodes", [])} - _deleted_ids
-            _present_edges = {
-                (e.get("source"), e.get("target"))
-                for e in before_graph.get("edges", [])
-                if e.get("source") not in _deleted_ids and e.get("target") not in _deleted_ids
-            }
-
-            def _already_present(intent: MutationIntent) -> bool:
-                if intent.op == "create_node":
-                    return intent.args.get("node_id") in _present_node_ids
-                if intent.op == "connect":
-                    return (intent.args.get("from_node"), intent.args.get("to_node")) in _present_edges
-                return False
-
+            # The rule itself lives in graph_ops (including handlers_build.py's M2
+            # guard for a delete_node + create_node of the same id in one batch),
+            # because graph_ops.filter_applicable's dry run has to skip exactly what
+            # this drops: otherwise the dry run rejects a duplicate create_node the
+            # write would have quietly no-op'd, and burns the corrective re-prompt.
+            _already_present = graph_ops.already_present_predicate(before_graph, intents)
             intents = [intent for intent in intents if not _already_present(intent)]
 
             changed_nodes: list[str] = []
@@ -310,9 +294,10 @@ class WorkflowServiceDifyPort:
             # would raise at Graph.init and kill the very first test run
             # (ESQ1-302 and ESQ1-303 both died there). Only NEW problems count:
             # a pre-existing broken node the repair did not touch must not veto
-            # an unrelated fix -- and a repair that heals it passes.
-            known_problems = set(preflight_errors(before_graph))
-            new_problems = [problem for problem in preflight_errors(graph) if problem not in known_problems]
+            # an unrelated fix -- and a repair that heals it passes. The same
+            # function the Edit/Fix dry run predicts this refusal with
+            # (``preflight.vet_intents``), so the two cannot answer differently.
+            new_problems = new_preflight_problems(before_graph, graph)
             if new_problems:
                 raise PreflightError("the draft would not start: " + "; ".join(new_problems))
 

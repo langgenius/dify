@@ -10,11 +10,12 @@ mutation only — no DB, no services, no I/O.
 import copy
 import hashlib
 import json
-from typing import Any
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
 from core.dify_builder.models import Graph, MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
-from core.workflow.graph_normalizers import declared_branch_handles
+from core.workflow.graph_normalizers import declared_branch_handles, heal_nodes_for_preflight
 from services.dify_builder import credentials
 
 MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
@@ -160,13 +161,20 @@ def apply_set_node_config(graph: Graph, node_id: str, path: str, value: Any) -> 
     Returns a ``(new_graph, changed_node_ids)`` tuple. ``graph`` is
     deep-copied first and never mutated. Raises ``ValueError`` if no node in
     ``graph["nodes"]`` has a matching ``id``.
+
+    ``value`` is deep-copied too, so the new graph shares no structure with the
+    caller's argument. It is normally ``intent.args["value"]``, and the graph it
+    lands in is then healed in place (``heal_nodes_for_preflight`` rewrites
+    ``">="`` to ``"≥"`` and ``60`` to ``"60"``): without the copy the caller's
+    own intent would change under it, so a dry run would silently rewrite the
+    very intents it was asked to judge.
     """
     new_graph = copy.deepcopy(graph)
 
     for node in new_graph.get("nodes", []):
         if node.get("id") == node_id:
             parent, key = _resolve_path(node.setdefault("data", {}), path)
-            parent[key] = value
+            parent[key] = copy.deepcopy(value)
             return new_graph, [node_id]
 
     raise ValueError(f"node not found: {node_id}")
@@ -494,26 +502,99 @@ APPLY_FNS: dict[str, Any] = {
 }
 
 
+def already_present_predicate(graph: Graph, intents: list[MutationIntent]) -> Callable[[MutationIntent], bool]:
+    """The idempotent-re-entry rule: ``True`` for an intent ``graph`` already
+    satisfies.
+
+    An interrupted step's Retry re-sends the same batch against an
+    already-mutated draft, so a ``create_node`` for an id that is now present and
+    a ``connect`` for an edge that is now present are clean no-ops rather than
+    errors. ``dify_port.apply_repair`` drops them before its apply loop, and
+    ``filter_applicable`` skips them in its dry run for the same reason: without
+    this the dry run rejects a duplicate ``create_node`` ("node id already
+    exists") that the port would have quietly dropped, and burns the one
+    corrective re-prompt on a batch that was going to apply cleanly.
+
+    Ids targeted by a ``delete_node`` in THIS SAME batch do not count as present:
+    a from-scratch build sends ``delete_node(placeholder_start)`` +
+    ``create_node(same id)`` in one batch, and without the exclusion the create
+    would be dropped as already-present while the delete still ran.
+    """
+    deleted_ids = {i.args.get("node_id") for i in intents if i.op == "delete_node"}
+    present_node_ids = {n.get("id") for n in graph.get("nodes") or []} - deleted_ids
+    present_edges = {
+        (e.get("source"), e.get("target"))
+        for e in graph.get("edges") or []
+        if e.get("source") not in deleted_ids and e.get("target") not in deleted_ids
+    }
+
+    def already_present(intent: MutationIntent) -> bool:
+        if intent.op == "create_node":
+            return intent.args.get("node_id") in present_node_ids
+        if intent.op == "connect":
+            return (intent.args.get("from_node"), intent.args.get("to_node")) in present_edges
+        return False
+
+    return already_present
+
+
+class DryRun(NamedTuple):
+    """What ``filter_applicable`` learned from dry-running a batch of intents.
+
+    ``applicable`` and ``rejected`` are the pair this function has always
+    returned. ``graph`` is the working copy those applicable intents produced --
+    the graph ``dify_port.apply_repair`` would be about to write, healed the same
+    way. It is returned rather than discarded so ``preflight.vet_intents`` can
+    put it through the node-data validation the port's own preflight performs,
+    while there is still a corrective re-prompt left to spend on the answer.
+    """
+
+    applicable: list[MutationIntent]
+    rejected: list[tuple[MutationIntent, str]]
+    graph: Graph
+
+
 def filter_applicable(
     graph: Graph,
     intents: list[MutationIntent],
     allowed_node_types: set[str] | None = None,
-) -> tuple[list[MutationIntent], list[tuple[MutationIntent, str]]]:
+) -> DryRun:
     """Dry-run each intent through the real validate_intent_args + apply_* on a
     working deep copy, in order (so a connect sees a node an earlier create_node
-    added). Returns (applicable, rejected) where each rejected entry is
-    (intent, reason).
+    added). Returns a ``DryRun``: ``(applicable, rejected, graph)``, where each
+    rejected entry is ``(intent, reason)`` and ``graph`` is the mutated working
+    copy.
 
     Catches every failure the live apply_repair would hit -- unknown op, missing
     required arg / extra arg key, dangling node/edge ref, duplicate id -- and
     additionally rejects a create_node / insert_between whose node_type is not in
     allowed_node_types (a check apply_* does not do). Applicable intents advance
     the working copy; a rejected intent does not.
+
+    An intent the graph already satisfies is neither applied nor rejected, and
+    stays in ``applicable`` for the port to drop the same way
+    (``already_present_predicate``, which the port runs before its own apply
+    loop). The working copy already reflects it -- that is what "already
+    present" means -- so the graph returned here is still what the port would
+    write.
+
+    The working copy then goes through the shared deterministic heal set
+    (``core.workflow.graph_normalizers.heal_nodes_for_preflight``), exactly as
+    ``dify_port.apply_repair`` runs it over the real draft after its own apply
+    loop. Same normalizers, same place in the sequence, one definition: a dry run
+    that healed less than the write chokepoint would report a defect the write
+    was going to fix, and one that healed more would pass a batch the write would
+    refuse. Both make the answer this function gives about the port a guess.
     """
     working = copy.deepcopy(graph)
+    is_already_present = already_present_predicate(graph, intents)
     applicable: list[MutationIntent] = []
     rejected: list[tuple[MutationIntent, str]] = []
     for intent in intents:
+        # Before validate_intent_args, exactly where the port drops it.
+        if is_already_present(intent):
+            applicable.append(intent)
+            continue
         try:
             validate_intent_args(intent)
             if allowed_node_types is not None and intent.op in ("create_node", "insert_between"):
@@ -526,4 +607,5 @@ def filter_applicable(
             rejected.append((intent, str(exc)))
             continue
         applicable.append(intent)
-    return applicable, rejected
+    heal_nodes_for_preflight(working.get("nodes") or [])
+    return DryRun(applicable, rejected, working)
