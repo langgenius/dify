@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import * as React from 'react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useGetTryAppInfo } from '@/service/use-try-app'
@@ -36,6 +36,7 @@ function TryApp({
   const activeType = canUseTryTab ? type : TypeEnum.DETAIL
   const { data: appDetail, isLoading, isError, isFetching, refetch } = useGetTryAppInfo(appId)
   const hasLoadError = isError || (!isLoading && !appDetail)
+  const retryLabelId = useId()
   const hasRetriedRef = useRef(false)
   const restoreFocusAfterRetry = useCallback(
     (node: HTMLButtonElement | null) => {
@@ -85,10 +86,18 @@ function TryApp({
               <p className="title-xl-semi-bold text-text-primary">
                 {t(($) => $['tryApp.loadError'], { ns: 'explore' })}
               </p>
-              <Button variant="secondary" disabled={isFetching} onClick={handleRetry}>
-                {isFetching
-                  ? t(($) => $['tryApp.retrying'], { ns: 'explore' })
-                  : t(($) => $['operation.retry'], { ns: 'common' })}
+              <Button
+                variant="secondary-accent"
+                disabled={isFetching}
+                focusableWhenDisabled={isFetching}
+                aria-labelledby={retryLabelId}
+                onClick={handleRetry}
+              >
+                <span id={retryLabelId}>
+                  {isFetching
+                    ? t(($) => $['tryApp.retrying'], { ns: 'explore' })
+                    : t(($) => $['operation.retry'], { ns: 'common' })}
+                </span>
               </Button>
             </div>
           </div>

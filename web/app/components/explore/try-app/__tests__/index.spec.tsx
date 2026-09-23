@@ -168,12 +168,18 @@ describe('TryApp (main index.tsx)', () => {
       mockUseGetTryAppInfo.mockImplementation(() => result)
       const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+      retryButton.focus()
+      fireEvent.click(retryButton)
       expect(refetch).toHaveBeenCalledTimes(1)
 
       result = { ...result, isFetching: true }
       rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
-      expect(screen.getByRole('button', { name: 'explore.tryApp.retrying' })).toBeDisabled()
+      const retryingButton = screen.getByRole('button', { name: 'explore.tryApp.retrying' })
+      expect(retryingButton).toHaveAttribute('aria-disabled', 'true')
+      expect(retryingButton).toHaveFocus()
+      fireEvent.click(retryingButton)
+      expect(refetch).toHaveBeenCalledTimes(1)
 
       result = { ...result, data: createMockAppDetail(), isError: false, isFetching: false }
       rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
