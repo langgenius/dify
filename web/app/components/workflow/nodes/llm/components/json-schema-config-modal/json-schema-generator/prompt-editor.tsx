@@ -38,7 +38,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
 }) => {
   const instructionLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const handleInstructionChange = useCallback(
     (value: string) => {

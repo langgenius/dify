@@ -7,7 +7,7 @@ type NotionConnectorProps = {
 }
 
 const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
     <div className="flex flex-col items-start rounded-2xl bg-workflow-process-bg p-6">

@@ -20,7 +20,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowComment } from '../../hooks/use-workflow-comment'
 
 const CommentsPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const activeCommentId = useStore((s) => s.activeCommentId)
   const setActiveCommentId = useStore((s) => s.setActiveCommentId)
   const setControlMode = useStore((s) => s.setControlMode)

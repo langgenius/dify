@@ -45,7 +45,7 @@ export const TagSearchContentView = ({
   showTagManagement = true,
   canManageTags,
 }: TagSearchContentViewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const inputRef = useRef<HTMLInputElement>(null)
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter((tag) => !isCreateTagOption(tag)).length

@@ -19,7 +19,7 @@ type VerifyEmailFormValues = {
 }
 
 export default function VerifyEmail(props: DeleteAccountProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const emailToken = useAccountDeleteStore((state) => state.sendEmailToken)
   const { mutate: sendEmail } = useSendDeleteAccountEmail()
   const { isPending: isDeleting, mutateAsync: confirmDeleteAccount } = useConfirmDeleteAccount()

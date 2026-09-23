@@ -23,7 +23,7 @@ type ResultItemProps = {
 }
 
 const ResultItem = ({ payload }: ResultItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetHitTesting'])
   const { segment, score, child_chunks, files, summary } = payload
   const data = segment
   const { position, word_count, content, sign_content, keywords, document } = data

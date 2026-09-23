@@ -68,7 +68,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const fieldLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'tools', 'workflow'])
   const language = useLanguage()
   const { data: timezone } = useSuspenseQuery({
     ...userProfileQueryOptions(),

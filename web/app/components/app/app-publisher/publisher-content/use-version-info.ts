@@ -22,7 +22,7 @@ export function useVersionInfo({
   publishedWorkflow?: WorkflowResponse | null
   onClosePublisher: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [isOpen, setIsOpen] = useState(false)
   const { mutate: updateWorkflow } = useUpdateWorkflow()
   const invalidateAppWorkflow = useInvalidateAppWorkflow()

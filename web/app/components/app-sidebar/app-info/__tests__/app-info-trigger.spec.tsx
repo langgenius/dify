@@ -124,7 +124,7 @@ describe('AppInfoTrigger', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'app.editApp',
       'app.duplicate',
-      'app.export',
+      'app.exportApp',
       'common.operation.delete',
       'app.switch',
     ])
@@ -142,10 +142,10 @@ describe('AppInfoTrigger', () => {
 
     await user.click(getOperationsTrigger())
 
-    expect(screen.getByRole('menuitem', { name: 'workflow.common.importDSL' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'app.importApp' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'app.switch' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: 'workflow.common.importDSL' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.importApp' }))
     expect(props.openModal).toHaveBeenCalledWith('importDSL')
   })
 
@@ -155,14 +155,14 @@ describe('AppInfoTrigger', () => {
     const { rerender } = render(<AppInfoTrigger {...props} />)
 
     await user.click(getOperationsTrigger())
-    expect(screen.getByRole('menuitem', { name: 'app.export' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
 
     const readyProps = createProps()
     rerender(<AppInfoTrigger {...readyProps} />)
-    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
     expect(readyProps.exportCheck).toHaveBeenCalledTimes(1)
   })

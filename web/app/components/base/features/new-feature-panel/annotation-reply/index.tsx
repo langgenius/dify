@@ -22,7 +22,7 @@ type Props = Readonly<{
 }>
 
 const AnnotationReply = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = matched?.length && matched[1] ? matched[1] : ''

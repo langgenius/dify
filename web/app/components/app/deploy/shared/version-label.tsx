@@ -22,7 +22,7 @@ export function VersionLabel({
   versionsBehind?: number
   isLatest?: boolean
 }) {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments', 'workflow'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   if (!version) return <span className="text-text-quaternary">--</span>

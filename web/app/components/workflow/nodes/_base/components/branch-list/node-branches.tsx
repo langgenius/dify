@@ -14,7 +14,7 @@ type TruncatedClassItemProps = {
   topic: { id: string; name: string; label?: string | null }
   index: number
   nodeId: string
-  t: TFunction
+  t: TFunction<['workflow']>
   defaultLabel?: string
 }
 
@@ -72,7 +72,7 @@ export function NodeBranches({
   branches: Topic[]
   defaultLabel?: (index: number) => string
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <div className="mt-2 space-y-0.5">
       {branches.map((topic, index) => (

@@ -42,7 +42,7 @@ const SegmentList = ({
 }: ISegmentListProps & {
   ref: React.LegacyRef<HTMLDivElement>
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   const docForm = useDocumentContext((s) => s.docForm)
   const parentMode = useDocumentContext((s) => s.parentMode)
   const currSegment = useSegmentListContext((s) => s.currSegment)

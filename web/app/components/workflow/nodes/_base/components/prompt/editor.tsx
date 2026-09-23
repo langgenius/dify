@@ -107,7 +107,7 @@ const Editor: FC<Props> = ({
   editorContainerClassName,
   required,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
 

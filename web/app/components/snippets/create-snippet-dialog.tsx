@@ -62,7 +62,7 @@ export function CreateSnippetDialog({
 }: CreateSnippetDialogProps) {
   const nameInputId = useId()
   const descriptionInputId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const popupRef = useRef<HTMLDivElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initialValue?.name ?? '')

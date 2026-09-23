@@ -52,7 +52,7 @@ const ConfigContent: FC<Props> = ({
   const rerankLabelId = useId()
   const rerankOptionLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'workflow'])
   const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
 

@@ -29,7 +29,7 @@ function TryApp({
   onClose,
   onCreate,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'explore'])
   const appId = app.app_id
   const canUseTryTab = app.can_trial
   const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))

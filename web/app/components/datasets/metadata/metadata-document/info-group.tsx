@@ -50,7 +50,7 @@ const InfoGroup: FC<Props> = ({
   const titleId = React.useId()
 
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const { formatTime: formatTimestamp } = useTimestamp()
 
   const handleMangeMetadata = () => {

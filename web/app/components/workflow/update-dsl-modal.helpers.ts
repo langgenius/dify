@@ -75,7 +75,7 @@ export const isImportCompleted = (status: Import['status']) => {
 
 export const getImportNotificationPayload = (
   status: Import['status'],
-  t: TFunction,
+  t: TFunction<['workflow']>,
 ): ImportNotificationPayload => {
   return {
     type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',

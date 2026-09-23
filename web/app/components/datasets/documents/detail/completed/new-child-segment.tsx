@@ -31,7 +31,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   onSave,
   viewNewlyAddedChildChunk,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const [content, setContent] = useState('')
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
   const [loading, setLoading] = useState(false)

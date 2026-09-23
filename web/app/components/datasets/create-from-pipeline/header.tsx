@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
 const Header = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <div className="relative flex px-16 pt-5 pb-2 system-md-semibold text-text-primary">

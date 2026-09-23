@@ -22,7 +22,7 @@ function ModelAuthDropdown({
   isChangingPriority,
   onChangePriority,
 }: ModelAuthDropdownProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [isProviderDetailError, setIsProviderDetailError] = useState(false)
   const isFullProvider = !('is_configured' in provider) || 'provider_credential_schema' in provider

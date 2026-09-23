@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })

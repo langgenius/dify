@@ -41,7 +41,7 @@ function AppDetailStoreCleanup() {
 }
 
 const MainNavLayout = ({ children, detailSidebar, initialPlatform }: MainNavLayoutProps) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const useResponsiveNavigation = pathname === '/datasets/create'

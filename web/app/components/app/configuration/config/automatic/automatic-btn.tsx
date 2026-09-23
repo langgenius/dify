@@ -9,7 +9,7 @@ type IAutomaticBtnProps = {
   onClick: () => void
 }
 const AutomaticBtn: FC<IAutomaticBtnProps> = ({ onClick }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
 
   return (
     <Button variant="secondary-accent" size="small" onClick={onClick}>

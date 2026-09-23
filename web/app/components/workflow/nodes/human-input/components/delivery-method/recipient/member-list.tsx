@@ -29,7 +29,7 @@ const MemberList: FC<Props> = ({
   email,
   hideSearch,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
 
   const filteredList = useMemo(() => {

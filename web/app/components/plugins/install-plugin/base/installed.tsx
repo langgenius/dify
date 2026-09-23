@@ -67,7 +67,7 @@ const Installed: FC<Props> = ({
   installContextCategory,
   onCancel,
 }) => {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin', 'common'])
   const installedCategory = payload?.category
   const categoryTarget =
     !isFailed && installContextCategory && installedCategory !== installContextCategory

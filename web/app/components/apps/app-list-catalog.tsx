@@ -65,7 +65,7 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
   }>
 
 function CatalogSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="relative grow" role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
@@ -98,7 +98,7 @@ function AppListCatalogContent({
   scrollViewportRef,
   systemFeatures,
 }: AppListCatalogContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   const apps = useMemo(() => appListPages.flatMap(({ data: pageApps }) => pageApps), [appListPages])
   const workflowOnlineUserAppIds = useMemo(() => {

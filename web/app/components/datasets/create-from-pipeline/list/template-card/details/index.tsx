@@ -22,7 +22,7 @@ type DetailsProps = {
 const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
   const structureLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const { data: pipelineTemplateInfo } = usePipelineTemplateById(
     {
       template_id: id,

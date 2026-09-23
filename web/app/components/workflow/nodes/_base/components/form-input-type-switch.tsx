@@ -39,7 +39,7 @@ function TypeOption({ children, label, selected, value }: TypeOptionProps) {
 }
 
 const FormInputTypeSwitch: FC<Props> = ({ value, onChange, readonly = false }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const variableLabel = t(($) => $['nodes.common.typeSwitch.variable'], { ns: 'workflow' })
   const inputLabel = t(($) => $['nodes.common.typeSwitch.input'], { ns: 'workflow' })
 

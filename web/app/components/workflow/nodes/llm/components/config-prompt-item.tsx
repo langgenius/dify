@@ -88,7 +88,7 @@ const ConfigPromptItem: FC<Props> = ({
   handleAddVariable,
   modelConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const roleDescription = payload.role
     ? t(roleDescriptionSelectors[payload.role], { ns: 'workflow' })
     : undefined

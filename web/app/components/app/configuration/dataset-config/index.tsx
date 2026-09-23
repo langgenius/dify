@@ -48,7 +48,7 @@ type Props = Readonly<{
   hideMetadataFilter?: boolean
 }>
 const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

@@ -51,7 +51,7 @@ const ModelLoadBalancingModal = ({
   onClose,
   onSave,
 }: ModelLoadBalancingModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { doingAction, deleteModel, openConfirmDelete, closeConfirmDelete, handleConfirmDelete } =
     useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, {
       isModelCredential: true,

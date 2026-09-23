@@ -19,7 +19,7 @@ export type Props = Readonly<{
 }>
 
 export function CreateContent({ onClose = noop, hasBack, onBack, onSave }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const [type, setType] = useState<DataType>(DataType.string)
 
   const handleTypeChange = useCallback(

@@ -58,7 +58,7 @@ const RetrievalSetting = ({
   onScoreThresholdEnabledChange,
   showMultiModalTip,
 }: RetrievalSettingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings', 'workflow'])
   const docLink = useDocLink()
   const { options, hybridSearchModeOptions } = useRetrievalSetting(indexMethod)
 

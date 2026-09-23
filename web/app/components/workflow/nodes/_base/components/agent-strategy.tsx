@@ -89,7 +89,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
     availableNodes,
     nodeId,
   } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()

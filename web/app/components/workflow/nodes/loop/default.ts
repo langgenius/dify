@@ -29,7 +29,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
     _children: [],
     logical_operator: LogicalOperator.and,
   },
-  checkValid(payload: LoopNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: LoopNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
 
     payload.loop_variables?.forEach((variable) => {
