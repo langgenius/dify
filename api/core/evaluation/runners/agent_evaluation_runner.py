@@ -66,7 +66,7 @@ class AgentEvaluationRunner(BaseEvaluationRunner):
                     output=_extract_agent_output(node_result.outputs),
                     tool_calls=_extract_agent_tool_calls(node_result.outputs),
                     expected_tool_calls=(
-                        dataset_item.get_expected_tool_calls_for_node(node_info.title if node_info else None)
+                        dataset_item.get_expected_tool_calls_for_node(node_info.node_id if node_info else None)
                         if dataset_item is not None
                         else None
                     ),

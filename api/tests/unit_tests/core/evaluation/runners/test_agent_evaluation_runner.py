@@ -57,7 +57,7 @@ def test_agent_runner_normalizes_react_and_function_calling_logs() -> None:
                 index=7,
                 inputs={"question": "fallback"},
                 expected_tool_calls_by_node={
-                    "Research Agent": [AgentToolCall(name="current_time", arguments={"timezone": "Asia/Shanghai"})]
+                    "agent-1": [AgentToolCall(name="current_time", arguments={"timezone": "Asia/Shanghai"})]
                 },
             )
         ],
