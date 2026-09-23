@@ -42,7 +42,7 @@ const DateRangePicker: FC<DateRangePickerProps> = ({
   getIsEndDateDisabled,
   className,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const locale = useLocale()
 
   const renderDate = (

@@ -16,7 +16,7 @@ type NextStepProps = {
   selectedNode: Node
 }
 const NextStep = ({ selectedNode }: NextStepProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const data = selectedNode.data
   const toolIcon = useToolIcon(data)
   const branches = useMemo(() => {

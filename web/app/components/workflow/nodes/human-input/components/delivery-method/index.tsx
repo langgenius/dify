@@ -34,7 +34,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
 }) => {
   const deliveryLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleMethodChange = (target: DeliveryMethod) => {

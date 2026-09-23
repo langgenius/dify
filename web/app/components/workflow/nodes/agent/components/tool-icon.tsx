@@ -61,7 +61,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const indicator =
     status === 'not-installed' ? 'error' : status === 'not-authorized' ? 'warning' : undefined
   const notSuccess = (['not-installed', 'not-authorized'] as Array<Status>).includes(status)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const tooltip = useMemo(() => {
     if (!notSuccess) return undefined
     if (status === 'not-installed')

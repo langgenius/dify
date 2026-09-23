@@ -58,7 +58,7 @@ const Base: FC<Props> = ({
   tip,
   footer,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const ref = useRef<HTMLDivElement>(null)
   const { wrapClassName, wrapStyle, isExpand, setIsExpand, editorExpandHeight } = useToggleExpend({
     ref,

@@ -32,7 +32,7 @@ const Question: FC<QuestionProps> = ({
   switchSibling,
   hideAvatar,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const { content, message_files } = item
 

@@ -55,7 +55,7 @@ const ModelLoadBalancingConfigs = ({
 }: ModelLoadBalancingConfigsProps) => {
   const loadBalancingLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

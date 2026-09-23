@@ -24,7 +24,7 @@ type FormItemProps = {
   onChange: (value: any) => void
 }
 const FormItem = ({ nodeId, item, onChange }: FormItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { value_type, var_type, value } = item
   const valueLabel = item.label || t(($) => $['errorMsg.fields.variableValue'], { ns: 'workflow' })
   const normalizedVarValue = useMemo(() => {

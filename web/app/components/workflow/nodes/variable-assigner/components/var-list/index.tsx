@@ -21,7 +21,7 @@ type Props = Readonly<{
 }>
 
 const VarList: FC<Props> = ({ readonly, nodeId, list, onChange, onOpen = noop, filterVar }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const handleVarReferenceChange = useCallback(
     (index: number) => {
       return (value: ValueSelector | string) => {

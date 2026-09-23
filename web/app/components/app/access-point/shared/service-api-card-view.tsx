@@ -37,7 +37,7 @@ export function ServiceApiCardView({
   switchDisabled,
   switchLoading = false,
 }: ServiceApiCardViewProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'appOverview', 'deployments'])
   const docLink = useDocLink()
   const apiReferencePath = appMode ? getAppApiReferencePath(appMode) : undefined
   const apiReferenceUrl = apiReferencePath ? docLink(apiReferencePath) : undefined

@@ -77,7 +77,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   showUseGPT4Confirm,
   setShowUseGPT4Confirm,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const debugWithMultipleModel = appPublisherProps.debugWithMultipleModel
   const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === AppModeEnum.AGENT_CHAT
   const handlePluginInstallComplete: InstallBundleCompleteCallback = (plugins, installStatus) => {

@@ -19,7 +19,7 @@ type ItemProps = {
   canManage?: boolean
 }
 export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const deleteApiBasedExtensionMutation = useMutation(
     consoleQuery.apiBasedExtension.byId.delete.mutationOptions(),

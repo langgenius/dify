@@ -43,7 +43,7 @@ export function ToolProviderToolbar({
   onKeywordsChange: (keywords: string) => void
   onTagsChange: (tags: string[]) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   return (
     <div

@@ -24,7 +24,7 @@ const useEditDatasetMetadata = ({
   dataset?: DataSet
   onUpdateDocList: () => void
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
   useEffect(() => {
     const isShowManageMetadata = localStorage.getItem(isShowManageMetadataLocalStorageKey)

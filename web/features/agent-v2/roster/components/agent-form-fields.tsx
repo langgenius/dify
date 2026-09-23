@@ -21,8 +21,8 @@ export function AgentFormFields({
   onIconClick,
   ref,
 }: AgentFormFieldsProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-3">

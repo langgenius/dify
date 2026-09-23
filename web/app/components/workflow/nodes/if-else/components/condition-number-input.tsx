@@ -41,7 +41,7 @@ const ConditionNumberInput = ({
   unit,
 }: ConditionNumberInputProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [variableSelectorVisible, setVariableSelectorVisible] = useState(false)
   const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean()
 

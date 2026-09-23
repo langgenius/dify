@@ -42,7 +42,7 @@ const AdvancedSetting: FC<Props> = ({
 }) => {
   const instructionLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <>

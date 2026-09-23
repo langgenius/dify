@@ -55,8 +55,8 @@ export function useAgentConfigureSync({
   enabled: boolean
   publishEnabled: boolean
 }) {
-  const { t: tCommon } = useTranslation('common')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
   const toolPresentationIdentities = useAtomValue(agentComposerToolPresentationIdentitiesAtom)
   const toolProviderCatalog = useAgentToolProviderCatalog()

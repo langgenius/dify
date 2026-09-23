@@ -14,7 +14,7 @@ type PasteImageLinkButtonProps = {
   disabled?: boolean
 }
 const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({ onUpload, disabled }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
 
   const handleUpload = (imageFile: ImageFile) => {
@@ -63,7 +63,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   onFilesChange,
   disabled,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const { files, onUpload, onRemove, onImageLinkLoadError, onImageLinkLoadSuccess, onReUpload } =
     useImageFiles()

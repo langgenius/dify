@@ -13,7 +13,7 @@ type DialogProps = {
 }
 
 const AccessControlDialog = ({ className, children, show, onClose }: DialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const close = useCallback(() => {
     onClose?.()
   }, [onClose])

@@ -23,7 +23,7 @@ type ReadmePanelContentProps = {
 }
 
 export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const language = useLanguage()
   const locale = useGetLanguage()
   const pluginUniqueIdentifier = detail.plugin_unique_identifier

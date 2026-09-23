@@ -38,7 +38,7 @@ const VarPicker: FC<Props> = ({
   onChange,
   notSelectedVarTip,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [open, setOpen] = useState(false)
   const currItem = options.find((item) => item.value === value)
   const notSetVar = !currItem

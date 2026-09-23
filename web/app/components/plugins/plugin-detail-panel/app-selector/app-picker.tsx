@@ -113,7 +113,7 @@ export function AppPicker({
   searchText,
   onSearchChange,
 }: AppPickerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleValueChange = useCallback(

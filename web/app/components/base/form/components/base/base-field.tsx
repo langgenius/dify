@@ -133,7 +133,7 @@ const BaseField = ({
   const textFieldTypes: readonly FormTypeEnum[] = [FormTypeEnum.textInput, FormTypeEnum.secretInput]
 
   const renderI18nObject = useRenderI18nObject()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const {
     name,
     label,

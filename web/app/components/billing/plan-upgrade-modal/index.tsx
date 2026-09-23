@@ -29,7 +29,7 @@ export function PlanUpgradeModal({
   show,
   onClose,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   const handleUpgrade = useCallback(() => {

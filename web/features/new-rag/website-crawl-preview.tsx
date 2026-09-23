@@ -264,7 +264,7 @@ const CrawlPageList = memo(
 )
 
 function EmptyPreview() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   return (
     <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular px-6 text-center">
       <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
@@ -293,7 +293,7 @@ export function WebsiteCrawlPreview({
   onDraftFinished?: () => void
   providerName?: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
   const rootUrlErrorId = useId()
   const primaryActionLabelId = useId()

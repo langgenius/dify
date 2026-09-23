@@ -52,7 +52,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   onToggleUserComments,
   isCommentMode = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()

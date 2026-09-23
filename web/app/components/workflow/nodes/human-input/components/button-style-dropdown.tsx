@@ -20,7 +20,7 @@ type Props = Readonly<{
 }>
 
 const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, readonly }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const titleId = useId()
   const chooseStyleLabel = t(($) => $[`${i18nPrefix}.userActions.chooseStyle`], { ns: 'workflow' })

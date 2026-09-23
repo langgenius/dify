@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const EditModal: FC<Props> = ({ isShow, saveLoading, data, onClose, onSave }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const [tempData, setTempData] = useState(data)
   return (
     <Dialog

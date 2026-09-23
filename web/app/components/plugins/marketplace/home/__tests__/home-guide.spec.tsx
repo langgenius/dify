@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
+    useLocale: () => 'en-US',
     useTranslation: () => ({
       i18n: {
         language: 'en-US',

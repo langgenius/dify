@@ -44,7 +44,7 @@ const OptionCard = <T,>({
   showChildren,
   ref,
 }: OptionCardProps<T>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const titleId = React.useId()
   const descriptionId = React.useId()
 

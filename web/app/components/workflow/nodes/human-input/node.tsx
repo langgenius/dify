@@ -10,7 +10,7 @@ import { DeliveryMethodType } from './types'
 const i18nPrefix = 'nodes.humanInput'
 
 const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const { data } = props
   const deliveryMethods = data.delivery_methods

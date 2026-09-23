@@ -45,7 +45,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   const endpoint =
     api.settings && typeof api.settings.endpoint === 'string' ? api.settings.endpoint : ''
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
   const handleEditClick = async () => {
     if (!canManageExternalKnowledgeApi) return

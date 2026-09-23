@@ -22,7 +22,7 @@ const SummaryIndexSetting = ({
   onSummaryIndexSettingChange,
   readonly = false,
 }: SummaryIndexSettingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments', 'datasetSettings'])
   const summaryLabelId = useId()
   const { data: textGenerationModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({

@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const Left = ({ currentNodeVar, handleVarSelect }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const environmentVariables = useStore((s) => s.environmentVariables)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)

@@ -23,7 +23,7 @@ type FeedbackFormValues = {
 }
 
 export default function FeedBack(props: DeleteAccountProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,

@@ -15,7 +15,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.loop'
 
 const Panel: FC<NodePanelProps<LoopNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const {
     readOnly,

@@ -29,7 +29,7 @@ export const DSLExportConfirmContent = ({
   onClose,
   onExportingChange,
 }: DSLExportConfirmContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
   const [isExporting, setIsExporting] = useState(false)
