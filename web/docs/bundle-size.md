@@ -1,9 +1,15 @@
 # Bundle analysis in pull requests
 
-The **Web Bundle Analysis** workflow builds the exact target commit from
-`pull_request.base.sha` and the PR merge commit from `github.sha` in parallel.
-Both run the complete existing `vinext build` pipeline. No SSR, reference-analysis,
-or standalone stage is skipped. Target-branch updates alone do not rerun PRs.
+The main CI calls **Web Bundle Analysis** when its Web style checks are required,
+for both pull requests and merge queue entries. It builds the event's exact base
+commit and the tested merge commit from `github.sha` in parallel. Both run the
+complete existing `vinext build` pipeline, including the unused translations check.
+No SSR, reference-analysis, or standalone stage is skipped.
+
+This replaces the separate Vinext build in Web Style. Static checks run alongside
+the analysis workflow, and the existing **Web Style** required check succeeds only
+when both complete successfully. Main CI owns change detection and duplicate-run
+skipping. Target-branch updates alone do not rerun PRs.
 
 The official Rolldown `bundleAnalyzerPlugin` is added only to the client environment
 through a temporary Vite config wrapper. Each revision keeps its own application
@@ -15,7 +21,8 @@ job instead of appearing as savings.
 ## Reading the report
 
 The comparison appears directly in the Actions summary and in an updated comment
-for same-repository PRs. Fork PRs receive the summary and artifacts without a
+for same-repository PRs. Merge queue runs receive the summary and artifacts without
+a PR comment. Fork PRs receive the summary and artifacts without a
 privileged build or comment token. Reports are informational: growth does not fail
 the check; build, analysis, and reporting errors do.
 

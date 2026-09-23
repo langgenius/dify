@@ -1,35 +1,30 @@
 name: Web Bundle Analysis
 
 on:
-  pull_request:
-    paths:
-      - 'web/**'
-      - 'packages/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - '.npmrc'
-      - '.github/actions/setup-web/**'
-      - '.github/workflows/web-bundle-size.yml'
+  workflow_call:
+    inputs:
+      base-rev:
+        description: Exact base revision selected by the main CI event.
+        required: true
+        type: string
 
 permissions:
   contents: read
-
-concurrency:
-  group: web-bundle-size-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  pull-requests: write
 
 jobs:
   measure:
     name: Measure ${{ matrix.revision }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         include:
           - revision: base
-            sha: ${{ github.event.pull_request.base.sha }}
+            sha: ${{ inputs.base-rev }}
           - revision: merge
             sha: ${{ github.sha }}
     env:
@@ -125,12 +120,12 @@ jobs:
             bundle-results/web-bundle-summary-merge/summary.json \
             bundle-report.md
           printf '\n[Download base/merge snapshots and official Rolldown analysis reports](%s#artifacts).\n' "$RUN_URL" >> bundle-report.md
-          printf '\nComparison: target branch at the event base SHA vs the PR merge commit at the event GITHUB_SHA.\n' >> bundle-report.md
+          printf '\nComparison: event base SHA vs the tested merge commit at GITHUB_SHA (PR or merge queue).\n' >> bundle-report.md
           cat bundle-report.md >> "$GITHUB_STEP_SUMMARY"
 
       # Forks still receive the job summary and artifacts, without a privileged PR build.
       - name: Update PR report
-        if: github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
