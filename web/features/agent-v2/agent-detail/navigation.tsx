@@ -78,8 +78,8 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
 ]
 
 export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps) {
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common', 'agentV2'])
 
   if (!expand) {
     return (
@@ -165,7 +165,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
 }
 
 export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)

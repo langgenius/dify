@@ -16,7 +16,7 @@ type UpgradeModalProps = {
 }
 
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'workflow'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

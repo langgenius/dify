@@ -30,7 +30,7 @@ type Props = Readonly<{
 }>
 
 const ApiInput: FC<Props> = ({ nodeId, readonly, method, onMethodChange, url, onUrlChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {

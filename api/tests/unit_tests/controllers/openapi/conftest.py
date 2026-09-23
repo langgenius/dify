@@ -11,10 +11,11 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from app_factory import create_flask_app_with_configs
+from constants.oauth_bearer import TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, TokenType
+from libs.oauth_bearer import AuthContext
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus

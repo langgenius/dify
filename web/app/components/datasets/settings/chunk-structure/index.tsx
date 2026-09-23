@@ -10,7 +10,7 @@ type ChunkStructureProps = {
 }
 
 const ChunkStructure = ({ chunkStructure }: ChunkStructureProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
   const { options } = useChunkStructure()
 
   return (

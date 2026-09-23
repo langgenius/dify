@@ -54,7 +54,7 @@ const ModelProviderPage = ({
   hideSystemModelSelectorProviderSettingsFooter,
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { canSetPluginPreferences } = usePluginSettingsAccess()
   const defaultModelQueryOptions = { enabled: canSetPluginPreferences }
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =

@@ -53,7 +53,7 @@ export function SkillPublishBar({
   onPublish,
   state,
 }: SkillPublishBarProps) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const canPublish = hasPublishPermission && (state === 'draft' || state === 'unpublished')
 
   useHotkey(PUBLISH_SKILL_HOTKEY, onPublish, {

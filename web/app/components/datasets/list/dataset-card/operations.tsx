@@ -25,7 +25,7 @@ const Operations = ({
   openAccessConfig,
   onClose,
 }: OperationsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
 
   const handleRename = () => {
     onClose?.()

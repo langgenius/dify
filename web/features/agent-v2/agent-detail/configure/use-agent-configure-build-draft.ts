@@ -156,7 +156,7 @@ export function useAgentConfigureBuildDraftData({
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
   soulSourceOverride: AgentConfigureSoulSource | null
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const buildDraftQueryInput = {
     params: {
       agent_id: agentId,
@@ -286,7 +286,7 @@ export function useAgentConfigureBuildDraftActions({
   onComposerRebased?: () => void
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const buildDraftRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const buildDraftRefreshGenerationRef = useRef(0)
@@ -405,13 +405,7 @@ export function useAgentConfigureBuildDraftActions({
         queryKey: buildDraftQueryOptions.queryKey,
       })
       rebaseComposerDraft(nextAgentSoulConfig)
-      if (
-        shouldRefetchComposer ||
-        !nextAgentSoulConfig?.model?.model ||
-        !nextAgentSoulConfig.model.model_provider
-      ) {
-        onComposerRebased?.()
-      }
+      if (shouldRefetchComposer) onComposerRebased?.()
     },
     [
       buildDraftQueryOptions.queryKey,

@@ -88,7 +88,7 @@ const ChatInputArea = ({
 }: ChatInputAreaProps) => {
   const footerNoticeLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const {
     wrapperRef,
     textareaRef,

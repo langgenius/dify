@@ -24,7 +24,7 @@ type DocModeInfoProps = {
 }
 
 const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocModeInfoProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const isPipeline = dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline'
 

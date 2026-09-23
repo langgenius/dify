@@ -14,7 +14,7 @@ import { useFilterTemplateLanguages } from '../atoms'
 import { LANGUAGE_OPTIONS } from '../templates/template-language'
 
 export default function CatalogLanguagesFilter() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [languages, setLanguages] = useFilterTemplateLanguages()
   const [searchText, setSearchText] = useState('')
   const triggerRef = useRef<HTMLButtonElement>(null)

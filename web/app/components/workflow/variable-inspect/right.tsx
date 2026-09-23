@@ -38,7 +38,7 @@ type Props = Readonly<{
 }>
 
 const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)

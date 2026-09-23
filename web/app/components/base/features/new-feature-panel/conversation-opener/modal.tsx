@@ -40,7 +40,7 @@ const OpeningSettingModal = ({
 }: OpeningSettingModalProps) => {
   const questionsLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const [tempValue, setTempValue] = useState(data?.opening_statement || '')
   useEffect(() => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect

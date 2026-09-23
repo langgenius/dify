@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._upload import UploadPart, UploadParts
 from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
-from libs.oauth_bearer import SubjectType
 from models.model import AppMode
 from services.app_dsl_service import Import
 
@@ -252,6 +253,14 @@ class DeviceMutateResponse(BaseModel):
     status: str
 
 
+class DeviceApprovalContextResponse(BaseModel):
+    subject_email: str
+    subject_issuer: str
+    user_code: str
+    csrf_token: str
+    expires_at: datetime
+
+
 class ServerVersionResponse(BaseModel):
     """Meta endpoint payload for `GET /openapi/v1/_version` — no auth required."""
 
@@ -414,24 +423,6 @@ class PermittedExternalAppsListQuery(PageQuery):
 
     mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
-
-
-_EMAIL_FIELD = Field(min_length=3, max_length=320, pattern=r"^[^@\s]+@[^@\s]+$")
-
-
-class ExtSubjectAssertionClaims(BaseModel):
-    email: str = _EMAIL_FIELD
-    issuer: str = Field(min_length=1, max_length=255)
-    user_code: str = Field(min_length=1, max_length=32)
-    nonce: str = Field(min_length=1, max_length=128)
-
-
-class ApprovalGrantClaimsPayload(BaseModel):
-    subject_email: str = _EMAIL_FIELD
-    subject_issuer: str = Field(min_length=1, max_length=255)
-    user_code: str = Field(min_length=1, max_length=32)
-    nonce: str = Field(min_length=1, max_length=128)
-    csrf_token: str = Field(min_length=1, max_length=128)
 
 
 # Closed enum for invite/update-role payloads. Owner is intentionally not

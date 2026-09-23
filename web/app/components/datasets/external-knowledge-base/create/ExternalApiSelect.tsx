@@ -26,7 +26,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({
   value,
   onSelect,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const [isOpen, setIsOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ApiItem | null>(
     items.find((item) => item.value === value) || null,

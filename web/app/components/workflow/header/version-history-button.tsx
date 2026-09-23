@@ -13,7 +13,7 @@ type VersionHistoryButtonProps = {
 
 export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
   const { theme } = useTheme()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const label = t(($) => $['common.versionHistory'], { ns: 'workflow' })
 
   useHotkey(

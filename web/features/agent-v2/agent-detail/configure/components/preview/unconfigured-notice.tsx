@@ -3,7 +3,7 @@
 import { useTranslation } from 'react-i18next'
 
 export function AgentUnconfiguredNotice({ visible }: { visible: boolean }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <p

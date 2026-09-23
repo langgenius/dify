@@ -40,7 +40,7 @@ import {
 } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { theme } = useTheme()
   const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()

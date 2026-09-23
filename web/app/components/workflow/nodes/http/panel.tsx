@@ -19,7 +19,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.http'
 
 const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const {
     readOnly,

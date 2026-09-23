@@ -51,9 +51,10 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
-from repositories.installed_app_access_repository import SQLAlchemyInstalledAppAccessRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
+from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -175,12 +176,27 @@ from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
+from services.installed_app_completion_adapters import AppGenerateServiceCompletionRuntime
+from services.installed_app_completion_service import InstalledAppCompletionService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
+from services.oauth_device_adapters import (
+    DifyConfigOAuthDeviceSettings,
+    EnterpriseOAuthDeviceSSOGateway,
+    EnvironmentOAuthDeviceTokenTTLPolicy,
+    OAuthDeviceTokenIssuanceGateway,
+    RedisExternalApprovalLimiter,
+)
+from services.oauth_device_application_service import (
+    DeviceWorkspaceQuery,
+    OAuthDeviceAccountQuery,
+    OAuthDeviceApplicationService,
+)
+from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
@@ -295,8 +311,10 @@ class ApplicationServices:
     tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
+    oauth_device: OAuthDeviceApplicationService
     init_validation: InitValidationService
     installed_app_access: InstalledAppAccessService
+    installed_app_completion: InstalledAppCompletionService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
@@ -356,6 +374,32 @@ def _build_oauth_server_service(
         repository=SQLAlchemyOAuthServerRepository(session_factory=database_client),
         tokens=RedisOAuthServerTokenRepository(redis=redis),
         access_token_expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    )
+
+
+def _build_oauth_device_service(
+    *,
+    database_client: sessionmaker[Session],
+    redis: RedisClientWrapper,
+    accounts: OAuthDeviceAccountQuery,
+    workspaces: DeviceWorkspaceQuery,
+) -> OAuthDeviceApplicationService:
+    token_repository = SQLAlchemyOAuthDeviceTokenRepository(session_factory=database_client, redis=redis)
+    return OAuthDeviceApplicationService(
+        store=DeviceFlowRedis(redis),
+        accounts=accounts,
+        workspaces=workspaces,
+        tokens=OAuthDeviceTokenIssuanceGateway(
+            tokens=token_repository,
+            ttl_policy=EnvironmentOAuthDeviceTokenTTLPolicy(),
+        ),
+        sessions=token_repository,
+        sso=EnterpriseOAuthDeviceSSOGateway(
+            redis=redis,
+            enterprise_service=EnterpriseService(),
+        ),
+        external_approval_limiter=RedisExternalApprovalLimiter(redis=redis),
+        settings=DifyConfigOAuthDeviceSettings(),
     )
 
 
@@ -447,8 +491,15 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(session_factory=database_client)
+    installed_apps = SQLAlchemyInstalledAppRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    app_definitions = AppDefinitionQueryService(
+        definitions=app_definition_repository,
+        builtin_icon_url_prefix=(
+            dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        ),
+    )
     app_preview_repository = AppPreviewQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
@@ -647,12 +698,7 @@ def build_application_services(
         ),
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
-        app_definitions=AppDefinitionQueryService(
-            definitions=app_definition_repository,
-            builtin_icon_url_prefix=(
-                dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
-            ),
-        ),
+        app_definitions=app_definitions,
         app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
         app_previews=AppPreviewQueryService(
             apps=app_preview_repository,
@@ -707,8 +753,13 @@ def build_application_services(
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
         installed_app_access=InstalledAppAccessService(
-            installed_apps=SQLAlchemyInstalledAppAccessRepository(session_factory=database_client),
+            installed_apps=installed_apps,
             is_user_allowed=webapp_access.is_user_allowed,
+        ),
+        installed_app_completion=InstalledAppCompletionService(
+            app_definitions=app_definitions,
+            usage=installed_apps,
+            runtime=AppGenerateServiceCompletionRuntime(session_factory=database_client),
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
@@ -757,6 +808,12 @@ def build_application_services(
             storage=storage,
         ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
+        oauth_device=_build_oauth_device_service(
+            database_client=database_client,
+            redis=redis,
+            accounts=accounts,
+            workspaces=workspace_query_repository,
+        ),
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),

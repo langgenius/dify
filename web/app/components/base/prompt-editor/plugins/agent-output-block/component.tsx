@@ -67,7 +67,7 @@ const AgentOutputBlockComponent = ({
   onChange,
   onEdit,
 }: AgentOutputBlockComponentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
   const selected = getAgentOutputTypeOption(outputType)
   const [draftName, setDraftName] = useState(name)

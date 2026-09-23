@@ -650,7 +650,7 @@ describe('InviteModal', () => {
     await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/members\.inviteFailed/i)
+    expect((await screen.findByRole('alert')).textContent).toMatch(/members\.inviteFailed/i)
     expect(onOpenChange).not.toHaveBeenCalled()
   })
 
@@ -695,7 +695,7 @@ describe('InviteModal', () => {
 
     await user.click(trigger)
     expect(screen.queryByText('person@example.com')).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: /members\.role/i })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: /members\.role/i }).textContent).toMatch(
       /members\.selectRole/i,
     )
   })

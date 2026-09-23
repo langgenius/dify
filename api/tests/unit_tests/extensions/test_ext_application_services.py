@@ -36,6 +36,7 @@ from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
@@ -84,7 +85,13 @@ from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFound
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
-from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
+from services.installed_app_access_service import (
+    InstalledAppAccessDeniedError,
+    InstalledAppAccessService,
+    InstalledAppRef,
+)
+from services.installed_app_completion_adapters import AppGenerateServiceCompletionRuntime
+from services.installed_app_completion_service import InstalledAppCompletionService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
@@ -391,7 +398,7 @@ def test_build_application_services_wires_web_authentication_boundary(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.ENTERPRISE,
         initialization_password="",
-        redis=RedisClientWrapper(),
+        redis=MagicMock(spec=RedisClientWrapper),
     )
 
     assert isinstance(services.web_authentication, WebAuthenticationService)
@@ -407,6 +414,25 @@ def test_build_application_services_wires_web_authentication_boundary(
     assert services.web_authentication._app_sessions._sessions is services.webapp_access._access
     assert isinstance(services.webapp_access._policy, EnterpriseWebAppAccessPolicyGateway)
     assert services.webapp_access._policy._webapp_auth is EnterpriseService.WebAppAuth
+
+
+def test_build_application_services_reuses_installed_app_dependencies(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.installed_app_access, InstalledAppAccessService)
+    assert isinstance(services.installed_app_completion, InstalledAppCompletionService)
+    assert isinstance(services.installed_app_access._installed_apps, SQLAlchemyInstalledAppRepository)
+    assert services.installed_app_completion._usage is services.installed_app_access._installed_apps
+    assert services.installed_app_completion._app_definitions is services.app_definitions
+    assert isinstance(services.installed_app_completion._runtime, AppGenerateServiceCompletionRuntime)
+    assert services.installed_app_completion._runtime._session_factory is sqlite_session_factory
 
 
 def test_build_application_services_wires_app_tracing_config_boundary(

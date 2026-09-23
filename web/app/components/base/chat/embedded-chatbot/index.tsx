@@ -28,7 +28,7 @@ const Chatbot = () => {
     handleNewConversation,
     theme,
   } = useEmbeddedChatbotContext()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const site = appData?.site

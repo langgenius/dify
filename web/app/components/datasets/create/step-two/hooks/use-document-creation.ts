@@ -62,7 +62,7 @@ type ValidationParams = {
   retrievalConfig: RetrievalConfig
 }
 export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'datasetCreation'])
   const {
     datasetId,
     isSetting,

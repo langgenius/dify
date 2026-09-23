@@ -89,7 +89,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   modelPredicate,
   modelSuggestionPredicate,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const [open, setOpen] = useState(false)
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })

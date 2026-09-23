@@ -19,7 +19,7 @@ const filterVar = (variable: Var) =>
   variable.type === VarType.string || variable.type === VarType.number
 
 export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const { removeBranchEdges } = useEdgesInteractions()
   const { handleNodeDataUpdate } = useNodeDataUpdate()

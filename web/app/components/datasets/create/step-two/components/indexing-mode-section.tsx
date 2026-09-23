@@ -71,7 +71,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
   onQAConfirmDialogClose,
   onQAConfirmDialogConfirm,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetSettings'])
   const docLink = useDocLink()
 
   const getIndexingTechnique = () => indexType

@@ -47,7 +47,7 @@ function ModelProviderCardSkeleton() {
 }
 
 function ModelProviderListSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
@@ -65,7 +65,7 @@ function EmptyProviderState({
   enableMarketplace: boolean
   stepByStepTourTarget?: string
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
 
   return (
     <div
@@ -168,7 +168,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   pluginSummaryMap,
   onOpenMarketplace,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

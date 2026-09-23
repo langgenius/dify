@@ -882,7 +882,7 @@ describe('List', () => {
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank,
       )
-      expect(screen.getByRole('button', { name: /app\.importDSL/ })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: /app\.importApp/ })).toHaveAttribute(
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
       )
@@ -996,7 +996,7 @@ describe('List', () => {
       fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
       expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.importDSL/ }))
+      fireEvent.click(screen.getByRole('button', { name: /app\.importApp/ }))
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 

@@ -62,7 +62,7 @@ const IndexingSection = ({
     ChunkingMode.parentChild,
   ]
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

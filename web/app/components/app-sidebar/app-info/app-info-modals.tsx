@@ -18,7 +18,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-u
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { DSLExportConfirmContent } from '@/app/components/workflow/dsl-export-confirm-modal'
+import { AppExportConfirmContent } from '@/app/components/app/export-confirm-modal'
 import dynamic from '@/next/dynamic'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
@@ -42,7 +42,7 @@ type AppInfoModalsProps = {
   setSecretEnvList: (list: EnvironmentVariableItemResponse[]) => void
   onEdit: CreateAppModalProps['onConfirm']
   onCopy: DuplicateAppModalProps['onConfirm']
-  onExport: (include?: boolean) => Promise<void>
+  onExport: (include?: boolean) => Promise<boolean>
   isExporting: boolean
   exportCheck: () => void
   handleConfirmExport: () => Promise<void>
@@ -63,9 +63,8 @@ const AppInfoModals = ({
   handleConfirmExport,
   onConfirmDelete,
 }: AppInfoModalsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const [isSecretExporting, setIsSecretExporting] = useState(false)
   const exportConfirmLabelId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
@@ -88,11 +87,11 @@ const AppInfoModals = ({
 
   const handleExportDialogOpenChange = useCallback(
     (open: boolean) => {
-      if (open || isExporting || isSecretExporting) return
+      if (open || isExporting) return
 
       handleExportDialogClose()
     },
-    [handleExportDialogClose, isExporting, isSecretExporting],
+    [handleExportDialogClose, isExporting],
   )
 
   return (
@@ -200,11 +199,11 @@ const AppInfoModals = ({
       )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
         {exportDialogMode === 'secret' ? (
-          <DSLExportConfirmContent
+          <AppExportConfirmContent
             envList={secretEnvList}
             onConfirm={onExport}
             onClose={() => setSecretEnvList([])}
-            onExportingChange={setIsSecretExporting}
+            isExporting={isExporting}
           />
         ) : (
           exportDialogMode === 'warning' && (

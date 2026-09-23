@@ -59,7 +59,7 @@ const StepTwo: FC<StepTwoProps> = ({
 }) => {
   const generalChunkingModes: readonly ChunkingMode[] = [ChunkingMode.text, ChunkingMode.qa]
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const locale = useLocale()
   const isMobile = useBreakpoints() === MediaType.mobile
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)

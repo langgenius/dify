@@ -65,7 +65,7 @@ export function Popup({
   isPublishingAsCustomizedPipeline = false,
   onShowPublishAsKnowledgePipelineModal,
 }: PopupProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common', 'datasetPipeline', 'pipeline', 'workflow'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

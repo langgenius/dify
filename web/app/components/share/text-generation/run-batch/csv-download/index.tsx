@@ -9,7 +9,7 @@ type ICSVDownloadProps = {
 }
 
 const CSVDownload: FC<ICSVDownloadProps> = ({ vars }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const { CSVDownloader, Type } = useCSVDownloader()
   const addQueryContentVars = [...vars]
   const template = (() => {

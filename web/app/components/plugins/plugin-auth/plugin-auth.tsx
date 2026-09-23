@@ -19,7 +19,7 @@ type PluginAuthProps = {
   className?: string
 }
 const PluginAuth = ({ pluginPayload, children, className }: PluginAuthProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { canCreateCredential } = useCredentialPermissions()
   const {

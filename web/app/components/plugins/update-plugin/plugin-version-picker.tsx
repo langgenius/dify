@@ -41,7 +41,7 @@ const PluginVersionPicker: FC<Props> = ({
   alignOffset = 0,
   onSelect,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common', 'plugin'])
   const format = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]
   const { formatDate } = useTimestamp()
 

@@ -69,7 +69,7 @@ const WorkspaceRoleCheckboxList = ({
   onSelectedRolesChange,
   includeOwner = false,
 }: WorkspaceRoleCheckboxListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)

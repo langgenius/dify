@@ -24,7 +24,7 @@ const allTypes: AppModeEnum[] = [
 ]
 
 const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const triggerLabel =
     value.length === 0
       ? t(($) => $['typeSelector.all'], { ns: 'app' })
@@ -156,7 +156,7 @@ export const AppTypeIcon = React.memo(
 )
 
 function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['value'] }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   if (!values || values.length === 0) {
     return (
       <div className={cn('flex h-8 items-center justify-between gap-1')}>
@@ -244,7 +244,7 @@ type AppTypeLabelProps = {
   className?: string
 }
 export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return <span className={className}>{getAppTypeLabel(type, t)}</span>
 }

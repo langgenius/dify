@@ -40,7 +40,7 @@ const baseChipClassName =
   'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

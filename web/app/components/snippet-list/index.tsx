@@ -70,7 +70,7 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
 }
 
 const SnippetList = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
