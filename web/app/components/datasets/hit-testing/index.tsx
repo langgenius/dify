@@ -103,20 +103,37 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel },
   ] = useBoolean(!isMobile)
 
-  const { mutateAsync: hitTestingMutation, isPending: isHitTestingPending } =
-    useHitTesting(datasetId)
+  const {
+    mutateAsync: hitTestingMutation,
+    isPending: isHitTestingPending,
+    isError: isHitTestingError,
+  } = useHitTesting(datasetId)
   const {
     mutateAsync: externalKnowledgeBaseHitTestingMutation,
     isPending: isExternalKnowledgeBaseHitTestingPending,
+    isError: isExternalKnowledgeBaseHitTestingError,
   } = useExternalKnowledgeBaseHitTesting(datasetId)
 
   const isRetrievalLoading = isHitTestingPending || isExternalKnowledgeBaseHitTestingPending
+  const result = isExternal ? externalHitResult : hitResult
+  const isRetrievalError = isExternal ? isExternalKnowledgeBaseHitTestingError : isHitTestingError
+  const resultTitle = t(($) => $['hit.title'], {
+    ns: 'datasetHitTesting',
+    num: result?.records.length ?? 0,
+  })
+  const retrievalStatus = isRetrievalLoading
+    ? t(($) => $.loading, { ns: 'common' })
+    : isRetrievalError
+      ? ''
+      : result
+        ? resultTitle
+        : ''
 
   const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
     <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
+      <h2 className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
         {t(($) => $['hit.title'], { ns: 'datasetHitTesting', num: results.length })}
-      </div>
+      </h2>
       <div className="grow space-y-2 overflow-y-auto">
         {results.map((record, idx) =>
           isExternal ? (
@@ -157,6 +174,9 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   return (
     <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
+      <div role="status" aria-atomic="true" className="sr-only">
+        {retrievalStatus}
+      </div>
       <div className="flex min-w-0 flex-1 flex-col py-3">
         <div className="mb-4 flex flex-col justify-center">
           <h1 className="text-base font-semibold text-text-primary">
@@ -183,9 +203,9 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
           canRunRetrievalRecall={canRunRetrievalRecall}
         />
-        <div className="mt-6 mb-3 text-base font-semibold text-text-primary">
+        <h2 className="mt-6 mb-3 text-base font-semibold text-text-primary">
           {t(($) => $.records, { ns: 'datasetHitTesting' })}
-        </div>
+        </h2>
         {isRecordsLoading && (
           <div className="flex-1">
             <LoadingPlaceholder className="h-full" />
@@ -218,6 +238,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         isMobile={isMobile}
         isOpen={isShowRightPanel}
         onClose={hideRightPanel}
+        title={result ? resultTitle : t(($) => $.title, { ns: 'datasetHitTesting' })}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
           {isRetrievalLoading ? (

@@ -12,6 +12,13 @@ import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
 
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'datasetHitTesting.hit.title': '{{num}} Retrieved Chunks',
+  })
+})
+
 vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
   default: ({
     value,
@@ -443,6 +450,41 @@ describe('HitTestingPage', () => {
 
     expect(screen.getByText(/noRecentTip/)).toBeInTheDocument()
     expect(screen.getByText(/hit.emptyTip/)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(screen.getByRole('heading', { name: /records/, level: 2 })).toBeInTheDocument()
+  })
+
+  it('announces retrieval progress in the same status region', async () => {
+    const { useHitTesting } = await import('@/service/knowledge/use-hit-testing')
+    const { rerender } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    const status = screen.getByRole('status')
+
+    vi.mocked(useHitTesting).mockReturnValue({
+      mutateAsync: mockHitTestingMutateAsync,
+      isPending: true,
+    } as unknown as ReturnType<typeof useHitTesting>)
+    rerender(<HitTestingPage datasetId="dataset-1" />)
+
+    expect(status).toHaveTextContent('common.loading')
+    expect(screen.getByRole('status')).toBe(status)
+  })
+
+  it('announces zero retrieved chunks after an empty response', async () => {
+    const user = userEvent.setup()
+    const response: HitTestingResponse = {
+      query: { content: 'No match', tsne_position: { x: 0, y: 0 } },
+      records: [],
+    }
+    mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
+      options?.onSuccess?.(response)
+      return response
+    })
+    renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    const status = screen.getByRole('status')
+    await user.type(screen.getByRole('textbox'), 'No match')
+    await user.click(screen.getByRole('button', { name: /input.testing/ }))
+
+    expect(status).toHaveTextContent('0 Retrieved Chunks')
   })
 
   it('loads a history record into the query input when selected', async () => {
@@ -510,6 +552,9 @@ describe('HitTestingPage', () => {
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByText(/semantic_search/))
+    expect(
+      await screen.findByRole('dialog', { name: /form.retrievalSetting.title/ }),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Use Top K 8' }))
     await user.click(screen.getByRole('button', { name: /operation.save/ }))
     await user.type(screen.getByRole('textbox'), 'Test query')
@@ -530,6 +575,10 @@ describe('HitTestingPage', () => {
     })
     expect(mockRecordsRefetch).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('test-document.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('1 Retrieved Chunks')
+    expect(
+      screen.getByRole('heading', { name: '1 Retrieved Chunks', level: 2 }),
+    ).toBeInTheDocument()
   })
 
   it('submits external retrieval settings and renders external results', async () => {
