@@ -478,3 +478,20 @@ def test_no_access_token_is_returned_if_challenge_expires_during_send(context):
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
+
+
+def test_redis_verification_outage_is_audited_without_logging_its_command(context, caplog):
+    from redis.exceptions import ConnectionError
+
+    context.challenges.verify.side_effect = ConnectionError("secret-command otp-secret")
+    with pytest.raises(EmailOtpError) as error:
+        context.service.verify(context.token, challenge_token="proof-secret", otp_code="001234", ip_address=None)
+    assert error.value.reason == OtpFailure.UNAVAILABLE
+    with context.sessions() as session:
+        audit = session.scalar(sa.select(HumanInputAuditEvent))
+        assert audit is not None
+        assert audit.payload.succeeded is False
+        assert audit.payload.reason == OtpFailure.UNAVAILABLE.value
+    assert "secret-command" not in caplog.text
+    assert "proof-secret" not in caplog.text
+    assert "001234" not in caplog.text

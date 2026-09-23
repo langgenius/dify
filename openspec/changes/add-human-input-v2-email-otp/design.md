@@ -145,4 +145,4 @@ Submission 在自己的事务内重新检查当前收件人授权、Delivery 邮
 
 验证记录：针对性单元测试使用真实 SQLite Repository 验证授权、失败审计、成功审计共同提交／回滚和并发提交；Redis 原子脚本验收位于 `api/tests/test_containers_integration_tests/human_input_v2/test_email_otp_redis.py`，仅在 CI 运行。本地未启动真实 Redis／PostgreSQL 集成服务。
 
-部署依赖：Delivery 和审计表的数据库迁移由 Runtime change 拥有；独立 worktree 未复制原目录中尚未提交的迁移。部署前必须集成该迁移，本 change 不重复新增这些表的 migration。
+部署依赖：独立分支纳入现有 Delivery migration（f3c5e7a9b1d2）作为前置提交，并补齐现有 HumanInputAuditEvent 模型的审计表 migration（a8d2f4b6c0e3）。OTP challenge 仍只存 Redis，不新增 challenge 数据库表。CI 的发码、审计和并发提交行为测试使用这些 migration 创建的 schema。

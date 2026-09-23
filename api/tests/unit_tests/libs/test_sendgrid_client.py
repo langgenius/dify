@@ -63,3 +63,34 @@ def test_sensitive_send_has_timeout_and_does_not_log_provider_error(mock_client_
     assert client.client.timeout == 30
     assert "otp-secret" not in caplog.text
     assert "provider-secret" not in caplog.text
+
+
+def test_sensitive_mail_keeps_sdk_request_and_response_bodies_out_of_debug_logs(monkeypatch, caplog):
+    import logging
+    import urllib.request
+
+    from extensions import ext_logging
+
+    response = MagicMock()
+    response.getcode.return_value = 202
+    response.read.return_value = b"provider-secret"
+    response.info.return_value = {}
+    opener = MagicMock()
+    opener.open.return_value = response
+    monkeypatch.setattr(urllib.request, "build_opener", lambda: opener)
+    monkeypatch.setattr(ext_logging.logging, "basicConfig", lambda **_kwargs: None)
+    monkeypatch.setattr(ext_logging.dify_config, "LOG_FILE", None)
+    sdk_logger = logging.getLogger("python_http_client.client")
+    previous_level = sdk_logger.level
+    try:
+        sdk_logger.setLevel(logging.DEBUG)
+        ext_logging.init_app(None)
+        with caplog.at_level(logging.DEBUG):
+            SendGridClient(sendgrid_api_key="test-key", _from="noreply@example.com").send(
+                {"to": "recipient@example.com", "subject": "OTP", "html": "otp-secret"}, sensitive=True
+            )
+        assert "otp-secret" not in caplog.text
+        assert "provider-secret" not in caplog.text
+        assert opener.open.call_args.kwargs["timeout"] == 30
+    finally:
+        sdk_logger.setLevel(previous_level)

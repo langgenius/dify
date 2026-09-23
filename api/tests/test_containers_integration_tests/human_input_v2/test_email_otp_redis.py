@@ -1,14 +1,38 @@
 """CI-only acceptance of the real Redis scripts, including simultaneous callers."""
 
+import runpy
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from datetime import timedelta
+from hashlib import sha256
+from pathlib import Path
 from threading import Barrier
 from uuid import uuid4
 
 import pytest
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
+from sqlalchemy import create_engine, delete, func, select, text
+from sqlalchemy.orm import sessionmaker
 
+from core.human_input_v2.resolved_form import ResolvedForm
+from core.human_input_v2.shared.values import NormalizedEmail, TenantId
+from core.workflow.nodes.human_input.enums import HumanInputFormKind
+from core.workflow.nodes.human_input_v2.entities import OnetimeEmail
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.redis_names import serialize_redis_name
+from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
+from models.account import Tenant
+from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, HumanInputForm, HumanInputRecipient
+from models.model import App, AppMode
+from repositories.human_input_v2.delivery_repository import (
+    Delivery,
+    DeliveryCreateParams,
+    EmailTargetSnapshot,
+    SubmissionAuthType,
+)
 from repositories.human_input_v2.email_otp_repository import (
     EmailChallenge,
     EmailSubject,
@@ -16,7 +40,13 @@ from repositories.human_input_v2.email_otp_repository import (
     ExternalContactSubject,
     VerificationStatus,
 )
+from repositories.human_input_v2.form_repository import Form, FormCreateParams, FormSubmissionFailure
+from repositories.human_input_v2.recipient_repository import EmailRecipientSubject, RecipientCreateParams
 from repositories.human_input_v2.redis_email_otp_repository import RedisEmailOtpRepository
+from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
+from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
+from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
+from services.human_input_v2.email_otp_service import EmailOtpError, EmailOtpService, OtpFailure, OtpMail
 
 pytestmark = pytest.mark.usefixtures("flask_app_with_containers")
 
@@ -125,40 +155,74 @@ def test_verification_does_not_refresh_ttl():
     assert store.verify(delivery, "challenge", subject, "001234") == VerificationStatus.EXPIRED
 
 
-def test_verified_challenges_accept_one_form_on_postgres(flask_app_with_containers):
-    from datetime import timedelta
-    from hashlib import sha256
+@dataclass
+class OtpCase:
+    sessions: sessionmaker
+    form: Form
+    delivery: Delivery
+    token: str
+    store: RedisEmailOtpRepository
+    limiter: RateLimiter
+    sent: list[tuple[str, str]]
 
-    from sqlalchemy import delete, func, select
-    from sqlalchemy.orm import sessionmaker
+    def service(self, send=None) -> EmailOtpService:
+        return EmailOtpService(
+            session_factory=self.sessions,
+            challenges=self.store,
+            limiter=self.limiter,
+            mail=OtpMail(available=lambda: True, send=send or (lambda email, code: self.sent.append((email, code)))),
+        )
 
-    from core.human_input_v2.resolved_form import ResolvedForm
-    from core.human_input_v2.shared.values import NormalizedEmail, TenantId
-    from core.workflow.nodes.human_input.enums import HumanInputFormKind
-    from core.workflow.nodes.human_input_v2.entities import OnetimeEmail
-    from extensions.ext_database import db
-    from libs.datetime_utils import naive_utc_now
-    from models.account import Tenant
-    from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, HumanInputForm, HumanInputRecipient
-    from models.model import App, AppMode
-    from repositories.human_input_v2.delivery_repository import (
-        DeliveryCreateParams,
-        EmailTargetSnapshot,
-        SubmissionAuthType,
-    )
-    from repositories.human_input_v2.form_repository import Form, FormCreateParams, FormSubmissionFailure
-    from repositories.human_input_v2.recipient_repository import EmailRecipientSubject, RecipientCreateParams
-    from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
-    from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
-    from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
-    from services.human_input_v2.email_otp_service import EmailOtpService, OtpMail
+    def release_cooldown(self) -> None:
+        # Move the successful-send history beyond its minute cooldown without
+        # changing the challenge TTL or discarding the hourly send budget.
+        key = serialize_redis_name(f"{self.limiter.prefix}:{self.delivery.id}")
+        redis_client.eval(
+            """
+            local now = tonumber(redis.call('TIME')[1])
+            local members = redis.call('ZRANGE', KEYS[1], 0, -1)
+            for _, member in ipairs(members) do redis.call('ZADD', KEYS[1], now - 61, member) end
+        """,
+            1,
+            key,
+        )
 
+
+@pytest.fixture
+def migrated_otp_engine(flask_app_with_containers):
+    # Business acceptance uses the migration-created schema rather than letting
+    # metadata.create_all conceal a missing production table or column.
     with flask_app_with_containers.app_context():
-        engine = db.engine
-    # Delivery/audit migrations are owned by the separate runtime change. This
-    # acceptance fixture exercises their existing models on the CI database.
-    for model in (HumanInputForm, HumanInputRecipient, HumanInputDelivery, HumanInputAuditEvent):
-        model.__table__.create(engine, checkfirst=True)
+        admin_engine = db.engine
+    schema = "otp_" + uuid4().hex
+    with admin_engine.begin() as connection:
+        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+    engine = create_engine(admin_engine.url, connect_args={"options": f"-csearch_path={schema},public"})
+    try:
+        # App and Tenant are unrelated prerequisites already migrated by Dify.
+        for model in (Tenant, App):
+            model.__table__.create(engine)
+        migrations = Path(__file__).resolve().parents[3] / "migrations" / "versions"
+        names = (
+            "2026_09_09_1200-a7c9e1f3b5d8_add_human_input_v2_forms.py",
+            "2026_09_10_1200-b8d0f2a4c6e9_add_human_input_v2_recipients.py",
+            "2026_09_21_1200-f3c5e7a9b1d2_add_human_input_v2_delivery_runtime.py",
+            "2026_09_23_1200-a8d2f4b6c0e3_add_human_input_v2_audit_events.py",
+        )
+        with engine.begin() as connection, Operations.context(MigrationContext.configure(connection)):
+            for name in names:
+                migration = runpy.run_path(str(migrations / name))
+                migration["upgrade"]()
+        yield engine
+    finally:
+        engine.dispose()
+        with admin_engine.begin() as connection:
+            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+
+
+@pytest.fixture
+def otp_case(migrated_otp_engine):
+    engine = migrated_otp_engine
     sessions = sessionmaker(engine, expire_on_commit=False)
     tenant_id, app_id, token = TenantId(str(uuid4())), str(uuid4()), str(uuid4())
     now = naive_utc_now()
@@ -200,54 +264,129 @@ def test_verified_challenges_accept_one_form_on_postgres(flask_app_with_containe
             ),
         )
     store = RedisEmailOtpRepository(redis_client)
-    service = EmailOtpService(
-        session_factory=sessions,
-        challenges=store,
-        limiter=RateLimiter(prefix="otp-ci", max_attempts=5, time_window=3600),
-        mail=OtpMail(available=lambda: False, send=lambda _email, _code: None),
-    )
+    limiter = RateLimiter(prefix=f"otp-ci:{uuid4()}", max_attempts=5, time_window=3600)
     try:
-        for challenge_token in ("first", "second"):
-            store.create(delivery.id, challenge_token, EmailChallenge(email="ci@example.com", otp="001234"))
-        proofs = [
-            service.verify(token, challenge_token=challenge_token, otp_code="001234", ip_address=None)
-            for challenge_token in ("first", "second")
-        ]
-        barrier = Barrier(2)
-
-        def submit(proof):
-            barrier.wait()
-            with sessions.begin() as session:
-                result = SQLAlchemyFormRepository(session, tenant_id, app_id).submit_form(
-                    form.id,
-                    submitted_by_recipient_id=recipient.id,
-                    selected_action_id="approve",
-                    raw_submission_inputs={},
-                    normalized_submission_data={},
-                )
-                if isinstance(result, Form):
-                    proof.add_submission_audit(session, ip_address=None)
-                return result
-
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            results = list(executor.map(submit, proofs))
-        assert sum(isinstance(result, Form) for result in results) == 1
-        assert results.count(FormSubmissionFailure.ALREADY_SUBMITTED) == 1
-        with sessions() as session:
-            assert (
-                session.scalar(
-                    select(func.count())
-                    .select_from(HumanInputAuditEvent)
-                    .where(HumanInputAuditEvent.form_id == form.id)
-                )
-                == 1
-            )
+        yield OtpCase(sessions, form, delivery, token, store, limiter, [])
     finally:
-        for challenge_token in ("first", "second"):
-            store.delete(delivery.id, challenge_token)
+        # Remove all test-issued challenges without adding a production list API.
+        pattern = serialize_redis_name(f"hitl:otp:challenge:{delivery.id}:*")
+        for key in redis_client.scan_iter(match=pattern):
+            redis_client.delete(key)
+        redis_client.delete(f"{limiter.prefix}:{delivery.id}")
         with sessions.begin() as session:
             for model in (HumanInputAuditEvent, HumanInputDelivery, HumanInputRecipient):
                 session.execute(delete(model).where(model.form_id == form.id))
             session.execute(delete(HumanInputForm).where(HumanInputForm.id == form.id))
             session.execute(delete(App).where(App.id == app_id))
             session.execute(delete(Tenant).where(Tenant.id == tenant_id))
+
+
+def test_verified_challenges_accept_one_form_on_postgres(otp_case):
+    store, delivery, form, token = otp_case.store, otp_case.delivery, otp_case.form, otp_case.token
+    sessions = otp_case.sessions
+    tenant_id, app_id, recipient_id = form.tenant_id, form.app_id, delivery.recipient_id
+    service = otp_case.service()
+    for challenge_token in ("first", "second"):
+        store.create(delivery.id, challenge_token, EmailChallenge(email="ci@example.com", otp="001234"))
+    proofs = [
+        service.verify(token, challenge_token=challenge_token, otp_code="001234", ip_address=None)
+        for challenge_token in ("first", "second")
+    ]
+    barrier = Barrier(2)
+
+    def submit(proof):
+        barrier.wait()
+        with sessions.begin() as session:
+            result = SQLAlchemyFormRepository(session, tenant_id, app_id).submit_form(
+                form.id,
+                submitted_by_recipient_id=recipient_id,
+                selected_action_id="approve",
+                raw_submission_inputs={},
+                normalized_submission_data={},
+            )
+            if isinstance(result, Form):
+                proof.add_submission_audit(session, ip_address=None)
+            return result
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(submit, proofs))
+    assert sum(isinstance(result, Form) for result in results) == 1
+    assert results.count(FormSubmissionFailure.ALREADY_SUBMITTED) == 1
+    with sessions() as session:
+        assert (
+            session.scalar(
+                select(func.count()).select_from(HumanInputAuditEvent).where(HumanInputAuditEvent.form_id == form.id)
+            )
+            == 1
+        )
+
+
+def test_lost_response_and_failed_resend_preserve_earlier_proof_and_budget(otp_case):
+    service = otp_case.service()
+    first = service.request_access(otp_case.token)
+    first_code = otp_case.sent[0][1]
+    otp_case.release_cooldown()
+    service.request_access(otp_case.token)  # The browser loses this successful response.
+    assert (
+        service.verify(
+            otp_case.token, challenge_token=first.challenge_token, otp_code=first_code, ip_address=None
+        ).delivery.id
+        == otp_case.delivery.id
+    )
+    otp_case.release_cooldown()
+
+    def fail(_email, _code):
+        raise EmailOtpError(OtpFailure.DELIVERY)
+
+    with pytest.raises(EmailOtpError) as error:
+        otp_case.service(fail).request_access(otp_case.token)
+    assert error.value.reason == OtpFailure.DELIVERY
+    assert error.value.retry_after > 0
+    service.verify(otp_case.token, challenge_token=first.challenge_token, otp_code=first_code, ip_address=None)
+    assert redis_client.zcard(f"{otp_case.limiter.prefix}:{otp_case.delivery.id}") == 3
+    pattern = serialize_redis_name(f"hitl:otp:challenge:{otp_case.delivery.id}:*")
+    assert len(list(redis_client.scan_iter(match=pattern))) == 2
+
+
+def test_older_mail_finishing_last_does_not_replace_newer_challenge(otp_case):
+    from threading import Event
+
+    started, release = Event(), Event()
+    first_code = []
+
+    def slow_send(_email, code):
+        first_code.append(code)
+        started.set()
+        assert release.wait(10)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        older = executor.submit(otp_case.service(slow_send).request_access, otp_case.token)
+        assert started.wait(10)
+        try:
+            otp_case.release_cooldown()
+            newer = otp_case.service().request_access(otp_case.token)
+        finally:
+            release.set()
+        first = older.result(timeout=10)
+    service = otp_case.service()
+    service.verify(otp_case.token, challenge_token=first.challenge_token, otp_code=first_code[0], ip_address=None)
+    service.verify(otp_case.token, challenge_token=newer.challenge_token, otp_code=otp_case.sent[0][1], ip_address=None)
+
+
+def test_hourly_slot_recovers_without_discarding_recent_sends():
+    limiter = RateLimiter(prefix=f"otp-test:{uuid4()}", max_attempts=5, time_window=3600)
+    key = serialize_redis_name(f"{limiter.prefix}:delivery")
+    redis_client.eval(
+        """
+        local now = tonumber(redis.call('TIME')[1])
+        redis.call('ZADD', KEYS[1], now - 3600, 'boundary')
+        for i = 1, 4 do redis.call('ZADD', KEYS[1], now - 300 + i * 30, tostring(i)) end
+        redis.call('EXPIRE', KEYS[1], 3600)
+    """,
+        1,
+        key,
+    )
+    assert limiter.acquire("delivery", cooldown_seconds=60) == 0
+    assert redis_client.zcard(f"{limiter.prefix}:delivery") == 5
+    assert limiter.retry_after("delivery", cooldown_seconds=60) > 60
+    redis_client.delete(f"{limiter.prefix}:delivery")

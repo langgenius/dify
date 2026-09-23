@@ -159,16 +159,17 @@ class EmailOtpService:
             try:
                 status = self._challenges.verify(delivery.id, challenge_token, subject, otp_code)
             except RedisError:
-                raise EmailOtpError(OtpFailure.UNAVAILABLE) from None
-            match status:
-                case VerificationStatus.VERIFIED:
-                    return VerifiedEmail(delivery, subject)
-                case VerificationStatus.INVALID:
-                    reason = OtpFailure.INVALID
-                case VerificationStatus.STALE:
-                    reason = OtpFailure.STALE
-                case VerificationStatus.EXPIRED:
-                    reason = OtpFailure.CHALLENGE_EXPIRED
+                reason = OtpFailure.UNAVAILABLE
+            else:
+                match status:
+                    case VerificationStatus.VERIFIED:
+                        return VerifiedEmail(delivery, subject)
+                    case VerificationStatus.INVALID:
+                        reason = OtpFailure.INVALID
+                    case VerificationStatus.STALE:
+                        reason = OtpFailure.STALE
+                    case VerificationStatus.EXPIRED:
+                        reason = OtpFailure.CHALLENGE_EXPIRED
         assert reason is not None
         with self._sessions() as session, session.begin():
             _add_audit(session, delivery, subject.email, ip_address, succeeded=False, reason=reason.value)
