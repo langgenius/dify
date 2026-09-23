@@ -301,7 +301,14 @@ def test_chat_enforces_admission_before_payload_validation(
         )
     else:
         _assert_json_response(
-            response, status=404, body={"code": "not_found", "message": "Installed app not found", "status": 404}
+            response,
+            status=404,
+            body={
+                "code": "installed_app_not_found",
+                "message": "The app was not found in this workspace.",
+                "status": 404,
+                "details": {"request_id": "request-1"},
+            },
         )
     assert chat_runtime.calls == []
     assert _last_used_at(harness, sqlite_session_factory) is None

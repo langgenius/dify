@@ -329,6 +329,25 @@ def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_refe
     analyze_dependency.assert_called_once_with("old-provider")
 
 
+def test_extract_dependencies_from_workflow_graph_includes_trigger_and_agent(
+    service: RagPipelineDslService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        module.ToolNodeData,
+        "model_validate",
+        Mock(return_value=SimpleNamespace(provider_id="acme/tool/provider")),
+    )
+    graph = {
+        "nodes": [
+            {"data": {"type": BuiltinNodeTypes.TOOL, "plugin_id": "acme/tool"}},
+            {"data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
+            {"data": {"type": BuiltinNodeTypes.AGENT, "agent_strategy_provider_name": "acme/strategy/provider"}},
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == ["acme/tool", "acme/trigger", "acme/strategy"]
+
+
 def test_extract_dependencies_from_workflow_graph_covers_plugin_and_model_nodes(
     monkeypatch: pytest.MonkeyPatch, service: RagPipelineDslService
 ) -> None:

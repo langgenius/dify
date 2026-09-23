@@ -1,15 +1,18 @@
 """Composition root for application services used by transport adapters."""
 
+import json
 import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
 from typing import cast
 from uuid import uuid4
 
+import httpx
 from flask import Flask, current_app
+from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -19,7 +22,7 @@ from core.db.session_factory import get_session_maker
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
-from enums import DeploymentEdition
+from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
 from extensions.application_services.app import build_app_api_key_service
 from extensions.application_services.knowledge import build_dataset_api_key_service
@@ -169,6 +172,7 @@ from services.compliance_download_service import ComplianceDownloadService
 from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
+from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service_gateway import FeatureServiceGateway
@@ -181,6 +185,7 @@ from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
+from services.installed_app_service import InstalledAppService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
@@ -245,7 +250,7 @@ from services.web_passport_gateways import (
 )
 from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
-from services.webapp_access_query_service import WebAppAccessQueryService
+from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
@@ -255,7 +260,44 @@ from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
 from services.workspace_query_service import WorkspaceQueryService
 from tasks.mail_inner_task import enqueue_inner_mail
 
+logger = logging.getLogger(__name__)
+
 _EXTENSION_KEY = "application_services"
+
+
+# TODO: Normalize EnterpriseService.WebAppAuth result/error contracts in the SDK,
+# migrate its callers, then inject its batch methods directly and remove these wrappers.
+# Define SDK errors for timeouts, transport failures, upstream status and invalid
+# responses before adding finer HTTP mappings; these wrappers report unavailability.
+# Validate required fields and real booleans there, replacing legacy permission
+# truthiness conversion. Missing fields currently become False, {} or a default mode.
+# Replace response-shape ValueError/KeyError/AttributeError with typed SDK errors;
+# ordinary ValueError can still reach the global 400 invalid_param handler. The
+# lost field information cannot be recovered by translating exceptions here.
+def _batch_get_enterprise_webapp_access_modes(*, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
+    try:
+        settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(list(app_ids))
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError, ValidationError) as e:
+        raise WebAppAccessUnavailableError from e
+    access_modes: dict[str, WebAppAccessMode] = {}
+    for app_id, setting in settings.items():
+        try:
+            access_mode = WebAppAccessMode(setting.access_mode)
+        except ValueError:
+            logger.warning("Skipping invalid web app access mode %r for app %s", setting.access_mode, app_id)
+            continue
+        access_modes[app_id] = access_mode
+    return access_modes
+
+
+def _batch_get_enterprise_webapp_user_permissions(*, user_id: str, app_ids: Sequence[str]) -> Mapping[str, bool]:
+    try:
+        permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
+            user_id=user_id, app_ids=list(app_ids)
+        )
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise WebAppAccessUnavailableError from e
+    return {app_id: bool(allowed) for app_id, allowed in permissions.items()}
 
 
 @dataclass(frozen=True, slots=True)
@@ -321,6 +363,7 @@ class ApplicationServices:
     init_validation: InitValidationService
     installed_app_access: InstalledAppAccessService
     installed_app_generation: InstalledAppGenerationService
+    installed_apps: InstalledAppService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
@@ -506,6 +549,21 @@ def build_application_services(
             dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
         ),
     )
+    webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition)
+    webapp_access_repository = WebAppAccessQueryRepository(session_factory=database_client)
+    webapp_access = WebAppAccessQueryService(
+        access=webapp_access_repository,
+        policy=EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth),
+        webapp_auth_enabled=webapp_auth_enabled,
+        get_access_modes=_batch_get_enterprise_webapp_access_modes,
+        get_user_permissions=_batch_get_enterprise_webapp_user_permissions,
+    )
+    installed_app_access = InstalledAppAccessService(
+        installed_apps=installed_apps,
+        is_user_allowed=webapp_access.is_user_allowed,
+        get_access_modes=webapp_access.batch_get_access_modes,
+        get_user_permissions=webapp_access.batch_get_user_permissions,
+    )
     app_preview_repository = AppPreviewQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
@@ -530,12 +588,6 @@ def build_application_services(
     file_service = FileService(session_factory=database_client)
     remote_file_service = RemoteFileService(files=file_service)
     passwords = DefaultAccountPasswordHasher()
-    webapp_access_repository = WebAppAccessQueryRepository(session_factory=database_client)
-    webapp_access = WebAppAccessQueryService(
-        access=webapp_access_repository,
-        policy=EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth),
-        webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
-    )
     web_authentication_tokens = TokenManagerWebAuthenticationGateway(
         reset_password_rate_limiter=AccountService.reset_password_rate_limiter,
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -760,14 +812,16 @@ def build_application_services(
             audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
-        installed_app_access=InstalledAppAccessService(
-            installed_apps=installed_apps,
-            is_user_allowed=webapp_access.is_user_allowed,
-        ),
+        installed_app_access=installed_app_access,
         installed_app_generation=InstalledAppGenerationService(
             app_definitions=app_definitions,
             usage=installed_apps,
             runtime=InstalledAppGenerateServiceRuntime(session_factory=database_client),
+        ),
+        installed_apps=InstalledAppService(
+            installed_apps=installed_apps,
+            get_workspace_role=workspace_query_repository.get_account_role,
+            get_visible_app_ids=installed_app_access.get_visible_app_ids if webapp_auth_enabled else None,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,

@@ -33,8 +33,6 @@
   "sidebar.action.pin": "Pin",
   "sidebar.action.rename": "Rename",
   "sidebar.action.unpin": "Unpin",
-  "sidebar.delete.content": "Are you sure you want to delete this app?",
-  "sidebar.delete.title": "Delete app",
   "sidebar.webApps": "Web apps",
   "tryApp.category": "Category",
   "tryApp.createFromSampleApp": "Create from this sample app",

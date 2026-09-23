@@ -451,7 +451,6 @@ describe('AppCard', () => {
         editable: false,
         is_pinned: false,
         last_used_at: null,
-        uninstallable: true,
         app: {
           id: mockApp.id,
           name: mockApp.name,
