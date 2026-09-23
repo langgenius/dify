@@ -139,12 +139,15 @@ const IndexingSection = ({
               onKeywordNumberChange={setKeywordNumber}
             />
             {showUpgradeWarning && (
-              <div className="relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3">
-                <div className="absolute top-0 left-0 flex size-full items-center bg-toast-warning-bg opacity-40" />
-                <div className="p-1">
-                  <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
+              <div className="relative mt-2 flex min-h-10 items-start gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 py-2 shadow-xs shadow-shadow-shadow-3">
+                <div className="pointer-events-none absolute inset-0 rounded-xl bg-toast-warning-bg opacity-40" />
+                <div className="relative shrink-0 p-1">
+                  <span
+                    aria-hidden
+                    className="i-ri-alert-fill size-4 text-text-warning-secondary"
+                  />
                 </div>
-                <span className="system-xs-medium text-text-primary">
+                <span className="relative min-w-0 py-1 system-xs-medium wrap-anywhere text-text-primary">
                   {t(($) => $['form.upgradeHighQualityTip'], { ns: 'datasetSettings' })}
                 </span>
               </div>
