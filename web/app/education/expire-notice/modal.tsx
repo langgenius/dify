@@ -27,7 +27,7 @@ type Props = {
 const i18nPrefix = 'notice'
 
 const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

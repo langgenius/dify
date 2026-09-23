@@ -1,5 +1,5 @@
-import { e2eDir, isMainModule, runForegroundProcess } from './common'
-import './env-register'
+import { e2eDir, isMainModule, runForegroundProcess } from './common.ts'
+import './env-register.ts'
 
 const postMergeTags = '@prepared or @external-model or @external-tool'
 
@@ -7,8 +7,6 @@ const main = async () => {
   await runForegroundProcess({
     command: process.execPath,
     args: [
-      '--import',
-      'tsx',
       './scripts/run-cucumber.ts',
       '--full',
       '--profile',

@@ -20,7 +20,6 @@ import {
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
-import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
 import { useParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { useStore, useWorkflowStore } from '../store'
@@ -57,7 +56,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     forwardedRef,
   ) => {
     const params = useParams()
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflow'])
     const appId = params.appId as string
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightContentRef = useRef<HTMLDivElement>(null)
@@ -628,7 +627,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                     <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
                   )}
                   <span>{t(($) => $['operation.save'], { ns: 'common' })}</span>
-                  {!loading && <EnterKey className="size-4" />}
+                  {!loading && (
+                    <span aria-hidden className="i-custom-public-common-enter-key size-4" />
+                  )}
                 </Button>
               </div>
             </div>

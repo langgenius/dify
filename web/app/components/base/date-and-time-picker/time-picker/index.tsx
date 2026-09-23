@@ -31,7 +31,7 @@ const TimePicker = ({
   triggerFullWidth = false,
   showTimezone = false,
 }: TimePickerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'time'])
   const [isOpen, setIsOpen] = useState(false)
   const isInitialRef = useRef(true)
 

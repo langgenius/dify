@@ -53,7 +53,7 @@ const InputField: FC<{
 }
 
 const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { connect, read, write, max_connect_timeout, max_read_timeout, max_write_timeout } =
     payload ?? {}
 

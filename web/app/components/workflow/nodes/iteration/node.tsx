@@ -16,7 +16,7 @@ const Node: FC<NodeProps<IterationNodeType>> = ({ id, data }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
   const { handleNodeIterationRerender } = useNodeIterationInteractions()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [showTips, setShowTips] = useState(data._isShowTips)
 
   useEffect(() => {

@@ -866,6 +866,53 @@ def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path: P
     }
 
 
+def test_console_datasource_catalog_exports_domain_response_schema(tmp_path: Path) -> None:
+    from dev.generate_swagger_specs import generate_specs
+
+    written_paths = generate_specs(tmp_path)
+    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+    operation = payload["paths"]["/rag/pipelines/datasource-plugins"]["get"]
+
+    assert operation.get("parameters", []) == []
+    assert "requestBody" not in operation
+    assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RagPipelineDatasourceListResponse"
+    }
+    schemas = payload["components"]["schemas"]
+    assert schemas["RagPipelineDatasourceListResponse"]["type"] == "array"
+    assert schemas["RagPipelineDatasourceListResponse"]["items"] == {
+        "$ref": "#/components/schemas/RagPipelineDatasourceProviderResponse"
+    }
+    provider = schemas["RagPipelineDatasourceProviderResponse"]
+    assert set(provider["properties"]) == {
+        "provider",
+        "plugin_unique_identifier",
+        "plugin_id",
+        "is_authorized",
+        "declaration",
+    }
+    assert provider["properties"]["declaration"] == {"$ref": "#/components/schemas/DatasourceProviderEntityWithPlugin"}
+    assert set(schemas["DatasourceParameterType"]["enum"]) == {
+        "string",
+        "number",
+        "boolean",
+        "select",
+        "secret-input",
+        "file",
+        "files",
+        "system-files",
+    }
+    assert schemas["DatasourceEntity"]["properties"]["output_schema"]["anyOf"] == [
+        {"additionalProperties": True, "type": "object"},
+        {"type": "null"},
+    ]
+    recommended = payload["paths"]["/rag/pipelines/recommended-plugins"]["get"]
+    assert recommended["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RagPipelineOpaqueResponse"
+    }
+
+
 def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path: Path):
     from dev.generate_swagger_specs import generate_specs
 

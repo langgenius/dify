@@ -13,7 +13,6 @@ import {
   useInvalidDataSourceListAuth,
   useInvalidDefaultDataSourceListAuth,
 } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { render } from '@/test/console/render'
 import Card from '../card'
 import { useDataSourceAuthUpdate } from '../hooks'
@@ -111,10 +110,6 @@ vi.mock('../hooks', () => ({
   useDataSourceAuthUpdate: vi.fn(),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: vi.fn(() => vi.fn()),
-}))
-
 type UsePluginAuthActionReturn = ReturnType<typeof usePluginAuthAction>
 type UseGetDataSourceOAuthUrlReturn = ReturnType<typeof useGetDataSourceOAuthUrl>
 type UseRenderI18nObjectReturn = ReturnType<typeof useRenderI18nObject>
@@ -124,12 +119,10 @@ describe('Card Component', () => {
   const mockRenderI18nObjectResult = vi.fn((obj: Record<string, string>) => obj.en_US)
   const mockInvalidateDataSourceListAuth = vi.fn()
   const mockInvalidDefaultDataSourceListAuth = vi.fn()
-  const mockInvalidateDataSourceList = vi.fn()
   const mockInvalidateDataSourceAuth = vi.fn()
   const mockHandleAuthUpdate = vi.fn(() => {
     mockInvalidateDataSourceListAuth()
     mockInvalidDefaultDataSourceListAuth()
-    mockInvalidateDataSourceList()
     mockInvalidateDataSourceAuth()
   })
 
@@ -192,7 +185,6 @@ describe('Card Component', () => {
     vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(
       mockInvalidDefaultDataSourceListAuth,
     )
-    vi.mocked(useInvalidDataSourceList).mockReturnValue(mockInvalidateDataSourceList)
     vi.mocked(useInvalidDataSourceAuth).mockReturnValue(mockInvalidateDataSourceAuth)
 
     vi.mocked(usePluginAuthAction).mockReturnValue(mockPluginAuthActionReturn)
@@ -207,7 +199,6 @@ describe('Card Component', () => {
   const expectAuthUpdated = () => {
     expect(mockInvalidateDataSourceListAuth).toHaveBeenCalled()
     expect(mockInvalidDefaultDataSourceListAuth).toHaveBeenCalled()
-    expect(mockInvalidateDataSourceList).toHaveBeenCalled()
     expect(mockInvalidateDataSourceAuth).toHaveBeenCalled()
   }
 

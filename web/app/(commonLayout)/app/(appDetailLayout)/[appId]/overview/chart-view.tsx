@@ -72,7 +72,7 @@ function ChartViewContent({
   headerRight,
   deploymentEdition,
 }: IChartViewProps & { deploymentEdition: DeploymentEdition }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()

@@ -26,7 +26,7 @@ export function NodeActionsDropdown({
   onOpenChange,
   showHelpLink = true,
 }: NodeActionsDropdownProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
 
   const handleOpenChange = useCallback(

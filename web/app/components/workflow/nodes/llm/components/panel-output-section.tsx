@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { StructureOutput } from './structure-output'
@@ -29,8 +29,9 @@ const PanelOutputSection: FC<Props> = ({
   handleStructureOutputEnableChange,
   handleStructureOutputChange,
 }) => {
-  const { t } = useTranslation()
+  const structuredLabelId = React.useId()
 
+  const { t } = useTranslation(['app', 'workflow'])
   return (
     <>
       <Split />
@@ -40,29 +41,34 @@ const PanelOutputSection: FC<Props> = ({
         operations={
           <div className="mr-4 flex shrink-0 items-center">
             {!isModelSupportStructuredOutput && !!inputs.structured_output_enabled && (
-              <Infotip
-                aria-label={t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
-                iconVariant="warning"
-                iconSize="large"
-                className="mr-1 text-text-warning-secondary"
-                popupClassName="w-58"
-              >
-                <div className="title-xs-semi-bold text-text-primary">
-                  {t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
-                </div>
-                <div className="mt-1">
-                  {t(($) => $['structOutput.modelNotSupportedTip'], { ns: 'app' })}
-                </div>
+              <Infotip>
+                <InfotipTrigger
+                  aria-label={t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
+                  iconVariant="warning"
+                  iconSize="large"
+                  className="mr-1 text-text-warning-secondary"
+                />
+                <InfotipContent className="w-58">
+                  <InfotipTitle className="title-xs-semi-bold text-text-primary">
+                    {t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
+                  </InfotipTitle>
+                  <div className="mt-1">
+                    {t(($) => $['structOutput.modelNotSupportedTip'], { ns: 'app' })}
+                  </div>
+                </InfotipContent>
               </Infotip>
             )}
-            <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">
+            <div
+              id={structuredLabelId}
+              className="mr-0.5 system-xs-medium-uppercase text-text-tertiary"
+            >
               {t(($) => $['structOutput.structured'], { ns: 'app' })}
             </div>
-            <Infotip
-              aria-label={t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
-              popupClassName="w-[150px]"
-            >
-              {t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={structuredLabelId} />
+              <InfotipContent aria-labelledby={structuredLabelId} className="w-37.5">
+                {t(($) => $['structOutput.structuredTip'], { ns: 'app' })}
+              </InfotipContent>
             </Infotip>
             <Switch
               className="ml-2"

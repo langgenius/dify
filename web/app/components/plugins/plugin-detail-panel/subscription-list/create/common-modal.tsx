@@ -40,7 +40,7 @@ export const CommonCreateModal = ({ open = true, onClose, createType, builder }:
 }
 
 function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 'open'>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
 
   const {
     currentStep,

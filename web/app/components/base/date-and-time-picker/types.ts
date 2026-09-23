@@ -1,16 +1,20 @@
 import type { PopoverTriggerProps } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 
-export enum ViewType {
-  date = 'date',
-  yearMonth = 'yearMonth',
-  time = 'time',
-}
+export const ViewType = {
+  date: 'date',
+  yearMonth: 'yearMonth',
+  time: 'time',
+} as const
 
-export enum Period {
-  AM = 'AM',
-  PM = 'PM',
-}
+export type ViewType = (typeof ViewType)[keyof typeof ViewType]
+
+export const Period = {
+  AM: 'AM',
+  PM: 'PM',
+} as const
+
+export type Period = (typeof Period)[keyof typeof Period]
 
 type PopoverTriggerRender = Exclude<NonNullable<PopoverTriggerProps['render']>, React.ReactElement>
 type TriggerRenderProps = Parameters<PopoverTriggerRender>[0]

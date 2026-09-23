@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useRouter } from '@/next/navigation'
 import InputCombined from '../edit-metadata-batch/input-combined'
@@ -47,8 +47,10 @@ const InfoGroup: FC<Props> = ({
   onSelect,
   onAdd,
 }) => {
+  const titleId = React.useId()
+
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const { formatTime: formatTimestamp } = useTimestamp()
 
   const handleMangeMetadata = () => {
@@ -62,6 +64,7 @@ const InfoGroup: FC<Props> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1">
             <div
+              id={titleId}
               className={cn(
                 'text-text-secondary',
                 uppercaseTitle ? 'system-xs-semibold-uppercase' : 'system-md-semibold',
@@ -70,8 +73,11 @@ const InfoGroup: FC<Props> = ({
               {title}
             </div>
             {titleTooltip && (
-              <Infotip aria-label={titleTooltip} popupClassName="max-w-[240px]">
-                {titleTooltip}
+              <Infotip>
+                <InfotipTrigger aria-labelledby={titleId} />
+                <InfotipContent aria-labelledby={titleId} className="max-w-60">
+                  {titleTooltip}
+                </InfotipContent>
               </Infotip>
             )}
           </div>

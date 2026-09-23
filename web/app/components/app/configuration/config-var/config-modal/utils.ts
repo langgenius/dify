@@ -91,6 +91,11 @@ export const updatePayloadField = (payload: InputVar, key: string, value: unknow
 
 export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
   return produce(payload, (draft) => {
+    const fileInputTypes: readonly InputVarType[] = [
+      InputVarType.singleFile,
+      InputVarType.multiFiles,
+    ]
+
     draft.type = type
     if (type === InputVarType.select) draft.default = undefined
     if (isStringInputType(type) && typeof draft.default === 'number')
@@ -103,7 +108,7 @@ export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
       draft.default = Number.isFinite(value) ? value : undefined
     }
 
-    if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
+    if (fileInputTypes.includes(type)) {
       draft.hide = false
       const fileUploadSettingKeys = Object.keys(DEFAULT_FILE_UPLOAD_SETTING) as Array<
         keyof typeof DEFAULT_FILE_UPLOAD_SETTING
@@ -178,10 +183,10 @@ export const validateConfigModalPayload = ({
   maxFileUploadLimit,
   t: rawTranslate,
 }: ValidateConfigModalPayloadOptions): ValidateConfigModalPayloadResult => {
+  const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
+
   const t = getStringSelectorTranslate(rawTranslate)
-  const normalizedTempPayload = [InputVarType.singleFile, InputVarType.multiFiles].includes(
-    tempPayload.type,
-  )
+  const normalizedTempPayload = fileInputTypes.includes(tempPayload.type)
     ? {
         ...tempPayload,
         hide: false,
@@ -250,7 +255,7 @@ export const validateConfigModalPayload = ({
     }
   }
 
-  if ([InputVarType.singleFile, InputVarType.multiFiles].includes(normalizedTempPayload.type)) {
+  if (fileInputTypes.includes(normalizedTempPayload.type)) {
     if (!normalizedTempPayload.allowed_file_types?.length) {
       return {
         errorField: 'allowed_file_types',

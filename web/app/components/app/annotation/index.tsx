@@ -16,7 +16,6 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { toast } from '@/app/notifications'
@@ -51,7 +50,7 @@ type Props = Readonly<{
 
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
@@ -185,7 +184,10 @@ const Annotation: FC<Props> = (props) => {
                     'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2',
                   )}
                 >
-                  <MessageFast className="size-4 text-util-colors-indigo-indigo-600" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-solid-communication-message-fast size-4 text-util-colors-indigo-indigo-600"
+                  />
                   <div className="system-sm-medium text-text-primary">
                     {t(($) => $.name, { ns: 'appAnnotation' })}
                   </div>

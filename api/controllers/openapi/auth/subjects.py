@@ -1,4 +1,4 @@
-"""`TokenType` in `libs/oauth_bearer` owns the mint-time facts (prefix, subject,
+"""`TokenType` in `constants/oauth_bearer` owns the mint-time facts (prefix, subject,
 scopes); a `Subject` owns the request-time behaviour, so `libs/` never has to
 import the auth layer.
 """
@@ -12,15 +12,16 @@ from typing import ClassVar, override
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
+from constants.oauth_bearer import Scope, SubjectType
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import ExternalIdentity
 from controllers.openapi.auth.loaders import load_app, load_workspace, route_has_app
-from libs.oauth_bearer import AuthContext, Scope, SubjectType
+from extensions.ext_application_services import application_services
+from libs.oauth_bearer import AuthContext
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser
 from services.account_service import AccountService
-from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 _SUBJECT_CLASSES: dict[SubjectType, type[Subject]] = {}
@@ -123,7 +124,7 @@ class ExternalSsoSubject(Subject):
         identity = self.external_identity
         if identity is None:
             raise Unauthorized("missing context for external user resolution")
-        return EndUserService.get_or_create_end_user_by_type(
+        return application_services().app_scoped_end_users.commands.get_or_create_end_user_by_type(
             EndUserType.OPENAPI,
             tenant_id=str(load_workspace(ctx).id),
             app_id=str(load_app(ctx).id),

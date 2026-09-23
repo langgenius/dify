@@ -171,12 +171,11 @@ describe('Billing Page + Plan Integration', () => {
       render(<PlanComp loc="test" />)
 
       const quotaCard = screen.getByRole('group', { name: /usagePage\.teamMembers/i })
-      const quotaLabel = within(quotaCard).getByText(/usagePage\.teamMembers/i)
-      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+      const quotaLabel = within(quotaCard).getByRole('term')
+      const quotaValue = within(quotaCard).getByRole('definition')
 
-      expect(quotaLabel.tagName).toBe('DT')
-      expect(quotaValue.tagName).toBe('DD')
-      expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
+      expect(quotaLabel.textContent).toMatch(/usagePage\.teamMembers/i)
+      expect(quotaValue.textContent).toMatch(/3\s*\/\s*5/)
     })
 
     it('should display unknown vector space usage as a placeholder', () => {
@@ -188,7 +187,7 @@ describe('Billing Page + Plan Integration', () => {
       render(<PlanComp loc="test" />, {}, true)
 
       const quotaCard = screen.getByRole('group', { name: /usagePage\.vectorSpace/i })
-      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+      const quotaValue = within(quotaCard).getByRole('definition')
       expect(quotaValue).toHaveTextContent('--')
       expect(quotaValue).not.toHaveTextContent('< 50')
     })
@@ -662,7 +661,7 @@ describe('PriorityLabel Integration', () => {
     await user.click(
       screen.getByRole('button', { name: /plansCommon\.documentProcessingPriority$/i }),
     )
-    expect(await screen.findByRole('dialog')).toHaveTextContent(
+    expect((await screen.findByRole('dialog')).textContent).toMatch(
       /plansCommon\.documentProcessingPriorityTip/i,
     )
   })

@@ -84,7 +84,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   onBuiltInEnabledChange,
   onAddDocument,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetDocuments'])
   const docLink = useDocLink()
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
 

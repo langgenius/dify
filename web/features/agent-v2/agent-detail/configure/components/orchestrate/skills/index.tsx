@@ -125,7 +125,7 @@ function WorkspaceSkillRow({
   selected: boolean
   skill: SkillResponse
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const cannotAdd = unavailable || isAdded || isPending
 
   return (
@@ -163,7 +163,7 @@ function WorkspaceSkillRow({
 }
 
 function WorkspaceSkillPreview({ skill }: { skill?: SkillResponse }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   if (!skill) {
     return (
@@ -213,7 +213,7 @@ function WorkspaceSkillSelector({
   isBindingPending: boolean
   onSelect: (skill: SkillResponse) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [keyword, setKeyword] = useState('')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [previewSkillId, setPreviewSkillId] = useState<string | undefined>(undefined)
@@ -353,7 +353,7 @@ function WorkspaceAgentSkillItem({
   skill: AgentSkillBindingItemResponse
   onRemove: (skillId: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isRemoveHighlighted, setIsRemoveHighlighted] = useState(false)
@@ -454,10 +454,10 @@ function WorkspaceAgentSkillItem({
 }
 
 export function AgentSkills() {
-  const { t } = useTranslation('agentV2')
-  const { t: tSkill } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
-  const skillsTip = t(($) => $['agentDetail.configure.skills.tip'])
+  const { t } = useTranslation(['agentV2'])
+  const { t: tSkill } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
+
   const skillsListId = 'agent-configure-skills-list'
   const queryClient = useQueryClient()
   const readOnly = useAgentOrchestrateReadOnly()
@@ -714,7 +714,6 @@ export function AgentSkills() {
         buildDraftChangeSection="skills"
         panelId={skillsListId}
         tip={<AgentConfigureTipContent type="skills" />}
-        tipAriaLabel={skillsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={

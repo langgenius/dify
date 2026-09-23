@@ -1,4 +1,5 @@
 'use client'
+
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { TriggerEvent } from '@/app/components/plugins/types'
@@ -29,7 +30,7 @@ type EventDetailDrawerProps = {
   onClose: () => void
 }
 
-const getType = (type: string, t: TFunction) => {
+const getType = (type: string, t: TFunction<['tools']>) => {
   if (type === 'number-input') return t(($) => $['setBuiltInTools.number'], { ns: 'tools' })
   if (type === 'text-input') return t(($) => $['setBuiltInTools.string'], { ns: 'tools' })
   if (type === 'checkbox') return 'boolean'
@@ -67,7 +68,7 @@ const convertSchemaToField = (schema: any): any => {
 export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
   const { eventInfo, providerInfo, onClose } = props
   const language = useLanguage()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools', 'common', 'plugin', 'pluginTrigger'])
   const parametersSchemas = triggerEventParametersToFormSchemas(eventInfo.parameters)
 
   // Convert output_schema properties to array for direct rendering

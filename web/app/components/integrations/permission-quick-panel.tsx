@@ -28,7 +28,7 @@ const permissionOptionCardClassName = cn(
 )
 
 export function PermissionQuickPanel({ permission, onChange }: PermissionQuickPanelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const rows: Array<{
     key: PermissionSettingKey
     label: string

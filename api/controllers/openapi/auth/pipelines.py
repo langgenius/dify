@@ -4,12 +4,14 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Any, ClassVar, override
 
-from flask import current_app
+from flask import current_app, request
 from flask_login import user_logged_in
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.openapi._catalog import CATALOG_HEADER, current_catalog
+from controllers.openapi._errors import CatalogStale
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
@@ -59,8 +61,25 @@ def pipeline_for_subject(subject: Subject) -> Pipeline:
     return _PIPELINES[type(subject)]
 
 
+class _RequiresCurrentCatalog(Requirement):
+    """The client names the catalog it built the request from, and a request
+    built from any other catalog - or from none - is refused before a handler
+    runs, so a tampered or stale local copy can never pick the route. Fixed on
+    every pipeline rather than declared per route, so no endpoint can leave it
+    out; `_catalog` and `_version` are unguarded and stay reachable to recover.
+    """
+
+    rank = Rank.FIRST
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        _, fingerprint = current_catalog()
+        if request.headers.get(CATALOG_HEADER) != fingerprint:
+            raise CatalogStale()
+
+
 class AccountPipeline(Pipeline, serves=AccountSubject):
-    fixed = (ResolveCaller(),)
+    fixed = (_RequiresCurrentCatalog(), ResolveCaller())
 
 
 class _RequiresEnterprise(Requirement):
@@ -80,6 +99,7 @@ class _RequiresEnterprise(Requirement):
 
 class ExternalSsoPipeline(Pipeline, serves=ExternalSsoSubject):
     fixed = (
+        _RequiresCurrentCatalog(),
         _RequiresEnterprise(),
         ResolveCaller(),
     )

@@ -146,7 +146,7 @@ const Chat: FC<ChatProps> = ({
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'appDebug'])
   const responseStatusRef = useRef<HTMLDivElement>(null)
   const wasRespondingRef = useRef(false)
   const hasAgentContent = !!renderAgentContent

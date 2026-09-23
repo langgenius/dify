@@ -2,10 +2,10 @@ import type { LabelProps } from '../label'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { TransferMethod } from '@/types/app'
 import { useFieldContext } from '../..'
 
@@ -16,7 +16,9 @@ type UploadMethodFieldProps = {
 }
 
 const UploadMethodField = ({ label, labelOptions, className }: UploadMethodFieldProps) => {
-  const { t } = useTranslation()
+  const labelId = useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const field = useFieldContext<TransferMethod[]>()
 
   const { value } = field.state
@@ -60,7 +62,7 @@ const UploadMethodField = ({ label, labelOptions, className }: UploadMethodField
         }
       >
         <div className="flex h-6 items-center">
-          <FieldsetLegend className={cn('mb-0 py-0', labelOptions?.className)}>
+          <FieldsetLegend id={labelId} className={cn('mb-0 py-0', labelOptions?.className)}>
             {label}
           </FieldsetLegend>
           {!labelOptions?.isRequired && labelOptions?.showOptional && (
@@ -72,12 +74,11 @@ const UploadMethodField = ({ label, labelOptions, className }: UploadMethodField
             <span className="ml-1 system-xs-regular text-text-destructive-secondary">*</span>
           )}
           {labelOptions?.tooltip && (
-            <Infotip
-              aria-label={labelOptions.tooltip}
-              className="ml-0.5 size-4"
-              popupClassName="w-[200px]"
-            >
-              {labelOptions.tooltip}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+              <InfotipContent aria-labelledby={labelId} className="w-50">
+                {labelOptions.tooltip}
+              </InfotipContent>
             </Infotip>
           )}
         </div>

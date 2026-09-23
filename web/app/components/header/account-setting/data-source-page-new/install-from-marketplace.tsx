@@ -24,7 +24,7 @@ const InstallFromMarketplace = ({
   providers,
   searchText,
 }: InstallFromMarketplaceProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const { theme } = useTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)

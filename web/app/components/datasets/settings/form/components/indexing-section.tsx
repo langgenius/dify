@@ -57,7 +57,12 @@ const IndexingSection = ({
   showMultiModalTip,
   readonly = false,
 }: IndexingSectionProps) => {
-  const { t } = useTranslation()
+  const embeddingChunkingModes: readonly ChunkingMode[] = [
+    ChunkingMode.text,
+    ChunkingMode.parentChild,
+  ]
+
+  const { t } = useTranslation(['datasetSettings'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -77,9 +82,7 @@ const IndexingSection = ({
 
   const showSummaryIndexSetting =
     indexMethod === IndexingType.QUALIFIED &&
-    [ChunkingMode.text, ChunkingMode.parentChild].includes(
-      currentDataset?.doc_form as ChunkingMode,
-    ) &&
+    embeddingChunkingModes.includes(currentDataset?.doc_form as ChunkingMode) &&
     isNonCloudEdition
 
   return (

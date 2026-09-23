@@ -16,7 +16,7 @@ import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useStore } from '../store'
 
 const VariableInspectTrigger: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
 
   const showVariableInspectPanel = useStore((s) => s.showVariableInspectPanel)
