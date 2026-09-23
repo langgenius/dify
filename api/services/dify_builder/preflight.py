@@ -320,13 +320,47 @@ def _withheld_args(intent: MutationIntent) -> dict:
     covers. These args are model-authored today, so nothing stored can ride
     along; redacting anyway costs one dict copy and means a future path that
     round-trips a real node's data through an intent cannot re-open the leak.
+
+    Two passes, because a ``set_node_config`` carries its value in two
+    different shapes. The first treats ``value``/``config`` as a whole node
+    ``data``, which is what ``create_node`` and ``insert_between`` send. The
+    second treats it as the value at the intent's own ``path``, which is what
+    ``set_node_config`` sends: ``path="headers"`` with a header LINE, or
+    ``path="authorization"`` with the auth block itself, is not node-data-shaped
+    and the first pass walks straight past it.
     """
     args = dict(intent.args)
     for key in ("config", "value"):
         carried = args.get(key)
         if isinstance(carried, dict):
             args[key] = credentials.redact_node_config(carried)
+    path = args.get("path")
+    if "value" in args and isinstance(path, str) and path:
+        args["value"] = _redacted_at_path(path, args["value"])
     return args
+
+
+def _redacted_at_path(path: str, value: Any) -> Any:
+    """``value`` redacted as if it were sitting at ``path`` inside a node's
+    ``data``.
+
+    Wraps the value back up in the nesting its path describes, runs the ONE
+    redaction profile over the result and unwraps it again -- so
+    ``credentials`` stays the single definition of what a credential is, and a
+    field it learns about later is covered here for free. A path that names
+    nothing credential-shaped comes back byte-identical, which matters: this
+    value is what the corrective re-prompt tells the model to correct.
+    """
+    segments = path.split(".")
+    wrapped: Any = value
+    for segment in reversed(segments):
+        wrapped = {segment: wrapped}
+    unwrapped: Any = credentials.redact_node_config(wrapped)
+    for segment in segments:
+        if not isinstance(unwrapped, Mapping) or segment not in unwrapped:
+            return value
+        unwrapped = unwrapped[segment]
+    return unwrapped
 
 
 _AGGREGATOR_NODE_TYPE = "variable-aggregator"
