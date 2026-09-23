@@ -14,7 +14,7 @@ file uploader, CLI, or `bundle-content` API mode with base64 content in `yaml_co
 
 ## Manifest structure
 
-The manifest version is independent of the app DSL version (`0.8.0`). Resource and relationship kinds
+The manifest version is independent of the app DSL version (`0.7.0`). Resource and relationship kinds
 identify their schemas; application-specific configuration stays in the individual DSL files.
 
 ```yaml
@@ -59,7 +59,7 @@ workspace IDs. Each app file also contains its own `bundle_id`, matching its res
 `apps/app_1.yaml`, for example, starts with:
 
 ```yaml
-version: 0.8.0
+version: 0.7.0
 kind: app
 bundle_id: app_1
 app:
