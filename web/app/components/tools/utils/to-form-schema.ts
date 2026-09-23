@@ -14,7 +14,7 @@ type FormValueInput = {
 type ToolFormOption = {
   label: TypeWithI18N
   value: string
-  show_on: { variable: string, value: string }[]
+  show_on: { variable: string; value: string }[]
   children?: ToolFormOption[]
 }
 

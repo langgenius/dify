@@ -329,18 +329,6 @@ export const zParserDynamicOptionsWithCredentials = z.object({
 })
 
 /**
- * ParserDynamicTreeOptions
- */
-export const zParserDynamicTreeOptions = z.object({
-  action: z.string(),
-  credential_id: z.string().nullish(),
-  parameter: z.string(),
-  parameter_values: z.string().nullish(),
-  plugin_id: z.string(),
-  provider: z.string(),
-})
-
-/**
  * PluginReadmeResponse
  */
 export const zPluginReadmeResponse = z.object({
@@ -3902,7 +3890,6 @@ export const zAgentStrategyParameter = z.object({
   label: zI18nObject,
   max: z.union([z.number(), z.int()]).nullish(),
   min: z.union([z.number(), z.int()]).nullish(),
-  multiple: z.boolean().optional().default(false),
   name: z.string(),
   options: z.array(zPluginParameterOption).optional(),
   placeholder: zI18nObject.nullish(),
@@ -4845,15 +4832,20 @@ export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentials
 export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse =
   zPluginDynamicOptionsResponse
 
-export const zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsBody = zParserDynamicTreeOptions
+export const zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsQuery = z.object({
+  action: z.string(),
+  credential_id: z.string().optional(),
+  parameter: z.string(),
+  parameter_values: z.string().optional(),
+  plugin_id: z.string(),
+  provider: z.string(),
+})
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsResponse =
+  zPluginDynamicOptionsResponse
 
 export const zPostWorkspacesCurrentPluginPermissionChangeBody = zParserPermissionChange
 

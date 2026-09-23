@@ -12,8 +12,9 @@ import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../var-reference-picker'
 
-const { mockFetchDynamicOptions } = vi.hoisted(() => ({
+const { mockFetchDynamicOptions, mockFetchDynamicTreeOptions } = vi.hoisted(() => ({
   mockFetchDynamicOptions: vi.fn(),
+  mockFetchDynamicTreeOptions: vi.fn(),
 }))
 
 vi.mock('@/service/use-plugins', () => ({
@@ -21,7 +22,7 @@ vi.mock('@/service/use-plugins', () => ({
     mutateAsync: mockFetchDynamicOptions,
   }),
   useFetchDynamicTreeOptions: () => ({
-    mutateAsync: vi.fn(),
+    mutateAsync: mockFetchDynamicTreeOptions,
   }),
 }))
 
@@ -150,6 +151,7 @@ describe('VarReferencePicker branches', () => {
     resetFixtureCounters()
     vi.clearAllMocks()
     mockFetchDynamicOptions.mockResolvedValue({ options: [] as FormOption[] })
+    mockFetchDynamicTreeOptions.mockResolvedValue({ options: [] as FormOption[] })
   })
 
   it('should toggle a custom trigger and call onOpen when opening the popup', async () => {

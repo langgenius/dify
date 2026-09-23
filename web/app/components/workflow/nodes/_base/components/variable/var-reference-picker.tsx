@@ -341,14 +341,17 @@ const VarReferencePicker: FC<Props> = ({
     const v = (schema as CredentialFormSchemaSelect)?.variable ?? ''
     return `${currentTool?.name ?? ''}|${currentProvider?.name ?? ''}|${v}`
   }, [schema, currentTool?.name, currentProvider?.name])
-  const [dynamicOptionsLazyKeyTracker, setDynamicOptionsLazyKeyTracker] = useState(dynamicOptionsLazyResetKey)
+  const [dynamicOptionsLazyKeyTracker, setDynamicOptionsLazyKeyTracker] = useState(
+    dynamicOptionsLazyResetKey,
+  )
   if (isPluginLazyDynamicSchema && dynamicOptionsLazyResetKey !== dynamicOptionsLazyKeyTracker) {
     setDynamicOptionsLazyKeyTracker(dynamicOptionsLazyResetKey)
     setDynamicOptions(null)
   }
-  const providerCredentialId = currentProvider && 'credential_id' in currentProvider
-    ? currentProvider.credential_id
-    : undefined
+  const providerCredentialId =
+    currentProvider && 'credential_id' in currentProvider
+      ? currentProvider.credential_id
+      : undefined
   const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions({
     plugin_id: currentProvider?.plugin_id || '',
     provider: currentProvider?.name || '',
@@ -368,20 +371,17 @@ const VarReferencePicker: FC<Props> = ({
   })
 
   const handleFetchPluginDynamicFormOptions = useCallback(async () => {
-    if (!isPluginLazyDynamicSchema || !currentTool || !currentProvider)
-      return
+    if (!isPluginLazyDynamicSchema || !currentTool || !currentProvider) return
     setIsLoading(true)
     try {
       if (isPluginDynamicSelectSchema) {
         const data = await fetchDynamicOptions()
         setDynamicOptions(data?.options || [])
-      }
-      else if (isPluginDynamicTreeSelectSchema) {
+      } else if (isPluginDynamicTreeSelectSchema) {
         const data = await fetchDynamicTreeOptions()
         setDynamicOptions(data?.options || [])
       }
-    }
-    finally {
+    } finally {
       setIsLoading(false)
     }
   }, [
@@ -395,21 +395,30 @@ const VarReferencePicker: FC<Props> = ({
   ])
 
   useEffect(() => {
-    if (!isPluginLazyDynamicSchema || !currentTool || !currentProvider)
-      return
+    if (!isPluginLazyDynamicSchema || !currentTool || !currentProvider) return
     void handleFetchPluginDynamicFormOptions()
-  }, [
-    isPluginLazyDynamicSchema,
-    currentTool,
-    currentProvider,
-    handleFetchPluginDynamicFormOptions,
-  ])
+  }, [isPluginLazyDynamicSchema, currentTool, currentProvider, handleFetchPluginDynamicFormOptions])
 
-  const handlePluginDynamicConstantOpen = useCallback((open: boolean) => {
-    if (!open || !dynamicSelectLazy || !isPluginLazyDynamicSchema || !currentTool || !currentProvider)
-      return
-    void handleFetchPluginDynamicFormOptions()
-  }, [dynamicSelectLazy, isPluginLazyDynamicSchema, currentTool, currentProvider, handleFetchPluginDynamicFormOptions])
+  const handlePluginDynamicConstantOpen = useCallback(
+    (open: boolean) => {
+      if (
+        !open ||
+        !dynamicSelectLazy ||
+        !isPluginLazyDynamicSchema ||
+        !currentTool ||
+        !currentProvider
+      )
+        return
+      void handleFetchPluginDynamicFormOptions()
+    },
+    [
+      dynamicSelectLazy,
+      isPluginLazyDynamicSchema,
+      currentTool,
+      currentProvider,
+      handleFetchPluginDynamicFormOptions,
+    ],
+  )
 
   const schemaWithDynamicSelect = useMemo(() => {
     if (!isPluginLazyDynamicSchema)
@@ -424,11 +433,13 @@ const VarReferencePicker: FC<Props> = ({
 
     if (isLoading && value) {
       if (typeof value === 'string' && value) {
-        const preservedOptions = [{
-          value,
-          label: { en_US: value, zh_Hans: value },
-          show_on: [],
-        }]
+        const preservedOptions = [
+          {
+            value,
+            label: { en_US: value, zh_Hans: value },
+            show_on: [],
+          },
+        ]
         return {
           ...schema,
           options: preservedOptions,
@@ -437,7 +448,7 @@ const VarReferencePicker: FC<Props> = ({
       if (Array.isArray(value) && value.length) {
         const preservedOptions = value
           .filter((v): v is string => typeof v === 'string' && v.length > 0)
-          .map(v => ({
+          .map((v) => ({
             value: v,
             label: { en_US: v, zh_Hans: v },
             show_on: [],

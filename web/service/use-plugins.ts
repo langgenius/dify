@@ -5,6 +5,7 @@ import type {
   PluginEntity,
   PluginInstallationItemResponse,
   PluginListResponse,
+  PluginParameterOption,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   PluginInfoFromMarketPlace,
@@ -48,7 +49,7 @@ import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
 // oxlint-disable-next-line no-restricted-imports
@@ -1463,11 +1464,14 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     if (isRefetching) return
 
     const lastData = cloneDeep(data)
-    const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
-    const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
-    const categoryManifest = category && Object.values(PluginCategoryEnum).includes(category as PluginCategoryEnum)
-      ? ({ category: category as PluginCategoryEnum } as unknown as PluginDeclaration)
-      : undefined
+    const taskDone = lastData?.tasks.every(
+      (task) => task.status === TaskStatus.success || task.status === TaskStatus.failed,
+    )
+    const taskAllFailed = lastData?.tasks.every((task) => task.status === TaskStatus.failed)
+    const categoryManifest =
+      category && Object.values(PluginCategoryEnum).includes(category as PluginCategoryEnum)
+        ? ({ category: category as PluginCategoryEnum } as unknown as PluginDeclaration)
+        : undefined
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
       refreshPluginList(categoryManifest, !categoryManifest)
   }, [isRefetching, data, refreshPluginList, category])
@@ -1566,14 +1570,16 @@ export const useFetchDynamicOptions = (params: FetchPluginDynamicOptionsParams) 
         parameter,
         provider_type,
       }
-      if (credential_id)
-        query.credential_id = credential_id
+      if (credential_id) query.credential_id = credential_id
       if (parameter_values && Object.keys(parameter_values).length > 0)
         query.parameter_values = JSON.stringify(parameter_values)
 
-      return get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
-        params: query,
-      })
+      return get<{ options: FormOption[] }>(
+        '/workspaces/current/plugin/parameters/dynamic-options',
+        {
+          params: query,
+        },
+      )
     },
   })
 }
@@ -1587,32 +1593,40 @@ type FetchPluginDynamicTreeOptionsParams = {
   parameter_values?: Record<string, unknown>
 }
 
+const toTreeFormOption = (option: PluginParameterOption): FormOption => ({
+  value: option.value,
+  label: {
+    en_US: option.label.en_US,
+    zh_Hans: option.label.zh_Hans ?? option.label.en_US,
+    ...(option.label.ja_JP ? { ja_JP: option.label.ja_JP } : {}),
+    ...(option.label.pt_BR ? { pt_BR: option.label.pt_BR } : {}),
+  },
+  show_on: [],
+  icon: option.icon ?? undefined,
+  children: option.children?.map(toTreeFormOption),
+})
+
 export const useFetchDynamicTreeOptions = (params: FetchPluginDynamicTreeOptionsParams) => {
-  const {
-    plugin_id,
-    provider,
-    action,
-    parameter,
-    credential_id,
-    parameter_values,
-  } = params
+  const { plugin_id, provider, action, parameter, credential_id, parameter_values } = params
 
   return useMutation({
     mutationFn: () => {
-      const query: Record<string, string> = {
+      const query = {
         plugin_id,
         provider,
         action,
         parameter,
+        ...(credential_id ? { credential_id } : {}),
+        ...(parameter_values && Object.keys(parameter_values).length > 0
+          ? { parameter_values: JSON.stringify(parameter_values) }
+          : {}),
       }
-      if (credential_id)
-        query.credential_id = credential_id
-      if (parameter_values && Object.keys(parameter_values).length > 0)
-        query.parameter_values = JSON.stringify(parameter_values)
 
-      return get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-tree-options', {
-        params: query,
-      })
+      return consoleClient.workspaces.current.plugin.parameters.dynamicTreeOptions
+        .get({ query })
+        .then(({ options }) => ({
+          options: options.map(toTreeFormOption),
+        }))
     },
   })
 }

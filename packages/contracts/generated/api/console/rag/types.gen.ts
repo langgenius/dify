@@ -642,7 +642,6 @@ export type DatasourceParameter = {
   label: I18nObject
   max?: number | number | null
   min?: number | number | null
-  multiple?: boolean
   name: string
   options?: Array<PluginParameterOption>
   placeholder?: I18nObject | null

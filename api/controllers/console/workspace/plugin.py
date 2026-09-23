@@ -205,7 +205,7 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
     parameter_values: Mapping[str, Any] | None = None
 
 
-class ParserDynamicTreeOptions(BaseModel):
+class PluginDynamicTreeOptionsQuery(BaseModel):
     plugin_id: str
     provider: str
     action: str
@@ -444,7 +444,7 @@ register_schema_models(
     ParserPermissionChange,
     ParserDynamicOptions,
     ParserDynamicOptionsWithCredentials,
-    ParserDynamicTreeOptions,
+    PluginDynamicTreeOptionsQuery,
     ParserAutoUpgradeChange,
     ParserAutoUpgradeFetch,
     ParserExcludePlugin,
@@ -1224,7 +1224,8 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/parameters/dynamic-tree-options")
 class PluginFetchDynamicTreeSelectOptionsApi(Resource):
-    @console_ns.expect(console_ns.models[ParserDynamicTreeOptions.__name__])
+    @console_ns.doc(params=query_params_from_model(PluginDynamicTreeOptionsQuery))
+    @console_ns.response(200, "Success", console_ns.models[PluginDynamicOptionsResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -1233,7 +1234,7 @@ class PluginFetchDynamicTreeSelectOptionsApi(Resource):
         current_user, tenant_id = current_account_with_tenant()
         user_id = current_user.id
 
-        args = ParserDynamicTreeOptions.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = PluginDynamicTreeOptionsQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             parameter_values = _parse_parameter_values_query(args.parameter_values)

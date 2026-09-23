@@ -354,8 +354,14 @@ const VarReferencePickerTrigger: FC<Props> = ({
               <ConstantField
                 value={
                   schemaWithDynamicSelect?.type === FormTypeEnum.dynamicTreeSelect
-                    ? (Array.isArray(value) ? value : (typeof value === 'string' ? value : ''))
-                    : (typeof value === 'string' ? value : '')
+                    ? Array.isArray(value)
+                      ? value
+                      : typeof value === 'string'
+                        ? value
+                        : ''
+                    : typeof value === 'string'
+                      ? value
+                      : ''
                 }
                 onChange={
                   onChange as (

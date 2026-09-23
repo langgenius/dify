@@ -10951,17 +10951,22 @@ Returns permission flags that control workspace features like member invitations
 | 200 | Success | **application/json**: [PluginDynamicOptionsResponse](#plugindynamicoptionsresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/parameters/dynamic-tree-options
-#### Request Body
+#### Parameters
 
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ParserDynamicTreeOptions](#parserdynamictreeoptions)<br> |
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| action | query |  | Yes | string |
+| credential_id | query |  | No | string |
+| parameter | query |  | Yes | string |
+| parameter_values | query |  | No | string |
+| plugin_id | query |  | Yes | string |
+| provider | query |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDynamicOptionsResponse](#plugindynamicoptionsresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/permission/change
 #### Request Body
@@ -15311,7 +15316,6 @@ Inherits from ToolIdentity, without any additional fields.
 | label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
 | max | number<br>integer |  | No |
 | min | number<br>integer |  | No |
-| multiple | boolean |  | No |
 | name | string | The name of the parameter | Yes |
 | options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
 | placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |
@@ -17984,7 +17988,6 @@ Overrides type
 | label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
 | max | number<br>integer |  | No |
 | min | number<br>integer |  | No |
-| multiple | boolean |  | No |
 | name | string | The name of the parameter | Yes |
 | options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
 | placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |
@@ -20852,17 +20855,6 @@ Enum class for parameter type.
 | plugin_id | string |  | Yes |
 | provider | string |  | Yes |
 
-#### ParserDynamicTreeOptions
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| action | string |  | Yes |
-| credential_id | string |  | No |
-| parameter | string |  | Yes |
-| parameter_values | string |  | No |
-| plugin_id | string |  | Yes |
-| provider | string |  | Yes |
-
 #### ParserEnable
 
 | Name | Type | Description | Required |
@@ -21394,6 +21386,17 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | options | [ [PluginParameterOption](#pluginparameteroption) ] |  | Yes |
+
+#### PluginDynamicTreeOptionsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | Yes |
+| credential_id | string |  | No |
+| parameter | string |  | Yes |
+| parameter_values | string |  | No |
+| plugin_id | string |  | Yes |
+| provider | string |  | Yes |
 
 #### PluginEntity
 
@@ -23794,7 +23797,7 @@ Tool-specific parameter declaration and invocation-value normalization.
 | llm_description | string |  | No |
 | max | number<br>integer |  | No |
 | min | number<br>integer |  | No |
-| multiple | boolean | Whether the parameter is multiple select, only valid for select or dynamic-select type | No |
+| multiple | boolean | Whether the select, dynamic-select, or dynamic-tree-select parameter accepts multiple values | No |
 | name | string | The name of the parameter | Yes |
 | options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
 | placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |

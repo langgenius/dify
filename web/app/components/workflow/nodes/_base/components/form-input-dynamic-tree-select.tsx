@@ -27,12 +27,10 @@ const getOptionLabel = (option: FormOption, language: string) =>
 
 const findNodeByValue = (options: FormOption[], value: string): FormOption | undefined => {
   for (const option of options) {
-    if (option.value === value)
-      return option
+    if (option.value === value) return option
     if (option.children?.length) {
       const target = findNodeByValue(option.children, value)
-      if (target)
-        return target
+      if (target) return target
     }
   }
   return undefined
@@ -50,9 +48,8 @@ const collectExpandableValues = (options: FormOption[]): string[] => {
 }
 
 const normalizeValues = (value?: string[]) => {
-  if (!value?.length)
-    return []
-  return [...new Set(value.filter(item => typeof item === 'string' && item))]
+  if (!value?.length) return []
+  return [...new Set(value.filter((item) => typeof item === 'string' && item))]
 }
 
 type TreeNodeProps = {
@@ -88,21 +85,23 @@ const TreeNode: FC<TreeNodeProps> = ({
         )}
         style={{ paddingLeft: `${8 + level * 16}px` }}
       >
-        {hasChildren
-          ? (
-              <button
-                type="button"
-                aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                aria-expanded={isExpanded}
-                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-text-tertiary hover:text-text-secondary"
-                onClick={() => toggleExpand(option.value)}
-              >
-                {isExpanded ? <RiArrowDownSLine className="h-4 w-4" /> : <RiArrowRightSLine className="h-4 w-4" />}
-              </button>
-            )
-          : (
-              <span aria-hidden className="inline-block h-4 w-4 shrink-0" />
+        {hasChildren ? (
+          <button
+            type="button"
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            aria-expanded={isExpanded}
+            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-text-tertiary hover:text-text-secondary"
+            onClick={() => toggleExpand(option.value)}
+          >
+            {isExpanded ? (
+              <RiArrowDownSLine className="h-4 w-4" />
+            ) : (
+              <RiArrowRightSLine className="h-4 w-4" />
             )}
+          </button>
+        ) : (
+          <span aria-hidden className="inline-block h-4 w-4 shrink-0" />
+        )}
         <button
           type="button"
           role="option"
@@ -110,25 +109,25 @@ const TreeNode: FC<TreeNodeProps> = ({
           className="flex min-w-0 grow items-center gap-2 text-left"
           onClick={() => onSelect(option.value)}
         >
-          {option.icon && (
-            <img src={option.icon} alt="" className="h-4 w-4 shrink-0" />
-          )}
+          {option.icon && <img src={option.icon} alt="" className="h-4 w-4 shrink-0" />}
           <span className="min-w-0 grow truncate system-sm-regular">{label}</span>
           {isSelected && <RiCheckLine aria-hidden className="h-4 w-4 shrink-0 text-text-accent" />}
         </button>
       </div>
-      {hasChildren && isExpanded && option.children?.map(child => (
-        <TreeNode
-          key={child.value}
-          expandedValues={expandedValues}
-          language={language}
-          level={level + 1}
-          onSelect={onSelect}
-          option={child}
-          selectedValues={selectedValues}
-          toggleExpand={toggleExpand}
-        />
-      ))}
+      {hasChildren &&
+        isExpanded &&
+        option.children?.map((child) => (
+          <TreeNode
+            key={child.value}
+            expandedValues={expandedValues}
+            language={language}
+            level={level + 1}
+            onSelect={onSelect}
+            option={child}
+            selectedValues={selectedValues}
+            toggleExpand={toggleExpand}
+          />
+        ))}
     </div>
   )
 }
@@ -151,27 +150,24 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
   const selectedValueSet = useMemo(() => new Set(selectedValues), [selectedValues])
   const expandedValues = useMemo(() => {
     const expandableValues = collectExpandableValues(options)
-    return new Set(expandableValues.filter(value => !collapsedValues.has(value)))
+    return new Set(expandableValues.filter((value) => !collapsedValues.has(value)))
   }, [collapsedValues, options])
 
   const fallbackPlaceholder = placeholder || t('placeholder.select', { ns: 'common' })
 
   const triggerLabel = useMemo(() => {
-    if (isLoading)
-      return t('dynamicSelect.loading', { ns: 'common' })
+    if (isLoading) return t('dynamicSelect.loading', { ns: 'common' })
 
-    if (!selectedValues.length)
-      return fallbackPlaceholder
+    if (!selectedValues.length) return fallbackPlaceholder
 
     const selectedNodes = selectedValues
-      .map(v => findNodeByValue(options, v))
+      .map((v) => findNodeByValue(options, v))
       .filter((node): node is FormOption => !!node)
 
-    if (!selectedNodes.length)
-      return fallbackPlaceholder
+    if (!selectedNodes.length) return fallbackPlaceholder
 
     if (selectedNodes.length <= 2)
-      return selectedNodes.map(node => getOptionLabel(node, language)).join(', ')
+      return selectedNodes.map((node) => getOptionLabel(node, language)).join(', ')
 
     return t('dynamicSelect.selected', { count: selectedNodes.length, ns: 'common' })
   }, [fallbackPlaceholder, isLoading, language, options, selectedValues, t])
@@ -179,10 +175,8 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
   const toggleExpand = (optionValue: string) => {
     setCollapsedValues((prev) => {
       const next = new Set(prev)
-      if (next.has(optionValue))
-        next.delete(optionValue)
-      else
-        next.add(optionValue)
+      if (next.has(optionValue)) next.delete(optionValue)
+      else next.add(optionValue)
       return next
     })
   }
@@ -190,9 +184,8 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
   const handleSelect = (nextValue: string) => {
     if (multiple) {
       if (selectedValueSet.has(nextValue))
-        onChange(selectedValues.filter(item => item !== nextValue))
-      else
-        onChange([...selectedValues, nextValue])
+        onChange(selectedValues.filter((item) => item !== nextValue))
+      else onChange([...selectedValues, nextValue])
       return
     }
 
@@ -212,7 +205,7 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
     >
       <PopoverTrigger
         disabled={disabled || isLoading}
-        render={(
+        render={
           <button
             type="button"
             className={cn(
@@ -225,48 +218,44 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
                 : 'text-components-input-text-placeholder',
             )}
           >
-            <span className="block min-w-0 grow truncate">
-              {triggerLabel}
-            </span>
+            <span className="block min-w-0 grow truncate">{triggerLabel}</span>
             <span className="absolute inset-y-0 right-0 flex items-center pr-2">
-              {isLoading
-                ? <RiLoader4Line aria-hidden className="h-3.5 w-3.5 animate-spin text-text-secondary" />
-                : (
-                    <ChevronDownIcon
-                      aria-hidden
-                      className="h-4 w-4 text-text-quaternary group-hover/dynamic-tree:text-text-secondary"
-                    />
-                  )}
+              {isLoading ? (
+                <RiLoader4Line
+                  aria-hidden
+                  className="h-3.5 w-3.5 animate-spin text-text-secondary"
+                />
+              ) : (
+                <ChevronDownIcon
+                  aria-hidden
+                  className="h-4 w-4 text-text-quaternary group-hover/dynamic-tree:text-text-secondary"
+                />
+              )}
             </span>
           </button>
-        )}
+        }
       />
-      <PopoverContent
-        sideOffset={4}
-        popupClassName="w-(--anchor-width) max-h-80 overflow-auto p-1"
-      >
-        {!options.length
-          ? (
-              <div className="px-2 py-1.5 system-sm-regular text-text-tertiary">
-                {t('dynamicSelect.noData', { ns: 'common' })}
-              </div>
-            )
-          : (
-              <div role="listbox" aria-multiselectable={multiple ? true : undefined}>
-                {options.map(option => (
-                  <TreeNode
-                    key={option.value}
-                    expandedValues={expandedValues}
-                    language={language}
-                    level={0}
-                    onSelect={handleSelect}
-                    option={option}
-                    selectedValues={selectedValueSet}
-                    toggleExpand={toggleExpand}
-                  />
-                ))}
-              </div>
-            )}
+      <PopoverContent sideOffset={4} popupClassName="w-(--anchor-width) max-h-80 overflow-auto p-1">
+        {!options.length ? (
+          <div className="px-2 py-1.5 system-sm-regular text-text-tertiary">
+            {t('dynamicSelect.noData', { ns: 'common' })}
+          </div>
+        ) : (
+          <div role="listbox" aria-multiselectable={multiple ? true : undefined}>
+            {options.map((option) => (
+              <TreeNode
+                key={option.value}
+                expandedValues={expandedValues}
+                language={language}
+                level={0}
+                onSelect={handleSelect}
+                option={option}
+                selectedValues={selectedValueSet}
+                toggleExpand={toggleExpand}
+              />
+            ))}
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )

@@ -336,7 +336,7 @@ class ToolParameter(PluginParameter):
     type: ToolParameterType = Field(..., description="The type of the parameter")
     multiple: bool = Field(
         default=False,
-        description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
+        description="Whether the select, dynamic-select, or dynamic-tree-select parameter accepts multiple values",
     )
     human_description: I18nObject | None = Field(default=None, description="The description presented to the user")
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
@@ -349,9 +349,10 @@ class ToolParameter(PluginParameter):
         supports_multiple = self.type in {
             self.ToolParameterType.SELECT,
             self.ToolParameterType.DYNAMIC_SELECT,
+            self.ToolParameterType.DYNAMIC_TREE_SELECT,
         }
         if self.multiple and not supports_multiple:
-            raise ValueError("multiple is only valid for select and dynamic-select parameters")
+            raise ValueError("multiple is only valid for select, dynamic-select, and dynamic-tree-select parameters")
         if supports_multiple and self.default is not None and (isinstance(self.default, list) != self.multiple):
             raise ValueError("default must be a list exactly when multiple is true")
         return self

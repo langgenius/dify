@@ -81,25 +81,31 @@ type FormInputValue =
   | undefined
 
 const normalizeDynamicTreeSelectValue = (rawValue: unknown): string[] => {
-  if (Array.isArray(rawValue))
-    return rawValue.filter(item => typeof item === 'string')
+  if (Array.isArray(rawValue)) return rawValue.filter((item) => typeof item === 'string')
 
-  if (typeof rawValue === 'string' && rawValue)
-    return [rawValue]
+  if (typeof rawValue === 'string' && rawValue) return [rawValue]
 
   return []
 }
 
-const filterVisibleTreeOptions = (options: FormOption[], values: ResourceVarInputs): FormOption[] => {
+const filterVisibleTreeOptions = (
+  options: FormOption[],
+  values: ResourceVarInputs,
+): FormOption[] => {
   return options.reduce<FormOption[]>((acc, option) => {
-    const isVisible = !option.show_on?.length || option.show_on.every(
-      showOnItem => values[showOnItem.variable]?.value === showOnItem.value || values[showOnItem.variable] === showOnItem.value,
-    )
+    const isVisible =
+      !option.show_on?.length ||
+      option.show_on.every(
+        (showOnItem) =>
+          values[showOnItem.variable]?.value === showOnItem.value ||
+          values[showOnItem.variable] === showOnItem.value,
+      )
 
-    if (!isVisible)
-      return acc
+    if (!isVisible) return acc
 
-    const children = option.children?.length ? filterVisibleTreeOptions(option.children, values) : undefined
+    const children = option.children?.length
+      ? filterVisibleTreeOptions(option.children, values)
+      : undefined
     acc.push({ ...option, children })
     return acc
   }, [])
@@ -161,38 +167,37 @@ const FormInputItem: FC<Props> = ({
 
   const parameterValuesForDynamicOptions = useMemo(() => {
     const serialized = serializeResourceVarInputsForDynamicOptions(value)
-    if (!extraParams || Object.keys(extraParams).length === 0)
-      return serialized
+    if (!extraParams || Object.keys(extraParams).length === 0) return serialized
     return { ...serialized, ...extraParams }
   }, [value, extraParams])
 
-  const isToolDynamicSelect = Boolean(
-    isDynamicSelect
-    && providerType === PluginCategoryEnum.tool,
-  )
+  const isToolDynamicSelect = Boolean(isDynamicSelect && providerType === PluginCategoryEnum.tool)
   const isToolDynamicTreeSelect = Boolean(
-    isDynamicTreeSelect
-    && providerType === PluginCategoryEnum.tool,
+    isDynamicTreeSelect && providerType === PluginCategoryEnum.tool,
   )
   const toolDynamicSelectLazy = Boolean(
-    isDynamicSelect
-    && providerType === PluginCategoryEnum.tool
-    && schema.dynamic_select_lazy_load === true,
+    isDynamicSelect &&
+    providerType === PluginCategoryEnum.tool &&
+    schema.dynamic_select_lazy_load === true,
   )
   const toolDynamicTreeLazy = Boolean(
-    isDynamicTreeSelect
-    && providerType === PluginCategoryEnum.tool
-    && schema.dynamic_select_lazy_load === true,
+    isDynamicTreeSelect &&
+    providerType === PluginCategoryEnum.tool &&
+    schema.dynamic_select_lazy_load === true,
   )
 
   const toolsOptionsLazyResetKey = useMemo(
     () => `${currentTool?.name ?? ''}|${currentProvider?.name ?? ''}|${variable}`,
     [currentTool?.name, currentProvider?.name, variable],
   )
-  const [toolsOptionsLazyKeyTracker, setToolsOptionsLazyKeyTracker] = useState(toolsOptionsLazyResetKey)
-  const shouldResetToolsOptionsForLazyLoad = providerType === PluginCategoryEnum.tool
-    && (isToolDynamicSelect || isToolDynamicTreeSelect)
-  if (shouldResetToolsOptionsForLazyLoad && toolsOptionsLazyResetKey !== toolsOptionsLazyKeyTracker) {
+  const [toolsOptionsLazyKeyTracker, setToolsOptionsLazyKeyTracker] =
+    useState(toolsOptionsLazyResetKey)
+  const shouldResetToolsOptionsForLazyLoad =
+    providerType === PluginCategoryEnum.tool && (isToolDynamicSelect || isToolDynamicTreeSelect)
+  if (
+    shouldResetToolsOptionsForLazyLoad &&
+    toolsOptionsLazyResetKey !== toolsOptionsLazyKeyTracker
+  ) {
     setToolsOptionsLazyKeyTracker(toolsOptionsLazyResetKey)
     setToolsOptions(null)
   }
@@ -207,9 +212,10 @@ const FormInputItem: FC<Props> = ({
   })
 
   const toolOrTriggerProviderType = providerType === PluginCategoryEnum.trigger ? 'trigger' : 'tool'
-  const providerCredentialId = currentProvider && 'credential_id' in currentProvider
-    ? currentProvider.credential_id
-    : undefined
+  const providerCredentialId =
+    currentProvider && 'credential_id' in currentProvider
+      ? currentProvider.credential_id
+      : undefined
 
   const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions({
     plugin_id: currentProvider?.plugin_id || '',
@@ -256,59 +262,55 @@ const FormInputItem: FC<Props> = ({
       ? isTriggerOptionsLoading || isLoadingToolsOptions
       : isLoadingToolsOptions
 
-  const handleToolDynamicSelectOpen = useCallback(async (open: boolean) => {
-    if (!open || !toolDynamicSelectLazy || !currentTool || !currentProvider)
-      return
-    setIsLoadingToolsOptions(true)
-    try {
-      const data = await fetchDynamicOptions()
-      setToolsOptions(data?.options || [])
-    }
-    catch (error) {
-      console.error('Failed to fetch dynamic options:', error)
-      setToolsOptions([])
-    }
-    finally {
-      setIsLoadingToolsOptions(false)
-    }
-  }, [toolDynamicSelectLazy, currentTool, currentProvider, fetchDynamicOptions])
+  const handleToolDynamicSelectOpen = useCallback(
+    async (open: boolean) => {
+      if (!open || !toolDynamicSelectLazy || !currentTool || !currentProvider) return
+      setIsLoadingToolsOptions(true)
+      try {
+        const data = await fetchDynamicOptions()
+        setToolsOptions(data?.options || [])
+      } catch (error) {
+        console.error('Failed to fetch dynamic options:', error)
+        setToolsOptions([])
+      } finally {
+        setIsLoadingToolsOptions(false)
+      }
+    },
+    [toolDynamicSelectLazy, currentTool, currentProvider, fetchDynamicOptions],
+  )
 
-  const handleToolDynamicTreeOpen = useCallback(async (open: boolean) => {
-    if (!open || !toolDynamicTreeLazy || !currentTool || !currentProvider)
-      return
-    setIsLoadingToolsOptions(true)
-    try {
-      const data = await fetchDynamicTreeOptions()
-      setToolsOptions(data?.options || [])
-    }
-    catch (error) {
-      console.error('Failed to fetch dynamic options:', error)
-      setToolsOptions([])
-    }
-    finally {
-      setIsLoadingToolsOptions(false)
-    }
-  }, [toolDynamicTreeLazy, currentTool, currentProvider, fetchDynamicTreeOptions])
+  const handleToolDynamicTreeOpen = useCallback(
+    async (open: boolean) => {
+      if (!open || !toolDynamicTreeLazy || !currentTool || !currentProvider) return
+      setIsLoadingToolsOptions(true)
+      try {
+        const data = await fetchDynamicTreeOptions()
+        setToolsOptions(data?.options || [])
+      } catch (error) {
+        console.error('Failed to fetch dynamic options:', error)
+        setToolsOptions([])
+      } finally {
+        setIsLoadingToolsOptions(false)
+      }
+    },
+    [toolDynamicTreeLazy, currentTool, currentProvider, fetchDynamicTreeOptions],
+  )
 
   useEffect(() => {
     const fetchPanelDynamicOptions = async () => {
-      if (!currentTool || !currentProvider)
-        return
+      if (!currentTool || !currentProvider) return
 
       if (isDynamicTreeSelect) {
-        if (providerType !== PluginCategoryEnum.tool)
-          return
+        if (providerType !== PluginCategoryEnum.tool) return
 
         setIsLoadingToolsOptions(true)
         try {
           const data = await fetchDynamicTreeOptions()
           setToolsOptions(data?.options || [])
-        }
-        catch (error) {
+        } catch (error) {
           console.error('Failed to fetch dynamic options:', error)
           setToolsOptions([])
-        }
-        finally {
+        } finally {
           setIsLoadingToolsOptions(false)
         }
         return
@@ -349,21 +351,15 @@ const FormInputItem: FC<Props> = ({
     fetchDynamicTreeOptions,
   ])
 
-  const toolDynamicSelectOnOpenChange = (
-    toolDynamicSelectLazy
-    && providerType === PluginCategoryEnum.tool
-    && isDynamicSelect
-  )
-    ? handleToolDynamicSelectOpen
-    : undefined
+  const toolDynamicSelectOnOpenChange =
+    toolDynamicSelectLazy && providerType === PluginCategoryEnum.tool && isDynamicSelect
+      ? handleToolDynamicSelectOpen
+      : undefined
 
-  const toolDynamicTreeOnOpenChange = (
-    toolDynamicTreeLazy
-    && providerType === PluginCategoryEnum.tool
-    && isDynamicTreeSelect
-  )
-    ? handleToolDynamicTreeOpen
-    : undefined
+  const toolDynamicTreeOnOpenChange =
+    toolDynamicTreeLazy && providerType === PluginCategoryEnum.tool && isDynamicTreeSelect
+      ? handleToolDynamicTreeOpen
+      : undefined
 
   /** Keep non-lazy dynamic fields disabled while their initial options are loading. */
   const lockDynamicSelectWhileLoading = isLoadingOptions && !toolDynamicSelectLazy
@@ -593,7 +589,10 @@ const FormInputItem: FC<Props> = ({
           onOpenChange={toolDynamicSelectOnOpenChange}
         >
           <SelectTrigger className="h-8 min-w-0 grow">
-            {selectedDynamicOption?.name ?? (isLoadingOptions ? t('dynamicSelect.loading', { ns: 'common' }) : (placeholder?.[language] ?? placeholder?.en_US))}
+            {selectedDynamicOption?.name ??
+              (isLoadingOptions
+                ? t('dynamicSelect.loading', { ns: 'common' })
+                : (placeholder?.[language] ?? placeholder?.en_US))}
           </SelectTrigger>
           <SelectContent>
             {dynamicSelectItems.map((item) => (
@@ -627,7 +626,11 @@ const FormInputItem: FC<Props> = ({
           options={visibleDynamicTreeOptions}
           onChange={handleValueChange}
           onPanelOpenChange={toolDynamicTreeOnOpenChange}
-          placeholder={placeholder?.[language] || placeholder?.en_US || t('placeholder.select', { ns: 'common' })}
+          placeholder={
+            placeholder?.[language] ||
+            placeholder?.en_US ||
+            t('placeholder.select', { ns: 'common' })
+          }
           language={language}
         />
       )}

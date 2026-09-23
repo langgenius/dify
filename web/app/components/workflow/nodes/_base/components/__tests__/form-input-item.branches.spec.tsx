@@ -12,13 +12,15 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
 
-const { mockFetchDynamicOptions, mockTriggerDynamicOptionsState } = vi.hoisted(() => ({
-  mockFetchDynamicOptions: vi.fn(),
-  mockTriggerDynamicOptionsState: {
-    data: undefined as { options: FormOption[] } | undefined,
-    isLoading: false,
-  },
-}))
+const { mockFetchDynamicOptions, mockFetchDynamicTreeOptions, mockTriggerDynamicOptionsState } =
+  vi.hoisted(() => ({
+    mockFetchDynamicOptions: vi.fn(),
+    mockFetchDynamicTreeOptions: vi.fn(),
+    mockTriggerDynamicOptionsState: {
+      data: undefined as { options: FormOption[] } | undefined,
+      isLoading: false,
+    },
+  }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
@@ -29,7 +31,7 @@ vi.mock('@/service/use-plugins', () => ({
     mutateAsync: mockFetchDynamicOptions,
   }),
   useFetchDynamicTreeOptions: () => ({
-    mutateAsync: vi.fn(),
+    mutateAsync: mockFetchDynamicTreeOptions,
   }),
 }))
 
@@ -158,6 +160,7 @@ describe('FormInputItem branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFetchDynamicOptions.mockResolvedValue({ options: [] })
+    mockFetchDynamicTreeOptions.mockResolvedValue({ options: [] })
     mockTriggerDynamicOptionsState.data = undefined
     mockTriggerDynamicOptionsState.isLoading = false
   })

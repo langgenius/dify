@@ -33,23 +33,20 @@ type Props = Readonly<{
 const DEFAULT_SCHEMA = {} as CredentialFormSchema
 
 const normalizeDynamicTreeConstantValue = (raw: string | string[]): string[] => {
-  if (Array.isArray(raw))
-    return raw.filter(item => typeof item === 'string')
+  if (Array.isArray(raw)) return raw.filter((item) => typeof item === 'string')
 
-  if (typeof raw === 'string' && raw)
-    return [raw]
+  if (typeof raw === 'string' && raw) return [raw]
 
   return []
 }
 
 const normalizeTreeMultipleFlag = (schema: Partial<CredentialFormSchema>): boolean => {
-  const m = (schema as CredentialFormSchemaSelect & { multiple?: boolean | string | number }).multiple
+  const m = (schema as CredentialFormSchemaSelect & { multiple?: boolean | string | number })
+    .multiple
   if (typeof m === 'string') {
     const normalized = m.trim().toLowerCase()
-    if (normalized === 'true')
-      return true
-    if (normalized === 'false')
-      return false
+    if (normalized === 'true') return true
+    if (normalized === 'false') return false
   }
   return m === true || m === 1
 }
@@ -122,10 +119,8 @@ const ConstantField: FC<Props> = ({
           value={normalizeDynamicTreeConstantValue(value)}
           options={(schema as CredentialFormSchemaSelect).options}
           onChange={(vals) => {
-            if (treeMultiple)
-              onChange(vals, VarKindType.constant)
-            else
-              onChange(vals[0] ?? '', VarKindType.constant)
+            if (treeMultiple) onChange(vals, VarKindType.constant)
+            else onChange(vals[0] ?? '', VarKindType.constant)
           }}
           onPanelOpenChange={onOpenChange}
           placeholder={placeholder?.[language] || placeholder?.en_US}

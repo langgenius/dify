@@ -198,6 +198,7 @@ class Tool(ABC):
             is_multiple_select = parameter.multiple and parameter.type in {
                 ToolParameter.ToolParameterType.SELECT,
                 ToolParameter.ToolParameterType.DYNAMIC_SELECT,
+                ToolParameter.ToolParameterType.DYNAMIC_TREE_SELECT,
             }
             if is_multiple_select:
                 item_schema: dict[str, Any] = {"type": "string"}

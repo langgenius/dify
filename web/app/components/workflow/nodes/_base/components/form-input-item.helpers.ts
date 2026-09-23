@@ -47,15 +47,14 @@ export type SelectItem = {
 }
 
 /** Serialized sibling parameter values for plugin dynamic-options API (`parameter_values` query). */
-export function serializeResourceVarInputsForDynamicOptions(inputs: ResourceVarInputs): Record<string, unknown> {
+export function serializeResourceVarInputsForDynamicOptions(
+  inputs: ResourceVarInputs,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [key, entry] of Object.entries(inputs)) {
-    if (!entry)
-      continue
-    if (entry.type === VarKindType.constant)
-      out[key] = entry.value
-    else
-      out[key] = { kind: entry.type, value: entry.value }
+    if (!entry) continue
+    if (entry.type === VarKindType.constant) out[key] = entry.value
+    else out[key] = { kind: entry.type, value: entry.value }
   }
   return out
 }
@@ -101,10 +100,8 @@ const getOptionLabel = (option: SelectableOption, language: string) => {
 const normalizeMultipleFlag = (multiple: FormInputSchema['multiple']) => {
   if (typeof multiple === 'string') {
     const normalized = multiple.trim().toLowerCase()
-    if (normalized === 'true')
-      return true
-    if (normalized === 'false')
-      return false
+    if (normalized === 'true') return true
+    if (normalized === 'false') return false
   }
 
   return multiple === true || multiple === 1
@@ -144,7 +141,8 @@ export const getFormInputState = (
   const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect || isDate
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
-  const isMultipleSelect = normalizeMultipleFlag(multiple) && (isSelect || isDynamicSelect || isDynamicTreeSelect)
+  const isMultipleSelect =
+    normalizeMultipleFlag(multiple) && (isSelect || isDynamicSelect || isDynamicTreeSelect)
 
   return {
     defaultValue,
@@ -220,8 +218,7 @@ export const getFilterVar = (state: FormInputState) => {
 }
 
 export const getVarKindType = (state: FormInputState) => {
-  if (state.isFile)
-    return VarKindType.variable
+  if (state.isFile) return VarKindType.variable
   if (
     state.isSelect ||
     state.isDynamicSelect ||

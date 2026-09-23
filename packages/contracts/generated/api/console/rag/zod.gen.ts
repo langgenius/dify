@@ -888,7 +888,6 @@ export const zDatasourceParameter = z.object({
   label: zI18nObject,
   max: z.union([z.number(), z.int()]).nullish(),
   min: z.union([z.number(), z.int()]).nullish(),
-  multiple: z.boolean().optional().default(false),
   name: z.string(),
   options: z.array(zPluginParameterOption).optional(),
   placeholder: zI18nObject.nullish(),

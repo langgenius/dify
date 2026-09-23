@@ -106,7 +106,7 @@ import {
   zGetWorkspacesCurrentPluginMarketplacePkgResponse,
   zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery,
   zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse,
-  zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsBody,
+  zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsQuery,
   zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsResponse,
   zGetWorkspacesCurrentPluginPermissionFetchResponse,
   zGetWorkspacesCurrentPluginReadmeQuery,
@@ -2039,7 +2039,7 @@ export const get32 = oc
     path: '/workspaces/current/plugin/parameters/dynamic-tree-options',
     tags: ['console'],
   })
-  .input(z.object({ body: zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsBody }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsQuery }))
   .output(zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsResponse)
 
 export const dynamicTreeOptions = {

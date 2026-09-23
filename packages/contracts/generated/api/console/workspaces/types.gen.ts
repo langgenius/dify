@@ -470,15 +470,6 @@ export type ParserDynamicOptionsWithCredentials = {
   provider: string
 }
 
-export type ParserDynamicTreeOptions = {
-  action: string
-  credential_id?: string | null
-  parameter: string
-  parameter_values?: string | null
-  plugin_id: string
-  provider: string
-}
-
 export type ParserPermissionChange = {
   debug_permission?: TenantPluginDebugPermission
   install_permission?: TenantPluginInstallPermission
@@ -2557,7 +2548,6 @@ export type AgentStrategyParameter = {
   label: I18nObject
   max?: number | number | null
   min?: number | number | null
-  multiple?: boolean
   name: string
   options?: Array<PluginParameterOption>
   placeholder?: I18nObject | null
@@ -4230,16 +4220,21 @@ export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsRe
   PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponses[keyof PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponses]
 
 export type GetWorkspacesCurrentPluginParametersDynamicTreeOptionsData = {
-  body: ParserDynamicTreeOptions
+  body?: never
   path?: never
-  query?: never
+  query: {
+    action: string
+    credential_id?: string
+    parameter: string
+    parameter_values?: string
+    plugin_id: string
+    provider: string
+  }
   url: '/workspaces/current/plugin/parameters/dynamic-tree-options'
 }
 
 export type GetWorkspacesCurrentPluginParametersDynamicTreeOptionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDynamicOptionsResponse
 }
 
 export type GetWorkspacesCurrentPluginParametersDynamicTreeOptionsResponse =
