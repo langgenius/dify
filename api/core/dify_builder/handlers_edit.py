@@ -29,7 +29,7 @@ from core.dify_builder.contract import (
     TestResultCard,
     TestStat,
 )
-from core.dify_builder.errors import DraftWouldNotStartError
+from core.dify_builder.errors import DraftWouldNotStartError, ProposalWouldRunWrongError
 from core.dify_builder.handlers_fix import (
     NO_OUTPUT_BODY,
     NO_OUTPUT_REPLY,
@@ -303,6 +303,7 @@ def _change_not_applied(
     body: str,
     reply_text: str,
     rejection: str,
+    failed_step: str = "edit-apply",
 ) -> StepResult:
     """apply_repair refused the edit and wrote nothing: say why and keep the
     change plan at its gate. (Edit applies with on_canvas=None, so no canvas
@@ -323,10 +324,16 @@ def _change_not_applied(
     something; a gate revert writes nothing at all, so the restored draft IS the
     refused draft and its Retry needs this text more than anything else does.
     ``test_a_gate_revert_keeps_the_refusal_its_retry_still_needs`` and
-    ``test_routing_back_to_the_form_does_not_forget_the_refusal`` pin both."""
+    ``test_routing_back_to_the_form_does_not_forget_the_refusal`` pin both.
+
+    ``failed_step`` is the activity that gets the failure, and it defaults to
+    the write because that is where the usual refusal happens. A caller that
+    gives up EARLIER must say so: marking a step that was never revealed leaves
+    the ones between it and the failure streaming as pending underneath it, so
+    the timeline shows work still to come below work that already failed."""
     fc.staged_repair = []
     fc.last_edit_rejection = rejection
-    progress.fail_step("edit-apply")
+    progress.fail_step(failed_step)
     execution = progress.finish(status="error")
     error_items = append_card(fc, ErrorCard(title=title, body=body, tone="danger"))
     turn_items = append_card(
@@ -445,16 +452,42 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     progress.activate("edit-prepare")
     emit_canvas(env, "create_checkpoint")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-    intents = env.agent.build_edit_intents(
-        dict(fc.edit_rules),
-        graph,
-        edit_target_node_ids=list(fc.edit_target_node_ids),
-        # What the engine said last time it refused this write, if anything.
-        # The graph and the rules are byte-identical across re-approvals, so
-        # this is the only input that changes -- and the only reason a second
-        # approval can produce a different batch.
-        last_edit_rejection=fc.last_edit_rejection or None,
-    )
+    try:
+        intents = env.agent.build_edit_intents(
+            dict(fc.edit_rules),
+            graph,
+            edit_target_node_ids=list(fc.edit_target_node_ids),
+            # What the engine said last time it refused this write, if anything.
+            # The graph and the rules are byte-identical across re-approvals, so
+            # this is the only input that changes -- and the only reason a second
+            # approval can produce a different batch.
+            last_edit_rejection=fc.last_edit_rejection or None,
+        )
+    except ProposalWouldRunWrongError as exc:
+        # The agent judged its own final proposal wrong and refused to hand it
+        # on. Nothing was written and nothing was even attempted -- this is the
+        # one refusal with no engine error behind it, because the defect is one
+        # the engine ACCEPTS: a draft that would start, run green and produce
+        # nothing. Same recovery as a refused write: the plan stays at its gate
+        # with the reason on a card, and the reason goes into the next attempt.
+        logger.warning("Dify Builder: edit proposal judged wrong before write for app %s: %s", s.app_id, exc)
+        return _change_not_applied(
+            s,
+            fc,
+            progress,
+            title="The change wouldn't do what you asked",
+            body=f"The change would have applied cleanly and then not worked: {exc}",
+            reply_text=(
+                "I didn't apply the change: it would have run without doing what you asked -- see above. "
+                "Continue adjusting to change the rules, approve again, or discard the plan."
+            ),
+            rejection=_rejection_text(exc),
+            # Given up during "prepare": nothing was highlighted and nothing was
+            # applied, so the failure belongs to the step that was actually
+            # running. Failing the write instead would leave edit-highlight
+            # pending BELOW a failed edit-apply.
+            failed_step="edit-prepare",
+        )
     fc.staged_repair = list(intents)
 
     progress.activate("edit-highlight")
