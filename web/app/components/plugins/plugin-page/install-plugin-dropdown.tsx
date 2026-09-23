@@ -56,7 +56,7 @@ const InstallPluginDropdown = ({
   installContextCategory,
   showTriggerArrow = true,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)

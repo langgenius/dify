@@ -12,7 +12,7 @@ type PromptLogModalProps = {
   onCancel: () => void
 }
 const PromptLogModal: FC<PromptLogModalProps> = ({ currentLogItem, width, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
 

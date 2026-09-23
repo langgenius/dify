@@ -10,11 +10,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from flask import Flask
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.oauth_bearer import TokenType
 from models import Account, App, OAuthAccessToken, Tenant, TenantAccountJoin
 from models.account import AccountStatus
 

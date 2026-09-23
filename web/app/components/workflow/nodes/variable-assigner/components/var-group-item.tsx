@@ -44,7 +44,7 @@ const VarGroupItem: FC<Props> = ({
   onRemove,
   availableVars,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
 
   const handleAddVariable = useCallback(
     (value: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {

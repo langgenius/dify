@@ -61,7 +61,7 @@ const ClassList: FC<Props> = ({
   labels,
   handleSortTopic = noop,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
   const [collapsed, setCollapsed] = useState(false)
   const [storedRenameHintDismissed, setIsRenameHintDismissed] = useInlineLabelHintDismissed()

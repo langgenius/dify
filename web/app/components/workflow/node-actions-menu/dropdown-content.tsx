@@ -23,7 +23,7 @@ import {
 import { useNodeActionsMenuModel } from './use-node-actions-menu-model'
 
 export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const model = useNodeActionsMenuModel(props)
   const hasRunGroup = model.canRun || model.canChangeBlock
   const hasEditGroup = !model.nodesReadOnly && !model.isSingleton

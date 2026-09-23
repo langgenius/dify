@@ -27,7 +27,7 @@ type WeightedScoreProps = {
   readonly?: boolean
 }
 const WeightedScore = ({ value, onChange = noop, readonly = false }: WeightedScoreProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const semanticLabel = t(($) => $['weightedScore.semantic'], { ns: 'dataset' })
   const keywordLabel = t(($) => $['weightedScore.keyword'], { ns: 'dataset' })
   const semanticWeight = value.value[0]!

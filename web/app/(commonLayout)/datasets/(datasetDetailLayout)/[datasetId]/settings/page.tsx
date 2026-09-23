@@ -2,7 +2,7 @@ import { useTranslation } from '#i18n'
 import Form from '@/app/components/datasets/settings/form'
 
 const Settings = () => {
-  const { t } = useTranslation('datasetSettings')
+  const { t } = useTranslation(['datasetSettings'])
 
   return (
     <div className="h-full overflow-y-auto">

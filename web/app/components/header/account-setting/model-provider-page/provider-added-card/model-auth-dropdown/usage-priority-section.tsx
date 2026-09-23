@@ -23,7 +23,7 @@ export default function UsagePrioritySection({
 }: UsagePrioritySectionProps) {
   const priorityLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const selectedKey =
     value === 'credits' ? PreferredProviderTypeEnum.system : PreferredProviderTypeEnum.custom
   const usagePriorityTip = t(($) => $['modelProvider.card.usagePriorityTip'], { ns: 'common' })

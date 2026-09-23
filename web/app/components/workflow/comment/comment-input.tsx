@@ -28,7 +28,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
     const [content, setContent] = useState('')
     const [keyboardMoving, setKeyboardMoving] = useState(false)
     const moveDescriptionId = useId()
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const { data: userProfile } = useSuspenseQuery({
       ...userProfileQueryOptions(),
       select: (data) => data.profile,

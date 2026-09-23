@@ -23,7 +23,7 @@ type AppDetailTopProps = {
 }
 
 export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   if (!expand) {
     return (

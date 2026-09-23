@@ -24,7 +24,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const treeNodes = formatNodeList(list, t)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)

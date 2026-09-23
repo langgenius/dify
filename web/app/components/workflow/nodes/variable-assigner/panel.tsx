@@ -15,7 +15,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.variableAssigner'
 const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const {
     readOnly,

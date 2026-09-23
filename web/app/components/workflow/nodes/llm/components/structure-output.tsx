@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 export function StructureOutput({ className, value, onChange }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const [showConfig, setShowConfig] = useState(false)
 
   function handleChange(value: SchemaRoot) {

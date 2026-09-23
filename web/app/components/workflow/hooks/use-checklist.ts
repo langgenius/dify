@@ -163,7 +163,7 @@ const getDuplicateEndOutputMessages = (
 }
 
 export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?: FlowType }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'common', 'workflow'])
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -618,7 +618,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 }
 
 export const useChecklistBeforePublish = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const language = useGetLanguage()
   const queryClient = useQueryClient()
   const store = useStoreApi()
@@ -942,7 +942,7 @@ export const useChecklistBeforePublish = () => {
 }
 
 export const useWorkflowRunValidation = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const nodes = useNodes()
   const edges = useEdges<CommonEdgeType>()
   const flowType = useHooksStore((s) => s.configsMap?.flowType)

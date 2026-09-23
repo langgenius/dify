@@ -58,7 +58,7 @@ function AgentNodeModel({
   agent?: ReturnType<typeof useAgentRosterDetail>['data']
   isLoading: boolean
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isInlineAgent = hasInlineAgentBinding(data)
   const name = isInlineAgent
     ? t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflow' })
@@ -105,7 +105,7 @@ export function AgentV2Node(props: NodeProps<AgentV2NodeType>) {
   useEffect(() => {
     updateNodeInternals(id)
   }, [id, data.agent_output_routes, updateNodeInternals])
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const hasValidAgent = hasValidRosterAgentBinding(data)
   const isInlineAgent = hasInlineAgentBinding(data)
   const rosterAgentId =

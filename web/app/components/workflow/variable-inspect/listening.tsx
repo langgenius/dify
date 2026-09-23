@@ -19,7 +19,7 @@ const resolveListeningDescription = (
   message: string | undefined,
   triggerNode: Node | undefined,
   triggerType: BlockEnum,
-  t: TFunction,
+  t: TFunction<['workflow']>,
 ): string => {
   if (message) return message
 
@@ -55,7 +55,7 @@ const resolveListeningDescription = (
   return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflow' })
 }
 
-const resolveMultipleListeningDescription = (nodes: Node[], t: TFunction): string => {
+const resolveMultipleListeningDescription = (nodes: Node[], t: TFunction<['workflow']>): string => {
   if (!nodes.length)
     return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflow' })
 
@@ -78,7 +78,7 @@ type ListeningProps = {
 }
 
 const Listening: FC<ListeningProps> = ({ onStop, message }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
 
   // Get the current trigger type and node ID from store

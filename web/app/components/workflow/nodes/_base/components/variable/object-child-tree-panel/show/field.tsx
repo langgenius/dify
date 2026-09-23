@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const isRoot = depth === 1
   const schema = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {}
   const type =

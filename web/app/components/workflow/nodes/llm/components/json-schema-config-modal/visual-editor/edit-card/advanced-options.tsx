@@ -15,7 +15,7 @@ type AdvancedOptionsProps = {
 }
 
 const AdvancedOptions: FC<AdvancedOptionsProps> = ({ onChange, options }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   // const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [enumValue, setEnumValue] = useState(options.enum)
 

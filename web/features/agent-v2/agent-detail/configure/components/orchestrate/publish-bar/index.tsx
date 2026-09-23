@@ -93,8 +93,8 @@ export function AgentConfigurePublishBar({
   onOpenVersions,
   onVersionRestored,
 }: AgentConfigurePublishBarProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const draft = useAtomValue(agentComposerDraftAtom)
@@ -381,7 +381,7 @@ function PublishBarActions({
   onOpenVersions: () => void
   onPublishRequest: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const publishButtonLabelId = useId()
 
   return (
@@ -459,7 +459,7 @@ function AgentVersionRestoreBar({
   onExitVersions?: () => void
   onRestoreVersion?: (versionId: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const { formatTime } = useTimestamp()
   const versionLabel =
     version.version_note ||

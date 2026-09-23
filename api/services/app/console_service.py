@@ -162,6 +162,8 @@ class CreatorsPlatform(Protocol):
 class AppTraceProvider(Protocol):
     def validate_provider(self, tracing_provider: str) -> None: ...
 
+    def require_provider_available(self, tracing_provider: str) -> None: ...
+
 
 class AppLifecycle(Protocol):
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord: ...
@@ -381,5 +383,8 @@ class ConsoleAppService:
     def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
         self._apps.get_reference(context, app_id)
         if settings.tracing_provider is not None:
-            self._tracing.validate_provider(settings.tracing_provider)
+            if settings.enabled:
+                self._tracing.require_provider_available(settings.tracing_provider)
+            else:
+                self._tracing.validate_provider(settings.tracing_provider)
         self._apps.set_trace(context, app_id, settings)

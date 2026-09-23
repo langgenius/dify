@@ -52,7 +52,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   const providerNameInputId = React.useId()
   const privacyPolicyInputId = React.useId()
   const customDisclaimerInputId = React.useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const isAdd = !payload
   const isEdit = !!payload
 

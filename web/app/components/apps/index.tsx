@@ -30,7 +30,7 @@ const ImportFromMarketplaceTemplateModal = dynamic(
 const AppListProvider = AppListContext.Provider
 
 const AppsContent = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)

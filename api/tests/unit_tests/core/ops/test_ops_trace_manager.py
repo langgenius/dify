@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import builtins
 import json
 import queue
+import sys
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -18,6 +20,7 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import core.ops.ops_trace_manager as module
 from core.moderation.base import ModerationAction, ModerationInputsResult
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
 from core.rag.models.document import Document as RetrievalDocument
 from graphon.enums import WorkflowExecutionStatus
@@ -462,6 +465,43 @@ def test_message_config_lookup_uses_real_conversation_and_model_config(database:
     assert json.loads(override) == {"provider": "override"}
 
     assert OpsTraceManager.get_app_config_through_message_id("missing") is None
+
+
+@pytest.mark.parametrize("module_name", ["dify_trace_weave", "wandb"])
+def test_provider_loader_identifies_missing_optional_dependency(
+    monkeypatch: pytest.MonkeyPatch, module_name: str
+) -> None:
+    monkeypatch.delitem(sys.modules, "dify_trace_weave.weave_trace", raising=False)
+    monkeypatch.setitem(sys.modules, module_name, None)
+    with pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught:
+        module.OpsTraceProviderConfigMap()["weave"]
+
+    cause = caught.value.__cause__
+    assert isinstance(cause, ModuleNotFoundError)
+    assert cause.name is not None
+    assert cause.name.partition(".")[0] == module_name
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        ImportError("cannot import name 'WeaveDataTrace'"),
+        ModuleNotFoundError("SDK import failed without identifying a missing module"),
+        ModuleNotFoundError("No module named 'json.missing_module'", name="json.missing_module"),
+    ],
+)
+def test_provider_loader_preserves_import_errors_in_installed_packages(failure: ImportError) -> None:
+    original_import = builtins.__import__
+
+    def broken_import(name, *args, **kwargs):
+        if name.startswith("dify_trace_weave."):
+            raise failure
+        return original_import(name, *args, **kwargs)
+
+    with patch("builtins.__import__", side_effect=broken_import), pytest.raises(ImportError) as caught:
+        module.OpsTraceProviderConfigMap()["weave"]
+
+    assert caught.value is failure
 
 
 def test_message_trace_reads_real_conversation_app_and_message_file(

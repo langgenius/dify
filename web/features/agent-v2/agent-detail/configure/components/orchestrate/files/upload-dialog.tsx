@@ -49,9 +49,9 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
 }
 
 function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: File) => void }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tAppDebug } = useTranslation('appDebug')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tAppDebug } = useTranslation(['appDebug'])
+  const { t: tCommon } = useTranslation(['common'])
   const { data: fileUploadConfig } = useFileUploadConfig()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
     useFileSizeLimit(fileUploadConfig)
@@ -222,8 +222,8 @@ export function AgentFileUploadDialog({
   onOpenChange: (open: boolean) => void
   onUploaded: (file: AgentFileNode) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const [file, setFile] = useState<File>()
   const uploadFileMutation = useMutation(consoleQuery.files.upload.post.mutationOptions())
   const commitAgentFileMutation = useMutation(

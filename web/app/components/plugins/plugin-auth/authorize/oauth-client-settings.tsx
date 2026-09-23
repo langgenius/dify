@@ -39,7 +39,7 @@ const OAuthClientSettings = ({
   hasOriginalClientParams,
   onUpdate,
 }: OAuthClientSettingsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {

@@ -49,7 +49,7 @@ export default function PreferencePage() {
   })
   const updateProfile = useMutation(consoleQuery.account.profile.patch.mutationOptions())
   const [editing, setEditing] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const languageOptions: SelectOption[] = languages.filter((item) => item.supported)

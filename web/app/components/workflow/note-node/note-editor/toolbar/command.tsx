@@ -9,7 +9,7 @@ type CommandProps = {
   type: 'bold' | 'italic' | 'strikethrough' | 'link' | 'bullet'
 }
 const Command = ({ type }: CommandProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const selectedIsBold = useStore((s) => s.selectedIsBold)
   const selectedIsItalic = useStore((s) => s.selectedIsItalic)
   const selectedIsStrikeThrough = useStore((s) => s.selectedIsStrikeThrough)

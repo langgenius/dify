@@ -18,7 +18,7 @@ export const getPluginCategoryBySection = (section: IntegrationSection) => {
 }
 
 export function useIntegrationNav(section: IntegrationSection) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'workflow'])
   const providerItem = useMemo<IntegrationSidebarNavItemData>(
     () => ({
       section: 'provider',

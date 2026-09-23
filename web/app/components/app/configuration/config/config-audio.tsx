@@ -14,7 +14,7 @@ import ConfigContext from '@/context/debug-configuration'
 const ConfigAudio: FC = () => {
   const titleId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
   const { isShowAudioConfig, readonly } = useContext(ConfigContext)

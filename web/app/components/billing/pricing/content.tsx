@@ -22,7 +22,7 @@ import { SelfHostedPlanItem } from './plans/self-hosted-plan-item'
 type BillingInterval = GetBillingSubscriptionData['query']['interval']
 
 export function PricingContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'billing', 'common'])
   const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
   const { data: features } = featuresQuery
   const educationEnabled = features?.education.enabled ?? false

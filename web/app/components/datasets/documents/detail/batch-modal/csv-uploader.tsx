@@ -20,7 +20,7 @@ type Props = Readonly<{
   updateFile: (file?: FileItem) => void
 }>
 const CSVUploader: FC<Props> = ({ file, updateFile }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation', 'datasetDocuments'])
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)

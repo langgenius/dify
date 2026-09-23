@@ -51,7 +51,7 @@ const Prompt: FC<ISimplePromptInput> = ({
   editorHeight: initEditorHeight,
   noResize,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const titleId = useId()
   const title =
     mode !== AppModeEnum.COMPLETION

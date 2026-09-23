@@ -74,7 +74,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
   isEditMode,
   onEdit,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const formId = useId()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)

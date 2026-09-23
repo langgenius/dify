@@ -18,7 +18,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import AppNotFoundError, TracingProviderUnavailableError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
@@ -62,7 +62,10 @@ from services.app.console_service import (
     InvalidAppAccessModesError,
     InvalidAppExportError,
 )
-from services.app_tracing_config_service import AppTracingConfigInvalidProviderError
+from services.app_tracing_config_service import (
+    AppTracingConfigInvalidProviderError,
+    AppTracingConfigProviderUnavailableError,
+)
 from services.entities.app_entities import (
     AppExportOptions,
     AppListParams,
@@ -666,5 +669,12 @@ class AppTraceApi(AppResource):
     )
     def post(self, context: RequestContext, app_id: uuid.UUID):
         payload = validate_request(AppTracePayload)
-        application_services().apps.console.set_trace(context, str(app_id), AppTraceSettings(**payload.model_dump()))
+        try:
+            application_services().apps.console.set_trace(
+                context,
+                str(app_id),
+                AppTraceSettings(**payload.model_dump()),
+            )
+        except AppTracingConfigProviderUnavailableError as error:
+            raise TracingProviderUnavailableError() from error
         return SimpleResultResponse(result="success").model_dump(mode="json")

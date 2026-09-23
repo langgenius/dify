@@ -6,6 +6,7 @@ from uuid import UUID
 from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
+from constants.oauth_bearer import Scope
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
@@ -28,7 +29,6 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from libs.oauth_bearer import Scope
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService

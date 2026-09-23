@@ -239,6 +239,9 @@ class Tracing:
         if tracing_provider != "langfuse":
             raise ValueError("Invalid tracing provider")
 
+    def require_provider_available(self, tracing_provider: str) -> None:
+        self.validate_provider(tracing_provider)
+
 
 Ports = tuple[ConsoleAppService, Apps, Access, Transfers, Creators]
 
@@ -387,12 +390,20 @@ def test_disabled_creators_has_no_export_or_external_effects(ports: Ports) -> No
     assert transfers.calls == creators.calls == []
 
 
-@pytest.mark.parametrize("provider", [None, "langfuse", "invalid"])
+@pytest.mark.parametrize(
+    ("enabled", "provider"),
+    [
+        pytest.param(False, None, id="disabled-without-provider"),
+        pytest.param(False, "langfuse", id="disabled-with-provider"),
+        pytest.param(True, "langfuse", id="enabled"),
+        pytest.param(True, "invalid", id="invalid"),
+    ],
+)
 def test_trace_update_checks_ownership_and_provider_without_parsing_old_settings(
-    ports: Ports, provider: str | None
+    ports: Ports, enabled: bool, provider: str | None
 ) -> None:
     service, apps, _, _, _ = ports
-    settings = AppTraceSettings(provider is not None, provider)
+    settings = AppTraceSettings(enabled, provider)
     if provider == "invalid":
         with pytest.raises(ValueError, match="Invalid tracing provider"):
             service.set_trace(CONTEXT, "app", settings)
