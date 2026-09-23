@@ -87,6 +87,20 @@ describe('AgentModelField', () => {
     )
     const { onSelect } = renderField()
 
+    const modelGroup = screen.getByRole('group', {
+      name: 'agentV2.agentDetail.configure.model.label',
+    })
+    expect(modelGroup.tagName).toBe('FIELDSET')
+    expect(modelGroup).toHaveAttribute(
+      'aria-labelledby',
+      screen.getByText('agentV2.agentDetail.configure.model.label').id,
+    )
+    expect(modelGroup).toContainElement(
+      screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
+    )
+    expect(modelGroup).toContainElement(
+      screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }),
+    )
     expect(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }),
@@ -124,6 +138,12 @@ describe('AgentModelField', () => {
     const { onSelect } = renderField({ provider: 'openai', model: 'gpt-4' })
     const trigger = screen.getByRole('button', { name: 'gpt-4' })
     const settings = screen.getByRole('button', { name: 'common.modelProvider.modelSettings' })
+    const modelGroup = screen.getByRole('group', {
+      name: 'agentV2.agentDetail.configure.model.label',
+    })
+
+    expect(modelGroup).toContainElement(trigger)
+    expect(modelGroup).toContainElement(settings)
 
     expect(trigger).toBeDisabled()
     expect(settings).toBeDisabled()

@@ -32,10 +32,8 @@ const getPromptEditor = (page: Page) =>
 const getAgentModelSelector = (page: Page) =>
   page
     .getByRole('region', { name: 'Configure' })
-    .getByText('Model', { exact: true })
-    .locator('..')
-    .getByRole('button')
-    .first()
+    .getByRole('group', { name: 'Model' })
+    .getByRole('button', { name: /^(?!Model Settings$).+/ })
 
 async function fillAgentPromptEditor(page: Page, prompt: string) {
   const promptSection = page.getByRole('region', { name: 'Prompt' })
@@ -295,6 +293,20 @@ Then(
     const page = this.getPage()
 
     await expect(getPromptEditor(page)).toContainText(normalAgentPrompt, { timeout: 30_000 })
+  },
+)
+
+Then(
+  'I should see the workspace default chat model in the Agent v2 model selector',
+  async function (this: DifyWorld) {
+    const response = await this.getConsoleClient().workspaces.current.defaultModel.get({
+      query: { model_type: 'llm' },
+    })
+    if (!response.data) throw new Error('The workspace default chat model is not configured.')
+
+    await expect(getAgentModelSelector(this.getPage())).toContainText(response.data.model, {
+      timeout: 30_000,
+    })
   },
 )
 
