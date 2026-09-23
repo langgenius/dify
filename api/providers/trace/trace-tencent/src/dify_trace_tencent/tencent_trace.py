@@ -19,6 +19,7 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
+from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from dify_trace_tencent.client import TencentTraceClient
 from dify_trace_tencent.config import TencentConfig
@@ -183,10 +184,15 @@ class TencentDataTrace(BaseTraceInstance):
             workflow_span_id = TencentTraceUtils.convert_to_span_id(trace_info.workflow_run_id, "workflow")
 
             node_executions = self._get_workflow_node_executions(trace_info)
+            tool_parents = workflow_tool_parent_ids(node_executions)
 
             for node_execution in node_executions:
                 try:
-                    node_span = self._build_workflow_node_span(node_execution, trace_id, trace_info, workflow_span_id)
+                    parent_id = tool_parents.get(node_execution.id)
+                    parent_span_id = (
+                        TencentTraceUtils.convert_to_span_id(parent_id, "node") if parent_id else workflow_span_id
+                    )
+                    node_span = self._build_workflow_node_span(node_execution, trace_id, trace_info, parent_span_id)
                     if node_span:
                         self.trace_client.add_span(node_span)
 
@@ -260,7 +266,9 @@ class TencentDataTrace(BaseTraceInstance):
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
 
-            executions = repository.get_by_workflow_execution(workflow_execution_id=trace_info.workflow_run_id)
+            executions = repository.get_by_workflow_execution(
+                workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
+            )
             return list(executions)
 
         except Exception:

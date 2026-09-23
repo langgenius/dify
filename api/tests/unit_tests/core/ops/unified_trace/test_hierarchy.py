@@ -2,7 +2,13 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import cast
 
-from core.ops.unified_trace.hierarchy import WorkflowExecutionLike, build_workflow_hierarchy
+from core.ops.unified_trace.hierarchy import WorkflowExecutionLike, build_workflow_hierarchy, workflow_tool_parent_ids
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+)
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes
 
 
 def execution(**overrides: object) -> WorkflowExecutionLike:
@@ -105,3 +111,89 @@ def test_cycle_edges_are_removed_deterministically() -> None:
     result = build_workflow_hierarchy([first, second])
 
     assert result.parent_by_execution_id == {}
+
+
+def test_tool_invocations_keep_source_nodes_and_loop_wrappers_in_their_own_scope() -> None:
+    nodes = [execution(id="root-start", node_id="start", workflow_id="root")]
+    for invocation in ("first", "second"):
+        nodes.append(
+            execution(
+                id=f"{invocation}-tool-row",
+                node_execution_id=f"{invocation}-tool",
+                node_id="tool",
+                workflow_id="root",
+            )
+        )
+        ownership = {
+            WORKFLOW_TOOL_INVOCATION_ID_KEY: invocation,
+            WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: f"{invocation}-tool",
+        }
+        nodes.extend(
+            [
+                execution(id=f"{invocation}-start", node_id="start", workflow_id="source", process_data=ownership),
+                execution(
+                    id=f"{invocation}-loop",
+                    node_id="loop",
+                    workflow_id="source",
+                    process_data=ownership,
+                    node_type="loop",
+                    predecessor_node_id="start",
+                ),
+                execution(
+                    id=f"{invocation}-body",
+                    node_id="body",
+                    workflow_id="source",
+                    process_data=ownership,
+                    loop_id="loop",
+                    loop_index=0,
+                ),
+            ]
+        )
+
+    hierarchy = build_workflow_hierarchy(list(reversed(nodes)))
+
+    for invocation in ("first", "second"):
+        parents = hierarchy.parent_by_execution_id
+        assert parents[f"{invocation}-start"] == f"{invocation}-tool-row"
+        assert parents[f"{invocation}-loop"] == f"{invocation}-start"
+        assert parents[f"{invocation}-body"] == f"loop:{invocation}-loop:0"
+    assert len(hierarchy.wrappers) == 2
+
+
+def test_tool_parent_references_cannot_escape_the_loaded_trace_or_create_cycles() -> None:
+    nodes = [
+        execution(id="a", process_data={WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "b"}),
+        execution(id="b", process_data={WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "a"}),
+        execution(id="c", process_data={WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "another-run"}),
+    ]
+
+    assert workflow_tool_parent_ids(nodes) == {}
+
+
+def test_parent_ambiguity_is_isolated_to_its_workflow_and_tool_invocation() -> None:
+    nodes: list[WorkflowNodeExecution] = []
+    expected_parents: dict[str, str] = {}
+    for workflow_id in ("source-a", "source-b"):
+        for invocation_id in ("first", "second"):
+            prefix = f"{workflow_id}-{invocation_id}"
+            for index, node_id in enumerate(("start", "end")):
+                nodes.append(
+                    WorkflowNodeExecution(
+                        id=f"{prefix}-{node_id}",
+                        workflow_id=workflow_id,
+                        node_id=node_id,
+                        node_type=BuiltinNodeTypes.START if node_id == "start" else BuiltinNodeTypes.END,
+                        title=node_id,
+                        index=index,
+                        predecessor_node_id="start" if node_id == "end" else None,
+                        process_data={WORKFLOW_TOOL_INVOCATION_ID_KEY: invocation_id},
+                        created_at=datetime(2025, 1, 1),
+                    )
+                )
+            expected_parents[f"{prefix}-end"] = f"{prefix}-start"
+
+    nodes.append(nodes[0].model_copy(update={"id": "repeated-start"}))
+    del expected_parents["source-a-first-end"]
+
+    assert build_workflow_hierarchy(nodes).parent_by_execution_id == expected_parents
+    assert build_workflow_hierarchy(list(reversed(nodes))).parent_by_execution_id == expected_parents
