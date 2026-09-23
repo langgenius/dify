@@ -10,18 +10,80 @@ import logging
 from typing import Any
 
 from celery import shared_task
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from core.db.session_factory import session_factory
-from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
+from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
+from core.workflow.node_execution_process_data import keep_agent_and_tool_ids
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
+
+
+@shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
+def save_workflow_node_executions_task(
+    self,
+    executions_data: list[dict[str, Any]],
+    tenant_id: str,
+    app_id: str,
+    triggered_from: str,
+    creator_user_id: str,
+    creator_user_role: str,
+) -> bool:
+    """Upsert an owner-scoped cleanup batch atomically, including missing start rows."""
+    try:
+        executions = [DifyWorkflowNodeExecution.model_validate(data) for data in executions_data]
+        if not executions:
+            return True
+        with session_factory.create_session() as session, session.begin():
+            query = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_id,
+                WorkflowNodeExecutionModel.triggered_from == triggered_from,
+                or_(
+                    *(
+                        and_(
+                            WorkflowNodeExecutionModel.id == execution.id,
+                            WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
+                            WorkflowNodeExecutionModel.workflow_run_id == execution.workflow_execution_id,
+                        )
+                        for execution in executions
+                    )
+                ),
+            )
+            existing_models = {model.id: model for model in session.scalars(query)}
+            for execution in executions:
+                existing = existing_models.get(execution.id)
+                if existing is None:
+                    session.add(
+                        _create_node_execution_from_domain(
+                            execution,
+                            tenant_id,
+                            app_id,
+                            WorkflowNodeExecutionTriggeredFrom(triggered_from),
+                            creator_user_id,
+                            CreatorUserRole(creator_user_role),
+                        )
+                    )
+                    continue
+                offloaded_values = {
+                    offload.type_.value: getattr(existing, offload.type_.value) for offload in existing.offload_data
+                }
+                _update_node_execution_from_domain(existing, execution)
+                for field, value in offloaded_values.items():
+                    setattr(existing, field, value)
+        return True
+    except Exception as error:
+        logger.exception(
+            "Failed to save workflow node execution batch: %s", [data.get("id") for data in executions_data]
+        )
+        raise self.retry(exc=error, countdown=60 * (2**self.request.retries))
 
 
 @shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
@@ -51,7 +113,7 @@ def save_workflow_node_execution_task(
     try:
         with session_factory.create_session() as session:
             # Deserialize execution data
-            execution = WorkflowNodeExecution.model_validate(execution_data)
+            execution = DifyWorkflowNodeExecution.model_validate(execution_data)
 
             # Check if node execution already exists
             existing_execution = session.scalar(
@@ -105,6 +167,9 @@ def _create_node_execution_from_domain(
     node_execution.tenant_id = tenant_id
     node_execution.app_id = app_id
     node_execution.workflow_id = execution.workflow_id
+    if isinstance(execution, DifyWorkflowNodeExecution):
+        node_execution.triggered_from_workflow_id = execution.triggered_from_workflow_id
+        node_execution.triggered_from_node_execution_id = execution.triggered_from_node_execution_id
     node_execution.triggered_from = triggered_from
     node_execution.workflow_run_id = execution.workflow_execution_id
     node_execution.index = execution.index
@@ -147,10 +212,23 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
     """
     Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
     """
+    # Cleanup can insert the terminal row before its queued start is delivered.
+    if (
+        node_execution.status == WorkflowNodeExecutionStatus.FAILED
+        and node_execution.finished_at is not None
+        and execution.status == WorkflowNodeExecutionStatus.RUNNING
+    ):
+        return
+    if isinstance(execution, DifyWorkflowNodeExecution):
+        if execution.triggered_from_workflow_id is not None:
+            node_execution.triggered_from_workflow_id = execution.triggered_from_workflow_id
+        if execution.triggered_from_node_execution_id is not None:
+            node_execution.triggered_from_node_execution_id = execution.triggered_from_node_execution_id
+
     # Update serialized data
     json_converter = WorkflowRuntimeTypeConverter()
     node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
-    process_data = preserve_workflow_agent_binding_id(node_execution.process_data_dict, execution.process_data)
+    process_data = keep_agent_and_tool_ids(node_execution.process_data_dict, execution.process_data)
     node_execution.process_data = (
         json.dumps(json_converter.to_json_encodable(process_data)) if process_data is not None else "{}"
     )

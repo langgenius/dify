@@ -19,6 +19,7 @@ from configs import dify_config
 from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
@@ -69,10 +70,12 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
     created_at = datetime.fromisoformat(data.get("created_at", "")) if data.get("created_at") else datetime.now()
     finished_at = datetime.fromisoformat(data.get("finished_at", "")) if data.get("finished_at") else None
 
-    return WorkflowNodeExecution(
+    return DifyWorkflowNodeExecution(
         id=data.get("id", ""),
         node_execution_id=data.get("node_execution_id"),
         workflow_id=data.get("workflow_id", ""),
+        triggered_from_workflow_id=data.get("triggered_from_workflow_id") or None,
+        triggered_from_node_execution_id=data.get("triggered_from_node_execution_id") or None,
         workflow_execution_id=data.get("workflow_run_id"),
         index=safe_int(data.get("index", 0)),
         predecessor_node_id=data.get("predecessor_node_id"),
@@ -139,6 +142,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Extract user context
         self._triggered_from = triggered_from
         self._creator_user_id = user.id
+        self._user = user
+        self._session_factory = session_factory
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
@@ -155,6 +160,16 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Keep the migration switch on the typed application config so callers
         # and tests share the same validated source.
         self._enable_dual_write = dify_config.LOGSTORE_DUAL_WRITE_ENABLED
+
+    @override
+    def for_workflow_tool(self, app_id: str) -> "LogstoreWorkflowNodeExecutionRepository":
+        return LogstoreWorkflowNodeExecutionRepository(
+            session_factory=self._session_factory,
+            tenant_id=self._tenant_id,
+            user=self._user,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        )
 
     def _to_logstore_model(self, domain_model: WorkflowNodeExecution) -> Sequence[tuple[str, str]]:
         logger.debug(
@@ -181,6 +196,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             ("tenant_id", self._tenant_id),
             ("app_id", self._app_id or ""),
             ("workflow_id", domain_model.workflow_id),
+            ("triggered_from_workflow_id", getattr(domain_model, "triggered_from_workflow_id", None) or ""),
+            ("triggered_from_node_execution_id", getattr(domain_model, "triggered_from_node_execution_id", None) or ""),
             (
                 "triggered_from",
                 self._triggered_from.value if hasattr(self._triggered_from, "value") else str(self._triggered_from),
@@ -278,6 +295,21 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 # Don't raise - LogStore write succeeded, SQL is just a backup
 
     @override
+    def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
+        """Append each record through the existing writer and batch the SQL backup."""
+        if not executions:
+            return
+        for execution in executions:
+            self.logstore_client.put_log(
+                AliyunLogStore.workflow_node_execution_logstore, self._to_logstore_model(execution)
+            )
+        if self._enable_dual_write:
+            try:
+                self.sql_repository.save_many(executions)
+            except Exception:
+                logger.exception("Failed to dual-write workflow node execution batch: %s", [e.id for e in executions])
+
+    @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
         """Create the SQL caller row required by Agent v2 participant ownership."""
 
@@ -328,9 +360,10 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all node executions for a workflow execution.
-        Paused nodes are always included; include_paused accepts the shared resume-read contract.
         Uses LogStore SQL query with window function to get the latest version of each node execution.
         This ensures we only get the most recent version of each node execution record.
+        LogStore already includes paused nodes by default; include_paused is
+        accepted for the shared resume-read contract without changing that behavior.
         Args:
             workflow_execution_id: The workflow execution identifier
             order_config: Optional configuration for ordering results
@@ -356,6 +389,13 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Escape parameters to prevent SQL injection
         escaped_workflow_execution_id = escape_identifier(workflow_execution_id)
         escaped_tenant_id = escape_identifier(self._tenant_id)
+        # Legacy root records may omit their origin; exclude only new hidden tool records.
+        tool_origin = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value
+        origin_filter = (
+            f"triggered_from='{tool_origin}'"
+            if self._triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+            else f"(triggered_from IS NULL OR triggered_from!='{tool_origin}')"
+        )
 
         # Build ORDER BY clause for outer query
         order_clause = ""
@@ -373,9 +413,11 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Build app_id filter for subquery
         app_id_filter = ""
+        escaped_app_id = escape_identifier(self._app_id or "")
         if self._app_id:
-            escaped_app_id = escape_identifier(self._app_id)
             app_id_filter = f" AND app_id='{escaped_app_id}'"
+
+        owner_filter = f"{origin_filter}{app_id_filter}"
 
         # Use window function to get latest version of each node execution
         sql = f"""
@@ -384,7 +426,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 FROM {AliyunLogStore.workflow_node_execution_logstore}
                 WHERE workflow_run_id='{escaped_workflow_execution_id}'
                   AND tenant_id='{escaped_tenant_id}'
-                  {app_id_filter}
+                  AND {owner_filter}
             ) t
             WHERE rn = 1
         """

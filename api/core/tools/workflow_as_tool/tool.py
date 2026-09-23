@@ -26,6 +26,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolInvokeError
 from core.workflow.file_reference import resolve_file_record_id
 from factories.file_factory import build_from_mapping
+from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from models import Account, Tenant
@@ -51,9 +52,9 @@ class WorkflowTool(Tool):
     def __init__(
         self,
         workflow_app_id: str,
+        workflow_id: str,
         workflow_as_tool_id: str,
         version: str,
-        workflow_entities: dict[str, Any],
         workflow_call_depth: int,
         entity: ToolEntity,
         runtime: ToolRuntime,
@@ -61,9 +62,9 @@ class WorkflowTool(Tool):
         execution_driver: WorkflowRunDriver | None = None,
     ):
         self.workflow_app_id = workflow_app_id
+        self.workflow_id = workflow_id
         self.workflow_as_tool_id = workflow_as_tool_id
         self.version = version
-        self.workflow_entities = workflow_entities
         self.workflow_call_depth = workflow_call_depth
         self.label = label
         self.execution_driver = execution_driver
@@ -135,9 +136,13 @@ class WorkflowTool(Tool):
             # because workflow pausing mechanisms (such as HumanInput) are not
             # supported within WorkflowTool execution context.
             pause_state_config=None,
+            allow_human_input=False,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})
+
+        if data.get("status") == WorkflowExecutionStatus.PAUSED:
+            raise ToolInvokeError("Paused Workflow Tool execution requires Engine-managed container execution.")
 
         if err := data.get("error"):
             raise ToolInvokeError(err)
@@ -163,6 +168,19 @@ class WorkflowTool(Tool):
     @property
     def latest_usage(self) -> LLMUsage:
         return self._latest_usage
+
+    def prepare_container_inputs(
+        self,
+        tool_parameters: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], list[dict[str, str | None]]]:
+        """Merge configured parameters and convert them into workflow inputs."""
+        runtime_parameters = self.runtime.runtime_parameters if self.runtime else None
+        merged_parameters = {
+            **tool_parameters,
+            **(runtime_parameters or {}),
+        }
+        typed_parameters = self._transform_tool_parameters_type(merged_parameters)
+        return self._transform_args(tool_parameters=typed_parameters)
 
     @classmethod
     def _derive_usage_from_result(cls, data: Mapping[str, Any]) -> LLMUsage:
@@ -229,8 +247,8 @@ class WorkflowTool(Tool):
             entity=self.entity.model_copy(),
             runtime=runtime,
             workflow_app_id=self.workflow_app_id,
+            workflow_id=self.workflow_id,
             workflow_as_tool_id=self.workflow_as_tool_id,
-            workflow_entities=self.workflow_entities,
             workflow_call_depth=self.workflow_call_depth,
             version=self.version,
             label=self.label,

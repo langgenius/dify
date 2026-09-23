@@ -4,7 +4,7 @@ The aggregate constructs this observer and supplies its repositories, indexes,
 and history before the engine starts. Engine events remain storage-agnostic.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Union, override
@@ -15,7 +15,9 @@ from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
+from core.tools.workflow_as_tool.repository import WorkflowToolSource
+from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY, keep_agent_and_tool_ids
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
@@ -27,6 +29,7 @@ from graphon.engine_events import (
     GraphRunPartialSucceededEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunPauseRequestedEvent,
@@ -84,6 +87,7 @@ class WorkflowPersistenceLayer(Layer):
         self._workflow_execution: WorkflowExecution | None = None
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
         self._node_run_indices: Mapping[str, int] = {}
+        self._workflow_tool_layers: dict[tuple[str, str], WorkflowPersistenceLayer] = {}
 
     @property
     def workflow_execution(self) -> WorkflowExecution:
@@ -92,12 +96,64 @@ class WorkflowPersistenceLayer(Layer):
     def set_node_run_indices(self, indices: Mapping[str, int]) -> None:
         """Consume the upper layer's indices, allocated before engine event delivery."""
         self._node_run_indices = indices
+        for layer in self._workflow_tool_layers.values():
+            layer.set_node_run_indices(indices)
 
     def set_node_execution_history(self, executions: Sequence[WorkflowNodeExecution]) -> None:
-        """Restore materialized history before execution starts."""
+        """Restore materialized history before execution starts or a source frame is scheduled."""
         self._node_execution_cache = {
             execution.node_execution_id or execution.id: execution for execution in executions
         }
+
+    def create_workflow_tool_event_listener(
+        self,
+        source: WorkflowToolSource,
+        caller_workflow_id: str,
+        caller_node_execution_id: str,
+        *,
+        node_executions: Sequence[WorkflowNodeExecution] = (),
+    ) -> Callable[[NodeEvent], None]:
+        """Persist hidden tool nodes under their source app, without creating another run."""
+        key = (source.app_id, source.workflow_id)
+        tool_layer = self._workflow_tool_layers.get(key)
+        if tool_layer is None:
+            tool_layer = WorkflowPersistenceLayer(
+                application_generate_entity=self._application_generate_entity,
+                workflow_info=PersistenceWorkflowInfo(
+                    workflow_id=source.workflow_id,
+                    workflow_type=WorkflowType.WORKFLOW,
+                    version="",
+                    graph_data=source.graph_config,
+                ),
+                workflow_execution_repository=self._workflow_execution_repository,
+                workflow_node_execution_repository=self._workflow_node_execution_repository.for_workflow_tool(
+                    source.app_id
+                ),
+            )
+            tool_layer.set_node_run_indices(self._node_run_indices)
+            tool_layer.set_node_execution_history(node_executions)
+            self._workflow_tool_layers[key] = tool_layer
+
+        def on_node_event(event: NodeEvent) -> None:
+            self._prepare_workflow_tool_layer(tool_layer)
+            # Lifecycle ownership must survive independently of the configured run-log store.
+            event.node_run_result.process_data = {
+                **event.node_run_result.process_data,
+                WORKFLOW_TOOL_ROOT_APP_ID_KEY: self._application_generate_entity.app_config.app_id,
+            }
+            if isinstance(event, NodeRunStartedEvent) and not isinstance(event, NodeRunRetryEvent):
+                tool_layer._handle_node_started(
+                    event,
+                    caller_workflow_id=caller_workflow_id,
+                    caller_node_execution_id=caller_node_execution_id,
+                )
+            else:
+                tool_layer.on_event(event)
+
+        return on_node_event
+
+    def _prepare_workflow_tool_layer(self, tool_layer: "WorkflowPersistenceLayer") -> None:
+        tool_layer._workflow_execution = self._get_workflow_execution()
 
     # ------------------------------------------------------------------
     # Layer lifecycle
@@ -105,6 +161,8 @@ class WorkflowPersistenceLayer(Layer):
     @override
     def on_graph_start(self) -> None:
         self._workflow_execution = None
+        for tool_layer in self._workflow_tool_layers.values():
+            tool_layer.on_graph_start()
 
     @override
     def on_event(self, event: EngineEvent) -> None:
@@ -187,7 +245,13 @@ class WorkflowPersistenceLayer(Layer):
     # ------------------------------------------------------------------
     # Node-level handlers
     # ------------------------------------------------------------------
-    def _handle_node_started(self, event: NodeRunStartedEvent) -> None:
+    def _handle_node_started(
+        self,
+        event: NodeRunStartedEvent,
+        *,
+        caller_workflow_id: str | None = None,
+        caller_node_execution_id: str | None = None,
+    ) -> None:
         execution = self._get_workflow_execution()
         iteration_id = event.node_run_result.metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID)
         loop_id = event.node_run_result.metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID)
@@ -197,11 +261,19 @@ class WorkflowPersistenceLayer(Layer):
             WorkflowNodeExecutionMetadataKey.ITERATION_ID: iteration_id,
             WorkflowNodeExecutionMetadataKey.LOOP_ID: loop_id,
         }
+        if event.node_type == BuiltinNodeTypes.TOOL and event.provider_type:
+            metadata[WorkflowNodeExecutionMetadataKey.TOOL_INFO] = {
+                "provider_type": event.provider_type,
+                "provider_id": event.provider_id,
+            }
+
         previous = self._node_execution_cache.get(event.id)
-        domain_execution = WorkflowNodeExecution(
+        domain_execution = DifyWorkflowNodeExecution(
             id=previous.id if previous is not None else event.id,
             node_execution_id=event.id,
-            workflow_id=execution.workflow_id,
+            workflow_id=self._workflow_info.workflow_id,
+            triggered_from_workflow_id=caller_workflow_id,
+            triggered_from_node_execution_id=caller_node_execution_id,
             workflow_execution_id=execution.id_,
             predecessor_node_id=event.predecessor_node_id,
             index=self._node_run_indices[event.id],
@@ -209,6 +281,7 @@ class WorkflowPersistenceLayer(Layer):
             node_type=event.node_type,
             title=event.node_title,
             status=WorkflowNodeExecutionStatus.RUNNING,
+            process_data=event.node_run_result.process_data or None,
             metadata=metadata,
             created_at=previous.created_at if previous is not None else event.start_at,
         )
@@ -324,7 +397,7 @@ class WorkflowPersistenceLayer(Layer):
     def _append_retry_history(self, execution: WorkflowNodeExecution, event: NodeRunRetryEvent) -> None:
         """Append a validated full attempt before repository truncation or offload."""
         finished_at = naive_utc_now()
-        process_data = preserve_workflow_agent_binding_id(
+        process_data = keep_agent_and_tool_ids(
             event.node_run_result.process_data,
             execution.process_data,
         )
@@ -357,7 +430,7 @@ class WorkflowPersistenceLayer(Layer):
         next_process_data: Mapping[str, Any] | None,
     ) -> Mapping[str, Any] | None:
         """Keep internal retry history while replacing node-specific Process Data."""
-        merged_process_data = preserve_workflow_agent_binding_id(existing_process_data, next_process_data)
+        merged_process_data = keep_agent_and_tool_ids(existing_process_data, next_process_data)
         raw_history = (existing_process_data or {}).get(RETRY_HISTORY_PROCESS_DATA_KEY)
         if not isinstance(raw_history, list) or not raw_history:
             return merged_process_data
@@ -406,7 +479,7 @@ class WorkflowPersistenceLayer(Layer):
                 metadata={**(domain_execution.metadata or {}), **node_result.metadata},
             )
         else:
-            domain_execution.process_data = preserve_workflow_agent_binding_id(
+            domain_execution.process_data = keep_agent_and_tool_ids(
                 node_result.process_data,
                 domain_execution.process_data,
             )
@@ -415,14 +488,20 @@ class WorkflowPersistenceLayer(Layer):
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
 
     def _fail_running_node_executions(self, *, error_message: str) -> None:
+        for tool_layer in self._workflow_tool_layers.values():
+            self._prepare_workflow_tool_layer(tool_layer)
+            tool_layer._fail_running_node_executions(error_message=error_message)
         now = naive_utc_now()
+        unfinished = []
         for execution in self._node_execution_cache.values():
             if execution.status == WorkflowNodeExecutionStatus.RUNNING:
                 execution.status = WorkflowNodeExecutionStatus.FAILED
                 execution.error = error_message
                 execution.finished_at = now
                 execution.elapsed_time = max((now - execution.created_at).total_seconds(), 0.0)
-                self._workflow_node_execution_repository.save(execution)
+                unfinished.append(execution)
+        if unfinished:
+            self._workflow_node_execution_repository.save_many(unfinished)
 
     def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:
         if not self._trace_manager:
