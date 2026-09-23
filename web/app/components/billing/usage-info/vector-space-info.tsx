@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiHardDrive3Line } from '@remixicon/react'
 import { useSuspenseQueries } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +15,7 @@ type Props = Readonly<{
 const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB('sandbox')
 
 const VectorSpaceInfo: FC<Props> = ({ className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const [{ data: plan }, { data: vectorSpace }] = useSuspenseQueries({
     queries: [
       consoleQuery.features.get.queryOptions({
@@ -29,7 +28,7 @@ const VectorSpaceInfo: FC<Props> = ({ className }) => {
   return (
     <UsageInfo
       className={className}
-      Icon={RiHardDrive3Line}
+      iconClassName="i-ri-hard-drive-3-line"
       name={t(($) => $['usagePage.vectorSpace'], { ns: 'billing' })}
       tooltip={t(($) => $['usagePage.vectorSpaceTooltip'], { ns: 'billing' }) as string}
       usage={vectorSpace.size}

@@ -257,6 +257,7 @@
   "segment.searchResults_one": "搜索结果",
   "segment.searchResults_other": "搜索结果",
   "segment.searchResults_zero": "搜索结果",
+  "segment.statusFilterLabel": "按状态筛选分段",
   "segment.summary": "摘要",
   "segment.summaryPlaceholder": "写一个简短的摘要，以便更好地检索…"
 }

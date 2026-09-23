@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { LLMNodeType } from '../types'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import MemoryConfig from '@/app/components/workflow/nodes/_base/components/memory-config'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import { FlowType } from '@/types/common'
@@ -55,7 +55,10 @@ const PanelMemorySection: FC<Props> = ({
   handleSyeQueryChange,
   handleMemoryChange,
 }) => {
-  const { t } = useTranslation()
+  const userLabelId = React.useId()
+  const memoryLabelId = React.useId()
+
+  const { t } = useTranslation(['workflow'])
   const isSnippetFlow = flowType === FlowType.snippet
   const shouldCheckSysQuery = !isSnippetFlow
   const defaultMemory = isSnippetFlow ? SNIPPET_DEFAULT_MEMORY : DEFAULT_MEMORY
@@ -68,11 +71,17 @@ const PanelMemorySection: FC<Props> = ({
         <div className="mt-4">
           <div className="flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal pr-2 pl-3">
             <div className="flex items-center space-x-1">
-              <div className="text-xs font-semibold text-text-secondary uppercase">
+              <div
+                id={memoryLabelId}
+                className="text-xs font-semibold text-text-secondary uppercase"
+              >
                 {t(($) => $['nodes.common.memories.title'], { ns: 'workflow' })}
               </div>
-              <Infotip aria-label={t(($) => $['nodes.common.memories.tip'], { ns: 'workflow' })}>
-                {t(($) => $['nodes.common.memories.tip'], { ns: 'workflow' })}
+              <Infotip>
+                <InfotipTrigger aria-labelledby={memoryLabelId} />
+                <InfotipContent aria-labelledby={memoryLabelId}>
+                  {t(($) => $['nodes.common.memories.tip'], { ns: 'workflow' })}
+                </InfotipContent>
               </Infotip>
             </div>
             <div className="flex h-4.5 items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-xs font-semibold text-text-tertiary uppercase">
@@ -83,12 +92,17 @@ const PanelMemorySection: FC<Props> = ({
             <Editor
               title={
                 <div className="flex items-center space-x-1">
-                  <div className="text-xs font-semibold text-text-secondary uppercase">user</div>
-                  <Infotip
-                    aria-label={t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflow' })}
-                    popupClassName="w-[180px]"
+                  <div
+                    id={userLabelId}
+                    className="text-xs font-semibold text-text-secondary uppercase"
                   >
-                    {t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflow' })}
+                    user
+                  </div>
+                  <Infotip>
+                    <InfotipTrigger aria-labelledby={userLabelId} />
+                    <InfotipContent aria-labelledby={userLabelId} className="w-45">
+                      {t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflow' })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
               }

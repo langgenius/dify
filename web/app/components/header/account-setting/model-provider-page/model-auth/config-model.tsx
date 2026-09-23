@@ -20,7 +20,7 @@ const ConfigModel = ({
   loadBalancingInvalid,
   credentialRemoved,
 }: ConfigModelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   if (loadBalancingInvalid) {
     return (

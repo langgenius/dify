@@ -48,7 +48,7 @@ export function EducationVerifyFlow({
 }: {
   requestVerification?: EducationVerificationRequest
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education'])
   const router = useRouter()
   const { data: userEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -196,7 +196,7 @@ function EducationVerifyLoading() {
 }
 
 function EducationVerifiedContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
 
   return (
     <EducationVerifyContent>
@@ -222,7 +222,7 @@ function EducationVerifiedContent() {
 }
 
 function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
 
   return (
     <EducationVerifyContent>

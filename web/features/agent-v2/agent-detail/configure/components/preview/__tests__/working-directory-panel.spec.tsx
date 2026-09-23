@@ -475,14 +475,14 @@ describe('AgentWorkingDirectoryPanel', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: persistentFilesTooltip,
+        name: 'agentV2.agentDetail.configure.workingDirectory.persistentFiles',
       }),
     )
     expect(await screen.findByText(persistentFilesTooltip)).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', {
-        name: temporaryFilesTooltip,
+        name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
       }),
     )
     expect(await screen.findByText(temporaryFilesTooltip)).toBeInTheDocument()

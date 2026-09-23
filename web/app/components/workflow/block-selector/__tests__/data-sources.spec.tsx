@@ -1,173 +1,227 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { ReactElement } from 'react'
-import type { ToolWithProvider } from '../../types'
+import type { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { Theme } from '@/types/app'
 import { BlockEnum } from '../../types'
+import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from '../constants'
 import DataSources from '../data-sources'
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
+const { marketplaceQuery, language, trackEvent } = vi.hoisted(() => ({
+  marketplaceQuery: vi.fn((_params?: Parameters<typeof useMarketplacePlugins>[0]) => ({
+    data: undefined,
+  })),
+  language: { value: 'en_US' },
+  trackEvent: vi.fn(),
 }))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
-
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
-  useMarketplacePlugins: vi.fn(),
+  useMarketplacePlugins: marketplaceQuery,
 }))
+vi.mock('@/context/i18n', () => ({ useGetLanguage: () => language.value }))
+vi.mock('@/app/components/base/amplitude', () => ({ trackEvent }))
 
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
-const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
+const render = (ui: ReactElement, enableMarketplace = false) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: enableMarketplace } })
 
-let enableMarketplaceForRender = false
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: { enable_marketplace: enableMarketplaceForRender },
-  })
-
-type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
-
-const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
-  id: 'langgenius/file',
-  name: 'file',
-  author: 'Dify',
-  description: { en_US: 'desc', zh_Hans: '描述' },
-  icon: 'icon',
-  label: { en_US: 'File Source', zh_Hans: '文件源' },
-  type: 'local_file',
-  team_credentials: {},
-  is_team_authorization: false,
-  allow_delete: false,
-  labels: [],
-  plugin_id: 'langgenius/file',
-  meta: { version: '1.0.0' },
-  tools: [
-    {
-      name: 'local-file',
-      author: 'Dify',
-      label: { en_US: 'Local File', zh_Hans: '本地文件' },
-      description: { en_US: 'Load local files', zh_Hans: '加载本地文件' },
-      parameters: [],
-      labels: [],
-      output_schema: {},
+const namedProvider = (name: string): RagPipelineDatasourceProviderResponse => {
+  const provider = createDatasourceProvider()
+  return {
+    ...provider,
+    provider: name,
+    plugin_id: `dify/${name}`,
+    declaration: {
+      ...provider.declaration,
+      identity: { ...provider.declaration.identity, label: { en_US: name } },
     },
-  ],
-  ...overrides,
+  }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  language.value = 'en_US'
 })
 
-const createMarketplacePluginsMock = (
-  overrides: Partial<UseMarketplacePluginsReturn> = {},
-): UseMarketplacePluginsReturn =>
-  ({
-    data: undefined,
-    ...overrides,
-  }) as UseMarketplacePluginsReturn
+it('selects the built-in local file datasource directly with its file extensions and canonical provider identity', async () => {
+  const user = userEvent.setup()
+  const onSelect = vi.fn()
+  const provider = createDatasourceProvider()
+  render(<DataSources searchText="" onSelect={onSelect} dataSources={[provider]} />)
 
-describe('DataSources', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    enableMarketplaceForRender = false
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
-    mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
+  await user.click(screen.getByRole('button', { name: 'File Source' }))
+  const action = screen.getByRole('button', { name: 'Local File' })
+  expect(action).toHaveAccessibleDescription('Load local files')
+  action.focus()
+  await user.keyboard('{Enter}')
+
+  expect(onSelect).toHaveBeenCalledWith(BlockEnum.DataSource, {
+    plugin_id: 'langgenius/file',
+    provider_type: 'local_file',
+    provider_name: 'file',
+    datasource_name: 'local-file',
+    datasource_label: 'Local File',
+    title: 'Local File',
+    plugin_unique_identifier: 'langgenius/file:1.0.0',
+    fileExtensions: DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE,
   })
-
-  // Data source tools should filter by search and normalize the default value payload.
-  describe('Selection', () => {
-    it('should add default file extensions for the built-in local file data source', async () => {
-      const user = userEvent.setup()
-      const onSelect = vi.fn()
-
-      render(<DataSources searchText="" onSelect={onSelect} dataSources={[createToolProvider()]} />)
-
-      await user.click(screen.getByText('File Source'))
-      await user.click(screen.getByText('Local File'))
-
-      expect(onSelect).toHaveBeenCalledWith(
-        BlockEnum.DataSource,
-        expect.objectContaining({
-          provider_name: 'file',
-          datasource_name: 'local-file',
-          datasource_label: 'Local File',
-          fileExtensions: expect.arrayContaining(['txt', 'pdf', 'md']),
-        }),
-      )
-    })
-
-    it('should filter providers by search text', () => {
-      render(
-        <DataSources
-          searchText="searchable"
-          onSelect={vi.fn()}
-          dataSources={[
-            createToolProvider({
-              id: 'searchable-provider',
-              name: 'searchable-provider',
-              label: { en_US: 'Searchable Source', zh_Hans: '可搜索源' },
-              tools: [
-                {
-                  name: 'searchable-tool',
-                  author: 'Dify',
-                  label: { en_US: 'Searchable Tool', zh_Hans: '可搜索工具' },
-                  description: { en_US: 'desc', zh_Hans: '描述' },
-                  parameters: [],
-                  labels: [],
-                  output_schema: {},
-                },
-              ],
-            }),
-            createToolProvider({
-              id: 'other-provider',
-              name: 'other-provider',
-              label: { en_US: 'Other Source', zh_Hans: '其他源' },
-            }),
-          ]}
-        />,
-      )
-
-      expect(screen.getByText('Searchable Source')).toBeInTheDocument()
-      expect(screen.queryByText('Other Source')).not.toBeInTheDocument()
-    })
+  expect(trackEvent).toHaveBeenCalledWith('tool_selected', {
+    tool_name: 'local-file',
+    plugin_id: 'langgenius/file',
   })
+  expect(provider.declaration.identity.name).toBe('langgenius/file/file')
+  expect(screen.queryByRole('button', { name: 'workflow.tabs.addAll' })).not.toBeInTheDocument()
+})
 
-  // Marketplace search should only run when enabled and a search term is present.
-  describe('Marketplace Search', () => {
-    it('should debounce marketplace requests while keeping datasource filtering responsive', async () => {
-      enableMarketplaceForRender = true
+it('keeps unauthorized installed providers selectable and falls back from null locale text', async () => {
+  language.value = 'zh_Hans'
+  const user = userEvent.setup()
+  const provider = namedProvider('drive')
+  provider.is_authorized = false
+  provider.declaration.provider_type = 'online_drive'
+  provider.declaration.identity.label = { en_US: 'Drive source', zh_Hans: null }
+  provider.declaration.datasources = [
+    {
+      identity: {
+        author: 'Dify',
+        name: 'drive-pages',
+        provider: 'dify/drive/drive',
+        label: { en_US: 'Drive pages', zh_Hans: null },
+      },
+      description: { en_US: 'Browse pages', zh_Hans: null },
+    },
+  ]
+  const onSelect = vi.fn()
+  render(<DataSources searchText="pages" onSelect={onSelect} dataSources={[provider]} />)
 
-      const onSelect = vi.fn()
-      const dataSources = [createToolProvider()]
-      const { rerender } = render(
-        <DataSources searchText="" onSelect={onSelect} dataSources={dataSources} />,
-      )
+  expect(screen.getByRole('button', { name: 'Drive source' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  )
+  await user.click(screen.getByRole('button', { name: 'Drive pages' }))
 
-      rerender(<DataSources searchText="i" onSelect={onSelect} dataSources={dataSources} />)
-      expect(
-        screen.queryByRole('link', { name: /plugin\.findMoreInMarketplace/ }),
-      ).not.toBeInTheDocument()
-      rerender(<DataSources searchText="in" onSelect={onSelect} dataSources={dataSources} />)
-      rerender(<DataSources searchText="invoice" onSelect={onSelect} dataSources={dataSources} />)
-
-      expect(
-        mockUseMarketplacePlugins.mock.calls
-          .map(([params]) => params)
-          .filter((params) => params?.query && params.query !== 'invoice'),
-      ).toEqual([])
-
-      await waitFor(() => {
-        expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
-          query: 'invoice',
-          category: PluginCategoryEnum.datasource,
-        })
-      })
-    })
+  expect(onSelect).toHaveBeenCalledWith(BlockEnum.DataSource, {
+    plugin_id: 'dify/drive',
+    provider_type: 'online_drive',
+    provider_name: 'drive',
+    datasource_name: 'drive-pages',
+    datasource_label: 'Drive pages',
+    title: 'Drive pages',
+    plugin_unique_identifier: provider.plugin_unique_identifier,
   })
+})
+
+it('filters by raw provider or action name and retains each matching provider group', async () => {
+  const provider = namedProvider('searchable-provider')
+  provider.declaration.datasources = [
+    {
+      identity: {
+        author: 'Dify',
+        name: 'match-action',
+        provider: 'compound',
+        label: { en_US: 'Matched action' },
+      },
+      description: { en_US: 'Matched description' },
+    },
+    {
+      identity: {
+        author: 'Dify',
+        name: 'sibling',
+        provider: 'compound',
+        label: { en_US: 'Sibling action' },
+      },
+      description: { en_US: '' },
+    },
+  ]
+  const { rerender } = render(
+    <DataSources
+      searchText="MATCH-action"
+      onSelect={vi.fn()}
+      dataSources={[provider, namedProvider('other')]}
+    />,
+  )
+  expect(screen.getByRole('button', { name: 'Matched action' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Sibling action' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'other' })).not.toBeInTheDocument()
+
+  rerender(
+    <DataSources searchText="searchable-provider" onSelect={vi.fn()} dataSources={[provider]} />,
+  )
+  expect(screen.getByRole('button', { name: 'Matched action' })).toBeInTheDocument()
+  rerender(<DataSources searchText="" onSelect={vi.fn()} dataSources={[provider]} />)
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Matched action' })).not.toBeInTheDocument(),
+  )
+  expect(screen.getByRole('button', { name: 'searchable-provider' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  )
+})
+
+it('keeps flat letter navigation sorted with pinyin initials and nonalphabetic providers last', () => {
+  const providers = [
+    '1Source',
+    '中文',
+    'Alpha',
+    'Echo',
+    'Foxtrot',
+    'Gamma',
+    'Hotel',
+    'India',
+    'Juliet',
+    'Kilo',
+    'Lima',
+  ].map(namedProvider)
+  render(<DataSources searchText="" onSelect={vi.fn()} dataSources={providers} />)
+  const letters = screen
+    .getAllByRole('button')
+    .filter((button) => /^[A-Z#]$/.test(button.textContent ?? ''))
+  expect(letters.map((button) => button.textContent)).toEqual([
+    'A',
+    'E',
+    'F',
+    'G',
+    'H',
+    'I',
+    'J',
+    'K',
+    'L',
+    'Z',
+    '#',
+  ])
+  expect(providers[0]?.provider).toBe('1Source')
+})
+
+it('debounces marketplace search while datasource filtering remains immediate', async () => {
+  const provider = createDatasourceProvider()
+  const onSelect = vi.fn()
+  const { rerender } = render(
+    <DataSources searchText="" onSelect={onSelect} dataSources={[provider]} />,
+    true,
+  )
+
+  rerender(<DataSources searchText="i" onSelect={onSelect} dataSources={[provider]} />)
+  rerender(<DataSources searchText="in" onSelect={onSelect} dataSources={[provider]} />)
+  rerender(<DataSources searchText="invoice" onSelect={onSelect} dataSources={[provider]} />)
+  expect(screen.queryByRole('button', { name: 'File Source' })).not.toBeInTheDocument()
+  expect(marketplaceQuery.mock.calls.map(([params]) => params).filter(Boolean)).toEqual([])
+  await waitFor(() =>
+    expect(marketplaceQuery).toHaveBeenLastCalledWith({ query: 'invoice', category: 'datasource' }),
+  )
+})
+
+it('keeps an expanded datasource open when the language changes its sort letter', async () => {
+  const user = userEvent.setup()
+  const provider = createDatasourceProvider()
+  const { rerender } = render(
+    <DataSources searchText="" onSelect={vi.fn()} dataSources={[provider]} />,
+  )
+  await user.click(screen.getByRole('button', { name: 'File Source' }))
+  expect(screen.getByRole('button', { name: 'Local File' })).toBeInTheDocument()
+
+  language.value = 'zh_Hans'
+  rerender(<DataSources searchText="" onSelect={vi.fn()} dataSources={[provider]} />)
+
+  expect(screen.getByRole('button', { name: '文件源' })).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByRole('button', { name: '本地文件' })).toBeInTheDocument()
 })

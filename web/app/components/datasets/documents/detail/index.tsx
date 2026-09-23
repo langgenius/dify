@@ -5,12 +5,12 @@ import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/mode
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
@@ -57,7 +57,7 @@ const NON_TERMINAL_DISPLAY_STATUSES = new Set<(typeof DisplayStatusList)[number]
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -217,8 +217,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       documentId,
       docForm: documentDetail?.doc_form as ChunkingMode,
       parentMode,
+      canEdit: canEditDocument,
     }),
-    [datasetId, documentId, documentDetail?.doc_form, parentMode],
+    [datasetId, documentId, documentDetail?.doc_form, parentMode, canEditDocument],
   )
 
   const statusDetail = useMemo(
@@ -303,7 +304,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                     showBatchModal={showBatchModal}
                     embedding={embedding}
                   />
-                  <Divider type="vertical" className="mx-3! h-3.5! bg-divider-regular!" />
+                  <Separator decorative orientation="vertical" className="mx-3 h-3.5" />
                 </>
               )}
             {documentDetail && (

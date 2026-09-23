@@ -10,7 +10,7 @@ import { useStore } from '../store'
 import Panel from './panel'
 
 const VariableInspectPanel: FC = () => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   const panelId = useId()
   const showVariableInspectPanel = useStore((s) => s.showVariableInspectPanel)
   const workflowCanvasHeight = useStore((s) => s.workflowCanvasHeight)

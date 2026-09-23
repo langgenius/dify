@@ -125,6 +125,12 @@ class UnsupportedTracingProviderError(BaseHTTPException):
     code = 400
 
 
+class TracingProviderUnavailableError(BaseHTTPException):
+    error_code = "tracing_provider_unavailable"
+    description = "The tracing provider is not available in this deployment."
+    code = 400
+
+
 class InvalidTracingConfigError(BaseHTTPException):
     error_code = "invalid_tracing_config"
     description = "The tracing configuration is invalid."

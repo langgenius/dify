@@ -19,7 +19,6 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
@@ -58,6 +57,7 @@ export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & 
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   modelList?: ModelSelectorProvider[]
+  modelListLoading?: boolean
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
@@ -84,16 +84,23 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   nodesOutputVars,
   availableNodes,
   modelList,
+  modelListLoading,
   showModelMeta,
   modelPredicate,
   modelSuggestionPredicate,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const [open, setOpen] = useState(false)
-  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
-  const isRulesLoading = !!provider && !!modelId && isLoading
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
+  const canFetchParameterRules =
+    !!currentProvider && currentModel?.status === ModelStatusEnum.active
+  const { data: parameterRulesData, isLoading } = useModelParameterRules(
+    provider,
+    modelId,
+    canFetchParameterRules,
+  )
+  const isRulesLoading = canFetchParameterRules && !!provider && !!modelId && isLoading
   const selectableModelList = modelList ?? activeTextGenerationModelList
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
@@ -173,6 +180,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           <SplitModelSelector
             value={hasSelectedModel ? { provider, model: modelId } : undefined}
             models={selectableModelList}
+            loading={modelListLoading}
             popupClassName={modelSelectorPopupClassName}
             disabled={readonly || modelSelectorReadonly}
             showModelMeta={showModelMeta}
@@ -215,6 +223,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               <ModelSelector
                 value={hasSelectedModel ? { provider, model: modelId } : undefined}
                 models={selectableModelList}
+                loading={modelListLoading}
                 disabled={modelSelectorReadonly}
                 onValueChange={handleChangeModel}
                 onHide={() => setOpen(false)}
@@ -278,7 +287,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             {debugWithMultipleModel
               ? t(($) => $.debugAsSingleModel, { ns: 'appDebug' })
               : t(($) => $.debugAsMultipleModel, { ns: 'appDebug' })}
-            <ArrowNarrowLeft aria-hidden className="size-3 rotate-180" />
+            <span
+              aria-hidden
+              className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
+            />
           </button>
         )}
       </PopoverContent>

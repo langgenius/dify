@@ -19,7 +19,7 @@ import services
 from configs import dify_config
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
-from controllers.common.rbac import DatasetId, RBACCheck
+from controllers.common.rbac import DatasetId, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
@@ -367,6 +367,13 @@ class GetProcessRuleApi(Resource):
             if not dataset:
                 raise NotFound("Dataset not found.")
 
+            enforce_rbac_checks(
+                tenant_id=dataset.tenant_id,
+                account_id=current_user.id,
+                checks=[RBACCheck(RBACPermission.DATASET_READONLY, DatasetId())],
+                path_args={"dataset_id": dataset.id},
+            )
+
             try:
                 DatasetService.check_dataset_permission(dataset, current_user, session)
             except services.errors.account.NoPermissionError as e:
@@ -405,7 +412,7 @@ class DatasetDocumentListApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -537,7 +544,7 @@ class DatasetDocumentListApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_USE, DatasetId()))
     @with_session
     def post(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -588,7 +595,7 @@ class DatasetDocumentListApi(Resource):
     @console_ns.response(204, "Documents deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()))
     @with_session
     def delete(
         self,
@@ -727,7 +734,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_USE, DatasetId()))
     @with_session
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -819,7 +826,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_USE, DatasetId()))
     @with_session
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
@@ -941,7 +948,7 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
@@ -984,7 +991,7 @@ class DocumentIndexingStatusApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1050,7 +1057,7 @@ class DocumentApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1124,7 +1131,7 @@ class DocumentApi(DocumentResource):
     @console_ns.response(204, "Document deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()))
     @with_session
     def delete(
         self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID
@@ -1184,7 +1191,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, DatasetId()))
     @with_session(write=False)
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         """Stream a ZIP archive containing the requested uploaded documents."""
@@ -1620,7 +1627,7 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(
         self,
@@ -1773,7 +1780,7 @@ class DocumentSummaryStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID, document_id: UUID):
         """

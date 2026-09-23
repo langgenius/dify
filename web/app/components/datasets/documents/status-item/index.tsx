@@ -3,6 +3,7 @@ import type { OperationName } from '../types'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDisplayStatus } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -10,7 +11,6 @@ import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { toast } from '@/app/notifications'
 import {
   useDocumentDelete,
@@ -54,7 +54,9 @@ const StatusItem = ({
   onUpdate,
   canEdit = false,
 }: StatusItemProps) => {
-  const { t } = useTranslation()
+  const statusLabelId = React.useId()
+
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   const statusItem = DOC_INDEX_STATUS_MAP[localStatus]
@@ -105,16 +107,18 @@ const StatusItem = ({
       )}
     >
       <StatusDot status={statusItem.status} className={reverse ? 'ml-2' : 'mr-2'} />
-      <span className={cn(`${STATUS_TEXT_COLOR_MAP[statusItem.status]} text-sm`, textCls)}>
+      <span
+        id={statusLabelId}
+        className={cn(`${STATUS_TEXT_COLOR_MAP[statusItem.status]} text-sm`, textCls)}
+      >
         {statusItem.text}
       </span>
       {errorMessage && (
-        <Infotip
-          aria-label={errorMessage}
-          className="ml-1"
-          popupClassName="max-w-[260px] break-all"
-        >
-          {errorMessage}
+        <Infotip>
+          <InfotipTrigger aria-labelledby={statusLabelId} className="ml-1" />
+          <InfotipContent aria-labelledby={statusLabelId} className="max-w-65">
+            {errorMessage}
+          </InfotipContent>
         </Infotip>
       )}
       {scene === 'detail' && (
@@ -124,6 +128,7 @@ const StatusItem = ({
               render={
                 <span className="flex">
                   <Switch
+                    aria-labelledby={statusLabelId}
                     checked={archived ? false : enabled}
                     onCheckedChange={(v) =>
                       !archived && canEdit && handleSwitch(v ? 'enable' : 'disable')
@@ -134,7 +139,7 @@ const StatusItem = ({
                 </span>
               }
             />
-            <TooltipContent className="system-xs-medium text-text-secondary">
+            <TooltipContent>
               {t(($) => $['list.action.enableWarning'], { ns: 'datasetDocuments' })}
             </TooltipContent>
           </Tooltip>

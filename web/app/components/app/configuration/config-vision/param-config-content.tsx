@@ -3,13 +3,13 @@ import type { FC } from 'react'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Field, FieldItem } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Infotip } from '@/app/components/base/infotip'
 import ParamItem from '@/app/components/base/param-item'
 import { Resolution, TransferMethod } from '@/types/app'
 
@@ -18,7 +18,9 @@ const MAX = 6
 const optionClassName =
   'flex h-8 w-full cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary data-unchecked:cursor-pointer data-unchecked:hover:border-components-option-card-option-border-hover data-unchecked:hover:bg-components-option-card-option-bg-hover data-unchecked:hover:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:system-sm-medium data-checked:shadow-xs'
 const ParamConfigContent: FC = () => {
-  const { t } = useTranslation()
+  const resolutionLabelId = React.useId()
+
+  const { t } = useTranslation(['appDebug'])
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
 
@@ -67,20 +69,20 @@ const ParamConfigContent: FC = () => {
           }
         >
           <div className="mb-2 flex items-center space-x-1">
-            <FieldsetLegend className="m-0 py-0 text-[13px] leading-4.5 font-semibold text-text-secondary">
+            <FieldsetLegend
+              id={resolutionLabelId}
+              className="m-0 py-0 text-[13px] leading-4.5 font-semibold text-text-secondary"
+            >
               {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
             </FieldsetLegend>
-            <Infotip
-              aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                ns: 'appDebug',
-              })}
-              popupClassName="w-[180px]"
-            >
-              {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })
-                .split('\n')
-                .map((item) => (
-                  <div key={item}>{item}</div>
-                ))}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={resolutionLabelId} />
+              <InfotipContent
+                aria-labelledby={resolutionLabelId}
+                className="w-45 whitespace-pre-wrap"
+              >
+                {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <div className="flex items-center gap-1">

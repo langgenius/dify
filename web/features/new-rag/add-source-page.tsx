@@ -15,6 +15,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
@@ -123,7 +124,7 @@ function SourceTypeSelector({
   value: SourceType
   onChange: (value: SourceType) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const options = [
     { icon: 'i-ri-global-line', key: 'websiteCrawl' as const },
     { icon: 'i-ri-file-text-line', key: 'onlineDocuments' as const },
@@ -170,7 +171,7 @@ function ProviderSelector({
   provider: NewKnowledgeWebsiteProvider
   onChange: (provider: NewKnowledgeWebsiteProvider) => void
 }) {
-  const { t } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
     <fieldset>
@@ -214,7 +215,7 @@ function ProviderFieldControl({
   setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
   values: Record<string, string>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const generatedId = useId()
   const inputId = `${generatedId}-input`
   const descriptionId = field.description ? `${generatedId}-description` : undefined
@@ -282,7 +283,7 @@ function ConnectionForm({
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const connectButtonLabelId = useId()
   const supportedAuthKinds = getSupportedAuthKinds(provider)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
@@ -444,7 +445,7 @@ function UnconfiguredProvider({
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const [configuring, setConfiguring] = useState(false)
 
   if (configuring)
@@ -493,8 +494,8 @@ function ConnectionProblem({
   onConnected: (connection: Connection) => void
   onReconcile: () => Promise<Connection | undefined>
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
@@ -559,7 +560,7 @@ function ProvisioningConnection({
 }: {
   onReconcile: () => Promise<Connection | undefined>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
 
@@ -605,11 +606,12 @@ export function AddSourcePage({
   knowledgeSpaceId: string
   sourceDraftKey?: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
   const queryClient = useQueryClient()
-  const initialDraftRef = useRef<NewKnowledgeSourceDraft>(
-    initialSourceDraft ??
+  const initialDraftRef = useRefWithInit<NewKnowledgeSourceDraft>(
+    () =>
+      initialSourceDraft ??
       createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
   )
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)

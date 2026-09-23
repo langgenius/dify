@@ -34,6 +34,7 @@ import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
+import { getAppTransferErrorMessage } from '../transfer-error'
 import DSLConfirmModal from './dsl-confirm-modal'
 import DSLImportWarningDescription from './dsl-import-warning-description'
 import { CreateFromDSLModalTab } from './types'
@@ -92,14 +93,14 @@ function CreateFromDSLModal({
   droppedFile,
 }: CreateFromDSLModalProps) {
   const { push } = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const formRef = useRef<HTMLFormElement>(null)
   const browseButtonRef = useRef<HTMLButtonElement>(null)
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions(),
+    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
   )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
@@ -124,7 +125,9 @@ function CreateFromDSLModal({
     },
   })
   const confirmImportMutation = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -143,11 +146,13 @@ function CreateFromDSLModal({
   const isPackageImport =
     currentTab === CreateFromDSLModalTab.FROM_FILE &&
     currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
+  // URL imports are classified by the server before applying the appropriate quota.
+  const requiresAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
   const isAppQuotaUnavailable =
-    !isPackageImport && deploymentEdition === 'CLOUD' && appQuota === undefined
+    requiresAppQuota && deploymentEdition === 'CLOUD' && appQuota === undefined
   // A limit of 0 means unlimited.
   const isAppsFull =
-    !isPackageImport &&
+    requiresAppQuota &&
     deploymentEdition === 'CLOUD' &&
     appQuota !== undefined &&
     appQuota.limit > 0 &&
@@ -179,6 +184,7 @@ function CreateFromDSLModal({
     )
     if (!response.app_id || !appMode) return
 
+    // Dependency checks own their error feedback; a created app remains navigable.
     await handleCheckPluginDependencies(response.app_id)
     const redirectionTarget = await resolveImportedAppRedirectionTarget({
       id: response.app_id,
@@ -208,12 +214,18 @@ function CreateFromDSLModal({
       return
     }
 
-    toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    toast.error(
+      t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+      {
+        description: response.error || undefined,
+      },
+    )
   }
 
   const handleSubmit = async (values: ImportFormValues) => {
     if (isAppQuotaUnavailable || isAppsFull || isImporting) return
 
+    let response: Import
     try {
       let source: ImportSource
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
@@ -225,31 +237,46 @@ function CreateFromDSLModal({
         source = { type: CreateFromDSLModalTab.FROM_URL, url: yamlUrl }
       }
 
-      const response = await importMutation.mutateAsync(source)
-      await handleImportResponse(response)
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      response = await importMutation.mutateAsync(source)
+    } catch (error) {
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        {
+          description: await getAppTransferErrorMessage(error),
+        },
+      )
+      return
     }
+    await handleImportResponse(response)
   }
 
   const handleConfirm = async () => {
     if (!pendingImport || isConfirming) return
 
+    let response: Import
     try {
-      const response = await confirmImportMutation.mutateAsync({
+      response = await confirmImportMutation.mutateAsync({
         params: { import_id: pendingImport.id },
       })
-      if (response.status === 'completed' || response.status === 'completed-with-warnings') {
-        setPendingImport(null)
-        await handleCompletedImport(response)
-        return
-      }
-
-      if (response.status === 'failed')
-        toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        { description: await getAppTransferErrorMessage(error) },
+      )
+      return
     }
+
+    if (response.status === 'completed' || response.status === 'completed-with-warnings') {
+      setPendingImport(null)
+      await handleCompletedImport(response)
+      return
+    }
+
+    if (response.status === 'failed')
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        { description: response.error || undefined },
+      )
   }
 
   const handleTabChange = (value: string | number) => {
@@ -304,7 +331,7 @@ function CreateFromDSLModal({
                     className="h-full pt-0 pb-0"
                     disabled={isImporting}
                   >
-                    {t(($) => $.importFromDSLFile, { ns: 'app' })}
+                    {t(($) => $.importFromFile, { ns: 'app' })}
                   </TabsTab>
                   <TabsTab
                     value={CreateFromDSLModalTab.FROM_URL}
@@ -320,8 +347,7 @@ function CreateFromDSLModal({
                   className="px-6 py-4"
                 >
                   <Uploader
-                    accept=".yaml,.yml,.ifpkg"
-                    displayName={isPackageImport ? 'IFPKG' : 'YAML'}
+                    importType="app"
                     browseButtonRef={browseButtonRef}
                     className="mt-0"
                     file={currentFile}
@@ -342,7 +368,7 @@ function CreateFromDSLModal({
                       autoComplete="off"
                       required
                       disabled={isImporting}
-                      placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
+                      placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
                       defaultValue={dslUrl}
                     />
                     <FieldError />
@@ -364,7 +390,7 @@ function CreateFromDSLModal({
                   loading={isImporting}
                   variant="primary"
                 >
-                  <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
+                  <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
                   <KbdGroup>
                     {CREATE_FROM_DSL_HOTKEY.split('+').map((key) => (
                       <Kbd key={key} color="white">

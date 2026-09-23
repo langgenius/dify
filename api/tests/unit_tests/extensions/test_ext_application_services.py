@@ -1,6 +1,9 @@
 """Tests for application-service dependency wiring."""
 
 import json
+import logging
+from collections.abc import Mapping
+from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, patch
@@ -9,8 +12,7 @@ from uuid import uuid4
 import httpx
 import pytest
 from flask import Flask
-from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.tool_file_manager import ToolFileManager
@@ -18,8 +20,9 @@ from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
-from models.account import Account
-from models.model import AccountTrialAppRecord, DifySetup
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.enums import CustomizeTokenStrategy
+from models.model import AccountTrialAppRecord, App, AppMode, AppModelConfig, DifySetup, InstalledApp, Site, TrialApp
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -29,17 +32,19 @@ from repositories.account_oauth_repository import (
     RegisterServiceOAuthInvitationGateway,
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
-from services import account_forgot_password_service, recommended_app_catalog_gateway
+from services import account_forgot_password_service, audio_provider_gateway, recommended_app_catalog_gateway
 from services.account_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -63,19 +68,29 @@ from services.account_oauth_adapters import (
     DeploymentOAuthPolicyGateway,
     RedisOAuthAccountClaimLock,
 )
+from services.app.api_key_service import AppApiKeyService
+from services.app_generate_service import AppGenerateService
+from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
+from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
+from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
+from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
-from services.enterprise.enterprise_service import WebAppSettings
-from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
+from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError, EnterpriseServiceError
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
+from services.installed_app_generation_service import InstalledAppGenerationService
+from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
@@ -84,11 +99,12 @@ from services.retention.workflow_run.archive_log_service import WorkflowRunArchi
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.upload_file_delivery_service import UploadFileDeliveryService
-from services.webapp_access_query_service import WebAppAccessUnavailableError
+from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.services.test_app_task_service import _StopRedis
 
 
 @pytest.mark.parametrize(
@@ -158,7 +174,40 @@ def test_init_app_registers_services_for_the_current_app(
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
+        assert isinstance(services.app_scoped_end_users.commands, AppScopedEndUserService)
+        assert isinstance(services.app_scoped_end_users.queries, AppScopedEndUserQueryService)
+        repository = services.app_scoped_end_users.queries._app_scoped_end_users
+        assert isinstance(repository, AppScopedEndUserRepo)
+        assert services.app_scoped_end_users.commands._app_scoped_end_users is repository
+        assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
+
+
+def test_build_application_services_preserves_composed_boundaries(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+
+    assert isinstance(services.app_api_keys, AppApiKeyService)
+    assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
+    assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
+    assert redis.register_script.call_count == 3
+
+    assert isinstance(services.installed_app_generation, InstalledAppGenerationService)
+    installed_apps = services.installed_app_access._installed_apps
+    assert isinstance(installed_apps, SQLAlchemyInstalledAppRepository)
+    assert services.installed_app_generation._usage is installed_apps
+    assert services.installed_app_generation._app_definitions is services.app_definitions
+    runtime = services.installed_app_generation._runtime
+    assert isinstance(runtime, InstalledAppGenerateServiceRuntime)
+    assert runtime._session_factory is sqlite_session_factory
 
 
 @pytest.mark.parametrize(
@@ -675,6 +724,31 @@ def test_build_application_services_wires_data_source_api_key_auth(
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
 
 
+def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = _StopRedis(read_error=AssertionError("Workflow stop must not inspect task ownership"))
+    script = MagicMock(side_effect=AssertionError("Workflow stop must not execute Redis scripts"))
+    with patch.object(redis, "register_script", return_value=script):
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=redis,
+        )
+
+    services.app_tasks.stop_workflow_task_no_user_check(task_id="workflow-task")
+
+    assert redis.reads == []
+    assert redis.operations == ["legacy_flag", "graph_command"]
+    assert redis.values["generate_task_stopped:workflow-task"] == b"1"
+    assert redis.expirations["generate_task_stopped:workflow-task"] == 600
+    assert [json.loads(command) for command in redis.commands["workflow:workflow-task:commands"]] == [
+        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+    ]
+    assert redis.expirations["workflow:workflow-task:commands"] == 3600
+
+
 def test_build_application_services_wires_trial_app_usage(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -700,6 +774,274 @@ def test_build_application_services_wires_trial_app_usage(
     assert record.count == 1
 
 
+@pytest.fixture
+def installed_app_ref(sqlite_session_factory: sessionmaker[Session]) -> InstalledAppRef:
+    with sqlite_session_factory.begin() as session:
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Installed app",
+            mode=AppMode.COMPLETION,
+            enable_site=True,
+            enable_api=True,
+        )
+        session.add(app)
+        session.flush()
+        installed_app = InstalledApp(
+            tenant_id=str(uuid4()),
+            app_id=app.id,
+            app_owner_tenant_id=app.tenant_id,
+            is_pinned=False,
+        )
+        session.add(installed_app)
+        session.flush()
+        result = InstalledAppRef(id=installed_app.id, app_id=app.id, tenant_id=installed_app.tenant_id)
+    return result
+
+
+@pytest.mark.parametrize(
+    ("deployment_edition", "permission_result"),
+    [
+        pytest.param(DeploymentEdition.COMMUNITY, False, id="community-skips-permission"),
+        pytest.param(DeploymentEdition.CLOUD, False, id="cloud-skips-permission"),
+        pytest.param(DeploymentEdition.ENTERPRISE, True, id="enterprise-allowed"),
+        pytest.param(DeploymentEdition.ENTERPRISE, False, id="enterprise-denied"),
+    ],
+)
+def test_build_application_services_wires_installed_app_admission(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    deployment_edition: DeploymentEdition,
+    permission_result: bool,
+) -> None:
+    account_id = str(uuid4())
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        return_value={"result": permission_result},
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=deployment_edition,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        if deployment_edition == DeploymentEdition.ENTERPRISE and not permission_result:
+            with pytest.raises(InstalledAppAccessDeniedError):
+                services.installed_app_access.get_access(
+                    installed_app_id=installed_app_ref.id,
+                    tenant_id=installed_app_ref.tenant_id,
+                    account_id=account_id,
+                )
+        else:
+            assert (
+                services.installed_app_access.get_access(
+                    installed_app_id=installed_app_ref.id,
+                    tenant_id=installed_app_ref.tenant_id,
+                    account_id=account_id,
+                )
+                == installed_app_ref
+            )
+
+    if deployment_edition == DeploymentEdition.ENTERPRISE:
+        enterprise_request.assert_called_once_with(
+            "GET", "/webapp/permission", params={"userId": account_id, "appId": installed_app_ref.app_id}
+        )
+    else:
+        enterprise_request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "enterprise_error",
+    [
+        pytest.param(EnterpriseAPINotFoundError(), id="not-found"),
+        pytest.param(EnterpriseAPIError("permission unavailable"), id="api-error"),
+        pytest.param(httpx.ConnectError("connection failed"), id="transport"),
+        pytest.param(json.JSONDecodeError("invalid", "", 0), id="invalid-json"),
+        pytest.param(UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid"), id="invalid-encoding"),
+    ],
+)
+def test_installed_app_admission_normalizes_known_enterprise_errors(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    enterprise_error: Exception,
+) -> None:
+    account_id = str(uuid4())
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        side_effect=enterprise_error,
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        with pytest.raises(WebAppAccessUnavailableError) as raised:
+            services.installed_app_access.get_access(
+                installed_app_id=installed_app_ref.id,
+                tenant_id=installed_app_ref.tenant_id,
+                account_id=account_id,
+            )
+
+    assert raised.value.__cause__ is enterprise_error
+    enterprise_request.assert_called_once_with(
+        "GET", "/webapp/permission", params={"userId": account_id, "appId": installed_app_ref.app_id}
+    )
+
+
+def test_trial_generation_uses_configured_access_runtime_and_usage(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            App(id=app_id, tenant_id=tenant_id, name="Trial", mode="completion", enable_site=True, enable_api=False)
+        )
+        account = Account(name="Account", email="trial@example.com")
+        account.id = account_id
+        session.add(account)
+        session.add(TrialApp(app_id=app_id, tenant_id=tenant_id))
+
+    admitted = services.trial_app_access.get_access(app_id=app_id, account_id=account_id)
+    with patch.object(AppGenerateService, "generate", return_value={"answer": "hello"}):
+        response = services.trial_app_generation.generate_completion(
+            trial_app=admitted, account_id=account_id, args={"inputs": {}}
+        )
+
+    assert response == {"answer": "hello"}
+    with sqlite_session_factory() as session:
+        record = session.scalar(
+            select(AccountTrialAppRecord).where(
+                AccountTrialAppRecord.app_id == app_id, AccountTrialAppRecord.account_id == account_id
+            )
+        )
+        assert record is not None
+        assert record.count == 1
+
+
+def test_app_audio_uses_the_configured_database_and_app_owner(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        config = AppModelConfig(app_id=app_id, speech_to_text='{"enabled":true}')
+        session.add(config)
+        session.flush()
+        session.add(
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="Trial",
+                mode="chat",
+                app_model_config_id=config.id,
+                enable_site=True,
+                enable_api=False,
+            )
+        )
+        session.add(TrialApp(app_id=app_id, tenant_id=tenant_id))
+
+    def transcribe(*, app: AudioAppRef, content: bytes, end_user: str | None) -> str:
+        assert app == AudioAppRef(app_id=app_id, tenant_id=tenant_id, app_mode="chat")
+        assert content == b"audio"
+        assert end_user is None
+        return "transcript"
+
+    def synthesize(*, app: AudioAppRef, text: str, voice: str | None, end_user: str | None) -> AudioOutput:
+        assert app == AudioAppRef(app_id=app_id, tenant_id=tenant_id, app_mode="chat")
+        assert (text, voice, end_user) == ("read", "voice", None)
+        return AudioOutput(data=b"audio", mime_type="audio/mpeg")
+
+    monkeypatch.setattr(audio_provider_gateway, "speech_to_text", transcribe)
+    monkeypatch.setattr(audio_provider_gateway, "text_to_speech", synthesize)
+    admitted = services.trial_app_access.get_access(app_id=app_id, account_id=account_id)
+    assert services.app_audio.transcript_asr(
+        app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
+        audio=AudioUpload(stream=BytesIO(b"audio"), mime_type="audio/mp3"),
+    ) == {"text": "transcript"}
+    assert services.app_audio.transcript_tts(
+        app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
+        account_id=account_id,
+        text=" read ",
+        voice="voice",
+        message_id=None,
+    ) == AudioOutput(data=b"audio", mime_type="audio/mpeg")
+
+
+def test_app_previews_use_the_configured_catalog_and_app_owner(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="builtin")
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, other_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                App(id=app_id, tenant_id=tenant_id, name="Preview", mode="chat", enable_site=False, enable_api=False),
+                App(id=other_id, tenant_id=tenant_id, name="Private", mode="chat", enable_site=False, enable_api=False),
+            ]
+        )
+
+    # Catalog-only previews must work without a Trial registration or account.
+    payload = json.dumps({"app_details": {app_id: {"id": app_id}}})
+    with patch.object(recommended_app_catalog_gateway.Path, "read_text", return_value=payload):
+        assert services.app_previews.get_access(app_id=app_id) == AppPreviewRef(app_id=app_id, tenant_id=tenant_id)
+        with pytest.raises(AppPreviewUnavailableError, match=other_id):
+            services.app_previews.get_access(app_id=other_id)
+
+
+def test_app_preview_details_use_the_configured_database_without_request_globals(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, owner_id, viewer_workspace_id = str(uuid4()), str(uuid4()), str(uuid4())
+    account = Account(name="Preview viewer", email="preview@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                account,
+                App(id=app_id, tenant_id=owner_id, name="Preview", mode="chat", enable_site=True, enable_api=False),
+                Site(
+                    app_id=app_id,
+                    title="Preview site",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.UUID,
+                ),
+            ]
+        )
+
+    detail = services.app_preview_details.get_detail(
+        app=AppPreviewRef(app_id=app_id, tenant_id=owner_id),
+        account_id=account.id,
+        active_workspace_id=viewer_workspace_id,
+    )
+
+    assert detail.id == app_id
+    assert detail.name == "Preview"
+    assert detail.site.title == "Preview site"
+    assert detail.model_config is None
+
+
 def test_build_application_services_adapts_enterprise_webapp_access_mode(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -722,87 +1064,87 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
     get_access_mode.assert_called_once_with("app-1")
 
 
+def _query_webapp_access(
+    service: WebAppAccessQueryService, query_kind: str
+) -> WebAppAccessMode | bool | Mapping[str, WebAppAccessMode] | Mapping[str, bool]:
+    if query_kind == "single-mode":
+        return service.get_access_mode(app_id="app-1", app_code=None)
+    if query_kind == "single-permission":
+        return service.is_user_allowed(user_id="viewer", app_id="app-1")
+    if query_kind == "batch-modes":
+        return service.batch_get_access_modes(app_ids=("app-1",))
+    assert query_kind == "batch-permissions"
+    return service.batch_get_user_permissions(user_id="viewer", app_ids=("app-1",))
+
+
+@pytest.mark.parametrize("query_kind", ["single-mode", "single-permission", "batch-modes", "batch-permissions"])
 @pytest.mark.parametrize(
     "enterprise_error",
     [
-        pytest.param(EnterpriseAPINotFoundError(), id="not-found"),
-        pytest.param(EnterpriseAPIError(), id="api-error"),
-        pytest.param(httpx.ConnectError("connection failed"), id="transport"),
+        pytest.param(httpx.ReadTimeout("Enterprise timed out"), id="timeout"),
+        pytest.param(httpx.ConnectError("connection failed"), id="connection"),
+        pytest.param(EnterpriseServiceError("upstream failure"), id="upstream"),
         pytest.param(json.JSONDecodeError("invalid", "", 0), id="invalid-json"),
         pytest.param(UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid"), id="invalid-encoding"),
-        pytest.param(
-            ValidationError.from_exception_data(WebAppSettings.__name__, []),
-            id="invalid-response",
-        ),
     ],
 )
-def test_build_application_services_maps_known_enterprise_errors(
+def test_webapp_access_queries_map_known_enterprise_errors_to_unavailable(
     sqlite_session_factory: sessionmaker[Session],
+    query_kind: str,
     enterprise_error: Exception,
 ) -> None:
-    with (
-        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
-        patch(
-            "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
-            side_effect=enterprise_error,
-        ),
-    ):
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=enterprise_error
+    ) as enterprise_request:
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
-            deployment_edition=DeploymentEdition.COMMUNITY,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
             initialization_password="",
             redis=MagicMock(spec=RedisClientWrapper),
         )
-
         with pytest.raises(WebAppAccessUnavailableError) as raised:
-            services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+            _query_webapp_access(services.webapp_access, query_kind)
 
+    assert type(raised.value) is WebAppAccessUnavailableError
     assert raised.value.__cause__ is enterprise_error
+    assert enterprise_request.call_count == 1
 
 
-def test_build_application_services_maps_invalid_access_mode_to_unavailable(
-    sqlite_session_factory: sessionmaker[Session],
+@pytest.mark.parametrize("access_mode", ["invalid", 123])
+def test_single_webapp_mode_maps_invalid_enum_or_field_value_to_unavailable(
+    sqlite_session_factory: sessionmaker[Session], access_mode: str | int
 ) -> None:
-    with (
-        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
-        patch(
-            "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
-            return_value=SimpleNamespace(access_mode="invalid"),
-        ),
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        return_value={"accessMode": access_mode},
     ):
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
-            deployment_edition=DeploymentEdition.COMMUNITY,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
             initialization_password="",
             redis=MagicMock(spec=RedisClientWrapper),
         )
-
         with pytest.raises(WebAppAccessUnavailableError) as raised:
             services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
 
+    assert type(raised.value) is WebAppAccessUnavailableError
     assert isinstance(raised.value.__cause__, ValueError)
 
 
-def test_build_application_services_does_not_hide_unknown_enterprise_errors(
-    sqlite_session_factory: sessionmaker[Session],
+@pytest.mark.parametrize("query_kind", ["single-mode", "single-permission", "batch-modes", "batch-permissions"])
+@pytest.mark.parametrize("failure", [TypeError("adapter bug"), ValueError("unexpected programming error")])
+def test_webapp_access_queries_do_not_hide_unknown_programming_errors(
+    sqlite_session_factory: sessionmaker[Session], query_kind: str, failure: Exception
 ) -> None:
-    failure = TypeError("adapter bug")
-    with (
-        patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
-        patch(
-            "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
-            side_effect=failure,
-        ),
-    ):
+    with patch("services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=failure):
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
-            deployment_edition=DeploymentEdition.COMMUNITY,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
             initialization_password="",
             redis=MagicMock(spec=RedisClientWrapper),
         )
-
-        with pytest.raises(TypeError) as raised:
-            services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+        with pytest.raises(type(failure)) as raised:
+            _query_webapp_access(services.webapp_access, query_kind)
 
     assert raised.value is failure
 
@@ -853,7 +1195,7 @@ def test_webapp_permission_adapter_maps_connection_failure() -> None:
         ),
         pytest.raises(WebAppAccessUnavailableError) as raised,
     ):
-        ext_application_services._is_user_allowed_to_access_webapp("user-1", "app-1")
+        ext_application_services._is_enterprise_webapp_user_allowed("user-1", "app-1")
 
     assert raised.value.__cause__ is failure
 
@@ -891,3 +1233,271 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
         services.recommended_app_queries.list_recommended(
             language="en-US",
         )
+
+
+@pytest.mark.parametrize(
+    ("deployment_edition", "permission_result"),
+    [
+        pytest.param(DeploymentEdition.COMMUNITY, False, id="community-skips-enterprise"),
+        pytest.param(DeploymentEdition.CLOUD, False, id="cloud-skips-enterprise"),
+        pytest.param(DeploymentEdition.ENTERPRISE, True, id="enterprise-allowed"),
+        pytest.param(DeploymentEdition.ENTERPRISE, False, id="enterprise-denied"),
+    ],
+)
+def test_installed_app_management_composition_reads_real_installations_and_current_workspace_role(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    deployment_edition: DeploymentEdition,
+    permission_result: bool,
+) -> None:
+    account_id = str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Viewer", email="management@example.com")
+        account.id = account_id
+        tenant = Tenant(name="Viewer workspace")
+        tenant.id = installed_app_ref.tenant_id
+        session.add_all([account, tenant])
+        membership = TenantAccountJoin(
+            tenant_id=installed_app_ref.tenant_id, account_id=account_id, role=TenantAccountRole.OWNER
+        )
+        configuration = AppModelConfig(app_id=installed_app_ref.app_id)
+        session.add_all([membership, configuration])
+        session.flush()
+        app = session.get(App, installed_app_ref.app_id)
+        assert app is not None
+        app.app_model_config_id = configuration.id
+        membership_id = membership.id
+
+    active_connections = 0
+    engine = sqlite_session_factory.kw["bind"]
+
+    @event.listens_for(engine, "checkout")
+    def connection_checked_out(_connection: object, _record: object, _proxy: object) -> None:
+        nonlocal active_connections
+        active_connections += 1
+
+    @event.listens_for(engine, "checkin")
+    def connection_checked_in(_connection: object, _record: object) -> None:
+        nonlocal active_connections
+        active_connections -= 1
+
+    def enterprise_response(method: str, path: str, *, json: dict[str, object]) -> dict[str, object]:
+        assert deployment_edition == DeploymentEdition.ENTERPRISE
+        # The candidate read must release its DB connection before either network call.
+        assert active_connections == 0
+        assert method == "POST"
+        if path == "/webapp/access-mode/batch/id":
+            assert json == {"appIds": [installed_app_ref.app_id]}
+            return {"accessModes": {installed_app_ref.app_id: "private"}}
+        assert path == "/webapp/permission/batch"
+        assert json == {"userId": account_id, "appIds": [installed_app_ref.app_id]}
+        return {"permissions": {installed_app_ref.app_id: permission_result}}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=enterprise_response
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=deployment_edition,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        if deployment_edition != DeploymentEdition.ENTERPRISE:
+            assert services.webapp_access.batch_get_access_modes(app_ids=(installed_app_ref.app_id,)) == {
+                installed_app_ref.app_id: WebAppAccessMode.PUBLIC
+            }
+            assert services.webapp_access.batch_get_user_permissions(
+                user_id=account_id, app_ids=(installed_app_ref.app_id,)
+            ) == {installed_app_ref.app_id: True}
+            assert services.installed_app_access.get_visible_app_ids(
+                user_id=account_id, app_ids=(installed_app_ref.app_id,)
+            ) == frozenset({installed_app_ref.app_id})
+        page = services.installed_apps.get_visible_page(
+            tenant_id=installed_app_ref.tenant_id,
+            user_id=account_id,
+            cursor=None,
+            limit=1,
+            app_id=None,
+            name=None,
+        )
+        assert page.editable is True
+        assert page.has_more is False
+        assert page.next_cursor is None
+        expected_ids: list[str] = (
+            [installed_app_ref.id] if deployment_edition != DeploymentEdition.ENTERPRISE or permission_result else []
+        )
+        assert [installation.id for installation in page.data] == expected_ids
+
+        with sqlite_session_factory.begin() as session:
+            stored_membership = session.get(TenantAccountJoin, membership_id)
+            assert stored_membership is not None
+            stored_membership.role = TenantAccountRole.NORMAL
+        services.installed_apps.set_pinned(installed_app=installed_app_ref, is_pinned=True)
+        detail = services.installed_apps.get_detail(installed_app=installed_app_ref, account_id=account_id)
+        assert detail.editable is False
+        assert detail.installation.is_pinned is True
+        assert detail.installation.id == installed_app_ref.id
+        assert detail.installation.app.id == installed_app_ref.app_id
+        assert active_connections == 0
+
+    if deployment_edition == DeploymentEdition.ENTERPRISE:
+        assert enterprise_request.call_args_list == [
+            call("POST", "/webapp/access-mode/batch/id", json={"appIds": [installed_app_ref.app_id]}),
+            call(
+                "POST",
+                "/webapp/permission/batch",
+                json={"userId": account_id, "appIds": [installed_app_ref.app_id]},
+            ),
+        ]
+    else:
+        enterprise_request.assert_not_called()
+
+
+def test_installed_app_visibility_batches_settings_before_permissions_and_preserves_truthiness_filter(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    app_ids = (
+        "allowed",
+        "truthy-permission",
+        "missing-setting",
+        "sso",
+        "denied",
+        "zero",
+        "empty",
+        "null",
+        "missing-permission",
+    )
+    permission_candidates = ["allowed", "truthy-permission", "denied", "zero", "empty", "null", "missing-permission"]
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        side_effect=[
+            {
+                "accessModes": {
+                    "allowed": "private",
+                    "truthy-permission": "private_all",
+                    "sso": "sso_verified",
+                    "denied": "public",
+                    "zero": "private_all",
+                    "empty": "public",
+                    "null": "private",
+                    "missing-permission": "private",
+                }
+            },
+            {
+                "permissions": {
+                    "allowed": True,
+                    "truthy-permission": 1,
+                    "missing-setting": True,
+                    "sso": True,
+                    "denied": False,
+                    "zero": 0,
+                    "empty": "",
+                    "null": None,
+                }
+            },
+        ],
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        visible = services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
+
+    assert visible == frozenset({"allowed", "truthy-permission"})
+    assert enterprise_request.call_args_list == [
+        call("POST", "/webapp/access-mode/batch/id", json={"appIds": list(app_ids)}),
+        call("POST", "/webapp/permission/batch", json={"userId": "viewer", "appIds": permission_candidates}),
+    ]
+
+
+@pytest.mark.parametrize("include_valid_apps", [True, False], ids=["mixed-modes", "all-invalid"])
+def test_installed_app_visibility_skips_and_logs_each_invalid_access_mode(
+    sqlite_session_factory: sessionmaker[Session], caplog: pytest.LogCaptureFixture, include_valid_apps: bool
+) -> None:
+    modes = {"invalid-empty": "", "invalid-unknown": "future-mode"}
+    valid_ids: list[str] = ["valid-before", "valid-after"] if include_valid_apps else []
+    if include_valid_apps:
+        modes = {"valid-before": "private", **modes, "valid-after": "public"}
+    app_ids = tuple(modes)
+    responses: list[object] = [{"accessModes": modes}]
+    if include_valid_apps:
+        # Even an over-inclusive permission response must not restore invalid apps.
+        responses.append({"permissions": dict.fromkeys(app_ids, True)})
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=responses
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        visible = services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
+
+    assert visible == frozenset(valid_ids)
+    expected_calls = [call("POST", "/webapp/access-mode/batch/id", json={"appIds": list(app_ids)})]
+    if include_valid_apps:
+        expected_calls.append(call("POST", "/webapp/permission/batch", json={"userId": "viewer", "appIds": valid_ids}))
+    assert enterprise_request.call_args_list == expected_calls
+    warnings = [
+        message
+        for logger_name, level, message in caplog.record_tuples
+        if logger_name == ext_application_services.__name__ and level == logging.WARNING
+    ]
+    assert len(warnings) == 2
+    assert any("invalid-empty" in message and repr("") in message for message in warnings)
+    assert any("invalid-unknown" in message and repr("future-mode") in message for message in warnings)
+
+
+@pytest.mark.parametrize("app_ids", [(), ("sso", "missing")])
+def test_installed_app_visibility_skips_unnecessary_enterprise_requests(
+    sqlite_session_factory: sessionmaker[Session], app_ids: tuple[str, ...]
+) -> None:
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        return_value={"accessModes": {"sso": "sso_verified"}},
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        visible = services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
+
+    assert visible == frozenset()
+    if app_ids:
+        enterprise_request.assert_called_once_with(
+            "POST", "/webapp/access-mode/batch/id", json={"appIds": list(app_ids)}
+        )
+    else:
+        enterprise_request.assert_not_called()
+
+
+@pytest.mark.parametrize("failure_stage", ["settings", "permissions"])
+def test_installed_app_visibility_propagates_access_unavailable_with_original_cause(
+    sqlite_session_factory: sessionmaker[Session],
+    failure_stage: str,
+) -> None:
+    enterprise_error = EnterpriseAPIError("batch unavailable")
+    responses: list[object] = []
+    if failure_stage == "permissions":
+        responses.append({"accessModes": {"app-1": "private"}})
+    responses.append(enterprise_error)
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=responses
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        with pytest.raises(WebAppAccessUnavailableError) as caught:
+            services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=("app-1",))
+
+    assert type(caught.value) is WebAppAccessUnavailableError
+    assert caught.value.__cause__ is enterprise_error
+    assert enterprise_request.call_count == (2 if failure_stage == "permissions" else 1)

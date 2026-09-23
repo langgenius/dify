@@ -29,7 +29,7 @@ const isWorkflowStopEvent = (value: EventEmitterValue) =>
   typeof value !== 'string' && value.type === EVENT_WORKFLOW_STOP
 
 const RunMode = ({ text, disabled = false }: RunModeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const {
     handleWorkflowStartRunInWorkflow,
     handleWorkflowTriggerScheduleRunInWorkflow,

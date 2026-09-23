@@ -35,8 +35,8 @@ export function AgentApiKeyModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('appApi')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['appApi', 'appLog', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const [newKey, setNewKey] = useState<ApiKeyItem | null>(null)
@@ -210,16 +210,14 @@ export function AgentApiKeyModal({
                     </div>
                     <div className="flex grow gap-2 px-3">
                       <CopyFeedback content={apiKey.token} />
-                      <Button
-                        variant="ghost"
-                        size="small"
-                        className="size-6 px-0 text-text-tertiary hover:text-text-secondary"
+                      <IconButton
+                        size="md"
                         aria-label={tCommon(($) => $['operation.delete'])}
                         disabled={isDeleting}
                         onClick={() => setApiKeyToDelete(apiKey)}
                       >
                         <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                      </Button>
+                      </IconButton>
                     </div>
                   </div>
                 ))}
@@ -273,7 +271,7 @@ function AgentApiKeyGenerateModal({
   apiKey: ApiKeyItem | null
   onClose: () => void
 }) {
-  const { t } = useTranslation('appApi')
+  const { t } = useTranslation(['appApi', 'common'])
 
   return (
     <Dialog

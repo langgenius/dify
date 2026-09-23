@@ -33,7 +33,7 @@ const Operation: FC<Props> = ({
   isShowDelete,
   onDelete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'explore'])
   const handleDeferredAction = useCallback((action?: () => void) => {
     if (!action) return
     queueMicrotask(action)

@@ -783,7 +783,7 @@ vi.mock('react-i18next', async () => {
     'deployments.studio.environmentVariablesDescription':
       "Use the value from the version you're deploying, keep the last deployed value, or enter a custom one.",
     'deployments.studio.precheck.from': 'From',
-    'deployments.studio.precheck.nodeCount_other': '{{count}} nodes',
+    'deployments.studio.precheck.nodeCount': '{{count}} nodes',
     'deployments.studio.updatedAtBy': 'Updated at {{time}} by {{name}}',
     'workflow.common.workflowAsTool': 'Workflow as Tool',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
@@ -1112,7 +1112,7 @@ describe('AppDeploy', () => {
 
     render(<AppDeploy />)
 
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'common.appMenus.deploy' }),
     ).not.toBeInTheDocument()

@@ -112,6 +112,26 @@ describe('agent/default', () => {
     })
   })
 
+  it.each([
+    { enabled: false, conditions: [''], valid: true },
+    { enabled: true, conditions: [], valid: false },
+    { enabled: true, conditions: ['Accept'], valid: false },
+    { enabled: true, conditions: ['Accept', ' '], valid: false },
+    { enabled: true, conditions: ['Accept', 'Reject'], valid: true },
+  ])('requires at least two complete routes when enabled: %j', ({ enabled, conditions, valid }) => {
+    const result = nodeDefault.checkValid(
+      createPayload({
+        agent_output_routes: {
+          enabled,
+          routes: conditions.map((name, index) => ({ id: `route-${index}`, name })),
+        },
+      }),
+      t,
+    )
+
+    expect(result.isValid).toBe(valid)
+  })
+
   it('links directly to the New Agent section of the shared agent node document', () => {
     expect(nodeDefault.metaData.helpLinkUri).toBe('agent#new-agent')
   })

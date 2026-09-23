@@ -24,7 +24,7 @@ export function ServiceApiAccessPointCard({
   canManage,
   highlighted,
 }: ServiceApiAccessPointCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const toggleApiMutation = useMutation(
     consoleQuery.apps.byAppId.apiEnable.post.mutationOptions({

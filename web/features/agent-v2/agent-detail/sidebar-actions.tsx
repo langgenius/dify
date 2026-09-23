@@ -25,9 +25,9 @@ type AgentDetailSidebarActionAgent = AgentFormSource &
   Pick<AgentAppPartial, 'app_id' | 'permission_keys'>
 
 export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebarActionAgent }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tApp } = useTranslation(['app'])
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -46,11 +46,12 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const handleExport = () => {
     if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
-      toast.error(tApp(($) => $.exportFailed))
+      toast.error(tApp(($) => $.exportAppFailed))
       return
     }
 
     return exportAppDsl({
+      format: 'ifpkg',
       appId: agent.app_id,
       appName: agent.name,
     })
@@ -78,7 +79,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-max min-w-40">
           {capabilities.canEdit && (
             <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
@@ -100,7 +101,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
                 aria-hidden
                 className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
               />
-              <span>{tApp(($) => $.export)}</span>
+              <span>{tApp(($) => $.exportApp)}</span>
             </DropdownMenuItem>
           )}
           {capabilities.canDelete &&

@@ -226,7 +226,7 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
 }
 
 export function GotoAnything() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'app', 'common', 'skill'])
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()

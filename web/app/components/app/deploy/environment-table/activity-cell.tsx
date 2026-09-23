@@ -25,8 +25,8 @@ function activityLabel(
 }
 
 export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOperation }) {
-  const { t } = useTranslation('deployments')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['deployments'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   if (!activity) return <span className="text-text-quaternary">--</span>
 

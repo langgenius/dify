@@ -37,7 +37,7 @@ export function AgentLogsTable({
   onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const tableHeaderLabels = {
     unread: t(($) => $['agentDetail.logs.table.unread']),
     title: t(($) => $['agentDetail.logs.table.title']),
@@ -107,8 +107,8 @@ function AgentLogsTableBody({
   onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const notAvailable = t(($) => $['agentDetail.logs.notAvailable'])
   const formatLogTime = (value?: number | null) =>

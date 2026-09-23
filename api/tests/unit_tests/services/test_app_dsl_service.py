@@ -175,6 +175,29 @@ def test_copy_app_scopes_result_to_current_tenant(sqlite_session: Session, monke
     assert copied is None
 
 
+def test_extract_workflow_dependencies_includes_plugin_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "services.app_dsl_service.ToolNodeData.model_validate",
+        Mock(return_value=SimpleNamespace(provider_id="acme/tool/provider")),
+    )
+    graph = {
+        "nodes": [
+            {"data": {"type": "tool", "plugin_id": "acme/tool"}},
+            {"data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
+            {"data": {"type": "datasource", "provider_type": "online_document", "plugin_id": "acme/drive"}},
+            {"data": {"type": "datasource", "provider_type": "local_file", "plugin_id": "langgenius/file"}},
+            {"data": {"type": "agent", "agent_strategy_provider_name": "acme/strategy/provider"}},
+        ]
+    }
+
+    assert AppDslService._extract_dependencies_from_workflow_graph(graph) == [
+        "acme/tool",
+        "acme/trigger",
+        "acme/drive",
+        "acme/strategy",
+    ]
+
+
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _workflow(
         graph={
@@ -832,3 +855,38 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
         assert data["model_config"] == {"fixture": "model"}
         assert "agent" not in data
         assert "workflow" not in data
+
+
+@pytest.mark.parametrize(
+    ("mode", "node_type"),
+    [
+        (AppMode.WORKFLOW, "answer"),
+        (AppMode.ADVANCED_CHAT, "end"),
+        (AppMode.ADVANCED_CHAT, "trigger-webhook"),
+        (AppMode.ADVANCED_CHAT, "trigger-schedule"),
+        (AppMode.ADVANCED_CHAT, "trigger-plugin"),
+    ],
+)
+def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, node_type: str) -> None:
+    session = Mock()
+    target = App(id="target", tenant_id="tenant", mode=mode, name="Original")
+    service = AppDslService(session)
+    service._load_app_for_overwrite = Mock(return_value=target)
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        app_id=target.id,
+        yaml_content=yaml.safe_dump(
+            {
+                "version": CURRENT_APP_DSL_VERSION,
+                "kind": "app",
+                "app": {"mode": mode.value, "name": "Changed"},
+                "workflow": {"graph": {"nodes": [{"data": {"type": node_type}}]}},
+            }
+        ),
+    )
+    assert result.status == ImportStatus.FAILED
+    assert result.error is not None
+    assert "incompatible" in result.error
+    assert target.name == "Original"
+    session.add.assert_not_called()

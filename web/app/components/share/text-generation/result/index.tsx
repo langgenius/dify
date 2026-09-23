@@ -73,7 +73,7 @@ const Result: FC<IResultProps> = ({
   onRunControlChange,
   hideInlineStopButton = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'share'])
   const translateResultKey = useCallback<TextGenerationTranslate>(
     (selector, options) => t(selector, options),
     [t],

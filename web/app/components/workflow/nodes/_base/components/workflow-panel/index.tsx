@@ -14,7 +14,6 @@ import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, use
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -95,7 +94,7 @@ type BasePanelProps = {
 }
 
 const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const panelId = useId()
   const language = useLanguage()
   const appId = useStore((s) => s.appId)
@@ -321,13 +320,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   }, [pendingSingleRun, id, handleSingleRun, handleStop, setPendingSingleRun])
 
   const logParams = useLogs()
-  const passedLogParams = useMemo(
-    () =>
-      [BlockEnum.Tool, BlockEnum.Agent, BlockEnum.Iteration, BlockEnum.Loop].includes(data.type)
-        ? logParams
-        : {},
-    [data.type, logParams],
-  )
+  const passedLogParams = useMemo(() => {
+    const nestedLogBlockTypes: readonly BlockEnum[] = [
+      BlockEnum.Tool,
+      BlockEnum.Agent,
+      BlockEnum.Iteration,
+      BlockEnum.Loop,
+    ]
+    return nestedLogBlockTypes.includes(data.type) ? logParams : {}
+  }, [data.type, logParams])
 
   const storeBuildInTools = useStore((s) => s.buildInTools)
   const { data: buildInTools } = useAllBuiltInTools()
@@ -406,13 +407,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   )
 
   const readmeEntranceComponent = useMemo(() => {
+    if (data.type === BlockEnum.DataSource)
+      return currentDataSource ? (
+        <ReadmeEntrance pluginDetail={currentDataSource} className="mt-auto" />
+      ) : null
+
     let pluginDetail
     switch (data.type) {
       case BlockEnum.Tool:
         pluginDetail = currToolCollection
-        break
-      case BlockEnum.DataSource:
-        pluginDetail = currentDataSource
         break
       case BlockEnum.TriggerPlugin:
         pluginDetail = currentTriggerPlugin
@@ -574,10 +577,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         ref={containerRef}
         value={tabType}
         onValueChange={(selectedValue) => setTabType(selectedValue)}
-        className={cn(
-          'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear',
-          isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto',
-        )}
+        className="flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear"
         style={
           {
             width: `${nodePanelWidth}px`,
@@ -585,7 +585,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
           } as CSSProperties
         }
       >
-        <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
+        <div className="shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
             {!isStartPlaceholderPanel && (
               <BlockIcon className="mr-1 shrink-0" type={data.type} toolIcon={toolIcon} size="md" />
@@ -614,14 +614,17 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                         }}
                       >
                         {isSingleRunning ? (
-                          <Stop aria-hidden className="size-4" />
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-line-mediaAndDevices-stop size-4"
+                          />
                         ) : (
                           <RiPlayLargeLine aria-hidden className="size-4" />
                         )}
                       </IconButton>
                     }
                   />
-                  <TooltipContent className="mr-1">{runThisStepLabel}</TooltipContent>
+                  <TooltipContent>{runThisStepLabel}</TooltipContent>
                 </Tooltip>
               )}
               <HelpLink nodeType={nodeMetaType} />
@@ -725,7 +728,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         )}
 
         {!isStartPlaceholderPanel && (
-          <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col">
+          <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col overflow-y-auto">
             <LastRun
               appId={appDetail?.id || ''}
               nodeId={id}

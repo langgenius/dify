@@ -55,7 +55,7 @@ describe('useFormatTimeFromNow', () => {
       const formatted = result.current.formatTimeFromNow(oneHourAgo)
 
       // Should contain "hour" or "hours" and "ago"
-      expect(formatted).toMatch(/hour|hours/)
+      expect(formatted).toMatch(/hour/)
       expect(formatted).toMatch(/ago/)
     })
 
@@ -72,7 +72,7 @@ describe('useFormatTimeFromNow', () => {
       const fiveSecondsAgo = now - 5 * 1000
       const formatted = result.current.formatTimeFromNow(fiveSecondsAgo)
 
-      expect(formatted).toMatch(/second|seconds|few seconds/)
+      expect(formatted).toMatch(/second/)
     })
 
     /**
@@ -88,7 +88,7 @@ describe('useFormatTimeFromNow', () => {
       const threeDaysAgo = now - 3 * 24 * 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(threeDaysAgo)
 
-      expect(formatted).toMatch(/day|days/)
+      expect(formatted).toMatch(/day/)
       expect(formatted).toMatch(/ago/)
     })
 
@@ -106,7 +106,7 @@ describe('useFormatTimeFromNow', () => {
       const formatted = result.current.formatTimeFromNow(twoHoursFromNow)
 
       expect(formatted).toMatch(/in/)
-      expect(formatted).toMatch(/hour|hours/)
+      expect(formatted).toMatch(/hour/)
     })
   })
 
@@ -229,7 +229,7 @@ describe('useFormatTimeFromNow', () => {
 
       expect(typeof formatted).toBe('string')
       expect(formatted.length).toBeGreaterThan(0)
-      expect(formatted).toMatch(/year|years/)
+      expect(formatted).toMatch(/year/)
     })
 
     /**

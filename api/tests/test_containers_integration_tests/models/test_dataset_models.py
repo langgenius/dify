@@ -188,7 +188,7 @@ class TestDatasetDocumentProperties:
         db_session_with_containers.add(seg_waiting)
         db_session_with_containers.flush()
 
-        assert dataset.available_segment_count == 2
+        assert dataset.get_available_segment_count(session=db_session_with_containers) == 2
 
     def test_document_segment_count_property(self, db_session_with_containers: Session) -> None:
         """Test document can count its segments."""

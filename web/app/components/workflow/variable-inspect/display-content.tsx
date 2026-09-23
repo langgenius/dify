@@ -38,7 +38,7 @@ export function DisplayContent(props: DisplayContentProps) {
   } = props
   const [selectedViewMode, setSelectedViewMode] = useState<ViewMode>(ViewMode.Code)
   const [isFocused, setIsFocused] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const viewOptions = [
     {
       value: ViewMode.Code,

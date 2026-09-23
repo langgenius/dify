@@ -82,7 +82,7 @@ function Popup({
   onOpenMarketplace,
   onHide,
 }: PopupProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { theme } = useTheme()
   const language = useLanguage()
   const previewCardHandle = useMemo(
@@ -350,6 +350,11 @@ function ModelSelectorPreviewCard({
   if (!payload) return null
 
   const { provider, modelItem } = payload
+  const modelTypesWithCapabilities: ModelTypeEnum[] = [
+    ModelTypeEnum.textGeneration,
+    ModelTypeEnum.textEmbedding,
+    ModelTypeEnum.rerank,
+  ]
 
   return (
     <PreviewCardContent
@@ -376,9 +381,7 @@ function ModelSelectorPreviewCard({
             <ModelBadge>{sizeFormat(modelItem.model_properties.context_size as number)}</ModelBadge>
           )}
         </div>
-        {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(
-          modelItem.model_type as ModelTypeEnum,
-        ) &&
+        {modelTypesWithCapabilities.includes(modelItem.model_type as ModelTypeEnum) &&
           modelItem.features?.some((feature) =>
             [
               ModelFeatureEnum.vision,

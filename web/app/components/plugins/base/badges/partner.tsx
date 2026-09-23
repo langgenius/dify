@@ -1,8 +1,6 @@
 'use client'
 
 import type { FC } from 'react'
-import PartnerDark from '@/app/components/base/icons/src/public/plugins/PartnerDark'
-import PartnerLight from '@/app/components/base/icons/src/public/plugins/PartnerLight'
 import useTheme from '@/hooks/use-theme'
 import IconWithTooltip from './icon-with-tooltip'
 
@@ -18,8 +16,8 @@ const Partner: FC<PartnerProps> = ({ className, text }) => {
     <IconWithTooltip
       className={className}
       theme={theme}
-      BadgeIconLight={PartnerLight}
-      BadgeIconDark={PartnerDark}
+      lightIconClassName={'i-custom-public-plugins-partner-light'}
+      darkIconClassName={'i-custom-public-plugins-partner-dark'}
       popupContent={text}
     />
   )

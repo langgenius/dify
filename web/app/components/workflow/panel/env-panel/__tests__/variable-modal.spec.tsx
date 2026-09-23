@@ -334,7 +334,7 @@ describe('VariableModal', () => {
     expect(screen.queryByRole('button', { name: 'completion-model' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'String' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Number' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Secret' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Secret', pressed: false })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'workflow.blocks.llm' })).toBeEnabled()
 
     act(() => {

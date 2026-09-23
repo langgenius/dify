@@ -14,7 +14,7 @@ import { rosterQueryParamNames, rosterSortByQueryParser } from '../query-params'
 import { DEFAULT_ROSTER_SORT_BY, rosterSortOptions } from './roster-sort'
 
 export function RosterSortSelect() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [value, setValue] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
   const selectedOption =
     rosterSortOptions.find((option) => option.value === value) ??

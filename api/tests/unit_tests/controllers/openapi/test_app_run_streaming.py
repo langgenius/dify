@@ -1,16 +1,31 @@
-"""Tests: openapi /run always streams; response_mode removed from AppRunRequest."""
+"""Tests for the /openapi/v1 run routes: per-mode bodies and handlers, task stop."""
 
 from __future__ import annotations
 
+import json
 import sys
 import uuid
+from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from pydantic import BaseModel, ValidationError
+from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import UnprocessableEntity
 
-from controllers.openapi._models import AppRunRequest
+from controllers.openapi._models import (
+    AdvancedChatRunPayload,
+    ChatRunPayload,
+    CompletionRunPayload,
+    TaskStopResponse,
+    WorkflowRunPayload,
+)
+from controllers.openapi.app_run import AdvancedChatRunApi, AppRunTaskStopApi, ChatRunApi, CompletionRunApi
+from graphon.file import FileType
 from models import Account
+from models.enums import CreatorUserRole
 from models.model import App, AppMode
 
 _TEST_APP_ID = str(uuid.uuid4())
@@ -35,67 +50,28 @@ def _make_account() -> Account:
     return account
 
 
-def test_app_run_request_has_no_response_mode_field():
-    """response_mode must not be a declared field."""
-    assert "response_mode" not in AppRunRequest.model_fields
+@pytest.mark.parametrize(
+    ("model", "payload"),
+    [
+        pytest.param(ChatRunPayload, {"inputs": {}, "query": "   "}, id="chat.blank_query"),
+        pytest.param(WorkflowRunPayload, {"inputs": {}, "query": "x"}, id="workflow.query_is_foreign"),
+        pytest.param(CompletionRunPayload, {"inputs": {}, "conversation_id": "x"}, id="completion.conversation_id"),
+        pytest.param(ChatRunPayload, {"inputs": {}, "query": "hi", "response_mode": "blocking"}, id="chat.foreign"),
+        pytest.param(ChatRunPayload, {"inputs": {}, "query": "hi", "conversation_id": "not-a-uuid"}, id="chat.bad_cid"),
+    ],
+)
+def test_per_mode_payloads_reject_what_the_mode_does_not_take(model: type[BaseModel], payload: dict):
+    with pytest.raises(ValidationError):
+        model.model_validate(payload)
 
 
-def test_app_run_request_ignores_response_mode_in_payload():
-    """Sending response_mode in JSON body is silently ignored (Pydantic extra='ignore')."""
-    req = AppRunRequest.model_validate({"inputs": {}, "response_mode": "blocking"})
-    assert not hasattr(req, "response_mode")
+def test_chat_payload_normalizes_conversation_id():
+    assert ChatRunPayload(inputs={}, query="hi", conversation_id="   ").conversation_id is None
+    cid = str(uuid.uuid4())
+    assert ChatRunPayload(inputs={}, query="hi", conversation_id=cid).conversation_id == cid
 
 
-def test_app_run_request_valid_minimal():
-    req = AppRunRequest.model_validate({"inputs": {}})
-    assert req.inputs == {}
-
-
-def test_app_run_request_with_query():
-    req = AppRunRequest.model_validate({"inputs": {}, "query": "hello"})
-    assert req.query == "hello"
-
-
-def test_run_chat_always_calls_generate_with_streaming_true(
-    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
-):
-    """_run_chat must always invoke AppGenerateService.generate with streaming=True."""
-    from controllers.openapi.app_run import _run_chat
-
-    generate_mock = Mock(return_value=iter([]))
-
-    class GenerateService:
-        generate = generate_mock
-
-    monkeypatch.setattr(
-        sys.modules["controllers.openapi.app_run"],
-        "AppGenerateService",
-        GenerateService,
-    )
-    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}:run", method="POST"):
-        _run_chat(
-            _make_app(),
-            _make_account(),
-            AppRunRequest(inputs={}, query="hello"),
-            Mock(),
-        )
-    _, kwargs = generate_mock.call_args
-    assert kwargs["streaming"] is True
-
-
-def test_stop_task_endpoint_registered(openapi_app):
-    """POST /openapi/v1/apps/<id>/tasks/<task_id>:stop must be registered."""
-    rules = {r.rule for r in openapi_app.url_map.iter_rules()}
-    assert "/openapi/v1/apps/<string:app_id>/tasks/<string:task_id>:stop" in rules
-
-
-def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
-    import uuid
-
-    from controllers.openapi.app_run import AppRunTaskStopApi
-    from controllers.openapi.auth.data import AuthData
-    from libs.oauth_bearer import Scope, TokenType
-
+def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch: pytest.MonkeyPatch):
     queue_mock = Mock()
     graph_mock = Mock()
     graph_instance = Mock()
@@ -106,24 +82,143 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipel
     monkeypatch.setattr(run_module, "GraphEngineManager", graph_mock)
     monkeypatch.setattr(run_module, "redis_client", object())
 
-    auth_data = AuthData.model_construct(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.UUID(_TEST_ACCOUNT_ID),
-        scopes=frozenset({Scope.FULL}),
-        app=_make_app(),
-        caller=_make_account(),
-        caller_kind="account",
-    )
-
     api = AppRunTaskStopApi()
     with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
-        result = api.post.__wrapped__(
-            api,
-            app_id="app-1",
-            task_id="task-1",
-            auth_data=auth_data,
-        )
+        result = api.post.__handler__(api, _SealableContext(), app_id="app-1", task_id="task-1")
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
     graph_instance.send_stop_command.assert_called_once_with("task-1")
-    assert result == ({"result": "success"}, 200)
+    assert result == TaskStopResponse(result="success")
+
+
+class _SealableContext:
+    """A `Context` stand-in that refuses reads once `seal()` is called.
+
+    The router's session closes when the handler returns, so anything the SSE
+    body still needs off `ctx` would be read through a closed session.
+    """
+
+    def __init__(self, **values: object) -> None:
+        self._values = values
+        self._sealed = False
+
+    def seal(self) -> None:
+        self._sealed = True
+
+    def __getattr__(self, name: str) -> object:
+        if self._sealed:
+            raise AssertionError(f"ctx.{name} was read after the handler returned")
+        return self._values[name]
+
+
+def _generate_stub(monkeypatch: pytest.MonkeyPatch, chunks: list[str]) -> Mock:
+    generate_mock = Mock(return_value=iter(chunks))
+
+    class GenerateService:
+        generate = generate_mock
+
+    monkeypatch.setattr(sys.modules["controllers.openapi.app_run"], "AppGenerateService", GenerateService)
+    return generate_mock
+
+
+def _ctx(mode: AppMode, session: Mock | None = None) -> _SealableContext:
+    app_model = _make_app()
+    app_model.mode = mode
+    return _SealableContext(
+        app=app_model,
+        caller=_make_account(),
+        session=session or Mock(),
+        subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT),
+    )
+
+
+def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    generate_mock = _generate_stub(monkeypatch, ["event: a\n\n", "event: b\n\n"])
+    session = Mock()
+    ctx = _ctx(AppMode.ADVANCED_CHAT, session)
+    api = AdvancedChatRunApi()
+    body = AdvancedChatRunPayload(inputs={}, query="hi")
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/advanced-chat:run", method="POST"):
+        response = api.post.__handler__(api, ctx, app_id=_TEST_APP_ID, body=body)
+        ctx.seal()
+        body = "".join(response.response)
+
+    assert body == "event: a\n\nevent: b\n\n"
+    assert generate_mock.call_args.kwargs["streaming"] is True
+    session.commit.assert_not_called()
+
+
+def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    generate_mock = _generate_stub(monkeypatch, [])
+    api = ChatRunApi()
+    body = ChatRunPayload(inputs={}, query="hi")
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
+        with pytest.raises(UnprocessableEntity, match="app_mode_mismatch"):
+            api.post.__handler__(api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body)
+    generate_mock.assert_not_called()
+
+
+def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    generate_mock = _generate_stub(monkeypatch, [])
+    upload_service = Mock()
+    upload_service.upload_file.side_effect = lambda **kw: SimpleNamespace(
+        id=f"uf-{kw['filename']}", extension=kw["filename"].rsplit(".", 1)[-1], mime_type=kw["mimetype"]
+    )
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi._files"], "application_services", lambda: SimpleNamespace(files=upload_service)
+    )
+    body = CompletionRunPayload(
+        inputs={},
+        files={"doc": FileStorage(stream=BytesIO(b"pdf"), filename="r.pdf", content_type="application/pdf")},
+        attachments=[FileStorage(stream=BytesIO(b"jpg"), filename="p.jpg", content_type="image/jpeg")],
+    )
+    order = Mock()
+    session = Mock()
+    order.attach_mock(session, "session")
+    order.attach_mock(upload_service, "uploads")
+
+    api = CompletionRunApi()
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/completion:run", method="POST"):
+        api.post.__handler__(api, _ctx(AppMode.COMPLETION, session), app_id=_TEST_APP_ID, body=body)
+
+    # The read transaction ends before the first object-storage write (api/AGENTS.md).
+    assert [call[0] for call in order.mock_calls][:2] == ["session.commit", "uploads.upload_file"]
+    args = generate_mock.call_args.kwargs["args"]
+    assert args["inputs"]["doc"] == {
+        "transfer_method": "local_file",
+        "upload_file_id": "uf-r.pdf",
+        "type": FileType.DOCUMENT,
+    }
+    assert args["files"] == [{"transfer_method": "local_file", "upload_file_id": "uf-p.jpg", "type": FileType.IMAGE}]
+    assert args["query"] == ""
+    assert {"attachments", "auto_generate_name"}.isdisjoint(args)
+
+
+def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    message = 'data: {"event": "message", "answer": "hi"}\n\n'
+    end = {"event": "message_end", "conversation_id": "c1", "message_id": "m1", "created_at": 1, "id": "m1"}
+    end["task_id"] = "t1"
+    _generate_stub(monkeypatch, [message, f"data: {json.dumps(end)}\n\n"])
+    api = ChatRunApi()
+    body = ChatRunPayload(inputs={}, query="hi")
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
+        response = api.post.__handler__(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
+        chunks = list(response.response)
+    assert chunks[0] == message
+    assert json.loads(chunks[1][len("data: ") :])["hints"] == [
+        {
+            "summary": "Reply in this conversation",
+            "op": "console_app.chat.run",
+            "input": {"app_id": _TEST_APP_ID, "conversation_id": "c1", "query": None, "inputs": {}},
+        }
+    ]
+
+
+def test_chat_route_passes_a_message_end_without_conversation_through(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    end = 'data: {"event": "message_end", "message_id": "m1", "created_at": 1, "id": "m1", "task_id": "t1"}\n\n'
+    _generate_stub(monkeypatch, [end])
+    api = ChatRunApi()
+    body = ChatRunPayload(inputs={}, query="hi")
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
+        response = api.post.__handler__(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
+        assert list(response.response) == [end]

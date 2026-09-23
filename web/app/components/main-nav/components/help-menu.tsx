@@ -91,7 +91,7 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
 )
 
 const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const docLink = useDocLink()
   const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
