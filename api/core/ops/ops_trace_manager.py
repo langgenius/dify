@@ -1,4 +1,5 @@
 import collections
+import importlib.util
 import json
 import logging
 import os
@@ -39,6 +40,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.unified_trace.registry import UnifiedProviderConfigEntry, unified_provider_config_map
 from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
 from extensions.ext_database import db
@@ -335,8 +337,10 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
 
                 case _:
                     raise KeyError(f"Unsupported tracing provider: {key}")
-        except ImportError:
-            raise ImportError(f"Provider {key} is not installed.")
+        except ModuleNotFoundError as error:
+            if error.name is None or importlib.util.find_spec(error.name.partition(".")[0]) is not None:
+                raise
+            raise TraceProviderNotInstalledError(key, error.name) from error
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -589,10 +593,10 @@ class OpsTraceManager:
         """
         # auth check
         if tracing_provider is not None:
-            try:
-                provider_config_map[tracing_provider]
-            except KeyError:
+            if tracing_provider not in TracingProviderEnum:
                 raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+            if enabled:
+                provider_config_map[tracing_provider]
 
         app_config: App | None = db.session.get(App, app_id)
         if not app_config:
@@ -934,7 +938,7 @@ class TraceTask:
     def message_trace(self, message_id: str | None, **kwargs):
         if not message_id:
             return {}
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         conversation_mode_stmt = select(Conversation.mode).where(Conversation.id == message_data.conversation_id)
@@ -1024,7 +1028,7 @@ class TraceTask:
         if not moderation_result:
             return {}
         inputs = kwargs.get("inputs")
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         metadata = {
@@ -1062,7 +1066,7 @@ class TraceTask:
 
     def suggested_question_trace(self, message_id, timer, **kwargs):
         suggested_question = kwargs.get("suggested_question", [])
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         metadata = {
@@ -1113,7 +1117,7 @@ class TraceTask:
 
     def dataset_retrieval_trace(self, message_id, timer, **kwargs):
         documents = kwargs.get("documents")
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
 
@@ -1203,7 +1207,7 @@ class TraceTask:
         tool_name = kwargs.get("tool_name", "")
         tool_inputs = kwargs.get("tool_inputs", {})
         tool_outputs = kwargs.get("tool_outputs", {})
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         tool_config = {}

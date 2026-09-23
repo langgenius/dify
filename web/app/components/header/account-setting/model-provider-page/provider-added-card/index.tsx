@@ -12,7 +12,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { renderI18nObject } from '@/i18n-config/metadata'
+import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -45,7 +45,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   provider,
   pluginSummary,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const {
     data: { deploymentEdition, rbacEnabled },
   } = useSuspenseQuery({

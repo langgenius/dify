@@ -4,7 +4,6 @@ import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/co
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   noop,
   useMutation,
@@ -27,6 +26,7 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import LicenseBadge from '@/app/components/header/license-badge'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -107,7 +107,7 @@ function WorkspaceCardTrigger({
   onPrefetchWorkspaces: () => void
   onPlanClick: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
   const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })
   const isUnlimited = credits === -1
@@ -253,7 +253,7 @@ const selectCurrentWorkspaceCardData = (workspace: CurrentWorkspaceCardSource) =
 })
 
 export function WorkspaceCard() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common'])
   const queryClient = useQueryClient()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),

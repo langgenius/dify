@@ -65,7 +65,7 @@ export const EnvironmentVariablesSection = memo(
     horizontalPaddingClassName: string
     setEnvironmentVariableSelection: DeploymentConfigurationValuesController['setEnvironmentVariableSelection']
   }) => {
-    const { t } = useTranslation('deployments')
+    const { t } = useTranslation(['deployments'])
     const visibleGroups = environmentVariableGroups.filter(
       (group) => group.environment_variable_slots.length > 0,
     )

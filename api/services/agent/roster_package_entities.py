@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import BinaryIO, Final, Literal, Self
+from typing import Any, BinaryIO, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from services.agent.dsl_entities import AgentAppDsl
+from constants import IMAGE_EXTENSIONS
+from services.agent.dsl_entities import AgentAppDsl, AgentPackage
 
 ROSTER_AGENT_PACKAGE_FORMAT: Final[Literal["dify.roster-agent"]] = "dify.roster-agent"
 ROSTER_AGENT_PACKAGE_FORMAT_VERSION: Final[Literal[1]] = 1
@@ -81,15 +82,21 @@ class RosterAgentPackageFile(_RosterAgentPackageResource):
         return self
 
 
-class RosterAgentPackageManifest(BaseModel):
-    """Package metadata and resource index stored in ``manifest.yaml``."""
+class PackageIcon(_RosterAgentPackageResource):
+    id: str = Field(pattern=r"^i_[0-9]{6}$")
+
+    @model_validator(mode="after")
+    def validate_icon_path(self) -> Self:
+        if self.path not in {f"{self.id}.{extension}" for extension in IMAGE_EXTENSIONS}:
+            raise ValueError("icon path must use its resource id and an image extension")
+        return self
+
+
+class AgentPackageResources(BaseModel):
+    """Resources belonging to one portable Agent, independent of its container."""
 
     model_config = ConfigDict(extra="forbid")
 
-    format: Literal["dify.roster-agent"]
-    format_version: Literal[1]
-    audit: RosterAgentPackageAudit | None = None
-    apps: list[RosterAgentPackageApp] = Field(min_length=1)
     skills: list[RosterAgentPackageSkill] = Field(default_factory=list)
     files: list[RosterAgentPackageFile] = Field(default_factory=list)
 
@@ -98,7 +105,7 @@ class RosterAgentPackageManifest(BaseModel):
         ids = [item.id for item in self.skills] + [item.id for item in self.files]
         if len(ids) != len(set(ids)):
             raise ValueError("resource ids must be unique")
-        paths = [item.path.casefold() for item in [*self.apps, *self.skills, *self.files]]
+        paths = [item.path.casefold() for item in [*self.skills, *self.files]]
         if len(paths) != len(set(paths)):
             raise ValueError("resource paths must be unique")
         skill_names = [item.name for item in self.skills]
@@ -107,20 +114,23 @@ class RosterAgentPackageManifest(BaseModel):
 
         return self
 
-    def validate_apps(self, apps: Mapping[str, AgentAppDsl]) -> None:
-        """Resolve all application references against the shared resource index."""
-        if set(apps) != {item.path for item in self.apps}:
-            raise ValueError("app members must match the package app index")
+    def validate_packages(self, packages: Iterable[AgentPackage]) -> None:
+        """Resolve Agent references against this resource index."""
         skill_by_id = {item.id: item for item in self.skills}
         file_by_id = {item.id: item for item in self.files}
         workspace_names = {item.name for item in self.skills if item.scope == "workspace"}
         referenced_skill_ids: set[str] = set()
         referenced_file_ids: set[str] = set()
         referenced_workspace_names: set[str] = set()
-        for app in apps.values():
-            if app.package.soul.schema_version != 1:
+        for package in packages:
+            if package.soul.schema_version != 1:
                 raise ValueError("unsupported Agent Soul schema version")
-            for skill_ref in app.package.soul.config_skills:
+            resource_ids = [item.file_id for item in package.soul.config_skills if not item.is_missing] + [
+                item.file_id for item in package.soul.config_files if not item.is_missing
+            ]
+            if len(resource_ids) != len(set(resource_ids)):
+                raise ValueError("Agent config resources must have unique references")
+            for skill_ref in package.soul.config_skills:
                 if skill_ref.is_missing:
                     continue
                 skill_resource = skill_by_id.get(skill_ref.file_id)
@@ -129,13 +139,13 @@ class RosterAgentPackageManifest(BaseModel):
                 if skill_resource.name != skill_ref.name:
                     raise ValueError("config skill name must match its resource metadata")
                 referenced_skill_ids.add(skill_resource.id)
-            app_workspace_names = [item.name for item in app.package.workspace_skills]
+            app_workspace_names = [item.name for item in package.workspace_skills]
             if len(app_workspace_names) != len(set(app_workspace_names)):
                 raise ValueError("workspace skill names must be unique in the Agent DSL")
             if set(app_workspace_names) - workspace_names:
                 raise ValueError("workspace skill references must match the package resource index")
             referenced_workspace_names.update(app_workspace_names)
-            for file_ref in app.package.soul.config_files:
+            for file_ref in package.soul.config_files:
                 if file_ref.is_missing:
                     continue
                 if file_ref.file_id not in file_by_id:
@@ -149,24 +159,53 @@ class RosterAgentPackageManifest(BaseModel):
             raise ValueError("file resources must be referenced by the Agent Soul")
 
 
-@dataclass
-class PreparedRosterAgentPackage:
-    """Validated archive retained in a bounded spool for later materialization."""
+class RosterAgentPackageManifest(AgentPackageResources):
+    """Package metadata and resource index stored in ``manifest.yaml``."""
+
+    format: Literal["dify.roster-agent"]
+    format_version: Literal[1]
+    audit: RosterAgentPackageAudit | None = None
+    icons: list[PackageIcon] = Field(default_factory=list)
+    apps: list[RosterAgentPackageApp] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_app_paths(self) -> Self:
+        paths = [item.path.casefold() for item in [*self.apps, *self.skills, *self.files, *self.icons]]
+        if len(paths) != len(set(paths)):
+            raise ValueError("resource paths must be unique")
+        return self
+
+    def validate_apps(self, apps: Mapping[str, AgentAppDsl]) -> None:
+        if set(apps) != {item.path for item in self.apps}:
+            raise ValueError("app members must match the package app index")
+        self.validate_packages(app.package for app in apps.values())
+        validate_icon_references(
+            self.icons, [metadata for app in apps.values() for metadata in (app.app, app.package.metadata.model_dump())]
+        )
+
+
+@dataclass(kw_only=True)
+class PreparedPackageArchive:
+    """Own one validated archive and its member index until import finishes."""
 
     archive: BinaryIO
-    manifest: RosterAgentPackageManifest
-    apps: dict[str, AgentAppDsl]
     members: dict[str, RosterAgentPackageMember]
     invalid_skills: dict[str, str] = field(default_factory=dict)
 
     def close(self) -> None:
         self.archive.close()
 
-    def __enter__(self) -> PreparedRosterAgentPackage:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_args: object) -> None:
         self.close()
+
+
+@dataclass(kw_only=True)
+class PreparedRosterAgentPackage(PreparedPackageArchive):
+    manifest: RosterAgentPackageManifest
+    apps: dict[str, AgentAppDsl]
 
 
 @dataclass
@@ -187,10 +226,29 @@ class RosterAgentPackageExport:
         self.close()
 
 
+def validate_icon_references(icons: list[PackageIcon], metadata: list[dict[str, Any]]) -> None:
+    references: set[str] = set()
+    for item in metadata:
+        if item.get("icon_type") == "image":
+            reference = item.get("icon")
+            if reference is not None and not isinstance(reference, str):
+                raise ValueError("Image icon references must be strings")
+            if reference:
+                references.add(reference)
+    ids = {item.id for item in icons}
+    if len(ids) != len(icons):
+        raise ValueError("Packaged icons must have unique ids")
+    if ids - references or any(ref.startswith("i_") and ref not in ids for ref in references):
+        raise ValueError("Packaged icons must match image references")
+
+
 __all__ = [
     "ROSTER_AGENT_PACKAGE_FORMAT",
     "ROSTER_AGENT_PACKAGE_FORMAT_VERSION",
     "ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES",
+    "AgentPackageResources",
+    "PackageIcon",
+    "PreparedPackageArchive",
     "PreparedRosterAgentPackage",
     "RosterAgentPackageApp",
     "RosterAgentPackageAudit",
@@ -199,4 +257,5 @@ __all__ = [
     "RosterAgentPackageManifest",
     "RosterAgentPackageMember",
     "RosterAgentPackageSkill",
+    "validate_icon_references",
 ]

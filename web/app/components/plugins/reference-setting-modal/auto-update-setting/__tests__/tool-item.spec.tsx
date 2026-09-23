@@ -6,8 +6,8 @@ import ToolItem from '../tool-item'
 vi.mock('@/config', () => ({
   MARKETPLACE_API_PREFIX: 'https://marketplace.example.com',
 }))
-vi.mock('@/i18n-config/metadata', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/i18n-config/metadata')>()),
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   renderI18nObject: (value: Record<string, string>, language: string) => value[language],
 }))
 

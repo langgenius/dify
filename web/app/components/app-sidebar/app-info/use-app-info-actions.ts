@@ -6,12 +6,12 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import {
@@ -90,7 +90,7 @@ const getCurrentUiState = (state: AppInfoUiState, resetKey?: string) => {
 }
 
 export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { replace } = useRouter()
   const queryClient = useQueryClient()
   const { mutateAsync: copyApp } = useMutation(
@@ -281,12 +281,13 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
 
   const onExport = useCallback(
     async (include = false) => {
-      if (!appDetail) return
-      await exportAppDsl({
+      if (!appDetail) return false
+      const result = await exportAppDsl({
         appId: appDetail.id,
         appName: appDetail.name,
         includeSecret: include,
       })
+      return result.status === 'downloaded'
     },
     [appDetail, exportAppDsl],
   )
@@ -301,14 +302,15 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
   }, [appDetail, isExporting, onExport, setActiveModal])
 
   const handleConfirmExport = useCallback(async () => {
-    if (!appDetail) return
+    if (!appDetail || isExporting) return
     const result = await exportWorkflowAppDsl({
       appId: appDetail.id,
       appName: appDetail.name,
     })
+    if (result.status === 'failed') return
     if (result.status === 'confirmation-required') setSecretEnvList(result.secretEnvList)
     closeModal()
-  }, [appDetail, closeModal, exportWorkflowAppDsl, setSecretEnvList])
+  }, [appDetail, closeModal, exportWorkflowAppDsl, isExporting, setSecretEnvList])
 
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail) return

@@ -7,7 +7,7 @@ import { useTranslation } from '#i18n'
 import { useGetLanguage } from '@/context/i18n'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import useTheme from '@/hooks/use-theme'
-import { renderI18nObject } from '@/i18n-config/metadata'
+import { renderI18nObject } from '@/i18n/metadata'
 import { Theme } from '@/types/app'
 import { formatNumber } from '@/utils/format'
 import Partner from '../base/badges/partner'
@@ -89,7 +89,7 @@ const Card = ({
   variant = 'default',
 }: Props) => {
   const locale = useGetLanguage()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { categoriesMap } = useCategories(true)
   const { category, type, name, org, label, brief, icon, icon_dark, verified, from } = payload
   const badges = payload.badges ?? []

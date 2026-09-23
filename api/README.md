@@ -87,7 +87,7 @@ The scripts resolve paths relative to their location, so you can run them from a
    uv sync --group dev
    ```
 
-1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`, more can check [Claude.md](../CLAUDE.md)
+1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`, more can check [AGENTS.md](../AGENTS.md)
 
    Continue in the `api` directory from the previous step.
 

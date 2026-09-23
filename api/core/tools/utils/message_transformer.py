@@ -9,6 +9,7 @@ from uuid import UUID
 import numpy as np
 import pytz
 
+from core.app.file_access import grant_tool_file_access
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from core.workflow.file_reference import parse_file_reference
@@ -214,6 +215,11 @@ class ToolFileMessageTransformer:
         resolved_tool_file_id = tool_file_id or ToolFileMessageTransformer._extract_tool_file_id(url)
         if resolved_tool_file_id and "tool_file_id" not in normalized_meta:
             normalized_meta["tool_file_id"] = resolved_tool_file_id
+        if resolved_tool_file_id:
+            # Plugin/tool files may be owned by a different user than the chatting
+            # end user (workflow-as-tool from an agent). Grant this execution so
+            # later LLM nodes can attach the file instead of dropping it (#41169).
+            grant_tool_file_access([resolved_tool_file_id])
         return normalized_meta
 
     @staticmethod

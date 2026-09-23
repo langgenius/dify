@@ -1,7 +1,7 @@
 'use client'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import * as React from 'react'
 import { useState } from 'react'
@@ -15,25 +15,22 @@ import Preview from './preview'
 import { TypeEnum } from './types'
 
 type Props = Readonly<{
-  appId: string
   app: RecommendedAppResponse
   canCreate?: boolean
-  categories?: string[]
   createButtonStepByStepTourTarget?: string
   onClose: () => void
   onCreate: () => void
 }>
 
 function TryApp({
-  appId,
   app,
   canCreate = true,
-  categories,
   createButtonStepByStepTourTarget,
   onClose,
   onCreate,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'explore'])
+  const appId = app.app_id
   const canUseTryTab = app.can_trial
   const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))
   const activeType = canUseTryTab ? type : TypeEnum.DETAIL
@@ -89,15 +86,14 @@ function TryApp({
                   </span>
                 </TabsTab>
               </TabsList>
-              <Button
-                size="large"
+              <IconButton
+                size="lg"
                 variant="tertiary"
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
                 onClick={onClose}
               >
                 <span aria-hidden className="i-ri-close-line size-5" />
-              </Button>
+              </IconButton>
             </div>
             {/* Main content */}
             <div className="mt-2 flex h-0 grow justify-between space-x-2">
@@ -112,7 +108,7 @@ function TryApp({
                 appDetail={appDetail}
                 appId={appId}
                 canCreate={canCreate}
-                categories={categories}
+                categories={app.categories ?? []}
                 createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
                 onCreate={onCreate}
               />

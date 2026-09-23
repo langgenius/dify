@@ -134,7 +134,7 @@ Dify는 모든 형태의 기여를 환영합니다.
 
 - **코드**: [기여 가이드](./CONTRIBUTING.md)를 읽고 [good first issue](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)를 살펴보세요.
 - **아이디어 및 피드백**: [GitHub 토론](https://github.com/langgenius/dify/discussions)을 시작하거나 기존 토론에 참여하세요.
-- **번역**: 언어를 추가하거나 업데이트하려면 [국제화 가이드](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)를 따르세요.
+- **번역**: 언어를 추가하거나 업데이트하려면 [국제화 가이드](https://github.com/langgenius/dify/blob/main/web/i18n/README.md)를 따르세요.
 - **커뮤니티**: 만든 앱을 공유하고, 다른 사용자를 돕고, Dify를 널리 알려주세요.
 
 ### 기여자

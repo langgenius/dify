@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import { getPluginLanguage } from '@/i18n-config/metadata'
+import { getPluginLanguage } from '@/i18n/metadata'
 
 type Props = Readonly<{
   tool: Tool
@@ -14,7 +14,7 @@ type Props = Readonly<{
 const MCPToolItem = ({ tool }: Props) => {
   const locale = useLocale()
   const language = getPluginLanguage(locale)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
 
   const renderParameters = () => {
     const parameters = tool.parameters

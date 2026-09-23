@@ -16,7 +16,7 @@ type ConditionValueProps = {
   condition: Condition
 }
 const ConditionValue = ({ condition }: ConditionValueProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { variable_selector, comparison_operator: operator, sub_variable_condition } = condition
 
   const variableSelector = variable_selector as ValueSelector

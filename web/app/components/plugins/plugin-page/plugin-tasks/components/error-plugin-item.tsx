@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { Plugin, PluginStatus } from '@/app/components/plugins/types'
-import type { PluginLanguage } from '@/i18n-config/metadata'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +19,7 @@ type ErrorPluginItemProps = {
 }
 
 const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, language, onClear }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const source = plugin.source
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [installPayload, setInstallPayload] = useState<{

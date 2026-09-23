@@ -1,4 +1,4 @@
-import type { Locale } from '@/i18n-config/locale'
+import type { Locale } from '@/i18n/locale'
 import { render, screen } from '@testing-library/react'
 import { PricingFooter } from '../footer'
 

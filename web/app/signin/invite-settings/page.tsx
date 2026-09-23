@@ -1,5 +1,5 @@
 'use client'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -23,9 +23,9 @@ import { LICENSE_LINK } from '@/constants/link'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { i18n } from '@/i18n-config'
-import { setLocaleOnClient } from '@/i18n-config/client'
-import { languages } from '@/i18n-config/language'
+import { i18n } from '@/i18n'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
@@ -66,7 +66,7 @@ const getInitialLanguage = (locale: Locale): Locale => {
 }
 
 export default function InviteSettingsPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const router = useRouter()
   const queryClient = useQueryClient()

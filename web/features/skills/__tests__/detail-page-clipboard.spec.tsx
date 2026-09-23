@@ -498,7 +498,7 @@ describe('SkillDetailPage clipboard', () => {
     fireEvent.dragStart(exampleFile, { dataTransfer })
 
     fireEvent.dragOver(targetFolder.closest('li')!, { dataTransfer })
-    expect(screen.getByText(/^Move to/)).toHaveTextContent(/^Move to references$/)
+    expect(screen.getByText(/^Move to/).textContent).toMatch(/^Move to references$/)
     fireEvent.drop(targetFolder.closest('li')!, { dataTransfer })
 
     await waitFor(() => {

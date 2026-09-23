@@ -58,6 +58,7 @@
   <a href="./docs/sl-SI/README.md"><img alt="README Slovenščina" src="https://img.shields.io/badge/Sloven%C5%A1%C4%8Dina-d9d9d9"></a>
   <a href="./docs/bn-BD/README.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
   <a href="./docs/hi-IN/README.md"><img alt="README in हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
+  <a href="./docs/id-ID/README.md"><img alt="README dalam Bahasa Indonesia" src="https://img.shields.io/badge/Bahasa%20Indonesia-d9d9d9"></a>
 </p>
 
 Dify is an open-source LLM app development platform. Its intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features (including [Opik](https://www.comet.com/docs/opik/integrations/dify), [Langfuse](https://docs.langfuse.com), and [Arize Phoenix](https://docs.arize.com/phoenix)) and more, letting you quickly go from prototype to production. Here's a list of the core features:
@@ -140,7 +141,7 @@ Dify welcomes contributions of all kinds:
 
 - **Code**: Read the [Contribution Guide](CONTRIBUTING.md), then browse [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Ideas and feedback**: Start or join a [GitHub Discussion](https://github.com/langgenius/dify/discussions).
-- **Translations**: Follow the [internationalization guide](web/i18n-config/README.md) to add or update a locale.
+- **Translations**: Follow the [internationalization guide](web/i18n/README.md) to add or update a locale.
 - **Community**: Share the apps you build, help other users, and spread the word about Dify.
 
 ### Contributors

@@ -177,6 +177,80 @@ describe('CollaborationManager logs and event helpers', () => {
     expect(manager.getEdges().map((currentEdge) => currentEdge.id)).toEqual(['e-start-note'])
   })
 
+  it('replaces a stale CRDT graph with the committed draft before a refresh', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    internals.currentAppId = 'app-1'
+    vi.spyOn(manager, 'canApplyLocalGraphMutation').mockReturnValue(true)
+    const oldNode = createNode('old-node')
+    const oldTarget = createNode('old-target')
+    const oldEdge = createEdge('old-edge', oldNode.id, oldTarget.id)
+    const importedNode = createNode('imported-node')
+    const importedTarget = createNode('imported-target')
+    const importedEdge = createEdge('imported-edge', importedNode.id, importedTarget.id)
+    manager.setNodes([], [oldNode, oldTarget])
+    manager.setEdges([], [oldEdge])
+    const clearUndo = vi.fn()
+    internals.undoManager = {
+      canUndo: vi.fn(),
+      canRedo: vi.fn(),
+      undo: vi.fn(),
+      redo: vi.fn(),
+      clear: clearUndo,
+    }
+
+    expect(
+      manager.replaceGraphFromCommittedDraft(
+        'another-app',
+        [importedNode, importedTarget],
+        [importedEdge],
+      ),
+    ).toBe(false)
+    expect(
+      manager
+        .getNodes()
+        .map((node) => node.id)
+        .sort(),
+    ).toEqual(['old-node', 'old-target'])
+    expect(manager.getEdges().map((edge) => edge.id)).toEqual(['old-edge'])
+
+    expect(
+      manager.replaceGraphFromCommittedDraft(
+        'app-1',
+        [importedNode, importedTarget],
+        [importedEdge],
+      ),
+    ).toBe(true)
+    const refreshedGraphs: Array<{ nodes: Node[]; edges: Edge[] }> = []
+    manager.onGraphImport((graph) => refreshedGraphs.push(graph))
+    manager.refreshGraphSynchronously()
+
+    expect(refreshedGraphs[0]?.nodes.map((node) => node.id).sort()).toEqual([
+      'imported-node',
+      'imported-target',
+    ])
+    expect(refreshedGraphs[0]?.edges.map((edge) => edge.id)).toEqual(['imported-edge'])
+    expect(clearUndo).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not seed the old canvas when importing into an empty CRDT graph', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    internals.currentAppId = 'app-1'
+    vi.spyOn(manager, 'canApplyLocalGraphMutation').mockReturnValue(true)
+    internals.reactFlowStore = {
+      getState: () => ({
+        getNodes: () => [createNode('old-canvas-node')],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+
+    expect(manager.replaceGraphFromCommittedDraft('app-1', [createNode('imported-node')], [])).toBe(
+      true,
+    )
+    expect(manager.getNodes().map((node) => node.id)).toEqual(['imported-node'])
+  })
+
   it('clearGraphImportLog clears logs and pending import snapshot', () => {
     const { manager, internals } = setupManagerWithDoc()
     internals.graphImportLogs = [{ id: 1 }]

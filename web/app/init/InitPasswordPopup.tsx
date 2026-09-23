@@ -1,10 +1,10 @@
 'use client'
 import type { InitValidateStatusResponse } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { fetchInitValidateStatus, initValidate } from '@/service/common'
@@ -16,7 +16,7 @@ const InitPasswordPopup = () => {
   const [validated, setValidated] = useState(false)
   const router = useRouter()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const pageTitle = t(($) => $.adminInitPassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 

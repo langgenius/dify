@@ -1,7 +1,7 @@
 import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import datasetTranslations from '@/i18n/en-US/dataset.json'
+import datasetTranslations from '@/i18n/locales/en-US/dataset.json'
 import { render } from '@/test/console/render'
 import { SourcesPage } from '../sources-page'
 
@@ -11,7 +11,7 @@ const permissionState = vi.hoisted(() => ({
   workspacePermissionKeys: ['dataset.acl.edit', 'dataset.external.connect'],
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { error: toastErrorMock, info: toastInfoMock },
 }))
 

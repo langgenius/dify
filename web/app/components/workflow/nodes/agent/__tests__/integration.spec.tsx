@@ -1,21 +1,23 @@
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  AgentStrategyParameter,
+  GetWorkspacesCurrentModelsModelTypesByModelTypeData,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
 import type { AgentNodeType } from '../types'
-import type { StrategyParamItem } from '@/app/components/plugins/types'
 import type { PanelProps } from '@/types/workflow'
+import { zAgentStrategyParameter } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   FormTypeEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { VarType as ToolVarType } from '../../tool/types'
 import { ModelBar } from '../components/model-bar'
 import { ToolIcon } from '../components/tool-icon'
 import Node from '../node'
 import Panel from '../panel'
-import { AgentFeature } from '../types'
 import useConfig from '../use-config'
 
 let mockTextGenerationModels:
@@ -62,10 +64,6 @@ vi.mock('@/service/use-tools', () => ({
 
 vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ icon, background }: any) => <div>{`app-icon:${background}:${icon}`}</div>,
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/other', () => ({
-  Group: () => <div>group-icon</div>,
 }))
 
 vi.mock('@/utils/get-icon', () => ({
@@ -172,21 +170,22 @@ const mockUseConfig = vi.mocked(useConfig)
 
 const createStrategyParam = (
   name: string,
-  type: FormTypeEnum,
+  type: AgentStrategyParameter['type'],
   required: boolean,
-): StrategyParamItem => ({
-  name,
-  type,
-  required,
-  label: { en_US: name } as StrategyParamItem['label'],
-  help: { en_US: `${name} help` } as StrategyParamItem['help'],
-  placeholder: { en_US: `${name} placeholder` } as StrategyParamItem['placeholder'],
-  scope: 'global',
-  default: null,
-  options: [],
-  template: { enabled: false },
-  auto_generate: { type: 'none' },
-})
+) =>
+  zAgentStrategyParameter.parse({
+    name,
+    type,
+    required,
+    label: { en_US: name },
+    help: { en_US: `${name} help` },
+    placeholder: { en_US: `${name} placeholder` },
+    scope: 'global',
+    default: null,
+    options: [],
+    template: { enabled: false },
+    auto_generate: null,
+  })
 
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   title: 'Agent',
@@ -197,11 +196,11 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   agent_strategy_name: 'react',
   agent_strategy_label: 'React Agent',
   agent_parameters: {
-    modelParam: { type: ToolVarType.constant, value: { provider: 'openai', model: 'gpt-4o' } },
-    toolParam: { type: ToolVarType.constant, value: { provider_name: 'author/tool-a' } },
-    multiToolParam: { type: ToolVarType.constant, value: [{ provider_name: 'author/tool-b' }] },
+    modelParam: { type: VarKindType.constant, value: { provider: 'openai', model: 'gpt-4o' } },
+    toolParam: { type: VarKindType.constant, value: { provider_name: 'author/tool-a' } },
+    multiToolParam: { type: VarKindType.constant, value: [{ provider_name: 'author/tool-b' }] },
   },
-  meta: { version: '1.0.0' } as any,
+  meta: { version: '1.0.0' },
   plugin_unique_identifier: 'provider/agent:1.0.0',
   ...overrides,
 })
@@ -219,18 +218,17 @@ const createConfigResult = (
       author: 'provider',
       name: 'react',
       icon: 'icon',
-      label: { en_US: 'React Agent' } as any,
+      label: { en_US: 'React Agent' },
       provider: 'provider/agent',
     },
     parameters: [
       createStrategyParam('modelParam', FormTypeEnum.modelSelector, true),
       createStrategyParam('optionalModel', FormTypeEnum.modelSelector, false),
-      createStrategyParam('toolParam', FormTypeEnum.toolSelector, false),
       createStrategyParam('multiToolParam', FormTypeEnum.multiToolSelector, false),
     ],
-    description: { en_US: 'agent description' } as any,
+    description: { en_US: 'agent description' },
     output_schema: {},
-    features: [AgentFeature.HISTORY_MESSAGES],
+    features: ['history-messages'],
   },
   formData: {},
   onFormChange: vi.fn(),
@@ -313,7 +311,7 @@ describe('agent path', () => {
       expect(screen.getByRole('img', { name: 'tool icon' })).toBeInTheDocument()
 
       fireEvent.error(screen.getByRole('img', { name: 'tool icon' }))
-      expect(screen.getByText('group-icon')).toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: 'tool icon' })).not.toBeInTheDocument()
 
       unmount()
       const secondRender = render(<ToolIcon id="tool-1" providerName="author/tool-b" />)
@@ -322,7 +320,7 @@ describe('agent path', () => {
 
       mockBuiltInTools = undefined
       secondRender.rerender(<ToolIcon id="tool-2" providerName="author/tool-c" />)
-      expect(screen.getByText('group-icon')).toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: 'tool icon' })).not.toBeInTheDocument()
 
       mockBuiltInTools = []
       secondRender.rerender(<ToolIcon id="tool-3" providerName="market/tool-d" />)

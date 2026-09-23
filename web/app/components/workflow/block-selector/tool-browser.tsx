@@ -8,11 +8,11 @@ import type {
 } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
@@ -47,7 +47,7 @@ function ToolsEmptyState({ title, action }: { title: string; action?: ReactNode 
 }
 
 function ToolCategoryEmptyState({ type }: { type: ToolType }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const title = t(($) => $[`addToolModal.${type}.title`], { ns: 'tools' })
   const tip = t(($) => $[`addToolModal.${type}.tip`], { ns: 'tools' })
   const href = (() => {
@@ -123,7 +123,7 @@ function ToolBrowser({
   showFeatured = false,
   onFeaturedInstallSuccess,
 }: ToolBrowserProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'tools', 'workflow'])
   const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState<ToolType>(ToolType.All)
@@ -330,7 +330,7 @@ function ToolBrowser({
                   }}
                 />
                 <div className="px-3">
-                  <Divider className="h-px!" />
+                  <Separator className="my-2" />
                 </div>
               </>
             )}

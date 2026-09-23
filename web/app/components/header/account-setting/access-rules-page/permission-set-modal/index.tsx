@@ -15,7 +15,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { getEnterpriseDocUrl } from '@/context/i18n'
-import { getDocLanguage } from '@/i18n-config/language'
+import { getDocLanguage } from '@/i18n/language'
 import PermissionPicker from './permission-picker'
 
 export type PermissionSetModalMode = 'create' | 'edit' | 'view'
@@ -44,7 +44,7 @@ const PermissionSetModalBody = ({
   onClose,
   onSubmit,
 }: PermissionSetModalBodyProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const [name, setName] = useState(initialValues?.name ?? '')

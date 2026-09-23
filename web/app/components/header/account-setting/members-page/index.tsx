@@ -2,7 +2,6 @@
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -11,11 +10,12 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
@@ -29,7 +29,7 @@ import MemberRow from './member-row'
 import TransferOwnershipModal from './transfer-ownership-modal'
 
 const MembersPage = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common'])
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 

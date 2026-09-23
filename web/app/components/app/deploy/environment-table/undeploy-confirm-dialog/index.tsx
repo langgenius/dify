@@ -28,8 +28,8 @@ export function UndeployConfirmDialog({
   onConfirm,
   onOpenChange,
 }: UndeployConfirmDialogProps) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <AlertDialog

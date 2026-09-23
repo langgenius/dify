@@ -29,8 +29,8 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 // Mock getPluginLanguage
-vi.mock('@/i18n-config/metadata', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/i18n-config/metadata')>()),
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   getPluginLanguage: () => 'en-US',
 }))
 
@@ -87,7 +87,7 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
 
 // Mock toast
 const mockToastSuccess = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (title: string) => mockToastSuccess(title),
   },

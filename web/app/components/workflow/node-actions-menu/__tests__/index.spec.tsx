@@ -41,8 +41,8 @@ vi.mock('@/service/use-tools', () => ({
   useAllWorkflowTools: vi.fn(),
 }))
 
-vi.mock('../change-block-menu-trigger', () => ({
-  ChangeBlockMenuTrigger: () => <div data-testid="node-actions-change-block" />,
+vi.mock('../change-block-popup', () => ({
+  ChangeBlockPopup: () => <div data-testid="node-actions-change-block" />,
 }))
 
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)

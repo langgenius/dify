@@ -8,12 +8,12 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import { consoleQuery } from '@/service/console'
 
 export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const language = getAccessControlTemplateLanguage(useLocale())
   const { agentQuery, canAccessConfig } = useAgentPermissions(agentId)
   const [page, setPage] = useState(1)

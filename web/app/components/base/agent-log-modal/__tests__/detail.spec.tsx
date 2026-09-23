@@ -23,7 +23,7 @@ vi.mock('@/service/log', () => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -69,12 +69,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon" />,
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: { className?: string }) => (
-    <div data-testid="chevron-right" className={props.className} />
-  ),
 }))
 
 const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({

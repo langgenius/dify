@@ -16,10 +16,12 @@ export function useCanCreateAgents() {
 }
 
 export function useCanImportAgents() {
-  return hasPermission(
+  const canCreate = useCanCreateAgents()
+  const canImport = hasPermission(
     useAtomValue(agentDefaultPermissionKeysAtom),
     AgentPermission.ImportExportDSL,
   )
+  return canCreate && canImport
 }
 
 export function useAgentPermissions(agentId: string | undefined) {

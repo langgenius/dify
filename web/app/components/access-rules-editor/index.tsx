@@ -74,7 +74,7 @@ function AccessRulesEditor({
   onBatchRemoveAccessPolicyMemberBindings,
   onAddAccessSubject,
 }: AccessRulesEditorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(() => new Set())
   const isLoading = isLoadingRules || isLoadingUserAccessSettings
   const shouldCenterTableBody = isLoading || userAccessSettings.length === 0

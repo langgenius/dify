@@ -32,7 +32,7 @@ const MemberRow = ({
   onOpenDetails,
   onTransferOwnership,
 }: MemberRowProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const roleNames = roles.map((role) => role.name)

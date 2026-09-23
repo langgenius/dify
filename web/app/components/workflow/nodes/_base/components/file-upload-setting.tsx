@@ -38,7 +38,7 @@ const FileUploadSetting: FC<Props> = ({
   validationError,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const errorId = useId()
   const typeErrorId = validationError?.field === 'allowed_file_types' ? errorId : undefined
   const customFileTypesErrorId =
@@ -149,10 +149,10 @@ const FileUploadSetting: FC<Props> = ({
                 key={type}
                 type={
                   type as
-                    | SupportUploadFileTypes.image
-                    | SupportUploadFileTypes.document
-                    | SupportUploadFileTypes.audio
-                    | SupportUploadFileTypes.video
+                    | typeof SupportUploadFileTypes.image
+                    | typeof SupportUploadFileTypes.document
+                    | typeof SupportUploadFileTypes.audio
+                    | typeof SupportUploadFileTypes.video
                 }
                 selected={allowed_file_types.includes(type)}
                 onToggle={handleSupportFileTypeChange}
@@ -192,8 +192,7 @@ const FileUploadSetting: FC<Props> = ({
                     value={method.value}
                     className={cn(
                       'flex h-8 w-full cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-xs',
-                      selectedMethod !== method.value &&
-                        'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                      'data-unchecked:cursor-pointer data-unchecked:hover:border-components-option-card-option-border-hover data-unchecked:hover:bg-components-option-card-option-bg-hover data-unchecked:hover:shadow-xs',
                     )}
                   >
                     <span>{method.label}</span>
@@ -249,10 +248,10 @@ const FileUploadSetting: FC<Props> = ({
                 key={type}
                 type={
                   type as
-                    | SupportUploadFileTypes.image
-                    | SupportUploadFileTypes.document
-                    | SupportUploadFileTypes.audio
-                    | SupportUploadFileTypes.video
+                    | typeof SupportUploadFileTypes.image
+                    | typeof SupportUploadFileTypes.document
+                    | typeof SupportUploadFileTypes.audio
+                    | typeof SupportUploadFileTypes.video
                 }
                 selected={allowed_file_types.includes(type)}
                 onToggle={handleSupportFileTypeChange}

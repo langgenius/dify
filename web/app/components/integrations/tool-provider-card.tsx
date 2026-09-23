@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import CornerMark from '@/app/components/plugins/card/base/corner-mark'
 import { useGetLanguage } from '@/context/i18n'
-import { renderI18nObject } from '@/i18n-config/metadata'
+import { renderI18nObject } from '@/i18n/metadata'
 
 const getCollectionPluginIdentity = (collection: Collection) => {
   const [org, ...nameParts] = collection.plugin_id?.split('/').filter(Boolean) ?? []
@@ -40,7 +40,7 @@ function IntegrationsToolProviderCard({
   variant = 'default',
 }: IntegrationsToolProviderCardProps) {
   const language = useGetLanguage()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'tools'])
   const title = renderI18nObject(collection.label, language)
   const description = renderI18nObject(collection.description, language)
   const { org, name } = getCollectionPluginIdentity(collection)

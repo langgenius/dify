@@ -17,7 +17,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.knowledgeRetrieval'
 
 const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const {
     readOnly,

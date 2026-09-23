@@ -5,7 +5,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
-import { getPluginLanguage } from '@/i18n-config/metadata'
+import { getPluginLanguage } from '@/i18n/metadata'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import { useMarketplaceMoreClick } from '../atoms'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
@@ -108,7 +108,7 @@ const CollectionSection = ({
   installedPluginIds,
   deferMount,
 }: CollectionSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
   const collectionLabelId = useId()
   const sectionRef = useRef<HTMLDivElement>(null)

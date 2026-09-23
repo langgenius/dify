@@ -1,11 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '../cn'
 import { textControlCompoundInputFocusClassName } from '../form-control-shared'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const NumberField = BaseNumberField.Root
 type NumberFieldProps = BaseNumberField.Root.Props
@@ -36,15 +37,15 @@ const numberFieldGroupVariants = cva(
 )
 type NumberFieldSize = NonNullable<VariantProps<typeof numberFieldGroupVariants>['size']>
 
-type NumberFieldGroupProps = Omit<BaseNumberField.Group.Props, 'className'> &
-  VariantProps<typeof numberFieldGroupVariants> & {
-    className?: string
-  }
+type NumberFieldGroupProps = BaseNumberField.Group.Props &
+  VariantProps<typeof numberFieldGroupVariants>
 
 function NumberFieldGroup({ className, size = 'medium', ...props }: NumberFieldGroupProps) {
   return (
     <BaseNumberField.Group
-      className={cn(numberFieldGroupVariants({ size }), className)}
+      className={(state) =>
+        cn(numberFieldGroupVariants({ size }), resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -70,15 +71,15 @@ const numberFieldInputVariants = cva(
   },
 )
 
-type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'className' | 'size'> &
-  VariantProps<typeof numberFieldInputVariants> & {
-    className?: string
-  }
+type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'size'> &
+  VariantProps<typeof numberFieldInputVariants>
 
 function NumberFieldInput({ className, size = 'medium', ...props }: NumberFieldInputProps) {
   return (
     <BaseNumberField.Input
-      className={cn(numberFieldInputVariants({ size }), className)}
+      className={(state) =>
+        cn(numberFieldInputVariants({ size }), resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -171,14 +172,8 @@ type NumberFieldButtonVariantProps = Omit<
   'direction'
 >
 
-type NumberFieldIncrementProps = Omit<BaseNumberField.Increment.Props, 'className'> &
-  NumberFieldButtonVariantProps & {
-    className?: string
-  }
-type NumberFieldDecrementProps = Omit<BaseNumberField.Decrement.Props, 'className'> &
-  NumberFieldButtonVariantProps & {
-    className?: string
-  }
+type NumberFieldIncrementProps = BaseNumberField.Increment.Props & NumberFieldButtonVariantProps
+type NumberFieldDecrementProps = BaseNumberField.Decrement.Props & NumberFieldButtonVariantProps
 
 const incrementAriaLabel = 'Increment value'
 const decrementAriaLabel = 'Decrement value'
@@ -195,7 +190,12 @@ function NumberFieldIncrement({
       aria-label={
         props['aria-label'] ?? (props['aria-labelledby'] ? undefined : incrementAriaLabel)
       }
-      className={cn(numberFieldControlButtonVariants({ size, direction: 'increment' }), className)}
+      className={(state) =>
+        cn(
+          numberFieldControlButtonVariants({ size, direction: 'increment' }),
+          resolveClassName(className, state),
+        )
+      }
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-up-s-line size-3" />}
     </BaseNumberField.Increment>
@@ -214,7 +214,12 @@ function NumberFieldDecrement({
       aria-label={
         props['aria-label'] ?? (props['aria-labelledby'] ? undefined : decrementAriaLabel)
       }
-      className={cn(numberFieldControlButtonVariants({ size, direction: 'decrement' }), className)}
+      className={(state) =>
+        cn(
+          numberFieldControlButtonVariants({ size, direction: 'decrement' }),
+          resolveClassName(className, state),
+        )
+      }
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-down-s-line size-3" />}
     </BaseNumberField.Decrement>

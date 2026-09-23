@@ -196,6 +196,16 @@ export const zSandboxReadResponse = z.object({
 })
 
 /**
+ * TextToSpeechPayload
+ */
+export const zTextToSpeechPayload = z.object({
+  message_id: z.string().nullish(),
+  streaming: z.boolean().nullish(),
+  text: z.string(),
+  voice: z.string().nullish(),
+})
+
+/**
  * AgentConfigSnapshotRestoreResponse
  */
 export const zAgentConfigSnapshotRestoreResponse = z.object({
@@ -810,6 +820,21 @@ export const zAgentStatisticSummaryResponse = z.object({
 })
 
 /**
+ * TextToSpeechVoiceResponse
+ */
+export const zTextToSpeechVoiceResponse = z.object({
+  name: z.string(),
+  value: z.string(),
+})
+
+/**
+ * TextToSpeechVoiceListResponse
+ *
+ * Available voices
+ */
+export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
+
+/**
  * ModelConfigPartial
  */
 export const zModelConfigPartial = z.object({
@@ -1077,6 +1102,7 @@ export const zAgentPublishResponse = z.object({
   active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
   active_config_snapshot_id: z.string(),
   draft: zAgentConfigDraftSummaryResponse.nullish(),
+  publication_kind: z.enum(['first', 'update']),
   result: z.string(),
 })
 
@@ -1552,6 +1578,27 @@ export const zAgentFileRefConfig = z.object({
 export const zWorkflowNodeJobMetadata = z.object({
   agent_soul: z.record(z.string(), z.unknown()).nullish(),
   file_refs: z.array(zAgentFileRefConfig).nullish(),
+})
+
+/**
+ * WorkflowOutputRoute
+ *
+ * Stable workflow exit identity and its model-visible selection condition.
+ */
+export const zWorkflowOutputRoute = z.object({
+  id: z.string().min(1),
+  label: z.string().nullish(),
+  name: z.string().optional().default(''),
+})
+
+/**
+ * WorkflowOutputRoutes
+ *
+ * Enabled routes require at least two exits; drafts may omit conditions.
+ */
+export const zWorkflowOutputRoutes = z.object({
+  enabled: z.boolean().optional().default(false),
+  routes: z.array(zWorkflowOutputRoute).optional(),
 })
 
 /**
@@ -2033,6 +2080,7 @@ export const zWorkflowNodeJobConfig = z.object({
   human_contacts: z.array(zAgentHumanContactConfig).optional(),
   metadata: zWorkflowNodeJobMetadata.optional(),
   mode: zWorkflowNodeJobMode.optional().default('tell_agent_what_to_do'),
+  output_routes: zWorkflowOutputRoutes.optional(),
   previous_node_output_refs: z.array(zWorkflowPreviousNodeOutputRef).optional(),
   schema_version: z.int().optional().default(1),
   workflow_prompt: z.string().optional().default(''),
@@ -3264,6 +3312,32 @@ export const zGetAgentByAgentIdStatisticsSummaryQuery = z.object({
  * Agent monitoring summary and chart data
  */
 export const zGetAgentByAgentIdStatisticsSummaryResponse = zAgentStatisticSummaryEnvelopeResponse
+
+export const zPostAgentByAgentIdTextToAudioBody = zTextToSpeechPayload
+
+export const zPostAgentByAgentIdTextToAudioPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Generated audio bytes in the provider audio format
+ */
+export const zPostAgentByAgentIdTextToAudioResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+export const zGetAgentByAgentIdTextToAudioVoicesPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdTextToAudioVoicesQuery = z.object({
+  language: z.string(),
+})
+
+/**
+ * TTS voices retrieved successfully
+ */
+export const zGetAgentByAgentIdTextToAudioVoicesResponse = zTextToSpeechVoiceListResponse
 
 export const zGetAgentByAgentIdVersionsPath = z.object({
   agent_id: z.uuid(),

@@ -1,10 +1,11 @@
 'use client'
+
 import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type { TFunction } from 'i18next'
 import type { ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { PluginLanguage } from '@/i18n-config/metadata'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -58,7 +59,7 @@ const FeaturedTools = ({
   isLoading = false,
   onInstallSuccess,
 }: FeaturedToolsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const language = useGetLanguage()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<FeaturedToolPreviewPayload>())
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
@@ -239,7 +240,7 @@ type FeaturedToolUninstalledItemProps = {
   language: PluginLanguage
   previewCardHandle: PreviewCardHandle<FeaturedToolPreviewPayload>
   onInstallSuccess?: () => Promise<void> | void
-  t: TFunction
+  t: TFunction<['plugin', 'workflow']>
 }
 
 function FeaturedToolUninstalledItem({

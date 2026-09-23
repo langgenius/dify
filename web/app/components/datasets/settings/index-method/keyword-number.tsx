@@ -18,18 +18,18 @@ import {
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 
 const MIN_KEYWORD_NUMBER = 0
 const MAX_KEYWORD_NUMBER = 50
 
 type KeyWordNumberProps = {
+  disabled?: boolean
   keywordNumber: number
   onKeywordNumberChange: (value: number) => void
 }
 
-const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberProps) => {
-  const { t } = useTranslation()
+const KeyWordNumber = ({ disabled, keywordNumber, onKeywordNumberChange }: KeyWordNumberProps) => {
+  const { t } = useTranslation(['datasetSettings'])
   const label = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
 
   const handleInputChange = useCallback(
@@ -44,11 +44,9 @@ const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberPr
       <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex grow items-center gap-x-0.5">
         <div className="truncate system-xs-medium text-text-secondary">{label}</div>
-        <Infotip aria-label={label} className="size-3.5">
-          {label}
-        </Infotip>
       </div>
       <Slider
+        disabled={disabled}
         className="mr-3 w-51.5 shrink-0"
         value={keywordNumber}
         min={MIN_KEYWORD_NUMBER}
@@ -64,6 +62,7 @@ const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberPr
         </SliderControl>
       </Slider>
       <NumberField
+        disabled={disabled}
         className="w-18.5 shrink-0"
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}

@@ -6,7 +6,6 @@ Pydantic models in this module.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -14,7 +13,7 @@ from typing import Any
 from pydantic import AliasChoices, Field, field_validator
 from sqlalchemy.orm import Session
 
-from fields.base import ResponseModel
+from fields.base import ResponseModel, SessionResponseSource
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
 from libs.helper import to_timestamp
@@ -185,27 +184,45 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
         return to_timestamp(value)
 
 
-@dataclass(frozen=True)
-class WorkflowNodeExecutionResponseSource:
-    """Expose session-backed node-execution accessors during response validation."""
-
-    node_execution: Any
-    session: Session
+class WorkflowRunResponseSource(SessionResponseSource[Any]):
+    """Expose session-backed workflow-run accessors during response validation."""
 
     @property
     def created_by_account(self) -> Any:
-        return self.node_execution.created_by_account(self.session)
+        return self._source.created_by_account(self._session)
 
     @property
     def created_by_end_user(self) -> Any:
-        return self.node_execution.created_by_end_user(self.session)
+        return self._source.created_by_end_user(self._session)
 
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.node_execution, name)  # guard-ignore: no-new-getattr -- delegates model fields
+
+def workflow_run_response_source(workflow_run: Any, *, session: Session) -> WorkflowRunResponseSource:
+    return WorkflowRunResponseSource(workflow_run, session=session)
+
+
+def workflow_run_pagination_response_source(pagination: Any, *, session: Session) -> dict[str, Any]:
+    """Wrap each run in a pagination payload so list responses resolve accessors via the session."""
+    return {
+        "limit": pagination.limit,
+        "has_more": pagination.has_more,
+        "data": [workflow_run_response_source(run, session=session) for run in pagination.data],
+    }
+
+
+class WorkflowNodeExecutionResponseSource(SessionResponseSource[Any]):
+    """Expose session-backed node-execution accessors during response validation."""
+
+    @property
+    def created_by_account(self) -> Any:
+        return self._source.created_by_account(self._session)
+
+    @property
+    def created_by_end_user(self) -> Any:
+        return self._source.created_by_end_user(self._session)
 
 
 def node_execution_response_source(node_execution: Any, *, session: Session) -> WorkflowNodeExecutionResponseSource:
-    return WorkflowNodeExecutionResponseSource(node_execution=node_execution, session=session)
+    return WorkflowNodeExecutionResponseSource(node_execution, session=session)
 
 
 class WorkflowRunNodeExecutionListResponse(ResponseModel):

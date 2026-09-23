@@ -3,10 +3,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel, FieldValidity } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -15,7 +15,7 @@ import { sendResetPasswordCode } from '@/service/common'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '../components/signin/storage'
 
 export default function CheckCode() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const router = useRouter()
   const [loading, setLoading] = useState(false)

@@ -4,11 +4,11 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { checkEmailExisted, resetEmail, sendVerifyCode, verifyEmail } from '@/service/common'
 import { useLogout } from '@/service/use-common'
@@ -52,7 +52,7 @@ function isFetchResponseError(error: unknown): error is FetchResponseError {
 }
 
 const EmailChangeModal = ({ onClose, email }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const router = useRouter()
   const [step, setStep] = useState<Step>(STEP.start)
   const [code, setCode] = useState<string>('')

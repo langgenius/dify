@@ -1,7 +1,7 @@
 import { loadCreatorProfile } from '@/app/components/plugins/marketplace/creator-profile/data.server'
 import DifyCreatorProfile from '@/app/components/plugins/marketplace/creator-profile/dify-profile'
 import MarketplaceInstallPermissionProvider from '@/app/components/plugins/marketplace/marketplace-install-permission-provider'
-import { getLocaleOnServer } from '@/i18n-config/server'
+import { getLocaleOnServer } from '@/i18n/server'
 import { notFound } from '@/next/navigation'
 
 type CreatorPageSearchParams = {

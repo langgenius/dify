@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { uniq } from 'es-toolkit/array'
 import { flatten } from 'es-toolkit/compat'
 import * as React from 'react'
@@ -11,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { fetchAgentLogDetail } from '@/service/log'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
@@ -27,7 +27,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   messageID,
   log,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog'])
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
   const appDetail = useAppStore((s) => s.appDetail)
   const [loading, setLoading] = useState<boolean>(true)

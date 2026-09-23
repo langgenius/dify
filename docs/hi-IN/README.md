@@ -146,7 +146,7 @@ Dify सभी प्रकार के योगदानों का स्�
 
 - **कोड**: [Contribution Guide](./CONTRIBUTING.md) पढ़ें, फिर [नए योगदानकर्ताओं के लिए उपयुक्त issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) देखें।
 - **विचार और प्रतिक्रिया**: [GitHub Discussion](https://github.com/langgenius/dify/discussions) शुरू करें या किसी मौजूदा चर्चा में शामिल हों।
-- **अनुवाद**: किसी locale को जोड़ने या अपडेट करने के लिए [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) का पालन करें।
+- **अनुवाद**: किसी locale को जोड़ने या अपडेट करने के लिए [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) का पालन करें।
 - **समुदाय**: अपने बनाए हुए ऐप साझा करें, अन्य उपयोगकर्ताओं की मदद करें और Dify के बारे में लोगों को बताएं।
 
 ### योगदानकर्ता

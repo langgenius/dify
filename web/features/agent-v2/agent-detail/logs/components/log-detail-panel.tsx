@@ -5,13 +5,13 @@ import type {
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 
@@ -24,8 +24,8 @@ export function AgentLogDetailPanel({
   log?: AgentLogConversationItemResponse
   onClose: () => void
 }) {
-  const { t } = useTranslation()
-  const { t: tAgentV2 } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'appLog', 'common'])
+  const { t: tAgentV2 } = useTranslation(['agentV2'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const feedbackMutation = useMutation(

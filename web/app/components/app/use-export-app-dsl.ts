@@ -1,17 +1,24 @@
 'use client'
 
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
-import { toast } from '@langgenius/dify-ui/toast'
+import type {
+  EnvironmentVariableItemResponse,
+  GetAppsByAppIdExportData,
+} from '@dify/contracts/api/console/apps/types.gen'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getAppTransferErrorMessage } from './transfer-error'
 
 type ExportAppDslInput = {
   appId: string
   appName: string
   includeSecret?: boolean
+  versionId?: string
+  format?: NonNullable<GetAppsByAppIdExportData['query']>['format']
+  workflowId?: string
 }
 
 type ExportWorkflowAppDslInput = Pick<ExportAppDslInput, 'appId' | 'appName'>
@@ -22,6 +29,8 @@ type ExportAppDslMessages = {
   loading: string
   success: string
   error: string
+  packageSuccess: string
+  packageError: string
 }
 
 export type ExportWorkflowAppDslResult =
@@ -39,11 +48,23 @@ async function getSecretEnvironmentVariables(appId: string) {
   return items.filter((environmentVariable) => environmentVariable.value_type === 'secret')
 }
 
-async function exportAppDslFile({ appId, appName, includeSecret = false }: ExportAppDslInput) {
+export async function exportAppDslFile({
+  appId,
+  appName,
+  includeSecret = false,
+  workflowId,
+  versionId,
+  format,
+}: ExportAppDslInput) {
   const response = await consoleClient.apps.byAppId.export.get(
     {
       params: { app_id: appId },
-      query: { include_secret: includeSecret },
+      query: {
+        include_secret: includeSecret,
+        ...(workflowId ? { workflow_id: workflowId } : {}),
+        ...(versionId ? { version_id: versionId } : {}),
+        ...(format && { format }),
+      },
     },
     { context: { silent: true } },
   )
@@ -54,40 +75,47 @@ async function exportAppDslFile({ appId, appName, includeSecret = false }: Expor
       data: response,
       fileName: name && name !== 'blob' ? name : `${appName}.ifpkg`,
     })
-    return
+    return 'ifpkg' as const
   }
 
   downloadBlob({
     data: new Blob([response.data], { type: 'application/yaml' }),
     fileName: `${appName}.yml`,
   })
+  return 'yaml' as const
 }
 
 async function downloadAppDsl(input: ExportAppDslInput, messages: ExportAppDslMessages) {
-  await toast.promise(exportAppDslFile(input), {
+  const exportPromise = exportAppDslFile(input).catch(async (error: unknown) => {
+    throw new Error(await getAppTransferErrorMessage(error), { cause: error })
+  })
+  await toast.promise(exportPromise, {
     loading: {
       title: messages.loading,
     },
-    success: {
-      title: messages.success,
+    success: (format) => ({
+      title: format === 'ifpkg' ? messages.packageSuccess : messages.success,
       timeout: 3000,
-    },
-    error: {
-      title: messages.error,
-    },
+    }),
+    error: (error) => ({
+      title: input.format === 'yaml' ? messages.error : messages.packageError,
+      description: error instanceof Error ? error.message || undefined : undefined,
+    }),
   })
 
   return { status: 'downloaded' } as const
 }
 
 function useExportAppDslMessages() {
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return {
     loading: tCommon(($) => $['operation.exporting']),
     success: tCommon(($) => $['operation.downloadSuccess']),
     error: tApp(($) => $.exportFailed),
+    packageSuccess: tApp(($) => $.exportAppSuccess),
+    packageError: tApp(($) => $.exportAppFailed),
   }
 }
 
@@ -125,7 +153,7 @@ export function useExportWorkflowAppDsl() {
       try {
         secretEnvList = await getSecretEnvironmentVariables(input.appId)
       } catch (error) {
-        toast.error(messages.error)
+        toast.error(messages.packageError, { description: await getAppTransferErrorMessage(error) })
         throw error
       }
 

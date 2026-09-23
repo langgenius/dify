@@ -16,7 +16,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getEnterpriseDocUrl } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { getDocLanguage } from '@/i18n-config/language'
+import { getDocLanguage } from '@/i18n/language'
 import dynamic from '@/next/dynamic'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -38,9 +38,9 @@ function AppDeployContent({
   appId: string
   canViewAccessPoint: boolean
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const deployOverviewDocUrl = getEnterpriseDocUrl('/use/deploy/overview', docLanguage)

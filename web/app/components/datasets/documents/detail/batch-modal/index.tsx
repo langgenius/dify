@@ -20,7 +20,7 @@ type IBatchModalProps = {
 type BatchModalContentProps = Omit<IBatchModalProps, 'isShow'>
 
 const BatchModalContent: FC<BatchModalContentProps> = ({ docForm, onCancel, onConfirm }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   const [currentCSV, setCurrentCSV] = useState<FileItem>()
   const handleFile = (file?: FileItem) => setCurrentCSV(file)
 

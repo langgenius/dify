@@ -3,18 +3,18 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import { Infotip } from '@/app/components/base/infotip'
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import { LLMEnvironmentVariableValueField } from '@/app/components/workflow/llm-environment-variable-value-field'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 type ModalPropsType = {
@@ -24,7 +24,9 @@ type ModalPropsType = {
 }
 
 const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
-  const { t } = useTranslation()
+  const secretLabelId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const workflowStore = useWorkflowStore()
   const [type, setType] = React.useState<EnvironmentVariable['value_type']>('string')
   const [name, setName] = React.useState('')
@@ -187,6 +189,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
             </button>
             <div className="relative min-w-0">
               <button
+                id={secretLabelId}
                 type="button"
                 aria-pressed={type === 'secret'}
                 disabled={isTypeChangeDisabled('secret')}
@@ -199,12 +202,14 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
               >
                 Secret
               </button>
-              <Infotip
-                aria-label={t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
-                className="absolute top-1/2 right-1 size-3.5 -translate-y-1/2"
-                popupClassName="w-[240px]"
-              >
-                {t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
+              <Infotip>
+                <InfotipTrigger
+                  aria-labelledby={secretLabelId}
+                  className="absolute top-1/2 right-1 size-3.5 -translate-y-1/2"
+                />
+                <InfotipContent aria-labelledby={secretLabelId} className="w-60">
+                  {t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
+                </InfotipContent>
               </Infotip>
             </div>
             <button
