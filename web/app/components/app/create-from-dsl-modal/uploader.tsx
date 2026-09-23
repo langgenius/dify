@@ -9,7 +9,7 @@ import { toast } from '@/app/notifications'
 import { formatFileSize } from '@/utils/format'
 
 const importFormats = {
-  app: { accept: '.yaml,.yml,.ifpkg', displayName: 'DSL' },
+  app: { accept: '.yaml,.yml,.zip,.ifpkg', displayName: 'DSL' },
   dsl: { accept: '.yaml,.yml', displayName: 'YAML' },
   pipeline: { accept: '.pipeline', displayName: 'PIPELINE' },
 } as const
@@ -34,10 +34,14 @@ export function Uploader({
   const { t } = useTranslation(['app', 'common', 'datasetCreation'])
   const { accept, displayName: formatName } = importFormats[importType]
   const isPackage = importType === 'app' && file?.name.toLowerCase().endsWith('.ifpkg')
-  const displayName = isPackage ? t(($) => $.appPackage, { ns: 'app' }) : formatName
-  const fileIconClassName = isPackage
-    ? 'i-ri-file-zip-line text-text-tertiary'
-    : 'i-custom-public-files-yaml'
+  const isBundle = file?.name.toLowerCase().endsWith('.zip')
+  const displayName = isPackage
+    ? t(($) => $.appPackage, { ns: 'app' })
+    : isBundle
+      ? 'ZIP'
+      : formatName
+  const fileIconClassName =
+    isPackage || isBundle ? 'i-ri-file-zip-line text-text-tertiary' : 'i-custom-public-files-yaml'
   const hint = importType === 'app' ? t(($) => $.importAppFormats, { ns: 'app' }) : undefined
   const [dragging, setDragging] = useState(false)
   const dragRef = useRef<HTMLDivElement>(null)

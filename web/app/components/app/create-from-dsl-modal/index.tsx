@@ -34,6 +34,7 @@ import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
+import { readAppDSLFile } from '../dsl-file'
 import { getAppTransferErrorMessage } from '../transfer-error'
 import DSLConfirmModal from './dsl-confirm-modal'
 import DSLImportWarningDescription from './dsl-import-warning-description'
@@ -112,10 +113,7 @@ function CreateFromDSLModal({
 
       const body =
         source.type === CreateFromDSLModalTab.FROM_FILE
-          ? ({
-              mode: 'yaml-content',
-              yaml_content: await source.file.text(),
-            } satisfies AppImportPayload)
+          ? await readAppDSLFile(source.file)
           : ({
               mode: 'yaml-url',
               yaml_url: source.url,

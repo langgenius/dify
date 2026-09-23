@@ -296,6 +296,8 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               onSuccess: (data, variables, _onMutateResult, context) => {
                 if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
+                void context.client.invalidateQueries({ queryKey: ['tools', 'workflowTools'] })
+                void context.client.invalidateQueries({ queryKey: ['tools', 'allToolProviders'] })
                 if (!('app_id' in variables.body) || !variables.body.app_id) {
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.features.get.key(),
@@ -319,6 +321,10 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     if (data.status !== 'completed' && data.status !== 'completed-with-warnings')
                       return
 
+                    void context.client.invalidateQueries({ queryKey: ['tools', 'workflowTools'] })
+                    void context.client.invalidateQueries({
+                      queryKey: ['tools', 'allToolProviders'],
+                    })
                     void context.client.invalidateQueries({
                       queryKey: consoleQuery.features.get.key(),
                     })

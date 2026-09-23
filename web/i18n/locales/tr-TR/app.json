@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "Şansını dene",
   "importApp": "Uygulamayı İçe Aktar",
   "importAppDescription": "Uygulama paketi veya DSL dosyası",
-  "importAppFormats": ".ifpkg, .yaml ve .yml desteklenir",
+  "importAppFormats": ".ifpkg, .zip, .yaml ve .yml desteklenir",
   "importAppUrlPlaceholder": "Uygulama paketi (.ifpkg) veya DSL bağlantısını buraya yapıştırın",
   "importFromDSL": "DSL içe aktar",
   "importFromDSLFile": "DSL dosyasından",

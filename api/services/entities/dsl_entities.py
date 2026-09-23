@@ -11,6 +11,7 @@ from models.model import App, AppMode, IconType
 class ImportMode(StrEnum):
     YAML_CONTENT = "yaml-content"
     YAML_URL = "yaml-url"
+    BUNDLE_CONTENT = "bundle-content"
 
 
 class ImportStatus(StrEnum):

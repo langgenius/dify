@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "किस्मत आज़माएँ",
   "importApp": "ऐप आयात करें",
   "importAppDescription": "ऐप पैकेज या DSL फ़ाइल",
-  "importAppFormats": ".ifpkg, .yaml और .yml समर्थित हैं",
+  "importAppFormats": ".ifpkg, .zip, .yaml और .yml समर्थित हैं",
   "importAppUrlPlaceholder": "ऐप पैकेज (.ifpkg) या DSL का लिंक यहाँ पेस्ट करें",
   "importFromDSL": "DSL से आयात करें",
   "importFromDSLFile": "डीएसएल फ़ाइल से",

@@ -1,3 +1,4 @@
+import base64
 from typing import BinaryIO, Literal, cast
 from uuid import uuid4
 
@@ -30,6 +31,7 @@ from models.account import Account
 from models.model import App, AppMode
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.agent.roster_package_importer import RosterAgentPackageImporter
+from services.app_dsl_bundle import AppDslBundleService
 from services.app_dsl_service import (
     IMPORT_INFO_REDIS_KEY_PREFIX,
     AppDslService,
@@ -38,6 +40,7 @@ from services.app_dsl_service import (
 )
 from services.app_import_source import download_app_import_source, try_read_yaml
 from services.app_package_service import AppPackageService, PreparedAppPackage
+from services.dsl_content import DSL_MAX_SIZE
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
@@ -48,8 +51,10 @@ from .permission_keys import get_app_permission_keys
 
 
 class AppImportPayload(BaseModel):
-    mode: str = Field(..., description="Import mode")
-    yaml_content: str | None = Field(None)
+    mode: Literal["yaml-content", "yaml-url", "bundle-content"] = Field(
+        ..., description="Import YAML text, a URL, or a base64 ZIP bundle"
+    )
+    yaml_content: str | None = Field(None, description="YAML DSL text or base64-encoded ZIP for bundle-content")
     yaml_url: str | None = Field(None)
     name: str | None = Field(None)
     description: str | None = Field(None)
@@ -153,7 +158,22 @@ class AppImportApi(Resource):
                     payload.model_copy(update={"mode": "yaml-content", "yaml_content": content, "yaml_url": None}),
                     current_user,
                 )
-            return self._import_package(current_user, payload, source)
+            bundle_content = source.read(DSL_MAX_SIZE + 1)
+            try:
+                AppDslBundleService.parse_bundle(bundle_content)
+            except ValueError:
+                source.seek(0)
+                return self._import_package(current_user, payload, source)
+            return self._import_dsl(
+                payload.model_copy(
+                    update={
+                        "mode": "bundle-content",
+                        "yaml_content": base64.b64encode(bundle_content).decode("ascii"),
+                        "yaml_url": None,
+                    }
+                ),
+                current_user,
+            )
 
     def _import_package(
         self, current_user: Account, payload: AppImportPayload | None = None, source: BinaryIO | None = None

@@ -10,12 +10,13 @@ import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
+import { readAppDSLFile } from '@/app/components/app/dsl-file'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
@@ -143,17 +144,16 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
       if (file.name.toLowerCase().endsWith('.ifpkg'))
         return requestImport({ body: { file, app_id: appDetail.id } })
 
-      const content = await file.text()
-      if (!content || !validateDSLContent(content, appDetail.mode)) {
+      const source = await readAppDSLFile(file)
+      if (
+        source.mode !== 'bundle-content' &&
+        (!source.yaml_content || !validateDSLContent(source.yaml_content, appDetail.mode))
+      ) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
       }
       return requestImport({
-        body: {
-          mode: DSLImportMode.YAML_CONTENT,
-          yaml_content: content,
-          app_id: appDetail.id,
-        },
+        body: { ...source, app_id: appDetail.id },
       })
     },
     onError: notifyImportError,

@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "جرّب حظك",
   "importApp": "استيراد التطبيق",
   "importAppDescription": "حزمة تطبيق أو ملف DSL",
-  "importAppFormats": "يدعم .ifpkg و.yaml و.yml",
+  "importAppFormats": "يدعم .ifpkg و.zip و.yaml و.yml",
   "importAppUrlPlaceholder": "الصق هنا رابط حزمة تطبيق (.ifpkg) أو ملف DSL",
   "importFromDSL": "استيراد من DSL",
   "importFromDSLFile": "من ملف DSL",

@@ -167,7 +167,7 @@ describe('useDSLByCanEdit', () => {
     expect(mockExportAppConfig).toHaveBeenCalledWith(
       {
         params: { app_id: 'app-1' },
-        query: { include_secret: false, workflow_id: undefined },
+        query: { include_secret: false },
       },
       { context: { silent: true } },
     )

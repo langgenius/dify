@@ -42,7 +42,7 @@ export const useDSLDragDrop = ({
     if (files.length === 0) return
 
     const file = files[0]
-    if (/\.(?:yaml|yml|ifpkg)$/i.test(file!.name)) onDSLFileDropped(file!)
+    if (/\.(?:ya?ml|zip|ifpkg)$/i.test(file!.name)) onDSLFileDropped(file!)
   })
 
   useEffect(() => {

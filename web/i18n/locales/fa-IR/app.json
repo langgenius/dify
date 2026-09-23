@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "شانست را امتحان کن",
   "importApp": "وارد کردن برنامه",
   "importAppDescription": "بستهٔ برنامه یا فایل DSL",
-  "importAppFormats": "از .ifpkg، .yaml و .yml پشتیبانی می‌کند",
+  "importAppFormats": "از .ifpkg، .zip، .yaml و .yml پشتیبانی می‌کند",
   "importAppUrlPlaceholder": "پیوند بستهٔ برنامه (.ifpkg) یا فایل DSL را اینجا جای‌گذاری کنید",
   "importFromDSL": "وارد کردن از DSL",
   "importFromDSLFile": "از فایل DSL",

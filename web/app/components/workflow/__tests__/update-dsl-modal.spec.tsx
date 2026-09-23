@@ -13,6 +13,7 @@ const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
 const mockIsCollaborationConnected = vi.hoisted(() => vi.fn(() => true))
 const mockReplaceGraphFromCommittedDraft = vi.hoisted(() => vi.fn((..._args: unknown[]) => true))
+const workflowToolsKey = ['tools', 'workflowTools']
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -25,28 +26,16 @@ vi.mock('@/app/notifications', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      imports: {
-        post: {
-          mutationOptions: (options: Record<string, unknown>) => ({
-            ...options,
-            mutationFn: ({ body }: { body: unknown }) => mockImportDSL(body),
-          }),
-        },
-        byImportId: {
-          confirm: {
-            post: {
-              mutationOptions: (options: Record<string, unknown>) => ({
-                ...options,
-                mutationFn: ({ params }: { params: unknown }) => mockImportDSLConfirm(params),
-              }),
-            },
-          },
-        },
-      },
-    },
+vi.mock('@/service/base', () => ({
+  request: async (url: string, _init: RequestInit, options: { request: Request }) => {
+    const response = url.endsWith('/confirm')
+      ? await mockImportDSLConfirm({ import_id: url.split('/').at(-2) })
+      : await mockImportDSL(
+          options.request.headers.get('content-type')?.startsWith('multipart/form-data')
+            ? Object.fromEntries(await options.request.formData())
+            : await options.request.json(),
+        )
+    return Response.json(response)
   },
 }))
 
@@ -91,8 +80,14 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
 }))
 
 function render(children: ReactNode) {
-  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
-  return rtlRender(<QueryClientProvider client={client}>{children}</QueryClientProvider>)
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { staleTime: 5 * 60 * 1000 }, mutations: { retry: false } },
+  })
+  queryClient.setQueryData(workflowToolsKey, [])
+  return {
+    ...rtlRender(<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>),
+    queryClient,
+  }
 }
 
 describe('UpdateDSLModal', () => {
@@ -146,13 +141,21 @@ describe('UpdateDSLModal', () => {
   }
 
   it('uploads an ifpkg without decoding it as YAML when overwriting a workflow', async () => {
-    mockImportDSL.mockResolvedValue({ status: DSLImportStatus.COMPLETED, app_id: 'app-1' })
-    render(<UpdateDSLModal {...defaultProps} />)
-    const file = new File([new Uint8Array([0x50, 0x4b, 0xff])], 'workflow.IFPKG')
-    fireEvent.change(screen.getByTestId('dsl-file-input'), { target: { files: [file] } })
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
-    await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file, app_id: 'app-1' }))
+    const user = userEvent.setup()
+    const { queryClient } = renderModal()
+    const bytes = new Uint8Array([0x50, 0x4b, 0xff])
+    const file = new File([bytes], 'workflow.IFPKG')
+    await user.upload(screen.getByTestId('dsl-file-input'), file)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() =>
+      expect(mockImportDSL).toHaveBeenCalledWith({ file: expect.any(File), app_id: 'app-1' }),
+    )
+    const uploadedFile = mockImportDSL.mock.calls[0]![0].file as File
+    expect(uploadedFile.name).toBe(file.name)
+    expect(new Uint8Array(await uploadedFile.arrayBuffer())).toEqual(bytes)
     await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalled())
+    expect(queryClient.getQueryState(workflowToolsKey)?.isInvalidated).toBe(true)
   })
 
   it('should keep import disabled until a file is selected', () => {
@@ -193,7 +196,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -287,6 +290,27 @@ describe('UpdateDSLModal', () => {
     reload.mockRestore()
   })
 
+  it('overwrites the current app from a ZIP bundle and refreshes its workflow', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderModal()
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['PK\u0003\u0004'], 'workflow.zip'),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() =>
+      expect(mockImportDSL).toHaveBeenCalledWith({
+        mode: 'bundle-content',
+        yaml_content: btoa('PK\u0003\u0004'),
+        app_id: 'app-1',
+      }),
+    )
+    await waitFor(() => expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1'))
+    expect(queryClient.getQueryState(workflowToolsKey)?.isInvalidated).toBe(true)
+    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
+  })
+
   it('should show Agent package warnings returned by a completed import', async () => {
     mockImportDSL.mockResolvedValue({
       id: 'import-with-agent-warnings',
@@ -311,7 +335,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -353,10 +377,10 @@ describe('UpdateDSLModal', () => {
       current_dsl_version: '2.0.0',
     })
 
-    renderModal()
+    const { queryClient } = renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -364,13 +388,15 @@ describe('UpdateDSLModal', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
     })
+    expect(queryClient.getQueryState(workflowToolsKey)?.isInvalidated).toBe(false)
 
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
       expect(mockImportDSLConfirm).toHaveBeenCalledWith({ import_id: 'import-2' })
     })
-    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
+    await waitFor(() => expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1'))
+    expect(queryClient.getQueryState(workflowToolsKey)?.isInvalidated).toBe(true)
   })
 
   it('should show Agent package warnings returned after confirming a pending import', async () => {
@@ -396,7 +422,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -421,7 +447,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -454,7 +480,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -577,7 +603,15 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: {
+        files: [
+          new File(
+            ['workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n'],
+            'workflow.yml',
+            { type: 'text/yaml' },
+          ),
+        ],
+      },
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -596,7 +630,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -617,7 +651,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -641,7 +675,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -672,7 +706,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -703,7 +737,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 

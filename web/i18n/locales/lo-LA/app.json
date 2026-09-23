@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "ລອງໂຊກຂອງທ່ານ",
   "importApp": "ນຳເຂົ້າແອັບ",
   "importAppDescription": "ແພັກເກດແອັບ ຫຼື ໄຟລ໌ DSL",
-  "importAppFormats": "ຮອງຮັບ .ifpkg, .yaml ແລະ .yml",
+  "importAppFormats": "ຮອງຮັບ .ifpkg, .zip, .yaml ແລະ .yml",
   "importAppUrlPlaceholder": "ວາງລິ້ງແພັກເກດແອັບ (.ifpkg) ຫຼື DSL ທີ່ນີ້",
   "importFromDSL": "ນຳເຂົ້າຈາກ DSL",
   "importFromDSLFile": "ຈາກໄຟລ໌ DSL",

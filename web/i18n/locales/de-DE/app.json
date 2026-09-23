@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "Auf gut Glück",
   "importApp": "App importieren",
   "importAppDescription": "App-Paket oder DSL-Datei",
-  "importAppFormats": "Unterstützt .ifpkg, .yaml und .yml",
+  "importAppFormats": "Unterstützt .ifpkg, .zip, .yaml und .yml",
   "importAppUrlPlaceholder": "Link zu einem App-Paket (.ifpkg) oder einer DSL-Datei hier einfügen",
   "importFromDSL": "Import von DSL",
   "importFromDSLFile": "Aus DSL-Datei",

@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "ลองเสี่ยงโชค",
   "importApp": "นำเข้าแอป",
   "importAppDescription": "แพ็กเกจแอปหรือไฟล์ DSL",
-  "importAppFormats": "รองรับ .ifpkg, .yaml และ .yml",
+  "importAppFormats": "รองรับ .ifpkg, .zip, .yaml และ .yml",
   "importAppUrlPlaceholder": "วางลิงก์แพ็กเกจแอป (.ifpkg) หรือ DSL ที่นี่",
   "importFromDSL": "นําเข้าจาก DSL",
   "importFromDSLFile": "จากไฟล์ DSL",
