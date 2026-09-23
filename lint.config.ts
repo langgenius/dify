@@ -922,7 +922,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -989,7 +997,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },

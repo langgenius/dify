@@ -1,9 +1,9 @@
 import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { OnSelectBlock, ToolWithProvider } from '../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useEffect, useMemo } from 'react'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import dynamic from '@/next/dynamic'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import {
   useAllBuiltInTools,
