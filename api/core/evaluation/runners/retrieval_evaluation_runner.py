@@ -55,7 +55,7 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
                     inputs={"query": query},
                     output=output,
                     expected_output=(
-                        dataset_item.get_expected_output_for_node(node_info.title if node_info else None)
+                        dataset_item.get_expected_output_for_node(node_info.node_id if node_info else None)
                         if dataset_item
                         else None
                     ),

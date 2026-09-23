@@ -24,10 +24,17 @@ def test_llm_runner_uses_explicit_retrieval_context_for_faithfulness() -> None:
         model_provider="provider",
         model_name="model",
         tenant_id="tenant-1",
-        dataset_items=[EvaluationDatasetInput(index=1, inputs={"query": "What is Dify?"})],
+        dataset_items=[
+            EvaluationDatasetInput(
+                index=1,
+                inputs={"query": "What is Dify?"},
+                expected_outputs={"llm-1": "Dify is a platform."},
+            )
+        ],
         node_info=NodeInfo(node_id="llm-1", type="llm", title="Answer"),
         context_list=[["Dify is an LLM application development platform."]],
     )
 
     items = evaluation_instance.evaluate_llm.call_args.args[0]
     assert items[0].context == ["Dify is an LLM application development platform."]
+    assert items[0].expected_output == "Dify is a platform."

@@ -906,7 +906,7 @@ def test_result_xlsx_has_node_scoped_metrics_and_references() -> None:
         EvaluationDatasetInput(
             index=1,
             inputs={"query": "hello"},
-            expected_outputs={"Answer": "world"},
+            expected_outputs={"llm-1": "world"},
         )
     ]
     results = [
@@ -924,7 +924,7 @@ def test_result_xlsx_has_node_scoped_metrics_and_references() -> None:
     assert [cell.value for cell in worksheet[1]] == [
         "index",
         "query",
-        "Answer : expected_output",
+        "llm-1 : expected_output",
         "actual_output",
         "Answer (llm-1) : faithfulness",
         "error",
