@@ -114,6 +114,13 @@ class DifyBuilderAgent(Protocol):
     # can leave what it was not asked about alone. ``last_edit_rejection``:
     # why the previous attempt was refused, for a corrective re-prompt. Both
     # are keyword-only and optional -- an agent is free to ignore either.
+    #
+    # MAY raise ``errors.ProposalWouldRunWrongError`` instead of returning, when
+    # the implementation has judged its own final proposal wrong -- a batch that
+    # would apply cleanly, start, run green and not do what was asked. Nothing
+    # has been written; the handler surfaces the reason at the approval gate and
+    # carries it into the next attempt. An agent with no such judgement (the
+    # placeholder) simply never raises it, so this stays optional.
     def build_edit_intents(
         self,
         edit_rules: dict[str, Any],
