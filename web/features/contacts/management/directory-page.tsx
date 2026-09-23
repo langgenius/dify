@@ -11,6 +11,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaCorner,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import {
   parseAsInteger,
@@ -144,7 +152,7 @@ function DirectoryState({
   title: string
 }) {
   return (
-    <div className="flex min-h-full flex-col items-center justify-center px-6 py-16 text-center">
+    <div className="flex min-h-full flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <span className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg backdrop-blur-[6px]">
         {iconSrc ? (
           <img alt="" aria-hidden className="size-6" src={iconSrc} />
@@ -404,157 +412,165 @@ export function ContactsDirectoryPage() {
         )}
       </header>
       <div className="flex min-h-0 flex-1 gap-1 overflow-hidden px-4 pt-1 pb-1 sm:px-8">
-        <div
-          ref={scrollContainerRef}
-          className="min-w-0 flex-1 overflow-auto rounded-xl bg-components-panel-bg"
-        >
-          {directoryQuery.isPending && (
-            <div
-              role="status"
-              aria-label={t(($) => $['directory.loading'])}
-              className="space-y-2 rounded-xl border border-divider-subtle p-3"
-            >
-              {[0, 1, 2, 3, 4].map((key) => (
+        <ScrollArea className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-components-panel-bg">
+          <ScrollAreaViewport ref={scrollContainerRef} className="overscroll-contain">
+            <ScrollAreaContent className="flex min-h-full flex-col">
+              {directoryQuery.isPending && (
                 <div
-                  key={key}
-                  className="h-12 animate-pulse rounded-lg bg-background-default-subtle"
-                />
-              ))}
-            </div>
-          )}
-          {directoryQuery.isError && !directoryQuery.contacts.length && (
-            <DirectoryState
-              action={
-                <Button onClick={() => directoryQuery.refetch()}>
-                  {t(($) => $['action.retry'])}
-                </Button>
-              }
-              description={t(($) => $['directory.errorDescription'])}
-              icon="i-ri-error-warning-line"
-              title={t(($) => $['directory.errorTitle'])}
-            />
-          )}
-          {!directoryQuery.isPending &&
-            !directoryQuery.isError &&
-            !directoryQuery.contacts.length && (
-              <DirectoryState
-                action={
-                  hasFilters && !(kind === 'external' && !search) ? (
-                    <Button onClick={clearFilters}>{t(($) => $['action.clearFilters'])}</Button>
-                  ) : context.permissions.canManageContacts ? (
-                    <Button onClick={() => setExternalDialogOpen(true)}>
-                      <span aria-hidden className="mr-1 i-ri-add-line size-4" />
-                      {t(($) => $['directory.addExternal'])}
-                    </Button>
-                  ) : undefined
-                }
-                description={t(
-                  ($) =>
-                    $[
-                      hasFilters && !(kind === 'external' && !search)
-                        ? 'directory.noResultsDescription'
-                        : 'directory.externalEmptyDescription'
-                    ],
-                )}
-                icon={hasFilters && !(kind === 'external' && !search) ? 'i-ri-search-line' : ''}
-                iconSrc={
-                  hasFilters && !(kind === 'external' && !search)
-                    ? undefined
-                    : UserCommunityIcon.src
-                }
-                title={t(
-                  ($) =>
-                    $[
-                      hasFilters && !(kind === 'external' && !search)
-                        ? 'directory.noResultsTitle'
-                        : 'directory.externalEmptyTitle'
-                    ],
-                )}
-              />
-            )}
-          {directoryQuery.contacts.length > 0 && (
-            <div className="min-h-full overflow-hidden rounded-xl bg-components-panel-bg px-1 pt-1.5">
-              <table className="w-full min-w-180 border-collapse">
-                <colgroup>
-                  {context.permissions.canManageContacts && <col className="w-8" />}
-                  <col />
-                  <col className="w-40" />
-                  <col className="w-40" />
-                  <col className="w-40" />
-                </colgroup>
-                <thead className="text-left system-xs-medium-uppercase text-text-tertiary">
-                  <tr className="h-7">
-                    {context.permissions.canManageContacts && (
-                      <th scope="col" className="w-8 px-2 text-center">
-                        <Checkbox
-                          aria-label={t(($) => $['directory.selectAll'])}
-                          checked={allRemovableSelected}
-                          disabled={!removableContactIds.length || removeContacts.isPending}
-                          indeterminate={someRemovableSelected}
-                          onCheckedChange={toggleAllRemovable}
-                        />
-                      </th>
-                    )}
-                    <th scope="col" className="pr-2 pl-3">
-                      {t(($) => $['directory.column.name'])}
-                    </th>
-                    <th scope="col" className="px-3">
-                      {t(($) => $['directory.column.type'])}
-                    </th>
-                    <th scope="col" className="px-3">
-                      {t(($) => $['directory.column.channels'])}
-                    </th>
-                    <th scope="col" className="px-3">
-                      {t(($) => $['directory.column.joined'])}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {directoryQuery.contacts.map((contact) => (
-                    <ContactRow
-                      key={contact.id}
-                      contact={contact}
-                      selected={selectedContactIds.includes(contact.id)}
-                      selectionEnabled={context.permissions.canManageContacts}
-                      selectionPending={removeContacts.isPending}
-                      registerTrigger={(element) => {
-                        if (element) rowTriggersRef.current.set(contact.id, element)
-                        else rowTriggersRef.current.delete(contact.id)
-                      }}
-                      onOpen={() => openDetails(contact.id)}
-                      onSelectedChange={(selected) => toggleContact(contact.id, selected)}
+                  role="status"
+                  aria-label={t(($) => $['directory.loading'])}
+                  className="space-y-2 rounded-xl border border-divider-subtle p-3"
+                >
+                  {[0, 1, 2, 3, 4].map((key) => (
+                    <div
+                      key={key}
+                      className="h-12 animate-pulse rounded-lg bg-background-default-subtle"
                     />
                   ))}
-                </tbody>
-              </table>
-              {directoryQuery.isFetchingNextPage && <Loading className="py-3" />}
-              {directoryQuery.hasNextPage && (
-                <>
-                  {directoryQuery.isFetchNextPageError && (
-                    <div className="flex flex-col items-center gap-2 p-3">
-                      <p role="alert" className="system-xs-regular text-text-destructive">
-                        {t(($) => $['directory.pageError'])}
-                      </p>
-                      <Button loading={directoryQuery.isFetchingNextPage} onClick={loadMore}>
-                        {t(($) => $['action.retry'])}
-                      </Button>
-                    </div>
-                  )}
-                  <InfiniteScrollSentinel
-                    canLoadMore={
-                      !directoryQuery.isFetching &&
-                      !directoryQuery.isFetchNextPageError &&
-                      currentPageCount >= loadedPages
-                    }
-                    onLoadMore={() => void loadMore()}
-                    preloadDistance={100}
-                    scrollContainerRef={scrollContainerRef}
-                  />
-                </>
+                </div>
               )}
-            </div>
-          )}
-        </div>
+              {directoryQuery.isError && !directoryQuery.contacts.length && (
+                <DirectoryState
+                  action={
+                    <Button onClick={() => directoryQuery.refetch()}>
+                      {t(($) => $['action.retry'])}
+                    </Button>
+                  }
+                  description={t(($) => $['directory.errorDescription'])}
+                  icon="i-ri-error-warning-line"
+                  title={t(($) => $['directory.errorTitle'])}
+                />
+              )}
+              {!directoryQuery.isPending &&
+                !directoryQuery.isError &&
+                !directoryQuery.contacts.length && (
+                  <DirectoryState
+                    action={
+                      hasFilters && !(kind === 'external' && !search) ? (
+                        <Button onClick={clearFilters}>{t(($) => $['action.clearFilters'])}</Button>
+                      ) : context.permissions.canManageContacts ? (
+                        <Button onClick={() => setExternalDialogOpen(true)}>
+                          <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+                          {t(($) => $['directory.addExternal'])}
+                        </Button>
+                      ) : undefined
+                    }
+                    description={t(
+                      ($) =>
+                        $[
+                          hasFilters && !(kind === 'external' && !search)
+                            ? 'directory.noResultsDescription'
+                            : 'directory.externalEmptyDescription'
+                        ],
+                    )}
+                    icon={hasFilters && !(kind === 'external' && !search) ? 'i-ri-search-line' : ''}
+                    iconSrc={
+                      hasFilters && !(kind === 'external' && !search)
+                        ? undefined
+                        : UserCommunityIcon.src
+                    }
+                    title={t(
+                      ($) =>
+                        $[
+                          hasFilters && !(kind === 'external' && !search)
+                            ? 'directory.noResultsTitle'
+                            : 'directory.externalEmptyTitle'
+                        ],
+                    )}
+                  />
+                )}
+              {directoryQuery.contacts.length > 0 && (
+                <div className="min-h-full overflow-hidden rounded-xl bg-components-panel-bg px-1 pt-1.5">
+                  <table className="w-full min-w-180 border-collapse">
+                    <colgroup>
+                      {context.permissions.canManageContacts && <col className="w-8" />}
+                      <col />
+                      <col className="w-40" />
+                      <col className="w-40" />
+                      <col className="w-40" />
+                    </colgroup>
+                    <thead className="text-left system-xs-medium-uppercase text-text-tertiary">
+                      <tr className="h-7">
+                        {context.permissions.canManageContacts && (
+                          <th scope="col" className="w-8 px-2 text-center">
+                            <Checkbox
+                              aria-label={t(($) => $['directory.selectAll'])}
+                              checked={allRemovableSelected}
+                              disabled={!removableContactIds.length || removeContacts.isPending}
+                              indeterminate={someRemovableSelected}
+                              onCheckedChange={toggleAllRemovable}
+                            />
+                          </th>
+                        )}
+                        <th scope="col" className="pr-2 pl-3">
+                          {t(($) => $['directory.column.name'])}
+                        </th>
+                        <th scope="col" className="px-3">
+                          {t(($) => $['directory.column.type'])}
+                        </th>
+                        <th scope="col" className="px-3">
+                          {t(($) => $['directory.column.channels'])}
+                        </th>
+                        <th scope="col" className="px-3">
+                          {t(($) => $['directory.column.joined'])}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {directoryQuery.contacts.map((contact) => (
+                        <ContactRow
+                          key={contact.id}
+                          contact={contact}
+                          selected={selectedContactIds.includes(contact.id)}
+                          selectionEnabled={context.permissions.canManageContacts}
+                          selectionPending={removeContacts.isPending}
+                          registerTrigger={(element) => {
+                            if (element) rowTriggersRef.current.set(contact.id, element)
+                            else rowTriggersRef.current.delete(contact.id)
+                          }}
+                          onOpen={() => openDetails(contact.id)}
+                          onSelectedChange={(selected) => toggleContact(contact.id, selected)}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                  {directoryQuery.isFetchingNextPage && <Loading className="py-3" />}
+                  {directoryQuery.hasNextPage && (
+                    <>
+                      {directoryQuery.isFetchNextPageError && (
+                        <div className="flex flex-col items-center gap-2 p-3">
+                          <p role="alert" className="system-xs-regular text-text-destructive">
+                            {t(($) => $['directory.pageError'])}
+                          </p>
+                          <Button loading={directoryQuery.isFetchingNextPage} onClick={loadMore}>
+                            {t(($) => $['action.retry'])}
+                          </Button>
+                        </div>
+                      )}
+                      <InfiniteScrollSentinel
+                        canLoadMore={
+                          !directoryQuery.isFetching &&
+                          !directoryQuery.isFetchNextPageError &&
+                          currentPageCount >= loadedPages
+                        }
+                        onLoadMore={() => void loadMore()}
+                        preloadDistance={100}
+                        scrollContainerRef={scrollContainerRef}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar>
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+          <ScrollAreaScrollbar orientation="horizontal">
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+          <ScrollAreaCorner />
+        </ScrollArea>
         {selectedContact && (
           <ContactDetailsPanel
             contact={selectedContact}
