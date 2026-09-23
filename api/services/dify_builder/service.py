@@ -285,6 +285,10 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             id="submit_edit_rules", label="Submit rules", kind=ActionKind.PRIMARY, next_state="edit.plan_approval"
         ),
     ],
+    # Approve is NOT the only exit: an approval the engine refuses leaves the
+    # user parked here with the plan unchanged, so the gate also offers a way
+    # back to the rules and a way out entirely (triage
+    # edit-branch-failure-2026-09-22, "Hard dead end").
     PcState.EDIT_PLAN_APPROVAL: [
         UiAction(
             id="approve_plan",
@@ -292,6 +296,23 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             kind=ActionKind.PRIMARY,
             next_state="edit.apply_changes",
             canvas_event="create_checkpoint",
+        ),
+        UiAction(
+            id="continue_adjusting",
+            label="Continue adjusting",
+            kind=ActionKind.SECONDARY,
+            next_state="edit.impact_analysis",
+        ),
+        # Same ``revert`` id and the same perform_revert path as every other
+        # gate, but labelled for what it does HERE: nothing has been applied
+        # yet, so this discards the proposal rather than undoing an edit the
+        # user can see on the canvas.
+        UiAction(
+            id="revert",
+            label="Discard this change plan",
+            kind=ActionKind.DESTRUCTIVE,
+            next_state="edit.reverted",
+            canvas_event="revert_checkpoint",
         ),
     ],
     PcState.EDIT_APPLY_CHANGES: [
@@ -493,7 +514,7 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     PcState.BUILD_REVERTED: frozenset({"re_fix"}),
     PcState.EDIT_CAPABILITY_CHECK: frozenset({"send_edit_goal"}),
     PcState.EDIT_IMPACT_ANALYSIS: frozenset({"submit_edit_rules"}),
-    PcState.EDIT_PLAN_APPROVAL: frozenset({"approve_repair"}),
+    PcState.EDIT_PLAN_APPROVAL: frozenset({"approve_repair", "re_fix", "undo"}),
     PcState.EDIT_APPLY_CHANGES: frozenset({"run_affected_tests", "undo"}),
     PcState.EDIT_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
     PcState.EDIT_AWAIT_REPAIR: frozenset({"approve_repair", "keep_draft", "undo"}),

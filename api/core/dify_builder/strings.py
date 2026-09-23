@@ -60,9 +60,11 @@ PLAIN: frozenset[str] = frozenset(
         "I couldn't determine the test's outcome twice in a row — see the notice.",
         "No fix is staged for this failure -- keep the draft or revert.",
         "I didn't apply the workflow: it would fail before its first node. Adjust the plan and approve again.",
-        "I didn't apply the change: the workflow would fail before its first node. Adjust it and approve again.",
+        "I didn't apply the change: the workflow would fail before its first node. "
+        "Continue adjusting to change the rules, approve again, or discard the plan.",
         "I couldn't apply the workflow -- see the error above. Adjust the plan and approve again.",
-        "I couldn't apply the change -- see the error above. Adjust it and approve again.",
+        "I couldn't apply the change -- see the error above. "
+        "Continue adjusting to change the rules, approve again, or discard the plan.",
         # card titles
         "Test run",
         "Review",

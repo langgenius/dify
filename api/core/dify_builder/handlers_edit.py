@@ -181,7 +181,10 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     """(waiting) On ``submit_edit_rules`` merge the form payload, propose the
     change plan, self-mint the pre-edit checkpoint (so the CheckpointCard at
     plan_approval carries a real id -- mirrors Build's handle_resource_
-    recommendation), and transition to edit.plan_approval."""
+    recommendation), and transition to edit.plan_approval.
+
+    This is also where a stored engine refusal stops being true, because this
+    is where the rules it refused stop being the rules (see below)."""
     kind = action_kind(turn)
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
@@ -202,7 +205,23 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 
     if turn.action is not None and isinstance(turn.action.payload, dict):
         keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
+        previous_rules = fc.edit_rules
         fc.edit_rules = merge_known_keys(fc.edit_rules, turn.action.payload, keys)
+        if fc.edit_rules != previous_rules:
+            # ``last_edit_rejection`` describes the batch the engine refused,
+            # and that batch is a function of the rules and the graph. Here --
+            # and, besides a brand-new goal in handle_capability_check, ONLY
+            # here -- the rules stop being the ones it refused, so its
+            # complaint stops describing what the next approval will try.
+            #
+            # Deliberately NOT cleared by the actions that merely route the
+            # user here (plan_approval/review's continue_adjusting) nor by
+            # edit.reverted's Retry: those leave the rules untouched, so a
+            # refusal earned by them is still exactly what the next attempt
+            # needs to hear. A gate revert in particular writes nothing, so
+            # the restored draft IS the refused draft and Retry would otherwise
+            # re-propose the identical plan blind.
+            fc.last_edit_rejection = ""
 
     progress.activate("edit-draft-plan")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
@@ -294,7 +313,9 @@ def _change_not_applied(
     re-prompted with byte-identical inputs and hands back the same refused
     batch (triage edit-branch-failure-2026-09-22). Stored unconditionally, so a
     second refusal at the same error location with a different bad value
-    replaces the first rather than being folded into it."""
+    replaces the first rather than being folded into it. Re-approval is one of
+    three exits the gate now offers (see ``handle_plan_approval``); the other
+    two leave the rules behind, and both clear this store."""
     fc.staged_repair = []
     fc.last_edit_rejection = rejection
     progress.fail_step("edit-apply")
@@ -313,8 +334,72 @@ def _change_not_applied(
     return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*error_items, *turn_items])
 
 
+def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, *, cancel_publish: bool) -> StepResult:
+    """Leave an Edit gate for edit.impact_analysis with the edit-rules form
+    repopulated and unfrozen, so the user changes the RULES instead of
+    re-submitting the same ones.
+
+    Shared by edit.review's "Continue adjusting" (where a publish decision is
+    being taken back, hence ``cancel_publish``) and edit.plan_approval's (where
+    nothing has been applied and no publish is pending, hence not).
+
+    Routing the user to the form is not the same as changing the rules -- they
+    may edit nothing and resubmit -- so ``last_edit_rejection`` is left alone
+    here and cleared by handle_impact_analysis if and when the submitted
+    payload actually changes ``fc.edit_rules``."""
+    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+    if cancel_publish:
+        emit_canvas(env, "cancel_publish")
+    for node_id in fc.edit_target_node_ids:
+        emit_canvas(env, "highlight_edit_target", node_id=node_id)
+    fc.test_input_ref = ""
+    fc.verify_run_id = ""
+    fc.repair_attempts = 0
+    fc.last_repair_error = ""
+    fc.unknown_outcome_count = 0
+    decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
+    form_items = append_card(
+        fc,
+        FormCard(
+            variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
+        ),
+    )
+    challenge_items = append_card(
+        fc,
+        ChallengeCard(
+            title="High-impact rules",
+            body="These rules change branching and output; review before applying.",
+            tone="warning",
+        ),
+    )
+    change_set_items = append_card(
+        fc,
+        ChangeSetCard(
+            count=len(fc.edit_target_node_ids),
+            changes=[],
+            scope="configuration",
+            nodes=describe_changed_nodes(fc.edit_target_node_ids, graph),
+        ),
+    )
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=str(uuid.uuid4()),
+            stage_id=str(s.current_state),
+            execution=ExecutionProgress(status="completed"),
+            reply_text="Let's adjust the change.",
+            cards=["form", "challenge", "change_set"],
+        ),
+    )
+    return StepResult(
+        next=PcState.EDIT_IMPACT_ANALYSIS,
+        context=fc,
+        items=[*decision_items, *form_items, *challenge_items, *change_set_items, *turn_items],
+    )
+
+
 def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) THE EDIT. Only ``approve_repair`` (resolved from approve_plan)
+    """(waiting) THE EDIT. ``approve_repair`` (resolved from approve_plan)
     applies: read the current graph, get the canned set_node_config intents,
     highlight the targets, apply once (on_canvas=None -- Edit narrates its own
     coarse apply_edit_plan rather than the Fix-flavored per-intent apply_error_
@@ -323,8 +408,22 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
     Naturally idempotent on loop-back re-approve: re-applying the same
     set_node_config value overwrites the node's data (no ValueError, unlike
-    Build's create_node); a re-approve simply yields an empty diff."""
+    Build's create_node); a re-approve simply yields an empty diff.
+
+    Approval is not the only exit. ``re_fix`` (continue_adjusting) goes back to
+    edit.impact_analysis with the rules editable, and ``undo`` (revert) restores
+    the pre-edit draft from the checkpoint handle_impact_analysis minted and
+    lands on edit.reverted. Without those two, an approval the engine refuses
+    parks the user at this gate with nothing to press but the same button
+    (triage edit-branch-failure-2026-09-22, "Hard dead end")."""
     kind = action_kind(turn)
+    if kind == "re_fix":  # continue_adjusting -> re-open the edit rules
+        return _resume_adjusting(env, turn, s, fc, cancel_publish=False)
+    if kind == "undo":  # revert -> abandon the change plan at its gate
+        perform_revert(env, turn, s, fc)
+        fc.staged_repair = []
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     if kind != "approve_repair":
         return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc)
 
@@ -370,7 +469,8 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             title="The workflow can't start",
             body=f"The generated workflow would fail before its first node: {exc}",
             reply_text=(
-                "I didn't apply the change: the workflow would fail before its first node. Adjust it and approve again."
+                "I didn't apply the change: the workflow would fail before its first node. "
+                "Continue adjusting to change the rules, approve again, or discard the plan."
             ),
             rejection=_rejection_text(exc),
         )
@@ -385,7 +485,10 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             progress,
             title="Couldn't apply the workflow",
             body=f"The generated workflow couldn't be applied to the draft: {exc}",
-            reply_text="I couldn't apply the change -- see the error above. Adjust it and approve again.",
+            reply_text=(
+                "I couldn't apply the change -- see the error above. "
+                "Continue adjusting to change the rules, approve again, or discard the plan."
+            ),
             rejection=_rejection_text(exc),
         )
     fc.last_snapshot_hash = result.new_hash
@@ -990,54 +1093,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         )
         return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*decision_items, *summary_items])
     if kind == "re_fix":  # continue_adjusting -> re-analyze impact
-        graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-        emit_canvas(env, "cancel_publish")
-        for node_id in fc.edit_target_node_ids:
-            emit_canvas(env, "highlight_edit_target", node_id=node_id)
-        fc.test_input_ref = ""
-        fc.verify_run_id = ""
-        fc.repair_attempts = 0
-        fc.last_repair_error = ""
-        fc.unknown_outcome_count = 0
-        decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
-        form_items = append_card(
-            fc,
-            FormCard(
-                variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
-            ),
-        )
-        challenge_items = append_card(
-            fc,
-            ChallengeCard(
-                title="High-impact rules",
-                body="These rules change branching and output; review before applying.",
-                tone="warning",
-            ),
-        )
-        change_set_items = append_card(
-            fc,
-            ChangeSetCard(
-                count=len(fc.edit_target_node_ids),
-                changes=[],
-                scope="configuration",
-                nodes=describe_changed_nodes(fc.edit_target_node_ids, graph),
-            ),
-        )
-        turn_items = append_card(
-            fc,
-            AssistantTurnItem(
-                turn_id=str(uuid.uuid4()),
-                stage_id=str(s.current_state),
-                execution=ExecutionProgress(status="completed"),
-                reply_text="Let's adjust the change.",
-                cards=["form", "challenge", "change_set"],
-            ),
-        )
-        return StepResult(
-            next=PcState.EDIT_IMPACT_ANALYSIS,
-            context=fc,
-            items=[*decision_items, *form_items, *challenge_items, *change_set_items, *turn_items],
-        )
+        return _resume_adjusting(env, turn, s, fc, cancel_publish=True)
     if kind == "undo":  # revert
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
@@ -1068,7 +1124,13 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
 def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) After a revert. ``retry_after_revert`` (resolved to re_fix)
     re-proposes the change plan, self-mints a fresh pre-edit checkpoint, and
-    returns to edit.plan_approval (spec §7.2)."""
+    returns to edit.plan_approval (spec §7.2).
+
+    ``last_edit_rejection`` is deliberately carried through untouched. A revert
+    taken at the plan gate wrote nothing, so the restored draft is the refused
+    draft and the rules are unchanged -- and Retry is the only action offered
+    here, so forgetting the engine's text would re-propose the identical plan
+    blind and earn the identical refusal."""
     kind = action_kind(turn)
     if kind != "re_fix":
         return StepResult(next=PcState.EDIT_REVERTED, context=fc)

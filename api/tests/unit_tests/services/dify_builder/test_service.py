@@ -30,7 +30,12 @@ from core.dify_builder.state import PcState
 from models.base import Base
 from services.dify_builder import service as service_module
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from services.dify_builder.service import AppAccess, DifyBuilderService, resolve_action_kind
+from services.dify_builder.service import (
+    AppAccess,
+    DifyBuilderService,
+    resolve_action_kind,
+    resolve_submitted_action,
+)
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -1677,6 +1682,42 @@ def test_edit_apply_changes_actions_and_run_status(service: DifyBuilderService, 
     ]
 
 
+def test_edit_plan_approval_offers_a_way_out_of_the_gate(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    s = _seed_edit_at(repo, PcState.EDIT_PLAN_APPROVAL)
+    view = service.get_session_view(s.id, _actor())
+    assert [(a.id, a.kind) for a in view.actions] == [
+        ("approve_plan", ActionKind.PRIMARY),
+        ("continue_adjusting", ActionKind.SECONDARY),
+        ("revert", ActionKind.DESTRUCTIVE),
+    ]
+    # Nothing has been applied at this gate, so the revert discards a proposal
+    # rather than undoing a visible canvas change -- and it says so.
+    assert [a.label for a in view.actions][-1] == "Discard this change plan"
+
+
+def test_every_action_the_edit_gate_offers_is_actually_admitted(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[tuple]
+) -> None:
+    """Rendering a button is not admitting its action: _ACTIONS_FOR only draws
+    the control, while _BACKEND_ACTIONS_FOR decides whether submit_action takes
+    it. Offering a revert and a continue-adjusting that the gate then refuses
+    would be a worse dead end than the one-button gate, because it would look
+    fixed -- so submit each offered id exactly as the controller does
+    (resolve_submitted_action) and require it to reach dispatch."""
+    gate = _seed_edit_at(repo, PcState.EDIT_PLAN_APPROVAL)
+    offered = [a.id for a in service.get_session_view(gate.id, _actor()).actions]
+
+    for action_id in offered:
+        session = _seed_edit_at(repo, PcState.EDIT_PLAN_APPROVAL)
+        kind = resolve_submitted_action(action_id, None)
+        service.submit_action(session.id, _actor(), Action(kind=kind, base_version=session.version))
+        assert enqueued[-1][1].kind == kind, f"{action_id} was rendered but not dispatched"
+
+    assert [a.kind for _sid, a, _act, _tok in enqueued] == ["approve_repair", "re_fix", "undo"]
+
+
 def test_edit_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
     s = _seed_edit_at(repo, PcState.EDIT_REVIEW)
     view = service.get_session_view(s.id, _actor())
@@ -1701,11 +1742,16 @@ def test_edit_waiting_state_actions_resolve_to_handled_kinds() -> None:
     approve_plan->approve_repair, revert->undo, continue_adjusting/
     retry_after_revert->re_fix reuse the existing global map; the rest pass
     through (send_edit_goal, submit_edit_rules, run_affected_tests, keep_draft,
-    publish_workflow)."""
+    publish_workflow).
+
+    Asserted as EQUALITY, not containment: a subset check passes just as
+    happily when a state renders nothing at all, which is the exact failure
+    (edit.plan_approval offering only approve_plan) this suite exists to
+    catch."""
     handled: dict[PcState, set[str]] = {
         PcState.EDIT_CAPABILITY_CHECK: {"send_edit_goal"},
         PcState.EDIT_IMPACT_ANALYSIS: {"submit_edit_rules"},
-        PcState.EDIT_PLAN_APPROVAL: {"approve_repair"},
+        PcState.EDIT_PLAN_APPROVAL: {"approve_repair", "re_fix", "undo"},
         PcState.EDIT_APPLY_CHANGES: {"run_affected_tests", "undo"},
         PcState.EDIT_REVIEW: {"publish_workflow", "keep_draft", "re_fix", "undo"},
         PcState.EDIT_REVERTED: {"re_fix"},
@@ -1713,7 +1759,7 @@ def test_edit_waiting_state_actions_resolve_to_handled_kinds() -> None:
     for state, kinds in handled.items():
         actions = service_module._ACTIONS_FOR[state]
         resolved = {resolve_action_kind(a.id) for a in actions}
-        assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
+        assert resolved == kinds, f"{state}: renders {resolved}, handler branches on {kinds}"
 
 
 def test_get_session_view_surfaces_checkpoint_when_set(
