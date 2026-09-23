@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceTask
@@ -17,6 +17,19 @@ from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel, Workflow
 TABLES = (App, Conversation, Message, MessageFile, WorkflowAppLog, WorkflowNodeExecutionModel)
 
 
+class _CallableSession:
+    """Flask-SQLAlchemy db.session stand-in: callable, and forwards Session methods."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def __call__(self) -> Session:
+        return self._session
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._session, name)
+
+
 @pytest.fixture(autouse=True)
 def _bind_trace_database(
     monkeypatch: pytest.MonkeyPatch,
@@ -24,11 +37,9 @@ def _bind_trace_database(
     sqlite_session: Session,
 ) -> None:
     """Use real SQLite sessions for ORM lookups without changing trace-domain data."""
-    # Production code calls db.session() to get a Session. Mirror Flask-SQLAlchemy's scoped_session.
-    session_proxy = scoped_session(lambda: sqlite_session)
     monkeypatch.setattr(
         "core.ops.ops_trace_manager.db",
-        SimpleNamespace(engine=sqlite_engine, session=session_proxy),
+        SimpleNamespace(engine=sqlite_engine, session=_CallableSession(sqlite_session)),
     )
 
 
@@ -86,7 +97,7 @@ def _make_message_data():
         def __init__(self, values):
             self.__dict__.update(values)
 
-        def to_dict(self, *, session: Session):
+        def to_dict(self, **_kwargs: object):
             return dict(self.__dict__)
 
     return _MessageData(data)
