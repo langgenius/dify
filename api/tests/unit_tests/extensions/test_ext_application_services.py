@@ -36,6 +36,7 @@ from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
@@ -66,6 +67,7 @@ from services.account_oauth_adapters import (
     DeploymentOAuthPolicyGateway,
     RedisOAuthAccountClaimLock,
 )
+from services.app.api_key_service import AppApiKeyService
 from services.app_generate_service import AppGenerateService
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
@@ -84,7 +86,11 @@ from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
+from services.installed_app_generation_service import InstalledAppGenerationService
+from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
@@ -175,6 +181,33 @@ def test_init_app_registers_services_for_the_current_app(
         assert services.app_scoped_end_users.commands._app_scoped_end_users is repository
         assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
+
+
+def test_build_application_services_preserves_composed_boundaries(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+
+    assert isinstance(services.app_api_keys, AppApiKeyService)
+    assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
+    assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
+    assert redis.register_script.call_count == 3
+
+    assert isinstance(services.installed_app_generation, InstalledAppGenerationService)
+    installed_apps = services.installed_app_access._installed_apps
+    assert isinstance(installed_apps, SQLAlchemyInstalledAppRepository)
+    assert services.installed_app_generation._usage is installed_apps
+    assert services.installed_app_generation._app_definitions is services.app_definitions
+    runtime = services.installed_app_generation._runtime
+    assert isinstance(runtime, InstalledAppGenerateServiceRuntime)
+    assert runtime._session_factory is sqlite_session_factory
 
 
 @pytest.mark.parametrize(
