@@ -6,9 +6,36 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.trace import StatusCode
+from sqlalchemy import Engine
+
 from extensions.otel.decorators.handlers.workflow_app_runner_handler import WorkflowAppRunnerHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.services.workflow.test_workflow_run_agg import make_workflow_runner
+
+
+def test_service_driver_emits_workflow_span(sqlite_engine: Engine) -> None:
+    runner = make_workflow_runner(sqlite_engine)
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    try:
+        WorkflowAppRunnerHandler().wrapper(provider.get_tracer(__name__), WorkflowRunAgg.run, runner, None)
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].status.status_code == StatusCode.OK
+        attributes = spans[0].attributes
+        assert attributes is not None
+        assert attributes[DifySpanAttributes.WORKFLOW_ID] == runner.application_generate_entity.app_config.workflow_id
+        assert attributes[DifySpanAttributes.APP_ID] == runner.application_generate_entity.app_config.app_id
+        assert attributes[GenAIAttributes.USER_ID] == runner.application_generate_entity.user_id
+    finally:
+        provider.shutdown()
 
 
 class TestWorkflowAppRunnerHandler:

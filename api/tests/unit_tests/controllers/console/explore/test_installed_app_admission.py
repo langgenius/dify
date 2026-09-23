@@ -21,8 +21,8 @@ import controllers.console.explore.saved_message as saved_message_module
 import controllers.console.flask_admission as console_admission
 import controllers.console.wraps as console_wraps
 import core.app.apps.base_app_queue_manager as app_queue_module
+import core.app.apps.execution_coordinator as execution_coordinator_module
 import libs.login as login_module
-import services.app_task_service as app_task_module
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
 from enums import DeploymentEdition
@@ -571,7 +571,7 @@ def stop_redis(
     )
     monkeypatch.setattr(completion_module, "application_services", lambda: services)
     monkeypatch.setattr(app_queue_module, "redis_client", redis)
-    monkeypatch.setattr(app_task_module, "redis_client", redis)
+    monkeypatch.setattr(execution_coordinator_module, "redis_client", redis)
     harness.api.add_resource(
         completion_module.CompletionStopApi,
         "/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop",
@@ -622,7 +622,7 @@ def test_stop_handlers_preserve_mode_specific_commands_and_response(
         command_key = f"workflow:{_TASK_ID}:commands"
         assert set(stop_redis.commands) == {command_key}
         assert [json.loads(command) for command in stop_redis.commands[command_key]] == [
-            {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+            {"command_type": "abort", "reason": "User requested stop"}
         ]
     else:
         assert stop_redis.commands == {}

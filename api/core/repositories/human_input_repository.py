@@ -623,6 +623,23 @@ class HumanInputFormSubmissionRepository:
                 return None
             return HumanInputFormRecord.from_models(form_model, None)
 
+    def get_by_form_ids(
+        self, form_ids: Sequence[str], *, tenant_id: str, app_id: str, workflow_run_id: str
+    ) -> dict[str, HumanInputFormRecord]:
+        """Materialize a batch of forms without retaining a database session."""
+        if not form_ids:
+            return {}
+        with session_factory.create_session() as session:
+            forms = session.scalars(
+                select(HumanInputForm).where(
+                    HumanInputForm.id.in_(form_ids),
+                    HumanInputForm.tenant_id == tenant_id,
+                    HumanInputForm.app_id == app_id,
+                    HumanInputForm.workflow_run_id == workflow_run_id,
+                )
+            )
+            return {form.id: HumanInputFormRecord.from_models(form, None) for form in forms}
+
     def get_by_form_id_and_recipient_type(
         self,
         form_id: str,

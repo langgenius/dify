@@ -7,9 +7,8 @@ from collections.abc import Callable
 from enum import Enum, auto
 
 from configs import dify_config
-from extensions.ext_redis import redis_client
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.graph_engine.manager import GraphEngineManager
+from extensions.ext_redis import RedisClientWrapper, redis_client
+from graphon.engine.command import AbortCommand, RedisChannel
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,20 @@ def app_task_command_channel_key(task_id: str) -> str:
 def app_task_stop_flag_key(task_id: str) -> str:
     """Redis key of the legacy generate-task stop flag."""
     return f"generate_task_stopped:{task_id}"
+
+
+def send_abort_command(task_id: str, reason: str | None = None, *, redis: RedisClientWrapper | None = None) -> None:
+    """Send an abort command to ``task_id``, using the global Redis client when none is injected."""
+    if not task_id:
+        return
+
+    try:
+        RedisChannel(redis if redis is not None else redis_client, app_task_command_channel_key(task_id)).send_command(
+            AbortCommand(reason=reason or "User requested stop")
+        )
+    except Exception:
+        # The legacy stop flag remains the fallback when Redis is unavailable.
+        logger.exception("Failed to send Engine abort command for task %s", task_id)
 
 
 def set_app_task_stop_flag(task_id: str) -> None:
@@ -66,8 +79,6 @@ def clear_app_task_cancellation_signals(task_id: str) -> None:
 
     channel_key = app_task_command_channel_key(task_id)
     try:
-        # fetch_commands() drains the queue and its pending marker together; the
-        # explicit delete covers a queue whose marker was already consumed.
         discarded = RedisChannel(redis_client, channel_key).fetch_commands()
         redis_client.delete(channel_key)
         if discarded:
@@ -211,14 +222,7 @@ class AppExecutionCoordinator:
                 self._attempt_id,
             )
 
-        try:
-            GraphEngineManager(redis_client).send_stop_command(self._task_id, reason=reason)
-        except Exception:
-            logger.exception(
-                "Failed to send stop command for app execution task=%s attempt=%s",
-                self._task_id,
-                self._attempt_id,
-            )
+        send_abort_command(self._task_id, reason=reason)
 
     def _detach_watchdog_locked(self) -> threading.Timer | None:
         watchdog = self._watchdog

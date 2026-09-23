@@ -12,7 +12,7 @@ from core.workflow.human_input_adapter import DeliveryChannelConfig
 from core.workflow.human_input_policy import resolve_variable_select_input_options
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, HITLDecision, PauseRequested
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.factory import build_segment
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template

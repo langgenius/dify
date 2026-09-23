@@ -30,8 +30,8 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.file import FileUploadConfig
-from graphon.runtime import GraphRuntimeState
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime import RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
@@ -335,7 +335,7 @@ class HumanInputService:
             return None
 
         resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
-        runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+        runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
         return runtime_state.variable_pool
 

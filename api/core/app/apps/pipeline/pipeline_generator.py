@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -56,10 +56,16 @@ from services.datasource_provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
+    def __init__(self, *, execution_driver: "WorkflowRunDriver") -> None:
+        self._execution_driver = execution_driver
+
     @overload
     def generate(
         self,
@@ -627,6 +633,7 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id = application_generate_entity.user_id
                     # workflow app
                     runner = PipelineRunner(
+                        execution_driver=self._execution_driver,
                         application_generate_entity=application_generate_entity,
                         queue_manager=queue_manager,
                         workflow_thread_pool_id=workflow_thread_pool_id,
@@ -637,7 +644,7 @@ class PipelineGenerator(BaseAppGenerator):
                         workflow_node_execution_repository=workflow_node_execution_repository,
                     )
 
-                    runner.run()
+                    self._execution_driver(runner, None)
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:

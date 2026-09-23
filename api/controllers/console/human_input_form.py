@@ -41,6 +41,7 @@ from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_service import Form, HumanInputService
 from services.workflow_event_snapshot_service import build_workflow_event_stream
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -211,9 +212,9 @@ class ConsoleWorkflowEventsApi(Resource):
             generator: BaseAppGenerator
             match app.mode:
                 case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator()
+                    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
                 case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator()
+                    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
                 case _:
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 

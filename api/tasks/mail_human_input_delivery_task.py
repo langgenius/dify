@@ -14,7 +14,7 @@ from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailDeliveryMethod
 from extensions.ext_database import db
 from extensions.ext_mail import mail
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.human_input import (
     DeliveryMethodType,
     HumanInputDelivery,
@@ -131,7 +131,7 @@ def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
         logger.exception("Failed to load resumption context for workflow run %s", workflow_run_id)
         return None
 
-    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    graph_runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     return graph_runtime_state.variable_pool
 
 

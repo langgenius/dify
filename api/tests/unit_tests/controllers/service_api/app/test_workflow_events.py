@@ -156,7 +156,9 @@ class TestWorkflowEventsApi:
         workflow_generator = Mock()
         workflow_generator.convert_to_event_stream.return_value = iter(["data: streamed\n\n"])
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
+        monkeypatch.setattr(
+            workflow_events_module, "WorkflowAppGenerator", lambda *, execution_driver: workflow_generator
+        )
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
@@ -184,7 +186,9 @@ class TestWorkflowEventsApi:
         workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
         snapshot_builder = Mock(return_value=["snapshot-events"])
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
+        monkeypatch.setattr(
+            workflow_events_module, "WorkflowAppGenerator", lambda *, execution_driver: workflow_generator
+        )
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()

@@ -796,7 +796,6 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             node_id="test_iteration",
             node_type=BuiltinNodeTypes.ITERATION,
             node_title="Test Iteration",
-            node_run_index=0,
             start_at=naive_utc_now(),
             inputs=large_value,
             metadata={},
@@ -827,7 +826,6 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             start_at=naive_utc_now(),
             inputs=large_inputs,
             metadata={},
-            node_run_index=0,
         )
 
         response = converter.workflow_loop_start_to_stream_response(
