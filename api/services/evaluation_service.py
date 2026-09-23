@@ -434,7 +434,7 @@ class EvaluationService:
         data: EvaluationConfigData,
         target_workflow: Workflow | None = None,
     ) -> None:
-        """Validate supported metrics and the optional custom evaluator."""
+        """Validate supported metrics, target-specific metric scopes, and the optional custom evaluator."""
         normalized_target_type = EvaluationTargetType(target_type)
         if not data.default_metrics and data.customized_metrics is None:
             raise ValueError("At least one default or customized metric is required.")
@@ -504,6 +504,10 @@ class EvaluationService:
 
         for metric in data.default_metrics:
             if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
+                if metric.node_info_list:
+                    raise ValueError(
+                        f"Knowledge base metric '{metric.metric}' is target-scoped and must not select workflow nodes."
+                    )
                 categories = {EvaluationCategory.RETRIEVAL}
             else:
                 if not metric.node_info_list:
@@ -687,16 +691,17 @@ class EvaluationService:
     ) -> None:
         if data.judgment_config is None:
             return
-        available_selectors = {
-            (node.node_id, metric.metric) for metric in data.default_metrics for node in metric.node_info_list
-        }
         if target_type == EvaluationTargetType.KNOWLEDGE_BASE:
-            available_selectors.update((target_id, metric.metric) for metric in data.default_metrics)
-        if data.customized_metrics is not None:
-            available_selectors.update(
-                (data.customized_metrics.evaluation_workflow_id, output.variable)
-                for output in data.customized_metrics.output_fields
-            )
+            available_selectors = {(target_id, metric.metric) for metric in data.default_metrics}
+        else:
+            available_selectors = {
+                (node.node_id, metric.metric) for metric in data.default_metrics for node in metric.node_info_list
+            }
+            if data.customized_metrics is not None:
+                available_selectors.update(
+                    (data.customized_metrics.evaluation_workflow_id, output.variable)
+                    for output in data.customized_metrics.output_fields
+                )
         for condition in data.judgment_config.conditions:
             if len(condition.variable_selector) < 2:
                 raise ValueError("Judgment selector must contain node ID and metric name.")

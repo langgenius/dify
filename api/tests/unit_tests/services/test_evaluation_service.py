@@ -494,6 +494,84 @@ def test_validate_knowledge_base_config_uses_retrieval_metrics(monkeypatch: pyte
     supported_metrics.assert_called_once_with(EvaluationCategory.RETRIEVAL)
 
 
+def test_validate_knowledge_base_config_rejects_workflow_node_scope(monkeypatch: pytest.MonkeyPatch) -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_embeddings.return_value = False
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+    config = EvaluationConfigData(
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="context_precision",
+                node_info_list=[
+                    NodeInfo(node_id="knowledge-retrieval-1", type="knowledge-retrieval", title="Retriever")
+                ],
+            )
+        ],
+    )
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="dataset-1", provider="vendor")
+
+    with pytest.raises(ValueError, match="target-scoped.*must not select workflow nodes"):
+        EvaluationService.validate_evaluation_config(
+            session=session,
+            tenant_id="tenant-1",
+            target_type="knowledge_base",
+            target_id="dataset-1",
+            data=config,
+        )
+
+
+def test_validate_workflow_retrieval_metric_preserves_node_scope(monkeypatch: pytest.MonkeyPatch) -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_embeddings.return_value = False
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["context_precision"]))
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
+    workflow = SimpleNamespace(
+        walk_nodes=lambda: iter([("knowledge-retrieval-1", {"type": "knowledge-retrieval"})]),
+        user_input_form=lambda: [],
+    )
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
+    config = EvaluationConfigData(
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="context_precision",
+                node_info_list=[
+                    NodeInfo(node_id="knowledge-retrieval-1", type="knowledge-retrieval", title="Retriever")
+                ],
+            )
+        ],
+        judgment_config=JudgmentConfig(
+            conditions=[
+                JudgmentCondition(
+                    variable_selector=["knowledge-retrieval-1", "context_precision"],
+                    comparison_operator=">",
+                    value="0.5",
+                )
+            ]
+        ),
+    )
+
+    EvaluationService.validate_evaluation_config(
+        session=session,
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        data=config,
+    )
+
+
 def test_validate_knowledge_base_config_rejects_customized_evaluator() -> None:
     config = EvaluationConfigData(
         customized_metrics=CustomizedMetrics(
@@ -660,6 +738,37 @@ def test_validate_knowledge_base_judgment_uses_dataset_metric_selector(
         target_id="dataset-1",
         data=config,
     )
+
+
+def test_validate_knowledge_base_judgment_rejects_workflow_node_selector(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="dataset-1", provider="vendor")
+    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["context_relevance"]))
+    config = EvaluationConfigData(
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[DefaultMetric(metric="context_relevance", node_info_list=[])],
+        judgment_config=JudgmentConfig(
+            conditions=[
+                JudgmentCondition(
+                    variable_selector=["knowledge-retrieval-1", "context_relevance"],
+                    comparison_operator=">",
+                    value="0.5",
+                )
+            ]
+        ),
+    )
+
+    with pytest.raises(ValueError, match="Judgment selector 'knowledge-retrieval-1.context_relevance'"):
+        EvaluationService.validate_evaluation_config(
+            session=session,
+            tenant_id="tenant-1",
+            target_type="knowledge_base",
+            target_id="dataset-1",
+            data=config,
+        )
 
 
 def test_validate_config_rejects_missing_required_customized_input(monkeypatch: pytest.MonkeyPatch) -> None:
