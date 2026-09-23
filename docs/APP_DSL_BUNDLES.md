@@ -14,7 +14,7 @@ file uploader, CLI, or `bundle-content` API mode with base64 content in `yaml_co
 
 ## Manifest structure
 
-The manifest version is independent of the app DSL version (`0.7.0`). Resource and relationship kinds
+The manifest version is independent of the app DSL version. Resource and relationship kinds
 identify their schemas; application-specific configuration stays in the individual DSL files.
 
 ```yaml
