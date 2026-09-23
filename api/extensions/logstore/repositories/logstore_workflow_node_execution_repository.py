@@ -189,6 +189,10 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         log_version = str(time.time_ns())
 
         json_converter = WorkflowRuntimeTypeConverter()
+        triggered_from_workflow_id = triggered_from_node_execution_id = None
+        if isinstance(domain_model, DifyWorkflowNodeExecution):
+            triggered_from_workflow_id = domain_model.triggered_from_workflow_id
+            triggered_from_node_execution_id = domain_model.triggered_from_node_execution_id
 
         logstore_model = [
             ("id", domain_model.id),
@@ -196,8 +200,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             ("tenant_id", self._tenant_id),
             ("app_id", self._app_id or ""),
             ("workflow_id", domain_model.workflow_id),
-            ("triggered_from_workflow_id", getattr(domain_model, "triggered_from_workflow_id", None) or ""),
-            ("triggered_from_node_execution_id", getattr(domain_model, "triggered_from_node_execution_id", None) or ""),
+            ("triggered_from_workflow_id", triggered_from_workflow_id or ""),
+            ("triggered_from_node_execution_id", triggered_from_node_execution_id or ""),
             (
                 "triggered_from",
                 self._triggered_from.value if hasattr(self._triggered_from, "value") else str(self._triggered_from),
