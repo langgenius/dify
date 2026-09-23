@@ -34,6 +34,7 @@ const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslatio
   if (pathname.endsWith('/access-point'))
     return t(($) => $['appMenus.accessPoint'], { ns: 'common' })
   if (pathname.endsWith('/deploy')) return t(($) => $['appMenus.deploy'], { ns: 'common' })
+  if (pathname.endsWith('/evaluation')) return t(($) => $.title, { ns: 'evaluation' })
   if (pathname.endsWith('/logs')) return t(($) => $['appMenus.logs'], { ns: 'common' })
   if (pathname.endsWith('/annotations'))
     return t(($) => $['appMenus.annotations'], { ns: 'common' })
@@ -61,6 +62,7 @@ const getAppDetailRedirectPath = (
   const isAccessConfigPath = pathname.endsWith('access-config')
   const isAccessPointPath = pathname.endsWith('access-point')
   const isDeployPath = pathname.endsWith('deploy')
+  const isEvaluationPath = pathname.endsWith('evaluation')
   if (
     (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
     (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
@@ -68,6 +70,8 @@ const getAppDetailRedirectPath = (
     (isOverviewPath && !appACLCapabilities.canMonitor) ||
     (isAccessConfigPath && (appDetail.mode === 'agent' || !appACLCapabilities.canAccessConfig)) ||
     (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
+    (isEvaluationPath &&
+      (appDetail.mode !== 'workflow' || !appDetail.workflow || !appACLCapabilities.canViewLayout)) ||
     (isDeployPath && (!isWorkflowApp || !appACLCapabilities.canDeploy))
   )
     return getRedirectionPath(appDetail, permissionOptions)
@@ -80,7 +84,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     children,
     appId, // get appId in path
   } = props
-  const { t } = useTranslation(['common', 'navigation'])
+  const { t } = useTranslation(['common', 'navigation', 'evaluation'])
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)

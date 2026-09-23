@@ -24,6 +24,7 @@ type AppDetailNavItem = {
   href: string
   icon: string
   selectedIcon: string
+  disabled?: boolean
 }
 
 const isLogsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/logs')
@@ -51,7 +52,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
 }
 
 function AppDetailContent({ appId, expand }: { appId: string; expand: boolean }) {
-  const { t } = useTranslation(['app', 'common', 'navigation'])
+  const { t } = useTranslation(['app', 'common', 'navigation', 'evaluation'])
   const pathname = usePathname()
   const [detailQuery, featuresQuery, profileQuery] = useQueries({
     queries: [
@@ -88,6 +89,17 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
               href: `/app/${appId}/${isWorkflowApp ? 'workflow' : 'configuration'}`,
               icon: 'i-ri-terminal-window-line',
               selectedIcon: 'i-ri-terminal-window-fill',
+            },
+          ]
+        : []),
+      ...(appDetail.mode === 'workflow' && appACLCapabilities.canViewLayout
+        ? [
+            {
+              name: t(($) => $.title, { ns: 'evaluation' }),
+              href: `/app/${appId}/evaluation`,
+              icon: 'i-ri-flask-line',
+              selectedIcon: 'i-ri-flask-fill',
+              disabled: !appDetail.workflow,
             },
           ]
         : []),
@@ -218,6 +230,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
                 iconMap={{ selected: item.selectedIcon, normal: item.icon }}
                 name={item.name}
                 href={item.href}
+                disabled={item.disabled}
                 pathname={pathname}
               />
               {shouldRenderDividerAfter && renderNavDivider(`${item.href}-after`, expand)}

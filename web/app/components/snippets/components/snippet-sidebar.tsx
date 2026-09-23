@@ -2,7 +2,7 @@
 
 import type { InputVar } from '@/app/components/workflow/types'
 import type { InputVar as PipelineInputVar } from '@/models/pipeline'
-import type { SnippetDetail } from '@/models/snippet'
+import type { SnippetDetail, SnippetSection } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useMemo, useState } from 'react'
@@ -18,9 +18,10 @@ import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
 
 type SnippetSidebarProps = {
   snippet: SnippetDetail
+  section?: SnippetSection
   fields: PipelineInputVar[]
   readonly: boolean
-  onFieldsChange: (fields: PipelineInputVar[]) => void
+  onFieldsChange?: (fields: PipelineInputVar[]) => void
 }
 
 type SnippetSidebarContentProps = SnippetSidebarProps & {
@@ -40,12 +41,13 @@ const toSnippetInputField = (field: InputVar): PipelineInputVar => ({
 
 export const SnippetSidebarContent = ({
   snippet,
+  section = 'orchestrate',
   fields,
   readonly,
   onFieldsChange,
   className,
 }: SnippetSidebarContentProps) => {
-  const { t } = useTranslation(['appDebug', 'common', 'snippet'])
+  const { t } = useTranslation(['appDebug', 'common', 'snippet', 'evaluation'])
   const [isShowAddVarModal, setIsShowAddVarModal] = useState(false)
   const workflowInputVars = useMemo(() => fields.map(toWorkflowInputVar), [fields])
 
@@ -89,7 +91,7 @@ export const SnippetSidebarContent = ({
       const nextFields = [...fields, toSnippetInputField(payload)]
       if (!validateFields(nextFields)) return
 
-      onFieldsChange(nextFields)
+      onFieldsChange?.(nextFields)
       hideAddVarModal()
     },
     [fields, hideAddVarModal, onFieldsChange, validateFields],
@@ -100,7 +102,7 @@ export const SnippetSidebarContent = ({
       const nextFields = list.map(toSnippetInputField)
       if (isEqual(nextFields, fields)) return
 
-      onFieldsChange(nextFields)
+      onFieldsChange?.(nextFields)
     },
     [fields, onFieldsChange],
   )
@@ -137,12 +139,20 @@ export const SnippetSidebarContent = ({
           mode="expand"
           name={t(($) => $.sectionOrchestrate, { ns: 'snippet' })}
           href={`/snippets/${snippet.id}/orchestrate`}
-          active
+          active={section === 'orchestrate'}
           iconMap={{ selected: 'i-ri-node-tree', normal: 'i-ri-node-tree' }}
+        />
+        <NavLink
+          mode="expand"
+          name={t(($) => $.title, { ns: 'evaluation' })}
+          href={`/snippets/${snippet.id}/evaluation`}
+          active={section === 'evaluation'}
+          disabled={!snippet.is_published}
+          iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
         />
       </nav>
 
-      <div className="flex min-h-0 grow flex-col px-3 pt-6">
+      {section === 'orchestrate' && <div className="flex min-h-0 grow flex-col px-3 pt-6">
         <Field
           title={t(($) => $.inputVariables, { ns: 'snippet' })}
           operations={
@@ -163,9 +173,9 @@ export const SnippetSidebarContent = ({
         >
           <VarList readonly={readonly} list={workflowInputVars} onChange={handleVarListChange} />
         </Field>
-      </div>
+      </div>}
 
-      {isShowAddVarModal && (
+      {section === 'orchestrate' && isShowAddVarModal && (
         <ConfigVarModal
           isCreate
           supportFile

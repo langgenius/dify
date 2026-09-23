@@ -29,13 +29,19 @@ export const decodeModelSelection = (judgeModelId: string | null) => {
   return { provider, model }
 }
 
-export const getComparisonOperatorLabel = (operator: ComparisonOperator, t: TFunction) => {
+type WorkflowComparisonOperatorKey = `nodes.ifElse.comparisonOperator.${Exclude<
+  ComparisonOperator,
+  '=' | '≠' | '>' | '<' | '≥' | '≤'
+>}`
+
+export const getComparisonOperatorLabel = (
+  operator: ComparisonOperator,
+  t: TFunction<'workflow'>,
+) => {
   if (rawOperatorLabels.has(operator)) return operator
 
-  return t(
-    `nodes.ifElse.comparisonOperator.${operator}` as never,
-    { ns: 'workflow' } as never,
-  ) as unknown as string
+  const key = `nodes.ifElse.comparisonOperator.${operator}` as WorkflowComparisonOperatorKey
+  return t(($) => $[key])
 }
 
 export const requiresComparisonValue = (operator: ComparisonOperator) => {

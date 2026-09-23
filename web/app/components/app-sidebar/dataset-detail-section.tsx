@@ -27,7 +27,7 @@ type DatasetDetailSectionProps = {
 }
 
 const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
-  const { t } = useTranslation(['common', 'navigation'])
+  const { t } = useTranslation(['common', 'navigation', 'evaluation'])
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -111,6 +111,13 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
+      baseNavigation.unshift({
+        name: t(($) => $.title, { ns: 'evaluation' }),
+        href: `/datasets/${datasetId}/evaluation`,
+        icon: 'i-ri-flask-line',
+        selectedIcon: 'i-ri-flask-fill',
+        disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canPipelineTest,
+      })
       baseNavigation.unshift({
         name: t(($) => $['datasetMenus.pipeline'], { ns: 'common' }),
         href: `/datasets/${datasetId}/pipeline`,
