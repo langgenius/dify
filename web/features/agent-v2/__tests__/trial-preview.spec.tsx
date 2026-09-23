@@ -70,6 +70,10 @@ it('shows published configuration with read-only collapsible sections', async ()
             description: 'Search the web',
           },
         ],
+        cli_tools: [
+          { name: 'Search CLI', description: 'Search with CLI' },
+          { name: 'Disabled CLI', enabled: false },
+        ],
       },
       knowledge: {
         sets: [
@@ -93,6 +97,8 @@ it('shows published configuration with read-only collapsible sections', async ()
   expect(await screen.findByText('You are a research assistant.')).toBeVisible()
   expect(screen.getByText('gpt-4o')).toBeVisible()
   expect(screen.getByText('Search the web')).toBeVisible()
+  expect(screen.getByText('Search with CLI')).toBeVisible()
+  expect(screen.queryByText('Disabled CLI')).not.toBeInTheDocument()
   expect(screen.getByText('Handbook')).toBeVisible()
   expect(screen.getByText('guide.txt')).toBeVisible()
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
@@ -107,4 +113,20 @@ it('shows unavailable instead of stale configuration when preview fails', async 
   fetchPreview.mockRejectedValue(new Error('Not published'))
   renderPreview()
   expect(await screen.findByText('share.common.appUnavailable')).toBeVisible()
+})
+
+it('renders a published composer response without optional resources', async () => {
+  fetchPreview.mockResolvedValue({
+    variant: 'agent_app',
+    agent: { id: 'agent-1', name: 'Research', description: '', scope: 'roster', status: 'active' },
+    active_config_is_published: true,
+    save_options: [],
+    agent_soul: {
+      prompt: { system_prompt: 'No resources configured.' },
+      model: { plugin_id: 'openai', model_provider: 'openai', model: 'gpt-4o' },
+    },
+  })
+  renderPreview()
+  expect(await screen.findByText('No resources configured.')).toBeVisible()
+  expect(screen.getAllByText('common.noData')).toHaveLength(4)
 })
