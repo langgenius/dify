@@ -13,13 +13,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from graphon.engine_events import NodeRunFailedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.graph_events import NodeRunFailedEvent
 from graphon.node_events.base import NodeRunResult
 from models import Account, Tenant
 from models.dataset import (
@@ -209,7 +209,7 @@ def _make_failed_published_node_run() -> tuple[SimpleNamespace, NodeRunFailedEve
         workflow_id="wf-1",
         node_type="start",
         title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
+        runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
         error_strategy=None,
     )
     run_result = NodeRunResult(
@@ -809,7 +809,7 @@ def test_run_datasource_node_preview_online_document(
 def test_handle_node_run_result_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from graphon.graph_events import NodeRunSucceededEvent
+    from graphon.engine_events import NodeRunSucceededEvent
     from graphon.node_events.base import NodeRunResult
 
     # 1. Setup mock node and result
@@ -1378,7 +1378,7 @@ def test_handle_node_run_result_default_value_strategy(
 ) -> None:
     from datetime import datetime
 
-    from graphon.graph_events import NodeRunFailedEvent
+    from graphon.engine_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
 
     node_instance = SimpleNamespace(
@@ -1387,7 +1387,7 @@ def test_handle_node_run_result_default_value_strategy(
         title="Start",
         error_strategy=ErrorStrategy.DEFAULT_VALUE,
         default_value_dict={"fallback": "ok"},
-        graph_runtime_state=SimpleNamespace(variable_pool=mocker.Mock()),
+        runtime_state=SimpleNamespace(variable_pool=mocker.Mock()),
     )
 
     failed_result = NodeRunResult(
@@ -1781,7 +1781,7 @@ def test_handle_node_run_result_raises_when_no_terminal_event(
         workflow_id="wf-1",
         node_type="start",
         title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=SimpleNamespace(get=lambda _: None)),
+        runtime_state=SimpleNamespace(variable_pool=SimpleNamespace(get=lambda _: None)),
         error_strategy=None,
     )
 

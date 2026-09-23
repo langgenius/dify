@@ -44,9 +44,9 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.execution_coordinator import send_abort_command
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
-from extensions.ext_redis import redis_client
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -56,7 +56,6 @@ from fields.workflow_run_fields import (
     workflow_run_pagination_response_source,
     workflow_run_response_source,
 )
-from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
@@ -863,6 +862,6 @@ class SnippetWorkflowTaskStopApi(Resource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        send_abort_command(task_id)
 
         return {"result": "success"}

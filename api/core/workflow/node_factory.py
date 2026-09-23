@@ -1,6 +1,7 @@
 import importlib
 import pkgutil
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
+from copy import copy
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast, final, override
@@ -22,7 +23,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.trigger.constants import TRIGGER_NODE_TYPES
-from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.human_input_adapter import adapt_node_config_for_graph, parse_human_input_delivery_methods
 from core.workflow.llm_environment_variable import (
     parse_llm_model_selector,
     resolve_llm_model_config,
@@ -57,7 +58,7 @@ from core.workflow.system_variables import SystemVariableKey, get_system_text, s
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
 from graphon.file.file_manager import file_manager
 from graphon.graph.graph import NodeFactory
 from graphon.model_runtime.memory import PromptMessageMemory
@@ -75,8 +76,8 @@ from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from graphon.runtime import InitParams, RuntimeState
 
 LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
@@ -88,7 +89,7 @@ _START_NODE_TYPES: frozenset[NodeType] = frozenset(
 class DifyGraphInitContext:
     """Explicit graph-init values owned by the workflow layer.
 
-    Dify is gradually removing direct `GraphInitParams` construction from its
+    Dify is gradually removing direct `InitParams` construction from its
     production call sites. Keep the translation here until `graphon` exposes an
     equivalent explicit API.
     """
@@ -97,11 +98,12 @@ class DifyGraphInitContext:
     graph_config: Mapping[str, Any]
     run_context: Mapping[str, Any]
     call_depth: int
+    execution_driver: "WorkflowRunDriver | None" = None
 
-    def to_graph_init_params(self) -> "GraphInitParams":
-        from graphon.entities import GraphInitParams
+    def to_graph_init_params(self) -> "InitParams":
+        from graphon.runtime import InitParams
 
-        return GraphInitParams(
+        return InitParams(
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
             run_context=self.run_context,
@@ -309,22 +311,25 @@ class DifyNodeFactory(NodeFactory):
         cls,
         *,
         graph_init_context: DifyGraphInitContext,
-        graph_runtime_state: "GraphRuntimeState",
+        runtime_state: "RuntimeState",
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
-            graph_init_params=graph_init_context.to_graph_init_params(),
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_context.to_graph_init_params(),
+            runtime_state=runtime_state,
+            execution_driver=graph_init_context.execution_driver,
         )
 
     def __init__(
         self,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
+        execution_driver: "WorkflowRunDriver | None" = None,
     ) -> None:
-        self.graph_init_params = graph_init_params
-        self.graph_runtime_state = graph_runtime_state
-        self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
+        self.init_params = init_params
+        self.runtime_state = runtime_state
+        self._dify_context = self._resolve_dify_context(init_params.run_context)
+        self._execution_driver = execution_driver
         self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -357,12 +362,12 @@ class DifyNodeFactory(NodeFactory):
         self._human_input_runtime = DifyHumanInputNodeRuntime(
             self._dify_context,
             workflow_execution_id_getter=lambda: get_system_text(
-                self.graph_runtime_state.variable_pool,
+                self.runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
             ),
             conversation_id_getter=self._conversation_id,
         )
-        self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
+        self._tool_runtime = DifyToolNodeRuntime(self._dify_context, execution_driver=execution_driver)
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
             api_url=dify_config.UNSTRUCTURED_API_URL,
@@ -384,11 +389,23 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer()
 
-    def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "DifyNodeFactory":
+    @override
+    def with_runtime_state(self, runtime_state: "RuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=self.init_params,
+            runtime_state=runtime_state,
+            execution_driver=self._execution_driver,
         )
+
+    @override
+    def with_graph_config(self, graph_config: Mapping[str, Any]) -> "DifyNodeFactory":
+        factory = copy(self)
+        factory.init_params = self.init_params.model_copy(update={"graph_config": graph_config})
+        return factory
+
+    @property
+    def execution_driver(self) -> "WorkflowRunDriver | None":
+        return self._execution_driver
 
     @staticmethod
     def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:
@@ -400,7 +417,7 @@ class DifyNodeFactory(NodeFactory):
         return DifyRunContext.model_validate(raw_ctx)
 
     def _conversation_id(self) -> str | None:
-        return get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        return get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
 
     @override
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
@@ -413,19 +430,9 @@ class DifyNodeFactory(NodeFactory):
             (including pydantic ValidationError, which subclasses ValueError),
             if node type is unknown, or if no implementation exists for the resolved version
         """
-        adapted_node_config = adapt_node_config_for_graph(node_config)
-        typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
+        adapted_node_config, typed_node_config, node_class, resolved_node_data = self._validate_node_config(node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class(
-            node_type=node_data.type,
-            node_version=str(node_data.version),
-            node_data=node_data,
-        )
-        # Graph configs are initially validated against permissive shared node data.
-        # Re-validate using the resolved node class so workflow-local node schemas
-        # stay explicit and constructors receive the concrete typed payload.
-        resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
         node_type = node_data.type
         if node_type == BuiltinNodeTypes.LLM:
             resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
@@ -497,11 +504,34 @@ class DifyNodeFactory(NodeFactory):
         node = node_class(
             node_id=node_id,
             data=constructor_node_data,
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
+            init_params=self.init_params,
+            runtime_state=self.runtime_state,
             **node_init_kwargs,
         )
         return node
+
+    @override
+    def validate_node(self, node_config: NodeConfigDict) -> NodeExecutionType:
+        adapted_node_config, typed_node_config, node_class, _ = self._validate_node_config(node_config)
+        if typed_node_config["data"].type == BuiltinNodeTypes.HUMAN_INPUT:
+            node_data = DifyHumanInputNodeData.model_validate(adapted_node_config["data"])
+            parse_human_input_delivery_methods(node_data)
+        return node_class.execution_type
+
+    def _validate_node_config(
+        self,
+        node_config: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], NodeConfigDict, type[Node], BaseNodeData]:
+        adapted_node_config = adapt_node_config_for_graph(node_config)
+        typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
+        node_data = typed_node_config["data"]
+        node_class = self._resolve_node_class(
+            node_type=node_data.type,
+            node_version=str(node_data.version),
+            node_data=node_data,
+        )
+        resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
+        return adapted_node_config, typed_node_config, node_class, resolved_node_data
 
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:
@@ -536,7 +566,7 @@ class DifyNodeFactory(NodeFactory):
             return node_data
 
         selector = parse_llm_model_selector(model_selector)
-        variable = self.graph_runtime_state.variable_pool.get(selector)
+        variable = self.runtime_state.variable_pool.get(selector)
         if not isinstance(variable, ObjectSegment):
             raise ValueError(f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable")
 
@@ -697,7 +727,7 @@ class DifyNodeFactory(NodeFactory):
             if not context_variable_selector:
                 return False
 
-            context_value = self.graph_runtime_state.variable_pool.get(context_variable_selector)
+            context_value = self.runtime_state.variable_pool.get(context_variable_selector)
             if not isinstance(context_value, ArrayObjectSegment):
                 return False
 
@@ -732,7 +762,7 @@ class DifyNodeFactory(NodeFactory):
         if node_data.memory is None:
             return None
 
-        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
         return fetch_memory(
             conversation_id=conversation_id,
             app_id=self._dify_context.app_id,

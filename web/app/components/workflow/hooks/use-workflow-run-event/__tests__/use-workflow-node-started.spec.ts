@@ -1,9 +1,11 @@
 import { act, waitFor } from '@testing-library/react'
 import { baseRunningData } from '../../../__tests__/workflow-test-env'
 import { NodeRunningStatus } from '../../../types'
+import { useWorkflowNodeFinished } from '../use-workflow-node-finished'
 import { useWorkflowNodeStarted } from '../use-workflow-node-started'
 import {
   containerParams,
+  createNodeFinishedResponse,
   createNodeStartedResponse,
   getEdgeRuntimeState,
   getNodeRuntimeState,
@@ -11,6 +13,42 @@ import {
 } from './test-helpers'
 
 describe('useWorkflowNodeStarted', () => {
+  it('keeps one completed trace with execution data when the first node is replayed', () => {
+    const { result, store } = renderViewportHook(
+      () => ({ ...useWorkflowNodeStarted(), ...useWorkflowNodeFinished() }),
+      { initialStoreState: { workflowRunningData: baseRunningData() } },
+    )
+    const started = createNodeStartedResponse()
+    started.data = {
+      ...started.data,
+      id: 'trace-1',
+      index: 1,
+      title: 'Request',
+      inputs: { request: 'Review this request' },
+      extras: { icon: { content: '👤', background: '#ffffff' } },
+    }
+    const finished = createNodeFinishedResponse({
+      data: {
+        ...started.data,
+        status: NodeRunningStatus.Succeeded,
+        process_data: { decision: 'approve' },
+        outputs: { text: 'Approved' },
+      },
+    })
+    delete finished.data.extras
+
+    for (const event of [started, { ...started, data: { ...started.data, extras: {} } }]) {
+      act(() => {
+        result.current.handleWorkflowNodeStarted(event, containerParams)
+        result.current.handleWorkflowNodeFinished(finished)
+      })
+    }
+
+    expect(store.getState().workflowRunningData!.tracing).toEqual([
+      { ...finished.data, extras: started.data.extras },
+    ])
+  })
+
   it('pushes to tracing, sets node running, and adjusts viewport for root node', async () => {
     const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
       initialStoreState: { workflowRunningData: baseRunningData() },

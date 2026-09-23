@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,9 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderTyp
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 
 
 class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
@@ -27,6 +30,8 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
         tool_name: str,
         tool_parameters: dict[str, Any],
         credential_id: str | None = None,
+        *,
+        execution_driver: "WorkflowRunDriver",
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke tool
@@ -41,6 +46,7 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
                 tool_parameters,
                 user_id=user_id,
                 credential_id=credential_id,
+                execution_driver=execution_driver,
             )
             response = ToolEngine.generic_invoke(
                 session, tool_runtime, tool_parameters, user_id, DifyWorkflowCallbackHandler(), workflow_call_depth=1

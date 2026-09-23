@@ -767,7 +767,7 @@ def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_s
     assert redis.values["generate_task_stopped:workflow-task"] == b"1"
     assert redis.expirations["generate_task_stopped:workflow-task"] == 600
     assert [json.loads(command) for command in redis.commands["workflow:workflow-task:commands"]] == [
-        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+        {"command_type": "abort", "reason": "User requested stop"}
     ]
     assert redis.expirations["workflow:workflow-task:commands"] == 3600
 
