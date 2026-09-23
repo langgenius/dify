@@ -22,7 +22,7 @@ const SummaryIndexSetting = ({
   onSummaryIndexSettingChange,
   readonly = false,
 }: SummaryIndexSettingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments', 'datasetSettings'])
   const summaryLabelId = useId()
   const { data: textGenerationModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
@@ -77,13 +77,8 @@ const SummaryIndexSetting = ({
               {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
             </span>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
-                className="ml-1"
-              />
-              <InfotipContent
-                aria-label={t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
-              >
+              <InfotipTrigger aria-labelledby={summaryLabelId} className="ml-1" />
+              <InfotipContent aria-labelledby={summaryLabelId}>
                 {t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
               </InfotipContent>
             </Infotip>

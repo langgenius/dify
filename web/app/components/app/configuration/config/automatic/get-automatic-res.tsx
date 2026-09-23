@@ -79,7 +79,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   isBasicMode,
   onFinished,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const instructionLabelId = useId()
   const [storedModel, setStoredModel] = useAutoGenModel()
   const [selectedModel, setSelectedModel] = React.useState<Model>()

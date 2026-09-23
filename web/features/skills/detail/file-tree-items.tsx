@@ -144,8 +144,8 @@ function FileActionMenuItems({
   onRename: () => void
   onUploadFiles: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
   const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
   const isDirectoryNode = node.type === 'directory'
@@ -268,7 +268,7 @@ function FileActions({
   onRename: () => void
   onUploadFiles: (files: File[], targetDirectory: string | undefined) => void
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const uploadInputRef = useRef<HTMLInputElement>(null)
 
   return (
@@ -323,7 +323,7 @@ export function RootFileActionMenuItems({
   onCreateFolder: () => void
   onUploadFiles: () => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
 
   return (
@@ -405,7 +405,7 @@ export function FileTreeItem({
   selectedPaths: string[]
   selectedPath: string | undefined
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const contextUploadInputRef = useRef<HTMLInputElement>(null)
   const expandTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isDragging = draggingPaths.includes(node.path)

@@ -15,7 +15,7 @@ type CategoriesFilterProps = {
   onChange: (categories: string[]) => void
 }
 const CategoriesFilter = ({ value, onChange }: CategoriesFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [searchText, setSearchText] = useState('')
   const searchLabel = t(($) => $.searchCategories, { ns: 'plugin' })
   const { categories: options, categoriesMap } = useCategories()

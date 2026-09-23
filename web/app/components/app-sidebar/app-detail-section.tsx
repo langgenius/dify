@@ -42,7 +42,7 @@ type AppDetailSectionProps = {
 }
 
 const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({

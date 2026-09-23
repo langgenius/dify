@@ -26,7 +26,7 @@ const ConditionNumber = ({
   isCommonVariable,
   commonVariables,
 }: ConditionNumberProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const handleVariableValueChange = useCallback(
     (v: ValueSelector) => {
       onChange(`{{#${v.join('.')}#}}`)

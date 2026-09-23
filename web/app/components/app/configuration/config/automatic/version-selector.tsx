@@ -16,7 +16,7 @@ type VersionSelectorProps = {
 }
 
 const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const moreThanOneVersion = versionLen > 1
   const versions = Array.from({ length: versionLen }, (_, index) => ({
     label: `${t(($) => $['generate.version'], { ns: 'appDebug' })} ${index + 1}${index === versionLen - 1 ? ` · ${t(($) => $['generate.latest'], { ns: 'appDebug' })}` : ''}`,

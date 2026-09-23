@@ -17,7 +17,7 @@ export type SelectorTranslate<Ns extends Namespace> = <
 >(
   selector: Selector,
   options: { ns: TargetNs } & Record<string, unknown>,
-) => ReturnType<TFunction>
+) => ReturnType<TFunction<['app']>>
 
 type StringSelectorTranslate<Ns extends Namespace> = <
   const TargetNs extends Ns,

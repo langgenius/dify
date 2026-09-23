@@ -49,7 +49,7 @@ const WaterCrawl: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const [step, setStep] = useState<Step>(Step.init)
   const controlFoldOptions = STEP_CONTROL_FOLD_OPTIONS[step]
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)

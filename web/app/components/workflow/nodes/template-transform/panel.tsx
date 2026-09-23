@@ -15,7 +15,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.templateTransform'
 
 const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const {
     readOnly,

@@ -41,7 +41,9 @@ export const DelimiterInput: FC<
     onValueChange?: (value: string) => void
   }
 > = ({ tooltip, onValueChange, value, ...rest }) => {
-  const { t } = useTranslation()
+  const labelId = useId()
+
+  const { t } = useTranslation(['datasetCreation'])
   const generatedInputId = useId()
   const inputId = rest.id ?? generatedInputId
   const isComposing = useRef(false)
@@ -51,17 +53,12 @@ export const DelimiterInput: FC<
     <FormField
       label={
         <div className="mb-1 flex items-center">
-          <label htmlFor={inputId} className="mr-0.5 system-sm-semibold">
+          <label id={labelId} htmlFor={inputId} className="mr-0.5 system-sm-semibold">
             {t(($) => $['stepTwo.separator'], { ns: 'datasetCreation' })}
           </label>
           <Infotip>
-            <InfotipTrigger
-              aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
-            />
-            <InfotipContent
-              aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
-              className="max-w-50"
-            >
+            <InfotipTrigger aria-labelledby={labelId} />
+            <InfotipContent aria-labelledby={labelId} className="max-w-50">
               {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
             </InfotipContent>
           </Infotip>
@@ -166,7 +163,7 @@ type LabeledCompoundNumberInputProps = Omit<CompoundNumberInputProps, 'label'>
 export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
   const maxValue = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const label = t(($) => $['stepTwo.maxLength'], { ns: 'datasetCreation' })
   return (
     <FormField label={<div className="mb-1 system-sm-semibold">{label}</div>}>
@@ -183,21 +180,20 @@ export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
 }
 
 export const OverlapInput: FC<LabeledCompoundNumberInputProps> = (props) => {
-  const { t } = useTranslation()
+  const labelId = useId()
+
+  const { t } = useTranslation(['datasetCreation'])
   const label = t(($) => $['stepTwo.overlap'], { ns: 'datasetCreation' })
   return (
     <FormField
       label={
         <div className="mb-1 flex items-center">
-          <span className="system-sm-semibold">{label}</span>
+          <span id={labelId} className="system-sm-semibold">
+            {label}
+          </span>
           <Infotip>
-            <InfotipTrigger
-              aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
-            />
-            <InfotipContent
-              aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
-              className="max-w-50"
-            >
+            <InfotipTrigger aria-labelledby={labelId} />
+            <InfotipContent aria-labelledby={labelId} className="max-w-50">
               {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
             </InfotipContent>
           </Infotip>

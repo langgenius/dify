@@ -24,7 +24,7 @@ const FileImageItem = ({
   onRemove,
   onReUpload,
 }: FileImageItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'custom'])
   const { id, progress, base64Url, url, name } = file
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const download_url = url ? `${url}&as_attachment=true` : base64Url

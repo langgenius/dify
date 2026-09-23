@@ -15,7 +15,7 @@ function AutomaticIncludeWorkspaceMembersSection({
   loading,
   onChange,
 }: AutomaticIncludeWorkspaceMembersSectionProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission'])
   const labelId = useId()
   const descriptionId = useId()
 

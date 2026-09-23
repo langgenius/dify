@@ -6,7 +6,7 @@ type ModelSelectorEmptyStateProps = {
 }
 
 function ModelSelectorEmptyState({ onConfigure }: ModelSelectorEmptyStateProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="mx-2 flex flex-col gap-2 rounded-[10px] bg-linear-to-r from-state-base-hover to-background-gradient-mask-transparent p-4">

@@ -15,7 +15,7 @@ type AgentLogNavProps = {
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: AgentLogNavProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const agentOrToolLogItemStackLength = agentOrToolLogItemStack.length
   const first = agentOrToolLogItemStack[0]
   const mid = agentOrToolLogItemStack.slice(1, -1)

@@ -3276,14 +3276,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/button-style-dropdown.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/method-selector.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -3585,12 +3577,7 @@
   },
   "web/app/components/workflow/nodes/question-classifier/__tests__/integration.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 15
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/components/class-item.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
+      "count": 14
     }
   },
   "web/app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {

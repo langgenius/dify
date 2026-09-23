@@ -163,7 +163,7 @@ describe('ConfigModal logic', () => {
 
     fireEvent.click(screen.getByTestId('valid-json-change'))
     await waitFor(() => {
-      expect(screen.getByTestId('payload-schema')).toHaveTextContent(/"foo": "bar"/)
+      expect(screen.getByTestId('payload-schema').textContent).toMatch(/"foo": "bar"/)
     })
 
     fireEvent.click(screen.getByTestId('invalid-json-change'))

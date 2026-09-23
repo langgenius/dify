@@ -233,7 +233,7 @@ describe('ConfigModalFormFields', () => {
     const textInputProps = createBaseProps()
     const textInputView = render(<ConfigModalFormFields {...textInputProps} />)
     expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'variableConfig.hiddenDescription' }))
+    fireEvent.click(screen.getByRole('button', { name: 'variableConfig.hidden' }))
     expect(await screen.findByText('variableConfig.hiddenDescription')).toBeInTheDocument()
     const docLink = await screen.findByRole('link')
     expect(docLink).toHaveAttribute(

@@ -27,7 +27,7 @@ type StarredAppCardProps = {
 
 export const StarredAppCard = memo(
   ({ app, stepByStepTourCardTarget, stepByStepTourCardHighlightPart }: StarredAppCardProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['app', 'common', 'time'])
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),
       select: (data) => data.profile.id,

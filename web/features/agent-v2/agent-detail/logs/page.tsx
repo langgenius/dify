@@ -68,8 +68,8 @@ const parseSortValue = (value: string): AgentLogsSort => {
 }
 
 export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile

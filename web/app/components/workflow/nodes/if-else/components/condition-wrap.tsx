@@ -83,7 +83,7 @@ const ConditionWrap: FC<Props> = ({
   varsIsVarFileAttribute = {},
   filterVar = () => true,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const getAvailableVars = useGetAvailableVars()
 

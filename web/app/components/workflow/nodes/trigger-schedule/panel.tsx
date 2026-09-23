@@ -18,7 +18,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.triggerSchedule'
 
 const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const timeInputId = React.useId()
   const {
     inputs,

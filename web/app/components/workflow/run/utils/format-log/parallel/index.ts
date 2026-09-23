@@ -5,7 +5,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 export type WorkflowTranslate = <const Selector extends SelectorParam<'workflow'>>(
   selector: Selector,
   options: { ns: 'workflow' },
-) => ReturnType<TFunction>
+) => ReturnType<TFunction<['workflow']>>
 
 const translateWorkflowString = <const Selector extends SelectorParam<'workflow'>>(
   t: WorkflowTranslate,

@@ -19,7 +19,7 @@ type Props = Readonly<{
 }>
 
 const FollowUp = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const suggested = useFeatures((s) => s.features.suggested)
   const featuresStore = useFeaturesStore()
   const [isHovering, setIsHovering] = useState(false)

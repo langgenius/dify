@@ -37,7 +37,7 @@ const Group = ({
   handleView,
   handleClear,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const toolIcon = useToolIcon(nodeData?.nodePayload)

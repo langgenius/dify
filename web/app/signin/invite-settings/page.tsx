@@ -66,7 +66,7 @@ const getInitialLanguage = (locale: Locale): Locale => {
 }
 
 export default function InviteSettingsPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const router = useRouter()
   const queryClient = useQueryClient()

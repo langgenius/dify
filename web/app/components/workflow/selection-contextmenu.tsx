@@ -245,7 +245,7 @@ const distributeNodes = (nodesToAlign: Node[], nodes: Node[], alignType: AlignTy
 }
 
 export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { getNodesReadOnly } = useNodesReadOnly()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()

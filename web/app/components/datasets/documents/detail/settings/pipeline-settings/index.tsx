@@ -21,7 +21,7 @@ type PipelineSettingsProps = {
 }
 
 const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const { push } = useRouter()
   const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(
     undefined,

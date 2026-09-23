@@ -12,7 +12,7 @@ const VectorSpaceAdmissionAlert = ({
   estimatedMb,
   planLimitMb,
 }: VectorSpaceAdmissionAlertProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
     <div

@@ -44,7 +44,7 @@ const SelectItem: FC<ItemProps> = ({ text, type, value, iconClassName, onClick }
 }
 
 const SelectVarType: FC<Props> = ({ onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const handleChange = (value: string) => {
     onChange(value)
   }

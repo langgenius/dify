@@ -13,7 +13,7 @@ type Props = Readonly<{
 }>
 
 const IdeaOutput: FC<Props> = ({ value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
 
   return (
     <Collapsible className="mt-4 text-[0px]">

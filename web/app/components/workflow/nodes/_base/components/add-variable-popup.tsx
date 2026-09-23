@@ -8,7 +8,7 @@ type AddVariablePopupProps = {
   onSelect: (value: ValueSelector, item: Var) => void
 }
 const AddVariablePopup = ({ availableVars, onSelect }: AddVariablePopupProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">

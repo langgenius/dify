@@ -8,7 +8,7 @@ import dayjs from '../utils/dayjs'
 
 const Item: FC<CalendarItemProps> = ({ day, selectedDate, onClick, isDisabled }) => {
   const locale = useLocale()
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const selectedDescriptionId = React.useId()
   const { date, isCurrentMonth } = day
   const isSelected = selectedDate?.isSame(date, 'date')
