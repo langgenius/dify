@@ -2717,6 +2717,7 @@ Export application configuration as DSL
 | app_id | path | Application ID to export | Yes | string (uuid) |
 | format | query | Export format; defaults to ifpkg for all Apps | No | string, <br>**Available values:** "ifpkg", "yaml" |
 | include_secret | query | Include secrets in export | No | boolean |
+| include_workflow_tools | query | Package the app and recursively referenced workflow tools in a ZIP | No | boolean |
 | version_id | query | Published Agent version ID to export; requires a paid plan on Cloud. If omitted, exports the shared draft, falling back to the active snapshot when no draft exists. | No | string (uuid) |
 | workflow_id | query | Specific workflow ID to export | No | string |
 
@@ -15868,6 +15869,7 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | format | string, <br>**Available values:** "ifpkg", "yaml" | Export format; defaults to ifpkg for all Apps | No |
 | include_secret | boolean | Include secrets in export | No |
+| include_workflow_tools | boolean | Package the app and recursively referenced workflow tools in a ZIP | No |
 | version_id | string | Published Agent version ID to export; requires a paid plan on Cloud. If omitted, exports the shared draft, falling back to the active snapshot when no draft exists. | No |
 | workflow_id | string | Specific workflow ID to export | No |
 
@@ -15875,7 +15877,8 @@ This class is used to store the schema information of an api based tool.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | string |  | Yes |
+| data | string | YAML DSL text, or base64-encoded ZIP when format is zip | Yes |
+| format | string, <br>**Available values:** "yaml", "zip", <br>**Default:** yaml | *Enum:* `"yaml"`, `"zip"` | No |
 
 #### AppIconPayload
 
@@ -15894,9 +15897,9 @@ This class is used to store the schema information of an api based tool.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| mode | string | Import mode | Yes |
+| mode | string, <br>**Available values:** "bundle-content", "yaml-content", "yaml-url" | Import YAML text, a URL, or a base64 ZIP bundle<br>*Enum:* `"bundle-content"`, `"yaml-content"`, `"yaml-url"` | Yes |
 | name | string |  | No |
-| yaml_content | string |  | No |
+| yaml_content | string | YAML DSL text or base64-encoded ZIP for bundle-content | No |
 | yaml_url | string |  | No |
 
 #### AppImportResponse
@@ -19071,7 +19074,7 @@ How Dify forwards the end-user's identity to an MCP server.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
 | app_mode | string |  | No |
-| current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
+| current_dsl_version | string, <br>**Default:** 0.8.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |

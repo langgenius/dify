@@ -540,7 +540,7 @@ export default interface Resources {
     'iconPicker.tryYourLuck': 'Try your luck'
     importApp: 'Import App'
     importAppDescription: 'App package or DSL file'
-    importAppFormats: 'Supports .ifpkg, .yaml, and .yml'
+    importAppFormats: 'Supports .ifpkg, .zip, .yaml, and .yml'
     importAppUrlPlaceholder: 'Paste an app package (.ifpkg) or DSL link here'
     importFromDSL: 'Import from DSL'
     importFromDSLFile: 'From DSL file'

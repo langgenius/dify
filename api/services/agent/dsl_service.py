@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from libs.datetime_utils import naive_utc_now
@@ -629,6 +630,8 @@ class AgentDslService:
             self._mark_missing_package_assets(tenant_id=tenant_id, soul_data=soul_data, package_path=package_path)
         )
         for tool_index, tool in enumerate(package.soul.tools.dify_tools):
+            if tool.provider_type == ToolProviderType.WORKFLOW:
+                continue
             tool_label = tool.tool_name or tool.provider or tool.provider_id
             warnings.append(
                 DslImportWarning(

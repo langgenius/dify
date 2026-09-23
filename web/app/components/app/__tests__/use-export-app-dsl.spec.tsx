@@ -134,37 +134,44 @@ describe('useExportAppDsl', () => {
   })
 
   it.each([
-    ['download.ifpkg', 'download.ifpkg'],
-    ['blob', 'Support Agent.ifpkg'],
-  ])('downloads binary exports using %s without rebuilding their bytes', async (name, fileName) => {
-    const archive = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])], name, {
-      type: 'application/zip',
-    })
-    mocks.exportAppDsl.mockResolvedValue(archive)
-    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+    [undefined, 'download.ifpkg', 'download.ifpkg'],
+    ['ifpkg', 'download.ifpkg', 'download.ifpkg'],
+    ['ifpkg', 'blob', 'Support Agent.ifpkg'],
+  ] as const)(
+    'downloads %s exports using %s without rebuilding their bytes',
+    async (format, name, fileName) => {
+      const archive = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])], name, {
+        type: 'application/zip',
+      })
+      mocks.exportAppDsl.mockResolvedValue(archive)
+      const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
 
-    await act(async () => {
-      await expect(
-        result.current.exportAppDsl({
-          format: 'ifpkg',
-          appId: 'agent-app-id',
-          appName: 'Support Agent',
-        }),
-      ).resolves.toEqual({ status: 'downloaded' })
-    })
+      await act(async () => {
+        await expect(
+          result.current.exportAppDsl({
+            format,
+            appId: 'agent-app-id',
+            appName: 'Support Agent',
+          }),
+        ).resolves.toEqual({ status: 'downloaded' })
+      })
 
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('app.exportAppSuccess')
-    expect(mocks.exportAppDsl).toHaveBeenCalledWith(
-      { params: { app_id: 'agent-app-id' }, query: { include_secret: false, format: 'ifpkg' } },
-      { context: { silent: true } },
-    )
-    expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: archive, fileName })
-    const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
-    expect(new Uint8Array(await data.arrayBuffer())).toEqual(
-      new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff]),
-    )
-    expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
-  })
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('app.exportAppSuccess')
+      expect(mocks.exportAppDsl).toHaveBeenCalledWith(
+        {
+          params: { app_id: 'agent-app-id' },
+          query: { include_secret: false, ...(format && { format }) },
+        },
+        { context: { silent: true } },
+      )
+      expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: archive, fileName })
+      const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
+      expect(new Uint8Array(await data.arrayBuffer())).toEqual(
+        new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff]),
+      )
+      expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
+    },
+  )
 
   it('downloads the selected published Agent version as an ifpkg package', async () => {
     const archive = new Blob(['published agent package'], { type: 'application/zip' })
@@ -279,6 +286,41 @@ describe('useExportAppDsl', () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith('common.operation.downloadSuccess')
   })
 
+  it('preserves an explicit YAML export without requesting a workflow bundle', async () => {
+    mocks.exportAppDsl.mockResolvedValue({ data: 'kind: app\n' })
+    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+
+    await act(async () => {
+      await result.current.exportAppDsl({ appId: 'app-id', appName: 'App', format: 'yaml' })
+    })
+
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith(
+      { params: { app_id: 'app-id' }, query: { include_secret: false, format: 'yaml' } },
+      { context: { silent: true } },
+    )
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: expect.any(Blob), fileName: 'App.yml' })
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('common.operation.downloadSuccess')
+  })
+
+  it('downloads workflow bundles as binary ZIP files', async () => {
+    mocks.exportAppDsl.mockResolvedValue({
+      data: btoa('PK\u0003\u0004\u0000\u00FF'),
+      format: 'zip',
+    })
+    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+
+    await act(async () => {
+      await result.current.exportAppDsl({ appId: 'workflow-app-id', appName: 'Workflow bundle' })
+    })
+
+    const [{ data, fileName }] = mocks.downloadBlob.mock.calls[0] as [
+      { data: Blob; fileName: string },
+    ]
+    expect(fileName).toBe('Workflow bundle.zip')
+    expect(data.type).toBe('application/zip')
+    expect(new Uint8Array(await data.arrayBuffer())).toEqual(new Uint8Array([80, 75, 3, 4, 0, 255]))
+  })
+
   it('exposes pending state until the export command settles', async () => {
     let resolveExport: ((value: { data: string }) => void) | undefined
     mocks.exportAppDsl.mockImplementation(
@@ -358,9 +400,12 @@ describe('useExportWorkflowAppDsl', () => {
     vi.clearAllMocks()
   })
 
-  it('checks generated workflow environment variables before exporting', async () => {
+  it('checks workflow secrets before downloading the default asset package unchanged', async () => {
+    const archive = new File(['workflow with Agent skills, files, and icons'], 'workflow.ifpkg', {
+      type: 'application/zip',
+    })
     mocks.getEnvironmentVariables.mockResolvedValue({ items: [] })
-    mocks.exportAppDsl.mockResolvedValue({ data: 'kind: app\n' })
+    mocks.exportAppDsl.mockResolvedValue(archive)
     const { result } = renderHook(() => useExportWorkflowAppDsl(), {
       wrapper: createWrapper(),
     })
@@ -379,9 +424,13 @@ describe('useExportWorkflowAppDsl', () => {
     expect(mocks.getEnvironmentVariables.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.exportAppDsl.mock.invocationCallOrder[0]!,
     )
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith(
+      { params: { app_id: 'workflow-app-id' }, query: { include_secret: false } },
+      { context: { silent: true } },
+    )
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
-      data: expect.any(Blob),
-      fileName: 'Support Workflow.yml',
+      data: archive,
+      fileName: 'workflow.ifpkg',
     })
   })
 

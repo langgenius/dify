@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "행운을 시험해 보세요",
   "importApp": "앱 가져오기",
   "importAppDescription": "앱 패키지 또는 DSL 파일",
-  "importAppFormats": ".ifpkg, .yaml 및 .yml 지원",
+  "importAppFormats": ".ifpkg, .zip, .yaml 및 .yml 지원",
   "importAppUrlPlaceholder": "앱 패키지(.ifpkg) 또는 DSL 링크를 여기에 붙여넣으세요",
   "importFromDSL": "DSL 에서 가져오기",
   "importFromDSLFile": "DSL 파일에서",

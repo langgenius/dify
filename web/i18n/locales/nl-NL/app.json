@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "Doe een gok",
   "importApp": "App importeren",
   "importAppDescription": "App-pakket of DSL-bestand",
-  "importAppFormats": "Ondersteunt .ifpkg, .yaml en .yml",
+  "importAppFormats": "Ondersteunt .ifpkg, .zip, .yaml en .yml",
   "importAppUrlPlaceholder": "Plak hier een link naar een app-pakket (.ifpkg) of DSL-bestand",
   "importFromDSL": "Import from DSL",
   "importFromDSLFile": "From DSL file",

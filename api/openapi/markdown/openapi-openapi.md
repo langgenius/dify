@@ -201,6 +201,7 @@ Machine-readable catalog of every op on this surface
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | include_secret | query | Include encrypted secret values in the exported DSL | No | boolean |
+| include_workflow_tools | query | Package the app and recursively referenced workflow tools in a ZIP | No | boolean |
 | workflow_id | query | Export a specific workflow version instead of the current draft | No | string (uuid) |
 | app_id | path |  | Yes | string |
 
@@ -661,6 +662,7 @@ Query parameters for GET /apps/<app_id>/dsl.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | include_secret | boolean | Include encrypted secret values in the exported DSL | No |
+| include_workflow_tools | boolean | Package the app and recursively referenced workflow tools in a ZIP | No |
 | workflow_id | string | Export a specific workflow version instead of the current draft | No |
 
 #### AppDslExportResponse
@@ -669,7 +671,8 @@ Export DSL response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | string | DSL YAML string | Yes |
+| data | string | YAML DSL text, or base64-encoded ZIP when format is zip | Yes |
+| format | string, <br>**Available values:** "yaml", "zip", <br>**Default:** yaml | *Enum:* `"yaml"`, `"zip"` | No |
 
 #### AppDslImportPayload
 
@@ -682,10 +685,10 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| mode | string, <br>**Available values:** "yaml-content", "yaml-url" | Import mode: yaml-content or yaml-url<br>*Enum:* `"yaml-content"`, `"yaml-url"` | Yes |
+| mode | string, <br>**Available values:** "bundle-content", "yaml-content", "yaml-url" | Import YAML text, a URL, or a base64 ZIP bundle<br>*Enum:* `"bundle-content"`, `"yaml-content"`, `"yaml-url"` | Yes |
 | name | string | Override the app name from the DSL | No |
-| yaml_content | string | Inline YAML DSL string (required when mode is yaml-content) | No |
-| yaml_url | string | Remote URL to fetch YAML from (required when mode is yaml-url) | No |
+| yaml_content | string | YAML DSL text or base64-encoded ZIP (required for yaml-content or bundle-content) | No |
+| yaml_url | string | Remote YAML or ZIP URL (required when mode is yaml-url) | No |
 
 #### AppDslImportResponse
 
@@ -695,7 +698,7 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
 | app_mode | string |  | No |
-| current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
+| current_dsl_version | string, <br>**Default:** 0.8.0 |  | No |
 | error | string |  | No |
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | id | string |  | Yes |
@@ -972,7 +975,7 @@ A next step the caller can hand straight to `call <op> --input <input>`.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
 | app_mode | string |  | No |
-| current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
+| current_dsl_version | string, <br>**Default:** 0.8.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |

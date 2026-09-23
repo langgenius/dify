@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "Poskusi srečo",
   "importApp": "Uvozi aplikacijo",
   "importAppDescription": "Paket aplikacije ali datoteka DSL",
-  "importAppFormats": "Podpira .ifpkg, .yaml in .yml",
+  "importAppFormats": "Podpira .ifpkg, .zip, .yaml in .yml",
   "importAppUrlPlaceholder": "Sem prilepite povezavo do paketa aplikacije (.ifpkg) ali datoteke DSL",
   "importFromDSL": "Uvozi iz DSL",
   "importFromDSLFile": "Iz datoteke DSL",

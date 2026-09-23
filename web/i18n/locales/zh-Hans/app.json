@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "试试手气",
   "importApp": "导入应用",
   "importAppDescription": "应用包或 DSL 文件",
-  "importAppFormats": "支持 .ifpkg、.yaml 和 .yml",
+  "importAppFormats": "支持 .ifpkg、.zip、.yaml 和 .yml",
   "importAppUrlPlaceholder": "输入应用包（.ifpkg）或 DSL 文件的 URL",
   "importFromDSL": "导入 DSL",
   "importFromDSLFile": "文件",

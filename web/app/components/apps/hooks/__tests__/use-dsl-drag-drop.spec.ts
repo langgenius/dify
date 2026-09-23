@@ -188,7 +188,7 @@ describe('useDSLDragDrop', () => {
   })
 
   describe('Drop functionality', () => {
-    it.each(['test.yaml', 'agent.ifpkg', 'agent.IFPKG'])(
+    it.each(['test.yaml', 'bundle.zip', 'bundle.ZIP', 'agent.ifpkg', 'agent.IFPKG'])(
       'should call onDSLFileDropped for %s',
       (filename) => {
         const dropZoneRef = { current: container }

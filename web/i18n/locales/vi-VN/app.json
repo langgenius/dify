@@ -122,7 +122,7 @@
   "iconPicker.tryYourLuck": "Thử vận may",
   "importApp": "Nhập App",
   "importAppDescription": "Gói ứng dụng hoặc tệp DSL",
-  "importAppFormats": "Hỗ trợ .ifpkg, .yaml và .yml",
+  "importAppFormats": "Hỗ trợ .ifpkg, .zip, .yaml và .yml",
   "importAppUrlPlaceholder": "Dán liên kết gói ứng dụng (.ifpkg) hoặc DSL vào đây",
   "importFromDSL": "Nhập từ DSL",
   "importFromDSLFile": "Từ tệp DSL",

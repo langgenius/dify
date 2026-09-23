@@ -8,7 +8,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission
 from controllers.openapi.auth.context import RouteContractError
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -19,8 +19,10 @@ from controllers.openapi.auth.requirements import (
     assert_license_valid,
 )
 from controllers.openapi.auth.subjects import AccountSubject
+from core.rbac import RBACResourceScope
 from enums import DeploymentEdition
 from models.account import AccountStatus, TenantAccountRole
+from models.agent import Agent, AgentScope
 from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
 from services.entities.feature_entities import (
     LicenseStatus,
@@ -29,6 +31,7 @@ from services.entities.feature_entities import (
 from ._world import (
     APP_ID,
     CLIENT_ID,
+    TENANT_ID,
     TOKEN_ID,
     account_subject,
     make_account,
@@ -102,6 +105,39 @@ class TestCheckRBACPermission:
     @staticmethod
     def _requirement() -> CheckRBACPermission:
         return CheckRBACPermission(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+
+    @pytest.mark.parametrize("allowed", [True, False])
+    def test_app_dsl_resolves_agent_permission(
+        self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None], allowed: bool
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        persist(sqlite_session, make_app(), make_tenant(), make_account())
+        subject = account_subject()
+        ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
+        agent = Agent(id="agent-1", scope=AgentScope.ROSTER)
+        requirement = CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+        )
+
+        with (
+            app.test_request_context(f"/openapi/v1/apps/{APP_ID}/dsl"),
+            patch("controllers.common.rbac.locators.agent_binding", return_value=agent),
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=allowed) as check,
+        ):
+            if allowed:
+                requirement.run(subject, ctx, sqlite_session)
+            else:
+                with pytest.raises(Forbidden):
+                    requirement.run(subject, ctx, sqlite_session)
+
+        check.assert_called_once_with(
+            TENANT_ID,
+            str(subject.account_id),
+            scene=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.AGENT,
+            resource_id="agent-1",
+        )
 
     def test_skips_a_non_account_caller(self, sqlite_session: Session, config_overrides: Callable[..., None]) -> None:
         """No matrix row reaches this: on the routes an SSO token can address,

@@ -78,6 +78,32 @@ describe('Uploader', () => {
     expect(updateFile).toHaveBeenCalledWith(pipeline)
   })
 
+  it.each([
+    ['ZIP', 'ZIP'],
+    ['IFPKG', 'app.appPackage'],
+  ])(
+    'accepts a workflow %s from the picker and identifies its format',
+    async (extension, format) => {
+      const user = userEvent.setup()
+      const updateFile = vi.fn()
+      const file = new File(['PK'], `workflow.${extension}`)
+      const { rerender } = render(
+        <Uploader importType="app" file={undefined} updateFile={updateFile} />,
+      )
+      expect(
+        screen.getByRole('button', { name: 'app.dslUploader.browse' }),
+      ).toHaveAccessibleDescription('app.importAppFormats')
+
+      await user.upload(getHiddenInput(), file)
+      expect(updateFile).toHaveBeenCalledWith(file)
+
+      rerender(<Uploader importType="app" file={file} updateFile={updateFile} />)
+      expect(screen.getByRole('group', { name: file.name })).toHaveAccessibleDescription(
+        expect.stringContaining(format),
+      )
+    },
+  )
+
   it('updates App file metadata when replacing a package with DSL', () => {
     const updateFile = vi.fn()
     const { rerender } = render(
