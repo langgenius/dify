@@ -14,7 +14,7 @@ const i18nPrefix = 'nodes.ifElse'
 
 const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
   const { data } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { cases } = data
   const casesLength = cases.length
   const checkIsConditionSet = useCallback((condition: Condition) => {

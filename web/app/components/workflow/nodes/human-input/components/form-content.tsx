@@ -74,7 +74,7 @@ const FormContent: FC<FormContentProps> = ({
   availableNodes,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const getVarType = useWorkflowVariableType()
 

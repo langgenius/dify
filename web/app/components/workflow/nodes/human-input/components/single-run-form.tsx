@@ -37,7 +37,7 @@ type Props = Readonly<{
 }>
 
 const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const contentList = splitByOutputVar(data.form_content)
   const renderedFormInputs = getRenderedFormInputs(data.inputs, data.form_content)
   const defaultInputs = initializeInputs(renderedFormInputs, data.resolved_default_values || {})

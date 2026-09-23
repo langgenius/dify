@@ -56,7 +56,7 @@ const KeyValueItem: FC<Props> = ({
   keyNotSupportVar,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const hasValuePayload = payload.type === 'file' ? !!payload.file?.length : !!payload.value
 
   const handleChange = useCallback(

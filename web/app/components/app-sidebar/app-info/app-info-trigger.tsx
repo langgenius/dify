@@ -29,7 +29,7 @@ const AppInfoTrigger = ({
   isExporting,
   exportCheck,
 }: AppInfoTriggerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

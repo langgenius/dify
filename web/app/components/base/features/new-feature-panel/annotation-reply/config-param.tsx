@@ -8,13 +8,17 @@ export const Item: FC<{ title: string; tooltip: string; children: React.JSX.Elem
   tooltip,
   children,
 }) => {
+  const titleId = React.useId()
+
   return (
     <div>
       <div className="mb-1 flex items-center space-x-1">
-        <div className="py-1 system-sm-semibold text-text-secondary">{title}</div>
+        <div id={titleId} className="py-1 system-sm-semibold text-text-secondary">
+          {title}
+        </div>
         <Infotip>
-          <InfotipTrigger aria-label={tooltip} />
-          <InfotipContent aria-label={tooltip} className="max-w-50">
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="max-w-50">
             {tooltip}
           </InfotipContent>
         </Infotip>

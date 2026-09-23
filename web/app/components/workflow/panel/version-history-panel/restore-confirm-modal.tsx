@@ -26,7 +26,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
   onClose,
   onRestore,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   return (
     <AlertDialog

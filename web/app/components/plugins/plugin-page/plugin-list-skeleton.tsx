@@ -34,7 +34,7 @@ type PluginListSkeletonProps = {
 }
 
 const PluginListSkeleton = ({ contentFrameClassName }: PluginListSkeletonProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div

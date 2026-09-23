@@ -98,7 +98,7 @@ const ProviderCardActions: FC<Props> = (props) => {
 type SummaryProps = Extract<Props, { summary: ModelProviderPluginSummary }>
 
 function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: SummaryProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'plugin'])
   const queryClient = useQueryClient()
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const [detail, setDetail] = useState<PluginDetail>()
@@ -292,7 +292,7 @@ function LoadedProviderCardActions({
   onInitialActionHandled,
   onUpdate,
 }: LoadedProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'plugin'])
   const { theme } = useTheme()
   const locale = useLocale()
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()

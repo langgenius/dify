@@ -21,7 +21,7 @@ type PermissionSelectorProps = {
 }
 
 const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings', 'plugin'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,

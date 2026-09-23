@@ -68,7 +68,9 @@ const Chart: React.FC<IChartProps> = ({
   yMax,
   className,
 }) => {
-  const { t } = useTranslation()
+  const titleId = React.useId()
+
+  const { t } = useTranslation(['appOverview'])
   const statistics = chartData.data
   const yField = getChartValueField(statistics, valueKey)
   const options = buildChartOptions({
@@ -96,6 +98,7 @@ const Chart: React.FC<IChartProps> = ({
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center">
           <div
+            id={titleId}
             className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary"
             title={title}
           >
@@ -103,8 +106,8 @@ const Chart: React.FC<IChartProps> = ({
           </div>
           {explanation && (
             <Infotip>
-              <InfotipTrigger aria-label={explanation} className="ml-1" />
-              <InfotipContent aria-label={explanation} className="w-60">
+              <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+              <InfotipContent aria-labelledby={titleId} className="w-60">
                 {explanation}
               </InfotipContent>
             </Infotip>
@@ -199,7 +202,7 @@ const createBizChartComponent = <TData extends ChartResponse>({
   className,
 }: BizChartConfig<TData>): FC<IBizChartProps> => {
   const BizChart: FC<IBizChartProps> = ({ id, period }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['appOverview'])
     const { data: response, isLoading } = useQuery(queryOptions(id, period.query))
 
     if (isLoading || !response) return <LoadingPlaceholder />

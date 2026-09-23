@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const ReasoningModePicker: FC<Props> = ({ type, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const handleChange = useCallback(
     (type: ReasoningModeType) => {

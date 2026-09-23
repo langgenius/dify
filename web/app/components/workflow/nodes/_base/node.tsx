@@ -10,6 +10,7 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
 import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
@@ -49,7 +50,7 @@ type BaseNodeProps = {
 }
 
 const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const translateWorkflow: WorkflowTranslator = (selector, options) => t(selector, options)
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
@@ -226,6 +227,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         {data.type !== BlockEnum.StartPlaceholder &&
           data.type !== BlockEnum.IfElse &&
           data.type !== BlockEnum.QuestionClassifier &&
+          !hasAgentV2OutputRoutes(data) &&
           data.type !== BlockEnum.HumanInput &&
           !data._isCandidate && (
             <NodeSourceHandle

@@ -190,6 +190,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
+              - 'tsconfig.json'
               - 'vite.config.ts'
               - 'lint.config.ts'
               - 'eslint.config.mjs'

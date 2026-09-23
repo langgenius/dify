@@ -27,7 +27,6 @@ import {
 } from '@langgenius/dify-ui/slider'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import ListEmpty from '@/app/components/base/list-empty'
 import {
   FormTypeEnum,
@@ -90,7 +89,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
     availableNodes,
     nodeId,
   } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()
@@ -273,7 +272,12 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         </div>
       ) : (
         <ListEmpty
-          icon={<Agent className="size-5 shrink-0 text-text-accent" />}
+          icon={
+            <span
+              aria-hidden
+              className="i-custom-vender-workflow-agent size-5 shrink-0 text-text-accent"
+            />
+          }
           title={t(($) => $['nodes.agent.strategy.configureTip'], { ns: 'workflow' })}
           description={
             <div className="text-xs text-text-tertiary">

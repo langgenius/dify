@@ -4,7 +4,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import AccountPage from './account-page'
 
 export default function Account() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   useDocumentTitle(t(($) => $['menus.account'], { ns: 'common' }))
   return (
     <div className="mx-auto w-full max-w-160 px-6 pt-12">

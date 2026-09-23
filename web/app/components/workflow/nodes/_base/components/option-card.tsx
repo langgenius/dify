@@ -40,6 +40,8 @@ const OptionCard: FC<Props> = ({
   align = 'center',
   tooltip,
 }) => {
+  const titleId = React.useId()
+
   const handleSelect = useCallback(() => {
     if (selected || disabled) return
     onSelect()
@@ -61,11 +63,11 @@ const OptionCard: FC<Props> = ({
       )}
       onClick={handleSelect}
     >
-      <span>{title}</span>
+      <span id={titleId}>{title}</span>
       {tooltip && (
         <Infotip>
-          <InfotipTrigger aria-label={tooltip} />
-          <InfotipContent aria-label={tooltip} className="w-60">
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-60">
             {tooltip}
           </InfotipContent>
         </Infotip>

@@ -18,7 +18,7 @@ type ConfigureProps = {
   disabled?: boolean
 }
 const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [open, setOpen] = useState(false)
   const canApiKey = item.credential_schema?.length
   const oAuthData = item.oauth_schema || {}

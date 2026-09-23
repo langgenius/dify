@@ -38,7 +38,7 @@ import {
   zPostTrialAppsByAppIdWorkflowsRunResponse,
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath,
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const post = oc
   .route({

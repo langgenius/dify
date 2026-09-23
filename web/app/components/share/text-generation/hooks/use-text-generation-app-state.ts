@@ -78,7 +78,7 @@ export const useTextGenerationAppState = ({
   isInstalledApp,
   isWorkflow,
 }: UseTextGenerationAppStateOptions) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const appData = useWebAppStore((s) => s.appInfo)

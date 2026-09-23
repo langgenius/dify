@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
@@ -364,4 +365,23 @@ describe('Pagination primitive', () => {
 
     await expect.element(screen.getByTestId('skeleton')).toHaveAttribute('aria-hidden', 'true')
   })
+})
+
+it('keeps the public page-jump ref usable after editing and focus restoration', async () => {
+  const ref = React.createRef<HTMLButtonElement>()
+  const screen = await render(
+    <PaginationRoot page={2} totalPages={10} onPageChange={() => {}}>
+      <PaginationPageJump ref={ref} />
+    </PaginationRoot>,
+  )
+
+  expect(ref.current).toBe(screen.getByRole('button').element())
+  ref.current?.focus()
+  await expect.element(screen.getByRole('button')).toHaveFocus()
+  await screen.getByRole('button').click()
+  await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toHaveFocus()
+  expect(ref.current).toBeNull()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('button')).toHaveFocus()
+  expect(ref.current).toBe(screen.getByRole('button').element())
 })

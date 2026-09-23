@@ -25,7 +25,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
   onClose,
   onPublish,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [title, setTitle] = useState(versionInfo?.marked_name || '')
   const [releaseNotes, setReleaseNotes] = useState(versionInfo?.marked_comment || '')
   const [titleError, setTitleError] = useState(false)

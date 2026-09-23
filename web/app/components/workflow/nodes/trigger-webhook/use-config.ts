@@ -31,7 +31,7 @@ function isVarKeyErrorKey(key: string): key is keyof typeof varKeyErrorSelectors
 }
 
 export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<WebhookTriggerNodeType>(id, payload)
   const appId = useAppStore.getState().appDetail?.id

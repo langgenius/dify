@@ -23,7 +23,7 @@ const ConditionAdd = ({
   disabled,
 }: ConditionAddProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
 
   const handleSelectVariable = useCallback(

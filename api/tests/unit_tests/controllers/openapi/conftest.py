@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app_factory import create_flask_app_with_configs
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, TokenType
 from models import Account, App, Tenant, TenantAccountJoin
@@ -118,5 +119,5 @@ def admitted_bearer(
         workspace_id=workspace_id,
         app_id=app_id,
         member_id=str(uuid.uuid4()),
-        headers={"Authorization": "Bearer dfoa_admitted"},
+        headers={"Authorization": "Bearer dfoa_admitted", CATALOG_HEADER: catalog_for(openapi_app)[1]},
     )

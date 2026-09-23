@@ -39,7 +39,7 @@ const InstructionEditor: FC<Props> = ({
   isShowCurrentBlock,
   isShowLastRunBlock,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
 
   const isCode = generatorType === 'code'

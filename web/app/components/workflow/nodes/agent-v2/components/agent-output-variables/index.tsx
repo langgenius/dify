@@ -41,7 +41,7 @@ function OutputRow({
   onDelete: () => void
   onEdit: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const description = getOutputDescription(output, t)
   return (
     <div className="group flex min-h-12 flex-col rounded-lg py-0.5 focus-within:bg-state-base-hover hover:bg-state-base-hover">
@@ -124,7 +124,7 @@ export function AgentOutputVariables({
   collapsed,
   onCollapse,
 }: AgentOutputVariablesProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editingState, setEditingState] = useState<EditingState | null>(null)
   const [internalCollapsed, setInternalCollapsed] = useState(true)
   const isCollapsed = collapsed ?? internalCollapsed

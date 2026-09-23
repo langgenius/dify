@@ -27,7 +27,7 @@ type Props = Readonly<{
 }>
 const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, onSave }) => {
   const ref = useRef(null)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'datasetSettings'])
   const docLink = useDocLink()
   const [retrievalConfig, setRetrievalConfig] = useState(value)
   const embeddingModel = useDatasetDetailContextWithSelector(

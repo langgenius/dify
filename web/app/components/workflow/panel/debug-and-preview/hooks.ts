@@ -45,7 +45,7 @@ export const useChat = (
   prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { handleRun } = useWorkflowRun()
   const hasStopRespondedRef = useRef(false)
   const workflowStore = useWorkflowStore()

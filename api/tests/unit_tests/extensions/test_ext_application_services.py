@@ -21,7 +21,7 @@ from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
 from models.enums import CustomizeTokenStrategy
-from models.model import AccountTrialAppRecord, App, AppModelConfig, DifySetup, Site, TrialApp
+from models.model import AccountTrialAppRecord, App, AppMode, AppModelConfig, DifySetup, InstalledApp, Site, TrialApp
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -31,6 +31,7 @@ from repositories.account_oauth_repository import (
     RegisterServiceOAuthInvitationGateway,
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
@@ -67,6 +68,8 @@ from services.account_oauth_adapters import (
 )
 from services.app_generate_service import AppGenerateService
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
+from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
+from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
@@ -80,6 +83,7 @@ from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFound
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
 from services.message_file_preview_service import MessageFilePreviewService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
@@ -163,6 +167,12 @@ def test_init_app_registers_services_for_the_current_app(
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
+        assert isinstance(services.app_scoped_end_users.commands, AppScopedEndUserService)
+        assert isinstance(services.app_scoped_end_users.queries, AppScopedEndUserQueryService)
+        repository = services.app_scoped_end_users.queries._app_scoped_end_users
+        assert isinstance(repository, AppScopedEndUserRepo)
+        assert services.app_scoped_end_users.commands._app_scoped_end_users is repository
+        assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
 
 
@@ -703,6 +713,120 @@ def test_build_application_services_wires_trial_app_usage(
         )
     assert record is not None
     assert record.count == 1
+
+
+@pytest.fixture
+def installed_app_ref(sqlite_session_factory: sessionmaker[Session]) -> InstalledAppRef:
+    with sqlite_session_factory.begin() as session:
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Installed app",
+            mode=AppMode.COMPLETION,
+            enable_site=True,
+            enable_api=True,
+        )
+        session.add(app)
+        session.flush()
+        installed_app = InstalledApp(
+            tenant_id=str(uuid4()),
+            app_id=app.id,
+            app_owner_tenant_id=app.tenant_id,
+            is_pinned=False,
+        )
+        session.add(installed_app)
+        session.flush()
+        result = InstalledAppRef(id=installed_app.id, app_id=app.id, tenant_id=installed_app.tenant_id)
+    return result
+
+
+@pytest.mark.parametrize(
+    ("deployment_edition", "permission_result"),
+    [
+        pytest.param(DeploymentEdition.COMMUNITY, False, id="community-skips-permission"),
+        pytest.param(DeploymentEdition.CLOUD, False, id="cloud-skips-permission"),
+        pytest.param(DeploymentEdition.ENTERPRISE, True, id="enterprise-allowed"),
+        pytest.param(DeploymentEdition.ENTERPRISE, False, id="enterprise-denied"),
+    ],
+)
+def test_build_application_services_wires_installed_app_admission(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    deployment_edition: DeploymentEdition,
+    permission_result: bool,
+) -> None:
+    account_id = str(uuid4())
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        return_value={"result": permission_result},
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=deployment_edition,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        if deployment_edition == DeploymentEdition.ENTERPRISE and not permission_result:
+            with pytest.raises(InstalledAppAccessDeniedError):
+                services.installed_app_access.get_access(
+                    installed_app_id=installed_app_ref.id,
+                    tenant_id=installed_app_ref.tenant_id,
+                    account_id=account_id,
+                )
+        else:
+            assert (
+                services.installed_app_access.get_access(
+                    installed_app_id=installed_app_ref.id,
+                    tenant_id=installed_app_ref.tenant_id,
+                    account_id=account_id,
+                )
+                == installed_app_ref
+            )
+
+    if deployment_edition == DeploymentEdition.ENTERPRISE:
+        enterprise_request.assert_called_once_with(
+            "GET", "/webapp/permission", params={"userId": account_id, "appId": installed_app_ref.app_id}
+        )
+    else:
+        enterprise_request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "enterprise_error",
+    [
+        pytest.param(EnterpriseAPINotFoundError(), id="not-found"),
+        pytest.param(EnterpriseAPIError("permission unavailable"), id="api-error"),
+        pytest.param(httpx.ConnectError("connection failed"), id="transport"),
+        pytest.param(json.JSONDecodeError("invalid", "", 0), id="invalid-json"),
+        pytest.param(UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid"), id="invalid-encoding"),
+    ],
+)
+def test_installed_app_admission_normalizes_known_enterprise_errors(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    enterprise_error: Exception,
+) -> None:
+    account_id = str(uuid4())
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        side_effect=enterprise_error,
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        with pytest.raises(WebAppAccessUnavailableError) as raised:
+            services.installed_app_access.get_access(
+                installed_app_id=installed_app_ref.id,
+                tenant_id=installed_app_ref.tenant_id,
+                account_id=account_id,
+            )
+
+    assert raised.value.__cause__ is enterprise_error
+    enterprise_request.assert_called_once_with(
+        "GET", "/webapp/permission", params={"userId": account_id, "appId": installed_app_ref.app_id}
+    )
 
 
 def test_trial_generation_uses_configured_access_runtime_and_usage(

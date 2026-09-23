@@ -1,6 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   NumberField,
   NumberFieldControls,
@@ -19,7 +18,6 @@ import {
 } from '@langgenius/dify-ui/slider'
 import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import { ChunkStructureEnum, IndexMethodEnum } from '../types'
 import OptionCard from './option-card'
@@ -40,7 +38,7 @@ const IndexMethod = ({
   onKeywordNumberChange,
   readonly = false,
 }: IndexMethodProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetSettings'])
   const keywordInputId = useId()
   const keywordNumberLabel = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
@@ -71,10 +69,14 @@ const IndexMethod = ({
           id={IndexMethodEnum.QUALIFIED}
           selectedId={indexMethod}
           icon={
-            <HighQuality
+            <span
+              aria-hidden
               className={cn(
-                'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-orange-orange-500',
-                isHighQuality && 'text-util-colors-orange-orange-500',
+                'i-custom-vender-knowledge-high-quality h-4.5 w-4.5',
+                cn(
+                  'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-orange-orange-500',
+                  isHighQuality && 'text-util-colors-orange-orange-500',
+                ),
               )}
             />
           }
@@ -89,10 +91,14 @@ const IndexMethod = ({
             id={IndexMethodEnum.ECONOMICAL}
             selectedId={indexMethod}
             icon={
-              <Economic
+              <span
+                aria-hidden
                 className={cn(
-                  'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
-                  isEconomy && 'text-util-colors-indigo-indigo-500',
+                  'i-custom-vender-knowledge-economic h-4.5 w-4.5',
+                  cn(
+                    'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
+                    isEconomy && 'text-util-colors-indigo-indigo-500',
+                  ),
                 )}
               />
             }
@@ -113,12 +119,6 @@ const IndexMethod = ({
                 >
                   {keywordNumberLabel}
                 </label>
-                <Infotip>
-                  <InfotipTrigger aria-label={keywordNumberLabel} className="ml-0.5 size-3.5" />
-                  <InfotipContent aria-label={keywordNumberLabel}>
-                    {keywordNumberLabel}
-                  </InfotipContent>
-                </Infotip>
               </div>
               <Slider
                 disabled={readonly}
