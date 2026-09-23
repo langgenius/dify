@@ -11,6 +11,7 @@ from typing import Any, final, override
 from flask import Flask, current_app, g
 
 from context.execution_context import AppContext, IExecutionContext, register_context_capturer
+from libs.contextvars import use_contextvars
 
 
 @final
@@ -96,8 +97,8 @@ class FlaskExecutionContext:
     Flask-specific execution context.
 
     This is a specialized version of ExecutionContext that includes Flask app
-    context. It provides the same interface as ExecutionContext but with
-    Flask-specific implementation.
+    context. It provides the same interface as ExecutionContext and restores
+    the caller's bindings after Flask context cleanup.
     """
 
     def __init__(
@@ -137,37 +138,23 @@ class FlaskExecutionContext:
 
     def __enter__(self) -> "FlaskExecutionContext":
         """Enter the Flask execution context."""
-        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
-        for var, val in self._context_vars.items():
-            var.set(val)
-
-        # Enter Flask app context
-        cm = self._app_context.enter()
-        self._local.cm = cm
+        cm = self.enter()
         cm.__enter__()
-
-        # Restore user in new app context
-        if self._user is not None:
-            g._login_user = self._user
-
+        if not hasattr(self._local, "stack"):
+            self._local.stack = []
+        self._local.stack.append(cm)
         return self
 
     def __exit__(self, *args: Any) -> None:
         """Exit the Flask execution context."""
-        cm = getattr(self._local, "cm", None)
-        if cm is not None:
-            cm.__exit__(*args)
+        stack = getattr(self._local, "stack", None)
+        if stack:
+            stack.pop().__exit__(*args)
 
     @contextmanager
     def enter(self) -> Generator[None, None, None]:
         """Enter Flask execution context as context manager."""
-        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
-        for var, val in self._context_vars.items():
-            var.set(val)
-
-        # Enter Flask app context
-        with self._flask_app.app_context():
-            # Restore user in new app context
+        with use_contextvars(self._context_vars), self._app_context.enter():
             if self._user is not None:
                 g._login_user = self._user
             yield
