@@ -84,12 +84,15 @@ def test_dify_gate_target_collection_includes_all_owned_integration_files(tmp_pa
 
 
 @pytest.mark.parametrize(
-    ("quality", "skip"),
-    list(itertools.product(["success", "failure", "cancelled", "skipped"], repeat=2)),
+    ("quality", "vectors", "skip"),
+    list(itertools.product(["success", "failure", "cancelled", "skipped"], repeat=3)),
 )
-def test_required_dify_gate_status_fails_closed(quality: str, skip: str) -> None:
+def test_required_dify_gate_status_fails_closed(quality: str, vectors: str, skip: str) -> None:
     workflow = _workflow("knowledge-fs-ci.yml")
-    command = _step(workflow, "Finalize KnowledgeFS CI status", job="final")["run"]
+    assert "vector-backends" in workflow["jobs"]["final"]["needs"]
+    final = _step(workflow, "Finalize KnowledgeFS CI status", job="final")
+    assert final["env"]["VECTOR_RESULT"] == "${{ needs.vector-backends.result }}"
+    command = final["run"]
     result = subprocess.run(
         ["bash", "-c", command],
         env={
@@ -97,12 +100,13 @@ def test_required_dify_gate_status_fails_closed(quality: str, skip: str) -> None
             "EVENT_NAME": "push",
             "KNOWLEDGE_FS_CHANGED": "true",
             "QUALITY_RESULT": quality,
+            "VECTOR_RESULT": vectors,
             "SKIP_RESULT": skip,
         },
         capture_output=True,
         check=False,
     )
-    assert result.returncode == (0 if quality == "success" else 1)
+    assert result.returncode == (0 if quality == vectors == "success" else 1)
 
 
 def test_dify_deployment_has_one_owner_and_uses_tested_revision() -> None:
