@@ -73,7 +73,7 @@ export const useInputFieldsActions = ({
       : (templateColumnsQuery.data?.columns ?? [])
   const uploadedFileId = resource.uploadedFileId
   const currentFileName = uploadedFileMeta?.name ?? resource.uploadedFileName
-  const canDownloadTemplate = isPanelReady && !evaluationActions.isDownloadingTemplate
+  const canDownloadTemplate = !evaluationActions.isDownloadingTemplate
   const isRunDisabled = !isRunnable || !uploadedFileId || isFileUploading || isRunning
   const uploadButtonDisabled = !isPanelReady || isRunning
 
