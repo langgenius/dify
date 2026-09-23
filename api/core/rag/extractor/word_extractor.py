@@ -368,8 +368,8 @@ class WordExtractor(BaseExtractor):
                             )
                             if image_id and image_id in doc.part.rels:
                                 append_image_link(image_id, has_drawing, target_buffer)
-                if run.text.strip():
-                    target_buffer.append(run.text.strip())
+                if run.text:
+                    target_buffer.append(run.text)
 
             def process_hyperlink(hyperlink_elem, target_buffer):
                 # Helper to extract text from a hyperlink element and append it to target_buffer
@@ -454,7 +454,7 @@ class WordExtractor(BaseExtractor):
                     process_run(run, target_buffer)
                 elif tag == qn("w:hyperlink"):
                     process_hyperlink(child, paragraph_content)
-            return "".join(paragraph_content) if paragraph_content else ""
+            return "".join(paragraph_content).strip()
 
         for block in doc.iter_inner_content():
             match block:
