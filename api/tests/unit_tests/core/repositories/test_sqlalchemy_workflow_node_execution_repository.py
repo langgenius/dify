@@ -27,6 +27,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _find_first,
     _replace_or_append_offload,
 )
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from models import Account, EndUser
@@ -153,6 +154,29 @@ def test_init_accepts_real_engine_and_sessionmaker_and_sets_role(
     assert isinstance(engine_repo._session_factory, sessionmaker)
     end_user_repo = _repository(monkeypatch, sqlite_session_factory, user=_end_user())
     assert end_user_repo._creator_user_role.value == "end_user"
+
+
+@pytest.mark.parametrize("source_app", ["app-1", "source-app"])
+def test_workflow_tool_scope_isolates_execution_history_with_same_tenant_and_creator(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], source_app: str
+) -> None:
+    caller = _repository(monkeypatch, sqlite_session_factory, user=_end_user())
+    source = caller.for_workflow_tool(source_app)
+    caller.save_synchronously(_execution(execution_id="caller", node_execution_id="caller"))
+    source.save_synchronously(_execution(execution_id="source", node_execution_id="source"))
+
+    assert [node.id for node in caller.get_by_workflow_execution("run-1")] == ["caller"]
+    assert [node.id for node in source.get_by_workflow_execution("run-1")] == ["source"]
+    with sqlite_session_factory() as session:
+        row = session.get(WorkflowNodeExecutionModel, "source")
+        assert row is not None
+        assert (row.tenant_id, row.app_id, row.created_by, row.created_by_role, row.triggered_from) == (
+            "tenant-1",
+            source_app,
+            "end-user-1",
+            CreatorUserRole.END_USER,
+            WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        )
 
 
 def test_init_rejects_invalid_factory_and_missing_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -318,6 +342,8 @@ def test_save_execution_data_updates_existing_and_creates_missing(
         inputs={"initial": True},
         process_data={
             "workflow_agent_binding_id": "binding-1",
+            "workflow_tool_invocation_id": "tool-call-1",
+            "workflow_tool_root_app_id": "root-app",
         },
     )
     repo.save(existing)
@@ -334,6 +360,8 @@ def test_save_execution_data_updates_existing_and_creates_missing(
         assert persisted.process_data_dict == {
             "step": 3,
             "workflow_agent_binding_id": "binding-1",
+            "workflow_tool_invocation_id": "tool-call-1",
+            "workflow_tool_root_app_id": "root-app",
         }
 
     missing = _execution(execution_id="missing", node_execution_id="missing-node", inputs={"new": True})
@@ -456,14 +484,9 @@ def test_get_by_workflow_execution_maps_real_rows_to_domain(
 @pytest.mark.parametrize(
     "repository_type", [SQLAlchemyWorkflowNodeExecutionRepository, CeleryWorkflowNodeExecutionRepository]
 )
-@pytest.mark.parametrize(
-    "triggered_from",
-    [WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN, WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN],
-)
 def test_resume_history_includes_paused_nodes_without_changing_default_reads(
     sqlite_session_factory: sessionmaker[Session],
     repository_type: type[SQLAlchemyWorkflowNodeExecutionRepository | CeleryWorkflowNodeExecutionRepository],
-    triggered_from: WorkflowNodeExecutionTriggeredFrom,
 ) -> None:
     user = _account()
     writer = SQLAlchemyWorkflowNodeExecutionRepository(
@@ -471,24 +494,75 @@ def test_resume_history_includes_paused_nodes_without_changing_default_reads(
         tenant_id="tenant-1",
         user=user,
         app_id="app-1",
-        triggered_from=triggered_from,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
     writer.save_synchronously(_execution(execution_id="finished", node_execution_id="finished"))
     paused = _execution(execution_id="paused", node_execution_id="paused", status=WorkflowNodeExecutionStatus.PAUSED)
     writer.save_synchronously(paused)
+    writer.for_workflow_tool("app-1").save_synchronously(
+        paused.model_copy(update={"id": "source-paused", "node_execution_id": "source-paused"})
+    )
     reader = repository_type(
         sqlite_session_factory,
         tenant_id="tenant-1",
         user=user,
         app_id="app-1",
-        triggered_from=triggered_from,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
+    source_reader = reader.for_workflow_tool("app-1")
     assert {node.id for node in reader.get_by_workflow_execution("run-1")} == {"finished"}
+    assert source_reader.get_by_workflow_execution("run-1") == []
     assert {node.id for node in reader.get_by_workflow_execution("run-1", include_paused=True)} == {
         "finished",
         "paused",
     }
+    assert {node.id for node in source_reader.get_by_workflow_execution("run-1", include_paused=True)} == {
+        "source-paused"
+    }
     assert {node.id for node in reader.get_by_workflow_execution("run-1")} == {"finished"}
+    assert source_reader.get_by_workflow_execution("run-1") == []
+
+
+def test_trace_read_includes_only_owned_workflow_tools_without_widening_default_reads(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    caller = _repository(monkeypatch, sqlite_session_factory)
+    caller.save(_execution(execution_id="root", node_execution_id="root"))
+    for execution_id, tenant_id, app_id, root_app_id, run_id, origin in (
+        ("child", "tenant-1", "source-app", "app-1", "run-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+        ("same-app", "tenant-1", "app-1", "app-1", "run-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+        ("foreign-root", "tenant-1", "source-app", "app-2", "run-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+        (
+            "foreign-tenant",
+            "tenant-2",
+            "source-app",
+            "app-1",
+            "run-1",
+            WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        ),
+        ("foreign-run", "tenant-1", "source-app", "app-1", "run-2", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+        ("foreign-app", "tenant-1", "source-app", "app-1", "run-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
+    ):
+        _repository(
+            monkeypatch, sqlite_session_factory, tenant_id=tenant_id, app_id=app_id, triggered_from=origin
+        ).save(
+            _execution(
+                execution_id=execution_id,
+                node_execution_id=execution_id,
+                run_id=run_id,
+                process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: root_app_id},
+            )
+        )
+    assert {node.id for node in caller.get_by_workflow_execution("run-1", include_workflow_tools=True)} == {
+        "root",
+        "child",
+        "same-app",
+    }
+    assert [node.id for node in caller.get_by_workflow_execution("run-1")] == ["root"]
+    with pytest.raises(ValueError, match="app_id is required"):
+        _repository(monkeypatch, sqlite_session_factory, app_id=None).get_by_workflow_execution(
+            "run-1", include_workflow_tools=True
+        )
 
 
 def test_to_domain_model_loads_offloaded_storage(

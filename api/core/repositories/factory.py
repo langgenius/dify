@@ -33,6 +33,10 @@ class WorkflowExecutionRepository(Protocol):
 
 
 class WorkflowNodeExecutionRepository(Protocol):
+    def for_workflow_tool(self, app_id: str) -> "WorkflowNodeExecutionRepository":
+        """Scope hidden Workflow Tool executions to their source app in the same tenant."""
+        ...
+
     def save(self, execution: WorkflowNodeExecution): ...
 
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None: ...
@@ -44,8 +48,11 @@ class WorkflowNodeExecutionRepository(Protocol):
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
         *,
+        include_workflow_tools: bool = False,
         include_paused: bool = False,
-    ) -> Sequence[WorkflowNodeExecution]: ...
+    ) -> Sequence[WorkflowNodeExecution]:
+        """Include owned tool nodes for trace export, or paused nodes for resumption when requested."""
+        ...
 
 
 class RepositoryImportError(Exception):

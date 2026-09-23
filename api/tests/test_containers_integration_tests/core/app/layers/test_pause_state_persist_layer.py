@@ -34,6 +34,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.workflow_run_agg import WorkflowRunAgg
 
 
@@ -138,6 +139,9 @@ class WorkflowCase:
             variable_pool=variable_pool,
             graph_runtime_state=runtime,
             command_channel=commands,
+            workflow_tool_source_repository=SQLAlchemyWorkflowToolSourceRepository(
+                session_maker=sessionmaker(self.engine, expire_on_commit=False)
+            ),
         )
         entry.graph_engine.add_layer(persistence)
         prepared = PreparedWorkflowRun(entry, persistence, entity, runs, nodes, (persistence,))

@@ -27,6 +27,7 @@ from core.tools.errors import ToolInvokeError
 from core.tools.tool_manager import ToolManager
 from core.tools.workflow_as_tool import tool as workflow_tool_module
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
@@ -167,7 +168,7 @@ def _build_tool(*, tenant_id: str = "test_tool", workflow_app_id: str = "app-1",
     return WorkflowTool(
         execution_driver=WorkflowRunAgg.run,
         workflow_app_id=workflow_app_id,
-        workflow_entities={},
+        workflow_id="workflow-1",
         workflow_as_tool_id="wf-tool-1",
         version=version,
         workflow_call_depth=1,
@@ -273,6 +274,48 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
         # actually `run` the tool.
         list(tool.invoke(MagicMock(spec=Session), "test_user", {}))
     assert exc_info.value.args == ("oops",)
+
+
+def test_workflow_tool_rejects_human_input_before_invoking_generator(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    tool = _build_tool()
+    workflow = _workflow_stub(nodes=[{"data": {"type": BuiltinNodeTypes.HUMAN_INPUT}}])
+    generate_mock = MagicMock()
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: workflow)
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+
+    with pytest.raises(ToolInvokeError, match="require Engine-managed container execution"):
+        list(tool.invoke(MagicMock(spec=Session), "test_user", {}))
+
+    generate_mock.assert_not_called()
+
+
+def test_workflow_tool_rejects_paused_generator_result(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    tool = _build_tool()
+    user = MagicMock(spec=Account)
+    generate_mock = MagicMock(
+        return_value={
+            "data": {
+                "status": WorkflowExecutionStatus.PAUSED,
+                "outputs": {},
+            }
+        }
+    )
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+
+    with pytest.raises(ToolInvokeError, match="requires Engine-managed container execution"):
+        list(tool.invoke(MagicMock(spec=Session), "test_user", {}))
+
+    generate_mock.assert_called_once()
 
 
 def test_workflow_tool_does_not_use_pause_state_config(

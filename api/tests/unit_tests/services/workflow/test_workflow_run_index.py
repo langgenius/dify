@@ -1,10 +1,11 @@
 from datetime import datetime
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
@@ -13,7 +14,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.engine import Engine
 from graphon.engine_events import NodeRunStartedEvent
 from graphon.entities import WorkflowNodeExecution
-from graphon.enums import BuiltinNodeTypes, WorkflowType
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowType
 from graphon.graph import Graph
 from graphon.runtime import RuntimeState, VariablePool
 from models import Account, AppMode
@@ -37,7 +38,7 @@ def _history(execution_id: str, index: int) -> WorkflowNodeExecution:
     )
 
 
-def _engine() -> Engine:
+def _engine(*, invocation_id: str | None = None) -> Engine:
     graph_config: dict[str, object] = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
@@ -51,6 +52,7 @@ def _engine() -> Engine:
         start_at=0.0,
     )
     params = build_test_graph_init_params(workflow_id="workflow", graph_config=graph_config)
+    params.run_context[DIFY_RUN_CONTEXT_KEY].workflow_tool_invocation_id = invocation_id
     return Engine(
         graph=Graph.init(
             graph_config=graph_config,
@@ -114,3 +116,34 @@ def test_engine_indices_are_available_before_delivery_and_match_persistence(
     with sqlite_session_factory() as session:
         stored = {row.id: row.index for row in session.scalars(select(WorkflowNodeExecutionModel))}
     assert stored == {"earlier": 7, **started}
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [None, {WorkflowNodeExecutionMetadataKey.ITERATION_ID: None, WorkflowNodeExecutionMetadataKey.LOOP_ID: None}],
+)
+def test_source_scopes_continue_independently_and_replayed_execution_keeps_its_index(
+    metadata: dict[WorkflowNodeExecutionMetadataKey, object] | None,
+) -> None:
+    history = _history("root-earlier", 9)
+    history.metadata = metadata
+    index = WorkflowRunIndex(root_executions=[history])
+    assert (index.root_snapshots[0].iteration_id, index.root_snapshots[0].loop_id) == ("", "")
+    index.seed_source("app", "workflow", [_history("source-earlier", 3)])
+    first = _engine(invocation_id="first-call")
+    first.add_layer(index)
+    first_events = [event for event in first.run() if isinstance(event, NodeRunStartedEvent)]
+    assert [index.index_for(event.id) for event in first_events] == [4, 5]
+
+    node = first.graph.root_node
+    node.bind_execution_id(first_events[0].id)
+    index.on_node_run_start(node)
+    assert index.index_for(first_events[0].id) == 4
+
+    index.seed_source("app", "workflow", [_history("source-earlier", 3)])
+    for invocation, expected in (("second-call", [6, 7]), (None, [10, 11])):
+        engine = _engine(invocation_id=invocation)
+        engine.add_layer(index)
+        assert [
+            index.index_for(event.id) for event in engine.run() if isinstance(event, NodeRunStartedEvent)
+        ] == expected

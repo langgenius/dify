@@ -6,6 +6,7 @@ from types import MappingProxyType
 from typing import override
 
 from core.app.entities.queue_entities import NodeExecutionSnapshot
+from core.workflow.node_runtime import resolve_dify_run_context
 from graphon.engine.layer import Layer
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey
@@ -38,6 +39,10 @@ class WorkflowRunIndex(Layer):
     def index_for(self, execution_id: str) -> int:
         return self._indices[execution_id]
 
+    def seed_source(self, app_id: str, workflow_id: str, executions: Sequence[WorkflowNodeExecution]) -> None:
+        with self._lock:
+            self._seed((app_id, workflow_id), executions)
+
     def _seed(self, scope: tuple[str, str] | None, executions: Sequence[WorkflowNodeExecution]) -> None:
         if scope in self._next_indices:
             return
@@ -49,7 +54,8 @@ class WorkflowRunIndex(Layer):
 
     @override
     def on_node_run_start(self, node: Node) -> None:
-        scope = None
+        context = resolve_dify_run_context(node.run_context)
+        scope = (context.app_id, node.workflow_id) if context.workflow_tool_invocation_id else None
         with self._lock:
             if node.execution_id not in self._indices:
                 self._next_indices[scope] = self._next_indices.get(scope, 0) + 1

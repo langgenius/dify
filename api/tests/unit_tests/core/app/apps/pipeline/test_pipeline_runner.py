@@ -134,6 +134,7 @@ def runner():
         system_user_id="sys",
         workflow_execution_repository=workflow_execution_repository,
         workflow_node_execution_repository=workflow_node_execution_repository,
+        workflow_tool_source_repository=MagicMock(),
     )
 
 
@@ -251,6 +252,7 @@ def test_run_pipeline_not_found():
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     with pytest.raises(ValueError):
@@ -339,6 +341,7 @@ def test_run_workflow_not_initialized(sqlite_session: Session):
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
     with pytest.raises(ValueError):
         runner.prepare()
@@ -360,6 +363,7 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
@@ -414,6 +418,7 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)

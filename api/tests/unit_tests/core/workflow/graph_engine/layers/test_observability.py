@@ -12,6 +12,7 @@ Test coverage:
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
+from unittest.mock import MagicMock
 
 import pytest
 from opentelemetry.sdk.trace import ReadableSpan, SpanProcessor
@@ -19,6 +20,7 @@ from opentelemetry.trace import StatusCode, get_current_span
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.workflow.layers.observability import ObservabilityLayer
+from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.otel.semconv import DifySpanAttributes
 from graphon.engine_events import GraphRunAbortedEvent, GraphRunSucceededEvent
@@ -80,6 +82,7 @@ def test_instrument_flag_enables_workflow_node_spans(memory_span_exporter, confi
         call_depth=0,
         variable_pool=state.variable_pool,
         graph_runtime_state=state,
+        workflow_tool_source_repository=MagicMock(spec=WorkflowToolSourceRepository),
     )
 
     events = list(entry.run())
