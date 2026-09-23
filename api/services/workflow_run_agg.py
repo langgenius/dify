@@ -17,6 +17,7 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.repositories.human_input_repository import HumanInputFormRecord, HumanInputFormSubmissionRepository
+from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime, resolve_dify_run_context
 from core.workflow.nodes.human_input.boundary import build_human_input_pause_reason
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
@@ -36,6 +37,7 @@ from graphon.engine_events import (
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
 )
+from graphon.entities import WorkflowNodeExecution
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.runtime import use_workflow_file_runtime
@@ -82,6 +84,25 @@ class WorkflowRunAgg:
         prepared.persistence_layer.set_node_run_indices(self.index.indices)
         prepared.persistence_layer.set_node_execution_history(histories)
         self._entry.graph_engine.add_layer(self.index)
+        sources: set[tuple[str, str]] = set()
+
+        def source_listener(source: WorkflowToolSource):
+            key = (source.app_id, source.workflow_id)
+            executions: Sequence[WorkflowNodeExecution] = ()
+            if key not in sources:
+                if is_resuming:
+                    executions = tuple(
+                        execution
+                        for execution in prepared.workflow_node_execution_repository.for_workflow_tool(
+                            source.app_id
+                        ).get_by_workflow_execution(self._run_id, include_paused=True)
+                        if execution.workflow_id == source.workflow_id
+                    )
+                self.index.seed_source(source.app_id, source.workflow_id, executions)
+                sources.add(key)
+            return prepared.persistence_layer.create_workflow_tool_event_listener(source, node_executions=executions)
+
+        self._entry.workflow_tool_event_listener_factory = source_listener
 
     @staticmethod
     @trace_span(WorkflowAppRunnerHandler)

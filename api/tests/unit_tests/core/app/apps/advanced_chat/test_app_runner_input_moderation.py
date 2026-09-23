@@ -99,6 +99,7 @@ def build_runner(sqlite_session: Session):
         app=app,
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     return runner

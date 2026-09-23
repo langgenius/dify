@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
@@ -41,6 +41,7 @@ from models.workflow import (
     WorkflowPause,
     WorkflowRun,
 )
+from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.workflow_run_agg import WorkflowRunAgg
 
 
@@ -117,6 +118,9 @@ def make_workflow_runner(sqlite_engine: Engine, *, human_input: bool = False) ->
             user=user,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        ),
+        workflow_tool_source_repository=SQLAlchemyWorkflowToolSourceRepository(
+            session_maker=sessionmaker(sqlite_engine)
         ),
         execution_driver=WorkflowRunAgg.run,
     )
@@ -301,6 +305,7 @@ def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(s
         system_user_id=entity.user_id,
         workflow_execution_repository=original._workflow_execution_repository,
         workflow_node_execution_repository=original._workflow_node_execution_repository,
+        workflow_tool_source_repository=original._workflow_tool_source_repository,
         graph_runtime_state=RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state),
         response_stream_filter=snapshot.get_response_stream_filter(),
         execution_driver=WorkflowRunAgg.run,

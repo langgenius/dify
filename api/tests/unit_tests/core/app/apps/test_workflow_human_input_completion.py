@@ -30,6 +30,7 @@ from core.repositories.human_input_repository import HumanInputFormRepositoryImp
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_runtime import DifyFileReferenceFactory
+from core.workflow.nodes.human_input.boundary import human_input_container_selector
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
@@ -59,6 +60,7 @@ from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import _build_pipeline
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter_human_input import _build_converter
@@ -155,6 +157,7 @@ def _make_paused_workflow(
     state.graph_execution.start()
     for form in forms:
         state.graph_execution.pause(HitlRequired(session_id=form.id, node_id=form.node_id, node_title="Approval"))
+        state.variable_pool.add(human_input_container_selector(form.id), "outer-tool")
     state.defer_ready_task(StartTask(frame_id=ROOT_FRAME_ID, node_id=graph.root_node.id))
     return WorkflowEntry(
         tenant_id="tenant",
@@ -168,6 +171,9 @@ def _make_paused_workflow(
         call_depth=0,
         variable_pool=state.variable_pool,
         graph_runtime_state=state,
+        workflow_tool_source_repository=SQLAlchemyWorkflowToolSourceRepository(
+            session_maker=session_factory.get_session_maker()
+        ),
     )
 
 
@@ -243,7 +249,7 @@ def test_resume_publishes_only_the_completed_form_among_repeated_node_invocation
     assert len(completions) == 1
     completion = completions[0]
     assert completion.form_id == selected.id
-    assert completion.node_id == "same-human-node"
+    assert completion.node_id == "outer-tool"
     if status == HumanInputFormStatus.SUBMITTED:
         assert isinstance(completion, QueueHumanInputFormFilledEvent)
         assert (completion.action_id, completion.action_text, completion.rendered_content) == (
@@ -416,7 +422,7 @@ def test_waiting_form_expiring_during_resume_publishes_timeout_before_success(sq
     assert isinstance(published[-1], QueueWorkflowSucceededEvent)
     timeouts = [event for event in published if isinstance(event, QueueHumanInputFormTimeoutEvent)]
     assert [event.form_id for event in timeouts] == [form.id]
-    assert timeouts[0].node_id == "same-human-node"
+    assert timeouts[0].node_id == "outer-tool"
     assert published.index(timeouts[0]) < len(published) - 1
     sqlite_session.refresh(form)
     assert form.status == HumanInputFormStatus.TIMEOUT

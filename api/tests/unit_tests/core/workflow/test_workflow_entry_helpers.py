@@ -11,7 +11,7 @@ from core.credit_usage import CreditUsageAppType
 from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
 from graphon.engine.filter import ResponseStreamFilter
-from graphon.engine_events import GraphRunFailedEvent, NodeRunSucceededEvent
+from graphon.engine_events import GraphRunAbortedEvent, GraphRunFailedEvent, NodeRunSucceededEvent
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
@@ -22,6 +22,12 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow
+from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.core.workflow.test_workflow_tool_container import (
+    _outer_graph,
+    _workflow_tool_node,
+    _workflow_tool_source,
+)
 from tests.unit_tests.model_factories import make_workflow
 
 
@@ -59,6 +65,7 @@ def _build_minimal_workflow_entry(
         call_depth=0,
         variable_pool=sentinel.variable_pool,
         graph_runtime_state=graph_runtime_state,
+        workflow_tool_source_repository=sentinel.workflow_tool_source_repository,
         response_stream_filter=response_stream_filter,
     )
 
@@ -80,7 +87,33 @@ class TestWorkflowEntryInit:
                 call_depth=call_depth,
                 variable_pool=sentinel.variable_pool,
                 graph_runtime_state=sentinel.graph_runtime_state,
+                workflow_tool_source_repository=sentinel.workflow_tool_source_repository,
             )
+
+    def test_hidden_workflow_tool_nodes_count_toward_execution_limit(self):
+        tool, _, _ = _workflow_tool_node()
+        repository = MagicMock()
+        repository.get_source.return_value = _workflow_tool_source()
+        with config_overrides_context(WORKFLOW_MAX_EXECUTION_STEPS=2, GRAPH_ENGINE_MAX_WORKERS=1):
+            entry = workflow_entry.WorkflowEntry(
+                tenant_id="tenant",
+                app_id="outer-app",
+                workflow_id="outer-workflow",
+                graph_config=tool.init_params.graph_config,
+                graph=_outer_graph(tool),
+                user_id="user",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+                call_depth=0,
+                variable_pool=tool.runtime_state.variable_pool,
+                graph_runtime_state=tool.runtime_state,
+                workflow_tool_source_repository=repository,
+            )
+            events = list(entry.run())
+
+        assert isinstance(events[-1], GraphRunAbortedEvent)
+        assert "Maximum execution steps exceeded: 3 > 2" in events[-1].reason
+        assert not any(isinstance(event, NodeRunSucceededEvent) and event.node_id == "tool" for event in events)
 
     def test_workflow_entry_stores_supplied_response_stream_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
         supplied_filter = ResponseStreamFilter()

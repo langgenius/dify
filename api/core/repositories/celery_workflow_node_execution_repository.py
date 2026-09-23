@@ -94,6 +94,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Extract user context
         self._triggered_from = triggered_from
         self._creator_user_id = user.id
+        self._user = user
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
@@ -117,6 +118,16 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             self._tenant_id,
             self._app_id,
             self._triggered_from,
+        )
+
+    @override
+    def for_workflow_tool(self, app_id: str) -> "CeleryWorkflowNodeExecutionRepository":
+        return CeleryWorkflowNodeExecutionRepository(
+            session_factory=self._session_factory,
+            tenant_id=self._tenant_id,
+            user=self._user,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
         )
 
     @override
@@ -184,10 +195,15 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
         *,
+        include_workflow_tools: bool = False,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve workflow node executions from cache after loading persisted history once.
+
+        With include_workflow_tools, trace export reads SQL directly and requires
+        a root app_id, keeping source-app nodes out of the runtime cache.
+        Resume hydration also reads SQL directly when include_paused is requested.
 
         Args:
             workflow_execution_id: The workflow execution identifier
@@ -196,10 +212,13 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         Returns:
             A sequence of WorkflowNodeExecution instances
         """
-        if include_paused:
-            # Resume hydration must not widen the ordinary runtime cache.
+        if include_workflow_tools or include_paused:
+            # Trace and resume reads must not widen the ordinary runtime cache.
             return self._sql_repository.get_by_workflow_execution(
-                workflow_execution_id, order_config, include_paused=True
+                workflow_execution_id,
+                order_config,
+                include_workflow_tools=include_workflow_tools,
+                include_paused=include_paused,
             )
         try:
             if workflow_execution_id not in self._database_loaded_workflow_executions:
