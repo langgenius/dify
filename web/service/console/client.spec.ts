@@ -137,6 +137,7 @@ const createComposerState = (
 const createAgentPublishResponse = (
   overrides: Partial<AgentPublishMutationResponse> = {},
 ): AgentPublishMutationResponse => ({
+  publication_kind: 'update',
   active_config_snapshot: {
     id: 'snapshot-1',
     version: 1,

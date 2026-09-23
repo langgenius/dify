@@ -1,7 +1,9 @@
 import type { DefaultValueForm } from './types'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import {
   Collapse,
   CollapseActions,
@@ -20,6 +22,8 @@ import { ErrorHandleTypeEnum } from './types'
 type ErrorHandleProps = Pick<Node, 'id' | 'data'>
 
 const ErrorHandle = ({ id, data }: ErrorHandleProps) => {
+  const titleId = useId()
+
   const { t } = useTranslation()
   const { error_strategy, default_value } = data
   const { collapsed, setCollapsed, handleErrorHandleTypeChange } = useErrorHandle(id, data)
@@ -39,17 +43,15 @@ const ErrorHandle = ({ id, data }: ErrorHandleProps) => {
         <CollapseHeader>
           <CollapseTrigger>
             <CollapseTitle>
-              {t(($) => $['nodes.common.errorHandle.title'], { ns: 'workflow' })}
+              <span id={titleId}>
+                {t(($) => $['nodes.common.errorHandle.title'], { ns: 'workflow' })}
+              </span>
             </CollapseTitle>
             {!!error_strategy && <CollapseIndicator />}
           </CollapseTrigger>
           <Infotip>
-            <InfotipTrigger
-              aria-label={t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
-            />
-            <InfotipContent
-              aria-label={t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
-            >
+            <InfotipTrigger aria-labelledby={titleId} />
+            <InfotipContent aria-labelledby={titleId}>
               {t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
             </InfotipContent>
           </Infotip>
@@ -58,6 +60,7 @@ const ErrorHandle = ({ id, data }: ErrorHandleProps) => {
               <ErrorHandleTypeSelector
                 value={error_strategy || ErrorHandleTypeEnum.none}
                 onSelected={handleTypeChange}
+                allowDefaultValue={!hasAgentV2OutputRoutes(data)}
               />
             </div>
           </CollapseActions>

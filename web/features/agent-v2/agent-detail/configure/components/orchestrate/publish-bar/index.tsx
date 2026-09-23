@@ -6,6 +6,7 @@ import type {
   AgentReferencingWorkflowsResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { AgentConfigurePublishResult } from '../../../use-agent-configure-sync'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -14,15 +15,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
+import {
+  agentComposerDraftAtom,
+  isAgentComposerDirtyAtom,
+} from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { AgentVersionRestore } from '../../version-restore'
 import { AgentPublishImpactDetails } from './publish-impact-details'
+import { AgentPublishSuccess } from './publish-success'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
 
@@ -30,6 +35,7 @@ type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpubl
 
 type PublishBarMode =
   | { status: 'compact' }
+  | ({ status: 'success' } & AgentConfigurePublishResult)
   | { status: 'confirmingImpact'; references: AgentReferencingWorkflowResponse[] }
 
 type AgentConfigurePublishBarProps = {
@@ -37,7 +43,7 @@ type AgentConfigurePublishBarProps = {
   agentName?: string | null
   isPublishing?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  onPublish?: () => void | Promise<void>
+  onPublish?: () => Promise<AgentConfigurePublishResult | false>
   onExitVersions?: () => void
   onOpenVersions?: () => void
   onVersionRestored?: () => void | Promise<void>
@@ -91,6 +97,9 @@ export function AgentConfigurePublishBar({
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
+  const draft = useAtomValue(agentComposerDraftAtom)
+  const barRef = useRef<HTMLDivElement>(null)
+  const publishRequestPendingRef = useRef(false)
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
   const composerQuery = useQuery(
     consoleQuery.agent.byAgentId.composer.get.queryOptions({
@@ -136,11 +145,18 @@ export function AgentConfigurePublishBar({
   useQuery(workflowReferencesQueryOptions)
   const canPublish = publishIsAvailable && !isPublishing
 
+  const preserveBarFocus = () => {
+    const bar = barRef.current
+    if (bar?.contains(bar.ownerDocument.activeElement)) bar.focus({ preventScroll: true })
+  }
+
   const handlePublish = async () => {
     if (!canPublish) return
 
-    await onPublish?.()
-    setPublishBarMode({ status: 'compact' })
+    const published = await onPublish?.()
+    if (!published) return
+    preserveBarFocus()
+    setPublishBarMode({ status: 'success', ...published })
   }
 
   const handlePublishRequest = async () => {
@@ -172,7 +188,13 @@ export function AgentConfigurePublishBar({
   }
 
   const requestPublish = () => {
-    void handlePublishRequest().catch(() => undefined)
+    if (publishRequestPendingRef.current) return
+    publishRequestPendingRef.current = true
+    void handlePublishRequest()
+      .catch(() => undefined)
+      .finally(() => {
+        publishRequestPendingRef.current = false
+      })
   }
 
   useHotkey(
@@ -186,6 +208,19 @@ export function AgentConfigurePublishBar({
       ignoreInputs: false,
     },
   )
+
+  // Consume the notice instead of just hiding it, so undoing edits cannot bring it back.
+  if (
+    publishBarMode.status === 'success' &&
+    (selectedVersionSnapshot || publishBarMode.draft !== draft)
+  ) {
+    setPublishBarMode({ status: 'compact' })
+  }
+
+  const dismissSuccess = () => {
+    preserveBarFocus()
+    setPublishBarMode({ status: 'compact' })
+  }
 
   if (selectedVersionSnapshot) {
     return (
@@ -273,29 +308,50 @@ export function AgentConfigurePublishBar({
 
   return (
     <Collapsible
+      ref={barRef}
+      tabIndex={-1}
       open={isConfirmingImpact}
-      className="group/publish-bar pointer-events-auto w-full overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
+      className="group/publish-bar pointer-events-auto w-full overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
     >
-      <CollapsiblePanel className="system-sm-regular text-text-secondary">
-        <AgentPublishImpactDetails
-          publishActionLabel={currentStateMeta.actionLabel}
-          agentName={agentName}
-          references={impactReferences}
+      {/* Mount the live region before its message so assistive technology observes the update. */}
+      <span role="status" aria-atomic="true" className="sr-only">
+        {publishBarMode.status === 'success'
+          ? publishBarMode.kind === 'first'
+            ? t(($) => $['agentDetail.configure.publishSuccess.firstTitle'])
+            : t(($) => $['agentDetail.configure.publishSuccess.updateTitle'])
+          : null}
+      </span>
+      {publishBarMode.status === 'success' ? (
+        <AgentPublishSuccess
+          agentId={agentId}
+          kind={publishBarMode.kind}
+          onDismiss={dismissSuccess}
+          onAccessMethods={() => setPublishBarMode({ status: 'compact' })}
         />
-      </CollapsiblePanel>
-      <PublishBarActions
-        actionIcon={currentStateMeta.actionIcon}
-        actionLabel={currentStateMeta.actionLabel}
-        dotStatus={currentStateMeta.dotStatus}
-        isPublishing={isPublishing}
-        metaLabel={currentStateMeta.metaLabel}
-        showShortcut={currentStateMeta.showShortcut}
-        statusLabel={currentStateMeta.statusLabel}
-        publishIsAvailable={publishIsAvailable}
-        onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
-        onOpenVersions={() => onOpenVersions?.()}
-        onPublishRequest={requestPublish}
-      />
+      ) : (
+        <>
+          <CollapsiblePanel className="system-sm-regular text-text-secondary">
+            <AgentPublishImpactDetails
+              publishActionLabel={currentStateMeta.actionLabel}
+              agentName={agentName}
+              references={impactReferences}
+            />
+          </CollapsiblePanel>
+          <PublishBarActions
+            actionIcon={currentStateMeta.actionIcon}
+            actionLabel={currentStateMeta.actionLabel}
+            dotStatus={currentStateMeta.dotStatus}
+            isPublishing={isPublishing}
+            metaLabel={currentStateMeta.metaLabel}
+            showShortcut={currentStateMeta.showShortcut}
+            statusLabel={currentStateMeta.statusLabel}
+            publishIsAvailable={publishIsAvailable}
+            onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
+            onOpenVersions={() => onOpenVersions?.()}
+            onPublishRequest={requestPublish}
+          />
+        </>
+      )}
     </Collapsible>
   )
 }
@@ -338,13 +394,21 @@ function PublishBarActions({
         <span className="flex size-4 shrink-0 items-center justify-center">
           <StatusDot size="small" status={dotStatus} />
         </span>
-        <span className="shrink-0">{statusLabel}</span>
-        <span aria-hidden className="shrink-0">
-          ·
-        </span>
         <Tooltip>
-          <TooltipTrigger render={<span className="min-w-0 truncate">{metaLabel}</span>} />
-          <TooltipContent>{metaLabel}</TooltipContent>
+          <TooltipTrigger
+            render={
+              <span className="min-w-0 truncate">
+                <span>{statusLabel}</span>
+                <span aria-hidden> · </span>
+                <span>{metaLabel}</span>
+              </span>
+            }
+          />
+          <TooltipContent>
+            <span>{statusLabel}</span>
+            <span aria-hidden> · </span>
+            <span>{metaLabel}</span>
+          </TooltipContent>
         </Tooltip>
       </div>
       <button

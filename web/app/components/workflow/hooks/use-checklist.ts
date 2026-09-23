@@ -410,7 +410,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
           isReadyForCheckValid,
         }
       } else {
-        usedVars = getNodeUsedVars(node!).filter((v) => v.length > 0)
+        usedVars = getNodeUsedVars(node!, { forExecution: true }).filter((v) => v.length > 0)
       }
 
       if (node!.data.type === BlockEnum.LLM) {
@@ -802,7 +802,7 @@ export const useChecklistBeforePublish = () => {
           isReadyForCheckValid,
         }
       } else {
-        usedVars = getNodeUsedVars(node!).filter((v) => v.length > 0)
+        usedVars = getNodeUsedVars(node!, { forExecution: true }).filter((v) => v.length > 0)
       }
 
       if (node!.data.type === BlockEnum.LLM) {

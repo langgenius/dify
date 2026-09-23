@@ -20,6 +20,8 @@ type DetailsProps = {
 }
 
 const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
+  const structureLabelId = React.useId()
+
   const { t } = useTranslation()
   const { data: pipelineTemplateInfo } = usePipelineTemplateById(
     {
@@ -96,17 +98,15 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
         </div>
         <div className="flex flex-col gap-y-1 px-4 py-2">
           <div className="flex h-6 items-center gap-x-0.5">
-            <span className="system-sm-semibold-uppercase text-text-secondary">
+            <span
+              id={structureLabelId}
+              className="system-sm-semibold-uppercase text-text-secondary"
+            >
               {t(($) => $['details.structure'], { ns: 'datasetPipeline' })}
             </span>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
-              />
-              <InfotipContent
-                aria-label={t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
-                className="max-w-60"
-              >
+              <InfotipTrigger aria-labelledby={structureLabelId} />
+              <InfotipContent aria-labelledby={structureLabelId} className="max-w-60">
                 {t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
               </InfotipContent>
             </Infotip>

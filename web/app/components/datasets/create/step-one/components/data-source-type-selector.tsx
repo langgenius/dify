@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@langgenius/dify-ui/cn'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -12,6 +13,7 @@ import { DataSourceType } from '@/models/datasets'
 import s from '../index.module.css'
 
 type DataSourceTypeSelectorProps = {
+  labelledBy?: string
   currentType: DataSourceType
   disabled: boolean
   onChange: (type: DataSourceType) => void
@@ -50,6 +52,7 @@ const DATA_SOURCE_OPTIONS: DataSourceOption[] = [
  * Data source type selector component for choosing between file, notion, and web sources.
  */
 function DataSourceTypeSelector({
+  labelledBy,
   currentType,
   disabled,
   onChange,
@@ -79,17 +82,24 @@ function DataSourceTypeSelector({
   )
 
   return (
-    <div className="mb-8 grid grid-cols-3 gap-4">
+    <RadioGroup
+      aria-labelledby={labelledBy}
+      aria-label={labelledBy ? undefined : t(($) => $['steps.one'], { ns: 'datasetCreation' })}
+      value={currentType}
+      disabled={disabled}
+      onValueChange={handleTypeChange}
+      className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3"
+    >
       {visibleOptions.map((option) => (
-        <div
+        <RadioItem
           key={option.type}
+          value={option.type}
           className={cn(
             s.dataSourceItem,
-            'system-sm-medium',
+            'system-sm-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-input-border-active',
             currentType === option.type && s.active,
             disabled && currentType !== option.type && s.disabled,
           )}
-          onClick={() => handleTypeChange(option.type)}
         >
           <span className={cn(s.datasetIcon, option.iconClass)} />
           <span
@@ -98,9 +108,9 @@ function DataSourceTypeSelector({
           >
             {t(($) => $[option.labelKey], { ns: 'datasetCreation' })}
           </span>
-        </div>
+        </RadioItem>
       ))}
-    </div>
+    </RadioGroup>
   )
 }
 

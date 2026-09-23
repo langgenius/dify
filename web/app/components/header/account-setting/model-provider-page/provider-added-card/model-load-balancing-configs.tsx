@@ -14,7 +14,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import GridMask from '@/app/components/base/grid-mask'
@@ -53,6 +53,8 @@ const ModelLoadBalancingConfigs = ({
   onUpdate,
   onRemove,
 }: ModelLoadBalancingConfigsProps) => {
+  const loadBalancingLabelId = useId()
+
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -187,16 +189,16 @@ const ModelLoadBalancingConfigs = ({
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
-              {t(($) => $['modelProvider.loadBalancing'], { ns: 'common' })}
+              <span id={loadBalancingLabelId}>
+                {t(($) => $['modelProvider.loadBalancing'], { ns: 'common' })}
+              </span>
               <Infotip>
                 <InfotipTrigger
-                  aria-label={t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
+                  aria-labelledby={loadBalancingLabelId}
                   className="size-3"
                   iconSize="small"
                 />
-                <InfotipContent
-                  aria-label={t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
-                >
+                <InfotipContent aria-labelledby={loadBalancingLabelId}>
                   {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
                 </InfotipContent>
               </Infotip>

@@ -12,9 +12,14 @@ import { ErrorHandleTypeEnum } from './types'
 
 type ErrorHandleTypeSelectorProps = {
   value: ErrorHandleTypeEnum
+  allowDefaultValue?: boolean
   onSelected: (value: ErrorHandleTypeEnum) => void
 }
-const ErrorHandleTypeSelector = ({ value, onSelected }: ErrorHandleTypeSelectorProps) => {
+const ErrorHandleTypeSelector = ({
+  value,
+  onSelected,
+  allowDefaultValue = true,
+}: ErrorHandleTypeSelectorProps) => {
   const { t } = useTranslation()
   const options = [
     {
@@ -33,6 +38,9 @@ const ErrorHandleTypeSelector = ({ value, onSelected }: ErrorHandleTypeSelectorP
       description: t(($) => $['nodes.common.errorHandle.failBranch.desc'], { ns: 'workflow' }),
     },
   ]
+  const availableOptions = options.filter(
+    (option) => allowDefaultValue || option.value !== ErrorHandleTypeEnum.defaultValue,
+  )
   const selectedOption = options.find((option) => option.value === value)
 
   return (
@@ -56,7 +64,7 @@ const ErrorHandleTypeSelector = ({ value, onSelected }: ErrorHandleTypeSelectorP
         className="w-70 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
         <DropdownMenuRadioGroup value={value} onValueChange={onSelected}>
-          {options.map((option) => (
+          {availableOptions.map((option) => (
             <DropdownMenuRadioItem
               key={option.value}
               value={option.value}

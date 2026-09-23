@@ -3,7 +3,6 @@ import type { AccessControlAccount, AccessControlGroup } from '@/models/access-c
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AccessMode } from '@/models/access-control'
@@ -214,21 +213,5 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
         />
       </IconButton>
     </div>
-  )
-}
-
-export function WebAppSSONotEnabledTip() {
-  const { t } = useTranslation()
-  const tip = t(($) => $['accessControlDialog.webAppSSONotEnabledTip'], { ns: 'app' })
-
-  return (
-    <Infotip>
-      <InfotipTrigger
-        aria-label={tip}
-        className="text-text-warning-secondary hover:text-text-warning-secondary"
-        iconSize="large"
-      />
-      <InfotipContent aria-label={tip}>{tip}</InfotipContent>
-    </Infotip>
   )
 }

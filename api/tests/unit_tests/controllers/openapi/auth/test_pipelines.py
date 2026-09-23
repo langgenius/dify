@@ -9,6 +9,8 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from controllers.openapi._errors import CatalogStale
 from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import (
@@ -16,6 +18,7 @@ from controllers.openapi.auth.pipelines import (
     AccountPipeline,
     ExternalSsoPipeline,
     Pipeline,
+    _RequiresCurrentCatalog,
 )
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -25,12 +28,11 @@ from controllers.openapi.auth.requirements import (
     Rank,
     Requirement,
 )
-from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
 from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from services.app_service import AppService
-from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 from ._world import (
@@ -79,6 +81,10 @@ class _NoFixed(Pipeline):
     pass
 
 
+def _current_catalog(app: Flask) -> dict[str, str]:
+    return {CATALOG_HEADER: catalog_for(app)[1]}
+
+
 def _run(
     pipeline: Pipeline,
     subject: Subject,
@@ -91,7 +97,9 @@ def _run(
     return pipeline.run(
         subject=subject,
         auth=subject.auth,
-        spec=EndpointSpec(requirements=requirements),
+        spec=EndpointSpec(
+            requirements=requirements, catalog=CatalogMeta(op="test.op", kind=Kind.OBJECT, summary="test")
+        ),
         ctx=ctx,
         session=session,
         call=call,
@@ -151,6 +159,7 @@ def test_auth_ctx_is_published_for_the_view_and_reset_after_it(
 
 
 def test_a_caller_that_cannot_be_resolved_leaves_the_auth_ctx_unset(
+    app: Flask,
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -162,13 +171,15 @@ def test_a_caller_that_cannot_be_resolved_leaves_the_auth_ctx_unset(
     monkeypatch.setattr(MOUNT, never_reached)
     subject = account_subject()
 
-    with pytest.raises(Unauthorized, match="account not found"):
-        _run(AccountPipeline(), subject, make_ctx(sqlite_session, subject), sqlite_session)
+    with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
+        with pytest.raises(Unauthorized, match="account not found"):
+            _run(AccountPipeline(), subject, make_ctx(sqlite_session, subject), sqlite_session)
 
     assert try_get_auth_ctx() is None
 
 
 def test_the_requirements_that_share_a_datum_fetch_it_once(
+    app: Flask,
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -181,6 +192,7 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     subject = account_subject()
 
     with (
+        app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers=_current_catalog(app)),
         patch.object(AppService, "get_app_by_id", wraps=AppService.get_app_by_id) as app_fetch,
         patch.object(
             loaders.application_services().workspaces.identity,
@@ -230,11 +242,11 @@ def test_a_refused_sso_request_never_creates_an_end_user(
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     persist(sqlite_session, make_app(enable_api=enable_api), make_tenant())
     monkeypatch.setattr(MOUNT, never_reached)
-    monkeypatch.setattr(EndUserService, "get_or_create_end_user_by_type", never_reached)
+    monkeypatch.setattr("controllers.openapi.auth.subjects.application_services", never_reached)
     subject = sso_subject()
     ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
-    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}:run"):
+    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}:run", headers=_current_catalog(app)):
         with patch(FEATURES, return_value=system_features(webapp_auth=webapp_auth)):
             with patch(ACCESS_MODE, return_value=webapp_settings(WebAppAccessMode.PRIVATE_ALL.value)):
                 with pytest.raises(Forbidden, match=message):
@@ -245,3 +257,32 @@ def test_a_refused_sso_request_never_creates_an_end_user(
 
 def test_every_registrable_subject_has_a_pipeline() -> None:
     assert set(_SUBJECT_CLASSES.values()) == set(_PIPELINES)
+
+
+def test_every_pipeline_checks_the_catalog_before_anything_else() -> None:
+    """Fixed first and in the first band, so nothing a route declares below
+    `Rank.FIRST` - and nothing that mints a row - runs on a stale catalog.
+    """
+    assert all(isinstance(pipeline.fixed[0], _RequiresCurrentCatalog) for pipeline in _PIPELINES.values())
+    assert _RequiresCurrentCatalog.rank is Rank.FIRST
+
+
+@pytest.mark.parametrize("sent", [None, "not-the-current-catalog"], ids=["missing", "stale"])
+def test_a_request_built_from_another_catalog_is_refused(
+    app: Flask,
+    sqlite_session: Session,
+    sent: str | None,
+) -> None:
+    subject = account_subject()
+    headers: dict[str, str] = {} if sent is None else {CATALOG_HEADER: sent}
+
+    with app.test_request_context("/openapi/v1/account", headers=headers):
+        with pytest.raises(CatalogStale):
+            _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+
+
+def test_a_request_built_from_the_current_catalog_passes(app: Flask, sqlite_session: Session) -> None:
+    subject = account_subject()
+
+    with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
+        _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)

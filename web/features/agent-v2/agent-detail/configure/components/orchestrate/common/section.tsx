@@ -8,7 +8,8 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { AgentBuildDraftChangeDot } from '../build-draft-change-dot'
 import { useIsAgentBuildDraftSectionChanged } from '../build-draft-changes-context'
 
-type ConfigureSectionBaseProps = {
+type ConfigureSectionProps = {
+  tip?: ReactNode
   label: ReactNode
   labelId: string
   children: ReactNode
@@ -24,18 +25,6 @@ type ConfigureSectionBaseProps = {
   panelContentClassName?: string
 }
 
-type ConfigureSectionProps = ConfigureSectionBaseProps &
-  (
-    | {
-        tip: ReactNode
-        tipAriaLabel: string
-      }
-    | {
-        tip?: undefined
-        tipAriaLabel?: undefined
-      }
-  )
-
 export function ConfigureSection({
   label,
   labelId,
@@ -47,7 +36,6 @@ export function ConfigureSection({
   headingLevel = 'h3',
   panelId,
   tip,
-  tipAriaLabel,
   rootClassName,
   headerClassName,
   titleRowClassName,
@@ -68,16 +56,18 @@ export function ConfigureSection({
       <div className={cn('mb-2 flex min-h-6 items-center gap-2', headerClassName)}>
         <div className="min-w-0 flex-1">
           <div className={cn('group/collapse-title flex min-w-0 items-center', titleRowClassName)}>
-            <Heading id={labelId} className="relative min-w-0 shrink-0">
+            <Heading className="relative min-w-0 shrink-0">
               {isBuildDraftChanged && <AgentBuildDraftChangeDot />}
               <CollapsibleTrigger className="flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-sm system-sm-medium text-text-secondary outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid">
-                <span className="min-w-0 truncate system-sm-semibold-uppercase">{label}</span>
+                <span id={labelId} className="min-w-0 truncate system-sm-semibold-uppercase">
+                  {label}
+                </span>
               </CollapsibleTrigger>
             </Heading>
             {hasTip && (
               <Infotip>
-                <InfotipTrigger aria-label={tipAriaLabel} className="ml-0.5 size-3.5" />
-                <InfotipContent aria-label={tipAriaLabel} className="max-w-64">
+                <InfotipTrigger aria-labelledby={labelId} className="ml-0.5 size-3.5" />
+                <InfotipContent aria-labelledby={labelId} className="max-w-64">
                   {tip}
                 </InfotipContent>
               </Infotip>

@@ -1,1 +1,1 @@
-"""Domain-specific application service composition."""
+"""Domain-specific dependency composition for application services."""

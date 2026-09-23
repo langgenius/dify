@@ -671,7 +671,6 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)

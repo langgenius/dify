@@ -18,6 +18,8 @@ const MAX = 6
 const optionClassName =
   'flex h-8 w-full cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary data-unchecked:cursor-pointer data-unchecked:hover:border-components-option-card-option-border-hover data-unchecked:hover:bg-components-option-card-option-bg-hover data-unchecked:hover:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:system-sm-medium data-checked:shadow-xs'
 const ParamConfigContent: FC = () => {
+  const resolutionLabelId = React.useId()
+
   const { t } = useTranslation()
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
@@ -67,19 +69,16 @@ const ParamConfigContent: FC = () => {
           }
         >
           <div className="mb-2 flex items-center space-x-1">
-            <FieldsetLegend className="m-0 py-0 text-[13px] leading-4.5 font-semibold text-text-secondary">
+            <FieldsetLegend
+              id={resolutionLabelId}
+              className="m-0 py-0 text-[13px] leading-4.5 font-semibold text-text-secondary"
+            >
               {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
             </FieldsetLegend>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                  ns: 'appDebug',
-                })}
-              />
+              <InfotipTrigger aria-labelledby={resolutionLabelId} />
               <InfotipContent
-                aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
-                  ns: 'appDebug',
-                })}
+                aria-labelledby={resolutionLabelId}
                 className="w-45 whitespace-pre-wrap"
               >
                 {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}

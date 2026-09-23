@@ -7,7 +7,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { useDocLink } from '@/context/i18n'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import EmbeddingProcess from '../embedding-process'
 
 type StepThreeProps = {
@@ -28,8 +27,6 @@ const StepThree = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const iconInfo = creationCache?.dataset?.icon_info || {
     icon: '📙',
     icon_type: 'emoji',
@@ -38,15 +35,15 @@ const StepThree = ({
   }
 
   return (
-    <div className="flex size-full max-h-full justify-center overflow-y-auto">
-      <div className="h-full max-w-240 shrink-0 grow overflow-y-auto px-14 sm:px-16">
+    <div className="flex size-full max-h-full min-w-0 flex-col overflow-y-auto xl:flex-row xl:justify-center">
+      <div className="max-w-240 min-w-0 shrink-0 grow px-4 sm:px-8 xl:shrink xl:px-16">
         <div className="mx-auto max-w-160 pt-10 pb-8">
           {!datasetId && (
             <>
               <div className="flex flex-col gap-y-1 pb-3">
-                <div className="title-2xl-semi-bold text-text-primary">
+                <h1 className="title-2xl-semi-bold text-text-primary">
                   {t(($) => $['stepThree.creationTitle'], { ns: 'datasetCreation' })}
-                </div>
+                </h1>
                 <div className="system-sm-regular text-text-tertiary">
                   {t(($) => $['stepThree.creationContent'], { ns: 'datasetCreation' })}
                 </div>
@@ -60,11 +57,11 @@ const StepThree = ({
                   imageUrl={iconInfo.icon_url}
                   className="shrink-0"
                 />
-                <div className="flex grow flex-col gap-y-1">
+                <div className="flex min-w-0 grow flex-col gap-y-1">
                   <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
                     {t(($) => $['stepThree.label'], { ns: 'datasetCreation' })}
                   </div>
-                  <div className="w-full truncate rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
+                  <div className="w-full rounded-lg bg-components-input-bg-normal p-2 system-sm-regular wrap-anywhere text-components-input-text-filled">
                     <span className="px-1">{datasetName || creationCache?.dataset?.name}</span>
                   </div>
                 </div>
@@ -74,9 +71,9 @@ const StepThree = ({
           )}
           {datasetId && (
             <div className="flex flex-col gap-y-1 pb-3">
-              <div className="title-2xl-semi-bold text-text-primary">
+              <h1 className="title-2xl-semi-bold text-text-primary">
                 {t(($) => $['stepThree.additionTitle'], { ns: 'datasetCreation' })}
-              </div>
+              </h1>
               <div className="system-sm-regular text-text-tertiary">{`${t(($) => $['stepThree.additionP1'], { ns: 'datasetCreation' })} ${datasetName || creationCache?.dataset?.name} ${t(($) => $['stepThree.additionP2'], { ns: 'datasetCreation' })}`}</div>
             </div>
           )}
@@ -91,29 +88,27 @@ const StepThree = ({
           />
         </div>
       </div>
-      {!isMobile && (
-        <div className="shrink-0 pt-22 pr-8 text-xs">
-          <div className="flex w-82 flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
-            <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
-              <RiBookOpenLine className="size-5 text-text-accent" />
-            </div>
-            <div className="text-base font-semibold text-text-secondary">
-              {t(($) => $['stepThree.sideTipTitle'], { ns: 'datasetCreation' })}
-            </div>
-            <div className="text-text-tertiary">
-              {t(($) => $['stepThree.sideTipContent'], { ns: 'datasetCreation' })}
-            </div>
-            <a
-              href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="system-sm-regular text-text-accent"
-            >
-              {t(($) => $['addDocuments.stepThree.learnMore'], { ns: 'datasetPipeline' })}
-            </a>
+      <div className="shrink-0 px-4 pb-8 text-xs sm:px-8 xl:pt-22 xl:pl-0">
+        <div className="flex w-full max-w-82 flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
+          <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
+            <RiBookOpenLine className="size-5 text-text-accent" />
           </div>
+          <h2 className="text-base font-semibold text-text-secondary">
+            {t(($) => $['stepThree.sideTipTitle'], { ns: 'datasetCreation' })}
+          </h2>
+          <div className="text-text-tertiary">
+            {t(($) => $['stepThree.sideTipContent'], { ns: 'datasetCreation' })}
+          </div>
+          <a
+            href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="system-sm-regular text-text-accent"
+          >
+            {t(($) => $['addDocuments.stepThree.learnMore'], { ns: 'datasetPipeline' })}
+          </a>
         </div>
-      )}
+      </div>
     </div>
   )
 }
