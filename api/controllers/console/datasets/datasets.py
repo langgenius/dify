@@ -459,7 +459,7 @@ class DatasetApi(Resource):
 
     @console_ns.response(204, "Dataset deleted successfully")
     @console_account_admission(
-        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
+        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_DELETE, DatasetId()),)
     )
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, request_context: RequestContext, dataset_id: UUID):

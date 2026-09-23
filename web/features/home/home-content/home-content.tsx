@@ -53,7 +53,7 @@ const DSLConfirmModal = dynamic(
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
 export function HomeContent() {
-  const { t } = useTranslation(['explore'])
+  const { t } = useTranslation(['explore', 'app'])
   const locale = useLocale()
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -134,13 +134,13 @@ export function HomeContent() {
   }, [templatesData, activeCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
-    if (!keywords || !filteredList || filteredList.length === 0) return filteredList
-
-    const lowerCaseSearchKeywords = keywords.toLowerCase()
+    const searchKeywords = keywords.trim().toLowerCase()
+    if (!searchKeywords) return filteredList
 
     return filteredList.filter(
       (item) =>
-        item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
+        item.app?.name?.toLowerCase().includes(searchKeywords) ||
+        item.description?.toLowerCase().includes(searchKeywords),
     )
   }, [keywords, filteredList])
 
@@ -440,6 +440,18 @@ export function HomeContent() {
                 onTry={handleTryApp}
               />
             ))}
+            {searchFilteredList.length === 0 && (
+              <div role="status" className="col-span-full rounded-lg bg-workflow-process-bg p-4">
+                <p className="title-md-semi-bold text-text-primary">
+                  {t(($) => $['newApp.noTemplateFound'], { ns: 'app' })}
+                </p>
+                {keywords.trim() && (
+                  <p className="mt-2 system-sm-regular text-text-tertiary">
+                    {t(($) => $['newApp.noTemplateFoundTip'], { ns: 'app' })}
+                  </p>
+                )}
+              </div>
+            )}
           </section>
         </div>
       </div>

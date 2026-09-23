@@ -369,7 +369,7 @@ class DatasetDocumentListApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
     @console_account_admission(
-        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
+        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_USE, DatasetId()),)
     )
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
@@ -385,7 +385,8 @@ class DatasetDocumentListApi(Resource):
 
     @console_ns.response(204, "Documents deleted successfully")
     @console_account_admission(
-        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()),),
     )
     def delete(self, request_context: RequestContext, dataset_id: UUID):
         check_knowledge_rate_limit()
@@ -577,7 +578,8 @@ class DocumentApi(Resource):
 
     @console_ns.response(204, "Document deleted successfully")
     @console_account_admission(
-        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()),),
     )
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID):
@@ -618,7 +620,8 @@ class DocumentBatchDownloadZipApi(Resource):
     @console_ns.response(200, "ZIP archive downloaded successfully")
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
     @console_account_admission(
-        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, DatasetId()),),
     )
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, request_context: RequestContext, dataset_id: UUID):

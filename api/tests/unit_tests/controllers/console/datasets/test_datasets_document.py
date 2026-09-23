@@ -528,3 +528,19 @@ def test_document_indexing_estimates_require_dataset_use_permission(method) -> N
 
     assert check.scene is RBACPermission.DATASET_USE
     assert isinstance(check.locator, DatasetId)
+
+
+@pytest.mark.parametrize(
+    ("method", "expected_scene"),
+    [
+        (DatasetDocumentListApi.post, RBACPermission.DATASET_USE),
+        (DatasetDocumentListApi.delete, RBACPermission.DATASET_DELETE_FILE),
+        (DocumentApi.delete, RBACPermission.DATASET_DELETE_FILE),
+        (DocumentBatchDownloadZipApi.post, RBACPermission.DATASET_DOCUMENT_DOWNLOAD),
+    ],
+)
+def test_document_mutation_routes_require_operation_specific_permissions(method, expected_scene) -> None:
+    [check] = rbac_checks(method)
+
+    assert check.scene is expected_scene
+    assert isinstance(check.locator, DatasetId)

@@ -52,9 +52,17 @@ from services.knowledge.indexing.estimate import (
     IndexingEstimateProviderUnavailableError,
     UnsupportedEstimateSourceError,
 )
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
 DATASET_ID = UUID(int=1)
+
+
+def test_dataset_delete_requires_dataset_delete_permission() -> None:
+    [check] = rbac_checks(DatasetApi.delete)
+
+    assert check.scene is RBACPermission.DATASET_DELETE
+    assert isinstance(check.locator, DatasetId)
 
 
 @pytest.fixture
