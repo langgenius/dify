@@ -89,6 +89,29 @@ def _workflow(
     return make_workflow(workflow_id="workflow-1", graph=graph, environment_variables=environment_variables or [])
 
 
+def test_extract_workflow_dependencies_includes_plugin_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "services.app_dsl_service.ToolNodeData.model_validate",
+        Mock(return_value=SimpleNamespace(provider_id="acme/tool/provider")),
+    )
+    graph = {
+        "nodes": [
+            {"data": {"type": "tool", "plugin_id": "acme/tool"}},
+            {"data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
+            {"data": {"type": "datasource", "provider_type": "online_document", "plugin_id": "acme/drive"}},
+            {"data": {"type": "datasource", "provider_type": "local_file", "plugin_id": "langgenius/file"}},
+            {"data": {"type": "agent", "agent_strategy_provider_name": "acme/strategy/provider"}},
+        ]
+    }
+
+    assert AppDslService._extract_dependencies_from_workflow_graph(graph) == [
+        "acme/tool",
+        "acme/trigger",
+        "acme/drive",
+        "acme/strategy",
+    ]
+
+
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _workflow(
         graph={
