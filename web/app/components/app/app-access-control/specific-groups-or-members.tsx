@@ -30,7 +30,7 @@ export default function SpecificGroupsOrMembers({
   onSubjectsChange,
   onRetrySubjects,
 }: SpecificGroupsOrMembersProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   if (accessMode !== AccessMode.SPECIFIC_GROUPS_MEMBERS) {
     return (
@@ -90,7 +90,7 @@ type RenderGroupsAndMembersProps = {
 }
 
 function RenderGroupsAndMembers({ subjects, onChange }: RenderGroupsAndMembersProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { groups, members } = subjects
 
   if (groups.length <= 0 && members.length <= 0) {
@@ -191,7 +191,7 @@ type BaseItemProps = {
 }
 
 function BaseItem({ icon, onRemove, children }: BaseItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">

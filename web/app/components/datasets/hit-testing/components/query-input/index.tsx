@@ -62,7 +62,7 @@ const QueryInput = ({
   hitTestingMutation,
   externalKnowledgeBaseHitTestingMutation,
 }: QueryInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetHitTesting'])
   const textareaId = useId()
   // Text inputs match :focus-visible even after a pointer click. Keep pointer
   // focus quiet until blur, including when the visible label focuses the field.

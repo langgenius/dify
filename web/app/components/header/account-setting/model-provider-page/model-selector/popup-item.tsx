@@ -63,7 +63,7 @@ function PopupItem({
 }: PopupItemProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const providerHeadingId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const language = useLanguage()
   const providerLabel = renderI18nObject(model.label, language)
   const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'common' })

@@ -22,7 +22,7 @@ type SSOAuthProps = {
 
 function SSOAuth({ protocol }: SSOAuthProps) {
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
 
   const redirectUrl = searchParams.get('redirect_url')

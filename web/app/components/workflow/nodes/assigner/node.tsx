@@ -13,7 +13,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const i18nPrefix = 'nodes.assigner'
 
 const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const nodes: Node[] = useNodes()
   if (data.version === '2') {
     const { items: operationItems } = data

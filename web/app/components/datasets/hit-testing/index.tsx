@@ -55,7 +55,7 @@ type Props = Readonly<{
 }>
 
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetHitTesting'])
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile

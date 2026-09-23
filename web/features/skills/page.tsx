@@ -121,7 +121,7 @@ function SkillCardSkeletonCards() {
 }
 
 function SkillCardSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -155,8 +155,8 @@ function SkillPlaceholderState({
   role,
   title,
 }: SkillPlaceholderStateProps) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <section
@@ -262,8 +262,8 @@ function DeleteSkillDialog({
   skill: SkillResponse
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const deleteMutation = useMutation(
@@ -417,8 +417,8 @@ function SkillCard({
   skill: SkillResponse
   onOpenTagManagement: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -681,7 +681,7 @@ function SkillsToolbar({
   onImport: () => void
   onOpenTagManagement: () => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const [keyword, setKeyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -756,8 +756,8 @@ type SkillGridProps = {
 }
 
 function SkillGridRetryStatus({ state }: { state: SkillGridRetryState }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <div
@@ -780,7 +780,7 @@ function SkillGridPagination({
     { kind: 'list' }
   >['pagination']
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   if (state.status === 'none') return null
   if (state.status === 'error') return <SkillGridRetryStatus state={state} />
@@ -796,7 +796,7 @@ function SkillGridPagination({
 }
 
 function SkillGrid({ state }: SkillGridProps) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const isBusy =
     state.status === 'pending' ||
     (state.status === 'error' && state.isRetrying) ||
@@ -861,8 +861,8 @@ function ImportSkillDialogForm({
   importing: boolean
   onImport: (file: File) => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const inputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const descriptionId = useId()
@@ -1018,7 +1018,7 @@ function ImportSkillDialogForm({
 }
 
 export default function SkillsPage() {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const { canDelete, canEdit } = useSkillPermissions()

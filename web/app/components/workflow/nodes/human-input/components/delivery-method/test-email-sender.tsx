@@ -129,7 +129,7 @@ const EmailSenderContent = ({
   nodesOutputVars = [],
   availableNodes = [],
 }: EmailSenderContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,

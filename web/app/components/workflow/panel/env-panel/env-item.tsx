@@ -13,7 +13,7 @@ type EnvItemProps = {
 }
 
 const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const envSecrets = useStore((s) => s.envSecrets)
   const [destructive, setDestructive] = useState(false)
   const typeLabel =

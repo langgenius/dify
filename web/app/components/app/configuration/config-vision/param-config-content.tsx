@@ -20,7 +20,7 @@ const optionClassName =
 const ParamConfigContent: FC = () => {
   const resolutionLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
 

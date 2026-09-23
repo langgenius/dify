@@ -30,7 +30,7 @@ type ApiBasedExtensionPageProps = {
 }
 
 function ApiBasedExtensionListSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
@@ -56,7 +56,7 @@ function ApiBasedExtensionListSkeleton() {
 }
 
 export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {}) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManage = hasPermission(workspacePermissionKeys, 'api_extension.manage')
   const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(

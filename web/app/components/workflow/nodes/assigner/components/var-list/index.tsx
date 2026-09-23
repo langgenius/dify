@@ -48,7 +48,7 @@ const VarList: FC<Props> = ({
   writeModeTypesArr,
   writeModeTypesNum,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const handleAssignedVarChange = useCallback(
     (index: number) => {
       return (value: ValueSelector | string) => {

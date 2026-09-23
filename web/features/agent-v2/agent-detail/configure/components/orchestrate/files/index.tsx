@@ -83,7 +83,7 @@ function AgentFileItem({
   onRemove: (fileId: string) => void
   selected: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const queryClient = useQueryClient()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -348,7 +348,7 @@ function AgentBuildNoteFileRow() {
 }
 
 function AgentBuildNoteBadge() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <FileTreeBadge className="ms-0 gap-0.5 px-1 py-0.5">
@@ -382,7 +382,7 @@ function AgentBuildNoteInfotip() {
 }
 
 export function AgentFiles() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   const filesTreeId = 'agent-configure-files-tree'
   const readOnly = useAgentOrchestrateReadOnly()

@@ -124,7 +124,7 @@ function AppCardOperationsMenuItems({
   onDelete,
   onAccessConfig,
 }: AppCardOperationsMenuItemsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const openAsyncWindow = useAsyncWindowOpen()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
@@ -267,7 +267,7 @@ export function AppCardInteractions({
   stepByStepTourActionMenuOpen = false,
   stepByStepTourActionMenuHighlightPart,
 }: AppCardInteractionsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),

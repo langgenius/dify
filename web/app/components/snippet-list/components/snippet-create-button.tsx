@@ -9,7 +9,7 @@ import { useCreateSnippet } from '@/app/components/snippets/hooks/use-create-sni
 import ImportSnippetDSLDialog from '@/app/components/snippets/import-snippet-dsl-dialog'
 
 const SnippetCreateButton = () => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const {
     canCreateAndModifySnippet,
     createSnippetMutation,

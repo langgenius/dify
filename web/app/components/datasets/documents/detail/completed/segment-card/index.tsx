@@ -66,7 +66,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   embeddingAvailable,
   focused,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const {
     id,
     position,

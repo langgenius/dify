@@ -20,7 +20,7 @@ export const StepTwoFooter: FC<StepTwoFooterProps> = ({
   onCreate,
   onCancel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   if (!isSetting) {
     return (

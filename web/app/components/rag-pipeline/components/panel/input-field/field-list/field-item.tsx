@@ -38,7 +38,7 @@ const FieldItem = ({
   onMoveUp,
   onMoveDown,
 }: FieldItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const fieldNameId = useId()
 

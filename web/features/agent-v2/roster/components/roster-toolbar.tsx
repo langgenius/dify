@@ -40,7 +40,7 @@ function RosterFilterItem({ count, label, value }: RosterFilterItemProps) {
 }
 
 function RosterStatusFilter({ publicationCounts }: RosterToolbarProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [filter, setFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
 
   return (
@@ -66,7 +66,7 @@ function RosterStatusFilter({ publicationCounts }: RosterToolbarProps) {
 }
 
 function RosterSearchFilter() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [keyword, setKeyword] = useQueryState(
     rosterQueryParamNames.keyword,
     rosterKeywordQueryParser,
@@ -86,7 +86,7 @@ function RosterSearchFilter() {
 }
 
 function RosterCreatedByMeFilter() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [createdByMe, setCreatedByMe] = useQueryState(
     rosterQueryParamNames.createdByMe,
     rosterCreatedByMeQueryParser,

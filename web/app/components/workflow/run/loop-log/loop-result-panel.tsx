@@ -37,7 +37,7 @@ type Props = {
 }
 
 const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariableMap }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [expandedLoops, setExpandedLoops] = useState<Record<number, boolean>>({})
 
   const toggleLoop = useCallback((index: number) => {

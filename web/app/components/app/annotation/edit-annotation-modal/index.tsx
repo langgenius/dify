@@ -53,7 +53,7 @@ const EditAnnotationModal: FC<Props> = ({
   onRemove,
   onlyEditResponse,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
   const handleSave = async (type: EditItemType, editedContent: string) => {
     let postQuery = query

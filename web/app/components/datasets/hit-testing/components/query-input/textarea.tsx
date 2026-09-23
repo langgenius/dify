@@ -21,7 +21,7 @@ const Textarea = ({
   onPointerDown,
   onBlur,
 }: TextareaProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetHitTesting'])
   const isOverLimit = text.length > 200
   const errorId = `${id}-error`
 

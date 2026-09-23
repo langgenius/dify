@@ -75,7 +75,7 @@ type Props = Readonly<{
 }>
 
 const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'tools'])
   const locale = useLocale()
   const language = getPluginLanguage(locale)
 

@@ -11,7 +11,7 @@ type WebsitePreviewProps = {
 }
 
 const WebsitePreview = ({ currentWebsite, hidePreview }: WebsitePreviewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <div className="flex size-full flex-col rounded-t-xl border-t border-l border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">

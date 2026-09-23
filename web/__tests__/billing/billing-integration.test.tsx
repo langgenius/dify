@@ -174,8 +174,8 @@ describe('Billing Page + Plan Integration', () => {
       const quotaLabel = within(quotaCard).getByRole('term')
       const quotaValue = within(quotaCard).getByRole('definition')
 
-      expect(quotaLabel).toHaveTextContent(/usagePage\.teamMembers/i)
-      expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
+      expect(quotaLabel.textContent).toMatch(/usagePage\.teamMembers/i)
+      expect(quotaValue.textContent).toMatch(/3\s*\/\s*5/)
     })
 
     it('should display unknown vector space usage as a placeholder', () => {
@@ -661,7 +661,7 @@ describe('PriorityLabel Integration', () => {
     await user.click(
       screen.getByRole('button', { name: /plansCommon\.documentProcessingPriority$/i }),
     )
-    expect(await screen.findByRole('dialog')).toHaveTextContent(
+    expect((await screen.findByRole('dialog')).textContent).toMatch(
       /plansCommon\.documentProcessingPriorityTip/i,
     )
   })

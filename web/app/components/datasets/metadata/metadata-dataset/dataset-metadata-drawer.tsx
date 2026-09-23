@@ -57,7 +57,7 @@ type ItemProps = {
   onDelete?: () => void
 }
 const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const iconClassName = getIconClassName(payload.type)
 
   const handleRename = useCallback(() => {
@@ -164,7 +164,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
 }) => {
   const builtInLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const [isShowRenameModal, setIsShowRenameModal] = useState(false)
   const [currPayload, setCurrPayload] = useState<MetadataItemWithValueLength | null>(null)
   const [templeName, setTempleName] = useState('')

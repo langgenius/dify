@@ -13,7 +13,7 @@ const MetadataTrigger = ({
   selectedDatasetsLoaded,
   ...restProps
 }: MetadataShape) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const conditions = metadataFilteringConditions?.conditions || []
 

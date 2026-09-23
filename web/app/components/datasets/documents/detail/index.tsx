@@ -57,7 +57,7 @@ const NON_TERMINAL_DISPLAY_STATUSES = new Set<(typeof DisplayStatusList)[number]
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile

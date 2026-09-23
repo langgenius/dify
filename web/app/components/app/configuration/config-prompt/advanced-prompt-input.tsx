@@ -56,7 +56,7 @@ const AdvancedPromptInput: FC<Props> = ({
 }) => {
   const promptLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { eventEmitter } = useEventEmitterContextContext()
 
   const {

@@ -75,7 +75,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   onReset,
   showSummaryIndexSetting,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

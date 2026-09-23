@@ -31,8 +31,8 @@ function ItemOperation({
   isShowDelete,
   onDelete,
 }: IItemOperationProps) {
-  const { t } = useTranslation('explore')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['explore'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <DropdownMenu modal={false}>

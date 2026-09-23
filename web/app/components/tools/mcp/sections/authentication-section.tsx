@@ -24,7 +24,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
   credentials,
   onCredentialsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const dynamicRegistrationLabelId = useId()
   const clientIdInputId = useId()
   const clientSecretInputId = useId()

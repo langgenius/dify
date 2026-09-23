@@ -26,7 +26,7 @@ export type FormData = {
 }
 
 const FormContent = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
 
   const { token } = useParams<{ token: string }>()
 

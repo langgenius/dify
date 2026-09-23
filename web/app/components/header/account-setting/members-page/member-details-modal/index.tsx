@@ -29,7 +29,7 @@ const MemberDetailsModal = ({
   onClose,
   onAssignSubmit,
 }: MemberDetailsModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const locale = useLocale()
   const [assignOpen, setAssignOpen] = useState(false)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])

@@ -92,7 +92,7 @@ function CreateFromDSLModal({
   droppedFile,
 }: CreateFromDSLModalProps) {
   const { push } = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const formRef = useRef<HTMLFormElement>(null)
   const browseButtonRef = useRef<HTMLButtonElement>(null)
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)

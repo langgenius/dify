@@ -45,7 +45,7 @@ const Website: FC<Props> = ({
   onCrawlOptionsChange,
   authedDataSourceList,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const providerLabelId = React.useId()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const [selectedProvider, setSelectedProvider] = useState<DataSourceProvider>(

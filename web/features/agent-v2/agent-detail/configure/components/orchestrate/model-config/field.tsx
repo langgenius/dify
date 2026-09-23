@@ -18,7 +18,7 @@ type AgentModelFieldProps = {
 }
 
 export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const readOnly = useAgentOrchestrateReadOnly()
   const modelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({

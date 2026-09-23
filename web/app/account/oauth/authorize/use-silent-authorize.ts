@@ -52,7 +52,7 @@ export function useSilentAuthorize({
   searchParams,
   state,
 }: SilentAuthorizeOptions) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['oauth'])
   const router = useRouter()
   const startedRef = useRef(false)
   const [autoAuthorizationFailed, setAutoAuthorizationFailed] = useState(false)
