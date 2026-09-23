@@ -509,19 +509,18 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
         disabledFunctionTooltip="disabled"
         handleOpenRunConfig={handleOpenRunConfig}
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={Date.now()}
         showDeployAction
         showMarketplaceAction
         showRunConfig
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onPublishToMarketplace={onPublishToMarketplace}
@@ -565,15 +564,14 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={Date.now()}
         showDeployAction
+        showWorkflowTool
         toolPublished
         workflowToolAvailable
         workflowToolIsLoading={false}
@@ -597,14 +595,13 @@ describe('app-publisher sections', () => {
   it('should show the disabled reason for setup and configured workflow tool actions', () => {
     const commonProps = {
       appId: 'workflow-app',
-      appMode: AppModeEnum.WORKFLOW,
       appURL: 'https://example.com/app',
       canViewAccessPoint: true,
       disabledFunctionButton: false,
-      hasHumanInputNode: false,
       hasTriggerNode: false,
       onConfigureWorkflowTool: vi.fn(),
       publishedAt: Date.now(),
+      showWorkflowTool: true,
       workflowToolAvailable: false,
       workflowToolIsLoading: false,
       workflowToolMessage: 'Workflow tool unavailable',
@@ -631,14 +628,13 @@ describe('app-publisher sections', () => {
     const onConfigureWorkflowTool = vi.fn()
     const commonProps = {
       appId: 'workflow-app',
-      appMode: AppModeEnum.WORKFLOW,
       appURL: 'https://example.com/app',
       canViewAccessPoint: true,
       disabledFunctionButton: false,
-      hasHumanInputNode: false,
       hasTriggerNode: false,
       onConfigureWorkflowTool,
       publishedAt: Date.now(),
+      showWorkflowTool: true,
       toolPublished: true,
       workflowToolAvailable: true,
     }
@@ -674,15 +670,14 @@ describe('app-publisher sections', () => {
   it('should keep Access Point and Deploy available for trigger workflows', () => {
     render(
       <PublisherActionsSection
-        appId={'trigger-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appId="trigger-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
-        hasHumanInputNode={false}
         hasTriggerNode
         publishedAt={Date.now()}
         showDeployAction
+        showWorkflowTool={false}
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}
@@ -704,15 +699,14 @@ describe('app-publisher sections', () => {
   it('should hide the Access Point publisher entry without view permission', () => {
     render(
       <PublisherActionsSection
-        appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint={false}
         disabledFunctionButton={false}
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={Date.now()}
         showDeployAction
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}
@@ -729,15 +723,14 @@ describe('app-publisher sections', () => {
   it('should expose unavailable quick links as disabled buttons before the first publish', () => {
     render(
       <PublisherActionsSection
-        appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={undefined}
         showDeployAction
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}
@@ -755,15 +748,14 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
         disabledFunctionTooltip="Open web app unavailable"
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={undefined}
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}
@@ -782,15 +774,14 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
         disabledFunctionTooltip="Open web app unavailable"
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={undefined}
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}

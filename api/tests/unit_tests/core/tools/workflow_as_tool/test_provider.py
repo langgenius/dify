@@ -125,7 +125,7 @@ def _workflow_tool(name: str = "workflow_tool", *, tenant_id: str | None = None)
         ),
         runtime=ToolRuntime(tenant_id=app.tenant_id),
         workflow_app_id=app.id,
-        workflow_entities={"app": app, "workflow": workflow},
+        workflow_id=workflow.id,
         version="1",
         workflow_call_depth=0,
     )
@@ -192,7 +192,7 @@ def test_get_db_provider_tool_builds_entity(database_session: Session):
             return_value=outputs,
         ),
     ):
-        tool = controller._get_db_provider_tool(db_provider, app, session=database_session, user=user)
+        tool = controller._get_db_provider_tool(db_provider, session=database_session, user=user)
 
     assert tool.entity.identity.name == "workflow_tool"
     # "json" output is reserved for ToolInvokeMessage.VariableMessage and filtered out.
@@ -245,7 +245,7 @@ def test_from_db_builds_controller(database_session: Session):
     assert built.provider_id == db_provider.id
     assert built.tools is not None
     assert built.tools[0].workflow_app_id == app.id
-    assert built.tools[0].workflow_entities["workflow"].id == workflow.id
+    assert built.tools[0].workflow_id == workflow.id
 
 
 def test_get_tools_returns_empty_when_provider_missing(database_session: Session):

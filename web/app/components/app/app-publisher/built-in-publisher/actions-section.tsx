@@ -1,18 +1,15 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { AppModeEnum } from '@/types/app'
 import SuggestedAction from '../suggested-action'
 import WorkflowToolAction from '../workflow-tool-action'
 
 type PublisherActionsSectionProps = Pick<
   AppPublisherProps,
-  'hasHumanInputNode' | 'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
+  'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
 > & {
   appId: string
-  appMode: AppDetailWithSite['mode']
   appURL: string
   canViewAccessPoint: boolean
   disabledFunctionButton: boolean
@@ -23,6 +20,7 @@ type PublisherActionsSectionProps = Pick<
   showDeployAction?: boolean
   showMarketplaceAction?: boolean
   showRunConfig?: boolean
+  showWorkflowTool: boolean
   workflowToolIsLoading: boolean
   workflowToolMessage?: string
   workflowToolOutdated?: boolean
@@ -32,13 +30,11 @@ type PublisherActionsSectionProps = Pick<
 
 export function PublisherActionsSection({
   appId,
-  appMode,
   appURL,
   canViewAccessPoint,
   disabledFunctionButton,
   disabledFunctionTooltip,
   handleOpenRunConfig,
-  hasHumanInputNode = false,
   hasTriggerNode = false,
   marketplaceActionDisabled = false,
   publishedAt,
@@ -46,6 +42,7 @@ export function PublisherActionsSection({
   showDeployAction = false,
   showMarketplaceAction = false,
   showRunConfig = false,
+  showWorkflowTool,
   toolPublished = false,
   workflowToolAvailable = true,
   workflowToolIsLoading,
@@ -58,7 +55,6 @@ export function PublisherActionsSection({
 
   const hasPublishedVersion = Boolean(publishedAt)
   const showOpenWebApp = !hasTriggerNode
-  const showWorkflowTool = appMode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
   const navigationDisabled = !hasPublishedVersion
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)
