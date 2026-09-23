@@ -31,8 +31,8 @@ class TestDisableSegmentFromIndexTask:
     @pytest.fixture
     def mock_index_processor(self):
         """Mock IndexProcessorFactory and its clean method."""
-        with patch("tasks.disable_segment_from_index_task.IndexProcessorFactory") as mock_factory:
-            mock_processor = mock_factory.return_value.init_index_processor.return_value
+        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
+            mock_processor = mock_factory.return_value
             mock_processor.clean.return_value = None
             yield mock_processor
 

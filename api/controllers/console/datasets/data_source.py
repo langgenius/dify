@@ -18,7 +18,6 @@ from controllers.common.session import with_session
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.entities.knowledge_entities import IndexingEstimate
-from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
@@ -403,7 +402,7 @@ class DataSourceNotionIndexingEstimateApi(Resource):
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)
-        indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
+        indexing_runner = application_services().create_indexing_runner()
         response = indexing_runner.indexing_estimate(
             tenant_id=current_tenant_id,
             extract_settings=extract_settings,

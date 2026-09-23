@@ -57,12 +57,10 @@ ignore_imports =
     core.app.apps.pipeline.pipeline_generator -> services.file_upload_service
     core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
     core.app.apps.pipeline.pipeline_runner -> services.dataset_ref_service
-    core.app.apps.pipeline.pipeline_runner -> services.file_upload_service
     core.app.apps.workflow.app_generator -> controllers.console.app.workflow
     core.app.apps.workflow.app_generator -> services.file_upload_service
     core.app.apps.workflow.app_generator -> services.snippet_generate_service
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
-    core.app.apps.workflow_app_runner -> services.file_upload_service
     core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.features.annotation_reply.annotation_reply -> services.dataset_service
@@ -73,14 +71,12 @@ ignore_imports =
     core.datasource.datasource_manager -> services.datasource_provider_service
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
-    core.indexing_runner -> services.file_upload_service
     core.indexing_runner -> services.vector_space_admission_service
     core.mcp.auth_client -> services
     core.provider_manager -> services.credential_permission_service
     core.provider_manager -> services.credit_pool_service
     core.provider_manager -> services.feature_service
     core.rag.datasource.retrieval_service -> services.external_knowledge_service
-    core.rag.index_processor.index_processor -> services.file_upload_service
     core.rag.index_processor.index_processor -> services.vector_space_admission_service
     core.rag.index_processor.index_processor_base -> services.file_upload_service
     core.rag.index_processor.index_processor_factory -> services.file_upload_service
@@ -99,8 +95,6 @@ ignore_imports =
     core.repositories.sqlalchemy_workflow_node_execution_write_repository -> services.variable_truncator
     extensions.logstore.repositories.logstore_workflow_node_execution_write_repository -> services.file_upload_service
     core.tools.tool_manager -> services
-    core.workflow.node_factory -> services.file_upload_service
-    core.workflow.workflow_entry -> services.file_upload_service
     core.workflow.node_runtime -> services
     core.workflow.nodes.agent.message_transformer -> services
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
@@ -112,7 +106,6 @@ ignore_imports =
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.validators -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.workspace_retirement_layer -> tasks.collect_agent_resources_task
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> services.file_upload_service
     libs.device_flow_security -> controllers.openapi._models
     libs.device_flow_security -> services.entities.feature_entities
     libs.device_flow_security -> services.system_feature_service

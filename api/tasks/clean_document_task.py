@@ -6,7 +6,6 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
@@ -80,9 +79,7 @@ def clean_document_task(
         # committed by the caller) does not produce orphan PG rows just because
         # the vector backend or one of its transitive dependencies was unhappy.
         try:
-            index_processor = IndexProcessorFactory(
-                doc_form, file_uploads=application_services().file_uploads
-            ).init_index_processor()
+            index_processor = application_services().index_processors.create(doc_form)
             with session_factory.create_session() as session, session.begin():
                 dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
                 if dataset:

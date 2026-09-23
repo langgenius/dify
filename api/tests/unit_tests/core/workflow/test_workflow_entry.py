@@ -1,12 +1,12 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 from flask import has_app_context
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeLanguage
+from core.rag.index_processor.index_processor import IndexProcessor
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from core.workflow.system_variables import build_system_variables, default_system_variables
@@ -21,7 +21,6 @@ from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow, WorkflowType
-from services.file_upload_service import FileUploadWriter
 from tests.unit_tests.model_factories import make_workflow
 
 
@@ -61,9 +60,10 @@ class TestKnowledgeIndexSingleStepWithoutAppContext:
     def _provide_app_context(self) -> None:
         """Override the suite's Flask context for the explicit-dependency path."""
 
-    def test_single_step_constructs_real_node_with_injected_uploads(self) -> None:
+    def test_single_step_constructs_real_node_with_injected_index_processor(
+        self, knowledge_index: IndexProcessor
+    ) -> None:
         assert not has_app_context()
-        file_uploads = Mock(spec=FileUploadWriter)
         workflow = make_workflow(
             workflow_id="workflow-id",
             graph={
@@ -89,13 +89,12 @@ class TestKnowledgeIndexSingleStepWithoutAppContext:
             user_id="user-id",
             user_inputs={},
             variable_pool=variable_pool,
-            file_uploads=file_uploads,
+            index_processor=knowledge_index,
         )
 
         assert isinstance(node, KnowledgeIndexNode)
-        assert node.index_processor._file_uploads is file_uploads
+        assert node.index_processor is knowledge_index
         assert node.graph_runtime_state.variable_pool is variable_pool
-        file_uploads.upload_file_for_actor.assert_not_called()
         events.close()
 
 

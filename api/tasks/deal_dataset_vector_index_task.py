@@ -8,7 +8,6 @@ from sqlalchemy import select, update
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
@@ -36,9 +35,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
             if not dataset:
                 raise Exception("Dataset not found")
             index_type = dataset.get_doc_form(session=session) or IndexStructureType.PARAGRAPH_INDEX
-            index_processor = IndexProcessorFactory(
-                index_type, file_uploads=application_services().file_uploads
-            ).init_index_processor()
+            index_processor = application_services().index_processors.create(index_type)
             if action == "remove":
                 index_processor.clean(dataset, None, with_keywords=False, session=session)
             elif action == "add":

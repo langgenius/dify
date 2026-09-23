@@ -31,7 +31,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.entities import Rule
@@ -761,7 +760,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     datasource_type=DatasourceType.FILE, upload_file=file, document_model=document.doc_form
                 )
 
-                indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
+                indexing_runner = application_services().create_indexing_runner()
 
                 try:
                     estimate_response = indexing_runner.indexing_estimate(
@@ -900,7 +899,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
 
                 case _:
                     raise ValueError("Data source type not support")
-            indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
+            indexing_runner = application_services().create_indexing_runner()
             try:
                 response = indexing_runner.indexing_estimate(
                     tenant_id=current_tenant_id,

@@ -56,14 +56,8 @@ class TestCleanNotionDocumentTask:
     @pytest.fixture
     def mock_index_processor_factory(self, mock_index_processor):
         """Mock IndexProcessorFactory for testing."""
-        # Mock the actual IndexProcessorFactory class
-        with patch("tasks.clean_notion_document_task.IndexProcessorFactory") as mock_factory:
-            # Create a mock instance that will be returned when IndexProcessorFactory() is called
-            mock_instance = Mock()
-            mock_instance.init_index_processor.return_value = mock_index_processor
-
-            # Set the mock_factory to return our mock_instance when called
-            mock_factory.return_value = mock_instance
+        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
+            mock_factory.return_value = mock_index_processor
 
             # Ensure the mock_index_processor has the clean method properly set
             mock_index_processor.clean = Mock()
@@ -165,7 +159,7 @@ class TestCleanNotionDocumentTask:
         assert _count_segments(db_session_with_containers, DocumentSegment.document_id.in_(document_ids)) == 0
 
         # Verify index processor was called
-        mock_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.clean.assert_called_once()
 
         # This test successfully verifies:
@@ -193,7 +187,7 @@ class TestCleanNotionDocumentTask:
             clean_notion_document_task(document_ids, non_existent_dataset_id)
 
         # Verify that the index processor factory was not used
-        mock_index_processor_factory.return_value.init_index_processor.assert_not_called()
+        mock_index_processor_factory.assert_not_called()
 
     def test_clean_notion_document_task_empty_document_list(
         self, db_session_with_containers: Session, mock_index_processor_factory, mock_external_service_dependencies
@@ -233,7 +227,7 @@ class TestCleanNotionDocumentTask:
         clean_notion_document_task([], dataset.id)
 
         # Verify that the index processor was called once with empty node list
-        mock_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         assert mock_processor.clean.call_count == 1
         args, kwargs = mock_processor.clean.call_args
         # args: (dataset, total_index_node_ids)
@@ -687,7 +681,7 @@ class TestCleanNotionDocumentTask:
 
         # Simulate the production failure mode: index_processor.clean() raises a
         # ValueError mirroring ``BillingService._send_request`` returning non-200.
-        mock_index_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
+        mock_index_processor = mock_index_processor_factory.return_value
         mock_index_processor.clean.side_effect = ValueError(
             "Unable to retrieve billing information. Please try again later or contact support."
         )

@@ -5,7 +5,6 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -21,12 +20,12 @@ class TestEnableSegmentsToIndexTask:
         """Mock setup for external service dependencies."""
         with (
             patch(
-                "tasks.enable_segments_to_index_task.IndexProcessorFactory", autospec=True
+                "core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create"
             ) as mock_index_processor_factory,
         ):
             # Setup mock index processor
             mock_processor = MagicMock()
-            mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_index_processor_factory.return_value = mock_processor
 
             yield {
                 "index_processor_factory": mock_index_processor_factory,
@@ -197,7 +196,7 @@ class TestEnableSegmentsToIndexTask:
 
         # Assert: Verify different index type handling
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            IndexStructureType.QA_INDEX, file_uploads=application_services().file_uploads
+            IndexStructureType.QA_INDEX
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -342,7 +341,7 @@ class TestEnableSegmentsToIndexTask:
 
         # Assert: Verify index processor was created but load was not called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            IndexStructureType.PARAGRAPH_INDEX, file_uploads=application_services().file_uploads
+            IndexStructureType.PARAGRAPH_INDEX
         )
         mock_external_service_dependencies["index_processor"].load.assert_not_called()
 
@@ -398,7 +397,7 @@ class TestEnableSegmentsToIndexTask:
 
             # Assert: Verify parent-child index processing
             mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-                IndexStructureType.PARENT_CHILD_INDEX, file_uploads=application_services().file_uploads
+                IndexStructureType.PARENT_CHILD_INDEX
             )
             mock_external_service_dependencies["index_processor"].load.assert_called_once()
 

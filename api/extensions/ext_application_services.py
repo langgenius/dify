@@ -19,6 +19,9 @@ from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from constants.languages import languages
 from core.db.session_factory import get_session_maker
 from core.helper.ssrf_proxy import ssrf_proxy
+from core.indexing_runner import IndexingRunner
+from core.rag.index_processor.index_processor import IndexProcessor
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
@@ -287,6 +290,8 @@ class ApplicationServices:
     file_grants: FileGrantService
     files: FileService
     file_uploads: FileUploadService
+    index_processors: IndexProcessorFactory
+    knowledge_index: IndexProcessor
     human_input_file_uploads: HumanInputFileUploadService
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
@@ -314,6 +319,13 @@ class ApplicationServices:
     web_passport: WebPassportService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
+
+    def create_indexing_runner(self, *, enforce_vector_space_admission: bool = False) -> IndexingRunner:
+        """Create a runner with per-call admission policy and shared processor dependencies."""
+        return IndexingRunner(
+            index_processors=self.index_processors,
+            enforce_vector_space_admission=enforce_vector_space_admission,
+        )
 
     def resolve_data_source_oauth(self, provider: str) -> DataSourceOAuthService:
         service = self.data_source_oauth.get(provider)
@@ -473,6 +485,8 @@ def build_application_services(
         storage_type=dify_config.STORAGE_TYPE,
         sign_file_url=get_signed_file_url,
     )
+    index_processors = IndexProcessorFactory(file_uploads=file_uploads)
+    knowledge_index = IndexProcessor(index_processors=index_processors)
     file_service = FileService(
         files=file_repository,
         uploads=file_uploads,
@@ -715,6 +729,8 @@ def build_application_services(
         file_grants=_build_file_grant_service(database_client=database_client, file_service=file_service),
         files=file_service,
         file_uploads=file_uploads,
+        index_processors=index_processors,
+        knowledge_index=knowledge_index,
         human_input_file_uploads=HumanInputFileUploadService(
             uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=database_client),
             workflow_run_repository=DifyAPIRepositoryFactory.create_api_workflow_run_repository(

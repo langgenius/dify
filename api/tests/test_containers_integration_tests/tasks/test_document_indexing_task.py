@@ -36,7 +36,9 @@ class TestDocumentIndexingTasks:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.document_indexing_task.IndexingRunner", autospec=True) as mock_indexing_runner,
+            patch(
+                "extensions.ext_application_services.ApplicationServices.create_indexing_runner"
+            ) as mock_indexing_runner,
             patch("tasks.document_indexing_task.FeatureService", autospec=True) as mock_feature_service,
         ):
             # Setup mock indexing runner

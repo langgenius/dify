@@ -20,6 +20,8 @@ PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 CACHED_APP = Flask(__name__)
 
 if TYPE_CHECKING:
+    from core.rag.index_processor.index_processor import IndexProcessor
+    from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
     from services.file_upload_service import FileUploadService
 
 # set global mock for Redis client
@@ -258,14 +260,32 @@ def file_uploads(sqlite_session_factory: sessionmaker[Session]) -> "FileUploadSe
 
 
 @pytest.fixture
+def index_processors(file_uploads: "FileUploadService") -> "IndexProcessorFactory":
+    from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+
+    return IndexProcessorFactory(file_uploads=file_uploads)
+
+
+@pytest.fixture
+def knowledge_index(index_processors: "IndexProcessorFactory") -> "IndexProcessor":
+    from core.rag.index_processor.index_processor import IndexProcessor
+
+    return IndexProcessor(index_processors=index_processors)
+
+
+@pytest.fixture
 def file_upload_services(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     file_uploads: "FileUploadService",
+    index_processors: "IndexProcessorFactory",
+    knowledge_index: "IndexProcessor",
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
+    from functools import partial
     from types import SimpleNamespace
 
+    from core.indexing_runner import IndexingRunner
     from services.file_service import FileStorage
     from tests.file_service_test_utils import make_file_service
 
@@ -274,4 +294,14 @@ def file_upload_services(
         storage=MagicMock(spec=FileStorage),
         sign_file_url=lambda *, upload_file_id: f"/files/{upload_file_id}",
     )
-    monkeypatch.setitem(app.extensions, "application_services", SimpleNamespace(file_uploads=file_uploads, files=files))
+    monkeypatch.setitem(
+        app.extensions,
+        "application_services",
+        SimpleNamespace(
+            file_uploads=file_uploads,
+            files=files,
+            index_processors=index_processors,
+            knowledge_index=knowledge_index,
+            create_indexing_runner=partial(IndexingRunner, index_processors=index_processors),
+        ),
+    )

@@ -1,7 +1,7 @@
 import datetime
 import json
 from inspect import unwrap
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -50,6 +50,7 @@ from controllers.console.datasets.error import (
 from controllers.console.wraps import RBACPermission
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.ext_application_services import application_services
 from extensions.storage.storage_type import StorageType
 from models.account import Account, TenantAccountRole
 from models.dataset import (
@@ -1201,7 +1202,7 @@ class TestDocumentIndexingEstimateApi(_UsesSQLiteSession):
             app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch("controllers.console.datasets.datasets_document.ExtractSetting", return_value=MagicMock()),
-            patch("controllers.console.datasets.datasets_document.IndexingRunner", return_value=mock_indexing_runner),
+            patch.object(application_services(), "create_indexing_runner", return_value=mock_indexing_runner),
         ):
             with pytest.raises(IndexingEstimateError):
                 method(api, session, tenant_id, user, "ds-1", "doc-1")
@@ -1299,9 +1300,10 @@ class TestDocumentBatchIndexingEstimateApi(_UsesSQLiteSession):
         with (
             app.test_request_context("/"),
             patch.object(api, "get_batch_documents", return_value=[doc]),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=IndexingEstimate(total_segments=2, preview=[]),
+            patch.object(
+                application_services(),
+                "create_indexing_runner",
+                return_value=Mock(indexing_estimate=Mock(return_value=IndexingEstimate(total_segments=2, preview=[]))),
             ),
         ):
             resp, status = method(api, self.session, tenant_id, user, "ds-1", "batch-1")
@@ -1326,9 +1328,10 @@ class TestDocumentBatchIndexingEstimateApi(_UsesSQLiteSession):
         with (
             app.test_request_context("/"),
             patch.object(api, "get_batch_documents", return_value=[doc]),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=IndexingEstimate(total_segments=1, preview=[]),
+            patch.object(
+                application_services(),
+                "create_indexing_runner",
+                return_value=Mock(indexing_estimate=Mock(return_value=IndexingEstimate(total_segments=1, preview=[]))),
             ),
         ):
             resp, status = method(api, self.session, tenant_id, user, "ds-1", "batch-1")
@@ -1713,9 +1716,10 @@ class TestDocumentIndexingEdgeCases(_UsesSQLiteSession):
             app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch("controllers.console.datasets.datasets_document.ExtractSetting", return_value=MagicMock()),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=IndexingEstimate(total_segments=5, preview=[]),
+            patch.object(
+                application_services(),
+                "create_indexing_runner",
+                return_value=Mock(indexing_estimate=Mock(return_value=IndexingEstimate(total_segments=5, preview=[]))),
             ),
         ):
             response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")

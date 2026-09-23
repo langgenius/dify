@@ -8,7 +8,6 @@ from sqlalchemy import select, update
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -47,9 +46,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
             logger.info(click.style(f"Document {document_id} status is invalid, pass.", fg="cyan"))
             return
         # sync index processor
-        index_processor = IndexProcessorFactory(
-            dataset_document.doc_form, file_uploads=application_services().file_uploads
-        ).init_index_processor()
+        index_processor = application_services().index_processors.create(dataset_document.doc_form)
 
         segments = session.scalars(
             select(DocumentSegment).where(

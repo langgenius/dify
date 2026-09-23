@@ -75,7 +75,9 @@ class TestCleanDatasetTask:
         """Mock setup for external service dependencies."""
         with (
             patch("tasks.clean_dataset_task.storage", autospec=True) as mock_storage,
-            patch("tasks.clean_dataset_task.IndexProcessorFactory", autospec=True) as mock_index_processor_factory,
+            patch(
+                "core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create"
+            ) as mock_index_processor_factory,
         ):
             # Setup default mock returns
             mock_storage.delete.return_value = None
@@ -83,9 +85,7 @@ class TestCleanDatasetTask:
             # Mock index processor
             mock_index_processor = MagicMock()
             mock_index_processor.clean.return_value = None
-            mock_index_processor_factory_instance = MagicMock()
-            mock_index_processor_factory_instance.init_index_processor.return_value = mock_index_processor
-            mock_index_processor_factory.return_value = mock_index_processor_factory_instance
+            mock_index_processor_factory.return_value = mock_index_processor
 
             yield {
                 "storage": mock_storage,

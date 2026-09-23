@@ -16,7 +16,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from extensions.ext_application_services import application_services
 from models import Account, AccountStatus, Dataset, DocumentSegment, TenantAccountRole, TenantStatus
 from models import Document as DatasetDocument
 from models.dataset import DatasetProcessRule
@@ -274,9 +273,9 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor to avoid external dependencies
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
             mock_processor = MagicMock()
-            mock_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_factory.return_value = mock_processor
 
             # Mock Redis client
             with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
@@ -289,9 +288,7 @@ class TestDisableSegmentsFromIndexTask:
                 assert result is None  # Task should complete without returning a value
 
                 # Verify index processor was called correctly
-                mock_factory.assert_called_once_with(
-                    document.doc_form, file_uploads=application_services().file_uploads
-                )
+                mock_factory.assert_called_once_with(document.doc_form)
                 mock_processor.clean.assert_called_once()
 
                 # Verify the call arguments (checking by attributes rather than object identity)
@@ -459,10 +456,10 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor to raise an exception
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
             mock_processor = MagicMock()
             mock_processor.clean.side_effect = Exception("Index processor error")
-            mock_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_factory.return_value = mock_processor
 
             # Mock Redis client
             with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
@@ -523,9 +520,9 @@ class TestDisableSegmentsFromIndexTask:
             db_session_with_containers.commit()
 
             # Mock the index processor factory
-            with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+            with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
                 mock_processor = MagicMock()
-                mock_factory.return_value.init_index_processor.return_value = mock_processor
+                mock_factory.return_value = mock_processor
 
                 # Mock Redis client
                 with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
@@ -536,7 +533,7 @@ class TestDisableSegmentsFromIndexTask:
 
                     # Assert
                     assert result is None  # Task should complete without returning a value
-                    mock_factory.assert_called_with(doc_form, file_uploads=application_services().file_uploads)
+                    mock_factory.assert_called_with(doc_form)
 
     def test_disable_segments_performance_timing(
         self, db_session_with_containers: Session, caplog: pytest.LogCaptureFixture
@@ -558,9 +555,9 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
             mock_processor = MagicMock()
-            mock_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_factory.return_value = mock_processor
 
             # Mock Redis client
             with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
@@ -600,9 +597,9 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
             mock_processor = MagicMock()
-            mock_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_factory.return_value = mock_processor
 
             # Mock Redis client to track delete calls
             with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
@@ -642,9 +639,9 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
             mock_processor = MagicMock()
-            mock_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_factory.return_value = mock_processor
 
             # Mock Redis client
             with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
@@ -704,9 +701,9 @@ class TestDisableSegmentsFromIndexTask:
         mixed_segment_ids = valid_segment_ids + invalid_segment_ids
 
         # Mock the index processor
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
             mock_processor = MagicMock()
-            mock_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_factory.return_value = mock_processor
 
             # Mock Redis client
             with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:

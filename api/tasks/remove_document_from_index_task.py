@@ -6,7 +6,6 @@ from celery import shared_task
 from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document, DocumentSegment
@@ -45,9 +44,7 @@ def remove_document_from_index_task(document_id: str):
             if not dataset:
                 raise Exception("Document has no dataset")
 
-            index_processor = IndexProcessorFactory(
-                document.doc_form, file_uploads=application_services().file_uploads
-            ).init_index_processor()
+            index_processor = application_services().index_processors.create(document.doc_form)
 
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
 

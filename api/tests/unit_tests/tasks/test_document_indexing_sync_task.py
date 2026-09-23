@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.db import session_factory as session_factory_module
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.ext_application_services import application_services
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_sync_task import document_indexing_sync_task
@@ -251,8 +252,8 @@ class TestDataSourceInfoSerialization:
         with (
             patch("tasks.document_indexing_sync_task.DatasourceProviderService") as mock_service_class,
             patch("tasks.document_indexing_sync_task.NotionExtractor") as mock_extractor_class,
-            patch("tasks.document_indexing_sync_task.IndexProcessorFactory") as mock_ipf,
-            patch("tasks.document_indexing_sync_task.IndexingRunner") as mock_runner_class,
+            patch.object(application_services().index_processors, "create") as mock_ipf,
+            patch.object(application_services(), "create_indexing_runner") as mock_runner_class,
         ):
             # External collaborators
             mock_service = MagicMock()
@@ -265,7 +266,7 @@ class TestDataSourceInfoSerialization:
             mock_extractor_class.return_value = mock_extractor
 
             mock_ip = MagicMock()
-            mock_ipf.return_value.init_index_processor.return_value = mock_ip
+            mock_ipf.return_value = mock_ip
 
             mock_runner = MagicMock()
             mock_runner_class.return_value = mock_runner

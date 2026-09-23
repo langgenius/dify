@@ -13,6 +13,7 @@ import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.rag.index_processor.index_processor import IndexProcessor
 from core.repositories.factory import (
     WorkflowNodeExecutionQuery,
     WorkflowNodeExecutionRepositories,
@@ -44,8 +45,12 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
 
 @pytest.fixture
-def generator(mocker: MockerFixture, sqlite_engine: Engine):
-    gen = module.PipelineGenerator(files=MagicMock(spec=FileService), file_uploads=MagicMock(spec=FileUploadService))
+def generator(mocker: MockerFixture, sqlite_engine: Engine, knowledge_index: IndexProcessor):
+    gen = module.PipelineGenerator(
+        files=MagicMock(spec=FileService),
+        file_uploads=MagicMock(spec=FileUploadService),
+        index_processor=knowledge_index,
+    )
 
     _patch_sqlite_engine(mocker, sqlite_engine)
     mocker.patch.object(module, "RagPipelineGenerateEntity", FakeRagPipelineGenerateEntity)
@@ -438,6 +443,7 @@ def test_generate_worker_sets_system_user_id_for_external_call(
     )
 
     assert module.PipelineRunner.call_args.kwargs["system_user_id"] == "session"
+    assert module.PipelineRunner.call_args.kwargs["index_processor"] is generator._index_processor
 
 
 def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixture, sqlite_session: Session):

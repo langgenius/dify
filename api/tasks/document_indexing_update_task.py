@@ -6,9 +6,8 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
@@ -60,9 +59,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             clean_success = False
             index_processor = None
             try:
-                index_processor = IndexProcessorFactory(
-                    index_type, file_uploads=application_services().file_uploads
-                ).init_index_processor()
+                index_processor = application_services().index_processors.create(index_type)
                 if index_node_ids:
                     index_processor.clean(
                         dataset,
@@ -168,7 +165,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                             storage_key,
                         )
 
-            indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
+            indexing_runner = application_services().create_indexing_runner()
             indexing_runner.run([document], session)
             session.commit()
 

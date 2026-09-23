@@ -191,7 +191,9 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 
                 pipeline_generator = PipelineGenerator(
-                    file_uploads=application_services().file_uploads, files=application_services().files
+                    file_uploads=application_services().file_uploads,
+                    files=application_services().files,
+                    index_processor=application_services().knowledge_index,
                 )
                 # Using protected method intentionally for async execution
                 pipeline_generator._generate(  # type: ignore[attr-defined]

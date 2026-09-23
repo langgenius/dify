@@ -66,6 +66,7 @@ from core.indexing_runner import (
     IndexingRunner,
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
@@ -75,7 +76,6 @@ from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegm
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus
 from models.model import Account, UploadFile
-from services.file_upload_service import FileUploadService
 from services.vector_space_admission_service import VectorSpaceAdmissionError
 
 # ============================================================================
@@ -294,10 +294,10 @@ class TestIndexingRunnerExtract:
     """
 
     @pytest.fixture
-    def mock_dependencies(self, sqlite_session: Session):
+    def mock_dependencies(self, sqlite_session: Session, index_processors: IndexProcessorFactory):
         """Mock all external dependencies for extract tests."""
         with (
-            patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
+            patch.object(index_processors, "create") as mock_factory,
             patch("core.indexing_runner.storage") as mock_storage,
         ):
             yield {
@@ -330,7 +330,7 @@ class TestIndexingRunnerExtract:
         }
 
     def test_extract_upload_file_success(
-        self, mock_dependencies, sample_dataset_document, sample_process_rule, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset_document, sample_process_rule, index_processors: IndexProcessorFactory
     ):
         """Test successful extraction from uploaded file.
 
@@ -346,9 +346,9 @@ class TestIndexingRunnerExtract:
         - The processor's extract method should be called exactly once
         """
         # Arrange: Set up the test environment with mocked dependencies
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
 
         # Create mock extracted documents that simulate PDF page extraction
         extracted_docs = [
@@ -397,11 +397,11 @@ class TestIndexingRunnerExtract:
         assert mock_processor.extract.call_args.kwargs["session"] is mock_dependencies["session"]
 
     def test_extract_notion_import_success(
-        self, mock_dependencies, sample_dataset_document, sample_process_rule, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset_document, sample_process_rule, index_processors: IndexProcessorFactory
     ):
         """Test successful extraction from Notion import."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         sample_dataset_document.data_source_type = "notion_import"
         sample_dataset_document.data_source_info = json.dumps(
             {
@@ -413,7 +413,7 @@ class TestIndexingRunnerExtract:
         )
 
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
 
         extracted_docs = [Document(page_content="Notion content", metadata={"doc_id": "notion1", "source": "notion"})]
         mock_processor.extract.return_value = extracted_docs
@@ -431,11 +431,11 @@ class TestIndexingRunnerExtract:
         assert result[0].metadata["document_id"] == sample_dataset_document.id
 
     def test_extract_website_crawl_success(
-        self, mock_dependencies, sample_dataset_document, sample_process_rule, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset_document, sample_process_rule, index_processors: IndexProcessorFactory
     ):
         """Test successful extraction from website crawl."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         sample_dataset_document.data_source_type = "website_crawl"
         sample_dataset_document.data_source_info = json.dumps(
             {
@@ -448,7 +448,7 @@ class TestIndexingRunnerExtract:
         )
 
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
 
         extracted_docs = [
             Document(page_content="Website content", metadata={"doc_id": "web1", "url": "https://example.com"})
@@ -468,26 +468,26 @@ class TestIndexingRunnerExtract:
         assert result[0].metadata["document_id"] == sample_dataset_document.id
 
     def test_extract_missing_upload_file(
-        self, mock_dependencies, sample_dataset_document, sample_process_rule, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset_document, sample_process_rule, index_processors: IndexProcessorFactory
     ):
         """Test extraction fails when upload file is missing."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         sample_dataset_document.data_source_info = "{}"
 
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
 
         # Act & Assert
         with pytest.raises(ValueError, match="no upload file found"):
             runner._extract(mock_processor, sample_dataset_document, sample_process_rule, mock_dependencies["session"])
 
     def test_extract_unsupported_data_source(
-        self, mock_dependencies, sample_dataset_document, sample_process_rule, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset_document, sample_process_rule, index_processors: IndexProcessorFactory
     ):
         """Test extraction returns empty list for unsupported data sources."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         sample_dataset_document.data_source_type = "unsupported_type"
 
         mock_processor = MagicMock()
@@ -550,11 +550,11 @@ class TestIndexingRunnerTransform:
         ]
 
     def test_transform_with_high_quality_indexing(
-        self, mock_dependencies, sample_dataset, sample_text_docs, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset, sample_text_docs, index_processors: IndexProcessorFactory
     ):
         """Test transformation with high quality indexing (embeddings)."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         mock_embedding_instance = MagicMock()
         model_manager = mock_dependencies["model_manager"].return_value
         model_manager.get_model_instance.return_value = mock_embedding_instance
@@ -600,11 +600,11 @@ class TestIndexingRunnerTransform:
         mock_processor.transform.assert_called_once()
 
     def test_transform_with_economy_indexing(
-        self, mock_dependencies, sample_dataset, sample_text_docs, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset, sample_text_docs, index_processors: IndexProcessorFactory
     ):
         """Test transformation with economy indexing (no embeddings)."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         model_manager = mock_dependencies["model_manager"].return_value
         sample_dataset.indexing_technique = IndexTechniqueType.ECONOMY
 
@@ -634,11 +634,11 @@ class TestIndexingRunnerTransform:
         model_manager.get_model_instance.assert_not_called()
 
     def test_transform_with_custom_segmentation(
-        self, mock_dependencies, sample_dataset, sample_text_docs, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset, sample_text_docs, index_processors: IndexProcessorFactory
     ):
         """Test transformation with custom segmentation rules."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         mock_embedding_instance = MagicMock()
         model_manager = mock_dependencies["model_manager"].return_value
         model_manager.get_model_instance.return_value = mock_embedding_instance
@@ -746,11 +746,11 @@ class TestIndexingRunnerLoad:
         sample_dataset,
         sample_dataset_document,
         sample_documents,
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
     ):
         """Test loading with high quality indexing (vector embeddings)."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
 
         # Mock ThreadPoolExecutor
         mock_future = MagicMock()
@@ -788,9 +788,9 @@ class TestIndexingRunnerLoad:
         sample_dataset,
         sample_dataset_document,
         sample_documents,
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
     ):
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         mock_future = MagicMock()
         mock_future.result.side_effect = RuntimeError("index failed")
         mock_executor_instance = MagicMock()
@@ -819,11 +819,11 @@ class TestIndexingRunnerLoad:
         sample_dataset,
         sample_dataset_document,
         sample_documents,
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
     ):
         """Test loading with economy indexing (keyword only)."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         sample_dataset.indexing_technique = IndexTechniqueType.ECONOMY
 
         # Mock thread for keyword indexing
@@ -854,11 +854,11 @@ class TestIndexingRunnerLoad:
         sample_dataset,
         sample_dataset_document,
         sample_documents,
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
     ):
         """Test loading with parent-child index structure."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         sample_dataset_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
         sample_dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
 
@@ -909,10 +909,10 @@ class TestIndexingRunnerRun:
     """
 
     @pytest.fixture
-    def mock_dependencies(self, sqlite_session: Session):
+    def mock_dependencies(self, sqlite_session: Session, index_processors: IndexProcessorFactory):
         """Mock all external dependencies for run tests."""
         with (
-            patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
+            patch.object(index_processors, "create") as mock_factory,
             patch("core.indexing_runner.ModelManager.for_tenant") as mock_model_manager,
             patch("core.indexing_runner.storage") as mock_storage,
             patch("core.indexing_runner.threading.Thread") as mock_thread,
@@ -969,9 +969,9 @@ class TestIndexingRunnerRun:
         return docs
 
     def test_run_in_indexing_status_loads_child_chunks_with_caller_session(
-        self, mock_dependencies, sample_dataset_documents, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset_documents, index_processors: IndexProcessorFactory
     ):
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         dataset_document = sample_dataset_documents[0]
         dataset_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
         session = mock_dependencies["session"]
@@ -1018,9 +1018,9 @@ class TestIndexingRunnerRun:
         assert load.call_args.kwargs["total_tokens"] == 12
 
     def test_run_in_indexing_status_uses_tokens_from_all_segments(
-        self, mock_dependencies, sample_dataset_documents, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset_documents, index_processors: IndexProcessorFactory
     ):
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         dataset_document = sample_dataset_documents[0]
         session = mock_dependencies["session"]
         dataset = session.get(Dataset, dataset_document.dataset_id)
@@ -1060,11 +1060,11 @@ class TestIndexingRunnerRun:
 
     @patch.object(Account, "set_tenant_id_with_session", autospec=True)
     def test_run_success_single_document(
-        self, set_tenant_id, mock_dependencies, sample_dataset_documents, file_uploads: FileUploadService
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents, index_processors: IndexProcessorFactory
     ):
         """Test successful run with single document."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         doc = sample_dataset_documents[0]
         session = mock_dependencies["session"]
         mock_dataset = session.get(Dataset, doc.dataset_id)
@@ -1076,7 +1076,7 @@ class TestIndexingRunnerRun:
 
         # Mock processor
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
 
         # Mock extract, transform, load
         mock_processor.extract.return_value = [Document(page_content="Test content", metadata={"doc_id": "doc1"})]
@@ -1121,7 +1121,7 @@ class TestIndexingRunnerRun:
         set_tenant_id.assert_called_once_with(mock_current_user, mock_dataset.tenant_id, session=session)
 
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
 
         # Mock _extract to raise DocumentIsPausedError
         with patch.object(runner, "_extract", side_effect=DocumentIsPausedError("Document paused")):
@@ -1131,9 +1131,9 @@ class TestIndexingRunnerRun:
 
     @patch.object(Account, "set_tenant_id_with_session", autospec=True)
     def test_run_counts_each_transformed_document_once(
-        self, set_tenant_id, mock_dependencies, sample_dataset_documents, file_uploads: FileUploadService
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents, index_processors: IndexProcessorFactory
     ):
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         dataset_document = sample_dataset_documents[0]
         session = mock_dependencies["session"]
         dataset = session.get(Dataset, dataset_document.dataset_id)
@@ -1174,9 +1174,9 @@ class TestIndexingRunnerRun:
 
     @patch.object(Account, "set_tenant_id_with_session", autospec=True)
     def test_run_rejects_before_segment_or_vector_writes(
-        self, set_tenant_id, mock_dependencies, sample_dataset_documents, file_uploads: FileUploadService
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents, index_processors: IndexProcessorFactory
     ):
-        runner = IndexingRunner(enforce_vector_space_admission=True, file_uploads=file_uploads)
+        runner = IndexingRunner(enforce_vector_space_admission=True, index_processors=index_processors)
         dataset_document = sample_dataset_documents[0]
         dataset_document.need_summary = False
         session = mock_dependencies["session"]
@@ -1222,9 +1222,9 @@ class TestIndexingRunnerRun:
 
     @patch.object(Account, "set_tenant_id_with_session", autospec=True)
     def test_run_in_splitting_status_counts_each_transformed_document_once(
-        self, set_tenant_id, mock_dependencies, sample_dataset_documents, file_uploads: FileUploadService
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents, index_processors: IndexProcessorFactory
     ):
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         dataset_document = sample_dataset_documents[0]
         session = mock_dependencies["session"]
         dataset = session.get(Dataset, dataset_document.dataset_id)
@@ -1264,15 +1264,15 @@ class TestIndexingRunnerRun:
         )
 
     def test_run_handles_provider_token_error(
-        self, mock_dependencies, sample_dataset_documents, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset_documents, index_processors: IndexProcessorFactory
     ):
         """Test run handles ProviderTokenNotInitError and updates document status."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         doc = sample_dataset_documents[0]
 
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
         mock_processor.extract.side_effect = ProviderTokenNotInitError("Token not initialized")
 
         # Act
@@ -1283,15 +1283,15 @@ class TestIndexingRunnerRun:
         assert doc.indexing_status == "error"
 
     def test_run_handles_object_deleted_error(
-        self, mock_dependencies, sample_dataset_documents, file_uploads: FileUploadService
+        self, mock_dependencies, sample_dataset_documents, index_processors: IndexProcessorFactory
     ):
         """Test run handles ObjectDeletedError gracefully."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         doc = sample_dataset_documents[0]
 
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
 
         # Mock _extract to raise ObjectDeletedError
         with patch.object(runner, "_extract", side_effect=ObjectDeletedError(state=None, msg="Object deleted")):
@@ -1303,11 +1303,11 @@ class TestIndexingRunnerRun:
 
     @patch.object(Account, "set_tenant_id_with_session", autospec=True)
     def test_run_processes_multiple_documents(
-        self, set_tenant_id, mock_dependencies, sample_dataset_documents, file_uploads: FileUploadService
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents, index_processors: IndexProcessorFactory
     ):
         """Test run processes multiple documents sequentially."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         docs = sample_dataset_documents
         for doc in docs:
             dataset = mock_dependencies["session"].get(Dataset, doc.dataset_id)
@@ -1316,7 +1316,7 @@ class TestIndexingRunnerRun:
         mock_dependencies["session"].commit()
 
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
 
         # Mock thread
         mock_thread_instance = MagicMock()
@@ -1700,11 +1700,11 @@ class TestIndexingRunnerLoadSegments:
         sample_dataset,
         sample_dataset_document,
         sample_documents,
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
     ):
         """Test loading segments for paragraph index."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         mock_docstore_instance = MagicMock()
         mock_dependencies["docstore"].return_value = mock_docstore_instance
 
@@ -1741,11 +1741,11 @@ class TestIndexingRunnerLoadSegments:
         sample_dataset,
         sample_dataset_document,
         sample_documents,
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
     ):
         """Test loading segments for parent-child index."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         sample_dataset_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
 
         # Add child documents
@@ -1788,11 +1788,11 @@ class TestIndexingRunnerLoadSegments:
         sample_dataset,
         sample_dataset_document,
         sample_documents,
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
     ):
         """Test load segments calculates and updates word count."""
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         mock_docstore_instance = MagicMock()
         mock_dependencies["docstore"].return_value = mock_docstore_instance
 
@@ -1830,10 +1830,10 @@ class TestIndexingRunnerEstimate:
     """
 
     @pytest.fixture
-    def mock_dependencies(self, sqlite_session: Session):
+    def mock_dependencies(self, sqlite_session: Session, index_processors: IndexProcessorFactory):
         """Mock all external dependencies."""
         with (
-            patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
+            patch.object(index_processors, "create") as mock_factory,
         ):
             yield {
                 "session": sqlite_session,
@@ -1841,12 +1841,12 @@ class TestIndexingRunnerEstimate:
             }
 
     def test_indexing_estimate_respects_batch_limit(
-        self, mock_dependencies, config_overrides, file_uploads: FileUploadService
+        self, mock_dependencies, config_overrides, index_processors: IndexProcessorFactory
     ):
         """Test indexing estimate enforces batch upload limit."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, BATCH_UPLOAD_LIMIT=10)
         # Arrange
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         tenant_id = str(uuid.uuid4())
 
         extract_settings = [MagicMock() for _ in range(15)]
@@ -1861,13 +1861,13 @@ class TestIndexingRunnerEstimate:
             )
 
     def test_indexing_estimate_limits_qa_preview(
-        self, mock_dependencies, config_overrides, file_uploads: FileUploadService
+        self, mock_dependencies, config_overrides, index_processors: IndexProcessorFactory
     ):
         """Test indexing estimate returns no more than ten QA preview items."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
 
         qa_documents = [
             Document(
@@ -1893,14 +1893,14 @@ class TestIndexingRunnerEstimate:
         assert result.qa_preview[-1].question == "Question 9"
 
     def test_indexing_estimate_commits_preview_cleanup_before_summary_workers(
-        self, mock_dependencies, config_overrides, file_uploads: FileUploadService
+        self, mock_dependencies, config_overrides, index_processors: IndexProcessorFactory
     ):
         """Test preview cleanup is visible before summary workers use independent sessions."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         tenant_id = str(uuid.uuid4())
         mock_processor = MagicMock()
-        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        mock_dependencies["factory"].return_value = mock_processor
         phase_events: list[str] = []
         session = mock_dependencies["session"]
         event.listen(session, "after_commit", lambda _session: phase_events.append("commit"))
@@ -1988,13 +1988,13 @@ class TestIndexingRunnerProcessChunk:
         mock_dependencies,
         mock_flask_app,
         sqlite_session_factory: sessionmaker[Session],
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
     ):
         """Test process chunk loads the index and completes segments without counting tokens."""
         # Arrange
         from core.indexing_runner import IndexingRunner
 
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         mock_processor = MagicMock()
         chunk_documents = [
             Document(page_content="Chunk 1", metadata={"doc_id": "c1"}),
@@ -2031,9 +2031,9 @@ class TestIndexingRunnerProcessChunk:
 
         with (
             patch("core.indexing_runner.session_factory.create_session", sqlite_session_factory),
-            patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
+            patch.object(index_processors, "create") as mock_factory,
         ):
-            mock_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_factory.return_value = mock_processor
 
             # Act - the method creates its own app_context and session
             result = runner._process_chunk(
@@ -2055,13 +2055,13 @@ class TestIndexingRunnerProcessChunk:
         mock_dependencies,
         mock_flask_app,
         sqlite_session_factory: sessionmaker[Session],
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
     ):
         """Test process chunk detects document pause."""
         # Arrange
         from core.indexing_runner import IndexingRunner
 
-        runner = IndexingRunner(file_uploads=file_uploads)
+        runner = IndexingRunner(index_processors=index_processors)
         chunk_documents = [Document(page_content="Chunk", metadata={"doc_id": "c1"})]
 
         mock_dataset, mock_dataset_document = persist_indexing_scope(mock_dependencies["session"])

@@ -6,7 +6,6 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_storage import storage
 from models.dataset import Dataset, Document, SegmentAttachmentBinding
 from models.model import UploadFile
@@ -52,9 +51,7 @@ def delete_segment_from_index_task(
 
             # Proceed with index cleanup using the index_node_ids directly
             # For actual deletion, we should delete summaries (not just disable them)
-            index_processor = IndexProcessorFactory(
-                doc_form, file_uploads=application_services().file_uploads
-            ).init_index_processor()
+            index_processor = application_services().index_processors.create(doc_form)
             index_processor.clean(
                 dataset,
                 index_node_ids,

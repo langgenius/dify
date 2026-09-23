@@ -7,8 +7,6 @@ from sqlalchemy import delete, select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.indexing_runner import IndexingRunner
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -71,9 +69,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         logger.info(click.style(f"Start sync website document: {document_id}", fg="green"))
         try:
             # clean old data
-            index_processor = IndexProcessorFactory(
-                document.doc_form, file_uploads=application_services().file_uploads
-            ).init_index_processor()
+            index_processor = application_services().index_processors.create(document.doc_form)
 
             segments = session.scalars(
                 select(DocumentSegment).where(
@@ -107,7 +103,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             # Release document/segment locks before extraction starts.
             session.commit()
 
-            indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
+            indexing_runner = application_services().create_indexing_runner()
             indexing_runner.run([document], session)
             session.commit()
             redis_client.delete(sync_indexing_cache_key)

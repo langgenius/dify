@@ -48,7 +48,6 @@ from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetPro
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
-from services.file_upload_service import FileUploadService
 from services.vector_space_admission_service import VectorSpaceAdmissionService
 
 logger = logging.getLogger(__name__)
@@ -58,10 +57,10 @@ class IndexingRunner:
     def __init__(
         self,
         *,
-        file_uploads: FileUploadService,
+        index_processors: IndexProcessorFactory,
         enforce_vector_space_admission: bool = False,
     ) -> None:
-        self._file_uploads = file_uploads
+        self._index_processors = index_processors
         self.storage = storage
         self.enforce_vector_space_admission = enforce_vector_space_admission
 
@@ -110,9 +109,7 @@ class IndexingRunner:
                 if not processing_rule:
                     raise ValueError("no process rule found")
                 index_type = requeried_document.doc_form
-                index_processor = IndexProcessorFactory(
-                    index_type, file_uploads=self._file_uploads
-                ).init_index_processor()
+                index_processor = self._index_processors.create(index_type)
                 # extract
                 text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict(), session)
                 session.commit()
@@ -207,7 +204,7 @@ class IndexingRunner:
                 raise ValueError("no process rule found")
 
             index_type = requeried_document.doc_form
-            index_processor = IndexProcessorFactory(index_type, file_uploads=self._file_uploads).init_index_processor()
+            index_processor = self._index_processors.create(index_type)
             # extract
             text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict(), session)
             session.commit()
@@ -380,7 +377,7 @@ class IndexingRunner:
         total_segments = 0
         # doc_form represents the segmentation method (general, parent-child, QA)
         index_type = doc_form
-        index_processor = IndexProcessorFactory(index_type, file_uploads=self._file_uploads).init_index_processor()
+        index_processor = self._index_processors.create(index_type)
         # one extract_setting is one source document
         for extract_setting in extract_settings:
             # extract
@@ -774,9 +771,7 @@ class IndexingRunner:
                         multimodal_documents.extend(document.attachments)
 
                 # load index
-                index_processor = IndexProcessorFactory(
-                    index_type, file_uploads=self._file_uploads
-                ).init_index_processor()
+                index_processor = self._index_processors.create(index_type)
                 index_processor.load(
                     dataset,
                     chunk_documents,

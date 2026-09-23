@@ -15,7 +15,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from extensions.ext_application_services import application_services
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from services.account_service import AccountService, TenantService
@@ -50,10 +49,8 @@ class TestDealDatasetVectorIndexTask:
     @pytest.fixture
     def mock_index_processor_factory(self, mock_index_processor):
         """Mock IndexProcessorFactory for testing."""
-        with patch("tasks.deal_dataset_vector_index_task.IndexProcessorFactory") as mock_factory:
-            mock_instance = Mock()
-            mock_instance.init_index_processor.return_value = mock_index_processor
-            mock_factory.return_value = mock_instance
+        with patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create") as mock_factory:
+            mock_factory.return_value = mock_index_processor
             yield mock_factory
 
     @pytest.fixture
@@ -126,8 +123,7 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify index processor clean method was called
         # The mock should be called during task execution
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
 
         # Check if the mock was called at least once
         assert mock_processor.clean.call_count >= 0  # For now, just check it doesn't fail
@@ -228,8 +224,7 @@ class TestDealDatasetVectorIndexTask:
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load method was called
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_update_action_success(
@@ -329,8 +324,7 @@ class TestDealDatasetVectorIndexTask:
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor clean and load methods were called
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.clean.assert_called_once()
         clean_args, clean_kwargs = mock_processor.clean.call_args
         assert clean_args[0].id == dataset.id
@@ -355,8 +349,7 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(non_existent_dataset_id, "add")
 
         # Verify that no index processor operations were performed
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.clean.assert_not_called()
         mock_processor.load.assert_not_called()
 
@@ -387,8 +380,7 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify that no index processor operations were performed
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_add_action_no_segments(
@@ -444,8 +436,7 @@ class TestDealDatasetVectorIndexTask:
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify that no index processor load was called since no segments exist
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_update_action_no_documents(
@@ -475,8 +466,7 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "update")
 
         # Verify that index processor clean was called but no load
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.clean.assert_called_once()
         clean_args, clean_kwargs = mock_processor.clean.call_args
         assert clean_args[0].id == dataset.id
@@ -568,8 +558,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Mock index processor to raise exception during load
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.load.side_effect = Exception("Test exception during indexing")
 
         # Execute add action
@@ -653,11 +642,8 @@ class TestDealDatasetVectorIndexTask:
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with custom index type
-        mock_index_processor_factory.assert_called_once_with(
-            IndexStructureType.QA_INDEX, file_uploads=application_services().file_uploads
-        )
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_index_processor_factory.assert_called_once_with(IndexStructureType.QA_INDEX)
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_with_default_index_type(
@@ -731,11 +717,8 @@ class TestDealDatasetVectorIndexTask:
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with the document's index type
-        mock_index_processor_factory.assert_called_once_with(
-            IndexStructureType.PARAGRAPH_INDEX, file_uploads=application_services().file_uploads
-        )
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_index_processor_factory.assert_called_once_with(IndexStructureType.PARAGRAPH_INDEX)
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_multiple_documents_processing(
@@ -838,8 +821,7 @@ class TestDealDatasetVectorIndexTask:
             assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load was called multiple times
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         assert mock_processor.load.call_count == 3
 
     def test_deal_dataset_vector_index_task_document_status_transitions(
@@ -924,8 +906,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Mock index processor to capture intermediate state
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
 
         # Mock the load method to simulate successful processing
         mock_processor.load.return_value = None
@@ -1056,8 +1037,7 @@ class TestDealDatasetVectorIndexTask:
         assert updated_disabled_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
         # Verify index processor load was called only once (for enabled document)
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_with_archived_documents(
@@ -1177,8 +1157,7 @@ class TestDealDatasetVectorIndexTask:
         assert updated_archived_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
         # Verify index processor load was called only once (for active document)
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_with_incomplete_documents(
@@ -1298,6 +1277,5 @@ class TestDealDatasetVectorIndexTask:
         assert updated_incomplete_document.indexing_status == IndexingStatus.INDEXING  # Should not change
 
         # Verify index processor load was called only once (for completed document)
-        mock_factory = mock_index_processor_factory.return_value
-        mock_processor = mock_factory.init_index_processor.return_value
+        mock_processor = mock_index_processor_factory.return_value
         mock_processor.load.assert_called_once()

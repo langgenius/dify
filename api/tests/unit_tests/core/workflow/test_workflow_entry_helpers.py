@@ -363,7 +363,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_id="user-id",
                 user_inputs={"question": "hello"},
                 variable_pool=sentinel.variable_pool,
-                file_uploads=sentinel.file_uploads,
+                index_processor=sentinel.index_processor,
             )
 
         assert node.id == "node-id"
@@ -371,7 +371,7 @@ class TestWorkflowEntrySingleStepRun:
         dify_node_factory.assert_called_once_with(
             graph_init_context=sentinel.graph_init_context,
             graph_runtime_state=sentinel.graph_runtime_state,
-            file_uploads=sentinel.file_uploads,
+            index_processor=sentinel.index_processor,
         )
         load_into_variable_pool.assert_called_once_with(
             variable_loader=workflow_entry.DUMMY_VARIABLE_LOADER,

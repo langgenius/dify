@@ -15,7 +15,6 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from extensions.ext_application_services import application_services
 from models import (
     Account,
     AccountStatus,
@@ -237,7 +236,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return segments
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
+    @patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create")
     def test_delete_segment_from_index_task_success(
         self, mock_index_processor_factory, db_session_with_containers: Session
     ):
@@ -265,7 +264,7 @@ class TestDeleteSegmentFromIndexTask:
 
         # Mock the index processor
         mock_processor = MagicMock()
-        mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+        mock_index_processor_factory.return_value = mock_processor
 
         # Extract segment IDs for the task
         segment_ids = [segment.id for segment in segments]
@@ -277,9 +276,7 @@ class TestDeleteSegmentFromIndexTask:
         assert result is None  # Task should return None on success
 
         # Verify index processor factory was called with correct document form
-        mock_index_processor_factory.assert_called_once_with(
-            document.doc_form, file_uploads=application_services().file_uploads
-        )
+        mock_index_processor_factory.assert_called_once_with(document.doc_form)
 
         # Verify index processor clean method was called with correct parameters
         # Note: We can't directly compare Dataset objects as they are different instances
@@ -424,7 +421,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when indexing is not completed
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
+    @patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create")
     def test_delete_segment_from_index_task_index_processor_clean(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -459,7 +456,7 @@ class TestDeleteSegmentFromIndexTask:
 
             # Mock the index processor
             mock_processor = MagicMock()
-            mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+            mock_index_processor_factory.return_value = mock_processor
 
             # Execute the task
             result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
@@ -468,7 +465,7 @@ class TestDeleteSegmentFromIndexTask:
             assert result is None
 
             # Verify index processor factory was called with correct document form
-            mock_index_processor_factory.assert_called_with(doc_form, file_uploads=application_services().file_uploads)
+            mock_index_processor_factory.assert_called_with(doc_form)
 
             # Verify index processor clean method was called with correct parameters
             assert mock_processor.clean.call_count == 1
@@ -482,7 +479,7 @@ class TestDeleteSegmentFromIndexTask:
             mock_index_processor_factory.reset_mock()
             mock_processor.reset_mock()
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
+    @patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create")
     def test_delete_segment_from_index_task_exception_handling(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -511,7 +508,7 @@ class TestDeleteSegmentFromIndexTask:
         # Mock the index processor to raise an exception
         mock_processor = MagicMock()
         mock_processor.clean.side_effect = Exception("Index processor error")
-        mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+        mock_index_processor_factory.return_value = mock_processor
 
         # Execute the task - should not raise exception
         result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
@@ -527,7 +524,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
+    @patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create")
     def test_delete_segment_from_index_task_empty_index_node_ids(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -553,7 +550,7 @@ class TestDeleteSegmentFromIndexTask:
 
         # Mock the index processor
         mock_processor = MagicMock()
-        mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+        mock_index_processor_factory.return_value = mock_processor
 
         # Execute the task
         result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, [])
@@ -569,7 +566,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
+    @patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create")
     def test_delete_segment_from_index_task_large_index_node_ids(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -597,7 +594,7 @@ class TestDeleteSegmentFromIndexTask:
 
         # Mock the index processor
         mock_processor = MagicMock()
-        mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+        mock_index_processor_factory.return_value = mock_processor
 
         # Execute the task
         result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)

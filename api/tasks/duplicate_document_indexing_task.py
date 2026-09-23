@@ -9,8 +9,7 @@ from sqlalchemy import delete, select
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.indexing_runner import DocumentIsPausedError
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
 from libs.datetime_utils import naive_utc_now
@@ -134,9 +133,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
 
                 # clean old data
                 index_type = document.doc_form
-                index_processor = IndexProcessorFactory(
-                    index_type, file_uploads=application_services().file_uploads
-                ).init_index_processor()
+                index_processor = application_services().index_processors.create(index_type)
 
                 segments = session.scalars(
                     select(DocumentSegment).where(DocumentSegment.document_id == document.id)
@@ -165,7 +162,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
             # Do not keep segment deletions or parsing status changes open during extraction.
             session.commit()
 
-            indexing_runner = IndexingRunner(file_uploads=application_services().file_uploads)
+            indexing_runner = application_services().create_indexing_runner()
             indexing_runner.run(list(documents), session)
             session.commit()
             end_at = time.perf_counter()

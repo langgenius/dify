@@ -11,6 +11,7 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
+from core.rag.index_processor.index_processor import IndexProcessor
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.llm_node import DifyLLMNode
@@ -32,7 +33,6 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
-from services.file_upload_service import FileUploadService, FileUploadWriter
 
 
 @pytest.fixture
@@ -321,7 +321,7 @@ class TestDifyNodeFactoryInit:
             factory = node_factory.DifyNodeFactory.from_graph_init_context(
                 graph_init_context=graph_init_context,
                 graph_runtime_state=sentinel.graph_runtime_state,
-                file_uploads=sentinel.file_uploads,
+                index_processor=sentinel.index_processor,
             )
 
         assert isinstance(factory, node_factory.DifyNodeFactory)
@@ -329,13 +329,13 @@ class TestDifyNodeFactoryInit:
         init.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,
             graph_runtime_state=sentinel.graph_runtime_state,
-            file_uploads=sentinel.file_uploads,
+            index_processor=sentinel.index_processor,
         )
 
     def test_with_runtime_state_rebinds_factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
-        factory._file_uploads = sentinel.file_uploads
+        factory._index_processor = sentinel.index_processor
 
         with patch.object(node_factory, "DifyNodeFactory", return_value=sentinel.factory) as factory_cls:
             rebound = factory.with_runtime_state(sentinel.graph_runtime_state)
@@ -344,7 +344,7 @@ class TestDifyNodeFactoryInit:
         factory_cls.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,
             graph_runtime_state=sentinel.graph_runtime_state,
-            file_uploads=sentinel.file_uploads,
+            index_processor=sentinel.index_processor,
         )
 
     def test_init_builds_default_dependencies(self):
@@ -430,7 +430,7 @@ class TestDifyNodeFactoryInit:
         renderer_factory.assert_called_once_with()
         assert factory.graph_init_params is graph_init_params
         assert factory.graph_runtime_state is graph_runtime_state
-        assert factory._file_uploads is None
+        assert factory._index_processor is None
         assert factory._dify_context is dify_context
         assert factory._jinja2_template_renderer is jinja2_template_renderer
         assert factory._document_extractor_unstructured_api_config is unstructured_api_config
@@ -488,18 +488,18 @@ class TestKnowledgeIndexNodeWithoutAppContext:
         )
 
     @pytest.mark.parametrize("rebind_runtime_state", [False, True])
-    def test_constructs_real_node_with_injected_uploads(
+    def test_constructs_real_node_with_injected_index_processor(
         self,
         graph_init_context: node_factory.DifyGraphInitContext,
         graph_runtime_state: GraphRuntimeState,
         rebind_runtime_state: bool,
+        knowledge_index: IndexProcessor,
     ) -> None:
         assert not has_app_context()
-        file_uploads = Mock(spec=FileUploadWriter)
         factory = node_factory.DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
-            file_uploads=file_uploads,
+            index_processor=knowledge_index,
         )
         if rebind_runtime_state:
             graph_runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=1.0)
@@ -509,10 +509,9 @@ class TestKnowledgeIndexNodeWithoutAppContext:
 
         assert isinstance(node, KnowledgeIndexNode)
         assert node.graph_runtime_state is graph_runtime_state
-        assert node.index_processor._file_uploads is file_uploads
-        file_uploads.upload_file_for_actor.assert_not_called()
+        assert node.index_processor is knowledge_index
 
-    def test_missing_uploads_reports_explicit_dependency(
+    def test_missing_index_processor_reports_explicit_dependency(
         self,
         graph_init_context: node_factory.DifyGraphInitContext,
         graph_runtime_state: GraphRuntimeState,
@@ -523,7 +522,7 @@ class TestKnowledgeIndexNodeWithoutAppContext:
             graph_runtime_state=graph_runtime_state,
         )
 
-        with pytest.raises(ValueError, match="file_uploads is required for knowledge-index nodes"):
+        with pytest.raises(ValueError, match="index_processor is required for knowledge-index nodes"):
             factory.create_node(graph_init_context.graph_config["nodes"][0])
 
 
@@ -568,7 +567,7 @@ class TestDifyNodeFactoryCreateNode:
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
         factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
-        factory._file_uploads = None
+        factory._index_processor = None
         factory._dify_context = SimpleNamespace(
             tenant_id="tenant-id",
             app_id="app-id",
@@ -679,9 +678,9 @@ class TestDifyNodeFactoryCreateNode:
         ],
     )
     def test_creates_specialized_nodes(
-        self, monkeypatch: pytest.MonkeyPatch, factory, node_type, constructor_name, file_uploads: FileUploadService
+        self, monkeypatch: pytest.MonkeyPatch, factory, node_type, constructor_name, knowledge_index: IndexProcessor
     ) -> None:
-        factory._file_uploads = file_uploads
+        factory._index_processor = knowledge_index
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
         constructor._mock_name = constructor_name
@@ -725,7 +724,7 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["runtime"] is sentinel.tool_runtime
             factory._bound_tool_file_manager_factory.assert_called_once_with()
         elif constructor_name == "KnowledgeIndexNode":
-            assert kwargs["file_uploads"] is file_uploads
+            assert kwargs["index_processor"] is knowledge_index
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.remote_file_http_client

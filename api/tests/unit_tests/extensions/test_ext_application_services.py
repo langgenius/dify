@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
@@ -358,6 +359,28 @@ def test_build_application_services_wires_shared_file_services(
     assert services.file_grants._files._file_service is services.files
     assert isinstance(services.file_uploads._uploads, SQLAlchemyFileRepository)
     assert services.file_uploads._uploads._session_factory is sqlite_session_factory
+
+
+def test_indexing_runners_keep_admission_policy_separate_and_share_processor_dependencies(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    admitted_runner = services.create_indexing_runner(enforce_vector_space_admission=True)
+    default_runner = services.create_indexing_runner()
+    assert admitted_runner is not default_runner
+    assert admitted_runner.enforce_vector_space_admission is True
+    assert default_runner.enforce_vector_space_admission is False
+    assert admitted_runner._index_processors is services.index_processors
+    assert default_runner._index_processors is services.index_processors
+    assert services.knowledge_index._index_processors is services.index_processors
+    processor = services.index_processors.create(IndexStructureType.PARAGRAPH_INDEX)
+    assert processor._file_uploads is services.file_uploads
 
 
 def test_build_application_services_wires_app_site_boundary(

@@ -1,4 +1,4 @@
-"""Abstract interface for document loader implementations."""
+"""Create document processors with application-scoped dependencies."""
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
@@ -9,23 +9,22 @@ from services.file_upload_service import FileUploadWriter
 
 
 class IndexProcessorFactory:
-    """IndexProcessorInit."""
+    """Bind upload dependencies once and choose a fresh processor for each call."""
 
-    def __init__(self, index_type: str | None, *, file_uploads: FileUploadWriter) -> None:
-        self._index_type = index_type
+    def __init__(self, *, file_uploads: FileUploadWriter) -> None:
         self._file_uploads = file_uploads
 
-    def init_index_processor(self) -> BaseIndexProcessor:
-        """Init index processor."""
+    def create(self, index_type: str | None) -> BaseIndexProcessor:
+        """Create the requested processor; None means the index type is missing."""
 
-        if not self._index_type:
+        if not index_type:
             raise ValueError("Index type must be specified.")
 
-        if self._index_type == IndexStructureType.PARAGRAPH_INDEX:
+        if index_type == IndexStructureType.PARAGRAPH_INDEX:
             return ParagraphIndexProcessor(file_uploads=self._file_uploads)
-        elif self._index_type == IndexStructureType.QA_INDEX:
+        elif index_type == IndexStructureType.QA_INDEX:
             return QAIndexProcessor(file_uploads=self._file_uploads)
-        elif self._index_type == IndexStructureType.PARENT_CHILD_INDEX:
+        elif index_type == IndexStructureType.PARENT_CHILD_INDEX:
             return ParentChildIndexProcessor(file_uploads=self._file_uploads)
         else:
-            raise ValueError(f"Index type {self._index_type} is not supported.")
+            raise ValueError(f"Index type {index_type} is not supported.")

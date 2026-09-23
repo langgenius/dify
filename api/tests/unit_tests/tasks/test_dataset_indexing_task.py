@@ -16,11 +16,11 @@ from sqlalchemy.orm import Session
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
-from services.file_upload_service import FileUploadService
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
@@ -64,7 +64,7 @@ def mock_redis() -> MagicMock:
 def indexing_runner(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     runner = MagicMock()
     runner_class = MagicMock(return_value=runner)
-    monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", runner_class)
+    monkeypatch.setattr(application_services(), "create_indexing_runner", runner_class)
     runner._constructor_mock = runner_class
     return runner
 
@@ -207,7 +207,6 @@ class TestDocumentIndexing:
         document_ids: list[str],
         indexing_runner: MagicMock,
         monkeypatch: pytest.MonkeyPatch,
-        file_uploads: FileUploadService,
     ) -> None:
         _persist_indexing_rows(
             sqlite_session,
@@ -227,9 +226,7 @@ class TestDocumentIndexing:
 
         persisted = _persisted_documents(sqlite_session, document_ids)
         assert [document.indexing_status for document in persisted] == [IndexingStatus.PARSING] * 3
-        indexing_runner._constructor_mock.assert_called_once_with(
-            enforce_vector_space_admission=True, file_uploads=file_uploads
-        )
+        indexing_runner._constructor_mock.assert_called_once_with(enforce_vector_space_admission=True)
         indexing_runner.run.assert_called_once()
         assert isinstance(indexing_runner.run.call_args.args[1], Session)
 
@@ -283,7 +280,7 @@ class TestDocumentIndexing:
     ) -> None:
         get_features = _patch_features(monkeypatch, _features())
         runner_class = MagicMock()
-        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", runner_class)
+        monkeypatch.setattr(application_services(), "create_indexing_runner", runner_class)
 
         _document_indexing(dataset_id, document_ids)
 

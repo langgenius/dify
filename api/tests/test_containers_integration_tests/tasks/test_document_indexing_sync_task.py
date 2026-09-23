@@ -135,8 +135,12 @@ class TestDocumentIndexingSyncTask:
         with (
             patch("tasks.document_indexing_sync_task.DatasourceProviderService") as mock_datasource_service_class,
             patch("tasks.document_indexing_sync_task.NotionExtractor") as mock_notion_extractor_class,
-            patch("tasks.document_indexing_sync_task.IndexProcessorFactory") as mock_index_processor_factory,
-            patch("tasks.document_indexing_sync_task.IndexingRunner") as mock_indexing_runner_class,
+            patch(
+                "core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create"
+            ) as mock_index_processor_factory,
+            patch(
+                "extensions.ext_application_services.ApplicationServices.create_indexing_runner"
+            ) as mock_indexing_runner_class,
         ):
             datasource_service = Mock()
             datasource_service.get_datasource_credentials.return_value = {"integration_secret": "test_token"}
@@ -148,7 +152,7 @@ class TestDocumentIndexingSyncTask:
 
             index_processor = Mock()
             index_processor.clean = Mock()
-            mock_index_processor_factory.return_value.init_index_processor.return_value = index_processor
+            mock_index_processor_factory.return_value = index_processor
 
             indexing_runner = Mock(spec=IndexingRunner)
             indexing_runner.run = Mock()

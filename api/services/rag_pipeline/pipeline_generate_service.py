@@ -48,7 +48,9 @@ class PipelineGenerateService:
                 cls.update_document_status(document_ref, session=session)
             return PipelineGenerator.convert_to_event_stream(
                 PipelineGenerator(
-                    file_uploads=application_services().file_uploads, files=application_services().files
+                    file_uploads=application_services().file_uploads,
+                    files=application_services().files,
+                    index_processor=application_services().knowledge_index,
                 ).generate(
                     session=session,
                     pipeline=pipeline,
@@ -82,7 +84,9 @@ class PipelineGenerateService:
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
             PipelineGenerator(
-                file_uploads=application_services().file_uploads, files=application_services().files
+                file_uploads=application_services().file_uploads,
+                files=application_services().files,
+                index_processor=application_services().knowledge_index,
             ).single_iteration_generate(
                 pipeline=pipeline,
                 workflow=workflow,
@@ -103,7 +107,9 @@ class PipelineGenerateService:
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
             PipelineGenerator(
-                file_uploads=application_services().file_uploads, files=application_services().files
+                file_uploads=application_services().file_uploads,
+                files=application_services().files,
+                index_processor=application_services().knowledge_index,
             ).single_loop_generate(
                 pipeline=pipeline,
                 workflow=workflow,

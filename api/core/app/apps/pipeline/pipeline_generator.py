@@ -39,6 +39,7 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.index_processor import IndexProcessor
 from core.repositories.factory import (
     DifyCoreRepositoryFactory,
     WorkflowExecutionRepository,
@@ -62,9 +63,10 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
-    def __init__(self, *, files: FileService, file_uploads: FileUploadService) -> None:
+    def __init__(self, *, files: FileService, file_uploads: FileUploadService, index_processor: IndexProcessor) -> None:
         self._files = files
         self._file_uploads = file_uploads
+        self._index_processor = index_processor
 
     @overload
     def generate(
@@ -639,7 +641,7 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id = application_generate_entity.user_id
                     # workflow app
                     runner = PipelineRunner(
-                        file_uploads=self._file_uploads,
+                        index_processor=self._index_processor,
                         application_generate_entity=application_generate_entity,
                         queue_manager=queue_manager,
                         workflow_thread_pool_id=workflow_thread_pool_id,

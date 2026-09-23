@@ -32,7 +32,9 @@ class TestBatchCleanDocumentTask:
         """Mock setup for external service dependencies."""
         with (
             patch("extensions.ext_storage.storage") as mock_storage,
-            patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory") as mock_index_factory,
+            patch(
+                "core.rag.index_processor.index_processor_factory.IndexProcessorFactory.create"
+            ) as mock_index_factory,
             patch("core.tools.utils.web_reader_tool.get_image_upload_file_ids") as mock_get_image_ids,
         ):
             # Setup default mock returns
@@ -41,7 +43,7 @@ class TestBatchCleanDocumentTask:
             # Mock index processor
             mock_index_processor = Mock()
             mock_index_processor.clean.return_value = None
-            mock_index_factory.return_value.init_index_processor.return_value = mock_index_processor
+            mock_index_factory.return_value = mock_index_processor
 
             # Mock image file ID extraction
             mock_get_image_ids.return_value = []

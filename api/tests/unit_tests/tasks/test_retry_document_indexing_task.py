@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import DatasetRuntimeMode, DataSourceType, DocumentCreatedFrom, IndexingStatus
-from services.file_upload_service import FileUploadService
 from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -18,7 +18,7 @@ pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-def test_retry_enforces_vector_space_admission(sqlite_session: Session, file_uploads: FileUploadService) -> None:
+def test_retry_enforces_vector_space_admission(sqlite_session: Session) -> None:
     tenant = Tenant(name="Retry tenant")
     user = Account(name="Retry user", email=f"retry-{uuid4()}@example.com")
     membership = TenantAccountJoin(
@@ -59,13 +59,13 @@ def test_retry_enforces_vector_space_admission(sqlite_session: Session, file_upl
 
     with (
         patch("tasks.retry_document_indexing_task.FeatureService.get_features", return_value=features),
-        patch("tasks.retry_document_indexing_task.IndexProcessorFactory"),
-        patch("tasks.retry_document_indexing_task.IndexingRunner") as indexing_runner,
+        patch.object(application_services().index_processors, "create"),
+        patch.object(application_services(), "create_indexing_runner") as indexing_runner,
         patch("tasks.retry_document_indexing_task.redis_client"),
     ):
         retry_document_indexing_task.run(dataset.id, [document.id], user.id)
 
-    indexing_runner.assert_called_once_with(enforce_vector_space_admission=True, file_uploads=file_uploads)
+    indexing_runner.assert_called_once_with(enforce_vector_space_admission=True)
     run_documents, run_session = indexing_runner.return_value.run.call_args.args
     assert [item.id for item in run_documents] == [document.id]
     assert isinstance(run_session, Session)

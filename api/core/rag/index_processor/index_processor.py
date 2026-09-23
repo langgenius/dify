@@ -16,7 +16,6 @@ from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
-from services.file_upload_service import FileUploadWriter
 from services.vector_space_admission_service import VectorSpaceAdmissionService
 
 from .index_processor_factory import IndexProcessorFactory
@@ -26,11 +25,11 @@ logger = logging.getLogger(__name__)
 
 
 class IndexProcessor:
-    def __init__(self, *, file_uploads: FileUploadWriter) -> None:
-        self._file_uploads = file_uploads
+    def __init__(self, *, index_processors: IndexProcessorFactory) -> None:
+        self._index_processors = index_processors
 
     def format_preview(self, chunk_structure: str, chunks: Any) -> Preview:
-        index_processor = IndexProcessorFactory(chunk_structure, file_uploads=self._file_uploads).init_index_processor()
+        index_processor = self._index_processors.create(chunk_structure)
         preview = index_processor.format_preview(chunks)
         data = Preview(
             chunk_structure=preview["chunk_structure"],
@@ -94,9 +93,7 @@ class IndexProcessor:
             summary_index_setting = dataset.summary_index_setting
         index_node_ids = []
 
-        index_processor = IndexProcessorFactory(
-            dataset.chunk_structure, file_uploads=self._file_uploads
-        ).init_index_processor()
+        index_processor = self._index_processors.create(dataset.chunk_structure)
         if original_document_id:
             segments = session.scalars(
                 select(DocumentSegment).where(

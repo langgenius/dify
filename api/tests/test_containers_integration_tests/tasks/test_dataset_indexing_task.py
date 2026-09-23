@@ -84,7 +84,7 @@ def session_close_tracker():
 def patched_external_dependencies():
     """Patch non-DB collaborators while keeping database behavior real."""
     with (
-        patch("tasks.document_indexing_task.IndexingRunner", autospec=True) as mock_indexing_runner,
+        patch("extensions.ext_application_services.ApplicationServices.create_indexing_runner") as mock_indexing_runner,
         patch("tasks.document_indexing_task.FeatureService", autospec=True) as mock_feature_service,
         patch("tasks.document_indexing_task.generate_summary_index_task", autospec=True) as mock_summary_task,
     ):
