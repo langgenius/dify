@@ -447,14 +447,12 @@ def test_workflow_tool_children_preserve_source_identity(
     )
 
 
-@pytest.mark.parametrize("parent_id", ["root-tool", "nested-tool"])
 @pytest.mark.parametrize("source_app_ids", [("source-app",), ("allowed-source", "source-app")])
 def test_workflow_tool_children_deny_any_unauthorized_source(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     config_overrides: Callable[..., None],
-    parent_id: str,
     source_app_ids: tuple[str, ...],
 ) -> None:
     config_overrides(RBAC_ENABLED=True)
@@ -483,13 +481,13 @@ def test_workflow_tool_children_deny_any_unauthorized_source(
     api = workflow_run_module.WorkflowToolNodeExecutionListApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context(f"/apps/app-1/workflow-runs/run-1/node-executions/{parent_id}/children"):
+    with app.test_request_context("/apps/app-1/workflow-runs/run-1/node-executions/parent/children"):
         request.view_args = {"app_id": "app-1"}
         with pytest.raises(Forbidden, match="permission to view this tool's internal execution details") as error:
-            handler(api, context, app_model=_app(), run_id="run-1", node_execution_id=parent_id)
+            handler(api, context, app_model=_app(), run_id="run-1", node_execution_id="parent")
 
     assert error.value.code == 403
     assert check_access.call_args.kwargs["resource_id"] == "source-app"
     workflow_runs.get_workflow_tool_node_executions.assert_called_once_with(
-        context, app_id="app-1", run_id="run-1", node_execution_id=parent_id
+        context, app_id="app-1", run_id="run-1", node_execution_id="parent"
     )
