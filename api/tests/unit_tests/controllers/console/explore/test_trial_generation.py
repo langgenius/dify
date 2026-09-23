@@ -409,7 +409,7 @@ def test_unpublished_agent_remains_unavailable_after_service_migration(harness: 
 
 
 @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.ADVANCED_CHAT])
-def test_stop_chat_uses_admitted_account_without_consuming_usage(harness: _Harness, mode: AppMode):
+def test_stop_chat_uses_admitted_account_without_consuming_usage(harness: _Harness, mode: AppMode) -> None:
     harness.set_mode(mode)
     response = harness.post("chat-messages/task-1/stop")
     assert response.status_code == 200
@@ -422,14 +422,14 @@ def test_stop_chat_uses_admitted_account_without_consuming_usage(harness: _Harne
     assert len(harness.services.app_tasks.chat_calls) == 1
 
 
-def test_stop_chat_rejects_workflow(harness: _Harness):
+def test_stop_chat_rejects_workflow(harness: _Harness) -> None:
     harness.set_mode(AppMode.WORKFLOW)
     _assert_error(harness.post("chat-messages/task-1/stop"), 400, "not_chat_app")
     assert harness.services.app_tasks.chat_calls == []
 
 
 @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.ADVANCED_CHAT])
-def test_last_trial_can_be_stopped_without_allowing_another_generation(harness: _Harness, mode: AppMode):
+def test_last_trial_can_be_stopped_without_allowing_another_generation(harness: _Harness, mode: AppMode) -> None:
     harness.set_mode(mode)
     with harness.factory.begin() as session:
         session.add(AccountTrialAppRecord(app_id=harness.target.id, account_id=harness.account.id, count=2))

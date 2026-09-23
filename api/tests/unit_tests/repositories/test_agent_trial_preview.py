@@ -23,7 +23,7 @@ from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import AppPreviewQueryService, AppPreviewRef
 
 
-def _preview(session: Session, app: AppPreviewRef):
+def _preview(session: Session, app: AppPreviewRef) -> AgentAppComposerResponse:
     repository = AppPreviewQueryRepository(session_factory=sessionmaker(bind=session.get_bind()))
     result = AppPreviewQueryService(apps=repository, is_previewable=lambda _app_id: True).get_agent_composer(app=app)
     return AgentAppComposerResponse.model_validate(result)
@@ -97,7 +97,7 @@ def _published_app(session: Session) -> tuple[App, Agent, AgentConfigSnapshot]:
     return app, agent, snapshot
 
 
-def test_detached_preview_reference_preserves_owner_scope(sqlite_session: Session):
+def test_detached_preview_reference_preserves_owner_scope(sqlite_session: Session) -> None:
     app, _, _ = _published_app(sqlite_session)
     preview = _preview(sqlite_session, AppPreviewRef(app_id=app.id, tenant_id=app.tenant_id))
     assert preview.agent_soul.prompt.system_prompt == "Published prompt"
@@ -105,7 +105,7 @@ def test_detached_preview_reference_preserves_owner_scope(sqlite_session: Sessio
         _preview(sqlite_session, AppPreviewRef(app_id=app.id, tenant_id=str(uuid4())))
 
 
-def test_preview_reads_published_snapshot_without_creating_draft(sqlite_session: Session):
+def test_preview_reads_published_snapshot_without_creating_draft(sqlite_session: Session) -> None:
     app, agent, snapshot = _published_app(sqlite_session)
     before = sqlite_session.scalar(select(func.count()).select_from(AgentConfigDraft))
 
@@ -118,6 +118,7 @@ def test_preview_reads_published_snapshot_without_creating_draft(sqlite_session:
     assert preview.agent_soul.config_files[0].name == "guide.txt"
     assert preview.agent_soul.tools.dify_tools[0].tool_name == "search"
     assert preview.agent.id == agent.id
+    assert preview.active_config_snapshot is not None
     assert preview.active_config_snapshot.id == snapshot.id
     assert preview.active_config_is_published is True
     assert preview.draft is None
@@ -138,7 +139,7 @@ def test_preview_reads_published_snapshot_without_creating_draft(sqlite_session:
     assert not sqlite_session.dirty
 
 
-def test_preview_does_not_expose_unpublished_edits(sqlite_session: Session):
+def test_preview_does_not_expose_unpublished_edits(sqlite_session: Session) -> None:
     app, agent, snapshot = _published_app(sqlite_session)
     sqlite_session.add(
         AgentConfigDraft(
@@ -168,7 +169,7 @@ def test_preview_does_not_expose_unpublished_edits(sqlite_session: Session):
     assert editable.save_options
 
 
-def test_preview_rejects_seeded_import_snapshot(sqlite_session: Session):
+def test_preview_rejects_seeded_import_snapshot(sqlite_session: Session) -> None:
     app, agent, _ = _published_app(sqlite_session)
     revision = sqlite_session.scalar(select(AgentConfigRevision).where(AgentConfigRevision.agent_id == agent.id))
     assert revision is not None
@@ -179,7 +180,7 @@ def test_preview_rejects_seeded_import_snapshot(sqlite_session: Session):
         _preview(sqlite_session, AppPreviewRef(app_id=app.id, tenant_id=app.tenant_id))
 
 
-def test_preview_rejects_cross_tenant_snapshot(sqlite_session: Session):
+def test_preview_rejects_cross_tenant_snapshot(sqlite_session: Session) -> None:
     app, _, snapshot = _published_app(sqlite_session)
     snapshot.tenant_id = str(uuid4())
     sqlite_session.commit()

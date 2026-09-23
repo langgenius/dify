@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
-from models.account import Tenant
+from models.account import Tenant, TenantStatus
 from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CustomizeTokenStrategy
@@ -71,7 +71,10 @@ def _add_catalog_app(
 
 
 @pytest.mark.parametrize("unavailable", [None, "private", "unlisted", "unpublished", "foreign-snapshot", "archived"])
-def test_agent_package_link_only_exposes_current_public_version(sqlite_session_factory, unavailable):
+def test_agent_package_link_only_exposes_current_public_version(
+    sqlite_session_factory: sessionmaker[Session],
+    unavailable: str | None,
+) -> None:
     agent_id, version_id = str(uuid4()), str(uuid4())
     with sqlite_session_factory() as session:
         app = _add_catalog_app(session)
@@ -79,7 +82,7 @@ def test_agent_package_link_only_exposes_current_public_version(sqlite_session_f
         app.is_public = unavailable != "private"
         tenant = Tenant(name="Source workspace")
         tenant.id = app.tenant_id
-        tenant.status = "archive" if unavailable == "archived" else "normal"
+        tenant.status = TenantStatus.ARCHIVE if unavailable == "archived" else TenantStatus.NORMAL
         agent = Agent(
             id=agent_id,
             tenant_id=app.tenant_id,

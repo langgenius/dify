@@ -26,7 +26,7 @@ from services.recommended_app_query_service import (
 )
 
 
-def test_package_download_works_without_browser_credentials(app: Flask, monkeypatch):
+def test_package_download_works_without_browser_credentials(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     app_id, version_id = uuid4(), uuid4()
     artifact = RosterAgentPackageExport(archive=BytesIO(b"package-bytes"), filename="sample.ifpkg", size=13)
     sources, exporter = MagicMock(), MagicMock()
@@ -49,6 +49,7 @@ def test_package_download_works_without_browser_credentials(app: Flask, monkeypa
     sources.get_package_source.return_value = None
     response = app.test_client().get(f"/public-package/{app_id}?version_id={version_id}")
     assert response.status_code == 404
+    assert response.json is not None
     assert response.json["code"] == "recommended_app_not_found"
     exporter.export.assert_not_called()
 

@@ -5,6 +5,7 @@ import io
 import json
 import zipfile
 from collections.abc import Callable, Generator
+from typing import override
 from uuid import UUID, uuid4
 
 import httpx
@@ -338,7 +339,8 @@ def test_template_url_rejects_failed_or_unsafe_download_before_writes(
     config_overrides(AGENT_PACKAGE_MAX_BYTES=4)
 
     class OversizedDownload(httpx.SyncByteStream):
-        def __iter__(self):
+        @override
+        def __iter__(self) -> Generator[bytes, None, None]:
             yield b"x" * (2 * 1024 * 1024)
             pytest.fail("An oversized Agent package must stop downloading before reading the tail")
 
@@ -360,7 +362,7 @@ def test_template_url_rejects_failed_or_unsafe_download_before_writes(
 
 
 def test_template_url_rejects_embedded_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
-    def unexpected_request(*_args, **_kwargs):
+    def unexpected_request(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Invalid URL must not be fetched")
 
     monkeypatch.setattr("services.app_import_source.remote_fetcher.make_request", unexpected_request)
@@ -372,7 +374,7 @@ def test_template_url_rejects_embedded_credentials(monkeypatch: pytest.MonkeyPat
         )
 
 
-def test_package_icon_override_rejects_foreign_file_before_staging():
+def test_package_icon_override_rejects_foreign_file_before_staging() -> None:
     storage = _MemoryStorage()
     with pytest.raises(InvalidRosterAgentPackageError, match="current workspace"):
         RosterAgentPackageImporter(storage_backend=storage).import_package(
@@ -385,7 +387,10 @@ def test_package_icon_override_rejects_foreign_file_before_staging():
     assert storage.save_count == 0
 
 
-def test_local_template_copies_published_resources_without_outer_archive(monkeypatch, sqlite_session_factory):
+def test_local_template_copies_published_resources_without_outer_archive(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     storage = _MemoryStorage()
     importer = RosterAgentPackageImporter(storage_backend=storage)
     monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
@@ -395,6 +400,7 @@ def test_local_template_copies_published_resources_without_outer_archive(monkeyp
     target.id = str(uuid4())
     with sqlite_session_factory() as session:
         draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == original.agent_id))
+        assert draft is not None
         snapshot = AgentConfigSnapshot(
             tenant_id="tenant-1",
             agent_id=original.agent_id,
@@ -405,6 +411,7 @@ def test_local_template_copies_published_resources_without_outer_archive(monkeyp
         session.flush()
         version_id = UUID(snapshot.id)
         agent = session.get(Agent, original.agent_id)
+        assert agent is not None
         agent.active_config_snapshot_id = snapshot.id
         session.add(
             AgentConfigRevision(
@@ -419,7 +426,7 @@ def test_local_template_copies_published_resources_without_outer_archive(monkeyp
         draft.config_snapshot = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "unpublished"}})
         session.commit()
 
-    def unexpected_archive(*_args, **_kwargs):
+    def unexpected_archive(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Local templates must not use HTTP or outer package serialization")
 
     monkeypatch.setattr(RosterAgentPackageExporter, "export", unexpected_archive)
@@ -442,10 +449,13 @@ def test_local_template_copies_published_resources_without_outer_archive(monkeyp
     assert result.warnings == []
     with sqlite_session_factory() as session:
         app = session.get(App, result.app_id)
+        assert app is not None
         assert app.tenant_id == target.id
         assert app.name == "Local copy"
         copied_agent = session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert copied_agent is not None
         copied_draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == copied_agent.id))
+        assert copied_draft is not None
         copied = AgentSoulConfig.model_validate(copied_draft.config_snapshot_dict)
         assert copied.prompt.system_prompt == "Imported prompt"
         assert {item.name for item in copied.config_skills} == {"config-skill", "workspace-skill"}
@@ -453,6 +463,7 @@ def test_local_template_copies_published_resources_without_outer_archive(monkeyp
         for item in [*copied.config_skills, *copied.config_files]:
             assert item.file_id not in original_ids
             row = session.get(UploadFile if item.file_kind == "upload_file" else ToolFile, item.file_id)
+            assert row is not None
             assert row.tenant_id == target.id
             assert row.key in storage.files if isinstance(row, UploadFile) else row.file_key in storage.files
 

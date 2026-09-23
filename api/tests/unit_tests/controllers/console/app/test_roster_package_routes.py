@@ -547,7 +547,12 @@ def test_template_url_checks_permissions_before_download(
 
 
 @pytest.mark.parametrize("available", [True, False])
-def test_local_template_import_resolves_source_before_creation(app, monkeypatch, config_overrides, available):
+def test_local_template_import_resolves_source_before_creation(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    available: bool,
+) -> None:
     from services.recommended_app_package_service import RecommendedAgentPackageSource, RecommendedAppPackageService
 
     config_overrides(RBAC_ENABLED=False)
