@@ -10,6 +10,7 @@ let mockAppMode: AppDetailWithSite['mode'] = 'chat'
 let mockPathname = '/app/app-1/logs'
 let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
+let mockHasPublishedWorkflow = true
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(
@@ -19,6 +20,9 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
       name: 'Test App',
       mode: mockAppMode,
       permission_keys: mockAppPermissionKeys,
+      workflow: mockHasPublishedWorkflow
+        ? { id: 'workflow-1', created_at: 1, updated_at: 1 }
+        : null,
     }),
   )
   return renderWithConsoleQuery(ui, {
@@ -48,6 +52,7 @@ describe('AppDetailSection', () => {
     mockPathname = '/app/app-1/logs'
     mockAppPermissionKeys = [AppACLPermission.Monitor]
     mockIsRbacEnabled = true
+    mockHasPublishedWorkflow = true
   })
 
   // Rendering behavior for app detail navigation entries.
@@ -140,6 +145,38 @@ describe('AppDetailSection', () => {
       expect(
         screen.queryByRole('link', { name: 'common.appMenus.promptEng' }),
       ).not.toBeInTheDocument()
+    })
+
+    it('shows evaluation for a published workflow with layout view permission', () => {
+      mockAppMode = 'workflow'
+      mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+
+      render(<AppDetailSection />)
+
+      expect(screen.getByRole('link', { name: 'evaluation.title' })).toHaveAttribute(
+        'href',
+        '/app/app-1/evaluation',
+      )
+    })
+
+    it('shows disabled evaluation before the workflow is published', () => {
+      mockAppMode = 'workflow'
+      mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+      mockHasPublishedWorkflow = false
+
+      render(<AppDetailSection />)
+
+      expect(screen.getByRole('button', { name: 'evaluation.title' })).toBeDisabled()
+      expect(screen.queryByRole('link', { name: 'evaluation.title' })).not.toBeInTheDocument()
+    })
+
+    it('hides evaluation for other app modes', () => {
+      mockAppMode = 'advanced-chat'
+      mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+
+      render(<AppDetailSection />)
+
+      expect(screen.queryByText('evaluation.title')).not.toBeInTheDocument()
     })
 
     it('should render access point navigation using its app route', () => {

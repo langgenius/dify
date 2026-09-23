@@ -1,4 +1,4 @@
-import { getResetInDaysFromDate, parseLimit, parseVectorSpaceToMB } from '../index'
+import { canAccessSnippetsAndEvaluation, getResetInDaysFromDate, parseLimit, parseVectorSpaceToMB } from '../index'
 
 describe('billing utils', () => {
   it.each([
@@ -35,6 +35,21 @@ describe('billing utils', () => {
     it('displays zero count limits as unlimited', () => {
       expect(parseLimit(0)).toBe(-1)
       expect(parseLimit(10)).toBe(10)
+    })
+  })
+
+  describe('snippet and evaluation plan access', () => {
+    it('allows self-hosted editions', () => {
+      expect(canAccessSnippetsAndEvaluation({ deploymentEdition: 'COMMUNITY' })).toBe(true)
+    })
+
+    it.each(['professional', 'team'] as const)('allows the %s cloud plan', (planType) => {
+      expect(canAccessSnippetsAndEvaluation({ deploymentEdition: 'CLOUD', planType })).toBe(true)
+    })
+
+    it('blocks sandbox and missing cloud plans', () => {
+      expect(canAccessSnippetsAndEvaluation({ deploymentEdition: 'CLOUD', planType: 'sandbox' })).toBe(false)
+      expect(canAccessSnippetsAndEvaluation({ deploymentEdition: 'CLOUD' })).toBe(false)
     })
   })
 })

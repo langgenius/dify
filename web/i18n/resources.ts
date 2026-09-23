@@ -51,6 +51,7 @@ export const namespaces = [
   'deployments',
   'deviceFlow',
   'education',
+  'evaluation',
   'explore',
   'layout',
   'login',

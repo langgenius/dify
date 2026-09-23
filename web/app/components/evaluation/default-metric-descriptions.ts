@@ -75,7 +75,7 @@ export const getDefaultMetricDescriptionI18nKey = (metricId: string) => {
 }
 
 export const getTranslatedMetricDescription = (
-  t: TFunction,
+  t: TFunction<'evaluation'>,
   metricId: string,
   fallbackDescription = '',
 ) => {
@@ -84,8 +84,5 @@ export const getTranslatedMetricDescription = (
 
   if (!descriptionI18nKey) return defaultDescription
 
-  return t(
-    descriptionI18nKey as never,
-    { defaultValue: defaultDescription } as never,
-  ) as unknown as string
+  return t(($) => $[descriptionI18nKey], { defaultValue: defaultDescription })
 }

@@ -53,6 +53,7 @@ const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
     name: 'Demo App',
     mode: 'workflow' as const,
     permission_keys: [AppACLPermission.ViewLayout, AppACLPermission.Monitor],
+    workflow: { id: 'workflow-1', created_at: 1, updated_at: 1 },
     ...overrides,
   })
 
@@ -150,6 +151,7 @@ describe('AppDetailLayout', () => {
       ['/app/app-1/configuration', 'common.appMenus.promptEng', 'chat'],
       ['/app/app-1/access-point', 'common.appMenus.accessPoint', 'workflow'],
       ['/app/app-1/deploy', 'common.appMenus.deploy', 'workflow'],
+      ['/app/app-1/evaluation', 'evaluation.title', 'workflow'],
       ['/app/app-1/logs', 'common.appMenus.logs', 'workflow'],
       ['/app/app-1/annotations', 'common.appMenus.annotations', 'chat'],
       ['/app/app-1/overview', 'common.appMenus.overview', 'workflow'],
@@ -407,6 +409,54 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockRedirect).not.toHaveBeenCalled()
+  })
+
+  it('allows layout viewers to open evaluation for a published workflow', async () => {
+    mockPathname = '/app/app-1/evaluation'
+    mockAppResponse.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+    expect(mockRedirect).not.toHaveBeenCalled()
+  })
+
+  it('redirects evaluation when the workflow is unpublished', async () => {
+    mockPathname = '/app/app-1/evaluation'
+    mockAppResponse.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.ViewLayout], workflow: null }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith('/app/app-1/workflow'))
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+  })
+
+  it('redirects evaluation when layout view permission is missing', async () => {
+    mockPathname = '/app/app-1/evaluation'
+    mockAppResponse.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.Monitor] }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith('/app/app-1/overview'))
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
   })
 
   it('should redirect workflow pages when layout access is missing', async () => {
