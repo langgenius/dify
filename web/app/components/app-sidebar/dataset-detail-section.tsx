@@ -1,6 +1,7 @@
 'use client'
 
 import type { RemixiconComponentType } from '@remixicon/react'
+import type { ComponentProps } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Fill,
@@ -28,6 +29,13 @@ import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetInfo from './dataset-info'
 import NavLink from './nav-link'
+
+const flaskLineNavIcon = ({ className }: ComponentProps<'svg'>) => (
+  <span aria-hidden className={cn('i-ri-flask-line', className)} />
+)
+const flaskFillNavIcon = ({ className }: ComponentProps<'svg'>) => (
+  <span aria-hidden className={cn('i-ri-flask-fill', className)} />
+)
 
 const getDatasetIdFromPathname = (pathname: string) => {
   const [, section, datasetId] = pathname.split('/')
@@ -109,6 +117,13 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
+      baseNavigation.unshift({
+        name: t(($) => $.title, { ns: 'evaluation' }),
+        href: `/datasets/${datasetId}/evaluation`,
+        icon: flaskLineNavIcon,
+        selectedIcon: flaskFillNavIcon,
+        disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canPipelineTest,
+      })
       baseNavigation.unshift({
         name: t(($) => $['datasetMenus.pipeline'], { ns: 'common' }),
         href: `/datasets/${datasetId}/pipeline`,

@@ -1,7 +1,7 @@
 'use client'
 
 import type { InputVar } from '@/app/components/workflow/types'
-import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
+import type { SnippetDetail, SnippetInputField, SnippetSection } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useMemo, useState } from 'react'
@@ -17,9 +17,10 @@ import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
 
 type SnippetSidebarProps = {
   snippet: SnippetDetail
+  section?: SnippetSection
   fields: SnippetInputField[]
   readonly: boolean
-  onFieldsChange: (fields: SnippetInputField[]) => void
+  onFieldsChange?: (fields: SnippetInputField[]) => void
 }
 
 type SnippetSidebarContentProps = SnippetSidebarProps & {
@@ -41,8 +42,13 @@ const NodeTreeIcon = ({ className }: { className?: string }) => (
   <span className={cn('i-ri-node-tree', className)} />
 )
 
+const EvaluationIcon = ({ className }: { className?: string }) => (
+  <span className={cn('i-ri-flask-line', className)} />
+)
+
 export const SnippetSidebarContent = ({
   snippet,
+  section = 'orchestrate',
   fields,
   readonly,
   onFieldsChange,
@@ -92,7 +98,7 @@ export const SnippetSidebarContent = ({
       const nextFields = [...fields, toSnippetInputField(payload)]
       if (!validateFields(nextFields)) return
 
-      onFieldsChange(nextFields)
+      onFieldsChange?.(nextFields)
       hideAddVarModal()
     },
     [fields, hideAddVarModal, onFieldsChange, validateFields],
@@ -103,7 +109,7 @@ export const SnippetSidebarContent = ({
       const nextFields = list.map(toSnippetInputField)
       if (isEqual(nextFields, fields)) return
 
-      onFieldsChange(nextFields)
+      onFieldsChange?.(nextFields)
     },
     [fields, onFieldsChange],
   )
@@ -140,35 +146,45 @@ export const SnippetSidebarContent = ({
           mode="expand"
           name={t(($) => $.sectionOrchestrate, { ns: 'snippet' })}
           href={`/snippets/${snippet.id}/orchestrate`}
-          active
+          active={section === 'orchestrate'}
           iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
+        />
+        <NavLink
+          mode="expand"
+          name={t(($) => $.title, { ns: 'evaluation' })}
+          href={`/snippets/${snippet.id}/evaluation`}
+          active={section === 'evaluation'}
+          disabled={!snippet.is_published}
+          iconMap={{ selected: EvaluationIcon, normal: EvaluationIcon }}
         />
       </nav>
 
-      <div className="flex min-h-0 grow flex-col px-3 pt-6">
-        <Field
-          title={t(($) => $.inputVariables, { ns: 'snippet' })}
-          operations={
-            !readonly ? (
-              <button
-                type="button"
-                aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $.inputVariables, { ns: 'snippet' })}`}
-                className={cn(
-                  'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                  'cursor-pointer hover:bg-state-base-hover',
-                )}
-                onClick={showAddVarModal}
-              >
-                <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-              </button>
-            ) : undefined
-          }
-        >
-          <VarList readonly={readonly} list={workflowInputVars} onChange={handleVarListChange} />
-        </Field>
-      </div>
+      {section === 'orchestrate' && (
+        <div className="flex min-h-0 grow flex-col px-3 pt-6">
+          <Field
+            title={t(($) => $.inputVariables, { ns: 'snippet' })}
+            operations={
+              !readonly ? (
+                <button
+                  type="button"
+                  aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $.inputVariables, { ns: 'snippet' })}`}
+                  className={cn(
+                    'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                    'cursor-pointer hover:bg-state-base-hover',
+                  )}
+                  onClick={showAddVarModal}
+                >
+                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                </button>
+              ) : undefined
+            }
+          >
+            <VarList readonly={readonly} list={workflowInputVars} onChange={handleVarListChange} />
+          </Field>
+        </div>
+      )}
 
-      {isShowAddVarModal && (
+      {section === 'orchestrate' && isShowAddVarModal && (
         <ConfigVarModal
           isCreate
           supportFile

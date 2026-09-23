@@ -79,6 +79,7 @@ const snippet: SnippetDetail = {
   updatedAt: '2026-03-29 10:00',
   usage: '0',
   tags: [],
+  is_published: true,
 }
 
 const fields: SnippetInputField[] = [
@@ -170,6 +171,45 @@ describe('SnippetSidebarContent', () => {
       'href',
       '/snippets/snippet-1/orchestrate',
     )
+  })
+
+  it('should render evaluation navigation for a published snippet', () => {
+    render(
+      <SnippetSidebarContent
+        snippet={snippet}
+        fields={fields}
+        readonly={false}
+        onFieldsChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'evaluation.title' })).toHaveAttribute(
+      'href',
+      '/snippets/snippet-1/evaluation',
+    )
+  })
+
+  it('should keep evaluation visible but disabled for an unpublished snippet', () => {
+    render(
+      <SnippetSidebarContent
+        snippet={{ ...snippet, is_published: false }}
+        fields={fields}
+        readonly={false}
+        onFieldsChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'evaluation.title' })).toBeDisabled()
+    expect(screen.queryByRole('link', { name: 'evaluation.title' })).not.toBeInTheDocument()
+  })
+
+  it('should hide the input editor on the evaluation section', () => {
+    render(
+      <SnippetSidebarContent snippet={snippet} section="evaluation" fields={fields} readonly />,
+    )
+
+    expect(screen.queryByTestId('var-list')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'evaluation.title' })).toBeInTheDocument()
   })
 
   it('should add a new input field from the config variable modal', () => {

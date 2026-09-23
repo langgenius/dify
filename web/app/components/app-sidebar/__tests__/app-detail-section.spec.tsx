@@ -8,6 +8,7 @@ let mockAppMode = 'chat'
 let mockPathname = '/app/app-1/logs'
 let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
+let mockHasPublishedWorkflow = true
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
@@ -34,6 +35,13 @@ vi.mock('@/app/components/app/store', () => ({
         icon_type: 'emoji',
         icon_background: '#fff',
         permission_keys: mockAppPermissionKeys,
+        workflow: mockHasPublishedWorkflow
+          ? {
+              id: 'workflow-1',
+              created_at: 1,
+              updated_at: 1,
+            }
+          : undefined,
       },
     }),
 }))
@@ -63,7 +71,8 @@ vi.mock('../../base/divider', () => ({
 }))
 
 vi.mock('../nav-link', () => ({
-  default: ({ name, href }: { name: string; href: string }) => <a href={href}>{name}</a>,
+  default: ({ name, href, disabled }: { name: string; href: string; disabled?: boolean }) =>
+    disabled ? <button disabled>{name}</button> : <a href={href}>{name}</a>,
 }))
 
 describe('AppDetailSection', () => {
@@ -73,6 +82,7 @@ describe('AppDetailSection', () => {
     mockPathname = '/app/app-1/logs'
     mockAppPermissionKeys = [AppACLPermission.Monitor]
     mockIsRbacEnabled = true
+    mockHasPublishedWorkflow = true
   })
 
   // Rendering behavior for app detail navigation entries.
@@ -182,6 +192,38 @@ describe('AppDetailSection', () => {
       expect(
         screen.queryByRole('link', { name: 'common.appMenus.promptEng' }),
       ).not.toBeInTheDocument()
+    })
+
+    it('should render evaluation for a published workflow app with view-layout permission', () => {
+      mockAppMode = AppModeEnum.WORKFLOW
+      mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+
+      render(<AppDetailSection />)
+
+      expect(screen.getByRole('link', { name: 'evaluation.title' })).toHaveAttribute(
+        'href',
+        '/app/app-1/evaluation',
+      )
+    })
+
+    it('should keep evaluation visible but disabled before the workflow is published', () => {
+      mockAppMode = AppModeEnum.WORKFLOW
+      mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+      mockHasPublishedWorkflow = false
+
+      render(<AppDetailSection />)
+
+      expect(screen.getByRole('button', { name: 'evaluation.title' })).toBeDisabled()
+      expect(screen.queryByRole('link', { name: 'evaluation.title' })).not.toBeInTheDocument()
+    })
+
+    it('should hide evaluation for non-workflow apps', () => {
+      mockAppMode = AppModeEnum.ADVANCED_CHAT
+      mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+
+      render(<AppDetailSection />)
+
+      expect(screen.queryByText('evaluation.title')).not.toBeInTheDocument()
     })
 
     it('should render access point navigation using its app route', () => {

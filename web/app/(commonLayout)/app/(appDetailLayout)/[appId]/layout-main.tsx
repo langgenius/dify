@@ -38,6 +38,7 @@ const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslatio
   if (pathname.endsWith('/access-point'))
     return t(($) => $['appMenus.accessPoint'], { ns: 'common' })
   if (pathname.endsWith('/deploy')) return t(($) => $['appMenus.deploy'], { ns: 'common' })
+  if (pathname.endsWith('/evaluation')) return t(($) => $.title, { ns: 'evaluation' })
   if (pathname.endsWith('/logs')) return t(($) => $['appMenus.logs'], { ns: 'common' })
   if (pathname.endsWith('/annotations'))
     return t(($) => $['appMenus.annotations'], { ns: 'common' })
@@ -94,6 +95,23 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         }).canViewAccessPoint
       : false
   const shouldBlockAccessPointAccess = pathname.endsWith('/access-point') && !canViewAccessPoint
+  const isEvaluationPath = pathname.endsWith('/evaluation')
+  const canViewEvaluation =
+    routeAppDetail?.id === appId &&
+    currentWorkspace.id &&
+    !isLoadingCurrentWorkspace &&
+    !isLoadingWorkspacePermissionKeys &&
+    !isLoadingAppDetail
+      ? routeAppDetail.mode === AppModeEnum.WORKFLOW &&
+        !!routeAppDetail.workflow &&
+        getAppACLCapabilities(routeAppDetail.permission_keys, {
+          currentUserId,
+          resourceMaintainer: routeAppDetail.maintainer,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        }).canViewLayout
+      : false
+  const shouldBlockEvaluationAccess = isEvaluationPath && !canViewEvaluation
 
   useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
 
@@ -157,6 +175,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const isAccessConfigPath = pathname.endsWith('access-config')
     const isAccessPointPath = pathname.endsWith('access-point')
     const isDeployPath = pathname.endsWith('deploy')
+    const isEvaluationPath = pathname.endsWith('evaluation')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
       (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
@@ -165,6 +184,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       (isAccessConfigPath &&
         (routeAppDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
       (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
+      (isEvaluationPath &&
+        (routeAppDetail.mode !== AppModeEnum.WORKFLOW ||
+          !routeAppDetail.workflow ||
+          !appACLCapabilities.canViewLayout)) ||
       (isDeployPath &&
         ((routeAppDetail.mode !== AppModeEnum.WORKFLOW &&
           routeAppDetail.mode !== AppModeEnum.ADVANCED_CHAT) ||
@@ -216,7 +239,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const isWorkflowPage = pathname.endsWith('/workflow')
   const content =
-    !appDetail || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
+    !appDetail ||
+    shouldBlockAgentResourceAccess ||
+    shouldBlockAccessPointAccess ||
+    shouldBlockEvaluationAccess ? (
       <div className="flex min-w-0 grow items-center justify-center bg-background-body">
         <LoadingPlaceholder />
       </div>

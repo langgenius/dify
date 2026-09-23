@@ -1,4 +1,5 @@
 import {
+  canAccessSnippetsAndEvaluation,
   getPlanVectorSpaceLimitMB,
   getResetInDaysFromDate,
   parseLimit,
@@ -69,6 +70,42 @@ describe('billing utils', () => {
     it('displays zero count limits as unlimited', () => {
       expect(parseLimit(0)).toBe(-1)
       expect(parseLimit(10)).toBe(10)
+    })
+  })
+
+  describe('snippet and evaluation plan access', () => {
+    it('allows every self-hosted edition', () => {
+      expect(
+        canAccessSnippetsAndEvaluation({
+          deploymentEdition: 'COMMUNITY',
+        }),
+      ).toBe(true)
+    })
+
+    it.each(['professional', 'team'] as const)('allows the %s cloud plan', (planType) => {
+      expect(
+        canAccessSnippetsAndEvaluation({
+          deploymentEdition: 'CLOUD',
+          planType,
+        }),
+      ).toBe(true)
+    })
+
+    it('blocks the sandbox cloud plan', () => {
+      expect(
+        canAccessSnippetsAndEvaluation({
+          deploymentEdition: 'CLOUD',
+          planType: 'sandbox',
+        }),
+      ).toBe(false)
+    })
+
+    it('blocks cloud access while subscription data is absent', () => {
+      expect(
+        canAccessSnippetsAndEvaluation({
+          deploymentEdition: 'CLOUD',
+        }),
+      ).toBe(false)
     })
   })
 })

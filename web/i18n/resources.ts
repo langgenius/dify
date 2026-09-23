@@ -17,6 +17,7 @@ import type dataset from './locales/en-US/dataset.json'
 import type deployments from './locales/en-US/deployments.json'
 import type deviceFlow from './locales/en-US/device-flow.json'
 import type education from './locales/en-US/education.json'
+import type evaluation from './locales/en-US/evaluation.json'
 import type explore from './locales/en-US/explore.json'
 import type layout from './locales/en-US/layout.json'
 import type login from './locales/en-US/login.json'
@@ -57,6 +58,7 @@ type RawResources = {
   deployments: typeof deployments
   deviceFlow: typeof deviceFlow
   education: typeof education
+  evaluation: typeof evaluation
   explore: typeof explore
   layout: typeof layout
   login: typeof login
@@ -121,6 +123,9 @@ type PluralBaseResources = {
     'overview.latestRelease.releaseCount': string
     'versions.disabledReason.releaseInUse': string
   }
+  evaluation: {
+    'results.queryCount': string
+  }
   permission: {
     'accessRule.summary': string
     'role.copyMembersDescription': string
@@ -162,6 +167,7 @@ export const namespaces = [
   'deployments',
   'deviceFlow',
   'education',
+  'evaluation',
   'explore',
   'layout',
   'login',

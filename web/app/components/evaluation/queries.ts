@@ -2,9 +2,15 @@ import type {
   EvaluationConfigPayload,
   EvaluationRunPayload,
 } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
-import type { EvaluationResourceProps } from './types'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/console'
+import type { EvaluationResourceProps, NonDatasetEvaluationResourceType } from './types'
+import {
+  keepPreviousData,
+  skipToken,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+} from '@tanstack/react-query'
+import { consoleClient, consoleQuery } from '@/service/console'
 
 export const EVALUATION_POLLING_INTERVAL = 2500
 
@@ -23,6 +29,130 @@ export const isEvaluationRunActive = (status: string | null | undefined) => {
 
 export const shouldPollEvaluationLogs = (statuses: Array<string | null | undefined>) => {
   return statuses.some(isEvaluationRunActive)
+}
+
+type AvailableEvaluationWorkflowsParams = {
+  page?: number
+  limit?: number
+  keyword?: string
+  userId?: string
+}
+
+const normalizeAvailableEvaluationWorkflowsParams = (
+  params: AvailableEvaluationWorkflowsParams = {},
+) => {
+  const keyword = params.keyword?.trim()
+  const userId = params.userId?.trim()
+
+  return {
+    page: params.page ?? 1,
+    limit: params.limit ?? 20,
+    ...(keyword ? { keyword } : {}),
+    ...(userId ? { user_id: userId } : {}),
+  }
+}
+
+export const useDatasetEvaluationMetrics = (datasetId: string, enabled = true) => {
+  return useQuery(
+    consoleQuery.datasets.byDatasetId.evaluation.metrics.get.queryOptions({
+      input: datasetId && enabled ? { params: { dataset_id: datasetId } } : skipToken,
+      refetchOnWindowFocus: false,
+    }),
+  )
+}
+
+export const useDefaultEvaluationMetrics = (
+  resourceType: NonDatasetEvaluationResourceType,
+  resourceId: string,
+  enabled = true,
+) => {
+  return useQuery(
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.queryOptions(
+      {
+        input:
+          resourceId && enabled
+            ? {
+                params: {
+                  evaluate_target_id: resourceId,
+                  evaluate_target_type: resourceType,
+                },
+              }
+            : skipToken,
+        refetchOnWindowFocus: false,
+      },
+    ),
+  )
+}
+
+export const useEvaluationNodeInfoMutation = () => {
+  return useMutation(
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post.mutationOptions(),
+  )
+}
+
+export const useEvaluationTemplateColumns = (
+  { resourceType, resourceId }: EvaluationResourceProps,
+  configPayload: EvaluationConfigPayload | null,
+  enabled = true,
+) => {
+  return useQuery(
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.templateColumns.post.queryOptions(
+      {
+        input:
+          resourceType !== 'datasets' && resourceId && configPayload && enabled
+            ? {
+                body: configPayload,
+                params: {
+                  evaluate_target_id: resourceId,
+                  evaluate_target_type: resourceType,
+                },
+              }
+            : skipToken,
+        refetchOnWindowFocus: false,
+      },
+    ),
+  )
+}
+
+export const useAvailableEvaluationWorkflows = (
+  params: AvailableEvaluationWorkflowsParams = {},
+  options?: { enabled?: boolean },
+) => {
+  const queryParams = normalizeAvailableEvaluationWorkflowsParams(params)
+
+  return useInfiniteQuery({
+    ...consoleQuery.workspaces.current.availableEvaluationWorkflows.get.infiniteOptions({
+      input: (pageParam) => ({
+        query: {
+          ...queryParams,
+          page: Number(pageParam),
+        },
+      }),
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      initialPageParam: queryParams.page,
+    }),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+  })
+}
+
+export const getEvaluationFile = (
+  { resourceType, resourceId }: EvaluationResourceProps,
+  fileId: string,
+) => {
+  if (resourceType === 'datasets') {
+    return consoleClient.datasets.byDatasetId.evaluation.files.byFileId.get({
+      params: { dataset_id: resourceId, file_id: fileId },
+    })
+  }
+
+  return consoleClient.byEvaluateTargetType.byEvaluateTargetId.evaluation.files.byFileId.get({
+    params: {
+      evaluate_target_id: resourceId,
+      evaluate_target_type: resourceType,
+      file_id: fileId,
+    },
+  })
 }
 
 export const useEvaluationConfigQuery = ({ resourceType, resourceId }: EvaluationResourceProps) => {
@@ -68,6 +198,8 @@ export const useEvaluationLogsQuery = (
         shouldPollEvaluationLogs(query.state.data?.data.map((run) => run.status) ?? [])
           ? EVALUATION_POLLING_INTERVAL
           : false,
+      placeholderData: keepPreviousData,
+      refetchOnWindowFocus: false,
     }),
   )
   const targetQuery = useQuery(
@@ -86,6 +218,8 @@ export const useEvaluationLogsQuery = (
         shouldPollEvaluationLogs(query.state.data?.data.map((run) => run.status) ?? [])
           ? EVALUATION_POLLING_INTERVAL
           : false,
+      placeholderData: keepPreviousData,
+      refetchOnWindowFocus: false,
     }),
   )
 
@@ -107,6 +241,8 @@ export const useEvaluationRunDetailQuery = (
           : skipToken,
       refetchInterval: (query) =>
         isEvaluationRunActive(query.state.data?.run.status) ? EVALUATION_POLLING_INTERVAL : false,
+      placeholderData: keepPreviousData,
+      refetchOnWindowFocus: false,
     }),
   )
   const targetQuery = useQuery(
@@ -124,6 +260,8 @@ export const useEvaluationRunDetailQuery = (
           : skipToken,
       refetchInterval: (query) =>
         isEvaluationRunActive(query.state.data?.run.status) ? EVALUATION_POLLING_INTERVAL : false,
+      placeholderData: keepPreviousData,
+      refetchOnWindowFocus: false,
     }),
   )
 

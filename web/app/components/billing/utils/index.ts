@@ -1,4 +1,5 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import dayjs from 'dayjs'
 import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
 
@@ -58,4 +59,16 @@ export const getResetInDaysFromDate = (resetDate: number) => {
   if (Number.isNaN(diff) || diff < 0) return null
 
   return diff
+}
+
+export const canAccessSnippetsAndEvaluation = ({
+  deploymentEdition,
+  planType,
+}: {
+  deploymentEdition: DeploymentEdition
+  planType?: CloudPlan
+}) => {
+  if (deploymentEdition !== 'CLOUD') return true
+
+  return planType === 'professional' || planType === 'team'
 }

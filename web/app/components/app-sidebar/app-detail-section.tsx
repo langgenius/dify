@@ -25,6 +25,7 @@ type AppDetailNavItem = {
   href: string
   icon: NavIcon
   selectedIcon: NavIcon
+  disabled?: boolean
 }
 
 const AnnotationNavIcon = ({ className, ...props }: ComponentProps<typeof Annotations>) => (
@@ -54,6 +55,8 @@ const dashboardLineNavIcon = createClassNameNavIcon('i-ri-dashboard-2-line')
 const dashboardFillNavIcon = createClassNameNavIcon('i-ri-dashboard-2-fill')
 const lockLineNavIcon = createClassNameNavIcon('i-ri-lock-2-line')
 const lockFillNavIcon = createClassNameNavIcon('i-ri-lock-2-fill')
+const flaskLineNavIcon = createClassNameNavIcon('i-ri-flask-line')
+const flaskFillNavIcon = createClassNameNavIcon('i-ri-flask-fill')
 
 const isLogsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/logs')
 const isAnnotationsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/annotations')
@@ -116,6 +119,17 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
               href: `/app/${appId}/${isWorkflowApp ? 'workflow' : 'configuration'}`,
               icon: terminalWindowLineNavIcon,
               selectedIcon: terminalWindowFillNavIcon,
+            },
+          ]
+        : []),
+      ...(appDetail.mode === AppModeEnum.WORKFLOW && appACLCapabilities.canViewLayout
+        ? [
+            {
+              name: t(($) => $.title, { ns: 'evaluation' }),
+              href: `/app/${appId}/evaluation`,
+              icon: flaskLineNavIcon,
+              selectedIcon: flaskFillNavIcon,
+              disabled: !appDetail.workflow,
             },
           ]
         : []),
@@ -217,6 +231,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
                 iconMap={{ selected: item.selectedIcon, normal: item.icon }}
                 name={item.name}
                 href={item.href}
+                disabled={item.disabled}
                 pathname={pathname}
               />
               {shouldRenderDividerAfter && renderNavDivider(`${item.href}-after`, expand)}

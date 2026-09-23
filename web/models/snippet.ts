@@ -3,7 +3,7 @@ import type { Viewport } from 'reactflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
 
-export type SnippetSection = 'orchestrate'
+export type SnippetSection = 'orchestrate' | 'evaluation'
 
 export type SnippetListItem = {
   id: string
