@@ -1,4 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
+import { getContainerExecutions } from '../get-container-executions'
 
 export function addChildrenToLoopNode(
   loopNode: NodeTracing,
@@ -42,4 +43,14 @@ export function addChildrenToLoopNode(
     ...loopNode,
     details: order.map((key) => detailsByKey.get(key) || []),
   }
+}
+
+export const getLoopResultList = (nodeInfo: NodeTracing, allExecutions?: NodeTracing[]) => {
+  if (nodeInfo.details?.length) return nodeInfo.details
+  const loopDurationMap = nodeInfo.execution_metadata?.loop_duration_map
+  return loopDurationMap
+    ? Object.keys(loopDurationMap)
+        .map((key) => getContainerExecutions(key, nodeInfo, 'loop', allExecutions))
+        .filter((branchNodes) => branchNodes.length > 0)
+    : []
 }
