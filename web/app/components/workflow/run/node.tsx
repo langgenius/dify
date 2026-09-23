@@ -77,7 +77,7 @@ const NodePanel: FC<Props> = ({
     },
     [hideProcessDetail],
   )
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const detailsId = useId()
   const Header = hideProcessDetail ? 'div' : 'button'

@@ -57,7 +57,7 @@ type ItemProps = {
   onDelete?: () => void
 }
 const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const iconClassName = getIconClassName(payload.type)
 
   const handleRename = useCallback(() => {
@@ -162,7 +162,9 @@ const DatasetMetadataDrawer: FC<Props> = ({
   onRename,
   onRemove,
 }) => {
-  const { t } = useTranslation()
+  const builtInLabelId = React.useId()
+
+  const { t } = useTranslation(['common', 'dataset'])
   const [isShowRenameModal, setIsShowRenameModal] = useState(false)
   const [currPayload, setCurrPayload] = useState<MetadataItemWithValueLength | null>(null)
   const [templeName, setTempleName] = useState('')
@@ -262,21 +264,15 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
                 <div className="mt-3 flex h-6 items-center">
                   <Switch checked={isBuiltInEnabled} onCheckedChange={onIsBuiltInEnabledChange} />
-                  <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">
+                  <div
+                    id={builtInLabelId}
+                    className="mr-0.5 ml-2 system-sm-semibold text-text-secondary"
+                  >
                     {t(($) => $[`${i18nPrefix}.builtIn`], { ns: 'dataset' })}
                   </div>
                   <Infotip>
-                    <InfotipTrigger
-                      aria-label={t(($) => $[`${i18nPrefix}.builtInDescription`], {
-                        ns: 'dataset',
-                      })}
-                    />
-                    <InfotipContent
-                      aria-label={t(($) => $[`${i18nPrefix}.builtInDescription`], {
-                        ns: 'dataset',
-                      })}
-                      className="max-w-25"
-                    >
+                    <InfotipTrigger aria-labelledby={builtInLabelId} />
+                    <InfotipContent aria-labelledby={builtInLabelId} className="max-w-25">
                       {t(($) => $[`${i18nPrefix}.builtInDescription`], { ns: 'dataset' })}
                     </InfotipContent>
                   </Infotip>

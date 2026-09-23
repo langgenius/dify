@@ -31,7 +31,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
     getHydrationSnapshot,
     getServerHydrationSnapshot,
   )
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const { mutateAsync: logout } = useLogout()
 

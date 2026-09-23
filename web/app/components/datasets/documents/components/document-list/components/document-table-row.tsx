@@ -59,7 +59,7 @@ const DocumentTableRow = React.memo(
     onShowRenameModal,
     onUpdate,
   }: DocumentTableRowProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['datasetDocuments', 'datasetHitTesting'])
     const { formatTime } = useTimestamp()
     const router = useRouter()
     const searchParams = useSearchParams()

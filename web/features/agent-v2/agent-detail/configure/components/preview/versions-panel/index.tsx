@@ -40,9 +40,9 @@ export function AgentPreviewVersionsPanel({
   onBeforeRestore,
   restoreDisabled,
 }: AgentPreviewVersionsPanelProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,

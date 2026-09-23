@@ -125,7 +125,7 @@ describe('Authorized', () => {
     fireEvent.click(trigger)
 
     expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(trigger).toHaveTextContent(/trigger\s*open/i)
+    expect(trigger.textContent).toMatch(/trigger\s*open/i)
     expect(screen.getByTestId('authorized-item'))!.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /addApiKey/i }))!.toBeInTheDocument()
   })

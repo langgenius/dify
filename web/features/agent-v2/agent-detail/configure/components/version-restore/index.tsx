@@ -41,7 +41,7 @@ export function AgentVersionRestore({
   onBeforeRestore?: () => void | Promise<void>
   onRestored?: () => void | Promise<void>
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'billing', 'common', 'workflow'])
   const queryClient = useQueryClient()
   const { canReleaseAndVersion: canRestore } = useAgentPermissions(agentId)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)

@@ -95,8 +95,8 @@ describe('PopoverContent', () => {
         </Popover>,
       )
 
-      const popup = screen.getByRole('dialog', { name: 'default popover' })
-      await expect.element(popup).toHaveTextContent('Default content')
+      const popup = screen.getByRole('dialog', { name: 'Default popover' })
+      await expect.element(screen.getByText('Default content')).toBeInTheDocument()
       const popupStyle = getComputedStyle(popup.element())
       expect(popupStyle.borderTopWidth).not.toBe('0px')
       expect(popupStyle.borderTopLeftRadius).not.toBe('0px')
@@ -194,7 +194,7 @@ describe('Popover anatomy', () => {
       .element(screen.getByTestId('anatomy-positioner'))
       .toHaveAttribute('data-align', 'end')
     const popup = screen.getByRole('dialog', { name: 'Anatomy popover' })
-    await expect.element(popup).toHaveTextContent('Anatomy content')
+    await expect.element(popup).toHaveAccessibleDescription('Anatomy content')
     const popupStyle = getComputedStyle(popup.element())
     expect(popupStyle.borderTopWidth).toBe('0px')
     expect(popupStyle.borderTopLeftRadius).toBe('0px')

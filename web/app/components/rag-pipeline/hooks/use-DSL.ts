@@ -13,7 +13,7 @@ import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
   const workflowStore = useWorkflowStore()

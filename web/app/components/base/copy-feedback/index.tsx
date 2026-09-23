@@ -21,7 +21,7 @@ export function CopyFeedback({
   copyLabel,
   onCopyError,
 }: CopyFeedbackProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   // Rely on useClipboard's own timer to flip `copied` back to false so the
   // "Copied" tooltip stays visible long enough to be read, matching the
   // KeyValueItem pattern. Do NOT reset on mouse leave.
@@ -40,6 +40,7 @@ export function CopyFeedback({
   return (
     <Tooltip>
       <TooltipTrigger
+        closeOnClick={false}
         render={
           <IconButton aria-label={safeText} className={className} onClick={handleCopy}>
             <span

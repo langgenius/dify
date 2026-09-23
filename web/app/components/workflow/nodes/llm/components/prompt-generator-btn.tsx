@@ -27,7 +27,7 @@ const PromptGeneratorBtn: FC<Props> = ({
   editorId,
   currentPrompt,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [showAutomatic, setShowAutomatic] = useState(false)
   const handleAutomaticRes = useCallback(
     (res: GenRes) => {

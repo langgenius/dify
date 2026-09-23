@@ -26,7 +26,7 @@ type ChangeHistoryList = {
 }
 
 const ViewWorkflowHistory = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
 
   const { nodesReadOnly } = useNodesReadOnly()

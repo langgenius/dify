@@ -23,7 +23,7 @@ const SKELETON_ROWS = ['s1', 's2', 's3', 's4'] as const
 // about to arrive, using the shared Skeleton primitives. The pane fills in
 // place instead of jerking from a centred spinner to a left-aligned list.
 const PlanningSkeleton = memo(() => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
   return (
     <div
       aria-busy="true"
@@ -69,7 +69,7 @@ PlanningSkeleton.displayName = 'PlanningSkeleton'
  * canvas — while the builder fills in the graph.
  */
 const GenerationPlan = ({ plan }: Props) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   if (!plan) return <PlanningSkeleton />
 

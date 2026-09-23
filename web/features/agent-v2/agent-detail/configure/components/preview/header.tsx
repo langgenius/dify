@@ -135,7 +135,7 @@ export function AgentPreviewHeader({
   showChatFeaturesAction?: boolean
   trailingAction?: ReactNode
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
   const buildLabel = t(($) => $['agentDetail.configure.rightPanel.build'])
   const buildTipBody = t(($) => $['agentDetail.configure.rightPanel.buildTipBody'])

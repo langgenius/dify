@@ -7,7 +7,7 @@ import { useStore } from '../store'
 import { WorkflowVersion } from '../types'
 
 const RestoringTitle = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { formatTime } = useTimestamp()
   const currentVersion = useStore((state) => state.currentVersion)

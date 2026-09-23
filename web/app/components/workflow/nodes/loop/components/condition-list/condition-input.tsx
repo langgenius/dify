@@ -11,7 +11,7 @@ type ConditionInputProps = {
   availableNodes: Node[]
 }
 const ConditionInput = ({ value, onChange, disabled, availableNodes }: ConditionInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
   const pipelineId = useStore((s) => s.pipelineId)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)

@@ -83,7 +83,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const { credentials: formSchemasValue, available_credentials } = credentialData as any
 
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const language = useLanguage()
   const { formSchemas, formValues, modelNameAndTypeFormSchemas, modelNameAndTypeFormValues } =
     useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)

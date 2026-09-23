@@ -8,7 +8,7 @@ type Props = Readonly<{
 }>
 
 const ActionList = ({ detail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { data: hasProvider } = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
       select: (providers) => providers.some((provider) => provider.plugin_id === detail.plugin_id),

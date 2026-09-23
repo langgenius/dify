@@ -780,7 +780,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByLabelText('common.modelProvider.rerankModel.tip'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'common.modelProvider.rerankModel.key' }),
+      )!.toBeInTheDocument()
     })
   })
 

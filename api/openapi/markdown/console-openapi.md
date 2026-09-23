@@ -24770,6 +24770,7 @@ tenant's default model. The underlying generator never raises — an empty
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | metadata | [WorkflowNodeJobMetadata](#workflownodejobmetadata) |  | No |
 | mode | [WorkflowNodeJobMode](#workflownodejobmode) |  | No |
+| output_routes | [WorkflowOutputRoutes](#workflowoutputroutes) |  | No |
 | previous_node_output_refs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
 | workflow_prompt | string |  | No |
@@ -24813,6 +24814,25 @@ tenant's default model. The underlying generator never raises — an empty
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [WorkflowOnlineUsersByApp](#workflowonlineusersbyapp) ] |  | Yes |
+
+#### WorkflowOutputRoute
+
+Stable workflow exit identity and its model-visible selection condition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| label | string |  | No |
+| name | string |  | No |
+
+#### WorkflowOutputRoutes
+
+Enabled routes require at least two exits; drafts may omit conditions.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| routes | [ [WorkflowOutputRoute](#workflowoutputroute) ] |  | No |
 
 #### WorkflowPaginationResponse
 

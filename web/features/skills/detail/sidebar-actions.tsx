@@ -50,8 +50,8 @@ function SkillDetailDeleteDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -208,8 +208,8 @@ export function SkillDetailSidebarActions({
   detail: SkillDetailResponse
   onRename: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const router = useRouter()

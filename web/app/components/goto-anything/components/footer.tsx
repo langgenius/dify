@@ -10,7 +10,7 @@ type FooterProps = {
 }
 
 export function Footer({ resultCount, canActivate, hasPartialFailure }: FooterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   const renderLeftContent = () => {
     if (hasPartialFailure) {

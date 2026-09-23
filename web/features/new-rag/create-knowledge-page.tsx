@@ -82,8 +82,8 @@ async function uploadCreatedDocuments(knowledgeSpaceId: string, files: File[]) {
 }
 
 export function CreateKnowledgePage() {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   useDocumentTitle(t(($) => $['newKnowledge.createTitle']))
   const router = useRouter()
   const searchParams = useSearchParams()

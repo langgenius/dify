@@ -50,7 +50,7 @@ type Props = Readonly<{
 
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)

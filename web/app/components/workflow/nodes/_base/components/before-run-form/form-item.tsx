@@ -54,7 +54,7 @@ const FormItem: FC<Props> = ({
     InputVarType.iterator,
   ]
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const labelId = React.useId()
   const { type } = payload
   const fileSettings = useHooksStore((s) => s.configsMap?.fileSettings)

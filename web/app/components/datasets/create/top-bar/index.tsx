@@ -20,7 +20,7 @@ const STEP_T_MAP = {
 
 export const TopBar: FC<TopBarProps> = (props) => {
   const { className, datasetId, ...rest } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const fallbackRoute = useMemo(() => {
     return datasetId ? `/datasets/${datasetId}/documents` : '/datasets'

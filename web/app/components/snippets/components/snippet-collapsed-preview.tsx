@@ -12,7 +12,7 @@ export function SnippetCollapsedPreview({
   inputFieldCount: number
   snippetId?: string
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['snippet'])
   const sectionLabel = t(($) => $.sectionOrchestrate, { ns: 'snippet' })
 
   return (

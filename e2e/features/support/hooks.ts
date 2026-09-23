@@ -176,6 +176,14 @@ After(
           await this.getConsoleClient().apps.byAppId.delete({ params: { app_id: id } })
         },
       })),
+      ...this.createdSnippetIds.toReversed().map((id) => ({
+        label: `Delete snippet ${id}`,
+        run: async () => {
+          await this.getConsoleClient().workspaces.current.customizedSnippets.bySnippetId.delete({
+            params: { snippet_id: id },
+          })
+        },
+      })),
       ...this.createdAgentIds.toReversed().map((id) => ({
         label: `Delete Agent ${id}`,
         run: async () => {

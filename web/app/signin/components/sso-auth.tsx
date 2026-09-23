@@ -15,7 +15,7 @@ type SSOAuthProps = {
 
 const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
 

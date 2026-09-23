@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Topic } from '../types'
+import type { Topic } from './types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
@@ -19,9 +19,12 @@ type Props = Readonly<{
   payload: Topic
   onChange: (payload: Topic) => void
   onRemove: () => void
+  showRemove?: boolean
   index: number
   readonly?: boolean
   filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
+  placeholder?: string
+  defaultLabel?: string
   onLabelEditStart?: () => void
 }>
 
@@ -32,21 +35,28 @@ const ClassItem: FC<Props> = ({
   payload,
   onChange,
   onRemove,
+  showRemove = true,
   index,
   readonly,
   filterVar,
   onLabelEditStart,
+  placeholder,
+  defaultLabel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const reactId = useId()
   const [isEditingLabel, setIsEditingLabel] = useState(false)
   const [draftLabel, setDraftLabel] = useState('')
   const labelInputRef = useRef<HTMLInputElement>(null)
-  const displayLabel = getDisplayClassLabel(payload.label, index, t)
+  const displayLabel =
+    payload.label?.trim() || defaultLabel || getDisplayClassLabel(payload.label, index, t)
   const instanceId = `${nodeId}-${reactId}`
 
   useEffect(() => {
-    if (isEditingLabel) labelInputRef.current?.select()
+    if (isEditingLabel) {
+      labelInputRef.current?.focus()
+      labelInputRef.current?.select()
+    }
   }, [isEditingLabel])
 
   const handleNameChange = useCallback(
@@ -58,7 +68,9 @@ const ClassItem: FC<Props> = ({
 
   const handleLabelSave = useCallback(
     (nextValue: string) => {
-      const normalizedLabel = getCanonicalClassLabel(nextValue, index, t)
+      const normalizedLabel = defaultLabel
+        ? nextValue.trim() || defaultLabel
+        : getCanonicalClassLabel(nextValue, index, t)
       setIsEditingLabel(false)
       setDraftLabel(normalizedLabel)
       const shouldPersistLabel =
@@ -66,7 +78,7 @@ const ClassItem: FC<Props> = ({
         (payload.label !== undefined && payload.label !== normalizedLabel)
       if (shouldPersistLabel) onChange({ ...payload, label: normalizedLabel })
     },
-    [displayLabel, index, onChange, payload, t],
+    [displayLabel, index, onChange, payload, t, defaultLabel],
   )
 
   const handleLabelCancel = useCallback(() => {
@@ -93,7 +105,9 @@ const ClassItem: FC<Props> = ({
     <input
       ref={labelInputRef}
       value={draftLabel}
-      aria-label={t(($) => $[`${i18nPrefix}.labelEditorAriaLabel`], { ns: 'workflow' })}
+      aria-label={
+        defaultLabel ?? t(($) => $[`${i18nPrefix}.labelEditorAriaLabel`], { ns: 'workflow' })
+      }
       className={cn(
         'h-6 w-full rounded-md border border-divider-regular bg-components-input-bg-normal px-2 text-xs font-semibold text-text-secondary ring-0 outline-none',
         'focus:border-components-input-border-active',
@@ -113,7 +127,6 @@ const ClassItem: FC<Props> = ({
           handleLabelCancel()
         }
       }}
-      autoFocus
     />
   ) : readonly ? (
     <div className="-ml-1 px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary">
@@ -143,10 +156,12 @@ const ClassItem: FC<Props> = ({
       className={className}
       headerClassName={headerClassName}
       title={title}
-      placeholder={t(($) => $[`${i18nPrefix}.topicPlaceholder`], { ns: 'workflow' })!}
+      placeholder={
+        placeholder ?? t(($) => $[`${i18nPrefix}.topicPlaceholder`], { ns: 'workflow' })!
+      }
       value={payload.name}
       onChange={handleNameChange}
-      showRemove
+      showRemove={showRemove}
       onRemove={onRemove}
       nodesOutputVars={availableVars}
       availableNodes={availableNodesWithParent}

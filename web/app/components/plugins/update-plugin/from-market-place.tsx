@@ -54,7 +54,7 @@ const UpdatePluginModal = ({
   isShowDowngradeWarningModal,
 }: Props) => {
   const { originalPackageInfo, targetPackageInfo } = payload
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const upgradeButtonLabelId = React.useId()
   const { getIconUrl } = useGetIcon()
   const [icon, setIcon] = useState<string>(originalPackageInfo.payload.icon)

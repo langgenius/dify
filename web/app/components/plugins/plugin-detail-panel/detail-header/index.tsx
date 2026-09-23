@@ -84,7 +84,7 @@ const DetailHeader = ({
   onHide,
   onUpdate,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),

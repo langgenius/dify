@@ -67,7 +67,7 @@ const emptyPlaceholderCardIds = Array.from(
 )
 
 function AgentRosterSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -111,7 +111,7 @@ function AgentRosterPlaceholderState({
   role?: 'alert' | 'status'
   title: string
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div
@@ -171,9 +171,9 @@ function AgentCardActionMenuItems({
   onEdit,
   onExport,
 }: AgentCardActionMenuItemsProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tApp } = useTranslation(['app'])
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
   const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
 
@@ -209,8 +209,8 @@ function AgentCardActionMenuItems({
 }
 
 function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
   const nameId = useId()
   const descriptionId = useId()
@@ -443,8 +443,8 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
 }
 
 export function AgentRosterList({ label, state }: AgentRosterListProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
 
   return (

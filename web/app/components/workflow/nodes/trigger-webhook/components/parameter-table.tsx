@@ -26,7 +26,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
   placeholder,
   contentType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   // Memoize typeOptions to prevent unnecessary re-renders that cause Select state resets
   const typeOptions = useMemo(() => createParameterTypeOptions(contentType), [contentType])

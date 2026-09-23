@@ -28,7 +28,7 @@ const RetrievalMethodConfig: FC<Props> = ({
   showMultiModalTip = false,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetSettings'])
   const { data: retrievalSetting } = useQuery(
     consoleQuery.datasets.retrievalSetting.get.queryOptions(),
   )

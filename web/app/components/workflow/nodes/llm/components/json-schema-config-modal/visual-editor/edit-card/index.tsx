@@ -58,7 +58,7 @@ const MAXIMUM_DEPTH_TYPE_OPTIONS = [
 ]
 
 const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [currentFields, setCurrentFields] = useState(fields)
   const [backupFields, setBackupFields] = useState<EditData | null>(null)
   const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)

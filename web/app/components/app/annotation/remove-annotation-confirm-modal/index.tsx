@@ -18,7 +18,7 @@ type Props = Readonly<{
 }>
 
 const RemoveAnnotationConfirmModal: FC<Props> = ({ isShow, onHide, onRemove }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const title = t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })
 
   return (

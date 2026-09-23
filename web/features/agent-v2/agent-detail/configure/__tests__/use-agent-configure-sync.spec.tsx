@@ -13,6 +13,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import {
   agentComposerDraftAtom,
   agentComposerSavedDraftAtom,
+  isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
@@ -240,6 +241,7 @@ function renderUseAgentConfigureSync({
   agentName = 'Agent',
   baseConfig,
   currentModel,
+  savedDraft,
   enabled = true,
   publishEnabled,
   suspend = false,
@@ -247,6 +249,7 @@ function renderUseAgentConfigureSync({
   agentName?: Parameters<typeof useAgentConfigureSync>[0]['agentName']
   baseConfig?: Parameters<typeof useAgentConfigureSync>[0]['baseConfig']
   currentModel?: AgentSoulConfigFormState['model']
+  savedDraft?: AgentSoulConfigFormState
   enabled?: boolean
   publishEnabled?: boolean
   suspend?: boolean
@@ -266,7 +269,7 @@ function renderUseAgentConfigureSync({
     ? { ...defaultAgentSoulConfigFormState, model: currentModel }
     : defaultAgentSoulConfigFormState
   store.set(agentComposerDraftAtom, initialDraft)
-  store.set(agentComposerSavedDraftAtom, initialDraft)
+  store.set(agentComposerSavedDraftAtom, savedDraft ?? initialDraft)
   const pendingRender = new Promise<void>(() => {})
   const wrapper = ({ children }: PropsWithChildren) => (
     <QueryClientProvider client={queryClient}>
@@ -497,6 +500,105 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     )
+  })
+
+  it('autosaves an initialized default model without another edit', async () => {
+    const { store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+      savedDraft: defaultAgentSoulConfigFormState,
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            model: expect.objectContaining({
+              model_provider: configuredModel.provider,
+              model: configuredModel.model,
+            }),
+          }),
+        }),
+      }),
+    )
+    expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
+  })
+
+  it('serializes a newly selected model after an in-flight default model save', async () => {
+    const savingDefault = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(savingDefault.promise)
+    const { store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+      savedDraft: defaultAgentSoulConfigFormState,
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+
+    const selectedModel = { ...configuredModel, model: 'gpt-4o' }
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...store.get(agentComposerDraftAtom),
+        model: selectedModel,
+      })
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+
+    const savingSelection = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(savingSelection.promise)
+    await act(async () => {
+      savingDefault.resolve({ agent_soul: {} })
+    })
+
+    expect(store.get(agentComposerDraftAtom).model).toEqual(selectedModel)
+    expect(store.get(isAgentComposerDirtyAtom)).toBe(true)
+    expect(composerPutMutationFn).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            model: expect.objectContaining({ model: selectedModel.model }),
+          }),
+        }),
+      }),
+    )
+
+    await act(async () => {
+      savingSelection.resolve({ agent_soul: {} })
+    })
+    expect(store.get(agentComposerDraftAtom).model).toEqual(selectedModel)
+    expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
+  })
+
+  it('autosaves an existing dirty model when saving becomes enabled', async () => {
+    const { rerender } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+      savedDraft: defaultAgentSoulConfigFormState,
+      enabled: false,
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+
+    rerender({
+      agentName: 'Agent',
+      baseConfig: undefined,
+      currentModel: configuredModel,
+      enabled: true,
+      suspend: false,
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should cancel pending autosave when the draft returns to the saved baseline', async () => {

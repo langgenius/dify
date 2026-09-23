@@ -30,7 +30,7 @@ import { LogSourceIcon } from './source-icon'
 
 export type SourceFilterValue = AgentLogSourceResponse['id'][]
 
-const getSourceGroupLabel = (group: AgentLogSourceGroupResponse, t: TFunction<'agentV2'>) => {
+const getSourceGroupLabel = (group: AgentLogSourceGroupResponse, t: TFunction<['agentV2']>) => {
   if (group.type === 'webapp') return t(($) => $['agentDetail.logs.filters.source.webapp'])
   if (group.type === 'workflow') return t(($) => $['agentDetail.logs.filters.source.workflow'])
   return group.label
@@ -57,8 +57,8 @@ export function AgentLogSourcePicker({
   onRetry: () => void
   onChange: (value: SourceFilterValue) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const [inputValue, setInputValue] = useState('')
   const sourceGroups = useMemo<AgentLogSourceComboboxGroup[]>(
     () => groups.map(({ sources, ...group }) => ({ ...group, items: sources ?? [] })),

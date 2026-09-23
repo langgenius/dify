@@ -86,7 +86,7 @@ const ConditionItem = ({
     ComparisonOperator.notIn,
   ]
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const [isHovered, setIsHovered] = useState(false)
   const [open, setOpen] = useState(false)

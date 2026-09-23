@@ -107,7 +107,7 @@ function WorkspaceCardTrigger({
   onPrefetchWorkspaces: () => void
   onPlanClick: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
   const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })
   const isUnlimited = credits === -1
@@ -253,7 +253,7 @@ const selectCurrentWorkspaceCardData = (workspace: CurrentWorkspaceCardSource) =
 })
 
 export function WorkspaceCard() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common'])
   const queryClient = useQueryClient()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
