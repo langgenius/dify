@@ -140,19 +140,14 @@ class TestFlaskExecutionContext:
 class TestCaptureFlaskContext:
     """Test capture_flask_context function."""
 
-    @patch("context.flask_app_context.current_app", autospec=True)
-    @patch("context.flask_app_context.g", autospec=True)
-    def test_capture_flask_context_captures_app(self, mock_g, mock_current_app):
-        """Test capture_flask_context captures Flask app."""
-        mock_app = MagicMock()
-        mock_app._get_current_object = MagicMock(return_value=mock_app)
-        mock_current_app._get_current_object = MagicMock(return_value=mock_app)
-
+    def test_capture_flask_context_captures_app(self):
         from context.flask_app_context import capture_flask_context
 
-        ctx = capture_flask_context()
-
-        assert ctx._flask_app == mock_app
+        app = Flask(__name__)
+        with app.app_context():
+            ctx = capture_flask_context()
+        with ctx:
+            assert current_app == app
 
     @patch("context.flask_app_context.current_app", autospec=True)
     @patch("context.flask_app_context.g", autospec=True)

@@ -118,7 +118,6 @@ class FlaskExecutionContext:
         self._app_context = FlaskAppContext(flask_app)
         self._context_vars = context_vars
         self._user = user
-        self._flask_app = flask_app
         self._local = threading.local()
 
     @property
