@@ -257,6 +257,7 @@
   "segment.searchResults_one": "RESULTADO",
   "segment.searchResults_other": "RESULTADOS",
   "segment.searchResults_zero": "RESULTADO",
+  "segment.statusFilterLabel": "Filtrar segmentos por status",
   "segment.summary": "RESUMO",
   "segment.summaryPlaceholder": "Escreva um breve resumo para melhor recuperação…"
 }

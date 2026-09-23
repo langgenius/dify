@@ -44,11 +44,12 @@ def send_abort_command(task_id: str, reason: str | None = None, *, redis: RedisC
         logger.exception("Failed to send Engine abort command for task %s", task_id)
 
 
-def set_app_task_stop_flag(task_id: str) -> None:
+def set_app_task_stop_flag(task_id: str, *, redis: RedisClientWrapper | None = None) -> None:
     if not task_id:
         return
 
-    redis_client.setex(app_task_stop_flag_key(task_id), 600, 1)
+    client = redis if redis is not None else redis_client
+    client.setex(app_task_stop_flag_key(task_id), 600, 1)
 
 
 def is_app_task_stop_flag_set(task_id: str) -> bool:

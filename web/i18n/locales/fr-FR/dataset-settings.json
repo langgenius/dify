@@ -1,5 +1,6 @@
 {
   "desc": "Ici, vous pouvez modifier les propriétés et les méthodes de fonctionnement de la Connaissance.",
+  "form.changeIcon": "Modifier l’icône de la base de connaissances",
   "form.chunkStructure.description": "sur la structure des morceaux.",
   "form.chunkStructure.learnMore": "Pour en savoir plus",
   "form.chunkStructure.title": "Structure de morceaux",

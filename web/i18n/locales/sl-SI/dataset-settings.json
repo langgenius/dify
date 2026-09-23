@@ -1,5 +1,6 @@
 {
   "desc": "Tukaj lahko spremenite lastnosti in nastavitve pridobivanja tega znanja.",
+  "form.changeIcon": "Spremeni ikono znanja",
   "form.chunkStructure.description": "o strukturi Chunk.",
   "form.chunkStructure.learnMore": "Izvedi več",
   "form.chunkStructure.title": "Struktura kosov",

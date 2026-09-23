@@ -1234,7 +1234,6 @@ describe('useChatWithHistory', () => {
         editable: true,
         is_pinned: false,
         last_used_at: null,
-        uninstallable: true,
         app: {
           id: 'app-id',
           name: 'Installed App',

@@ -16,7 +16,7 @@ _REQUEST_CONTEXT = RequestContext(
 
 
 def _installed_app() -> InstalledAppRef:
-    return InstalledAppRef(id="installed-1", tenant_id="viewer-tenant", app_id="app-1")
+    return InstalledAppRef(id="installed-1", tenant_id="viewer-tenant", app_id="app-1", app_mode="completion")
 
 
 def _application_services() -> tuple[SimpleNamespace, MagicMock]:
