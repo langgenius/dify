@@ -1,26 +1,21 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useModalContext } from '@/context/modal-context'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { render as renderWithoutPricing } from '@/test/console/render'
 import { RetentionUpgradeNotice } from '../retention-upgrade-notice'
 
-vi.mock('@/context/modal-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/modal-context')>()
-  return {
-    ...actual,
-    useModalContext: vi.fn(),
-  }
-})
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
-const mockUseModalContext = vi.mocked(useModalContext)
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
 describe('RetentionUpgradeNotice', () => {
-  const setShowPricingModal = vi.fn()
-
   function renderNotice(
     deploymentEdition: DeploymentEdition = 'CLOUD',
     plan: CloudPlan | null = 'sandbox',
@@ -40,9 +35,6 @@ describe('RetentionUpgradeNotice', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseModalContext.mockReturnValue({
-      setShowPricingModal,
-    } as unknown as ReturnType<typeof useModalContext>)
   })
 
   it('should show accessible upgrade guidance for Cloud sandbox workspaces', async () => {
@@ -57,7 +49,9 @@ describe('RetentionUpgradeNotice', () => {
     await user.click(
       within(notice).getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
     )
-    expect(setShowPricingModal).toHaveBeenCalledOnce()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it.each([

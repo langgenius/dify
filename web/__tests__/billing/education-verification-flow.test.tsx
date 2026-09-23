@@ -6,6 +6,7 @@ import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import type { DeepPartial } from '@/test/console/system-features'
 import { cleanup, screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import PlanComp from '@/app/components/billing/plan'
 import { consoleQuery } from '@/service/console'
@@ -16,12 +17,14 @@ import {
 } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
 let mockFeatures: DeepPartial<GetFeaturesResponse> = {}
 let mockVectorSpace: GetFeaturesVectorSpaceResponse = { size: 0, limit: 50, usage_unknown: false }
 let mockConsoleState: Record<string, unknown> = {}
 let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
 
-const render = (ui: ReactElement, options: RenderOptions = {}) => {
+const renderWithoutPricing = (ui: ReactElement, options: RenderOptions = {}) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     ...mockVectorSpace,
@@ -39,7 +42,6 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
 }
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
-const mockSetShowPricingModal = vi.fn()
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 
@@ -47,11 +49,6 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowPricingModal: mockSetShowPricingModal,
-  }),
-}))
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 vi.mock('@/next/navigation', () => ({
@@ -87,6 +84,11 @@ const setupBilling = (
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
+
 describe('Education Verification Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()

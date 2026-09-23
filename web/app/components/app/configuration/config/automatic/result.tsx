@@ -35,12 +35,12 @@ const Result: FC<Props> = ({
   onApply,
   generatorType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const isGeneratorPrompt = generatorType === GeneratorType.prompt
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-3 flex shrink-0 items-center justify-between">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-y-3">
         <div>
           <div className="shrink-0 text-base leading-[160%] font-semibold text-text-secondary">
             {t(($) => $['generate.resTitle'], { ns: 'appDebug' })}

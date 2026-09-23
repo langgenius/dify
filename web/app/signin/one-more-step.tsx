@@ -14,13 +14,13 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { LICENSE_LINK } from '@/constants/link'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -74,7 +74,7 @@ const hasStatus = (error: unknown): error is { status: number } => {
 }
 
 const OneMoreStep = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()

@@ -2,11 +2,11 @@ import type { Features as FeaturesData } from '@/app/components/base/features/ty
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { handleStream, post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { AppModeEnum } from '@/types/app'
@@ -20,7 +20,7 @@ export type HandleRunOptions = {
   allNodeIds?: string[]
 }
 
-type DebuggableTriggerType = Exclude<TriggerType, TriggerType.UserInput>
+type DebuggableTriggerType = Exclude<TriggerType, typeof TriggerType.UserInput>
 
 type AppDetailLike = {
   id?: string

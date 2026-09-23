@@ -12,11 +12,11 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createAgentIconSelection } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
@@ -47,8 +47,8 @@ function DuplicateAgentFormSession({
   onCancel,
   onSubmit,
 }: DuplicateAgentFormSessionProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [initialValues] = useState(() => ({
     fields: {
       description: agent.description ?? '',
@@ -110,7 +110,7 @@ function DuplicateAgentFormSession({
 }
 
 export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAgentDialogProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const queryClient = useQueryClient()
   const latestAgent =
     queryClient.getQueryData<AgentFormSource>(

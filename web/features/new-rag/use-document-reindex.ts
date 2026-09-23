@@ -1,10 +1,10 @@
 'use client'
 
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { refreshWorkspacePermissionKeysAfterMutationDenialAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
@@ -30,7 +30,7 @@ export function useDocumentReindex({
   knowledgeSpaceId: string
   revisionsQueryKey: readonly unknown[]
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const queryClient = useQueryClient()
   const refreshWorkspacePermissionKeysAfterMutationDenial = useSetAtom(
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,

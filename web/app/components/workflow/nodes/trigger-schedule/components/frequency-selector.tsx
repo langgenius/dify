@@ -23,7 +23,7 @@ type FrequencySelectorProps = {
 }
 
 const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const groupLabel = t(($) => $['nodes.triggerSchedule.frequency.label'], { ns: 'workflow' })
   const fieldLabel = t(($) => $['nodes.triggerSchedule.frequencyLabel'], { ns: 'workflow' })
 
@@ -58,11 +58,13 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
       value={frequency}
       onValueChange={handleFrequencyChange}
     >
-      <SelectLabel className="sr-only">{fieldLabel}</SelectLabel>
-      <SelectTrigger className="w-full py-2">
-        {selectedFrequency?.name ??
-          t(($) => $['nodes.triggerSchedule.selectFrequency'], { ns: 'workflow' })}
-      </SelectTrigger>
+      <div className="flex flex-col">
+        <SelectLabel className="text-xs">{fieldLabel}</SelectLabel>
+        <SelectTrigger className="w-full py-2">
+          {selectedFrequency?.name ??
+            t(($) => $['nodes.triggerSchedule.selectFrequency'], { ns: 'workflow' })}
+        </SelectTrigger>
+      </div>
       <SelectContent>
         <SelectGroup>
           <SelectGroupLabel>{groupLabel}</SelectGroupLabel>

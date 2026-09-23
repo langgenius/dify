@@ -1,40 +1,22 @@
 """Workflow run response schemas for console APIs.
 
-Most workflow-run endpoints should document and serialize responses with the
-Pydantic models in this module. The remaining Flask-RESTX field dictionaries are
-kept only for workflow app-log endpoints that still build legacy log models.
+Workflow-run endpoints should document and serialize responses with the
+Pydantic models in this module.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Any
 
-from flask_restx import Namespace, fields
 from pydantic import AliasChoices, Field, field_validator
+from sqlalchemy.orm import Session
 
-from fields.base import ResponseModel
+from fields.base import ResponseModel, SessionResponseSource
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
-from libs.helper import TimestampField, to_timestamp
-
-workflow_run_for_log_fields = {
-    "id": fields.String,
-    "version": fields.String,
-    "status": fields.String,
-    "triggered_from": fields.String,
-    "error": fields.String,
-    "elapsed_time": fields.Float,
-    "total_tokens": fields.Integer,
-    "total_steps": fields.Integer,
-    "created_at": TimestampField,
-    "finished_at": TimestampField,
-    "exceptions_count": fields.Integer,
-}
-
-
-def build_workflow_run_for_log_model(api_or_ns: Namespace):
-    return api_or_ns.model("WorkflowRunForLog", workflow_run_for_log_fields)
+from libs.helper import to_timestamp
 
 
 class WorkflowRunForLogResponse(ResponseModel):
@@ -61,6 +43,21 @@ class WorkflowRunForLogResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+
+class WorkflowRunForArchivedLogResponse(ResponseModel):
+    id: str
+    status: str | None = None
+    triggered_from: str | None = None
+    elapsed_time: float | None = None
+    total_tokens: int | None = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _normalize_status(cls, value: Any) -> str | None:
+        if value is None or isinstance(value, str):
+            return value
+        return str(value.value if isinstance(value, Enum) else value)
 
 
 class WorkflowRunForListResponse(ResponseModel):
@@ -185,6 +182,47 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+
+class WorkflowRunResponseSource(SessionResponseSource[Any]):
+    """Expose session-backed workflow-run accessors during response validation."""
+
+    @property
+    def created_by_account(self) -> Any:
+        return self._source.created_by_account(self._session)
+
+    @property
+    def created_by_end_user(self) -> Any:
+        return self._source.created_by_end_user(self._session)
+
+
+def workflow_run_response_source(workflow_run: Any, *, session: Session) -> WorkflowRunResponseSource:
+    return WorkflowRunResponseSource(workflow_run, session=session)
+
+
+def workflow_run_pagination_response_source(pagination: Any, *, session: Session) -> dict[str, Any]:
+    """Wrap each run in a pagination payload so list responses resolve accessors via the session."""
+    return {
+        "limit": pagination.limit,
+        "has_more": pagination.has_more,
+        "data": [workflow_run_response_source(run, session=session) for run in pagination.data],
+    }
+
+
+class WorkflowNodeExecutionResponseSource(SessionResponseSource[Any]):
+    """Expose session-backed node-execution accessors during response validation."""
+
+    @property
+    def created_by_account(self) -> Any:
+        return self._source.created_by_account(self._session)
+
+    @property
+    def created_by_end_user(self) -> Any:
+        return self._source.created_by_end_user(self._session)
+
+
+def node_execution_response_source(node_execution: Any, *, session: Session) -> WorkflowNodeExecutionResponseSource:
+    return WorkflowNodeExecutionResponseSource(node_execution, session=session)
 
 
 class WorkflowRunNodeExecutionListResponse(ResponseModel):

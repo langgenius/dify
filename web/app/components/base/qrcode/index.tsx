@@ -17,7 +17,7 @@ type Props = Readonly<{
 const prefixEmbedded = 'overview.appInfo.qrcode.title'
 
 const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
   const [isShow, setIsShow] = useState<boolean>(false)
   const qrCodeRef = useRef<HTMLDivElement>(null)
 

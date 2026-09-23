@@ -27,7 +27,7 @@ const ZoomType = {
 type ZoomType = (typeof ZoomType)[keyof typeof ZoomType]
 
 const ZoomInOut: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
   const { zoom } = useViewport()
 

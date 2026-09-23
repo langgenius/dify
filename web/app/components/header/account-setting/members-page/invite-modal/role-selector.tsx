@@ -17,8 +17,8 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type RoleSelectorProps = {
@@ -50,7 +50,7 @@ function getLegacyRoleDescriptionKey(role: Role) {
 }
 
 export function RoleSelector({ hasServerError = false, disabled = false }: RoleSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const [open, setOpen] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)

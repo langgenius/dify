@@ -14,7 +14,7 @@ const MetadataPanel = ({
   handleAddCondition,
   ...restProps
 }: MetadataPanelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="w-105 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl">

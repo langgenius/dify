@@ -13,7 +13,7 @@ type HeaderTableProps = {
 }
 
 const HeaderTable: FC<HeaderTableProps> = ({ readonly = false, headers = [], onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   // Define columns for header table - matching prototype design
   const columns: ColumnConfig[] = [

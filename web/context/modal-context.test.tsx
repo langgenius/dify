@@ -17,10 +17,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
-vi.mock('@/app/components/billing/pricing', () => ({
-  Pricing: () => <div>billing.plansCommon.mostPopular</div>,
-}))
-
 vi.mock('@/app/components/plugins/update-plugin', () => ({
   default: ({ onSave }: { onSave: () => void | Promise<void> }) => (
     <button data-testid="save-plugin-update" onClick={onSave}>
@@ -88,7 +84,7 @@ const renderProvider = (
     systemFeatures: { deployment_edition: edition },
   })
   seedFeatures(queryClient, features)
-  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper()
   const wrapper = ({ children: wrapperChildren }: { children: React.ReactNode }) => (
     <QueryWrapper>
       <NuqsWrapper>{wrapperChildren}</NuqsWrapper>
@@ -97,6 +93,7 @@ const renderProvider = (
 
   return {
     queryClient,
+    onUrlUpdate,
     ...render(<ModalContextProvider>{children}</ModalContextProvider>, { wrapper }),
   }
 }
@@ -246,17 +243,16 @@ describe('ModalContextProvider trigger events limit modal', () => {
     }
     const user = userEvent.setup()
 
-    renderProvider(undefined, features)
+    const { onUrlUpdate } = renderProvider(undefined, features)
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
     await user.click(screen.getByText('billing.triggerLimitModal.upgrade'))
 
-    await waitFor(() =>
-      expect(screen.getByText('billing.plansCommon.mostPopular')).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open')
     expect(screen.queryByText('400')).not.toBeInTheDocument()
-    expect(screen.getByText('blocked')).toBeInTheDocument()
+    expect(screen.getByText('clear')).toBeInTheDocument()
   })
 })
 

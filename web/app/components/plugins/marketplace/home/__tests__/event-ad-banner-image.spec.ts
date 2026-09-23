@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
   EMBEDDED_MOBILE_BANNER_MEDIA,
   MARKETPLACE_MOBILE_BANNER_MEDIA,

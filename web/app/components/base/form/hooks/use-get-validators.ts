@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 export const useGetValidators = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const renderI18nObject = useRenderI18nObject()
   const getLabel = useCallback((label: string | Record<string, string> | ReactNode) => {
     if (isValidElement(label)) return ''
@@ -23,21 +23,21 @@ export const useGetValidators = () => {
       if (required && !validators) {
         mergedValidators = {
           onMount: ({ value }: any) => {
-            if (!value)
+            if (!value && value !== 0)
               return t(($) => $['errorMsg.fieldRequired'], {
                 ns: 'common',
                 field: memorizedLabel || name,
               })
           },
           onChange: ({ value }: any) => {
-            if (!value)
+            if (!value && value !== 0)
               return t(($) => $['errorMsg.fieldRequired'], {
                 ns: 'common',
                 field: memorizedLabel || name,
               })
           },
           onBlur: ({ value }: any) => {
-            if (!value)
+            if (!value && value !== 0)
               return t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: memorizedLabel })
           },
         }

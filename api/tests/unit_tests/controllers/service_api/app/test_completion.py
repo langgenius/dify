@@ -36,14 +36,17 @@ from controllers.service_api.app.completion import (
 from controllers.service_api.app.error import (
     AgentNotPublishedError,
     AppUnavailableError,
+    CompletionRequestError,
     ConversationCompletedError,
     NotChatAppError,
     WorkflowVersionExecutionNotAllowedError,
 )
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import QuotaExceededError
 from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeRateLimitError as ProviderInvokeRateLimitError
 from models.base import TypeBase
 from models.enums import ConversationFromSource, EndUserType
 from models.model import App, AppMode, Conversation, EndUser, IconType, Message
@@ -553,6 +556,43 @@ class TestCompletionStopApiController:
 
 
 class TestChatApiController:
+    @pytest.mark.parametrize(
+        ("source_error", "http_error", "status_code", "error_code"),
+        [
+            pytest.param(InvokeRateLimitError, InvokeRateLimitHttpError, 429, "rate_limit_error", id="cloud-quota"),
+            pytest.param(
+                ProviderInvokeRateLimitError, CompletionRequestError, 400, "completion_request_error", id="provider"
+            ),
+        ],
+    )
+    def test_maps_rate_limits_by_source(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        orm_session: Session,
+        source_error: type[InvokeRateLimitError | ProviderInvokeRateLimitError],
+        http_error: type[InvokeRateLimitHttpError | CompletionRequestError],
+        status_code: int,
+        error_code: str,
+    ) -> None:
+        generate = Mock(side_effect=source_error("rate limit reached"))
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.ADVANCED_CHAT)
+
+        api = ChatApi()
+        handler = unwrap(api.post)
+
+        with app.test_request_context(
+            "/chat-messages", method="POST", json={"inputs": {}, "query": "hi", "response_mode": "blocking"}
+        ):
+            with pytest.raises(http_error) as exc_info:
+                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+
+        generate.assert_called_once()
+        assert exc_info.value.code == status_code
+        assert exc_info.value.error_code == error_code
+        assert exc_info.value.description == "rate limit reached"
+
     def test_rejects_sandbox_plan_workflow_version(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
     ) -> None:

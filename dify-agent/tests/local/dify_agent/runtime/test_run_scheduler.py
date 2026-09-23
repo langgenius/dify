@@ -1,6 +1,7 @@
 import asyncio
 from collections import defaultdict
 from collections.abc import Mapping
+from typing import cast
 
 import httpx
 import pytest
@@ -26,6 +27,7 @@ from dify_agent.protocol.schemas import (
     utc_now,
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
+from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
     RunFinalizationResult,
@@ -483,6 +485,35 @@ def test_default_runner_factory_passes_runtime_limits_to_runner() -> None:
         assert runner.stream_text_delta_coalescing_enabled is False
         assert runner.stream_text_delta_flush_interval_seconds == 0.25
         assert runner.stream_text_delta_max_chars == 2048
+
+    asyncio.run(scenario())
+
+
+def test_default_runner_factory_passes_agent_observability_instance() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        record = await store.create_run()
+        sentinel = cast(AgentObservability, object())
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                agent_observability=sentinel,
+            )
+
+            runner = scheduler._default_runner_factory(record, _request(), is_cancelled=lambda: False)
+            default_scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+            default_runner = default_scheduler._default_runner_factory(record, _request(), is_cancelled=lambda: False)
+
+        assert isinstance(runner, AgentRunRunner)
+        assert runner.agent_observability is sentinel
+        assert isinstance(default_runner, AgentRunRunner)
+        assert default_runner.agent_observability is None
 
     asyncio.run(scenario())
 
