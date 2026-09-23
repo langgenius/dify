@@ -29,7 +29,7 @@ const StatusPanel: FC<ResultProps> = ({
   workflowRunId,
   onOpenTracingTab,
 }) => {
-  const { t } = useTranslation(['runLog', 'workflow'])
+  const { t } = useTranslation(['runLog', 'workflow', 'appLog'])
   const docLink = useDocLink()
   const { data: pausedDetails } = useWorkflowPausedDetails({
     workflowRunId: workflowRunId || '',
