@@ -162,6 +162,137 @@ describe('IpPoliciesPage', () => {
     },
   )
 
+  it('reloads a conflicting policy from the server before another save', async () => {
+    const user = userEvent.setup()
+    const original = createNetworkAccessGroupFixture({ version: 1 })
+    const remote = createNetworkAccessGroupFixture({ name: 'Allow-Remote', version: 2 })
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, { groups: [original] })
+    const requests: Request[] = []
+    const putBodies: unknown[] = []
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(String(input), init)
+      requests.push(request)
+      if (request.url.endsWith('/current-ip')) return Response.json({ client_ip: '203.0.113.42' })
+      if (request.method === 'GET')
+        return Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote] })
+      putBodies.push(JSON.parse(await request.clone().text()))
+      if (requests.filter((item) => item.method === 'PUT').length === 1)
+        return Response.json({ code: 'network_access_conflict' }, { status: 409 })
+      return Response.json({ group: remote, entitled: true })
+    })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Internal Network' }))
+    await user.clear(screen.getByRole('textbox', { name: 'Name' }))
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Allow-Local')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Allow-Remote'),
+    )
+    expect(
+      requests.filter(
+        (request) => request.method === 'GET' && !request.url.endsWith('/current-ip'),
+      ),
+    ).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Allow-Remote' }))
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Allow-Remote')
+    await user.clear(screen.getByRole('textbox', { name: 'Name' }))
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Confirmed')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(2),
+    )
+    expect(putBodies[1]).toMatchObject({
+      name: 'Confirmed',
+      expected_version: 2,
+    })
+  })
+
+  it('offers a retry when conflict recovery cannot reload the policy', async () => {
+    const user = userEvent.setup()
+    const original = createNetworkAccessGroupFixture({ version: 1 })
+    const remote = createNetworkAccessGroupFixture({ name: 'Allow-Remote', version: 2 })
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, { groups: [original] })
+    let getCount = 0
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(String(input), init)
+      if (request.url.endsWith('/current-ip')) return Response.json({ client_ip: '203.0.113.42' })
+      if (request.method === 'GET') {
+        getCount += 1
+        return getCount === 1
+          ? Response.json({ message: 'Unavailable' }, { status: 500 })
+          : Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote] })
+      }
+      return Response.json({ code: 'network_access_conflict' }, { status: 409 })
+    })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Internal Network' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Try Again' }))
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Allow-Remote'),
+    )
+    expect(getCount).toBe(2)
+  })
+
+  it('does not replace another edit session with a late conflict response', async () => {
+    const user = userEvent.setup()
+    const original = createNetworkAccessGroupFixture({ version: 1 })
+    const other = createNetworkAccessGroupFixture({ id: 'group-2', name: 'Other Policy' })
+    const remote = createNetworkAccessGroupFixture({ name: 'Allow-Remote', version: 2 })
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, { groups: [original, other] })
+    let resolveReload!: (response: Response) => void
+    const reload = new Promise<Response>((resolve) => {
+      resolveReload = resolve
+    })
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(String(input), init)
+      if (request.url.endsWith('/current-ip')) return Response.json({ client_ip: '203.0.113.42' })
+      return request.method === 'GET'
+        ? reload
+        : Response.json({ code: 'network_access_conflict' }, { status: 409 })
+    })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Internal Network' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute('aria-disabled', 'true'),
+    )
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Other Policy' }))
+    await act(async () => {
+      resolveReload(
+        Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote, other] }),
+      )
+    })
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Other Policy')
+  })
+
   it.each(['create', 'edit', 'delete'] as const)(
     'stops %s when manager permission is revoked',
     async (action) => {

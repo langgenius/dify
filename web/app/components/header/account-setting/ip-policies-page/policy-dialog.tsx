@@ -39,6 +39,8 @@ type IpPolicyDialogProps = {
   usedByCount?: number
   referencedApps?: NetworkAccessGroupResponse['apps']
   isPending?: boolean
+  recoveryError?: boolean
+  onRetryRecovery?: () => void
   onOpenChange: (open: boolean) => void
   onSubmit?: (payload: IpPolicyDialogSubmit) => void
 }
@@ -52,6 +54,8 @@ export function IpPolicyDialog({
   usedByCount = 0,
   referencedApps = [],
   isPending = false,
+  recoveryError = false,
+  onRetryRecovery,
   onOpenChange,
   onSubmit,
 }: IpPolicyDialogProps) {
@@ -167,7 +171,7 @@ export function IpPolicyDialog({
             className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto"
             onSubmit={(event) => {
               event.preventDefault()
-              if (!canSubmit || isPending) return
+              if (!canSubmit || isPending || recoveryError) return
               onSubmit?.({
                 name: name.trim(),
                 allowed_cidrs: collectAllowedCidrs(entryValues),
@@ -206,6 +210,17 @@ export function IpPolicyDialog({
               </Field>
             )}
 
+            {recoveryError && (
+              <div role="alert" className="flex shrink-0 items-center justify-between gap-3">
+                <p className="system-sm-regular text-text-destructive">
+                  {t(($) => $['common.loadFailed'], { ns: 'deployments' })}
+                </p>
+                <Button type="button" variant="secondary" onClick={onRetryRecovery}>
+                  {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+                </Button>
+              </div>
+            )}
+
             <div className="flex shrink-0 items-center justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -213,7 +228,7 @@ export function IpPolicyDialog({
               <Button
                 type="submit"
                 variant="primary"
-                disabled={!canSubmit || isPending}
+                disabled={!canSubmit || isPending || recoveryError}
                 loading={isPending}
               >
                 {mode === 'edit'

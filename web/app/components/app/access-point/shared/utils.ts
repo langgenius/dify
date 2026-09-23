@@ -33,15 +33,17 @@ export function getPublishedWorkflowState(
   workflow: PublishedWorkflow,
 ) {
   const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
+  const requiresPublishedWorkflow = isAdvancedApp(appInfo)
   const nodes = getPublishedWorkflowNodes(workflow)
   const hasStartNode = nodes.some((node) => node.data.type === BlockEnum.Start)
-  const hasTriggerNode = nodes.some((node) => isTriggerNode(node.data.type))
+  const hasTriggerNode = isWorkflowApp && nodes.some((node) => isTriggerNode(node.data.type))
 
   return {
     hasStartNode,
     hasTriggerNode,
-    isUnpublished: isWorkflowApp && !workflow?.graph,
+    isUnpublished: requiresPublishedWorkflow && !workflow?.graph,
     isWorkflowApp,
+    requiresPublishedWorkflow,
   }
 }
 

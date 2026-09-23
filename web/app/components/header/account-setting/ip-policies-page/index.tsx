@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getNetworkAccessErrorStatus } from '@/app/components/app/access-point/access-control/network-access'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
@@ -74,17 +74,42 @@ export default function IpPoliciesPage() {
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.put.mutationOptions(),
   )
   const [dialogState, setDialogState] = useState<DialogState>(null)
+  const dialogSessionRef = useRef(0)
+  const [isRecovering, setIsRecovering] = useState(false)
+  const [recoveryError, setRecoveryError] = useState(false)
   const groups = data?.groups ?? []
   const entitled = data?.entitled === true
   const canMutate = canManagePolicies && entitled
   const selectedGroup = dialogState && dialogState.mode !== 'create' ? dialogState.group : null
   const isSaving = createGroup.isPending || updateGroup.isPending
 
-  const refreshGroupsAfterConflict = async (groupId?: string) => {
-    const refreshed = await queryClient.fetchQuery(groupsQuery)
-    if (!groupId) return
-    const nextGroup = refreshed.groups.find((group) => group.id === groupId)
-    setDialogState(nextGroup ? { mode: 'edit', group: nextGroup } : null)
+  const openDialog = (next: DialogState) => {
+    dialogSessionRef.current += 1
+    setIsRecovering(false)
+    setRecoveryError(false)
+    setDialogState(next)
+  }
+
+  const refreshGroupsAfterConflict = async (groupId: string, session: number) => {
+    if (dialogSessionRef.current !== session) return
+    setIsRecovering(true)
+    setRecoveryError(false)
+    try {
+      const refreshed = await queryClient.query({ ...groupsQuery, staleTime: 0 })
+      if (dialogSessionRef.current !== session) return
+      const nextGroup = refreshed.groups.find((group) => group.id === groupId)
+      setDialogState((current) =>
+        current?.mode === 'edit' && current.group.id === groupId
+          ? nextGroup
+            ? { mode: 'edit', group: nextGroup }
+            : null
+          : current,
+      )
+    } catch {
+      if (dialogSessionRef.current === session) setRecoveryError(true)
+    } finally {
+      if (dialogSessionRef.current === session) setIsRecovering(false)
+    }
   }
 
   const handleOpenCreate = () => {
@@ -93,7 +118,7 @@ export default function IpPoliciesPage() {
       void setPricing('open')
       return
     }
-    setDialogState({ mode: 'create' })
+    openDialog({ mode: 'create' })
   }
 
   if (!canReadPolicies) return null
@@ -156,10 +181,10 @@ export default function IpPoliciesPage() {
               key={group.id}
               group={group}
               canMutate={canMutate}
-              onView={(group) => setDialogState({ mode: canMutate ? 'edit' : 'view', group })}
+              onView={(group) => openDialog({ mode: canMutate ? 'edit' : 'view', group })}
               onEdit={(group) => {
                 if (!canMutate) return
-                setDialogState({ mode: 'edit', group })
+                openDialog({ mode: 'edit', group })
               }}
             />
           ))}
@@ -168,18 +193,32 @@ export default function IpPoliciesPage() {
 
       {dialogState && (dialogState.mode !== 'create' || canMutate) && (
         <IpPolicyDialog
+          key={selectedGroup ? `${selectedGroup.id}:${selectedGroup.version}` : 'create'}
           mode={canMutate ? dialogState.mode : 'view'}
           open
           initialName={selectedGroup?.name}
           initialEntries={selectedGroup?.allowed_cidrs}
           usedByCount={selectedGroup?.used_by_count}
           referencedApps={selectedGroup?.apps}
-          isPending={isSaving}
+          isPending={isSaving || isRecovering}
+          recoveryError={recoveryError}
+          onRetryRecovery={() => {
+            if (selectedGroup)
+              void refreshGroupsAfterConflict(selectedGroup.id, dialogSessionRef.current)
+          }}
           onOpenChange={(open) => {
-            if (!open) setDialogState(null)
+            if (!open) openDialog(null)
           }}
           onSubmit={(payload) => {
-            if (!canMutate || isSaving || dialogState.mode === 'view') return
+            if (
+              !canMutate ||
+              isSaving ||
+              isRecovering ||
+              recoveryError ||
+              dialogState.mode === 'view'
+            )
+              return
+            const session = dialogSessionRef.current
             if (selectedGroup) {
               updateGroup.mutate(
                 {
@@ -192,10 +231,12 @@ export default function IpPoliciesPage() {
                   },
                 },
                 {
-                  onSuccess: () => setDialogState(null),
+                  onSuccess: () => {
+                    if (dialogSessionRef.current === session) openDialog(null)
+                  },
                   onError: (error) => {
                     if (getNetworkAccessErrorStatus(error) !== 409) return
-                    void refreshGroupsAfterConflict(selectedGroup.id)
+                    void refreshGroupsAfterConflict(selectedGroup.id, session)
                   },
                 },
               )
@@ -211,7 +252,9 @@ export default function IpPoliciesPage() {
                 },
               },
               {
-                onSuccess: () => setDialogState(null),
+                onSuccess: () => {
+                  if (dialogSessionRef.current === session) openDialog(null)
+                },
               },
             )
           }}
