@@ -1,5 +1,4 @@
 import type { FC, ReactElement } from 'react'
-import type { WorkflowTranslator } from './node-sections'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -50,8 +49,7 @@ type BaseNodeProps = {
 }
 
 const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
-  const { t } = useTranslation(['plugin', 'workflow'])
-  const translateWorkflow: WorkflowTranslator = (selector, options) => t(selector, options)
+  const { t } = useTranslation(['workflow', 'plugin'])
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
 
@@ -263,7 +261,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
               hasVarValue={hasVarValue}
               isLoading={isLoading}
               loopIndex={LoopIndex}
-              t={translateWorkflow}
+              t={t}
             />
           </div>
         </div>
