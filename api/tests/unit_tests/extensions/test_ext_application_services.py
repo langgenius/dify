@@ -819,7 +819,7 @@ def installed_app_ref(sqlite_session_factory: sessionmaker[Session]) -> Installe
     return result
 
 
-def test_build_application_services_reuses_installed_app_completion_dependencies(
+def test_build_application_services_reuses_installed_app_generation_dependencies(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     services = ext_application_services.build_application_services(
@@ -829,8 +829,8 @@ def test_build_application_services_reuses_installed_app_completion_dependencies
         redis=MagicMock(spec=RedisClientWrapper),
     )
 
-    assert services.installed_app_access._installed_apps is services.installed_app_completion._usage
-    assert services.installed_app_completion._app_definitions is services.app_definitions
+    assert services.installed_app_access._installed_apps is services.installed_app_generation._usage
+    assert services.installed_app_generation._app_definitions is services.app_definitions
 
 
 @pytest.mark.parametrize(
