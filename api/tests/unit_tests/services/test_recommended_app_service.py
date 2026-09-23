@@ -438,3 +438,54 @@ class TestRecommendedAppServiceGetDetail:
         assert result["model_config"] == complex_model_config
         assert len(result["workflows"]) == 2
         assert len(result["tools"]) == 3
+
+
+class TestRecommendedAppServiceGetApp:
+    """Test get_app fallback used when an app has no trial registration."""
+
+    @patch("services.recommended_app_service.db")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
+    def test_returns_normal_recommended_app(self, mock_config, mock_factory_class, mock_db):
+        """A normal app is returned when it belongs to the recommended catalog."""
+        # Arrange
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
+        app_id = "app-1"
+
+        mock_instance = MagicMock()
+        mock_instance.get_recommend_app_detail.return_value = {"id": app_id}
+        mock_factory = MagicMock(return_value=mock_instance)
+        mock_factory_class.get_recommend_app_factory.return_value = mock_factory
+
+        app_model = MagicMock()
+        mock_db.session.scalar.return_value = app_model
+
+        # Act
+        result = RecommendedAppService.get_app(app_id)
+
+        # Assert
+        assert result is app_model
+        mock_instance.get_recommend_app_detail.assert_called_once_with(app_id)
+        mock_db.session.scalar.assert_called_once()
+
+    @patch("services.recommended_app_service.db")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
+    def test_returns_none_when_app_is_not_recommended(self, mock_config, mock_factory_class, mock_db):
+        """None is returned (and the DB is not touched) when the app is not in the catalog."""
+        # Arrange
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
+        app_id = "not-recommended"
+
+        mock_instance = MagicMock()
+        mock_instance.get_recommend_app_detail.return_value = None
+        mock_factory = MagicMock(return_value=mock_instance)
+        mock_factory_class.get_recommend_app_factory.return_value = mock_factory
+
+        # Act
+        result = RecommendedAppService.get_app(app_id)
+
+        # Assert
+        assert result is None
+        mock_instance.get_recommend_app_detail.assert_called_once_with(app_id)
+        mock_db.session.scalar.assert_not_called()

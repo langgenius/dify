@@ -8,6 +8,7 @@ from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode, TrialApp
+from services.recommended_app_service import RecommendedAppService
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -73,6 +74,8 @@ def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, li
 
 
 def get_app_model_with_trial(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
+    """Inject an app registered for trial or available from the recommended catalog."""
+
     def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
@@ -85,6 +88,8 @@ def get_app_model_with_trial(view: Callable[P, R] | None = None, *, mode: Union[
             del kwargs["app_id"]
 
             app_model = _load_app_model_with_trial(app_id)
+            if app_model is None:
+                app_model = RecommendedAppService.get_app(app_id)
 
             if not app_model:
                 raise AppNotFoundError()
