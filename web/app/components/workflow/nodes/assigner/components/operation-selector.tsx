@@ -39,7 +39,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
   writeModeTypesArr,
   writeModeTypesNum,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const items = getOperationItems(
     assignedVarType,

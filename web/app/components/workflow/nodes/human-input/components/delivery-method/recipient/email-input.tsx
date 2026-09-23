@@ -26,7 +26,7 @@ type Props = Readonly<{
 }>
 
 const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = false }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocus, setIsFocus] = useState(false)
   const [open, setOpen] = useState(false)

@@ -53,7 +53,7 @@ function ParameterItem({
   nodesOutputVars,
   availableNodes = [],
 }: ParameterItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const language = useLanguage()
   const labelId = useId()
   const [localValue, setLocalValue] = useState(value)

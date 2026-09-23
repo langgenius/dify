@@ -9,6 +9,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from constants.oauth_bearer import Scope
 from controllers.common.app_access import AppAccessFilter, resolve_app_access_filter
 from controllers.common.fields import Parameters
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
@@ -35,7 +36,6 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from libs.oauth_bearer import Scope
 from models import App
 from models.enums import AppStatus
 from models.model import AppMode

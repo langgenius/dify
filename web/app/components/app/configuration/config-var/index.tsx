@@ -96,7 +96,7 @@ export type IConfigVarProps = {
 const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVariablesChange }) => {
   const titleId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { mode, dataSets } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
 

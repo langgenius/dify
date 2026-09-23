@@ -23,7 +23,7 @@ export function BlankAppFields({
   appIcon,
   onAppIconChange,
 }: BlankAppFieldsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const nameInputId = useId()
   const descriptionInputId = useId()
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)

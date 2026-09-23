@@ -37,7 +37,7 @@ export const ConversationCard = memo(
     onActionValidityChange?: DifyBuilderActionValidityChange
     onFormSubmit?: () => void
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow', 'common'])
 
     if (item.kind === 'challenge' || item.kind === 'checkpoint') return null
 

@@ -11,7 +11,7 @@ type Props = Readonly<{
 }>
 
 const TypeSwitch: FC<Props> = ({ className, isVariable, onIsVariableChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <button
       type="button"

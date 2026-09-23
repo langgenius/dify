@@ -36,7 +36,7 @@ const Install: FC<Props> = ({
   isFromMarketPlace,
   isHideButton,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
   const [selectedIndexes, setSelectedIndexes] = React.useState<number[]>([])
   const selectedPluginsNum = selectedPlugins.length

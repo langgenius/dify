@@ -21,7 +21,7 @@ from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
 from models.enums import CustomizeTokenStrategy
-from models.model import AccountTrialAppRecord, App, AppModelConfig, DifySetup, Site, TrialApp
+from models.model import AccountTrialAppRecord, App, AppMode, AppModelConfig, DifySetup, InstalledApp, Site, TrialApp
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -36,6 +36,7 @@ from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
@@ -66,6 +67,7 @@ from services.account_oauth_adapters import (
     DeploymentOAuthPolicyGateway,
     RedisOAuthAccountClaimLock,
 )
+from services.app.api_key_service import AppApiKeyService
 from services.app_generate_service import AppGenerateService
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
@@ -83,7 +85,12 @@ from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFound
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
+from services.installed_app_generation_service import InstalledAppGenerationService
+from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
@@ -97,6 +104,7 @@ from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.services.test_app_task_service import _StopRedis
 
 
 @pytest.mark.parametrize(
@@ -173,6 +181,33 @@ def test_init_app_registers_services_for_the_current_app(
         assert services.app_scoped_end_users.commands._app_scoped_end_users is repository
         assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
+
+
+def test_build_application_services_preserves_composed_boundaries(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+
+    assert isinstance(services.app_api_keys, AppApiKeyService)
+    assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
+    assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
+    assert redis.register_script.call_count == 3
+
+    assert isinstance(services.installed_app_generation, InstalledAppGenerationService)
+    installed_apps = services.installed_app_access._installed_apps
+    assert isinstance(installed_apps, SQLAlchemyInstalledAppRepository)
+    assert services.installed_app_generation._usage is installed_apps
+    assert services.installed_app_generation._app_definitions is services.app_definitions
+    runtime = services.installed_app_generation._runtime
+    assert isinstance(runtime, InstalledAppGenerateServiceRuntime)
+    assert runtime._session_factory is sqlite_session_factory
 
 
 @pytest.mark.parametrize(
@@ -689,6 +724,31 @@ def test_build_application_services_wires_data_source_api_key_auth(
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
 
 
+def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = _StopRedis(read_error=AssertionError("Workflow stop must not inspect task ownership"))
+    script = MagicMock(side_effect=AssertionError("Workflow stop must not execute Redis scripts"))
+    with patch.object(redis, "register_script", return_value=script):
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=redis,
+        )
+
+    services.app_tasks.stop_workflow_task_no_user_check(task_id="workflow-task")
+
+    assert redis.reads == []
+    assert redis.operations == ["legacy_flag", "graph_command"]
+    assert redis.values["generate_task_stopped:workflow-task"] == b"1"
+    assert redis.expirations["generate_task_stopped:workflow-task"] == 600
+    assert [json.loads(command) for command in redis.commands["workflow:workflow-task:commands"]] == [
+        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+    ]
+    assert redis.expirations["workflow:workflow-task:commands"] == 3600
+
+
 def test_build_application_services_wires_trial_app_usage(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -712,6 +772,120 @@ def test_build_application_services_wires_trial_app_usage(
         )
     assert record is not None
     assert record.count == 1
+
+
+@pytest.fixture
+def installed_app_ref(sqlite_session_factory: sessionmaker[Session]) -> InstalledAppRef:
+    with sqlite_session_factory.begin() as session:
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Installed app",
+            mode=AppMode.COMPLETION,
+            enable_site=True,
+            enable_api=True,
+        )
+        session.add(app)
+        session.flush()
+        installed_app = InstalledApp(
+            tenant_id=str(uuid4()),
+            app_id=app.id,
+            app_owner_tenant_id=app.tenant_id,
+            is_pinned=False,
+        )
+        session.add(installed_app)
+        session.flush()
+        result = InstalledAppRef(id=installed_app.id, app_id=app.id, tenant_id=installed_app.tenant_id)
+    return result
+
+
+@pytest.mark.parametrize(
+    ("deployment_edition", "permission_result"),
+    [
+        pytest.param(DeploymentEdition.COMMUNITY, False, id="community-skips-permission"),
+        pytest.param(DeploymentEdition.CLOUD, False, id="cloud-skips-permission"),
+        pytest.param(DeploymentEdition.ENTERPRISE, True, id="enterprise-allowed"),
+        pytest.param(DeploymentEdition.ENTERPRISE, False, id="enterprise-denied"),
+    ],
+)
+def test_build_application_services_wires_installed_app_admission(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    deployment_edition: DeploymentEdition,
+    permission_result: bool,
+) -> None:
+    account_id = str(uuid4())
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        return_value={"result": permission_result},
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=deployment_edition,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        if deployment_edition == DeploymentEdition.ENTERPRISE and not permission_result:
+            with pytest.raises(InstalledAppAccessDeniedError):
+                services.installed_app_access.get_access(
+                    installed_app_id=installed_app_ref.id,
+                    tenant_id=installed_app_ref.tenant_id,
+                    account_id=account_id,
+                )
+        else:
+            assert (
+                services.installed_app_access.get_access(
+                    installed_app_id=installed_app_ref.id,
+                    tenant_id=installed_app_ref.tenant_id,
+                    account_id=account_id,
+                )
+                == installed_app_ref
+            )
+
+    if deployment_edition == DeploymentEdition.ENTERPRISE:
+        enterprise_request.assert_called_once_with(
+            "GET", "/webapp/permission", params={"userId": account_id, "appId": installed_app_ref.app_id}
+        )
+    else:
+        enterprise_request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "enterprise_error",
+    [
+        pytest.param(EnterpriseAPINotFoundError(), id="not-found"),
+        pytest.param(EnterpriseAPIError("permission unavailable"), id="api-error"),
+        pytest.param(httpx.ConnectError("connection failed"), id="transport"),
+        pytest.param(json.JSONDecodeError("invalid", "", 0), id="invalid-json"),
+        pytest.param(UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid"), id="invalid-encoding"),
+    ],
+)
+def test_installed_app_admission_normalizes_known_enterprise_errors(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    enterprise_error: Exception,
+) -> None:
+    account_id = str(uuid4())
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        side_effect=enterprise_error,
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        with pytest.raises(WebAppAccessUnavailableError) as raised:
+            services.installed_app_access.get_access(
+                installed_app_id=installed_app_ref.id,
+                tenant_id=installed_app_ref.tenant_id,
+                account_id=account_id,
+            )
+
+    assert raised.value.__cause__ is enterprise_error
+    enterprise_request.assert_called_once_with(
+        "GET", "/webapp/permission", params={"userId": account_id, "appId": installed_app_ref.app_id}
+    )
 
 
 def test_trial_generation_uses_configured_access_runtime_and_usage(

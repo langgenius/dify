@@ -8,7 +8,7 @@ export const Thinking = ({
   text?: string | null
   isStreaming?: boolean
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   if (!text?.trim()) return null
 
   const label = isStreaming

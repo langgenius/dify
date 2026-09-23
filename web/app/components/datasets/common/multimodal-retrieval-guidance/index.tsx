@@ -35,7 +35,7 @@ const isVisionEmbeddingModel = (
 }
 
 const useVariantCopy = (variant: MultimodalRetrievalGuidanceVariant) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
 
   if (variant === 'create') {
     return {
@@ -70,7 +70,7 @@ const useVariantCopy = (variant: MultimodalRetrievalGuidanceVariant) => {
 }
 
 export const MultimodalRetrievalGuidanceLearnMore = ({ className }: { className?: string }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
 
   return (
     <div className={cn('flex items-center body-xs-regular text-text-tertiary', className)}>
@@ -98,7 +98,7 @@ export const MultimodalRetrievalGuidance = ({
   embeddingModelList,
   className,
 }: MultimodalRetrievalGuidanceProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
   const { title, description } = useVariantCopy(variant)
   const dismissLabel = t(($) => $['form.multimodalRetrievalGuidance.dismiss'], {
     ns: 'datasetSettings',

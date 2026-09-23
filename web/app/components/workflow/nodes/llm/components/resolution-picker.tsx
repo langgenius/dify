@@ -14,7 +14,7 @@ type Props = Readonly<{
 }>
 
 const ResolutionPicker: FC<Props> = ({ value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const handleOnChange = useCallback(
     (value: Resolution) => {

@@ -45,8 +45,8 @@ export const CredentialsSection = memo(
     horizontalPaddingClassName: string
     onChange: DeploymentConfigurationValuesController['setCredential']
   }) => {
-    const { t } = useTranslation('deployments')
-    const { t: tWorkflow } = useTranslation('workflow')
+    const { t } = useTranslation(['deployments'])
+    const { t: tWorkflow } = useTranslation(['workflow'])
     const appCredentialSlots = credentialSlots.filter((slot) => !slot.workflow_as_tool_dependency)
     const subworkflowCredentialSlots = credentialSlots.filter(
       (slot) => slot.workflow_as_tool_dependency,

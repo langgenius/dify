@@ -21,7 +21,7 @@ type Props = Readonly<{
 }>
 
 const GetSchema: FC<Props> = ({ onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const [showImportFromUrl, setShowImportFromUrl] = useState(false)
   const [importUrl, setImportUrl] = useState('')
   const [isParsing, setIsParsing] = useState(false)

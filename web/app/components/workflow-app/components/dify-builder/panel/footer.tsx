@@ -12,7 +12,7 @@ import {
 } from '../store'
 
 export const DifyBuilderPanelFooter = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
   const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const error = useAtomValue(difyBuilderErrorAtom)

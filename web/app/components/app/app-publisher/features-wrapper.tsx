@@ -34,7 +34,7 @@ type Props = Omit<AppPublisherProps, 'onPublish'> & {
 }
 
 const FeaturesWrappedAppPublisher = (props: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)

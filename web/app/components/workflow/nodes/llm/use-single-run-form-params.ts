@@ -39,7 +39,7 @@ const useSingleRunFormParams = ({
   setRunInputData,
   toVarInputs,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { inputs } = useNodeCrud<LLMNodeType>(id, payload)
   const getVarInputs = getInputVars
   const isChatMode = useIsChatMode()

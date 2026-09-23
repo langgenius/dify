@@ -9,7 +9,7 @@ function getBuiltinIconName(iconRef: string | undefined) {
 }
 
 export function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: KnowledgeSpace }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const unavailable = t(($) => $['cornerLabel.unavailable'])
   const iconName = getBuiltinIconName(knowledgeSpace.iconRef)

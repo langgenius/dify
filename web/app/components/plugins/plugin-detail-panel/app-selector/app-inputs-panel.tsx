@@ -18,7 +18,7 @@ type Props = Readonly<{
 }>
 
 const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const inputsRef = useRef<Record<string, unknown>>(value?.inputs || {})
 
   const { inputFormSchema, isError, isLoading, retry } = useAppInputsFormSchema({ appDetail })

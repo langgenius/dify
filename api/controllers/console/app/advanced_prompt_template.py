@@ -52,7 +52,6 @@ class AdvancedPromptTemplateList(Resource):
         result = application_services().advanced_prompt_templates.get_prompt(
             app_mode=req_data.app_mode,
             model_mode=req_data.model_mode,
-            model_name=req_data.model_name,
             has_context=req_data.has_context,
         )
         return AdvancedPromptTemplateResponse.model_validate(result).model_dump(mode="json", exclude_unset=True)

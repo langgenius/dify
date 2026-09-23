@@ -37,7 +37,7 @@ function StarterContent({
   isAppsFull,
   error,
 }: Omit<ChatInputStarterProps, 'show' | 'onClose' | 'onCreateTemplate'>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow'])
   const [prompt, setPrompt] = useState('')
   const { improve, isPending, ...modelState } = useImproveBuilderPrompt(mode, setPrompt)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -173,7 +173,7 @@ export default function ChatInputStarter({
   onCreateTemplate,
   ...props
 }: ChatInputStarterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   return (
     <CreateAppDialogShell
       show={show}

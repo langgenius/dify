@@ -1,7 +1,11 @@
 import type { TFunction } from 'i18next'
 import type { CardVariant } from '../use-credential-panel-state'
 
-export function getButtonConfig(variant: CardVariant, hasCredentials: boolean, t: TFunction) {
+export function getButtonConfig(
+  variant: CardVariant,
+  hasCredentials: boolean,
+  t: TFunction<['common']>,
+) {
   if (variant === 'api-required-add') {
     return {
       text: t(($) => $['modelProvider.auth.addApiKey'], { ns: 'common' }),

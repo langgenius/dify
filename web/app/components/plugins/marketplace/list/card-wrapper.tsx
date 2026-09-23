@@ -33,7 +33,7 @@ const CardWrapperContent = ({
   section = 'list',
   externalDetailHref,
 }: CardWrapperProps & { externalDetailHref?: string }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useGetLanguage()
   const [
     isShowInstallFromMarketplace,

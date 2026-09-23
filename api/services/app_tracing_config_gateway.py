@@ -5,12 +5,14 @@ from typing import Any, override
 
 from pydantic import ValidationError
 
-from core.ops.entities.config_entity import BaseTracingConfig
+from core.ops.entities.config_entity import BaseTracingConfig, TracingProviderEnum
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.ops_trace_manager import OpsTraceManager, TracingProviderConfigEntry, provider_config_map
 from services.app_tracing_config_service import (
     AppTracingConfigInvalidConfigurationError,
     AppTracingConfigInvalidProviderError,
     AppTracingConfigProcessingError,
+    AppTracingConfigProviderUnavailableError,
     AppTracingConfigVerificationFailedError,
     TracingConfigProviderGateway,
 )
@@ -33,7 +35,8 @@ _PROJECT_URL_FALLBACKS = {
 class OpsTraceManagerGateway(TracingConfigProviderGateway):
     @override
     def validate_provider(self, tracing_provider: str) -> None:
-        self._provider_config(tracing_provider)
+        if tracing_provider not in TracingProviderEnum:
+            raise AppTracingConfigInvalidProviderError(tracing_provider)
 
     @override
     def prepare_new_config(
@@ -107,6 +110,8 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
                 tracing_config,
             )
             presented_config = OpsTraceManager.obfuscated_decrypt_token(tracing_provider, decrypted_config)
+        except TraceProviderNotInstalledError as error:
+            raise AppTracingConfigProviderUnavailableError from error
         except Exception as error:
             raise AppTracingConfigProcessingError from error
 
@@ -133,6 +138,8 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             return provider_config_map[tracing_provider]
         except KeyError as error:
             raise AppTracingConfigInvalidProviderError(tracing_provider) from error
+        except TraceProviderNotInstalledError as error:
+            raise AppTracingConfigProviderUnavailableError from error
 
     @staticmethod
     def _normalize_config(

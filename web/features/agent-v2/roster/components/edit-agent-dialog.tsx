@@ -54,8 +54,8 @@ function EditAgentFormSession({
   onCancel,
   onSubmit,
 }: EditAgentFormSessionProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [initialValues] = useState(() => ({
     fields: {
       description: agent.description ?? '',
@@ -134,7 +134,7 @@ function EditAgentFormSession({
 }
 
 export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
 

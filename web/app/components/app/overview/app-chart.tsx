@@ -70,7 +70,7 @@ const Chart: React.FC<IChartProps> = ({
 }) => {
   const titleId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
   const statistics = chartData.data
   const yField = getChartValueField(statistics, valueKey)
   const options = buildChartOptions({
@@ -202,7 +202,7 @@ const createBizChartComponent = <TData extends ChartResponse>({
   className,
 }: BizChartConfig<TData>): FC<IBizChartProps> => {
   const BizChart: FC<IBizChartProps> = ({ id, period }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['appOverview'])
     const { data: response, isLoading } = useQuery(queryOptions(id, period.query))
 
     if (isLoading || !response) return <LoadingPlaceholder />

@@ -53,7 +53,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     children,
     appId, // get appId in path
   } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const router = useRouter()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

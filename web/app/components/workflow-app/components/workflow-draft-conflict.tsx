@@ -5,7 +5,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 
 const WorkflowDraftConflict = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isRefreshing = useStore((s) => s.isSyncingWorkflowDraft)
   const [refreshFailed, setRefreshFailed] = useState(false)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()

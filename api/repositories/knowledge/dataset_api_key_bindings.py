@@ -6,14 +6,13 @@ A dataset API key is scoped to specific knowledge bases through
 - no rows  -> the key can access every dataset in its tenant (default / back-compat)
 - N rows   -> the key is restricted to exactly those datasets
 
-These helpers live in the service layer so controllers and the service-API auth
-decorator can share the queries without embedding SQLAlchemy in controller code.
+Shared by key management, dataset deletion, and service-API authentication.
 The caller owns the transaction boundary (commit/flush).
 """
 
 from collections.abc import Iterable
 
-from sqlalchemy import delete, select
+from sqlalchemy import Select, delete, select
 from sqlalchemy.orm import Session
 
 from models.dataset import Dataset
@@ -77,18 +76,17 @@ def delete_keys_scoped_only_to(session: Session, dataset_id: str) -> list[str]:
     Must run before the dataset row is deleted (so the bindings still exist).
     Returns the deleted api_token ids; the caller controls the transaction.
     """
-    orphan_ids = [
-        str(token_id)
-        for token_id in session.scalars(
-            select(DatasetApiTokenBinding.api_token_id)
-            .where(DatasetApiTokenBinding.dataset_id == dataset_id)
-            .where(
-                DatasetApiTokenBinding.api_token_id.notin_(
-                    select(DatasetApiTokenBinding.api_token_id).where(DatasetApiTokenBinding.dataset_id != dataset_id)
-                )
-            )
-        ).all()
-    ]
+    orphan_ids = [str(token_id) for token_id in session.scalars(token_ids_scoped_only_to(dataset_id)).all()]
     if orphan_ids:
         session.execute(delete(ApiToken).where(ApiToken.id.in_(orphan_ids)))
     return orphan_ids
+
+
+def token_ids_scoped_only_to(dataset_id: str) -> Select[tuple[str]]:
+    """Select keys bound only to one dataset, for management and deletion."""
+    return select(DatasetApiTokenBinding.api_token_id).where(
+        DatasetApiTokenBinding.dataset_id == dataset_id,
+        DatasetApiTokenBinding.api_token_id.notin_(
+            select(DatasetApiTokenBinding.api_token_id).where(DatasetApiTokenBinding.dataset_id != dataset_id)
+        ),
+    )

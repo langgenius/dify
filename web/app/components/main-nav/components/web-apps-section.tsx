@@ -67,7 +67,7 @@ type WebAppListRow =
     }
 
 const WebAppsSectionContent = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'explore'])
   const pathname = usePathname()
   const scrollRef = useRef<HTMLDivElement>(null)
   const sectionToggleRef = useRef<HTMLButtonElement>(null)

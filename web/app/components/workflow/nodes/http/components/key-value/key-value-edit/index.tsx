@@ -33,7 +33,7 @@ const KeyValueList: FC<Props> = ({
   keyNotSupportVar,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const handleChange = useCallback(
     (index: number) => {

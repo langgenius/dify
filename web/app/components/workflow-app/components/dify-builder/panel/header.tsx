@@ -15,7 +15,7 @@ export const DifyBuilderPanelHeader = ({
   onReset,
   onClose,
 }: DifyBuilderPanelHeaderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
 
   return (
     <header className="relative z-10 flex h-11 shrink-0 items-center gap-2 bg-linear-to-b from-background-section to-transparent pr-3 pl-4.5">

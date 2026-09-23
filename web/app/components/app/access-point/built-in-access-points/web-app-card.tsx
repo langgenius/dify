@@ -79,7 +79,7 @@ export function WebAppAccessPointCard({
   showAccessControl,
   workflow,
 }: WebAppAccessPointCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'app', 'appOverview', 'common', 'deployments'])
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const [showSettings, setShowSettings] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)

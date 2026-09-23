@@ -38,8 +38,8 @@ export function SkillUploadStatusPanel({
   onDismiss: () => void
   onViewErrors: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   if (items.length === 0) return null
 
   const uploadedCount = items.filter((item) => item.status === 'uploaded').length

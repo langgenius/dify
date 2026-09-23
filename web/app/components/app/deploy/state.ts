@@ -54,7 +54,7 @@ export function AppDeployStateBoundary({
   appId: string
   children: ReactNode
 }) {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   useHydrateAtoms(
     [

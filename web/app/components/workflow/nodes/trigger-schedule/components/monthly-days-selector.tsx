@@ -11,7 +11,7 @@ type MonthlyDaysSelectorProps = {
 const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProps) => {
   const lastDayLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const handleDayClick = (day: number | 'last') => {
     const current = selectedDays || []

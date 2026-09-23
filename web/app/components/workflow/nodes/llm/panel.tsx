@@ -46,7 +46,7 @@ const getModelSelectionKey = (
   `${source}:${environmentVariableName}:${provider}:${modelName}:${JSON.stringify(completionParams)}`
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const {
     readOnly,

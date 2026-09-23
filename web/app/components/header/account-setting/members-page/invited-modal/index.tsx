@@ -18,7 +18,7 @@ type IInvitedModalProps = {
   onCancel: () => void
 }
 const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

@@ -142,8 +142,8 @@ export function ProcessingTasksDrawer({
   onRetryDocumentQuery: () => void
   onRetryTaskQuery: () => void
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const cancelTask = useMutation(
     consoleQuery.knowledgeFs.deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId.mutationOptions(),

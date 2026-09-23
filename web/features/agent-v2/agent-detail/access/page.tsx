@@ -21,7 +21,7 @@ type AgentAccessPageProps = {
 }
 
 export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
   const agentQuery = useQuery(
     consoleQuery.agent.byAgentId.get.queryOptions({

@@ -43,7 +43,7 @@ const ClassItem: FC<Props> = ({
   placeholder,
   defaultLabel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const reactId = useId()
   const [isEditingLabel, setIsEditingLabel] = useState(false)
   const [draftLabel, setDraftLabel] = useState('')

@@ -21,7 +21,7 @@ type Props = Readonly<{
 const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
   const [inputString, setInputString] = useState('')
   const { handleNodeSelect } = useNodesInteractions()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const handleSave = useCallback(() => {
     const { node, error } = parseCurl(inputString)

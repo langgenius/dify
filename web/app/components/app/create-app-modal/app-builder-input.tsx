@@ -23,7 +23,7 @@ export function AppBuilderInput({
   isCreating,
   createDisabled,
 }: AppBuilderInputProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow'])
   const { improve, isPending, ...modelState } = useImproveBuilderPrompt(mode, onPromptChange)
 
   return (

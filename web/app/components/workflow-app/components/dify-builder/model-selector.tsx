@@ -15,7 +15,7 @@ const DifyBuilderModelSelector = ({
   selection: model,
   modelList,
 }: DifyBuilderModelSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const readonly = useAtomValue(difyBuilderModelReadonlyAtom)
   const selectModel = useSetAtom(difyBuilderSelectModelAtom)
 

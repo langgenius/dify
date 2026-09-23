@@ -61,7 +61,7 @@ const IterationLogTrigger = ({
   allExecutions,
   onShowIterationResultList,
 }: IterationLogTriggerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const getNodesForInstance = (key: string): NodeTracing[] => {
     if (!allExecutions) return []
