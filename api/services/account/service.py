@@ -32,8 +32,6 @@ class AccountLifecycleStore(Protocol):
 
     def find_by_email(self, email: str) -> AccountSnapshot | None: ...
 
-    def has_active_email(self, email: str) -> bool: ...
-
     def normalized_email_exists(self, email: str) -> bool: ...
 
     def create(self, creation: AccountCreation) -> AccountSnapshot: ...
@@ -94,9 +92,6 @@ class AccountService:
 
     def get_account_by_email_with_case_fallback(self, email: str) -> AccountSnapshot | None:
         return self._accounts.find_by_email(email)
-
-    def has_active_account_with_email(self, email: str) -> bool:
-        return self._accounts.has_active_email(email)
 
     def authenticate(self, email: str, password: str) -> AccountSnapshot:
         account = self.get_account_by_email_with_case_fallback(email)

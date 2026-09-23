@@ -147,6 +147,9 @@ export default defineConfig(({ command, mode, isPreview }) => {
             setupFiles: ['./vitest.browser.setup.ts'],
             include: [browserTestPattern],
             browser: {
+              expect: {
+                toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' },
+              },
               enabled: true,
               provider: playwright(),
               instances: [{ browser: 'chromium' }],

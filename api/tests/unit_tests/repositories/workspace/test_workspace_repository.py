@@ -54,6 +54,12 @@ def test_lists_preserve_visibility_order_and_archived_memberships(seeded: Worksp
     assert seeded.list_for_account("absent") == ()
     assert set(seeded.list_ids_for_account("a1")) == {"w1", "w2", "w3"}
     assert {row.id for row in seeded.list_account_access_workspaces("a1")} == {"w1", "w2", "w3"}
+    assert [(row.id, row.name, row.role, row.current) for row in seeded.list_for_device_flow("a1")] == [
+        ("w1", "First", "normal", True),
+        ("w2", "Second", "editor", False),
+        ("w3", "Archived", "normal", False),
+    ]
+    assert seeded.get_many(()) == ()
     assert seeded.has_active_membership("a1")
     assert not seeded.has_active_for_account("absent")
     page = seeded.list_all(page=1, limit=2)

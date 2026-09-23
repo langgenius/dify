@@ -126,7 +126,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
   varName,
   variableCategory,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const handleTriggerReadonlyClick = (e: React.MouseEvent<HTMLElement>) => {
     if (!readonly) return
     e.preventDefault()

@@ -45,7 +45,7 @@ const AgentTools: FC = () => {
   const toolNameLabelId = React.useId()
   const toolsLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'tools'])
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const { readonly, modelConfig, setModelConfig } = useContext(ConfigContext)
   const { data: buildInTools } = useAllBuiltInTools()

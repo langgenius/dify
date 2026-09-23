@@ -19,7 +19,7 @@ export function ModelSelectorSearchHeader({
   inputValue,
   onInputValueChange,
 }: ModelSelectorSearchHeaderProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
 
   return (
     <div className="shrink-0 bg-components-panel-bg px-2 pt-2 pb-1">
@@ -57,7 +57,7 @@ export function ModelSelectorScrollBody({ children, label }: ModelSelectorScroll
 }
 
 export function CompatibleModelsNotice() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="px-4 py-2 system-xs-regular text-text-tertiary">
@@ -75,7 +75,7 @@ export function ShowIncompatibleModelsButton({
   showIncompatibleModels,
   onClick,
 }: ShowIncompatibleModelsButtonProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Button
@@ -98,7 +98,7 @@ type ModelProviderSettingsFooterProps = {
 }
 
 export function ModelProviderSettingsFooter({ onOpenSettings }: ModelProviderSettingsFooterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="shrink-0 border-t border-divider-subtle p-1">

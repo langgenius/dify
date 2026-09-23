@@ -28,7 +28,7 @@ const FileItem = ({
   onReUpload,
   canPreview,
 }: FileItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'custom'])
   const { id, name, type, progress, url, base64Url, isRemote } = file
   const [previewUrl, setPreviewUrl] = useState('')
   const ext = getFileExtension(name, type, isRemote)

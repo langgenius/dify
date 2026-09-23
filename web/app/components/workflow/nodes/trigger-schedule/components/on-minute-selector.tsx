@@ -15,7 +15,7 @@ type OnMinuteSelectorProps = {
 }
 
 const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <Slider

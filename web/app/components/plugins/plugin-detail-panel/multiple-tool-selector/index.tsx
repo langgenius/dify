@@ -44,7 +44,7 @@ const MultipleToolSelector = ({
 }: Props) => {
   const titleId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'plugin'])
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const { data: mcpTools } = useAllMCPTools()
   const addToolButtonRef = React.useRef<HTMLButtonElement>(null)

@@ -74,7 +74,7 @@ const hasStatus = (error: unknown): error is { status: number } => {
 }
 
 const OneMoreStep = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()

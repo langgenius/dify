@@ -58,7 +58,7 @@ const PanelMemorySection: FC<Props> = ({
   const userLabelId = React.useId()
   const memoryLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isSnippetFlow = flowType === FlowType.snippet
   const shouldCheckSysQuery = !isSnippetFlow
   const defaultMemory = isSnippetFlow ? SNIPPET_DEFAULT_MEMORY : DEFAULT_MEMORY

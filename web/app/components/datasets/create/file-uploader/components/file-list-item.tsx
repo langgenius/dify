@@ -22,7 +22,7 @@ export type FileListItemProps = {
 }
 
 const FileListItem = ({ fileItem, onPreview, onRemove }: FileListItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const fileNameId = useId()
   const previewLabelId = useId()
   const removeLabelId = useId()

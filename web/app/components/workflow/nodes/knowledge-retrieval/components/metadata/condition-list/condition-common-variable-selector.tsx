@@ -16,7 +16,7 @@ const ConditionCommonVariableSelector = ({
   onChange,
   varType,
 }: ConditionCommonVariableSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
 
   const selected = variables.find((v) => v.value === value)

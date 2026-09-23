@@ -4,7 +4,10 @@ import type { Locale } from './locale'
 import type { Namespace } from './resources'
 import { useTranslation as useTranslationOriginal } from 'react-i18next'
 
-export function useTranslation<T extends Namespace | undefined = undefined>(ns?: T) {
+export function useTranslation<
+  const T extends readonly [Namespace, ...Namespace[]] | undefined = undefined,
+>(ns?: T) {
+  // oxlint-disable-next-line dify/require-i18n-namespace -- Forward the typed tuple while preserving the omitted namespace for locale-only callers.
   return useTranslationOriginal(ns)
 }
 

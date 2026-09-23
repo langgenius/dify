@@ -36,6 +36,8 @@ from services.errors.workspace import (
     WorkspaceNotLinkedError,
     WorkspaceOwnerNotFoundError,
 )
+from services.oauth_device_application_service import DeviceWorkspaceQuery
+from services.oauth_device_contracts import DeviceWorkspace
 from services.workspace.contracts import (
     CreatedWorkspace,
     WorkspaceCreation,
@@ -57,6 +59,7 @@ class WorkspaceRepository(
     AccountWorkspaceMembershipQuery,
     AccountWorkspaceSnapshotQuery,
     ConsoleAuthWorkspaceQuery,
+    DeviceWorkspaceQuery,
     WorkspaceMemberQuery,
 ):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
@@ -200,6 +203,18 @@ class WorkspaceRepository(
                 )
                 for workspace_id, name, role, current in session.execute(stmt).all()
             )
+
+    @override
+    def list_for_device_flow(self, account_id: str) -> tuple[DeviceWorkspace, ...]:
+        return tuple(
+            DeviceWorkspace(
+                id=workspace.id,
+                name=workspace.name,
+                role=workspace.role,
+                current=workspace.current,
+            )
+            for workspace in self.list_account_access_workspaces(account_id)
+        )
 
     @override
     def has_active_for_account(self, account_id: str) -> bool:

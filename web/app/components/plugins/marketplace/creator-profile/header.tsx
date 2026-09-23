@@ -20,7 +20,7 @@ export default function CreatorProfileHeader({
   locale,
   onSuggestionSelect,
 }: CreatorProfileHeaderProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [searchValue, setSearchValue] = useState('')
 
   return (

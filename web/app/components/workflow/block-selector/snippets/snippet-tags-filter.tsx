@@ -16,7 +16,7 @@ type SnippetTagsFilterProps = {
 }
 
 const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTags'])
   const [searchText, setSearchText] = useState('')
 
   const { data: tagList = [] } = useQuery(

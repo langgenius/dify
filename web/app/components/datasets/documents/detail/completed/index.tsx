@@ -49,7 +49,7 @@ const Completed: FC<ICompletedProps> = ({
   importStatus,
   archived,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const docForm = useDocumentContext((s) => s.docForm)
   const canEdit = useDocumentContext((s) => s.canEdit)
 

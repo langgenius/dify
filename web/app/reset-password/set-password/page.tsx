@@ -27,7 +27,7 @@ type PasswordFormValues = {
 }
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')

@@ -28,7 +28,7 @@ const getErrorMessage = (error: unknown) => {
 }
 
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const verificationCodeInputId = React.useId()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: userProfile } = useSuspenseQuery({

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from flask_restx import Resource
 
+from constants.oauth_bearer import Scope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
@@ -29,7 +30,6 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import ExternalSsoSubject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
-from libs.oauth_bearer import Scope
 from models import App
 from models.enums import AppStatus
 from services.app_service import AppService

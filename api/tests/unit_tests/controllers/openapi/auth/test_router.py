@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 import libs.rate_limit as rate_limit_module
+from constants.oauth_bearer import TokenType
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
@@ -19,13 +20,7 @@ from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
 from controllers.openapi.auth.subjects import AccountSubject
 from enums import DeploymentEdition
-from libs.oauth_bearer import (
-    AuthContext,
-    BearerAuthenticator,
-    OAuthAccessTokenResolver,
-    Resolver,
-    TokenType,
-)
+from libs.oauth_bearer import AuthContext, BearerAuthenticator, OAuthAccessTokenResolver, Resolver
 from models import Account
 from models.oauth import OAuthAccessToken
 from services.entities.feature_entities import (

@@ -21,7 +21,7 @@ type AppCardProps = {
 }
 
 const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'explore'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

@@ -36,6 +36,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchem
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services import audio_provider_gateway, recommended_app_catalog_gateway
 from services.account import forgot_password_service as account_forgot_password_service
 from services.account.adapters import (
@@ -197,6 +198,8 @@ def test_build_application_services_configures_setup_policy(
 
     assert services.setup.get_status().completed is setup_completed
     assert services.oauth_server is not None
+    assert isinstance(services.oauth_device._accounts, SQLAlchemyAccountRepository)
+    assert isinstance(services.oauth_device._workspaces, WorkspaceRepository)
 
 
 def test_build_application_services_wires_builtin_schema_definitions(

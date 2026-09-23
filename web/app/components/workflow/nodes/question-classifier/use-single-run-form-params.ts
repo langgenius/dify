@@ -30,7 +30,7 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { inputs } = useNodeCrud<QuestionClassifierNodeType>(id, payload)
 
   const model = inputs.model

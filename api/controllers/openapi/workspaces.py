@@ -19,6 +19,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
+from constants.oauth_bearer import Scope
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
@@ -47,7 +48,6 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
-from libs.oauth_bearer import Scope
 from services.account_errors import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (

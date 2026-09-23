@@ -9,7 +9,7 @@ type InstructionProps = {
 }
 
 const Instruction = ({ className }: InstructionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
 
   return (

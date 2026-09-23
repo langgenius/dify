@@ -23,7 +23,7 @@ const OnlineDocumentPreview = ({
   datasourceNodeId,
   hidePreview,
 }: OnlineDocumentPreviewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const [content, setContent] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector((state) => state.dataset?.pipeline_id)
   const { mutateAsync: getOnlineDocumentContent, isPending } = usePreviewOnlineDocument()

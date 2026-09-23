@@ -34,6 +34,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 from werkzeug.test import TestResponse
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi import workspaces as workspaces_module
 from controllers.openapi._errors import (
@@ -45,7 +46,7 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller, load_workspace
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.workspaces import WorkspaceMemberApi, WorkspaceMembersApi, WorkspaceSwitchApi
-from libs.oauth_bearer import AuthContext, TokenType
+from libs.oauth_bearer import AuthContext
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from services.account_errors import AccountNotFoundError, AccountRegisterError

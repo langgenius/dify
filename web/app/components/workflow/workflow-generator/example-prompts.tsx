@@ -31,7 +31,7 @@ const SKELETONS = [
  * the row is never empty. Create-only — the parent hides it in refine mode.
  */
 const ExamplePrompts = ({ mode, onSelect }: Props) => {
-  const { t, i18n } = useTranslation('workflow')
+  const { t, i18n } = useTranslation(['workflow'])
 
   // Curated fallback, shown until AI suggestions arrive and whenever generation
   // is unavailable. The spread per mode covers a range of workflow shapes.

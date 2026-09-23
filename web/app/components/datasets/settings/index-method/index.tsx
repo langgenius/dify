@@ -24,7 +24,7 @@ const IndexMethod = ({
   keywordNumber,
   onKeywordNumberChange,
 }: IndexMethodProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetSettings'])
   const isEconomyDisabled = currentValue === IndexingType.QUALIFIED
 
   return (

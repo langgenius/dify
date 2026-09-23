@@ -117,6 +117,9 @@ class FakeAccounts:
     def email_exists(self, email: str) -> bool:
         raise AssertionError(email)
 
+    def has_active_email(self, email: str) -> bool:
+        raise AssertionError(email)
+
     def reset_email(self, account_id: str, *, expected_old_email: str, new_email: str) -> NoReturn:
         raise AssertionError((account_id, expected_old_email, new_email))
 

@@ -5,7 +5,7 @@ import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
 import { CloudPlanFeature } from './item'
 
 export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const isFreePlan = plan === 'sandbox'
   const planInfo = ALL_PLANS[plan]
 

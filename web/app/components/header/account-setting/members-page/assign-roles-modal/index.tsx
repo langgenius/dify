@@ -28,7 +28,7 @@ const AssignRolesModalBody = ({
   onClose,
   onSubmit,
 }: AssignRolesModalBodyProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [selected, setSelected] = useState(selectedRoles)
   const selectedRoleIds = selected.map((role) => role.id)
   const isConfirmDisabled = selected.length === 0

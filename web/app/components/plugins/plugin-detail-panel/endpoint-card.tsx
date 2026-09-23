@@ -28,7 +28,7 @@ type Props = Readonly<{
 }>
 
 const EndpointCard = ({ pluginDetail, data }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const endpointID = data.id
   const [isShowDisableConfirm, { setTrue: showDisableConfirm, setFalse: hideDisableConfirm }] =
     useBoolean(false)

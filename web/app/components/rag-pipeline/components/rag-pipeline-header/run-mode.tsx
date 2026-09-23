@@ -18,7 +18,7 @@ type RunModeProps = {
 }
 
 export function RunMode({ text }: RunModeProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pipeline', 'workflow'])
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const workflowStore = useWorkflowStore()

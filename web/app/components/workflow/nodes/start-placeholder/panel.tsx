@@ -43,7 +43,7 @@ const getTriggerPluginNodeData = (
 }
 
 const Panel: FC<NodePanelProps<StartPlaceholderNodeType>> = ({ id }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const availableNodesMetaData = useHooksStore((s) => s.availableNodesMetaData)

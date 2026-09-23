@@ -118,7 +118,7 @@ function FloatingOutputEditor({
 }
 
 export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'workflow'])
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const inputsRef = useRef(inputs)
   const promptOutputNamesRef = useRefWithInit(extractAgentOutputNames, inputs.agent_task || '')

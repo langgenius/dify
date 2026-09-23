@@ -31,7 +31,7 @@ const DEFAULT_TAGS: ListProps['tags'] = []
 
 const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
   const { title, description } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <Infotip>
       <InfotipTrigger
@@ -107,7 +107,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   const icon = selectedProvider?.declaration.identity.icon
     ? getIconUrl(selectedProvider.declaration.identity.icon)
     : undefined
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const wrapElemRef = useRef<HTMLDivElement>(null)
 

@@ -23,7 +23,7 @@ export function AgentPublishSuccess({
   onDismiss: () => void
   onAccessMethods: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const agentQuery = useQuery(
     consoleQuery.agent.byAgentId.get.queryOptions({
       input: { params: { agent_id: agentId } },

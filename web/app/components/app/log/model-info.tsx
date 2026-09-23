@@ -24,7 +24,7 @@ type Props = Readonly<{
 }>
 
 const ModelInfo: FC<Props> = ({ model }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const modelName = model.name
   const providerName = model.provider
   const { currentModel, currentProvider } = useTextGenerationCurrentProviderAndModelAndModelList({

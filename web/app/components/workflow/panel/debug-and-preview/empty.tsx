@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 const Empty = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="absolute top-1/2 left-1/2 -translate-1/2">

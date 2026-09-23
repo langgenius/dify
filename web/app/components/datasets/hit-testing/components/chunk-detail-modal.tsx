@@ -26,7 +26,7 @@ type ChunkDetailModalProps = {
 }
 
 const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments', 'datasetHitTesting'])
   const { segment, score, child_chunks, files, summary } = payload
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)

@@ -27,7 +27,7 @@ const Icon = () => {
 }
 
 const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
   const setHistoryShortcutsEnabled = useStore((s) => s.setHistoryShortcutsEnabled)
   const ref = useRef<HTMLDivElement | null>(null)

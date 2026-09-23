@@ -135,20 +135,6 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
             account = session.scalar(select(Account).where(Account.email == email).limit(1))
             return self._to_snapshot(account) if account is not None else None
 
-    def has_active_email(self, email: str) -> bool:
-        normalized = email.strip().lower()
-        if not normalized:
-            return False
-        with self._session_factory() as session:
-            return (
-                session.execute(
-                    select(Account.id).where(
-                        func.lower(Account.email) == normalized, Account.status == AccountStatus.ACTIVE
-                    )
-                ).scalar_one_or_none()
-                is not None
-            )
-
     def normalized_email_exists(self, email: str) -> bool:
         with self._session_factory() as session:
             return (
@@ -337,6 +323,22 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
                 raise AccountNotFoundError()
             account.email = email
             account.normalized_email = normalize_email(email)
+
+    @override
+    def has_active_email(self, email: str) -> bool:
+        normalized = email.strip().lower()
+        if not normalized:
+            return False
+        stmt = (
+            select(Account.id)
+            .where(
+                func.lower(Account.email) == normalized,
+                Account.status == AccountStatus.ACTIVE,
+            )
+            .limit(1)
+        )
+        with self._session_factory() as session:
+            return session.scalar(stmt) is not None
 
     @override
     def reset_email(

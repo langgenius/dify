@@ -42,7 +42,7 @@ export type QueryParam = {
 }
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.timezone ?? undefined,
