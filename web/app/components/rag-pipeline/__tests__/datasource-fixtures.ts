@@ -3,7 +3,7 @@ import { zRagPipelineDatasourceProviderResponse } from '@dify/contracts/api/cons
 
 export function createDatasourceProvider(
   overrides: Partial<RagPipelineDatasourceProviderResponse> = {},
-) {
+): RagPipelineDatasourceProviderResponse {
   return zRagPipelineDatasourceProviderResponse.parse({
     plugin_id: 'langgenius/file',
     plugin_unique_identifier: 'langgenius/file:1.0.0',

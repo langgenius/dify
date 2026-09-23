@@ -143,7 +143,7 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
   placeholder,
   value,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('common')
   const [isOpen, setIsOpen] = useState(false)
   const [collapsedValues, setCollapsedValues] = useState<Set<string>>(() => new Set())
   const selectedValues = useMemo(() => normalizeValues(value), [value])
@@ -153,10 +153,10 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
     return new Set(expandableValues.filter((value) => !collapsedValues.has(value)))
   }, [collapsedValues, options])
 
-  const fallbackPlaceholder = placeholder || t('placeholder.select', { ns: 'common' })
+  const fallbackPlaceholder = placeholder || t(($) => $['placeholder.select'])
 
   const triggerLabel = useMemo(() => {
-    if (isLoading) return t('dynamicSelect.loading', { ns: 'common' })
+    if (isLoading) return t(($) => $['dynamicSelect.loading'])
 
     if (!selectedValues.length) return fallbackPlaceholder
 
@@ -169,7 +169,7 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
     if (selectedNodes.length <= 2)
       return selectedNodes.map((node) => getOptionLabel(node, language)).join(', ')
 
-    return t('dynamicSelect.selected', { count: selectedNodes.length, ns: 'common' })
+    return t(($) => $['dynamicSelect.selected'], { count: selectedNodes.length })
   }, [fallbackPlaceholder, isLoading, language, options, selectedValues, t])
 
   const toggleExpand = (optionValue: string) => {
@@ -235,10 +235,10 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
           </button>
         }
       />
-      <PopoverContent sideOffset={4} popupClassName="w-(--anchor-width) max-h-80 overflow-auto p-1">
+      <PopoverContent sideOffset={4} className="max-h-80 w-(--anchor-width) overflow-auto p-1">
         {!options.length ? (
           <div className="px-2 py-1.5 system-sm-regular text-text-tertiary">
-            {t('dynamicSelect.noData', { ns: 'common' })}
+            {t(($) => $['dynamicSelect.noData'])}
           </div>
         ) : (
           <div role="listbox" aria-multiselectable={multiple ? true : undefined}>

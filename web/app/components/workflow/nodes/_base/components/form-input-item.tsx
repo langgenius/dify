@@ -95,11 +95,7 @@ const filterVisibleTreeOptions = (
   return options.reduce<FormOption[]>((acc, option) => {
     const isVisible =
       !option.show_on?.length ||
-      option.show_on.every(
-        (showOnItem) =>
-          values[showOnItem.variable]?.value === showOnItem.value ||
-          values[showOnItem.variable] === showOnItem.value,
-      )
+      option.show_on.every((showOnItem) => values[showOnItem.variable]?.value === showOnItem.value)
 
     if (!isVisible) return acc
 
@@ -129,7 +125,7 @@ const FormInputItem: FC<Props> = ({
   inPanel,
 }) => {
   const language = useLanguage()
-  const { t } = useTranslation()
+  const { t } = useTranslation('common')
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -440,8 +436,8 @@ const FormInputItem: FC<Props> = ({
     [dynamicOptions, options, value],
   )
   const visibleDynamicTreeOptions = useMemo(
-    () => filterVisibleTreeOptions(dynamicOptions || options || [], value),
-    [dynamicOptions, options, value],
+    () => filterVisibleTreeOptions(toolsOptions || options || [], value),
+    [toolsOptions, options, value],
   )
   const staticSelectItems = useMemo(
     () => mapSelectItems(visibleSelectOptions, language),
@@ -591,7 +587,7 @@ const FormInputItem: FC<Props> = ({
           <SelectTrigger className="h-8 min-w-0 grow">
             {selectedDynamicOption?.name ??
               (isLoadingOptions
-                ? t('dynamicSelect.loading', { ns: 'common' })
+                ? t(($) => $['dynamicSelect.loading'])
                 : (placeholder?.[language] ?? placeholder?.en_US))}
           </SelectTrigger>
           <SelectContent>
@@ -627,9 +623,7 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
           onPanelOpenChange={toolDynamicTreeOnOpenChange}
           placeholder={
-            placeholder?.[language] ||
-            placeholder?.en_US ||
-            t('placeholder.select', { ns: 'common' })
+            placeholder?.[language] || placeholder?.en_US || t(($) => $['placeholder.select'])
           }
           language={language}
         />
