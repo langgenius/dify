@@ -6327,6 +6327,20 @@ Get dataset error documents
 | ---- | ----------- | ------ |
 | 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
 
+### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+
 ### [POST] /datasets/{dataset_id}/evaluation/template/download
 #### Parameters
 
@@ -6336,9 +6350,9 @@ Get dataset error documents
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Knowledge base evaluation template |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge base evaluation template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
 
 ### [POST] /datasets/{dataset_id}/external-hit-testing
 Test external knowledge retrieval for dataset
@@ -13440,9 +13454,9 @@ Import a Skill zip package from multipart form field `file`.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Evaluation dataset template |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation dataset template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation
 #### Parameters
@@ -13608,6 +13622,21 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns
 #### Parameters

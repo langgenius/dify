@@ -376,6 +376,9 @@ import {
   zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse,
   zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath,
   zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse,
+  zPostAppsByAppIdWorkflowsConvertTypePath,
+  zPostAppsByAppIdWorkflowsConvertTypeQuery,
+  zPostAppsByAppIdWorkflowsConvertTypeResponse,
   zPostAppsByAppIdWorkflowsDraftBody,
   zPostAppsByAppIdWorkflowsDraftConversationVariablesBody,
   zPostAppsByAppIdWorkflowsDraftConversationVariablesPath,
@@ -430,6 +433,9 @@ import {
   zPostAppsByAppIdWorkflowsDraftTriggerRunPath,
   zPostAppsByAppIdWorkflowsDraftTriggerRunResponse,
   zPostAppsByAppIdWorkflowsPublishBody,
+  zPostAppsByAppIdWorkflowsPublishEvaluationBody,
+  zPostAppsByAppIdWorkflowsPublishEvaluationPath,
+  zPostAppsByAppIdWorkflowsPublishEvaluationResponse,
   zPostAppsByAppIdWorkflowsPublishPath,
   zPostAppsByAppIdWorkflowsPublishResponse,
   zPostAppsByResourceIdApiKeysPath,
@@ -3158,6 +3164,30 @@ export const workflow = {
 }
 
 /**
+ * Convert the active published workflow between standard and evaluation kinds
+ */
+export const post43 = oc
+  .route({
+    description: 'Convert the active published workflow between standard and evaluation kinds',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWorkflowsConvertType',
+    path: '/apps/{app_id}/workflows/convert-type',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zPostAppsByAppIdWorkflowsConvertTypePath,
+      query: zPostAppsByAppIdWorkflowsConvertTypeQuery,
+    }),
+  )
+  .output(zPostAppsByAppIdWorkflowsConvertTypeResponse)
+
+export const convertType = {
+  post: post43,
+}
+
+/**
  * Get default block config
  *
  * Get default block configuration by type
@@ -3225,7 +3255,7 @@ export const get63 = oc
 /**
  * Update conversation variables for workflow draft
  */
-export const post43 = oc
+export const post44 = oc
   .route({
     description: 'Update conversation variables for workflow draft',
     inputStructure: 'detailed',
@@ -3244,7 +3274,7 @@ export const post43 = oc
 
 export const conversationVariables2 = {
   get: get63,
-  post: post43,
+  post: post44,
 }
 
 /**
@@ -3268,7 +3298,7 @@ export const get64 = oc
 /**
  * Update environment variables for workflow draft
  */
-export const post44 = oc
+export const post45 = oc
   .route({
     description: 'Update environment variables for workflow draft',
     inputStructure: 'detailed',
@@ -3287,13 +3317,13 @@ export const post44 = oc
 
 export const environmentVariables = {
   get: get64,
-  post: post44,
+  post: post45,
 }
 
 /**
  * Update draft workflow features
  */
-export const post45 = oc
+export const post46 = oc
   .route({
     description: 'Update draft workflow features',
     inputStructure: 'detailed',
@@ -3311,7 +3341,7 @@ export const post45 = oc
   .output(zPostAppsByAppIdWorkflowsDraftFeaturesResponse)
 
 export const features = {
-  post: post45,
+  post: post46,
 }
 
 /**
@@ -3319,7 +3349,7 @@ export const features = {
  *
  * Test human input delivery for workflow
  */
-export const post46 = oc
+export const post47 = oc
   .route({
     description: 'Test human input delivery for workflow',
     inputStructure: 'detailed',
@@ -3338,7 +3368,7 @@ export const post46 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse)
 
 export const deliveryTest = {
-  post: post46,
+  post: post47,
 }
 
 /**
@@ -3346,7 +3376,7 @@ export const deliveryTest = {
  *
  * Get human input form preview for workflow
  */
-export const post47 = oc
+export const post48 = oc
   .route({
     description: 'Get human input form preview for workflow',
     inputStructure: 'detailed',
@@ -3365,7 +3395,7 @@ export const post47 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
 
 export const preview4 = {
-  post: post47,
+  post: post48,
 }
 
 /**
@@ -3373,7 +3403,7 @@ export const preview4 = {
  *
  * Submit human input form preview for workflow
  */
-export const post48 = oc
+export const post49 = oc
   .route({
     description: 'Submit human input form preview for workflow',
     inputStructure: 'detailed',
@@ -3392,7 +3422,7 @@ export const post48 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
 
 export const run5 = {
-  post: post48,
+  post: post49,
 }
 
 export const form2 = {
@@ -3418,7 +3448,7 @@ export const humanInput2 = {
  *
  * Run draft workflow iteration node
  */
-export const post49 = oc
+export const post50 = oc
   .route({
     description: 'Run draft workflow iteration node',
     inputStructure: 'detailed',
@@ -3437,7 +3467,7 @@ export const post49 = oc
   .output(zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
 
 export const run6 = {
-  post: post49,
+  post: post50,
 }
 
 export const byNodeId6 = {
@@ -3457,7 +3487,7 @@ export const iteration2 = {
  *
  * Run draft workflow loop node
  */
-export const post50 = oc
+export const post51 = oc
   .route({
     description: 'Run draft workflow loop node',
     inputStructure: 'detailed',
@@ -3476,7 +3506,7 @@ export const post50 = oc
   .output(zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
 
 export const run7 = {
-  post: post50,
+  post: post51,
 }
 
 export const byNodeId7 = {
@@ -3508,7 +3538,7 @@ export const candidates = {
   get: get65,
 }
 
-export const post51 = oc
+export const post52 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3525,10 +3555,10 @@ export const post51 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse)
 
 export const copyFromRoster = {
-  post: post51,
+  post: post52,
 }
 
-export const post52 = oc
+export const post53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3545,10 +3575,10 @@ export const post52 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
 
 export const impact = {
-  post: post52,
+  post: post53,
 }
 
-export const post53 = oc
+export const post54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3565,10 +3595,10 @@ export const post53 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
 
 export const saveToRoster = {
-  post: post53,
+  post: post54,
 }
 
-export const post54 = oc
+export const post55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3585,7 +3615,7 @@ export const post54 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
 
 export const validate = {
-  post: post54,
+  post: post55,
 }
 
 export const get66 = oc
@@ -3654,7 +3684,7 @@ export const lastRun = {
  *
  * Run draft workflow node
  */
-export const post55 = oc
+export const post56 = oc
   .route({
     description: 'Run draft workflow node',
     inputStructure: 'detailed',
@@ -3673,7 +3703,7 @@ export const post55 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse)
 
 export const run8 = {
-  post: post55,
+  post: post56,
 }
 
 /**
@@ -3681,7 +3711,7 @@ export const run8 = {
  *
  * Poll for trigger events and execute single node when event arrives
  */
-export const post56 = oc
+export const post57 = oc
   .route({
     description: 'Poll for trigger events and execute single node when event arrives',
     inputStructure: 'detailed',
@@ -3695,7 +3725,7 @@ export const post56 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse)
 
 export const run9 = {
-  post: post56,
+  post: post57,
 }
 
 export const trigger = {
@@ -3755,7 +3785,7 @@ export const nodes7 = {
  *
  * Run draft workflow
  */
-export const post57 = oc
+export const post58 = oc
   .route({
     description: 'Run draft workflow',
     inputStructure: 'detailed',
@@ -3774,7 +3804,7 @@ export const post57 = oc
   .output(zPostAppsByAppIdWorkflowsDraftRunResponse)
 
 export const run10 = {
-  post: post57,
+  post: post58,
 }
 
 /**
@@ -3896,7 +3926,7 @@ export const systemVariables = {
  *
  * Poll for trigger events and execute full workflow when event arrives
  */
-export const post58 = oc
+export const post59 = oc
   .route({
     description: 'Poll for trigger events and execute full workflow when event arrives',
     inputStructure: 'detailed',
@@ -3915,7 +3945,7 @@ export const post58 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunResponse)
 
 export const run11 = {
-  post: post58,
+  post: post59,
 }
 
 /**
@@ -3923,7 +3953,7 @@ export const run11 = {
  *
  * Full workflow debug when the start node is a trigger
  */
-export const post59 = oc
+export const post60 = oc
   .route({
     description: 'Full workflow debug when the start node is a trigger',
     inputStructure: 'detailed',
@@ -3942,7 +3972,7 @@ export const post59 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse)
 
 export const runAll = {
-  post: post59,
+  post: post60,
 }
 
 export const trigger2 = {
@@ -4095,7 +4125,7 @@ export const get76 = oc
  *
  * Sync draft workflow configuration
  */
-export const post60 = oc
+export const post61 = oc
   .route({
     description: 'Sync draft workflow configuration',
     inputStructure: 'detailed',
@@ -4115,7 +4145,7 @@ export const post60 = oc
 
 export const draft2 = {
   get: get76,
-  post: post60,
+  post: post61,
   conversationVariables: conversationVariables2,
   environmentVariables,
   features,
@@ -4128,6 +4158,30 @@ export const draft2 = {
   systemVariables,
   trigger: trigger2,
   variables: variables2,
+}
+
+/**
+ * Publish the draft as a reusable evaluation workflow
+ */
+export const post62 = oc
+  .route({
+    description: 'Publish the draft as a reusable evaluation workflow',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWorkflowsPublishEvaluation',
+    path: '/apps/{app_id}/workflows/publish/evaluation',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAppsByAppIdWorkflowsPublishEvaluationBody,
+      params: zPostAppsByAppIdWorkflowsPublishEvaluationPath,
+    }),
+  )
+  .output(zPostAppsByAppIdWorkflowsPublishEvaluationResponse)
+
+export const evaluation = {
+  post: post62,
 }
 
 /**
@@ -4151,7 +4205,7 @@ export const get77 = oc
 /**
  * Publish workflow
  */
-export const post61 = oc
+export const post63 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4170,7 +4224,8 @@ export const post61 = oc
 
 export const publish = {
   get: get77,
-  post: post61,
+  post: post63,
+  evaluation,
 }
 
 /**
@@ -4307,7 +4362,7 @@ export const triggers2 = {
 /**
  * Restore a published workflow version into the draft workflow
  */
-export const post62 = oc
+export const post64 = oc
   .route({
     description: 'Restore a published workflow version into the draft workflow',
     inputStructure: 'detailed',
@@ -4320,7 +4375,7 @@ export const post62 = oc
   .output(zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse)
 
 export const restore = {
-  post: post62,
+  post: post64,
 }
 
 /**
@@ -4392,6 +4447,7 @@ export const get83 = oc
 
 export const workflows3 = {
   get: get83,
+  convertType,
   defaultWorkflowBlockConfigs,
   draft: draft2,
   publish,
@@ -4543,7 +4599,7 @@ export const get85 = oc
  *
  * Create a new API key for an app
  */
-export const post63 = oc
+export const post65 = oc
   .route({
     description: 'Create a new API key for an app',
     inputStructure: 'detailed',
@@ -4559,7 +4615,7 @@ export const post63 = oc
 
 export const apiKeys = {
   get: get85,
-  post: post63,
+  post: post65,
   byApiKeyId,
 }
 
@@ -4590,7 +4646,7 @@ export const get86 = oc
  *
  * Create a new application
  */
-export const post64 = oc
+export const post66 = oc
   .route({
     description: 'Create a new application',
     inputStructure: 'detailed',
@@ -4606,7 +4662,7 @@ export const post64 = oc
 
 export const apps = {
   get: get86,
-  post: post64,
+  post: post66,
   imports,
   recent,
   starred,

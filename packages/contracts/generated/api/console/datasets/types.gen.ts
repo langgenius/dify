@@ -491,6 +491,85 @@ export type ErrorDocsResponse = {
   total: number
 }
 
+export type EvaluationConfigResponse = {
+  customized_metrics?: CustomizedMetrics | null
+  default_metrics?: Array<DefaultMetric> | null
+  evaluation_model?: string | null
+  evaluation_model_provider?: string | null
+  judgment_config?: JudgmentConfig | null
+}
+
+export type EvaluationConfigPayload = {
+  customized_metrics?: CustomizedMetrics | null
+  default_metrics?: Array<DefaultMetric>
+  evaluation_model?: string
+  evaluation_model_provider?: string
+  judgment_config?: JudgmentConfig | null
+}
+
+export type EvaluationFileResponse = {
+  created_at?: number | null
+  download_url: string
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  size: number
+}
+
+export type EvaluationRunPaginationResponse = {
+  data: Array<EvaluationRunResponse>
+  page: number
+  page_size: number
+  total: number
+}
+
+export type EvaluationMetricsResponse = {
+  metrics:
+    | {
+        [key: string]: Array<string>
+      }
+    | Array<string>
+}
+
+export type EvaluationRunPayload = {
+  customized_metrics?: CustomizedMetrics | null
+  default_metrics?: Array<DefaultMetric>
+  evaluation_model?: string
+  evaluation_model_provider?: string
+  file_id: string
+  judgment_config?: JudgmentConfig | null
+}
+
+export type EvaluationRunResponse = {
+  completed_at?: number | null
+  completed_items: number
+  created_at?: number | null
+  created_by: string
+  dataset_file_id?: string | null
+  error?: string | null
+  evaluation_config_id: string
+  failed_items: number
+  id: string
+  metrics_summary?: {
+    [key: string]: unknown
+  }
+  progress: number
+  result_file_id?: string | null
+  started_at?: number | null
+  status: string
+  target_id: string
+  target_type: string
+  target_workflow_version_id?: string | null
+  tenant_id: string
+  total_items: number
+}
+
+export type EvaluationRunDetailResponse = {
+  items: EvaluationRunItemPaginationResponse
+  run: EvaluationRunResponse
+}
+
 export type ExternalHitTestingPayload = {
   external_retrieval_model?: {
     [key: string]: unknown
@@ -835,6 +914,33 @@ export type SummaryStatusResponse = {
   timeout?: number
 }
 
+export type CustomizedMetrics = {
+  evaluation_workflow_id: string
+  evaluation_workflow_version_id?: string | null
+  input_fields: {
+    [key: string]: unknown
+  }
+  output_fields: Array<CustomizedMetricOutputField>
+}
+
+export type DefaultMetric = {
+  metric: string
+  node_info_list: Array<NodeInfo>
+  value_type?: string
+}
+
+export type JudgmentConfig = {
+  conditions?: Array<JudgmentCondition>
+  logical_operator?: 'and' | 'or'
+}
+
+export type EvaluationRunItemPaginationResponse = {
+  data: Array<EvaluationRunItemResponse>
+  page: number
+  page_size: number
+  total: number
+}
+
 export type ExternalHitTestingQueryResponse = {
   content: string
 }
@@ -955,6 +1061,43 @@ export type SegmentAttachmentResponse = {
   source_url: string
 }
 
+export type CustomizedMetricOutputField = {
+  value_type: string
+  variable: string
+}
+
+export type NodeInfo = {
+  node_id: string
+  title: string
+  type: string
+}
+
+export type JudgmentCondition = {
+  comparison_operator: SupportedComparisonOperator
+  value?: string | Array<string> | boolean | null
+  variable_selector: Array<string>
+}
+
+export type EvaluationRunItemResponse = {
+  actual_output?: string | null
+  error?: string | null
+  expected_output?: string | null
+  id: string
+  inputs?: {
+    [key: string]: unknown
+  }
+  item_index: number
+  judgment?: {
+    [key: string]: unknown
+  }
+  metadata?: {
+    [key: string]: unknown
+  }
+  metrics?: Array<EvaluationMetric>
+  overall_score?: number | null
+  workflow_run_id?: string | null
+}
+
 export type HitTestingChildChunk = {
   content: string
   id: string
@@ -1062,6 +1205,38 @@ export type WeightVectorSetting = {
   embedding_model_name: string
   embedding_provider_name: string
   vector_weight: number
+}
+
+export type SupportedComparisonOperator =
+  | '<'
+  | '='
+  | '>'
+  | 'all of'
+  | 'contains'
+  | 'empty'
+  | 'end with'
+  | 'exists'
+  | 'in'
+  | 'is'
+  | 'is not'
+  | 'not contains'
+  | 'not empty'
+  | 'not exists'
+  | 'not in'
+  | 'not null'
+  | 'null'
+  | 'start with'
+  | '≠'
+  | '≤'
+  | '≥'
+
+export type EvaluationMetric = {
+  details?: {
+    [key: string]: unknown
+  }
+  name: string
+  node_info?: NodeInfo | null
+  value: unknown
 }
 
 export type HitTestingDocument = {
@@ -2255,6 +2430,176 @@ export type GetDatasetsByDatasetIdErrorDocsResponses = {
 
 export type GetDatasetsByDatasetIdErrorDocsResponse =
   GetDatasetsByDatasetIdErrorDocsResponses[keyof GetDatasetsByDatasetIdErrorDocsResponses]
+
+export type GetDatasetsByDatasetIdEvaluationData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation'
+}
+
+export type GetDatasetsByDatasetIdEvaluationResponses = {
+  200: EvaluationConfigResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationResponse =
+  GetDatasetsByDatasetIdEvaluationResponses[keyof GetDatasetsByDatasetIdEvaluationResponses]
+
+export type PutDatasetsByDatasetIdEvaluationData = {
+  body: EvaluationConfigPayload
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation'
+}
+
+export type PutDatasetsByDatasetIdEvaluationResponses = {
+  200: EvaluationConfigResponse
+}
+
+export type PutDatasetsByDatasetIdEvaluationResponse =
+  PutDatasetsByDatasetIdEvaluationResponses[keyof PutDatasetsByDatasetIdEvaluationResponses]
+
+export type GetDatasetsByDatasetIdEvaluationFilesByFileIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    file_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/files/{file_id}'
+}
+
+export type GetDatasetsByDatasetIdEvaluationFilesByFileIdResponses = {
+  200: EvaluationFileResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationFilesByFileIdResponse =
+  GetDatasetsByDatasetIdEvaluationFilesByFileIdResponses[keyof GetDatasetsByDatasetIdEvaluationFilesByFileIdResponses]
+
+export type GetDatasetsByDatasetIdEvaluationLogsData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: {
+    page?: number
+    page_size?: number
+  }
+  url: '/datasets/{dataset_id}/evaluation/logs'
+}
+
+export type GetDatasetsByDatasetIdEvaluationLogsResponses = {
+  200: EvaluationRunPaginationResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationLogsResponse =
+  GetDatasetsByDatasetIdEvaluationLogsResponses[keyof GetDatasetsByDatasetIdEvaluationLogsResponses]
+
+export type GetDatasetsByDatasetIdEvaluationMetricsData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/metrics'
+}
+
+export type GetDatasetsByDatasetIdEvaluationMetricsResponses = {
+  200: EvaluationMetricsResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationMetricsResponse =
+  GetDatasetsByDatasetIdEvaluationMetricsResponses[keyof GetDatasetsByDatasetIdEvaluationMetricsResponses]
+
+export type PostDatasetsByDatasetIdEvaluationRunData = {
+  body: EvaluationRunPayload
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/run'
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunResponses = {
+  200: EvaluationRunResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunResponse =
+  PostDatasetsByDatasetIdEvaluationRunResponses[keyof PostDatasetsByDatasetIdEvaluationRunResponses]
+
+export type GetDatasetsByDatasetIdEvaluationRunsByRunIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    run_id: string
+  }
+  query?: {
+    page?: number
+    page_size?: number
+  }
+  url: '/datasets/{dataset_id}/evaluation/runs/{run_id}'
+}
+
+export type GetDatasetsByDatasetIdEvaluationRunsByRunIdResponses = {
+  200: EvaluationRunDetailResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationRunsByRunIdResponse =
+  GetDatasetsByDatasetIdEvaluationRunsByRunIdResponses[keyof GetDatasetsByDatasetIdEvaluationRunsByRunIdResponses]
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelData = {
+  body?: never
+  path: {
+    dataset_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/runs/{run_id}/cancel'
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponses = {
+  200: EvaluationRunResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponse =
+  PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponses[keyof PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponses]
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryData = {
+  body?: never
+  path: {
+    dataset_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/runs/{run_id}/retry'
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponses = {
+  200: EvaluationRunResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponse =
+  PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponses[keyof PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponses]
+
+export type PostDatasetsByDatasetIdEvaluationTemplateDownloadData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/template/download'
+}
+
+export type PostDatasetsByDatasetIdEvaluationTemplateDownloadResponses = {
+  200: Blob | File
+}
+
+export type PostDatasetsByDatasetIdEvaluationTemplateDownloadResponse =
+  PostDatasetsByDatasetIdEvaluationTemplateDownloadResponses[keyof PostDatasetsByDatasetIdEvaluationTemplateDownloadResponses]
 
 export type PostDatasetsByDatasetIdExternalHitTestingData = {
   body: ExternalHitTestingPayload
