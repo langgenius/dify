@@ -179,7 +179,14 @@ const AppsContent = () => {
         <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-background-body">
           <List onCreateLearnDify={handleCreateLearnDify} onTryLearnDify={openTryAppPanel} />
           {isShowTryAppPanel && currApp && (
-            <TryApp app={currApp} onClose={hideTryAppPanel} onCreate={handleShowFromTryApp} />
+            <TryApp
+              appId={currApp.app_id}
+              canTrial={currApp.can_trial}
+              categories={currApp.categories}
+              templateName={currApp.app?.name}
+              onClose={hideTryAppPanel}
+              onCreate={handleShowFromTryApp}
+            />
           )}
 
           {showDSLConfirmModal && (

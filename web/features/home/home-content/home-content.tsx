@@ -486,7 +486,10 @@ export function HomeContent() {
 
       {currentTryApp && (
         <TryApp
-          app={currentTryApp}
+          appId={currentTryApp.app_id}
+          canTrial={currentTryApp.can_trial}
+          categories={currentTryApp.categories}
+          templateName={currentTryApp.app?.name}
           canCreate={canCreateApp}
           createButtonStepByStepTourTarget={
             canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal

@@ -1,7 +1,7 @@
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ComponentProps } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TryAppComponent from '../index'
 import { TypeEnum } from '../types'
@@ -11,13 +11,25 @@ const defaultApp: RecommendedAppResponse = { app_id: 'test-app-id', can_trial: t
 function TryApp({
   app = defaultApp,
   ...props
-}: Omit<ComponentProps<typeof TryAppComponent>, 'app'> & {
+}: Omit<
+  ComponentProps<typeof TryAppComponent>,
+  'appId' | 'canTrial' | 'categories' | 'templateName'
+> & {
   app?: RecommendedAppResponse
 }) {
-  return <TryAppComponent {...props} app={app} />
+  return (
+    <TryAppComponent
+      {...props}
+      appId={app.app_id}
+      canTrial={app.can_trial}
+      categories={app.categories}
+      templateName={app.app?.name}
+    />
+  )
 }
 
 const mockUseGetTryAppInfo = vi.fn()
+const mockPreviewSuspension = vi.hoisted(() => ({ promise: null as Promise<void> | null }))
 
 vi.mock('@/service/use-try-app', () => ({
   useGetTryAppInfo: (...args: unknown[]) => mockUseGetTryAppInfo(...args),
@@ -32,11 +44,14 @@ vi.mock('../app', () => ({
 }))
 
 vi.mock('../preview', () => ({
-  default: ({ appId, appDetail }: { appId: string; appDetail: TryAppInfo }) => (
-    <div data-testid="preview-component" data-app-id={appId} data-mode={appDetail?.mode}>
-      Preview Component
-    </div>
-  ),
+  default: ({ appId, appDetail }: { appId: string; appDetail: TryAppInfo }) => {
+    if (mockPreviewSuspension.promise) throw mockPreviewSuspension.promise
+    return (
+      <div data-testid="preview-component" data-app-id={appId} data-mode={appDetail?.mode}>
+        Preview Component
+      </div>
+    )
+  },
 }))
 
 vi.mock('../app-info', () => ({
@@ -101,6 +116,7 @@ const createMockAppDetail = (mode: string = 'chat'): TryAppInfo =>
 describe('TryApp (main index.tsx)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPreviewSuspension.promise = null
     // Suppress expected React act() warnings from internal async state updates
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockUseGetTryAppInfo.mockReturnValue({
@@ -124,6 +140,59 @@ describe('TryApp (main index.tsx)', () => {
       render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
 
       expect(screen.queryByRole('progressbar')).toBeInTheDocument()
+    })
+
+    it('keeps the dialog and tabs mounted when the initial load finishes', () => {
+      let result = { data: null as TryAppInfo | null, isLoading: true }
+      mockUseGetTryAppInfo.mockImplementation(() => result)
+      const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+      const dialog = screen.getByRole('dialog')
+      const detailTab = screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })
+      const tryTab = screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.try' })
+      expect(tryTab).toHaveAttribute('aria-disabled', 'true')
+
+      result = { data: createMockAppDetail(), isLoading: false }
+      rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      expect(screen.getByRole('dialog')).toBe(dialog)
+      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toBe(detailTab)
+      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.try' })).toBe(tryTab)
+      expect(tryTab).not.toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('keeps the tabs mounted when the initial load fails', () => {
+      let result = { data: null, isLoading: true, isError: false, refetch: vi.fn() }
+      mockUseGetTryAppInfo.mockImplementation(() => result)
+      const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+      const detailTab = screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })
+
+      result = { ...result, isLoading: false, isError: true }
+      rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toBe(detailTab)
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+    })
+
+    it('keeps the dialog visible while preview content suspends', async () => {
+      let resolvePreview: () => void = () => {}
+      mockPreviewSuspension.promise = new Promise<void>((resolve) => {
+        resolvePreview = resolve
+      })
+      render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      const dialog = screen.getByRole('dialog')
+      const detailTab = screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.try' })).toBeInTheDocument()
+
+      await act(async () => {
+        mockPreviewSuspension.promise = null
+        resolvePreview()
+      })
+
+      expect(screen.getByRole('dialog')).toBe(dialog)
+      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toBe(detailTab)
+      expect(screen.getByTestId('preview-component')).toBeInTheDocument()
     })
 
     it('shows retry without the create panel when the app detail request fails', () => {
@@ -156,8 +225,8 @@ describe('TryApp (main index.tsx)', () => {
       expect(screen.getByText('explore.tryApp.loadError')).toBeInTheDocument()
     })
 
-    it('disables retry while fetching and restores the full preview after recovery', () => {
-      const refetch = vi.fn()
+    it('disables retry while fetching and restores the full preview after recovery', async () => {
+      const refetch = vi.fn().mockResolvedValue({ data: createMockAppDetail() })
       let result = {
         data: null as TryAppInfo | null,
         isLoading: false,
@@ -185,11 +254,13 @@ describe('TryApp (main index.tsx)', () => {
       rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
       expect(screen.getByTestId('preview-component')).toBeInTheDocument()
       expect(screen.getByTestId('create-button')).toBeInTheDocument()
-      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toHaveFocus()
+      await waitFor(() => {
+        expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toHaveFocus()
+      })
     })
 
     it('allows another retry after a failed request', () => {
-      const refetch = vi.fn()
+      const refetch = vi.fn().mockResolvedValue({ data: null })
       mockUseGetTryAppInfo.mockReturnValue({
         data: null,
         isLoading: false,
