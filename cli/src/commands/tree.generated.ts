@@ -10,12 +10,10 @@ import ConfigSet from '@/commands/config/set/index'
 import ConfigUnset from '@/commands/config/unset/index'
 import Login from '@/commands/login/index'
 import Logout from '@/commands/logout/index'
-import OpsDescribe from '@/commands/ops/describe/index'
 import Ops from '@/commands/ops/index'
 import SkillsInstall from '@/commands/skills/install/index'
 import SkillsList from '@/commands/skills/list/index'
 import Version from '@/commands/version/index'
-import WorkspaceList from '@/commands/workspace/list/index'
 import WorkspaceUse from '@/commands/workspace/use/index'
 
 export const commandTree: CommandTree = {
@@ -35,12 +33,7 @@ export const commandTree: CommandTree = {
   },
   login: { command: Login, subcommands: {} },
   logout: { command: Logout, subcommands: {} },
-  ops: {
-    command: Ops,
-    subcommands: {
-      describe: { command: OpsDescribe, subcommands: {} },
-    },
-  },
+  ops: { command: Ops, subcommands: {} },
   skills: {
     subcommands: {
       install: { command: SkillsInstall, subcommands: {} },
@@ -50,7 +43,6 @@ export const commandTree: CommandTree = {
   version: { command: Version, subcommands: {} },
   workspace: {
     subcommands: {
-      list: { command: WorkspaceList, subcommands: {} },
       use: { command: WorkspaceUse, subcommands: {} },
     },
   },

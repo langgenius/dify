@@ -1,11 +1,14 @@
 import type { CatalogOp, CatalogService } from '@/plugins/catalog'
+import type { CommandConstructor, Descriptor } from '@/plugins/commands/command'
+import type { CommandTree } from '@/plugins/commands/registry'
 import { definePlugin } from '@/kernel/plugin'
 import { catalog } from '@/plugins/catalog'
 import { http } from '@/plugins/http'
 import { session } from '@/plugins/session'
-import { PIN } from '@/protocol/pins'
-import { isRecord } from '@/util/is-record'
+import { COMMAND_SEPARATOR, spacedId } from '@/protocol/op-id'
 import { BINARY } from '@/version/info'
+import { opCommand } from './command'
+import { opsTree } from './tree'
 
 export type OpListRow = {
   id: string
@@ -14,23 +17,26 @@ export type OpListRow = {
   deprecated: boolean
 }
 
-export type OpRow = CatalogOp & {
-  id: string
-  usage: string
-  pins?: Record<string, string | null>
-}
-
 export type ListOptions = Readonly<{ includeInternal: boolean }>
+
+export type TreeOptions = ListOptions & Readonly<{ fresh: boolean }>
 
 export type OpsService = {
   readonly resolve: (id: string) => Promise<CatalogOp>
-  readonly catalog: (opts: ListOptions) => Promise<Readonly<Record<string, CatalogOp>>>
   readonly list: (opts: ListOptions) => Promise<OpListRow[]>
-  readonly describe: (id: string) => Promise<OpRow>
+  readonly commands: (opts: TreeOptions) => Promise<CommandTree>
+  readonly command: (id: string) => Promise<CommandConstructor>
+  readonly describe: (id: string) => Promise<Descriptor>
 }
 
 const CALL_COMMAND = 'call'
 const INPUT_USAGE = '--input <json|@file|@->'
+const NO_REST: readonly string[] = []
+
+/** The id form of an op: the whole body in one flag, whatever fields it declares. */
+function callUsage(id: string): string {
+  return [BINARY, CALL_COMMAND, id, INPUT_USAGE].join(COMMAND_SEPARATOR)
+}
 
 function byId(a: string, b: string): number {
   if (a < b) return -1
@@ -58,10 +64,6 @@ function listRows(ops: Readonly<Record<string, CatalogOp>>): OpListRow[] {
     }))
 }
 
-function takesWorkspacePin(op: CatalogOp): boolean {
-  return isRecord(op.input.properties) && PIN.Workspace in op.input.properties
-}
-
 export const ops = definePlugin({
   name: 'ops',
   needs: [catalog, http, session],
@@ -74,30 +76,36 @@ export const ops = definePlugin({
       return catalogService
     }
 
+    async function refresh(): Promise<Readonly<Record<string, CatalogOp>>> {
+      await catalogService.replace(await httpService.fetchCatalog())
+      return catalogService.ops()
+    }
+
     // An id the cached catalog does not know is refetched once: the server may have
     // added the op since this cache was written.
     const resolve: OpsService['resolve'] = async (id) => {
       const known = (await loaded()).op(id)
       if (known !== undefined) return known
-      await catalogService.replace(await httpService.fetchCatalog())
+      await refresh()
       return catalogService.opOrThrow(id)
     }
 
-    const catalogOps: OpsService['catalog'] = async (opts) => shown((await loaded()).ops(), opts)
+    const list: OpsService['list'] = async (opts) => listRows(shown((await loaded()).ops(), opts))
 
-    const list: OpsService['list'] = async (opts) => listRows(await catalogOps(opts))
+    const commands: OpsService['commands'] = async (opts) =>
+      opsTree(shown(opts.fresh ? await refresh() : (await loaded()).ops(), opts))
 
+    const command: OpsService['command'] = async (id) => opCommand(id, await resolve(id))
+
+    // The op's own descriptor, so its examples read as the spaced commands that run; only
+    // the usage line stays the `call` form.
     const describe: OpsService['describe'] = async (id) => {
-      const op = await resolve(id)
-      // Spread twice on purpose: the first fixes the key order, the second keeps a
-      // catalog op that carries `id` or `usage` of its own from overwriting the CLI's.
-      const own = { id, usage: [BINARY, CALL_COMMAND, id, INPUT_USAGE].join(' ') }
-      const row: OpRow = { ...own, ...op, ...own }
-      if (!takesWorkspacePin(op)) return row
-      const workspaceId = await (await ctx.get(session)).workspaceId()
-      return { ...row, pins: { [PIN.Workspace]: workspaceId } }
+      const Ctor = await command(id)
+      const path = spacedId(id).split(COMMAND_SEPARATOR)
+      const row = await Ctor.help({ path, rest: NO_REST, ctx })
+      return { ...row, usage: callUsage(id) }
     }
 
-    return { resolve, catalog: catalogOps, list, describe }
+    return { resolve, list, commands, command, describe }
   },
 })

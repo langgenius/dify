@@ -1,5 +1,7 @@
 import type { CommandConstructor } from './command'
+import { dottedId } from '@/protocol/op-id'
 import { editDistance } from '@/util/edit-distance'
+import { propertyFor } from '@/util/flag-name'
 
 export type CommandNode = {
   readonly command?: CommandConstructor
@@ -8,32 +10,55 @@ export type CommandNode = {
 
 export type CommandTree = Record<string, CommandNode>
 
+export type ResolvedCommand = { command: CommandConstructor; path: string[] }
+
+export type MergedTree = { tree: CommandTree; shadowed: string[] }
+
+/** `hidden` keeps a command out of listings; a help view may ask for it back. */
+export type CollectOptions = Readonly<{ includeHidden: boolean }>
+
+const LISTED_ONLY: CollectOptions = { includeHidden: false }
+
 function buildPath(parts: string[]): string {
   return parts.join(' ')
 }
 
-export function resolveCommand(
-  tree: CommandTree,
-  argv: string[],
-): { command: CommandConstructor; path: string[] } | undefined {
+// A command word may be typed with dashes where the id spells underscores; the path
+// keeps the key it matched, so what is echoed back is the canonical spelling.
+function childOf(
+  level: Record<string, CommandNode>,
+  token: string,
+): { key: string; node: CommandNode } | undefined {
+  for (const key of [token, propertyFor(token)]) {
+    const node = level[key]
+    if (node !== undefined) return { key, node }
+  }
+  return undefined
+}
+
+export function resolveCommand(tree: CommandTree, argv: string[]): ResolvedCommand | undefined {
   const path: string[] = []
   let node: CommandNode | undefined
-  let lastMatch: { command: CommandConstructor; path: string[] } | undefined
+  let lastMatch: ResolvedCommand | undefined
 
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i]
     if (token === undefined || token.startsWith('-')) break
 
-    const next = path.length === 0 ? tree[token] : node?.subcommands[token]
-    if (!next) break
+    const next = childOf(path.length === 0 ? tree : (node?.subcommands ?? {}), token)
+    if (next === undefined) break
 
-    node = next
-    path.push(token)
+    node = next.node
+    path.push(next.key)
 
     if (node.command) {
       lastMatch = { command: node.command, path: [...path] }
       const nextToken = argv[i + 1]
-      if (nextToken === undefined || nextToken.startsWith('-') || !(nextToken in node.subcommands))
+      if (
+        nextToken === undefined ||
+        nextToken.startsWith('-') ||
+        childOf(node.subcommands, nextToken) === undefined
+      )
         return lastMatch
     }
   }
@@ -41,19 +66,59 @@ export function resolveCommand(
   return lastMatch
 }
 
+/** The node these words name, command or bare group; undefined when the tree has none. */
+export function nodeAt(tree: CommandTree, path: readonly string[]): CommandNode | undefined {
+  let node: CommandNode | undefined
+  for (const token of path) {
+    const next = childOf(node === undefined ? tree : node.subcommands, token)
+    if (next === undefined) return undefined
+    node = next.node
+  }
+  return node
+}
+
 export function collectCommands(
   tree: CommandTree,
+  opts: CollectOptions = LISTED_ONLY,
 ): Array<{ command: CommandConstructor; path: string[] }> {
   const results: Array<{ command: CommandConstructor; path: string[] }> = []
 
   function walk(node: CommandNode, path: string[]): void {
-    if (node.command && node.command.hidden !== true) results.push({ command: node.command, path })
+    if (node.command && (opts.includeHidden || node.command.hidden !== true))
+      results.push({ command: node.command, path })
     for (const [key, child] of Object.entries(node.subcommands)) walk(child, [...path, key])
   }
 
   for (const [key, node] of Object.entries(tree)) walk(node, [key])
 
   return results
+}
+
+// Static wins: the op stays reachable through `call <id>` and is reported so a
+// snapshot test can flag the collision.
+export function mergeTrees(statics: CommandTree, added: CommandTree): MergedTree {
+  const shadowed: string[] = []
+
+  function fold(base: CommandTree, extra: CommandTree, path: readonly string[]): CommandTree {
+    const merged: Record<string, CommandNode> = { ...base }
+    for (const [key, node] of Object.entries(extra)) {
+      const here = [...path, key]
+      const existing = merged[key]
+      if (existing === undefined) {
+        merged[key] = node
+        continue
+      }
+      if (existing.command !== undefined && node.command !== undefined)
+        shadowed.push(dottedId(here))
+      merged[key] = {
+        command: existing.command ?? node.command,
+        subcommands: fold(existing.subcommands, node.subcommands, here),
+      }
+    }
+    return merged
+  }
+
+  return { tree: fold(statics, added, []), shadowed }
 }
 
 // Below MAX_SCORE a score decomposes uniquely into (integer spelling cost,

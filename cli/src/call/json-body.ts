@@ -1,4 +1,4 @@
-import type { Printable } from '@/plugins/io'
+import type { Printable } from '@/sys/io/view'
 import { HttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 

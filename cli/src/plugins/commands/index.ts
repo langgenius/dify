@@ -1,43 +1,55 @@
+import type { Descriptor } from './describe'
 import type { CommandContext } from '@/plugins/base'
-import type { CommandConstructor } from '@/plugins/commands/command'
-import type { CommandRow } from '@/plugins/commands/describe'
-import type { HelpSources } from '@/plugins/commands/help'
-import type { CommandTree } from '@/plugins/commands/registry'
+import type { CollectOptions, CommandTree, ResolvedCommand } from '@/plugins/commands/registry'
 import type { IOService } from '@/plugins/io'
-import type { OpListRow, OpsService } from '@/plugins/ops'
-import { validateInput } from '@/call/validate'
+import type { OpsService, TreeOptions } from '@/plugins/ops'
 import { commandTree } from '@/commands/tree'
 import { BaseError } from '@/errors/base'
 import { ErrorCode, ExitCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
 import { definePlugin } from '@/kernel/plugin'
-import { inputSchema, parseArgv } from '@/plugins/argv/parse'
+import { parseArgv } from '@/plugins/argv/parse'
 import { BASE_PLUGINS } from '@/plugins/base'
-import { Outcome } from '@/plugins/commands/command'
-import { treeRows } from '@/plugins/commands/describe'
-import { helpListing, helpMap, helpSearch, isOpId } from '@/plugins/commands/help'
-import { findSuggestions, resolveCommand } from '@/plugins/commands/registry'
+import { HELP_WORD, helpHint, Outcome } from '@/plugins/commands/command'
+import {
+  entriesOf,
+  helpListing,
+  helpMap,
+  helpSearch,
+  pointer,
+  spacedWords,
+} from '@/plugins/commands/help'
+import {
+  collectCommands,
+  findSuggestions,
+  mergeTrees,
+  nodeAt,
+  resolveCommand,
+} from '@/plugins/commands/registry'
+import { descriptorsView, descriptorView, listingView, mapView } from '@/plugins/commands/text'
 import { globalFlags } from '@/plugins/global-flags'
 import { io } from '@/plugins/io'
 import { ops } from '@/plugins/ops'
 import { session } from '@/plugins/session'
-import { BINARY } from '@/version/info'
+import { COMMAND_SEPARATOR } from '@/protocol/op-id'
 
 export type CommandsService = {
   readonly run: () => Promise<number>
 }
 
-const HELP_WORD = 'help'
 const HELP_FLAGS: readonly string[] = ['--help', '-h']
 const FULL_FLAG = '--full'
 const ALL_FLAG = '--all'
 const FLAG_PREFIX = '-'
 const NO_SERVER_NOTICE = 'log in to list server operations'
+const NO_SERVER_HINT = 'log in to use server operations'
 const OPS_UNAVAILABLE_PREFIX = 'could not list server operations: '
-const NO_MATCH_NOTICE = `nothing matched; run ${BINARY} ${HELP_WORD} for the map`
-
-type HelpOptions = Readonly<{ full: boolean; all: boolean }>
-type FullHelp = { commands: CommandRow[]; ops?: OpListRow[] }
+const NO_MATCH_NOTICE = `nothing matched; ${helpHint()} for the map`
+const NO_REST: readonly string[] = []
+// Resolution walks every op the server publishes; `hidden` keeps the internal ones
+// out of listings, not out of the tree.
+const EVERY_OP: TreeOptions = { includeInternal: true, fresh: false }
+const EVERY_OP_FRESH: TreeOptions = { ...EVERY_OP, fresh: true }
 
 function isWord(token: string): boolean {
   return !token.startsWith(FLAG_PREFIX)
@@ -79,117 +91,145 @@ async function fromOps<T>(
   }
 }
 
-async function discover(
-  tree: CommandTree,
-  words: readonly string[],
-  opts: HelpOptions,
-  ctx: CommandContext,
-  streams: IOService,
-): Promise<number> {
-  const commands = treeRows(tree)
-  const listOptions = { includeInternal: opts.all }
-  if (words.length === 0 && opts.full) {
-    const body: FullHelp = { commands }
-    body.ops = await fromOps(ctx, streams, (service) => service.list(listOptions))
-    await streams.document(body)
-    return ExitCode.Success
-  }
-
-  const sources: HelpSources = {
-    commands,
-    ops: await fromOps(ctx, streams, (service) => service.catalog(listOptions)),
-  }
-  const [word] = words
-  if (word === undefined) {
-    await streams.document(helpMap(sources))
-    return ExitCode.Success
-  }
-  if (words.length === 1) {
-    if (isOpId(word, sources)) {
-      await streams.document(await (await ctx.get(ops)).describe(word))
-      return ExitCode.Success
-    }
-    const listing = helpListing(word, sources)
-    if (listing !== undefined) {
-      await streams.document(listing)
-      return ExitCode.Success
-    }
-  }
-  const found = helpSearch(words, sources)
-  if (found.total === 0) streams.notice(NO_MATCH_NOTICE)
-  await streams.document(found)
-  return ExitCode.Success
-}
-
-function unknownCommand(tree: CommandTree, words: readonly string[]): BaseError {
+function unknownCommand(tree: CommandTree, words: readonly string[], fallback: string): BaseError {
   const suggestions = findSuggestions(tree, [...words])
   return new BaseError({
     code: ErrorCode.UsageInvalidFlag,
-    message: `unknown command: ${words.join(' ')}`,
-    hint:
-      suggestions.length > 0
-        ? `did you mean: ${suggestions.join(', ')}`
-        : `run ${BINARY} ${HELP_WORD}`,
+    message: `unknown command: ${words.join(COMMAND_SEPARATOR)}`,
+    hint: suggestions.length > 0 ? `did you mean: ${suggestions.join(', ')}` : fallback,
   })
 }
 
-// parseArgv only coerces what was typed; zod owns the declared defaults. Reaching here
-// means validation already passed, so a zod rejection is a schema/parser contract bug.
-function withDefaults(
-  Ctor: CommandConstructor,
-  input: Record<string, unknown>,
-): Record<string, unknown> {
-  const parsed = Ctor.input.safeParse(input)
-  if (!parsed.success) {
-    throw new BaseError({
-      code: ErrorCode.Unknown,
-      message: parsed.error.issues.map((issue) => issue.message).join('; '),
-      cause: parsed.error,
-    })
+type Discovery = Readonly<{
+  tree: CommandTree
+  path: readonly string[]
+  full: boolean
+  listing: CollectOptions
+  wantsHelp: boolean
+  missHint?: string
+  ctx: CommandContext
+  streams: IOService
+}>
+
+// Words no command claimed: the map, a namespace listing, a search — or, when help
+// was not asked for, the error that names the miss.
+async function discover(args: Discovery): Promise<number> {
+  const { ctx, listing, path, streams, tree } = args
+  if (path.length === 0 && args.full) {
+    // One at a time: a descriptor may read the session, and that file takes a lock.
+    const rows: Descriptor[] = []
+    for (const found of collectCommands(tree, listing))
+      rows.push(await found.command.help({ path: found.path, rest: NO_REST, ctx }))
+    await streams.document(descriptorsView(rows))
+    return ExitCode.Success
   }
-  return parsed.data
+
+  const entries = entriesOf(tree, listing)
+  if (path.length === 0) {
+    await streams.document(mapView(helpMap(entries)))
+    return ExitCode.Success
+  }
+
+  const under = helpListing(path.join(COMMAND_SEPARATOR), entries)
+  if (under !== undefined) {
+    await streams.document(listingView(under))
+    return ExitCode.Success
+  }
+  if (!args.wantsHelp) throw unknownCommand(tree, path, args.missHint ?? helpHint())
+
+  const found = helpSearch(path, tree, listing)
+  if (found.total === 0) streams.notice(NO_MATCH_NOTICE)
+  await streams.document(listingView(found))
+  return ExitCode.Success
+}
+
+type Resolution = {
+  readonly resolved: ResolvedCommand | undefined
+  readonly tree: CommandTree
+  /** Set only when a miss has a better explanation than the generic help hint. */
+  readonly missHint?: string
+}
+
+type Walk = Readonly<{
+  tree: CommandTree
+  path: readonly string[]
+  wantsHelp: boolean
+  ctx: CommandContext
+  streams: IOService
+}>
+
+// The refetch exists for one case: a path the cached tree does not know at all may name
+// an op the server added since. A known group, the bare map and every help view are
+// answered from the cache, so they cost one request.
+function answerable(walk: Walk, cached: CommandTree): boolean {
+  return walk.wantsHelp || walk.path.length === 0 || nodeAt(cached, walk.path) !== undefined
+}
+
+// Statics resolve without touching the catalog. A miss walks the server's ops as
+// commands too: the cached catalog first, then one refetch in case the op is newer
+// than the cache. A server that cannot answer costs the caller nothing but a notice —
+// resolution falls back to the widest tree it did get, which is also the tree help
+// lists, so the catalog is loaded at most once per run.
+async function resolveWithOps(walk: Walk): Promise<Resolution> {
+  const { ctx, streams, tree } = walk
+  const path = [...walk.path]
+  const direct = resolveCommand(tree, path)
+  if (direct !== undefined) return { resolved: direct, tree }
+
+  // A help view explains a missing catalog on stderr; a plain miss gets the hint instead.
+  if (!walk.wantsHelp && (await (await ctx.get(session)).current()) === null)
+    return { resolved: undefined, tree, missHint: NO_SERVER_HINT }
+
+  const known = await fromOps(ctx, streams, (service) => service.commands(EVERY_OP))
+  if (known === undefined) return { resolved: undefined, tree }
+  const cached = mergeTrees(tree, known).tree
+  const fromCache = resolveCommand(cached, path)
+  if (fromCache !== undefined || answerable(walk, cached))
+    return { resolved: fromCache, tree: cached }
+
+  const refetched = await fromOps(ctx, streams, (service) => service.commands(EVERY_OP_FRESH))
+  if (refetched === undefined) return { resolved: undefined, tree: cached }
+  const fresh = mergeTrees(tree, refetched).tree
+  return { resolved: resolveCommand(fresh, path), tree: fresh }
 }
 
 export async function runPipeline(tree: CommandTree, ctx: CommandContext): Promise<number> {
   const streams = await ctx.get(io)
   const argv = (await ctx.get(globalFlags)).rest
+  if (argv.length === 0) {
+    await streams.document(pointer())
+    return ExitCode.Success
+  }
+
   const words = argv.filter(isWord)
   const byHelpWord = words[0] === HELP_WORD
   const tokens = byHelpWord ? withoutHelpWord(argv) : argv
-  const path = byHelpWord ? words.slice(1) : words
+  const path = byHelpWord ? spacedWords(words.slice(1)) : words
   const wantsHelp =
     words.length === 0 || byHelpWord || argv.some((token) => HELP_FLAGS.includes(token))
-
-  const resolved = resolveCommand(tree, path)
-  if (resolved === undefined) {
-    if (!wantsHelp) throw unknownCommand(tree, path)
-    const helpOptions: HelpOptions = {
+  const walked = await resolveWithOps({ tree, path, wantsHelp, ctx, streams })
+  const resolved = walked.resolved
+  if (resolved === undefined)
+    return discover({
+      tree: walked.tree,
+      path,
       full: argv.includes(FULL_FLAG),
-      all: argv.includes(ALL_FLAG),
-    }
-    return discover(tree, path, helpOptions, ctx, streams)
-  }
+      listing: { includeHidden: argv.includes(ALL_FLAG) },
+      wantsHelp,
+      missHint: walked.missHint,
+      ctx,
+      streams,
+    })
 
   const Ctor = resolved.command
   const rest = restAfterPath(tokens, resolved.path.length)
   if (wantsHelp) {
-    await streams.document(await Ctor.help({ path: resolved.path, rest, ctx }))
+    await streams.document(descriptorView(await Ctor.help({ path: resolved.path, rest, ctx })))
     return ExitCode.Success
   }
 
-  const schema = inputSchema(Ctor.input)
-  const input = parseArgv(rest, { positional: Ctor.positional, schema })
-  const details = validateInput(schema, input)
-  if (details.length > 0) {
-    throw new BaseError({
-      code: ErrorCode.InputInvalid,
-      message: `invalid input for "${resolved.path.join(' ')}"`,
-      details: [...details],
-      schema,
-    })
-  }
-
-  const out = await new Ctor().run(withDefaults(Ctor, input), ctx)
+  const input = parseArgv(rest, { positional: Ctor.positional, schema: Ctor.flags() })
+  const out = await new Ctor().run(Ctor.finalize(input, resolved.path), ctx)
   if (out instanceof Outcome) {
     if (out.body !== undefined) await streams.document(out.body)
     return out.code

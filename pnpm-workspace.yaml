@@ -219,6 +219,7 @@ catalog:
   next-themes: 0.4.6
   nuqs: 2.10.1
   open: 11.0.4
+  picocolors: 1.1.1
   picomatch: 4.0.7
   pinyin-pro: 3.29.4
   playwright: 1.63.0

@@ -169,20 +169,27 @@ it('a stale catalog is refreshed once and the op is retried; an unknown op is ex
   await expect((await w3.ctx.get(commands)).run()).rejects.toMatchObject({ code: 'unknown_op' })
 })
 
-it('call <op> --help prints the same row as ops describe', async () => {
+it('call <op> --help prints the spaced command row under the call usage line', async () => {
+  const a = await world(['call', 'console_app.workflow.run', '--help'])
+  await (await a.ctx.get(commands)).run()
+  expect(JSON.parse(a.io.outBuf())).toMatchObject({
+    id: 'console_app workflow run',
+    op: 'console_app.workflow.run',
+    kind: 'sse',
+    usage: 'difyctl call console_app.workflow.run --input <json|@file|@->',
+    pins: { workspace_id: 'ws-1' },
+    examples: [],
+  })
+})
+
+// Skipped: `ops describe` moved out of the tree; see docs/superpowers/specs/2026-09-22-difyctl-v2-human-output-design.md
+it.skip('call <op> --help prints the same row as ops describe', async () => {
   const a = await world(['call', 'console_app.workflow.run', '--help'])
   await (await a.ctx.get(commands)).run()
   const help = JSON.parse(a.io.outBuf())
   const b = await world(['ops', 'describe', 'console_app.workflow.run'])
   await (await b.ctx.get(commands)).run()
   expect(help).toEqual(JSON.parse(b.io.outBuf()))
-  expect(help).toMatchObject({
-    id: 'console_app.workflow.run',
-    kind: 'sse',
-    usage: expect.stringContaining('difyctl call console_app.workflow.run'),
-    pins: { workspace_id: 'ws-1' },
-    examples: [],
-  })
 })
 
 it('call --help with no op named prints the command row and fetches nothing', async () => {
@@ -190,7 +197,7 @@ it('call --help with no op named prints the command row and fetches nothing', as
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(w.io.outBuf())).toMatchObject({
     id: 'call',
-    usage: 'difyctl call <op_id> [options]',
+    usage: 'difyctl call <op_id> [flags]',
     effect: 'write',
   })
   expect(w.mock.requestCount).toBe(0)

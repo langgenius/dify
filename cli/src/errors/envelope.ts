@@ -1,8 +1,11 @@
 import type { ErrorEnvelope } from './base'
-import type { IOStreams } from '@/sys/io/streams'
+import type { IOService } from '@/plugins/io'
 import { redactBearer } from '@/errors/sanitize'
+import { Channel } from '@/plugins/io'
+import { view } from '@/sys/io/view'
 import { BaseError } from './base'
 import { ErrorCode, ExitCode, exitFor } from './codes'
+import { renderEnvelope } from './format'
 import { errorMessage } from './message'
 
 const EPIPE = 'EPIPE'
@@ -22,18 +25,29 @@ function envelopeFor(err: unknown): ErrorEnvelope {
   }
 }
 
-export function printEnvelope(
+// The text form reads the whole envelope: a hidden raw response is what makes it offer
+// --verbose. Only the JSON form drops the body, and both see it redacted.
+function jsonForm(envelope: ErrorEnvelope, verbose: boolean): ErrorEnvelope {
+  if (verbose) return envelope
+  const error = { ...envelope.error }
+  delete error.raw_response
+  return { error }
+}
+
+export async function printEnvelope(
   err: unknown,
-  io: IOStreams,
+  io: IOService,
   opts: { readonly verbose: boolean },
-): number {
+): Promise<number> {
   if (isBrokenPipe(err)) return ExitCode.Success
 
   const envelope = envelopeFor(err)
   const raw = envelope.error.raw_response
-  if (!opts.verbose) delete envelope.error.raw_response
-  else if (raw !== undefined) envelope.error.raw_response = redactBearer(raw)
+  if (raw !== undefined) envelope.error.raw_response = redactBearer(raw)
 
-  io.err.write(`${JSON.stringify(envelope)}\n`)
+  await io.emit(
+    view(jsonForm(envelope, opts.verbose), (style) => renderEnvelope(envelope, style, opts)),
+    Channel.Err,
+  )
   return exitFor(envelope.error.code)
 }

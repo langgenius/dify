@@ -1,98 +1,125 @@
-import type { CommandRow } from './describe'
-import type { CatalogOp } from '@/plugins/catalog'
+import type { CommandConstructor, CommandEffect } from './command'
+import type { CollectOptions, CommandTree } from './registry'
+import type { SearchDoc } from '@/discovery/search'
+import type { View } from '@/sys/io/view'
 import { search, searchDoc } from '@/discovery/search'
 import { byHead, groupsOf, namespacesOf, under } from '@/discovery/tree'
+import { COMMAND_SEPARATOR, OP_SEPARATOR, spacedId } from '@/protocol/op-id'
+import { view } from '@/sys/io/view'
+import { BINARY } from '@/version/info'
+import { HELP_WORD } from './command'
+import { collectCommands } from './registry'
 
-export const ENTRY_TYPE = { Command: 'command', Op: 'op' } as const
-export type EntryType = (typeof ENTRY_TYPE)[keyof typeof ENTRY_TYPE]
-
-const COMMAND_SEP = ' '
-const OP_SEP = '.'
 const SEARCH_LIMIT = 20
+const NEWLINE = '\n'
+const SKILL_WORDS = 'skills install <dir>'
+const POINTER_MESSAGE = `${BINARY} has no built-in business commands; every server operation is a command`
 
 export type HelpEntry = {
   id: string
   summary: string
-  type: EntryType
+  effect?: CommandEffect
   kind?: string
+  deprecated?: boolean
 }
 
 export type HelpListing = { entries: HelpEntry[]; total: number }
+export type HelpHead = { summary?: string; count: number; groups: string[] }
+export type HelpMap = Record<string, HelpHead>
 
-export type HelpSources = Readonly<{
-  commands: readonly CommandRow[]
-  ops?: Readonly<Record<string, CatalogOp>>
-}>
-
-export type HelpMap = {
-  commands: Record<string, string[]>
-  ops?: Record<string, { ops: number; groups: string[] }>
+/** Bare `difyctl`: where to look, without a request. */
+export function pointer(): View<Record<string, string>> {
+  const json = {
+    message: POINTER_MESSAGE,
+    help: [BINARY, HELP_WORD].join(COMMAND_SEPARATOR),
+    skill: [BINARY, SKILL_WORDS].join(COMMAND_SEPARATOR),
+  }
+  return view(json, () => Object.values(json).join(NEWLINE))
 }
 
-function opEntries(sources: HelpSources): HelpEntry[] {
-  return Object.entries(sources.ops ?? {}).map(([id, op]) => ({
+/** `help console_app.workflow.run` names the command its spaced words name. */
+export function spacedWords(words: readonly string[]): readonly string[] {
+  const [only] = words
+  if (words.length !== 1 || only === undefined || !only.includes(OP_SEPARATOR)) return words
+  return spacedId(only).split(COMMAND_SEPARATOR)
+}
+
+function entryOf(ctor: CommandConstructor, id: string): HelpEntry {
+  const entry: HelpEntry = { id, summary: ctor.summary }
+  if (ctor.effect !== undefined) entry.effect = ctor.effect
+  const { deprecated, kind } = ctor.facets()
+  if (kind !== undefined) entry.kind = kind
+  if (deprecated !== undefined) entry.deprecated = deprecated
+  return entry
+}
+
+// `schema()` is the documented input, so an adapter is indexed on the op's own fields
+// rather than on the parse schema, which carries call options every op would match.
+function docOf(ctor: CommandConstructor, id: string): SearchDoc {
+  return searchDoc(
     id,
-    summary: op.summary,
-    type: ENTRY_TYPE.Op,
-    kind: op.kind,
-  }))
+    { summary: ctor.summary, input: ctor.schema(), examples: ctor.examples },
+    ctor.facets().deprecated === true,
+  )
 }
 
-function commandEntries(sources: HelpSources): HelpEntry[] {
-  return sources.commands.map((row) => ({
-    id: row.id,
-    summary: row.summary,
-    type: ENTRY_TYPE.Command,
-  }))
+/** Every command the tree lists, static or catalog op, as one flat list. */
+export function entriesOf(tree: CommandTree, opts?: CollectOptions): HelpEntry[] {
+  return collectCommands(tree, opts).map(({ command, path }) =>
+    entryOf(command, path.join(COMMAND_SEPARATOR)),
+  )
 }
 
 function byId(a: HelpEntry, b: HelpEntry): number {
   return a.id < b.id ? -1 : 1
 }
 
-export function helpMap(sources: HelpSources): HelpMap {
-  const map: HelpMap = { commands: {} }
-  for (const [head, verbs] of byHead(
-    sources.commands.map((row) => row.id),
-    COMMAND_SEP,
-  ))
-    map.commands[head] = [...verbs]
-  if (sources.ops === undefined) return map
-  map.ops = {}
-  for (const [head, rest] of byHead(Object.keys(sources.ops), OP_SEP))
-    map.ops[head] = { ops: rest.length, groups: groupsOf(rest, OP_SEP) }
+export function helpMap(entries: readonly HelpEntry[]): HelpMap {
+  const leaves = new Map(entries.map((entry) => [entry.id, entry]))
+  const map: HelpMap = {}
+  for (const [head, rest] of byHead(
+    entries.map((entry) => entry.id),
+    COMMAND_SEPARATOR,
+  )) {
+    const self = leaves.get(head)
+    const count = rest.length + (self === undefined ? 0 : 1)
+    map[head] =
+      self !== undefined && count === 1
+        ? { summary: self.summary, count, groups: [] }
+        : { count, groups: groupsOf(rest, COMMAND_SEPARATOR) }
+  }
   return map
 }
 
-export function isOpId(word: string, sources: HelpSources): boolean {
-  return sources.ops !== undefined && word in sources.ops
+export function helpListing(
+  namespace: string,
+  entries: readonly HelpEntry[],
+): HelpListing | undefined {
+  const ids = entries.map((entry) => entry.id)
+  if (!namespacesOf(ids, COMMAND_SEPARATOR).has(namespace)) return undefined
+  const wanted = new Set(under(namespace, ids, COMMAND_SEPARATOR))
+  const found = entries.filter((entry) => wanted.has(entry.id)).sort(byId)
+  return { entries: found, total: found.length }
 }
 
-export function helpListing(word: string, sources: HelpSources): HelpListing | undefined {
-  const commandIds = sources.commands.map((row) => row.id)
-  const opIds = Object.keys(sources.ops ?? {})
-  const known =
-    namespacesOf(commandIds, COMMAND_SEP).has(word) || namespacesOf(opIds, OP_SEP).has(word)
-  if (!known) return undefined
-  const wanted = new Set([...under(word, commandIds, COMMAND_SEP), ...under(word, opIds, OP_SEP)])
-  const entries = [...commandEntries(sources), ...opEntries(sources)]
-    .filter((entry) => wanted.has(entry.id))
-    .sort(byId)
-  return { entries, total: entries.length }
-}
-
-export function helpSearch(words: readonly string[], sources: HelpSources): HelpListing {
-  const entries = new Map(
-    [...commandEntries(sources), ...opEntries(sources)].map((entry) => [entry.id, entry]),
-  )
-  const docs = [
-    ...sources.commands.map((row) => searchDoc(row.id, row, false)),
-    ...Object.entries(sources.ops ?? {}).map(([id, op]) => searchDoc(id, op, op.deprecated)),
-  ]
-  const result = search(docs, words.join(COMMAND_SEP), { limit: SEARCH_LIMIT })
+// Ranked over everything a command declares — id, summary, field names and descriptions,
+// example titles — so the words a task is described in reach the fields that take them.
+export function helpSearch(
+  words: readonly string[],
+  tree: CommandTree,
+  opts?: CollectOptions,
+): HelpListing {
+  const byKey = new Map<string, HelpEntry>()
+  const docs: SearchDoc[] = []
+  for (const { command, path } of collectCommands(tree, opts)) {
+    const id = path.join(COMMAND_SEPARATOR)
+    byKey.set(id, entryOf(command, id))
+    docs.push(docOf(command, id))
+  }
+  const result = search(docs, words.join(COMMAND_SEPARATOR), { limit: SEARCH_LIMIT })
   return {
     entries: result.hits.flatMap((hit) => {
-      const entry = entries.get(hit.id)
+      const entry = byKey.get(hit.id)
       return entry === undefined ? [] : [entry]
     }),
     total: result.total,

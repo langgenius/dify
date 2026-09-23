@@ -1,4 +1,4 @@
-import type { Printable } from '@/plugins/io'
+import type { Printable } from '@/sys/io/view'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { BaseError } from '@/errors/base'

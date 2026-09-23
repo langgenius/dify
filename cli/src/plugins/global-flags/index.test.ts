@@ -9,11 +9,11 @@ async function parse(tokens: readonly string[]) {
 
 it('takes --verbose anywhere, hands the command the rest, and leaves -- alone', async () => {
   expect(await parse(['--verbose', 'call', 'a.b', '--input', '{}'])).toEqual({
-    flags: { verbose: true },
+    flags: { verbose: true, json: false },
     rest: ['call', 'a.b', '--input', '{}'],
   })
   expect(await parse(['call', 'a.b', '--', '--verbose'])).toEqual({
-    flags: { verbose: false },
+    flags: { verbose: false, json: false },
     rest: ['call', 'a.b', '--', '--verbose'],
   })
   await expect(parse(['--verbose=maybe'])).rejects.toMatchObject({ code: 'usage_invalid_flag' })

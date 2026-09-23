@@ -1,5 +1,7 @@
+import type { JsonSchema } from '@/plugins/catalog'
 import type { Kind } from '@/protocol/kinds'
 import { z } from 'zod'
+import { inputSchema } from '@/plugins/argv/parse'
 import { isKind, KIND, KINDS } from '@/protocol/kinds'
 
 export const CALL_FLAG = {
@@ -48,9 +50,25 @@ export type CallFlags = z.infer<typeof CALL_FLAG_SCHEMA>
 
 const CALL_FLAG_NAMES = Object.keys(CALL_FLAGS) as readonly CallFlag[]
 
+// An unknown kind is rendered — and so flagged — as an object.
+function renderedKind(kind: string): Kind {
+  return isKind(kind) ? kind : KIND.Object
+}
+
 export function unsupportedFlags(kind: string, flags: CallFlags): CallFlag[] {
-  const renderedAs = isKind(kind) ? kind : KIND.Object
+  const renderedAs = renderedKind(kind)
   return CALL_FLAG_NAMES.filter(
     (name) => flags[name] !== undefined && !CALL_FLAGS[name].kinds.includes(renderedAs),
   )
+}
+
+/** The call flags an operation of this kind accepts, as a JSON Schema. */
+export function callOptionsSchema(kind: string): JsonSchema {
+  const renderedAs = renderedKind(kind)
+  const shape = Object.fromEntries(
+    Object.entries(CALL_FLAGS)
+      .filter(([, spec]) => spec.kinds.includes(renderedAs))
+      .map(([name, spec]) => [name, spec.schema]),
+  )
+  return inputSchema(z.object(shape))
 }

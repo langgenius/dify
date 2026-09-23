@@ -1,5 +1,5 @@
 import { expect, it } from 'vite-plus/test'
-import { applyPins, loadInput } from './input'
+import { applyPins, loadInput, resolveFileRefs } from './input'
 
 const src = (raw: string | undefined, stdin = '', files: Record<string, string> = {}) => ({
   raw,
@@ -24,6 +24,62 @@ it('rejects non-object json and unreadable files with input_invalid', async () =
   await expect(loadInput(src('@missing.json'))).rejects.toMatchObject({
     code: 'input_invalid',
     message: expect.stringContaining('missing.json'),
+  })
+})
+
+const REF_SCHEMA = {
+  type: 'object',
+  properties: {
+    inputs: { type: 'object', properties: {} },
+    files: { type: 'array', items: { type: 'object', properties: {} } },
+    query: { type: 'string' },
+  },
+}
+
+const refs = (stdin: string, files: Record<string, string> = {}) => ({
+  stdin: async () => stdin,
+  readFile: async (p: string) => {
+    const f = files[p]
+    if (f === undefined) throw new Error('ENOENT')
+    return f
+  },
+})
+
+it('resolves @file and @- only on non-scalar declared fields', async () => {
+  expect(
+    await resolveFileRefs(
+      { inputs: '@in.json', files: '@-', query: '@keep', other: '@untouched' },
+      REF_SCHEMA,
+      refs('[{"b":2}]', { 'in.json': '{"a":1}' }),
+    ),
+  ).toEqual({ inputs: { a: 1 }, files: [{ b: 2 }], query: '@keep', other: '@untouched' })
+})
+
+it('an array field takes an array from its file', async () => {
+  expect(
+    await resolveFileRefs(
+      { files: '@files.json' },
+      REF_SCHEMA,
+      refs('', { 'files.json': '[{"c":3}]' }),
+    ),
+  ).toEqual({ files: [{ c: 3 }] })
+})
+
+it('reports an unreadable reference as input_invalid', async () => {
+  await expect(
+    resolveFileRefs({ inputs: '@missing.json' }, REF_SCHEMA, refs('')),
+  ).rejects.toMatchObject({
+    code: 'input_invalid',
+    message: expect.stringContaining('missing.json'),
+  })
+})
+
+it('names the field flag when a reference is not valid JSON', async () => {
+  await expect(
+    resolveFileRefs({ files: '@files.json' }, REF_SCHEMA, refs('', { 'files.json': 'nope' })),
+  ).rejects.toMatchObject({
+    code: 'input_invalid',
+    message: expect.stringContaining('--files'),
   })
 })
 

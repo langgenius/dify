@@ -35,6 +35,7 @@ export default class MyCmd extends Command<typeof INPUT> {
   static override input = INPUT // a Zod object; also the argv parser's schema
   static override positional = ['id'] as const // optional; maps positional argv to input keys
   static override examples = [{ title: '...', input: { id: '...' } }] // optional
+  static override hidden = true // optional; keeps the command out of help, not out of the tree
 
   async run(input: z.infer<typeof INPUT>, ctx: CommandContext) {
     // read plugin services with ctx.get(...); the return value is printed as
@@ -44,10 +45,16 @@ export default class MyCmd extends Command<typeof INPUT> {
 }
 ```
 
+`schema()` is the JSON Schema help documents and `finalize` validates, derived from
+`input`; `flags()` is what the argv parser accepts (default: `schema()`);
+`facets()` is the op half of the descriptor (default: none); `finalize(input, path)`
+is the one input gate, throwing `input_invalid` and then applying the Zod defaults.
+Only the catalog-op adapter overrides them.
+
 `run`'s return value is the JSON value printed to stdout; there is no separate
-output-formatting step and no `agentGuide` — `--help` on any command prints
-the same descriptor (`summary`, `effect`, `input`, `positional`, `examples`)
-that `ops describe` prints for a catalog operation.
+output-formatting step and no `agentGuide` — `--help` on any command prints the
+same descriptor (`summary`, `effect`, `input`, `positional`, `examples`, plus
+`kind`, `bind`, `pins` for a catalog operation) that `difyctl help <id>` prints.
 
 ## Adding a new command
 
@@ -61,3 +68,7 @@ that `ops describe` prints for a catalog operation.
 Code used by two or more commands lives in a top-level domain folder (e.g.
 `src/call/`, `src/errors/`) or on a plugin service, never inside a
 command folder. One command never imports from another command's folder.
+
+A command imports a plugin through `@/plugins/<name>` and reads it with
+`ctx.get(...)`. The framework files are the exception:
+`plugins/commands/{command,cancel,registry}.ts` and `plugins/argv/parse.ts`.

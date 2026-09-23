@@ -10,6 +10,7 @@ export const ENV = {
   WorkspaceId: 'DIFY_WORKSPACE_ID',
   ConfigDir: 'DIFY_CONFIG_DIR',
   CacheDir: 'DIFY_CACHE_DIR',
+  Output: 'DIFY_OUTPUT',
 } as const
 
 export type EnvService = Readonly<{

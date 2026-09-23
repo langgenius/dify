@@ -1,10 +1,19 @@
 import type { TestWorld } from '@test/fixtures/kernel'
 import type { CommandTree } from '@/plugins/commands/registry'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
 import { z } from 'zod'
+import { parseCatalog } from '@/plugins/catalog'
 import { Command } from '@/plugins/commands/command'
+import { propertiesOf } from '@/protocol/shape'
 import { commands, runPipeline } from './index'
+
+// What the mock serves by default, so an op's descriptor and its errors can be compared.
+const FIXTURE_OPS = parseCatalog(
+  readFileSync(join(__dirname, '../../../test/fixtures/catalog.json')),
+).ops
 
 const worlds: TestWorld[] = []
 async function world(login: boolean, argv: string[]) {
@@ -16,58 +25,134 @@ afterEach(async () => {
   for (const w of worlds.splice(0)) await w.stop()
 })
 
-it('root help prints the map of both sides as pretty JSON and fetches the catalog once', async () => {
+it('bare difyctl prints a pointer to help and the skill, and makes no request', async () => {
   const w = await world(true, [])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  const out = JSON.parse(w.io.outBuf())
-  expect(out.commands).toMatchObject({ cache: ['clear', 'refresh'], version: [] })
-  expect(out.ops.console_app).toMatchObject({ groups: expect.arrayContaining(['chat', 'dsl']) })
-  expect(out.ops.console_app.ops).toBeGreaterThan(5)
-  expect(w.io.outBuf()).toMatch(/\n {2}"commands"/)
+  expect(JSON.parse(w.io.outBuf())).toEqual({
+    message: 'difyctl has no built-in business commands; every server operation is a command',
+    help: 'difyctl help',
+    skill: 'difyctl skills install <dir>',
+  })
+  expect(w.mock.requestCount).toBe(0)
+})
+
+it('the map is one tree: leaves carry a summary, groups a count and sub-groups', async () => {
+  const w = await world(true, ['help'])
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  const map = JSON.parse(w.io.outBuf())
+  expect(map.login).toMatchObject({ summary: expect.any(String), count: 1, groups: [] })
+  expect(map.console_app).toMatchObject({
+    count: expect.any(Number),
+    groups: expect.arrayContaining(['chat', 'dsl']),
+  })
+  expect(map.workspace.groups).toEqual(expect.arrayContaining(['members']))
+  expect(map.call).toBeUndefined()
+  expect(map.ops).toBeUndefined()
+  expect(w.io.outBuf()).toMatch(/\n {2}"login"/)
   expect(w.mock.requestCount).toBe(1) // the catalog fetch, nothing else
 })
 
-it('root help with no server known prints the static half and says so on stderr', async () => {
-  const w = await world(false, [])
+it('on a terminal the map is text, not JSON', async () => {
+  const w = await testContext({ login: true, argv: ['help'], tty: true })
+  worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  const out = JSON.parse(w.io.outBuf())
-  expect(out.commands.version).toEqual([])
-  expect(out.ops).toBeUndefined()
+  const out = w.io.outBuf()
+  expect(out).toContain('console_app')
+  expect(out).not.toMatch(/[{}]/)
+})
+
+it('the map with no server known is the static half and says so on stderr', async () => {
+  const w = await world(false, ['help'])
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  const map = JSON.parse(w.io.outBuf())
+  expect(map.version).toMatchObject({ count: 1 })
+  expect(map.console_app).toBeUndefined()
   expect(w.io.errBuf()).toMatch(/log in to list server operations/)
   expect(w.mock.requestCount).toBe(0)
 })
 
-it('root help still prints the static half when the catalog cannot be fetched', async () => {
-  const w = await world(true, [])
+it('the map still prints the static half when the catalog cannot be fetched', async () => {
+  const w = await world(true, ['help'])
   w.mock.setScenario('no-catalog')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  const out = JSON.parse(w.io.outBuf())
-  expect(out.commands.version).toEqual([])
-  expect(out.ops).toBeUndefined()
+  const map = JSON.parse(w.io.outBuf())
+  expect(map.version).toMatchObject({ count: 1 })
+  expect(map.console_app).toBeUndefined()
   expect(w.io.errBuf().trim().split('\n')).toHaveLength(1)
   expect(w.io.errBuf()).toMatch(/^could not list server operations: failed to fetch the catalog: /)
 })
 
-it('help routes a word to an op descriptor, a namespace listing or a search, and --full is the flat list', async () => {
+it('help accepts a dotted id and prints the same descriptor as the spaced path', async () => {
   const a = await world(true, ['help', 'console_app.workflow.run'])
+  const b = await world(true, ['console_app', 'workflow', 'run', '--help'])
   await (await a.ctx.get(commands)).run()
-  const b = await world(true, ['ops', 'describe', 'console_app.workflow.run'])
   await (await b.ctx.get(commands)).run()
   expect(JSON.parse(a.io.outBuf())).toEqual(JSON.parse(b.io.outBuf()))
+  expect(JSON.parse(a.io.outBuf())).toMatchObject({
+    id: 'console_app workflow run',
+    op: 'console_app.workflow.run',
+    kind: 'sse',
+  })
+})
 
+it('a namespace without a command lists what is under it, with or without the help word', async () => {
+  const a = await world(true, ['console_app'])
+  expect(await (await a.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(a.io.outBuf()).entries.map((e: { id: string }) => e.id)).toContain(
+    'console_app list',
+  )
+
+  const b = await world(true, ['help', 'workspace', 'members'])
+  expect(await (await b.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(b.io.outBuf()).entries.map((e: { id: string }) => e.id)).toEqual([
+    'workspace members invite',
+    'workspace members list',
+    'workspace members remove',
+    'workspace members set_role',
+  ])
+})
+
+it('an internal op stays out of the listing, comes back under --all, and always resolves', async () => {
+  const a = await world(true, ['help', 'workspace'])
+  expect(await (await a.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(a.io.outBuf()).entries.map((e: { id: string }) => e.id)).not.toContain(
+    'workspace switch',
+  )
+
+  const b = await world(true, ['help', 'workspace', '--all'])
+  expect(await (await b.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(b.io.outBuf()).entries.map((e: { id: string }) => e.id)).toContain(
+    'workspace switch',
+  )
+
+  const c = await world(true, ['workspace', 'switch', '--help'])
+  expect(await (await c.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(c.io.outBuf())).toMatchObject({
+    id: 'workspace switch',
+    op: 'workspace.switch',
+  })
+})
+
+it('search reaches a word that only a field name carries', async () => {
+  const w = await world(true, ['help', 'attachments'])
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  const found = JSON.parse(w.io.outBuf())
+  expect(found.total).toBeGreaterThan(0)
+  expect(found.entries.map((e: { id: string }) => e.id)).toContain('console_app workflow run')
+})
+
+it('help routes a word to a namespace listing or a search, and --full is the flat list', async () => {
   const c = await world(true, ['help', 'workspace'])
   await (await c.ctx.get(commands)).run()
-  const ids = JSON.parse(c.io.outBuf()).entries.map(
-    (e: { id: string; type: string }) => `${e.type}:${e.id}`,
-  )
-  expect(ids).toContain('command:workspace list')
-  expect(ids).toContain('op:workspace.members.list')
+  const ids = JSON.parse(c.io.outBuf()).entries.map((e: { id: string }) => e.id)
+  expect(ids).toContain('workspace use')
+  expect(ids).toContain('workspace members list')
   expect(ids).toEqual([...ids].sort())
 
   const d = await world(true, ['help', 'chatbot'])
   await (await d.ctx.get(commands)).run()
   expect(JSON.parse(d.io.outBuf()).entries[0]).toMatchObject({
-    id: 'console_app.chat.run',
+    id: 'console_app chat run',
     kind: 'sse',
   })
   const e = await world(true, ['help', 'zebra'])
@@ -75,11 +160,11 @@ it('help routes a word to an op descriptor, a namespace listing or a search, and
   expect(JSON.parse(e.io.outBuf())).toEqual({ entries: [], total: 0 })
   expect(e.io.errBuf().trim()).toBe('nothing matched; run difyctl help for the map')
 
-  const f = await world(true, ['help', '--full', '--all'])
+  const f = await world(true, ['help', '--full'])
   await (await f.ctx.get(commands)).run()
   const full = JSON.parse(f.io.outBuf())
   expect(full.commands[0]).toHaveProperty('usage')
-  expect(full.ops.map((o: { id: string }) => o.id)).toContain('workspace.switch')
+  expect(full.commands.map((row: { id: string }) => row.id)).toContain('console_app workflow run')
 })
 
 it('help on a command prints its row; --help anywhere and the help word both work', async () => {
@@ -139,13 +224,110 @@ it('takes --verbose anywhere and keeps it out of the command input', async () =>
   })
 })
 
-it('root help reuses a cached catalog instead of fetching again', async () => {
-  const w = await world(true, [])
+it('the map reuses a cached catalog instead of fetching again', async () => {
+  const w = await world(true, ['help'])
   await (await w.ctx.get(commands)).run()
   expect(w.mock.requestCount).toBe(1)
-  const reusing = await testContext({ login: true, argv: [], reuseDirOf: w })
+  const reusing = await testContext({ login: true, argv: ['help'], reuseDirOf: w })
   worlds.push(reusing)
   await (await reusing.ctx.get(commands)).run()
-  expect(Object.keys(JSON.parse(reusing.io.outBuf()).ops).length).toBeGreaterThan(2)
+  expect(JSON.parse(reusing.io.outBuf()).console_app.count).toBeGreaterThan(5)
   expect(reusing.mock.requestCount).toBe(1)
+})
+
+it('a catalog op resolves as a spaced command and takes its fields as flags', async () => {
+  const w = await world(true, ['console_app', 'list', '--limit', '2'])
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(w.mock.lastRequest?.path).toContain('limit=2')
+})
+
+it('a command word may be spelled with dashes where the op id has underscores', async () => {
+  const w = await world(true, ['console-app', 'list'])
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(w.mock.lastRequest?.path).toBe('/openapi/v1/apps?workspace_id=ws-1')
+
+  const help = await world(true, ['console-app', 'list', '--help'])
+  expect(await (await help.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(help.io.outBuf())).toMatchObject({
+    id: 'console_app list',
+    usage: 'difyctl console_app list [flags]',
+  })
+})
+
+it('an unknown path refetches the catalog once before giving up', async () => {
+  const w = await world(true, ['console_app', 'nope'])
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+    message: 'unknown command: console_app nope',
+    hint: 'run difyctl help',
+  })
+  expect(w.mock.requestCount).toBe(2) // the cached catalog, then one refetch
+
+  const typo = await world(true, ['console_app', 'lst'])
+  await expect((await typo.ctx.get(commands)).run()).rejects.toMatchObject({
+    hint: 'did you mean: console_app list',
+  })
+})
+
+it('a known namespace and a help view answer from the cached catalog, with no refetch', async () => {
+  const a = await world(true, ['console_app'])
+  expect(await (await a.ctx.get(commands)).run()).toBe(0)
+  expect(a.mock.requestCount).toBe(1)
+
+  const b = await world(true, ['help', 'workspace'])
+  expect(await (await b.ctx.get(commands)).run()).toBe(0)
+  expect(b.mock.requestCount).toBe(1)
+})
+
+it("an op's invalid input carries the op's own schema, not the parse-only one", async () => {
+  const w = await world(true, ['console_app', 'list', '--limit', '500'])
+  const expected = FIXTURE_OPS['console_app.list']?.input
+  expect(expected).toMatchObject({ required: ['workspace_id'] })
+  expect(propertiesOf(expected ?? {})).not.toHaveProperty('input')
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'input_invalid',
+    hint: 'run difyctl help console_app list',
+    schema: expected,
+  })
+})
+
+it('an unreachable catalog costs a notice, not the static suggestion', async () => {
+  const w = await world(true, ['versoin'])
+  w.mock.setScenario('no-catalog')
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+    hint: 'did you mean: version',
+  })
+  expect(w.io.errBuf().trim().split('\n')).toHaveLength(1)
+  expect(w.io.errBuf()).toMatch(/^could not list server operations: failed to fetch the catalog: /)
+})
+
+it('without a login only statics resolve and the hint says to log in', async () => {
+  const w = await world(false, ['console_app', 'list'])
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+    message: 'unknown command: console_app list',
+    hint: 'log in to use server operations',
+  })
+  expect(w.mock.requestCount).toBe(0)
+})
+
+it('a static command resolves without loading the catalog', async () => {
+  const w = await world(true, ['version'])
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(w.mock.requestCount).toBe(1)
+  expect(w.mock.lastRequest?.path).toBe('/openapi/v1/_version')
+})
+
+it('invalid input points at the help for the path that failed', async () => {
+  const a = await world(false, ['workspace', 'use'])
+  await expect((await a.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'input_invalid',
+    hint: 'run difyctl help workspace use',
+  })
+  const b = await world(true, ['console_app', 'describe'])
+  await expect((await b.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'input_invalid',
+    hint: 'run difyctl help console_app describe',
+  })
 })

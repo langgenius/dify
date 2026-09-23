@@ -635,6 +635,9 @@ catalogs:
     open:
       specifier: 11.0.4
       version: 11.0.4
+    picocolors:
+      specifier: 1.1.1
+      version: 1.1.1
     picomatch:
       specifier: 4.0.7
       version: 4.0.7
@@ -927,6 +930,9 @@ importers:
       open:
         specifier: 'catalog:'
         version: 11.0.4
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.1.1
       undici:
         specifier: 'catalog:'
         version: 7.29.1
@@ -18294,6 +18300,7 @@ time:
   next@16.3.5: '2026-09-11T17:26:46.049Z'
   nuqs@2.10.1: '2026-08-25T10:59:58.402Z'
   open@11.0.4: '2026-09-14T20:36:00.110Z'
+  picocolors@1.1.1: '2024-10-16T18:20:03.921Z'
   picomatch@4.0.7: '2026-08-24T14:36:23.690Z'
   pinyin-pro@3.29.4: '2026-09-11T07:49:12.561Z'
   playwright@1.63.0: '2026-09-04T22:45:21.732Z'

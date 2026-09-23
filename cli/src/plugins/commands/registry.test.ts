@@ -1,7 +1,7 @@
 import type { CommandTree } from './registry'
 import { describe, expect, it } from 'vite-plus/test'
 import { Command } from './command'
-import { findSuggestions, resolveCommand } from './registry'
+import { findSuggestions, mergeTrees, resolveCommand } from './registry'
 
 class FooCmd extends Command {
   async run() {
@@ -98,6 +98,32 @@ describe('resolveCommand', () => {
     const result = resolveCommand(tree, ['nested', 'unknown'])
     expect(result?.command).toBe(FooCmd)
     expect(result?.path).toEqual(['nested'])
+  })
+})
+
+describe('mergeTrees', () => {
+  const added: CommandTree = {
+    foo: {
+      subcommands: {
+        bar: { command: FooCmd, subcommands: {} },
+        extra: { command: FooCmd, subcommands: {} },
+      },
+    },
+    fresh: { command: FooCmd, subcommands: {} },
+  }
+
+  it('adds what is new, keeps the static on a collision and reports it', () => {
+    const { tree: merged, shadowed } = mergeTrees(tree, added)
+    expect(merged.foo?.subcommands.bar?.command).toBe(FooBarCmd)
+    expect(merged.foo?.subcommands.extra?.command).toBe(FooCmd)
+    expect(merged.fresh?.command).toBe(FooCmd)
+    expect(shadowed).toEqual(['foo.bar'])
+  })
+
+  it('leaves the base tree untouched', () => {
+    mergeTrees(tree, added)
+    expect(Object.keys(tree.foo?.subcommands ?? {})).toEqual(['bar', 'baz'])
+    expect(tree.fresh).toBeUndefined()
   })
 })
 

@@ -1,59 +1,59 @@
 ---
 name: difyctl
-description: 'Base skill for the difyctl CLI: find any command or Dify operation through help and run it through call. Use when the task involves difyctl or a Dify server from the command line.'
+description: 'Base skill for the difyctl CLI: find any command or Dify operation through help and run it as a command. Use when the task involves difyctl or a Dify server from the command line.'
 ---
 
 # difyctl
 
-difyctl talks to a Dify server. Business commands are not built in: the server publishes a catalog of operations and you discover them at run time. Every command prints JSON. Help is JSON too.
+difyctl talks to a Dify server. Business commands are not built in: the server publishes a catalog of operations, and each one is a command you discover at run time.
+
+Always pass `--json`. Help and errors are text on a terminal and JSON in a pipe; `--json` (or `DIFY_OUTPUT=json`) forces JSON. Results and streams are always JSON.
 
 ## Finding what the CLI can do
 
-Ids are trees. A static command is `<namespace> <verb>` (`cache refresh`). An operation is `<namespace>.<verb>`, and namespaces nest: `console_app.chat.run` is `run` inside `console_app.chat` inside `console_app`. Namespaces are derived from the ids the server publishes, and the server can add or rename them, so never assume an id: look it up.
+An operation id is dotted, `console_app.chat.run`, and is typed as words: `difyctl console_app chat run`. Ids come from the server and can change, so look them up instead of assuming them.
 
-Four views, all under `help`, all JSON, all covering static commands and server operations together:
+Four views under `help`, covering local commands and server operations as one tree:
 
-1. `difyctl help` prints the map: each top-level namespace with its verbs (commands) or its operation count and groups (operations). Start here.
-2. `difyctl help <namespace>` lists everything under one namespace, recursively: `id`, `summary`, `type` (`command` or `op`), and `kind` for operations. `difyctl help console_app`, `difyctl help console_app.dsl`.
-3. `difyctl help <words>` searches both sides by plain words and ranks the results: `difyctl help upload file`, `difyctl help chatbot`. Two or three words from the task are enough. The output is the top 20 entries plus `total`; widen the words or read the map when the candidates look wrong. Nothing matched is `{"entries": [], "total": 0}`.
-4. `difyctl help <id>` prints one command's or one operation's descriptor. For an operation that is `input` (a JSON Schema), `bind`, `kind`, `examples`, and `pins` (values difyctl fills in for you, currently `workspace_id`). `difyctl ops describe <op-id>` and `difyctl call <op-id> --help` print the same thing.
+1. `difyctl help --json`: the map. Start here.
+2. `difyctl help <namespace> --json`: everything under one namespace (`difyctl help console_app`). The bare namespace, `difyctl console_app --json`, prints the same.
+3. `difyctl help <words> --json`: search by plain words (`difyctl help upload file`), top 20 entries plus `total`. Widen the words when nothing fits.
+4. `difyctl help <id> --json`: one descriptor, dotted or spaced id. For an operation: `input` (JSON Schema), `bind`, `kind`, `examples` and `pins` (values difyctl fills in, currently `workspace_id`). `<command> --help` prints the same.
 
-Then `difyctl call <op-id> --input '<json>'` runs an operation. Output is one JSON object on stdout.
+`--all` adds operations the server marks internal. `--full` on the bare `help` prints every descriptor; rarely needed.
 
-`--all` on any help view includes operations the server marks internal. `--full` on the bare `help` prints the flat list of everything with each descriptor; it is long and rarely what you want. `difyctl ops` is that flat list for operations only.
+Not logged in, or the server unreachable, gives the local commands plus one line on stderr.
 
-Views that need operations fetch the catalog on first use. Not logged in, or the server unreachable, gives the static half plus one line on stderr.
+## Running an operation
 
-Run an app with the op for its mode: `console_app.workflow.run`, `console_app.chat.run`, `console_app.advanced_chat.run`, `console_app.completion.run`. First `call console_app.describe --input '{"app_id":"..."}'` and read `input_schema`; that is the shape of `inputs`.
+`difyctl console_app workflow run --app-id <id> --inputs '{"a":1}'`. Each top-level field of `input` is a flag, dashes for underscores. Scalars take a value; objects, maps and lists of objects take a JSON literal or `@file.json`; lists of scalars repeat the flag. Fields named `input`, `stream`, `only`, `output`, `verbose`, `json` or `help` have no flag; pass them through `--input`.
 
-## --input
+`--input '{"a":1}'`, `--input @file.json` or `--input @-` (stdin) sends the whole body; field flags merge over it. `difyctl call <id> --input '<json>'` runs an operation by its dotted id, for when you already hold the id.
 
-`--input '{"a":1}'` inline, `--input @file.json` from a file, `--input @-` from stdin. Local files go under `files`, keyed by the app's file variable name: `{"files":{"doc":"./r.pdf"}}` or a list of paths. Files for the run itself go under `attachments`. URLs go straight into `inputs`.
+Run an app with the op for its mode: `console_app workflow run`, `console_app chat run`, `console_app advanced_chat run`, `console_app completion run`. First `difyctl console_app describe --app-id <id> --json` and read `input_schema`; that is the shape of `inputs`. Local files go under `files`, keyed by the app's file variable name (`{"files":{"doc":"./r.pdf"}}` or a list of paths); files for the run itself under `attachments`; URLs straight into `inputs`.
 
-## Options (difyctl-only flags)
+## difyctl-only flags
 
-`--stream` prints every event of a streaming op as one JSON line instead of folding them into one result. `--only <event>` filters streamed events (repeatable). `--output <path>` saves a file-kind response; without it the file lands in the current directory under the server's filename, or `<op-id>.<ext>` when the server sent none. `--verbose` includes the raw server response in errors. An option the operation's kind does not support exits 2.
+`--stream` prints each event of a streaming op as one JSON line instead of folding them. `--only <event>` filters streamed events (repeatable). `--output <path>` saves a file-kind response; the default is the current directory under the server's filename, or `<op-id>.<ext>`. `--verbose` adds the raw server response to errors. A flag the operation's kind does not support exits 2.
 
 ## Reading results
 
-Streaming ops fold to `{status, text, outputs?, total_tokens?, message_id?, conversation_id?, error?, hints}`. `text` is an object: `text.answer` is the reply, and `text.by_source` appears only while `status` is `incomplete`. `status` is `ended`, `failed` (exit 1), `suspended` (a human-input form is waiting; follow `hints`), or `incomplete` (the stream broke early). Any response may carry `hints: [{summary, op, input, form?}]`, next steps the server filled in: the next page of a list, the confirm step of a pending import, the reply op of a chat, the submit of a paused form. Fill any `null` in `input`, then pass it back as `call <op> --input <input>`.
-
-## Other skills
-
-This file covers every operation through `help` and `call`. Scenario skills add guidance for one kind of task. `difyctl skills list` shows them. Install one with `difyctl skills install <skills root> --skill <name>`, where `<skills root>` is the folder this file's parent folder sits in.
+Streaming ops fold to `{status, text, outputs?, total_tokens?, message_id?, conversation_id?, error?, hints}`. `text.answer` is the reply; `text.by_source` appears only while `status` is `incomplete`. `status` is `ended`, `failed` (exit 1), `suspended` (a form is waiting; follow `hints`) or `incomplete` (the stream broke early). Any response may carry `hints: [{summary, op, input, form?}]`, the server's next steps: next page, confirm step, reply op, form submit. Fill any `null` in `input` and pass it back with `difyctl call <op> --input '<input>'`.
 
 ## Errors and exit codes
 
-Errors are one JSON line on stderr: `{"error":{"code","message","hint"?,"details"?,"schema"?}}`. Exit 2 is bad input (the schema is included), 4 is not logged in or forbidden, 6 means the catalog could not be loaded or the op id is unknown (run `difyctl cache refresh` or upgrade difyctl), 7 is rate limited.
+Errors are one envelope on stderr: `{"error":{"code","message","hint"?,"details"?,"schema"?}}`. Exit 2 is bad input (schema included), 4 not logged in or forbidden, 6 catalog unavailable or unknown op (run `difyctl cache refresh` or upgrade difyctl), 7 rate limited.
 
 ## Login and environment
 
-`difyctl login --server https://...` (device flow; `--no-browser` prints the URL and code; `--insecure` skips TLS verification). One login at a time; logging in again logs the previous one out. `difyctl workspace list` and `difyctl workspace use <id>` set the local pin. Scripts skip login with `DIFY_SERVER` and `DIFY_TOKEN`; `DIFY_WORKSPACE_ID` overrides the pin. `DIFY_CONFIG_DIR` and `DIFY_CACHE_DIR` move the files.
+`difyctl login --server https://...` (device flow; `--no-browser` prints the URL and code; `--insecure` skips TLS verification). One login at a time. `difyctl workspace use <id>` pins a workspace; `difyctl workspace list` shows them. Scripts skip login with `DIFY_SERVER` and `DIFY_TOKEN`; `DIFY_WORKSPACE_ID` overrides the pin; `DIFY_CONFIG_DIR` and `DIFY_CACHE_DIR` move the files.
+
+`login` blocks until the browser approval arrives. Run `difyctl login --server <url> --no-browser` as a background job, relay the `open <url>` and `code <code>` lines from its stderr to the user, and do not cancel the job. Its exit code reports the result.
 
 ## Destructive operations
 
-Operations that remove or revoke (member removal, session revoke) have no confirmation prompt. Confirm with the person before calling them.
+Operations that remove or revoke have no confirmation prompt. Confirm with the person first.
 
-## Keeping this file current
+## Other skills
 
-`difyctl skills install <skills root>` overwrites this file with the copy embedded in the installed difyctl. After upgrading difyctl, run it again with the same root.
+Scenario skills add guidance for one kind of task. `difyctl skills list` shows them; `difyctl skills install <skills root> --skill <name>` installs one, where `<skills root>` is the folder above this file's folder. `difyctl skills install <skills root>` also refreshes this file after upgrading difyctl.

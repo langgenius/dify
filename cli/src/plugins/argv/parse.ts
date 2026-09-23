@@ -1,8 +1,10 @@
 import type { JsonSchema } from '@/plugins/catalog'
+import type { ShapeNode } from '@/protocol/shape'
 import { z } from 'zod'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { isRecord } from '@/util/is-record'
+import { coerceFor, isRepeatable, propertiesOf, SHAPE, shapeOf, takesValue } from '@/protocol/shape'
+import { propertyFor } from '@/util/flag-name'
 
 export type ArgvSpec = {
   readonly positional: readonly string[]
@@ -18,60 +20,13 @@ const LONG_PREFIX = '--'
 const SHORT_PREFIX = '-'
 const END_OF_FLAGS = '--'
 const VALUE_SEPARATOR = '='
-const FLAG_WORD_SEPARATOR = '-'
-const PROPERTY_WORD_SEPARATOR = '_'
 
-const JsonType = {
-  String: 'string',
-  Integer: 'integer',
-  Number: 'number',
-  Boolean: 'boolean',
-  Array: 'array',
-} as const
-
-const BOOLEAN_LITERALS: Readonly<Record<string, boolean>> = { true: true, false: false }
-
-type Coercion = (raw: string) => unknown
-
-const KEEP_RAW: Coercion = (raw) => raw
-
-// `Number('')` and `Number(' ')` are 0, which would turn an empty flag value into a
-// number the caller never typed; blank stays raw so validation reports it.
-const toNumber: Coercion = (raw) => {
-  if (raw.trim() === '') return raw
-  const value = Number(raw)
-  return Number.isFinite(value) ? value : raw
-}
-
-// A value that does not fit its declared type is left as typed so validation, not
-// the parser, gets to report it.
-const COERCIONS: Readonly<Record<string, Coercion>> = {
-  [JsonType.Integer]: toNumber,
-  [JsonType.Number]: toNumber,
-  [JsonType.Boolean]: (raw) => BOOLEAN_LITERALS[raw] ?? raw,
-  [JsonType.String]: KEEP_RAW,
-}
+// A positional whose name has no matching schema property keeps the raw string —
+// there is no declared type to coerce it against.
+const UNKNOWN_PROPERTY_SHAPE: ShapeNode = { shape: SHAPE.String }
 
 function invalidFlag(message: string): BaseError {
   return new BaseError({ code: ErrorCode.UsageInvalidFlag, message })
-}
-
-function propertiesOf(schema: JsonSchema): Record<string, JsonSchema> {
-  return isRecord(schema.properties) ? (schema.properties as Record<string, JsonSchema>) : {}
-}
-
-function typeOf(property: JsonSchema | undefined): string | undefined {
-  return typeof property?.type === 'string' ? property.type : undefined
-}
-
-function itemTypeOf(property: JsonSchema): string | undefined {
-  return isRecord(property.items) && typeof property.items.type === 'string'
-    ? property.items.type
-    : undefined
-}
-
-function coerce(type: string | undefined, raw: string): unknown {
-  return (type === undefined ? KEEP_RAW : (COERCIONS[type] ?? KEEP_RAW))(raw)
 }
 
 function assign(
@@ -80,14 +35,14 @@ function assign(
   property: JsonSchema | undefined,
   raw: string,
 ): void {
-  if (property !== undefined && typeOf(property) === JsonType.Array) {
+  const node = property === undefined ? UNKNOWN_PROPERTY_SHAPE : shapeOf(property)
+  const value = coerceFor(node)(raw)
+  if (isRepeatable(node)) {
     const existing = target[key]
-    const values = Array.isArray(existing) ? existing : []
-    values.push(coerce(itemTypeOf(property), raw))
-    target[key] = values
+    target[key] = [...(Array.isArray(existing) ? existing : []), value]
     return
   }
-  target[key] = coerce(typeOf(property), raw)
+  target[key] = value
 }
 
 function splitFlag(token: string): { name: string; value: string | undefined } {
@@ -95,10 +50,6 @@ function splitFlag(token: string): { name: string; value: string | undefined } {
   const at = body.indexOf(VALUE_SEPARATOR)
   if (at === -1) return { name: body, value: undefined }
   return { name: body.slice(0, at), value: body.slice(at + 1) }
-}
-
-function propertyFor(name: string): string {
-  return name.split(FLAG_WORD_SEPARATOR).join(PROPERTY_WORD_SEPARATOR)
 }
 
 // Both help and validation describe what a caller may pass, so a defaulted property
@@ -126,7 +77,7 @@ export function partitionArgv(argv: readonly string[], schema: JsonSchema): Argv
       continue
     }
     matched.push(token)
-    const needsValue = typeOf(property) !== JsonType.Boolean && splitFlag(token).value === undefined
+    const needsValue = takesValue(shapeOf(property)) && splitFlag(token).value === undefined
     if (needsValue && index + 1 < argv.length) matched.push(argv[++index] as string)
   }
 
@@ -154,8 +105,9 @@ export function parseArgv(argv: readonly string[], spec: ArgvSpec): Record<strin
       const property = properties[key]
       if (property === undefined) throw invalidFlag(`unknown flag "${token}"`)
 
-      if (typeOf(property) === JsonType.Boolean) {
-        parsed[key] = value === undefined ? true : coerce(JsonType.Boolean, value)
+      const node = shapeOf(property)
+      if (!takesValue(node)) {
+        parsed[key] = value === undefined ? true : coerceFor(node)(value)
         continue
       }
 

@@ -1,3 +1,4 @@
+// Skipped: `workspace list` moved out of the tree; see docs/superpowers/specs/2026-09-22-difyctl-v2-human-output-design.md
 import type { TestWorld } from '@test/fixtures/kernel'
 import type { BaseError } from '@/errors/base'
 import { testContext } from '@test/fixtures/kernel'
@@ -10,7 +11,7 @@ afterEach(async () => {
   for (const w of worlds.splice(0)) await w.stop()
 })
 
-it('marks the pinned workspace, exactly one true', async () => {
+it.skip('marks the pinned workspace, exactly one true', async () => {
   const w = await testContext({ login: true, argv: ['workspace', 'list'] })
   worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
@@ -21,7 +22,7 @@ it('marks the pinned workspace, exactly one true', async () => {
   expect(pinned[0]?.id).toBe('ws-1')
 })
 
-it('a response with no data array is a server error, exit 1', async () => {
+it.skip('a response with no data array is a server error, exit 1', async () => {
   const w = await testContext({ login: true, argv: ['workspace', 'list'] })
   worlds.push(w)
   w.mock.setScenario('workspaces-malformed')

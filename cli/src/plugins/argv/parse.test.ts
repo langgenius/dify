@@ -67,3 +67,44 @@ it('an empty number value stays the string it was typed as, never 0', () => {
   expect(parseArgv(['--limit', ''], bare)).toEqual({ limit: '' })
   expect(parseArgv(['--limit', ' '], bare)).toEqual({ limit: ' ' })
 })
+
+it('a nullable boolean (anyOf [boolean, null]) is a switch, not a value-taking flag', () => {
+  const nullableBooleanSpec = {
+    positional: [],
+    schema: {
+      type: 'object',
+      properties: {
+        verbose: { anyOf: [{ type: 'boolean' }, { type: 'null' }], default: null },
+      },
+    },
+  }
+  expect(parseArgv(['--verbose'], nullableBooleanSpec)).toEqual({ verbose: true })
+})
+
+it('a map property coerces its JSON value to an object', () => {
+  const mapSpec = {
+    positional: [],
+    schema: {
+      type: 'object',
+      properties: {
+        inputs: { type: 'object', additionalProperties: { type: 'string' } },
+      },
+    },
+  }
+  expect(parseArgv(['--inputs', '{"a":1}'], mapSpec)).toEqual({ inputs: { a: 1 } })
+})
+
+it('repeated flags on an array of binary files collect into a string list', () => {
+  const attachmentsSpec = {
+    positional: [],
+    schema: {
+      type: 'object',
+      properties: {
+        attachments: { type: 'array', items: { type: 'string', format: 'binary' } },
+      },
+    },
+  }
+  expect(parseArgv(['--attachments', 'a', '--attachments', 'b'], attachmentsSpec)).toEqual({
+    attachments: ['a', 'b'],
+  })
+})

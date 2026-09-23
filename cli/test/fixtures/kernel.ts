@@ -10,6 +10,7 @@ import { Context } from '@/kernel/context'
 import { argv } from '@/plugins/argv'
 import { ENV } from '@/plugins/env'
 import { io, ioService } from '@/plugins/io'
+import { resolveOutput } from '@/plugins/output'
 import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
 import { bufferStreams } from '@/sys/io/streams'
@@ -28,6 +29,7 @@ export type TestWorldOptions = {
   readonly argv?: readonly string[]
   readonly env?: boolean
   readonly stdin?: string
+  readonly tty?: boolean
   /** Share another world's temp dir and mock instead of making new ones. */
   readonly reuseDirOf?: TestWorld
 }
@@ -90,8 +92,9 @@ export async function testContext(opts: TestWorldOptions): Promise<TestWorld> {
   if (opts.login) await writeFileLogin(mock.url)
 
   const streams = bufferStreams(opts.stdin ?? '')
+  streams.isOutTTY = streams.isErrTTY = opts.tty === true
   const overrides: Override[] = [
-    [io, ioService(streams)],
+    [io, ioService(streams, resolveOutput({ argv: opts.argv ?? [], env: {}, streams }))],
     [argv, opts.argv ?? []],
   ]
 

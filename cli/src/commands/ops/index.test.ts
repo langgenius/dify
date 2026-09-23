@@ -29,7 +29,7 @@ it('lists catalog ops sorted by id, internal hidden unless --all', async () => {
   )
 })
 
-it('root help reuses a cached catalog instead of fetching again', async () => {
+it('the help map reuses a cached catalog instead of fetching again', async () => {
   const w = await testContext({ login: true, argv: ['ops'] })
   worlds.push(w)
   await (await w.ctx.get(commands)).run()
@@ -38,6 +38,6 @@ it('root help reuses a cached catalog instead of fetching again', async () => {
   const w2 = await testContext({ login: true, argv: ['--help'], reuseDirOf: w })
   worlds.push(w2)
   await (await w2.ctx.get(commands)).run()
-  expect(Object.keys(JSON.parse(w2.io.outBuf()).ops).length).toBeGreaterThan(2)
+  expect(JSON.parse(w2.io.outBuf()).console_app.count).toBeGreaterThan(2)
   expect(w2.mock.requestCount).toBe(1)
 })

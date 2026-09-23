@@ -45,6 +45,7 @@
     "js-yaml": "catalog:",
     "lockfile": "catalog:",
     "open": "catalog:",
+    "picocolors": "catalog:",
     "undici": "catalog:",
     "zod": "catalog:"
   },

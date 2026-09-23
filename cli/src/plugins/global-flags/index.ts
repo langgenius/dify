@@ -7,6 +7,7 @@ import { inputSchema, parseArgv, partitionArgv } from '@/plugins/argv/parse'
 
 export const GLOBAL_INPUT = z.object({
   verbose: z.boolean().default(false).describe('Keep the raw server response in error envelopes'),
+  json: z.boolean().default(false).describe('Print JSON even on a terminal'),
 })
 
 export type GlobalFlags = z.infer<typeof GLOBAL_INPUT>

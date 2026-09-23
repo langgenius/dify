@@ -20,7 +20,7 @@ it('renders the row from the statics with a JSON Schema input', () => {
   const row = commandRow(Fake, ['fake', 'thing'])
   expect(row).toMatchObject({
     id: 'fake thing',
-    usage: 'difyctl fake thing <id> [options]',
+    usage: 'difyctl fake thing <id> [flags]',
     summary: 'Do a thing',
     effect: 'write',
     positional: ['id'],
@@ -34,4 +34,21 @@ it('renders the row from the statics with a JSON Schema input', () => {
       dry_run: { type: 'boolean', default: false },
     },
   })
+})
+
+class OverridesSchema extends Command {
+  static override summary = 'Custom schema'
+  static override schema() {
+    return { type: 'object', properties: { x: { type: 'string' } } }
+  }
+
+  async run() {
+    return undefined
+  }
+}
+
+it('renders the row from a static schema() override', () => {
+  const row = commandRow(OverridesSchema, ['custom'])
+  expect(row.input).toEqual({ type: 'object', properties: { x: { type: 'string' } } })
+  expect(row.usage).toMatch(/\[flags\]$/)
 })

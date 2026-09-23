@@ -11,14 +11,14 @@ export async function main(
   overrides: Iterable<Override> = [],
   ctx = new Context([...overrides, [argv, args]]),
 ): Promise<number> {
-  const { streams } = await ctx.get(io)
+  const ioService = await ctx.get(io)
   let code: number
   let verbose = false
   try {
     verbose = (await ctx.get(globalFlags)).flags.verbose
     code = await (await ctx.get(commands)).run()
   } catch (err) {
-    code = printEnvelope(err, streams, { verbose })
+    code = await printEnvelope(err, ioService, { verbose })
   } finally {
     for (const fn of [...ctx.deferred].reverse()) {
       try {

@@ -1,3 +1,4 @@
+// Skipped: `ops describe` moved out of the tree; see docs/superpowers/specs/2026-09-22-difyctl-v2-human-output-design.md
 import type { TestWorld } from '@test/fixtures/kernel'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
@@ -14,7 +15,7 @@ afterEach(async () => {
 })
 const printed = (w: TestWorld) => JSON.parse(w.io.outBuf())
 
-it('prints the catalog fields with a call usage line and the pinned workspace', async () => {
+it.skip('prints the catalog fields with a call usage line and the pinned workspace', async () => {
   const w = await world(['ops', 'describe', 'console_app.list'])
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(printed(w)).toMatchObject({
@@ -30,13 +31,13 @@ it('prints the catalog fields with a call usage line and the pinned workspace', 
   expect(w.mock.requestCount).toBe(1)
 })
 
-it('omits pins for an op whose schema takes no workspace_id', async () => {
+it.skip('omits pins for an op whose schema takes no workspace_id', async () => {
   const w = await world(['ops', 'describe', 'account.get'])
   await (await w.ctx.get(commands)).run()
   expect(printed(w)).not.toHaveProperty('pins')
 })
 
-it('refreshes a stale catalog once for an op it has not seen', async () => {
+it.skip('refreshes a stale catalog once for an op it has not seen', async () => {
   const w = await world(['ops'])
   await (await w.ctx.get(commands)).run()
   w.mock.setScenario('catalog-changed')
@@ -51,7 +52,7 @@ it('refreshes a stale catalog once for an op it has not seen', async () => {
 })
 
 // The catalog-v2 fixture's workspace.ping carries its own `id` and `usage` keys.
-it('keeps the CLI id and usage when the catalog op carries those keys', async () => {
+it.skip('keeps the CLI id and usage when the catalog op carries those keys', async () => {
   const w = await world(['ops'])
   await (await w.ctx.get(commands)).run()
   w.mock.setScenario('catalog-changed')
@@ -68,7 +69,7 @@ it('keeps the CLI id and usage when the catalog op carries those keys', async ()
   })
 })
 
-it('an unknown op is unknown_op with the ops hint', async () => {
+it.skip('an unknown op is unknown_op with the ops hint', async () => {
   const w = await world(['ops', 'describe', 'nope.op'])
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'unknown_op',

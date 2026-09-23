@@ -34,7 +34,7 @@ export default class Login extends Command<typeof INPUT> {
   static override input = INPUT
   static override examples = [
     {
-      title: 'Log in to a self-hosted server',
+      title: 'Agent: run in the background, relay the url and code to the user, do not cancel',
       input: { server: 'https://dify.example.com', no_browser: true },
     },
   ]
