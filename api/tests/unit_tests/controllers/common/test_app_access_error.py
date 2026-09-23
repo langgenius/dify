@@ -1,6 +1,7 @@
 import json
 from collections.abc import Callable, Iterator
 from typing import Literal
+from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
@@ -323,6 +324,85 @@ def test_success_and_non_404_errors_are_unchanged(prefix: str, status: int) -> N
     assert response.status_code == status
     assert response.get_json() == payload
     assert "Cache-Control" not in response.headers
+
+
+@pytest.mark.parametrize("path", ["/api/site", f"/console/api/apps/{APP_ID}"])
+@pytest.mark.parametrize("status", [200, 201, 204, 301, 302, 303, 304, 307, 308, 401, 500, 503])
+def test_non_candidate_statuses_do_not_parse_json(monkeypatch: pytest.MonkeyPatch, path: str, status: int) -> None:
+    body = b'{"code":"app_not_found","message":"unchanged","data":[1,2,3]}'
+    original = Response(body, status=status, mimetype="application/json")
+    parse = MagicMock(side_effect=AssertionError("Non-candidate response must not be parsed"))
+    monkeypatch.setattr(original, "get_json", parse)
+    app = _create_app(lambda: original)
+
+    with app.test_request_context(path):
+        response = app.full_dispatch_request()
+
+    assert response is original
+    assert response.status_code == status
+    assert response.data == body
+    assert "Cache-Control" not in response.headers
+    parse.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "status"),
+    [
+        (f"/console/api/apps/{APP_ID}", "GET", 400),
+        (f"/console/api/apps/{APP_ID}", "GET", 403),
+        ("/console/api/human-input-forms/files", "POST", 403),
+        ("/console/api/form/human_input/token", "GET", 404),
+        ("/api/chat-messages", "GET", 400),
+        ("/api/site", "POST", 400),
+        ("/api/form/human_input/token", "GET", 400),
+        ("/api/site", "GET", 403),
+        ("/api/chat-messages", "POST", 403),
+        ("/api/form/human_input/token", "GET", 403),
+        ("/api/human-input-forms/files", "POST", 404),
+    ],
+)
+def test_route_and_surface_ineligible_errors_do_not_parse_json(
+    monkeypatch: pytest.MonkeyPatch, path: str, method: str, status: int
+) -> None:
+    body = b'{"code":"app_not_found","message":"unchanged"}'
+    original = Response(body, status=status, mimetype="application/json")
+    parse = MagicMock(side_effect=AssertionError("Ineligible error must not be parsed"))
+    monkeypatch.setattr(original, "get_json", parse)
+    app = _create_app(lambda: original)
+
+    with app.test_request_context(path, method=method):
+        response = app.full_dispatch_request()
+
+    assert response is original
+    assert response.status_code == status
+    assert response.data == body
+    assert "Cache-Control" not in response.headers
+    parse.assert_not_called()
+
+
+@pytest.mark.parametrize("status", [200, 400, 403, 404])
+@pytest.mark.parametrize("direct_passthrough", [False, True])
+def test_candidate_and_success_streams_never_parse_or_consume_response(
+    monkeypatch: pytest.MonkeyPatch, status: int, direct_passthrough: bool
+) -> None:
+    consumed: list[bool] = []
+
+    def stream() -> Iterator[str]:
+        consumed.append(True)
+        yield '{"code":"app_not_found"}'
+
+    original = Response(stream(), status, mimetype="application/json", direct_passthrough=direct_passthrough)
+    parse = MagicMock(side_effect=AssertionError("Stream must not be parsed"))
+    monkeypatch.setattr(original, "get_json", parse)
+    app = _create_app(lambda: original)
+    with app.test_request_context("/api/site"):
+        response = app.full_dispatch_request()
+
+    assert response is original
+    assert response.status_code == status
+    assert "Cache-Control" not in response.headers
+    assert not consumed
+    parse.assert_not_called()
 
 
 def test_trial_forbidden_is_not_reclassified_as_missing_app() -> None:
