@@ -1,7 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SearchMenu } from '@/app/components/base/icons/src/vender/knowledge'
 
 type EmptySearchResultProps = {
   onResetKeywords: () => void
@@ -16,7 +15,10 @@ const EmptySearchResult = ({
 
   return (
     <div className="flex size-full flex-col items-center justify-center gap-y-2 rounded-[10px] bg-background-section p-6">
-      <SearchMenu className="size-8 text-text-tertiary" />
+      <span
+        aria-hidden
+        className="i-custom-vender-knowledge-search-menu size-8 text-text-tertiary"
+      />
       <div className="system-sm-regular text-text-secondary">
         {t(($) => $['onlineDrive.emptySearchResult'], { ns: 'datasetPipeline' })}
       </div>

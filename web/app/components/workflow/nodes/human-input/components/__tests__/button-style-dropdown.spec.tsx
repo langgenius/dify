@@ -51,6 +51,21 @@ describe('ButtonStyleDropdown', () => {
     expect(onChange).toHaveBeenCalledWith(UserActionButtonType.Primary)
   })
 
+  it('opens from the named keyboard trigger and closes with Escape', async () => {
+    const user = userEvent.setup()
+    render(
+      <ButtonStyleDropdown text="Approve" data={UserActionButtonType.Ghost} onChange={onChange} />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'nodes.humanInput.userActions.chooseStyle' })
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('should keep the dropdown closed in readonly mode', async () => {
     const user = userEvent.setup()
     render(
@@ -62,9 +77,7 @@ describe('ButtonStyleDropdown', () => {
       />,
     )
 
-    const trigger = screen.getByRole('button', {
-      name: 'nodes.humanInput.userActions.chooseStyle',
-    })
+    const trigger = screen.getByRole('button', { name: 'nodes.humanInput.userActions.chooseStyle' })
     expect(trigger).toBeDisabled()
     await user.click(trigger)
 

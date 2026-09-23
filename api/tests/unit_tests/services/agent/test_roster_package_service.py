@@ -4,18 +4,23 @@ import hashlib
 import io
 import zipfile
 from collections.abc import Callable, Generator
+from uuid import UUID
 
 import pytest
 import yaml
 from flask import Flask, send_file
 from pydantic import ValidationError
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from configs import dify_config
 from models.agent import (
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentKind,
     AgentScope,
@@ -30,12 +35,14 @@ from models.tools import ToolFile
 from services.agent import roster_package_exporter as roster_package_exporter_module
 from services.agent.dsl_entities import AgentAppDsl, AgentPackage, AgentPackageMetadata, make_agent_app_dsl
 from services.agent.errors import (
+    AgentVersionNotFoundError,
     InvalidRosterAgentPackageError,
     RosterAgentPackageExportFailedError,
     RosterAgentPackageImportFailedError,
     RosterAgentPackageResourceUnavailableError,
     RosterAgentPackageTooLargeError,
 )
+from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
@@ -631,23 +638,22 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
     with pytest.raises(RosterAgentPackageTooLargeError, match="nested Skill contents"):
         RosterAgentPackageReader().read(io.BytesIO(package))
 
-    exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage(skill_payloads))
+    exporter = RosterAgentPackageExporter()
+    resources = AgentPackageResourceExporter(storage_backend=_MemoryStorage(skill_payloads))
     sources = [
-        roster_package_exporter_module._SkillSource(
+        _SkillSource(
             path=item.path,
             storage_key=item.path,
             id=item.id,
             scope=item.scope,
             name=item.name,
-            display_name=None,
-            description="Research skill.",
-            priority=None,
             audit_ref="source",
         )
         for item in manifest.skills
     ]
+    resources.sources["agent_1"] = (sources, list[_FileSource]())
     with pytest.raises(RosterAgentPackageTooLargeError, match="nested Skill contents"):
-        exporter._build_archive(app=_package_app(soul), skill_sources=sources, file_sources=[])
+        exporter._build_archive(app=_package_app(soul), resources=resources)
 
 
 @pytest.mark.parametrize("failure", ["checksum", "size", "name", "crc"])
@@ -720,22 +726,21 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
     payload = _zip({"README.md": b"missing skill manifest"}) if case == "missing_manifest" else _skill_archive("other")
     if case == "size_limit":
         apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
-    source = roster_package_exporter_module._SkillSource(
+    source = _SkillSource(
         path="s_000001.zip",
         storage_key="skill",
         id="s_000001",
         scope="agent_config",
         name="research",
-        display_name=None,
-        description="Research skill.",
-        priority=None,
         audit_ref="source",
     )
     app = _package_app()
     app.package.soul.config_files = []
-    exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage({"skill": payload}))
+    exporter = RosterAgentPackageExporter()
+    resources = AgentPackageResourceExporter(storage_backend=_MemoryStorage({"skill": payload}))
+    resources.sources["agent_1"] = ([source], list[_FileSource]())
     with pytest.raises(error_type, match=message):
-        exporter._build_archive(app=app, skill_sources=[source], file_sources=[])
+        exporter._build_archive(app=app, resources=resources)
 
 
 @pytest.mark.parametrize("max_bytes", [0, 8])
@@ -922,7 +927,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     app_model = sqlite_session.get(App, agent.app_id)
     assert app_model is not None
     standalone_dsl = yaml.safe_load(AppDslService.export_dsl(app_model, session=sqlite_session))
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         archive_bytes = exported.archive.read()
         assert exported.filename == "research-agent.ifpkg"
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
@@ -995,38 +1000,49 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     max_entries = dify_config.AGENT_PACKAGE_MAX_ENTRIES
     max_manifest_bytes = dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=4)
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         with zipfile.ZipFile(exported.archive) as archive:
             assert len(archive.infolist()) == 4
 
     reads_before_limit_check = storage.read_count
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=3)
     with pytest.raises(RosterAgentPackageTooLargeError):
-        exporter.export(tenant_id="tenant-1", agent_id=agent.id)
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None)
     assert storage.read_count == reads_before_limit_check
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=max_entries)
 
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_MANIFEST_BYTES=1)
     with pytest.raises(RosterAgentPackageTooLargeError):
-        exporter.export(tenant_id="tenant-1", agent_id=agent.id)
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None)
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_MANIFEST_BYTES=max_manifest_bytes)
 
     file_bytes_before_limit_check = storage.bytes_yielded["tools/guide.pdf"]
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_BYTES=len(skill_payload) + 1)
     with pytest.raises(RosterAgentPackageTooLargeError):
-        exporter.export(tenant_id="tenant-1", agent_id=agent.id)
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None)
     assert storage.bytes_yielded["tools/guide.pdf"] - file_bytes_before_limit_check == 7
 
 
 def test_export_uses_current_workspace_skill_bindings(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    sqlite_engine: Engine,
 ) -> None:
+    monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
     workspace_payload = _skill_archive("legacy-published")
     storage = _MemoryStorage({"tools/workspace.zip": workspace_payload})
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+
+    def load_legacy_skill(*, tenant_id: str, file_id: str) -> bytes:
+        assert tenant_id == "tenant-1"
+        assert file_id
+        assert pool.checkedout() == 0
+        return workspace_payload
+
     monkeypatch.setattr(
         "services.skill_management_service.SkillManagementService._load_tool_file_bytes",
-        staticmethod(lambda **_kwargs: workspace_payload),
+        staticmethod(load_legacy_skill),
     )
     archive_file = ToolFile(
         user_id="account-1",
@@ -1109,7 +1125,7 @@ def test_export_uses_current_workspace_skill_bindings(
         storage_backend=storage,
         dependency_provider=lambda _tenant_id, _dependencies: [],
     )
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert len(prepared.manifest.skills) == 1
             assert prepared.manifest.skills[0].scope == "workspace"
@@ -1143,10 +1159,104 @@ def test_export_uses_current_workspace_skill_bindings(
     sqlite_session.add(draft)
     sqlite_session.commit()
 
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
         with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert prepared.apps["app.yaml"].package.soul.prompt.system_prompt == "current draft"
             assert prepared.manifest.skills == []
+
+    historical_version_id = UUID(snapshot.id)
+    active_snapshot = AgentConfigSnapshot(
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        version=2,
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "current published"}}),
+        created_by="account-1",
+    )
+    sqlite_session.add(active_snapshot)
+    sqlite_session.flush()
+    agent.active_config_snapshot_id = active_snapshot.id
+    sqlite_session.add(
+        AgentConfigRevision(
+            tenant_id="tenant-1",
+            agent_id=agent.id,
+            current_snapshot_id=str(historical_version_id),
+            revision=1,
+            operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+            created_by="account-1",
+        )
+    )
+    sqlite_session.commit()
+
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=historical_version_id) as exported:
+        with RosterAgentPackageReader().read(exported.archive) as prepared:
+            assert prepared.apps["app.yaml"].package.soul.prompt.system_prompt == ""
+            assert prepared.manifest.skills[0].name == "legacy-published"
+            assert prepared.apps["app.yaml"].package.workspace_skills[0].priority == 0
+
+    app_model = sqlite_session.get(App, agent.app_id)
+    assert app_model is not None
+    dsl = AgentAppDsl.model_validate(
+        yaml.safe_load(AppDslService.export_dsl(app_model, session=sqlite_session, version_id=historical_version_id))
+    )
+    assert dsl.package.soul.prompt.system_prompt == ""
+    assert len(dsl.package.workspace_skills) == 1
+    assert dsl.package.workspace_skills[0].priority == 0
+
+
+@pytest.mark.parametrize("source", ["missing", "other_tenant", "other_agent", "internal_snapshot"])
+@pytest.mark.parametrize("export_format", ["ifpkg", "yaml"])
+def test_export_rejects_unavailable_agent_versions(sqlite_session: Session, source: str, export_format: str) -> None:
+    app_model = _app("44444444-4444-4444-8444-444444444444")
+    agent = Agent(
+        tenant_id="tenant-1",
+        name="Agent",
+        description="",
+        role="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        app_id=app_model.id,
+        backing_app_id=app_model.id,
+        status=AgentStatus.ACTIVE,
+        created_by="account-1",
+        updated_by="account-1",
+    )
+    agent.id = "55555555-5555-4555-8555-555555555555"
+    version_id = UUID("66666666-6666-4666-8666-666666666666")
+    sqlite_session.add_all([app_model, agent])
+    if source != "missing":
+        snapshot = AgentConfigSnapshot(
+            id=str(version_id),
+            tenant_id="other-tenant" if source == "other_tenant" else agent.tenant_id,
+            agent_id="other-agent" if source == "other_agent" else agent.id,
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+            created_by="account-1",
+        )
+        sqlite_session.add_all(
+            [
+                snapshot,
+                AgentConfigRevision(
+                    tenant_id=snapshot.tenant_id,
+                    agent_id=snapshot.agent_id,
+                    current_snapshot_id=snapshot.id,
+                    revision=1,
+                    operation=(
+                        AgentConfigRevisionOperation.CREATE_VERSION
+                        if source == "internal_snapshot"
+                        else AgentConfigRevisionOperation.PUBLISH_DRAFT
+                    ),
+                ),
+            ]
+        )
+    sqlite_session.commit()
+
+    if export_format == "ifpkg":
+        with pytest.raises(AgentVersionNotFoundError):
+            RosterAgentPackageExporter().export(tenant_id=agent.tenant_id, agent_id=agent.id, version_id=version_id)
+    else:
+        with pytest.raises(AgentVersionNotFoundError):
+            AppDslService.export_dsl(app_model, session=sqlite_session, version_id=version_id)
 
 
 def test_manifest_yaml_is_strict() -> None:
@@ -1224,9 +1334,9 @@ def test_member_read_reports_closed_prepared_archive() -> None:
 
 
 def test_export_download_closes_owned_archive(app: Flask) -> None:
-    exported = RosterAgentPackageExporter()._build_archive(
-        app=_package_app(AgentSoulConfig()), skill_sources=[], file_sources=[]
-    )
+    resources = AgentPackageResourceExporter()
+    resources.sources["agent_1"] = (list[_SkillSource](), list[_FileSource]())
+    exported = RosterAgentPackageExporter()._build_archive(app=_package_app(AgentSoulConfig()), resources=resources)
     with app.test_request_context("/"):
         response = send_file(
             exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
@@ -1259,7 +1369,7 @@ def test_export_preserves_file_metadata_in_dsl(
 
     from models.model import UploadFile
 
-    exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage({}))
+    exporter = AgentPackageResourceExporter(storage_backend=_MemoryStorage({}))
     tool_file = ToolFile(
         user_id="account-1",
         tenant_id="tenant-1",

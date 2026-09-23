@@ -8,7 +8,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
@@ -22,13 +21,10 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { toast } from '@/app/notifications'
 import { getDocDownloadUrl } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
-import Gdpr from '../../base/icons/src/public/common/Gdpr'
-import Iso from '../../base/icons/src/public/common/Iso'
-import Soc2 from '../../base/icons/src/public/common/Soc2'
-import SparklesSoft from '../../base/icons/src/public/common/SparklesSoft'
 import PremiumBadge from '../../base/premium-badge'
 import { MenuItemContent } from './menu-item-content'
 
@@ -57,7 +53,10 @@ function ComplianceDocActionVisual({
 }: ComplianceDocActionVisualProps) {
   if (isCurrentPlanCanDownload) {
     return (
-      <span data-disabled={isPending || undefined} className={buttonVariants({ size: 'small' })}>
+      <span
+        data-disabled={isPending || undefined}
+        className={buttonVariants({ size: 'small', className: 'shrink-0' })}
+      >
         <span
           aria-hidden
           className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled"
@@ -83,9 +82,9 @@ function ComplianceDocActionVisual({
         disabled={!canShowUpgradeTooltip}
         render={
           <PremiumBadge color="blue" allowHover={true}>
-            <SparklesSoft
+            <span
               aria-hidden="true"
-              className="flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+              className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
             />
             <div className="px-1 system-xs-medium">{upgradeText}</div>
           </PremiumBadge>
@@ -202,22 +201,22 @@ export default function Compliance() {
       <DropdownMenuSubContent className="w-84.25 divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
         <DropdownMenuGroup className="py-1">
           <ComplianceDocRowItem
-            icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
+            icon={<span aria-hidden className="i-custom-public-common-soc2 size-7 shrink-0" />}
             label={t(($) => $['compliance.soc2Type1'], { ns: 'common' })}
             docName={DocName.SOC2_Type_I}
           />
           <ComplianceDocRowItem
-            icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
+            icon={<span aria-hidden className="i-custom-public-common-soc2 size-7 shrink-0" />}
             label={t(($) => $['compliance.soc2Type2'], { ns: 'common' })}
             docName={DocName.SOC2_Type_II}
           />
           <ComplianceDocRowItem
-            icon={<Iso aria-hidden className="size-7 shrink-0" />}
+            icon={<span aria-hidden className="i-custom-public-common-iso size-7 shrink-0" />}
             label={t(($) => $['compliance.iso27001'], { ns: 'common' })}
             docName={DocName.ISO_27001}
           />
           <ComplianceDocRowItem
-            icon={<Gdpr aria-hidden className="size-7 shrink-0" />}
+            icon={<span aria-hidden className="i-custom-public-common-gdpr size-7 shrink-0" />}
             label={t(($) => $['compliance.gdpr'], { ns: 'common' })}
             docName={DocName.GDPR}
           />

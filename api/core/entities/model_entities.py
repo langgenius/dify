@@ -116,3 +116,9 @@ class DefaultModelEntity(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
+
+class DefaultModelSetting(BaseModel):
+    model_type: ModelType
+    provider: str
+    model: str

@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type InputProps = {
   value?: string
@@ -29,11 +28,11 @@ const Input: FC<InputProps> = ({
   const toLimit = (v: string) => {
     const minNum = Number.parseFloat(`${min}`)
     const maxNum = Number.parseFloat(`${max}`)
-    if (!isNaN(minNum) && Number.parseFloat(v) < minNum) {
+    if (!Number.isNaN(minNum) && Number.parseFloat(v) < minNum) {
       onChange(`${min}`)
       return
     }
-    if (!isNaN(maxNum) && Number.parseFloat(v) > maxNum) onChange(`${max}`)
+    if (!Number.isNaN(maxNum) && Number.parseFloat(v) > maxNum) onChange(`${max}`)
   }
 
   return (
@@ -54,7 +53,10 @@ const Input: FC<InputProps> = ({
       />
       {validated && (
         <div className="absolute top-2.5 right-2.5">
-          <CheckCircle className="h-4 w-4 text-[#039855]" />
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-general-check-circle h-4 w-4 text-[#039855]"
+          />
         </div>
       )}
     </div>

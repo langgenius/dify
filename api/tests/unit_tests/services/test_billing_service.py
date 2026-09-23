@@ -15,14 +15,15 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 
 import json
 import logging
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, call, patch
 
 import httpx
 import pytest
+import tenacity
 from werkzeug.exceptions import InternalServerError
 
 from enums import CloudPlan
-from models import Account, Tenant
 from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
@@ -31,15 +32,6 @@ from services.errors.billing import (
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
-
-
-def _account(*, account_id: str = ACCOUNT_ID, email: str = "user@example.com", tenant_id: str = TENANT_ID) -> Account:
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = tenant_id
-    account = Account(name="Test User", email=email)
-    account.id = account_id
-    account._current_tenant = tenant
-    return account
 
 
 class TestBillingServiceSendRequest:
@@ -296,7 +288,24 @@ class TestBillingServiceSendRequest:
             assert "Unable to process delete request" in str(exc_info.value)
             assert "DELETE response" in caplog.text
 
-    def test_retry_on_request_error(self, mock_httpx_request, mock_billing_config):
+    @pytest.fixture
+    def retry_sleep(self, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+        """Advance a virtual clock while retaining the production retry policy."""
+        elapsed = 0.0
+
+        def advance(seconds: float) -> None:
+            nonlocal elapsed
+            elapsed += seconds
+
+        sleep = MagicMock(side_effect=advance)
+        # Replace tenacity's module reference, not the process-wide time module.
+        monkeypatch.setattr(tenacity, "time", SimpleNamespace(monotonic=lambda: elapsed))
+        monkeypatch.setattr("services.billing_service.BillingService._send_request.retry.sleep", sleep)
+        return sleep
+
+    def test_retry_on_request_error(
+        self, mock_httpx_request: MagicMock, mock_billing_config: None, retry_sleep: MagicMock
+    ) -> None:
         """Test that _send_request retries on httpx.RequestError."""
         # Arrange
         expected_response = {"result": "success"}
@@ -316,8 +325,11 @@ class TestBillingServiceSendRequest:
         # Assert
         assert result == expected_response
         assert mock_httpx_request.call_count == 2
+        retry_sleep.assert_called_once_with(2)
 
-    def test_retry_exhausted_raises_exception(self, mock_httpx_request, mock_billing_config):
+    def test_retry_exhausted_raises_exception(
+        self, mock_httpx_request: MagicMock, mock_billing_config: None, retry_sleep: MagicMock
+    ) -> None:
         """Test that _send_request raises exception after retries are exhausted."""
         # Arrange
         mock_httpx_request.side_effect = httpx.RequestError("Network error")
@@ -326,8 +338,9 @@ class TestBillingServiceSendRequest:
         with pytest.raises(httpx.RequestError):
             BillingService._send_request("GET", "/test")
 
-        # Should retry multiple times (wait=2, stop_before_delay=10 means ~5 attempts)
-        assert mock_httpx_request.call_count > 1
+        # The next two-second wait would reach the ten-second stop boundary.
+        assert mock_httpx_request.call_count == 5
+        assert retry_sleep.call_args_list == [call(2)] * 4
 
 
 class TestBillingServicePortalRequest:
@@ -1547,7 +1560,7 @@ class TestBillingServiceSubscriptionOperations:
         }
 
         # Second chunk fails - need to create a mock that raises when called
-        def side_effect_func(*args, **kwargs):
+        def side_effect_func[**P](*args: P.args, **kwargs: P.kwargs):
             if mock_send_request.call_count == 1:
                 return first_chunk_response
             else:
@@ -1571,7 +1584,7 @@ class TestBillingServiceSubscriptionOperations:
         tenant_ids = [f"tenant-{i}" for i in range(250)]
 
         # All chunks fail
-        def side_effect_func(*args, **kwargs):
+        def side_effect_func[**P](*args: P.args, **kwargs: P.kwargs):
             raise ValueError("API error")
 
         mock_send_request.side_effect = side_effect_func

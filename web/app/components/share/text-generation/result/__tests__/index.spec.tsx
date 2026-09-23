@@ -45,7 +45,7 @@ vi.mock('react-i18next', async (importOriginal) => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: (...args: unknown[]) => notifyMock(...args),
 }))
 
@@ -175,7 +175,7 @@ describe('Result', () => {
     )
 
     expect(sendCompletionMessageMock).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeTruthy()
 
     await act(async () => {
       completionHandlers?.onData('Hello', false, {

@@ -107,13 +107,6 @@ describe('ExternalKnowledgeSection', () => {
       expect(screen.getByText('https://api.external.example.com/v1')).toBeInTheDocument()
     })
 
-    it('should render API connection icon', () => {
-      const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
-      // The ApiConnectionMod icon should be rendered
-      const icon = container.querySelector('svg')
-      expect(icon).toBeInTheDocument()
-    })
-
     it('should display API name and endpoint in the same row', () => {
       render(<ExternalKnowledgeSection {...defaultProps} />)
 

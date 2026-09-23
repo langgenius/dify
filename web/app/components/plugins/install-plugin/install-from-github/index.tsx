@@ -8,11 +8,11 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import { toast } from '@/app/notifications'
 import { InstallStepFromGitHub } from '../../types'
 import Installed from '../base/installed'
 import { fetchReleases } from '../hooks'
@@ -171,6 +171,16 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
     })
   }
 
+  const completedSteps: InstallStepFromGitHub[] = [
+    InstallStepFromGitHub.uploadFailed,
+    InstallStepFromGitHub.installed,
+    InstallStepFromGitHub.installFailed,
+  ]
+  const failedSteps: InstallStepFromGitHub[] = [
+    InstallStepFromGitHub.uploadFailed,
+    InstallStepFromGitHub.installFailed,
+  ]
+
   return (
     <Dialog
       open
@@ -207,26 +217,15 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
               {getTitle()}
             </DialogTitle>
             <div className="self-stretch system-xs-regular text-text-tertiary">
-              {![
-                InstallStepFromGitHub.uploadFailed,
-                InstallStepFromGitHub.installed,
-                InstallStepFromGitHub.installFailed,
-              ].includes(state.step) &&
+              {!completedSteps.includes(state.step) &&
                 t(($) => $['installFromGitHub.installNote'], { ns: 'plugin' })}
             </div>
           </div>
         </div>
-        {[
-          InstallStepFromGitHub.uploadFailed,
-          InstallStepFromGitHub.installed,
-          InstallStepFromGitHub.installFailed,
-        ].includes(state.step) ? (
+        {completedSteps.includes(state.step) ? (
           <Installed
             payload={manifest}
-            isFailed={[
-              InstallStepFromGitHub.uploadFailed,
-              InstallStepFromGitHub.installFailed,
-            ].includes(state.step)}
+            isFailed={failedSteps.includes(state.step)}
             errMsg={errorMsg}
             installContextCategory={installContextCategory}
             onCancel={onClose}

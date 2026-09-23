@@ -18,8 +18,8 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/i18n-config/metadata', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/i18n-config/metadata')>()),
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   renderI18nObject: (obj: Record<string, string>, locale: string) => {
     return obj?.[locale] || obj?.['en-US'] || ''
   },
@@ -73,27 +73,6 @@ vi.mock('@/app/components/base/app-icon', () => ({
       data-icon-type={iconType}
     >
       {!!innerIcon && <div data-testid="inner-icon">{innerIcon}</div>}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/other', () => ({
-  Mcp: ({ className }: { className?: string }) => (
-    <div data-testid="mcp-icon" className={className}>
-      MCP
-    </div>
-  ),
-  Group: ({ className }: { className?: string }) => (
-    <div data-testid="group-icon" className={className}>
-      Group
-    </div>
-  ),
-}))
-
-vi.mock('../../../base/icons/src/vender/plugin', () => ({
-  LeftCorner: ({ className }: { className?: string }) => (
-    <div data-testid="left-corner" className={className}>
-      LeftCorner
     </div>
   ),
 }))

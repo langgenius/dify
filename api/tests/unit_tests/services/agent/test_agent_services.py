@@ -37,11 +37,11 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.enums import AppStatus, ConversationFromSource, ConversationStatus
+from models.enums import ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
@@ -66,6 +66,7 @@ from services.entities.agent_entities import (
     ComposerSaveStrategy,
     ComposerVariant,
 )
+from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_workflow
 
 
 def _agent_soul_with_model() -> AgentSoulConfig:
@@ -124,14 +125,13 @@ def _snapshot(
 
 
 def _conversation(*, conversation_id: str = "conversation-1", account_id: str = "account-1") -> Conversation:
-    return Conversation(
-        id=conversation_id,
-        app_id="app-1",
-        override_model_configs="{}",
+    return make_conversation(
+        conversation_id=conversation_id,
         mode=AppMode.AGENT_CHAT,
         name="Debug",
+        inputs={},
+        override_model_configs="{}",
         summary="",
-        _inputs={},
         introduction="",
         system_instruction="",
         status=ConversationStatus.NORMAL,
@@ -142,19 +142,7 @@ def _conversation(*, conversation_id: str = "conversation-1", account_id: str = 
 
 
 def _workflow(*, workflow_id: str = "workflow-1", tenant_id: str = "tenant-1", app_id: str = "app-1") -> Workflow:
-    return Workflow(
-        id=workflow_id,
-        tenant_id=tenant_id,
-        app_id=app_id,
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph='{"nodes": [], "edges": []}',
-        _features="{}",
-        created_by="account-1",
-        _environment_variables="{}",
-        _conversation_variables="{}",
-        _rag_pipeline_variables="{}",
-    )
+    return make_workflow(workflow_id=workflow_id, tenant_id=tenant_id, app_id=app_id)
 
 
 def _app(
@@ -164,27 +152,20 @@ def _app(
     name: str = "Agent App",
     mode: AppMode = AppMode.AGENT_CHAT,
 ) -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name=name,
-        description="",
         mode=mode,
-        icon_type=IconType.EMOJI,
         icon="🤖",
         icon_background="#fff",
-        status=AppStatus.NORMAL,
         enable_site=False,
-        enable_api=True,
-        max_active_requests=None,
         created_by="account-1",
     )
 
 
 def _account(*, account_id: str = "account-1") -> Account:
-    account = Account(name="Agent Tester", email=f"{account_id}@example.com")
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Agent Tester", email=f"{account_id}@example.com")
 
 
 def test_agent_soul_has_model():
@@ -1162,6 +1143,8 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
         account_id="account-1",
     )
 
+    assert first["publication_kind"] == "first"
+    assert second["publication_kind"] == "update"
     assert first["active_config_snapshot_id"] == "version-2"
     assert second["active_config_snapshot_id"] == "version-3"
     assert published_homes == ["home-1", "home-1"]
@@ -2667,7 +2650,18 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
         binding_type=WorkflowAgentBindingType.INLINE_AGENT,
         agent_id="inline-agent-1",
         current_snapshot_id="inline-version-1",
+        node_job_config=WorkflowNodeJobConfig.model_validate(
+            {
+                "workflow_prompt": "use prior output",
+                "declared_outputs": [{"name": "summary", "type": "string"}],
+                "output_routes": {
+                    "enabled": True,
+                    "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
+                },
+            }
+        ),
     )
+    original_node_job = binding.node_job_config_dict
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW.value,
@@ -2680,7 +2674,6 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
                 },
                 "prompt": {"system_prompt": "new"},
             },
-            "node_job": {"workflow_prompt": "use prior output"},
         }
     )
 
@@ -2696,7 +2689,7 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
     )
 
     assert updated_binding.current_snapshot_id == "inline-version-2"
-    assert updated_binding.node_job_config_dict["workflow_prompt"] == "use prior output"
+    assert updated_binding.node_job_config_dict == original_node_job
     assert updated_binding.updated_by == "account-1"
     assert inline_agent.active_config_snapshot_id == "inline-version-2"
     assert inline_agent.active_config_has_model is True
@@ -7010,3 +7003,40 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
         AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
         == "agent-7"
     )
+
+
+def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch):
+    job = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Keep this task",
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
+            },
+        }
+    )
+    binding = WorkflowAgentNodeBinding(agent_id="old-agent", current_snapshot_id="old-snapshot", node_job_config=job)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_create_roster_agent_for_composer",
+        lambda **kwargs: Agent(id="new-agent", active_config_snapshot_id="new-snapshot"),
+    )
+    monkeypatch.setattr(
+        "services.agent.composer_service.SkillManagementService.copy_agent_bindings", lambda self, **kwargs: None
+    )
+    result = AgentComposerService._save_as_new_agent(
+        session=MagicMock(spec=Session),
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        account_id="account-1",
+        binding=binding,
+        payload=ComposerSavePayload(
+            variant=ComposerVariant.WORKFLOW,
+            save_strategy=ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
+            agent_soul=AgentSoulConfig(),
+        ),
+    )
+    assert result.agent_id == "new-agent"
+    assert result.node_job_config_dict == job.model_dump(mode="json")

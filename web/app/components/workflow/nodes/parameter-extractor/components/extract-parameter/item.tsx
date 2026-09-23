@@ -4,7 +4,6 @@ import type { Param } from '../../types'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
@@ -21,7 +20,10 @@ const Item: FC<Props> = ({ payload, onEdit, onDelete }) => {
     <div className="group relative rounded-lg bg-components-input-bg-normal px-2.5 py-2 hover:shadow-xs">
       <div className="flex justify-between">
         <div className="flex items-center">
-          <Variable02 className="size-3.5 text-text-accent-secondary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-development-variable-02 size-3.5 text-text-accent-secondary"
+          />
           <div className="ml-1 text-[13px] font-medium text-text-primary">{payload.name}</div>
           <div className="ml-2 text-xs font-normal text-text-tertiary capitalize">
             {payload.type}

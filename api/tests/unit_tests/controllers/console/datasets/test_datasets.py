@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
+from controllers.common.rbac import DatasetId, Workspace
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets import (
@@ -38,6 +39,7 @@ from controllers.console.datasets.datasets import (
     _get_retrieval_methods_by_vector_type,
 )
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from controllers.console.wraps import RBACPermission
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
@@ -1117,6 +1119,49 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
             "dataset_id": None,
         }
 
+    @pytest.mark.parametrize(
+        ("dataset_id", "expected_scene", "expected_locator_type", "expected_path_args"),
+        [
+            ("dataset-1", RBACPermission.DATASET_USE, DatasetId, {"dataset_id": "dataset-1"}),
+            (None, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace, None),
+        ],
+    )
+    def test_post_authorizes_existing_and_new_dataset_workflows(
+        self,
+        app: Flask,
+        dataset_id: str | None,
+        expected_scene: RBACPermission,
+        expected_locator_type: type[DatasetId] | type[Workspace],
+        expected_path_args: dict[str, str] | None,
+    ) -> None:
+        api = DatasetIndexingEstimateApi()
+        method = unwrap(api.post)
+        payload = {**self._base_payload(), "dataset_id": dataset_id}
+        session = self.session
+        session.add(self._upload_file())
+        session.flush()
+        current_user = make_account()
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
+            patch(
+                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
+                return_value=IndexingEstimate(total_segments=1, preview=[]),
+            ),
+            patch("controllers.console.datasets.datasets.enforce_rbac_checks", create=True) as enforce_checks,
+        ):
+            method(api, IndexingEstimatePayload(**payload), session, "tenant-1", current_user)
+
+        enforce_checks.assert_called_once()
+        kwargs = enforce_checks.call_args.kwargs
+        assert kwargs["tenant_id"] == "tenant-1"
+        assert kwargs["account_id"] == current_user.id
+        assert kwargs.get("path_args") == expected_path_args
+        [check] = kwargs["checks"]
+        assert check.scene is expected_scene
+        assert isinstance(check.locator, expected_locator_type)
+
     def test_post_success_upload_file(self, app: Flask):
         api = DatasetIndexingEstimateApi()
         method = unwrap(api.post)
@@ -1139,6 +1184,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                 IndexingEstimatePayload(**payload),
                 session,
                 "tenant-1",
+                make_account(),
             )
         assert status == 200
         assert response == {
@@ -1165,6 +1211,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                     IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
+                    make_account(),
                 )
 
     def test_post_llm_bad_request_error(self, app: Flask):
@@ -1190,6 +1237,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                     IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
+                    make_account(),
                 )
 
     def test_post_provider_token_not_init(self, app: Flask):
@@ -1215,6 +1263,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                     IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
+                    make_account(),
                 )
 
     def test_post_generic_exception(self, app: Flask):
@@ -1239,6 +1288,7 @@ class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
                     IndexingEstimatePayload(**payload),
                     session,
                     "tenant-1",
+                    make_account(),
                 )
 
 

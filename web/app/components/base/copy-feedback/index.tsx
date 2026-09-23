@@ -14,8 +14,6 @@ type CopyFeedbackProps = Readonly<{
   onCopyError?: () => void
 }>
 
-const prefixEmbedded = 'overview.appInfo.embedded'
-
 export function CopyFeedback({
   content,
   className,
@@ -30,8 +28,8 @@ export function CopyFeedback({
   const { copied, copy } = useClipboard({ timeout: 2000, onCopyError })
 
   const tooltipText = copied
-    ? (copiedLabel ?? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' }))
-    : (copyLabel ?? t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' }))
+    ? (copiedLabel ?? t(($) => $['operation.copied'], { ns: 'common' }))
+    : (copyLabel ?? t(($) => $['operation.copy'], { ns: 'common' }))
   /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
   const safeText = tooltipText || ''
 

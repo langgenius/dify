@@ -1,5 +1,5 @@
 'use client'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -18,14 +18,14 @@ import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-quer
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { LICENSE_LINK } from '@/constants/link'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { i18n } from '@/i18n-config'
-import { setLocaleOnClient } from '@/i18n-config/client'
-import { languages } from '@/i18n-config/language'
+import { i18n } from '@/i18n'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
@@ -183,7 +183,7 @@ export default function InviteSettingsPage() {
     router,
   ])
 
-  if (isProfilePending || shouldReturnToSignIn || !checkRes) return <Loading />
+  if (isProfilePending || shouldReturnToSignIn || !checkRes) return <LoadingPlaceholder />
   if (!checkRes.is_valid) {
     return (
       <div className="flex flex-col md:w-100">

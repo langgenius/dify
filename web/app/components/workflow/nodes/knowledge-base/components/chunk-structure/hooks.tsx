@@ -1,11 +1,6 @@
 import type { Option } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import {
-  GeneralChunk,
-  ParentChildChunk,
-  QuestionAndAnswer,
-} from '@/app/components/base/icons/src/vender/knowledge'
 import { ChunkStructureEnum } from '../../types'
 
 export const useChunkStructure = () => {
@@ -13,10 +8,14 @@ export const useChunkStructure = () => {
   const GeneralOption: Option = {
     id: ChunkStructureEnum.general,
     icon: (isActive: boolean) => (
-      <GeneralChunk
+      <span
+        aria-hidden
         className={cn(
-          'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-indigo-indigo-600',
-          isActive && 'text-util-colors-indigo-indigo-600',
+          'i-custom-vender-knowledge-general-chunk h-4.5 w-4.5',
+          cn(
+            'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-indigo-indigo-600',
+            isActive && 'text-util-colors-indigo-indigo-600',
+          ),
         )}
       />
     ),
@@ -27,10 +26,14 @@ export const useChunkStructure = () => {
   const ParentChildOption: Option = {
     id: ChunkStructureEnum.parent_child,
     icon: (isActive: boolean) => (
-      <ParentChildChunk
+      <span
+        aria-hidden
         className={cn(
-          'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-blue-light-blue-light-500',
-          isActive && 'text-util-colors-blue-light-blue-light-500',
+          'i-custom-vender-knowledge-parent-child-chunk h-4.5 w-4.5',
+          cn(
+            'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-blue-light-blue-light-500',
+            isActive && 'text-util-colors-blue-light-blue-light-500',
+          ),
         )}
       />
     ),
@@ -41,10 +44,14 @@ export const useChunkStructure = () => {
   const QuestionAnswerOption: Option = {
     id: ChunkStructureEnum.question_answer,
     icon: (isActive: boolean) => (
-      <QuestionAndAnswer
+      <span
+        aria-hidden
         className={cn(
-          'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-teal-teal-600',
-          isActive && 'text-util-colors-teal-teal-600',
+          'i-custom-vender-knowledge-question-and-answer h-4.5 w-4.5',
+          cn(
+            'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-teal-teal-600',
+            isActive && 'text-util-colors-teal-teal-600',
+          ),
         )}
       />
     ),

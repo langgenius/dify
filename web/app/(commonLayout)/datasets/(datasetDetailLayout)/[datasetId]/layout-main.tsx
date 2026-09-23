@@ -7,7 +7,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import DatasetDetailContext from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
@@ -153,7 +153,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     shouldRedirectUnauthorizedRoute
   const documentTitleOwnedByChild = isDocumentDetailPath(pathname) && !shouldShowLoading
   const content = shouldShowLoading ? (
-    <Loading type="app" />
+    <LoadingPlaceholder className="h-full" />
   ) : (
     <div
       className={cn(

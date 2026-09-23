@@ -1,3 +1,4 @@
+import type { Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
 import type { CommonNodeType, Node } from './types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
@@ -44,7 +45,7 @@ type ImportNotificationPayload = {
   children?: string
 }
 
-export const getInvalidNodeTypes = (mode?: AppModeEnum) => {
+export const getInvalidNodeTypes = (mode?: AppModeEnum): BlockEnum[] => {
   if (mode === AppModeEnum.ADVANCED_CHAT) {
     return [
       BlockEnum.End,
@@ -68,12 +69,12 @@ export const validateDSLContent = (content: string, mode?: AppModeEnum) => {
   }
 }
 
-export const isImportCompleted = (status: DSLImportStatus) => {
+export const isImportCompleted = (status: Import['status']) => {
   return status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
 }
 
 export const getImportNotificationPayload = (
-  status: DSLImportStatus,
+  status: Import['status'],
   t: TFunction,
 ): ImportNotificationPayload => {
   return {

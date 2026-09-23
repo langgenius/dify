@@ -1,5 +1,6 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { ReactNode, Ref } from 'react'
-import type { BlockEnum, NodeDefault, OnNodeAdd, OnSelectBlock, ToolWithProvider } from '../types'
+import type { BlockEnum, NodeDefault, OnNodeAdd, OnSelectBlock } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -30,7 +31,7 @@ type BlockSelectorPanelsProps = {
   onRequestClose: () => void
   availableBlocksTypes?: BlockEnum[]
   blocks: NodeDefault[]
-  dataSources?: ToolWithProvider[]
+  dataSources?: RagPipelineDatasourceProviderResponse[]
   allowStartNodeSelection?: boolean
   hasUserInputNode?: boolean
   hasTriggerNode?: boolean
@@ -79,7 +80,7 @@ function TabHeaderItem({
   return (
     <Tooltip>
       <TooltipTrigger render={tabElement} />
-      <TooltipContent placement="top" className="max-w-57.5 rounded-xl px-4 py-3.5">
+      <TooltipContent placement="top" className="max-w-57.5">
         {tab.disabledTip || fallbackDisabledTip}
       </TooltipContent>
     </Tooltip>

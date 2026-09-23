@@ -4,7 +4,6 @@ import { RiDeleteBinLine, RiEditLine, RiLock2Line } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { useStore } from '@/app/components/workflow/store'
 
 type EnvItemProps = {
@@ -38,7 +37,10 @@ const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
       <div className="px-2.5 py-2">
         <div className="flex items-center justify-between">
           <div className="flex grow items-center gap-1">
-            <Env className="size-4 text-util-colors-violet-violet-600" />
+            <span
+              aria-hidden
+              className="i-custom-vender-line-others-env size-4 text-util-colors-violet-violet-600"
+            />
             <div className="system-sm-medium text-text-primary">{env.name}</div>
             <div className="system-xs-medium text-text-tertiary">{typeLabel}</div>
             {env.value_type === 'secret' && <RiLock2Line className="size-3 text-text-tertiary" />}

@@ -14,18 +14,19 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
@@ -384,7 +385,9 @@ const Operations = ({
       {isListScene && embeddingAvailable && (
         <>
           {renderListSwitch()}
-          {hasOperationsMenu && <Divider className="mr-2! ml-4! h-3!" type="vertical" />}
+          {hasOperationsMenu && (
+            <Separator decorative className="mr-2 ml-4 h-3" orientation="vertical" />
+          )}
         </>
       )}
       {hasOperationsMenu && (
@@ -477,7 +480,9 @@ const Operations = ({
                         </span>
                       </button>
                     )}
-                    {(canShowStatusSection || canShowDeleteAction) && <Divider className="my-1" />}
+                    {(canShowStatusSection || canShowDeleteAction) && (
+                      <DropdownMenuSeparator className="h-[0.5px] w-full shrink-0 bg-divider-regular" />
+                    )}
                   </>
                 )}
                 {canShowPauseAction && (

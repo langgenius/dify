@@ -1,6 +1,7 @@
 import type { FC } from 'react'
-import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton, iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { RiFontSize } from '@remixicon/react'
@@ -44,25 +45,24 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
     >
       <PopoverTrigger
         render={
-          <Button
-            type="button"
+          <IconButton
             aria-label={t(($) => $[`${i18nPrefix}.userActions.chooseStyle`], { ns: 'workflow' })}
-            disabled={readonly}
-            className={cn(
-              'flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1 data-popup-open:bg-components-button-tertiary-bg-hover',
-              !readonly && 'cursor-pointer hover:bg-components-button-tertiary-bg-hover',
-            )}
             variant="tertiary"
+            size="lg"
+            disabled={readonly}
+            className="p-1 data-popup-open:bg-components-button-tertiary-bg-hover"
           >
+            {/* Keep the selected style preview static while the trigger owns hover. */}
             <span
+              aria-hidden
               className={cn(
-                buttonVariants({ variant: currentStyle, size: 'small' }),
+                iconButtonVariants({ variant: currentStyle, size: 'md' }),
                 'pointer-events-none',
               )}
             >
-              <RiFontSize className="size-4" aria-hidden="true" />
+              <RiFontSize className="size-4" />
             </span>
-          </Button>
+          </IconButton>
         }
       />
       <PopoverContent

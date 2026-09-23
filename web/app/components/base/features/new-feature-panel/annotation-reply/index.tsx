@@ -11,7 +11,6 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import { MessageFast } from '@/app/components/base/icons/src/vender/features'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { ANNOTATION_DEFAULT } from '@/config'
 import Link from '@/next/link'
@@ -79,7 +78,10 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
       <FeatureCard
         icon={
           <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-            <MessageFast className="size-4 text-text-primary-on-surface" />
+            <span
+              aria-hidden
+              className="i-custom-vender-features-message-fast size-4 text-text-primary-on-surface"
+            />
           </div>
         }
         title={t(($) => $['feature.annotation.title'], { ns: 'appDebug' })}

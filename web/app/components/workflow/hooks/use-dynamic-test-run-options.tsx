@@ -2,7 +2,6 @@ import type { TestRunOptions, TriggerOption } from '../header/test-run-menu'
 import type { CommonNodeType } from '../types'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import BlockIcon from '../block-icon'
@@ -110,7 +109,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
             name: t(($) => $['common.runAllTriggers'], { ns: 'workflow' }),
             icon: (
               <div className="flex h-6 w-6 items-center justify-center rounded-lg border-[0.5px] border-white/2 bg-util-colors-purple-purple-500 text-white shadow-md">
-                <TriggerAll className="size-4.5" />
+                <span aria-hidden className="i-custom-vender-workflow-trigger-all size-4.5" />
               </div>
             ),
             relatedNodeIds: triggerNodeIds,
