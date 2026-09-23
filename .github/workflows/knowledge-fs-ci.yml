@@ -41,6 +41,7 @@ jobs:
           filters: |
             knowledge-fs:
               - 'api/knowledge-fs-contract/**'
+              - 'api/tests/knowledge_fs_vector_integration/**'
               - 'api/Dockerfile'
               - 'api/dev/generate_knowledge_fs_contract.py'
               - 'api/dev/knowledge_fs_product_contract.py'
@@ -153,12 +154,12 @@ jobs:
 
       - name: Install Dify contract dependencies
         working-directory: .
-        run: uv sync --project api --locked --dev --group vdb-qdrant
+        run: uv sync --project api --locked --dev --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate
 
       # The standalone KnowledgeFS repository owns TypeScript, parser, image and deployment gates.
       # This repository verifies its immutable published contract and all Dify integration code.
       - name: Verify pinned KnowledgeFS contract
-        run: uv run --project api --group vdb-qdrant python api/dev/generate_knowledge_fs_contract.py --check
+        run: uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate python api/dev/generate_knowledge_fs_contract.py --check
 
       - name: Collect Dify KnowledgeFS gate targets
         working-directory: .
@@ -306,8 +307,8 @@ jobs:
             echo "Dify KnowledgeFS production target manifest is empty" >&2
             exit 1
           fi
-          uv run --project api --group vdb-qdrant --dev ruff format --check "${targets[@]}"
-          uv run --project api --group vdb-qdrant --dev ruff check "${targets[@]}"
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev ruff format --check "${targets[@]}"
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev ruff check "${targets[@]}"
 
       - name: Type-check Dify KnowledgeFS integration
         working-directory: .
@@ -333,7 +334,7 @@ jobs:
             echo "Dify KnowledgeFS Mypy target set is empty" >&2
             exit 1
           fi
-          uv run --directory api --group vdb-qdrant --dev mypy \
+          uv run --directory api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev mypy \
             --explicit-package-bases \
             --exclude-gitignore \
             --exclude '(^|/)conftest\.py$' \
@@ -357,7 +358,7 @@ jobs:
             echo "Dify KnowledgeFS unit test target manifest is empty" >&2
             exit 1
           fi
-          uv run --project api --group vdb-qdrant --dev coverage run --branch --source=api -m pytest "${targets[@]}" --no-cov -q
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev coverage run --branch --source=api -m pytest "${targets[@]}" --no-cov -q
 
       - name: Enforce Dify KnowledgeFS focused coverage
         working-directory: .
@@ -377,8 +378,8 @@ jobs:
               coverage_base="$latest_merge"
             fi
           fi
-          uv run --project api --group vdb-qdrant --dev coverage json --show-contexts -o "$report"
-          uv run --project api --group vdb-qdrant --dev python api/dev/check_knowledge_fs_coverage.py \
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev coverage json --show-contexts -o "$report"
+          uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate --dev python api/dev/check_knowledge_fs_coverage.py \
             --coverage-json "$report" \
             --glue-manifest "${RUNNER_TEMP:?}/knowledge-fs-ci-targets/glue-files" \
             --base "$coverage_base" \
@@ -387,7 +388,7 @@ jobs:
 
       - name: Verify Dify KnowledgeFS contract
         working-directory: .
-        run: uv run --project api --group vdb-qdrant python api/dev/generate_knowledge_fs_contract.py --check
+        run: uv run --project api --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate python api/dev/generate_knowledge_fs_contract.py --check
 
       - name: Verify Dify Agent dependency lock
         working-directory: .
@@ -463,3 +464,61 @@ jobs:
 
           echo "KnowledgeFS change detection or skip reporting failed with result: $SKIP_RESULT" >&2
           exit 1
+
+
+  vector-backends:
+    name: Test native KnowledgeFS vector backends
+    needs: check-changes
+    if: needs.check-changes.outputs.knowledge-fs == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: depot-ubuntu-24.04-4
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: 'false'
+          ES_JAVA_OPTS: '-Xms512m -Xmx512m'
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+      weaviate:
+        image: cr.weaviate.io/semitechnologies/weaviate:1.39.2
+        env:
+          AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+          PERSISTENCE_DATA_PATH: /var/lib/weaviate
+          DEFAULT_VECTORIZER_MODULE: none
+          CLUSTER_HOSTNAME: node1
+        ports:
+          - 8080:8080
+          - 50051:50051
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+      - name: Install native vector SDKs
+        run: uv sync --project api --locked --dev --group vdb-elasticsearch --group vdb-weaviate
+      - name: Wait for Weaviate readiness
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/v1/.well-known/ready; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Exercise real write, retry, filtered search, isolation and deletion
+        env:
+          KNOWLEDGE_FS_VECTOR_INTEGRATION: '1'
+          DEPLOYMENT_EDITION: SELF_HOSTED
+          ELASTICSEARCH_HOST: localhost
+          ELASTICSEARCH_PORT: '9200'
+          WEAVIATE_ENDPOINT: http://localhost:8080
+          WEAVIATE_GRPC_ENDPOINT: grpc://localhost:50051
+        run: >-
+          uv run --project api --no-sync pytest
+          api/tests/knowledge_fs_vector_integration --no-cov -q

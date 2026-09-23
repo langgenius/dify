@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 
     from qdrant_client import QdrantClient
 
+    from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
+    from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
+
 Identifier = Annotated[
     str,
     Field(pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"),
@@ -86,13 +89,35 @@ class VectorStoreUnavailableError(Exception):
 
 
 @contextmanager
-def configured_vector_client(tenant_id: str) -> "Generator[QdrantClient, None, None]":
+def configured_vector_client(
+    tenant_id: str,
+) -> "Generator[QdrantClient | ElasticsearchVectorStore | WeaviateVectorStore, None, None]":
     # Lazy dependency: installations using other backends can still boot Dify.
+    from configs import dify_config
+
+    if dify_config.VECTOR_STORE == "elasticsearch":
+        from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
+
+        store = ElasticsearchVectorStore.from_config()
+        try:
+            yield store
+        finally:
+            store.close()
+        return
+    if dify_config.VECTOR_STORE == "weaviate":
+        from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
+
+        weaviate_store = WeaviateVectorStore.from_config()
+        try:
+            yield weaviate_store
+        finally:
+            weaviate_store.close()
+        return
+
     from qdrant_client import QdrantClient
     from sqlalchemy import select
     from sqlalchemy.orm import Session
 
-    from configs import dify_config
     from extensions.ext_database import db
     from models.dataset import TidbAuthBinding
     from models.enums import TidbAuthBindingStatus
@@ -135,9 +160,11 @@ def configured_vector_client(tenant_id: str) -> "Generator[QdrantClient, None, N
         client.close()
 
 
-def execute_vector_request(client: "QdrantClient", payload: VectorRequest) -> dict[str, object]:
-    from qdrant_client.http import models
-    from qdrant_client.http.exceptions import UnexpectedResponse
+def execute_vector_request(
+    client: "QdrantClient | ElasticsearchVectorStore | WeaviateVectorStore", payload: VectorRequest
+) -> dict[str, object]:
+    from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
+    from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
 
     scope = payload.scope
     point_ids: list[int | str] = list(payload.ids)
@@ -149,6 +176,12 @@ def execute_vector_request(client: "QdrantClient", payload: VectorRequest) -> di
         VectorSpaceAdmissionService().ensure_external_points_can_be_indexed(
             tenant_id=scope.tenant_id, batch_id=batch_id, point_count=len(payload.points), dimension=scope.dimension
         )
+    if isinstance(client, (ElasticsearchVectorStore, WeaviateVectorStore)):
+        return client.execute(payload)
+
+    from qdrant_client.http import models
+    from qdrant_client.http.exceptions import UnexpectedResponse
+
     try:
         info = client.get_collection(collection)
     except UnexpectedResponse as error:
