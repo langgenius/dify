@@ -75,36 +75,50 @@ class MCPAppApi(Resource):
             ValidationError: Invalid request format or parameters
         """
         # response-contract:ignore MCP route returns Flask Response from JSON-RPC handler
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        sessions = sessionmaker(db.engine, expire_on_commit=False)
+        try:
             # Resolve identity before parsing the body: missing identities have
-            # one bounded response even for malformed or oversized JSON.
-            try:
+            # one bounded response even for malformed or oversized JSON. Only
+            # scalar IDs cross this short read session, never its ORM objects.
+            with sessions.begin() as session:
                 mcp_server, app = self._get_mcp_server_and_app(server_code, session)
                 self._validate_server_status(mcp_server)
-            except MCPServerNotFoundError:
-                return mcp_server_not_found_response()
+                identity = (mcp_server.id, app.id, app.tenant_id)
+        except MCPServerNotFoundError:
+            # Error formatting may read the request body; release DB resources first.
+            return mcp_server_not_found_response()
 
-            args = MCPRequestPayload.model_validate(mcp_ns.payload or {})
-            request_id: Union[int, str] | None = args.id
-            mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
+        # Allowed requests retain the existing full body/protocol parser. The
+        # 64 KiB cap belongs only to opaque errors, not normal MCP invocations.
+        args = MCPRequestPayload.model_validate(mcp_ns.payload or {})
+        request_id: Union[int, str] | None = args.id
+        mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
 
-            # Allowed identities retain the existing protocol validation path.
-            is_initialize = isinstance(mcp_request.root, mcp_types.InitializeRequest)
-            header_value = request.headers.get("MCP-Protocol-Version")
-            protocol_version = negotiate_protocol_version(header_value, is_initialize)
-            if protocol_version is None:
-                if isinstance(mcp_request, mcp_types.ClientNotification):
-                    protocol_version = mcp_types.DEFAULT_NEGOTIATED_VERSION
-                else:
-                    return self._protocol_version_error_response(request_id, header_value)
+        is_initialize = isinstance(mcp_request.root, mcp_types.InitializeRequest)
+        header_value = request.headers.get("MCP-Protocol-Version")
+        protocol_version = negotiate_protocol_version(header_value, is_initialize)
+        if protocol_version is None:
+            if isinstance(mcp_request, mcp_types.ClientNotification):
+                protocol_version = mcp_types.DEFAULT_NEGOTIATED_VERSION
+            else:
+                return self._protocol_version_error_response(request_id, header_value)
 
-            # Get user input form
-            user_input_form = self._get_user_input_form(app)
+        try:
+            # Reading/parsing may have taken time. Revalidate in the original
+            # execution transaction and use fresh, attached ORM records. A code
+            # reassigned to a different server/App/tenant is not this request's identity.
+            with sessions.begin() as session:
+                mcp_server, app = self._get_mcp_server_and_app(server_code, session)
+                self._validate_server_status(mcp_server)
+                if (mcp_server.id, app.id, app.tenant_id) != identity:
+                    raise MCPServerNotFoundError()
+                user_input_form = self._get_user_input_form(app, session=session)
 
-            # Handle notification vs request differently
-            return self._process_mcp_message(
-                mcp_request, request_id, app, mcp_server, user_input_form, session, protocol_version
-            )
+                return self._process_mcp_message(
+                    mcp_request, request_id, app, mcp_server, user_input_form, session, protocol_version
+                )
+        except MCPServerNotFoundError:
+            return mcp_server_not_found_response()
 
     def _protocol_version_error_response(
         self, request_id: Union[int, str] | None, header_value: str | None
@@ -131,7 +145,9 @@ class MCPAppApi(Resource):
         if not mcp_server:
             raise MCPServerNotFoundError()
 
-        app = session.scalar(select(App).where(App.id == mcp_server.app_id).limit(1))
+        app = session.scalar(
+            select(App).where(App.id == mcp_server.app_id, App.tenant_id == mcp_server.tenant_id).limit(1)
+        )
         if not app:
             raise MCPServerNotFoundError()
 
@@ -191,17 +207,19 @@ class MCPAppApi(Resource):
 
         return helper.compact_generate_response(result.model_dump(by_alias=True, mode="json", exclude_none=True))
 
-    def _get_user_input_form(self, app: App) -> list[VariableEntity]:
+    def _get_user_input_form(self, app: App, *, session: Session) -> list[VariableEntity]:
         """Get and convert user input form"""
         # Get raw user input form based on app mode
         if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            if not app.workflow:
+            workflow = app.workflow_with_session(session=session)
+            if workflow is None:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
-            raw_user_input_form = app.workflow.user_input_form(to_old_structure=True)
+            raw_user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
-            if not app.app_model_config:
+            app_model_config = app.app_model_config_with_session(session=session)
+            if app_model_config is None:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
-            features_dict = app.app_model_config.to_dict()
+            features_dict = app_model_config.to_dict()
             raw_user_input_form = features_dict.get("user_input_form", [])
 
         # Convert to VariableEntity objects

@@ -11,6 +11,7 @@ from services.network_access_group_gateway import (
 )
 from services.network_access_group_service import (
     NetworkAccessGroupEntitlementUnavailableError,
+    NetworkAccessGroupInvalidResponseError,
     NetworkAccessGroupUpstreamError,
 )
 
@@ -19,6 +20,31 @@ ACCOUNT_ID = "22222222-2222-4222-8222-222222222222"
 APP_ID = "33333333-3333-4333-8333-333333333333"
 GROUP_ID = "44444444-4444-4444-8444-444444444444"
 HEADERS = {"Content-Type": "application/json", "Billing-Api-Secret-Key": "test-secret"}
+
+
+def _group_wire(**overrides: object) -> dict[str, object]:
+    return {
+        "id": GROUP_ID,
+        "tenant_id": TENANT_ID,
+        "name": "Office",
+        "allowed_cidrs": ["203.0.113.7/32"],
+        "version": "1",
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:00:00Z",
+        **overrides,
+    }
+
+
+def _binding_wire(**overrides: object) -> dict[str, object]:
+    return {
+        "id": GROUP_ID,
+        "tenant_id": TENANT_ID,
+        "app_id": APP_ID,
+        "version": "1",
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:00:00Z",
+        **overrides,
+    }
 
 
 def _gateway(*, base_url: str = "https://network-access.internal/v1/") -> tuple[NetworkAccessGroupGateway, MagicMock]:
@@ -75,15 +101,15 @@ def test_group_list_and_item_reads_use_authenticated_saas_endpoints() -> None:
     response = MagicMock(status_code=httpx.codes.OK)
     response.json.side_effect = [
         {"tenant_id": TENANT_ID, "entitled": True, "groups": list[object]()},
-        {"group": {"id": GROUP_ID}},
+        {"group": _group_wire()},
     ]
     http_client.request.return_value = response
 
     list_result = gateway.list_groups(TENANT_ID, ACCOUNT_ID)
     item_result = gateway.get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID)
 
-    assert list_result["groups"] == []
-    assert item_result["group"]["id"] == GROUP_ID
+    assert list_result.groups == ()
+    assert item_result.id == GROUP_ID
     assert http_client.request.call_args_list == [
         call(
             "GET",
@@ -108,8 +134,8 @@ def test_group_mutations_inject_actor_and_use_expected_version() -> None:
     gateway, http_client = _gateway(base_url="")
     response = MagicMock(status_code=httpx.codes.OK)
     response.json.side_effect = [
-        {"group": {"id": GROUP_ID, "version": "1"}},
-        {"group": {"id": GROUP_ID, "version": "2"}},
+        {"group": _group_wire(version="1")},
+        {"group": _group_wire(version="2")},
         {"deleted": True},
     ]
     http_client.request.return_value = response
@@ -182,22 +208,14 @@ def test_app_config_read_and_atomic_write_use_tenant_and_app_path() -> None:
     response.json.side_effect = [
         {"tenant_id": TENANT_ID, "app_id": APP_ID, "entitled": True, "binding": None},
         {
-            "binding": {
-                "app_id": APP_ID,
-                "enabled": True,
-                "group_id": GROUP_ID,
-                "access_points": ["webapp", "service_api"],
-                "version": "1",
-            }
+            "binding": _binding_wire(
+                enabled=True, group_id=GROUP_ID, access_points=["webapp", "service_api"], version="1"
+            )
         },
         {
-            "binding": {
-                "app_id": APP_ID,
-                "enabled": False,
-                "group_id": GROUP_ID,
-                "access_points": ["webapp", "service_api"],
-                "version": "2",
-            }
+            "binding": _binding_wire(
+                enabled=False, group_id=GROUP_ID, access_points=["webapp", "service_api"], version="2"
+            )
         },
     ]
     http_client.request.return_value = response
@@ -271,7 +289,7 @@ def test_app_lifecycle_cleanup_uses_internal_secret_endpoint() -> None:
 
     result = gateway.cleanup_app_binding(TENANT_ID, APP_ID)
 
-    assert result == {"deleted": True}
+    assert result is True
     http_client.request.assert_called_once_with(
         "DELETE",
         f"https://billing.internal/v1/tenants/{TENANT_ID}/apps/{APP_ID}/network-access-group-binding",
@@ -331,11 +349,9 @@ def test_network_access_group_request_rejects_non_object_response() -> None:
     response.json.return_value = list[object]()
     with (
         patch.object(gateway, "_send_http_request", return_value=response),
-        pytest.raises(NetworkAccessGroupUpstreamError) as exc_info,
+        pytest.raises(NetworkAccessGroupInvalidResponseError),
     ):
         gateway._send_request("GET", "/groups")
-
-    assert exc_info.value.status_code == httpx.codes.BAD_GATEWAY
 
 
 @pytest.mark.parametrize("plan", [CloudPlan.PROFESSIONAL, CloudPlan.TEAM])
@@ -393,3 +409,166 @@ def test_billing_entitlement_gateway_does_not_mask_unexpected_value_error() -> N
         pytest.raises(ValueError, match="programming error"),
     ):
         gateway.is_paid_plan(TENANT_ID)
+
+
+def test_protojson_defaults_are_materialized_before_service_boundary() -> None:
+    gateway, client = _gateway()
+    response = MagicMock(status_code=200)
+    client.request.return_value = response
+    response.json.return_value = {"tenantId": TENANT_ID}
+    groups = gateway.list_groups(TENANT_ID, ACCOUNT_ID)
+    assert groups.entitled is False
+    assert groups.groups == ()
+
+    for binding in (None, _binding_wire()):
+        response.json.return_value = {"tenantId": TENANT_ID, "appId": APP_ID, "binding": binding}
+        result = gateway.get_app_binding(TENANT_ID, APP_ID, ACCOUNT_ID)
+        assert result.entitled is False
+        assert result.effective_enabled is False
+        if binding is None:
+            assert result.binding is None
+        else:
+            assert result.binding is not None
+            assert result.binding.enabled is False
+            assert result.binding.access_points == ()
+            assert result.binding.group_id is None
+
+    response.json.return_value = {"tenantId": TENANT_ID, "appId": APP_ID}
+    assert gateway.get_app_binding(TENANT_ID, APP_ID, ACCOUNT_ID).binding is None
+    response.json.return_value = dict[str, object]()
+    assert gateway.cleanup_app_binding(TENANT_ID, APP_ID) is False
+
+
+def test_policy_protojson_aliases_and_count_defaults_are_decoded_once() -> None:
+    gateway, client = _gateway()
+    wire = {
+        "id": GROUP_ID,
+        "tenantId": TENANT_ID,
+        "name": "Office",
+        "allowedCidrs": ["203.0.113.7/32"],
+        "version": "9007199254740993",
+        "usedByAppIds": [APP_ID],
+        "createdAt": "2026-09-01T00:00:00Z",
+        "updatedAt": "2026-09-01T00:00:00Z",
+    }
+    response = MagicMock(status_code=200)
+    response.json.return_value = {"group": wire}
+    client.request.return_value = response
+    result = gateway.get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID)
+    assert result.version == 9007199254740993
+    assert result.used_by_count == 1  # Legacy replies without a count retain the reference fallback.
+    assert result.enforcing_count == 0
+    assert result.allowed_cidrs == ("203.0.113.7/32",)
+    assert result.app_ids == (APP_ID,)
+    assert result.description == ""
+    assert result.updated_by_account_id is None
+    assert "enforcing_count" not in wire
+
+
+@pytest.mark.parametrize("alias", ["group_id", "groupId", "policy_id", "policyId"])
+@pytest.mark.parametrize("group_id", [GROUP_ID, None, ""])
+def test_binding_policy_aliases_and_nullable_references(alias: str, group_id: str | None) -> None:
+    gateway, client = _gateway()
+    response = MagicMock(status_code=200)
+    response.json.return_value = {"tenantId": TENANT_ID, "appId": APP_ID, "binding": _binding_wire(**{alias: group_id})}
+    client.request.return_value = response
+    binding = gateway.get_app_binding(TENANT_ID, APP_ID, ACCOUNT_ID).binding
+    assert binding is not None
+    assert binding.group_id == (group_id or None)
+
+
+def test_unknown_scopes_reach_service_without_aliases_or_mutable_payload() -> None:
+    gateway, client = _gateway()
+    scopes = ["webapp", "future_scope", "trigger"]
+    response = MagicMock(status_code=200)
+    response.json.return_value = {
+        "effectiveEnabled": True,
+        "binding": _binding_wire(enabled=True, policyId=GROUP_ID, accessPoints=scopes),
+    }
+    client.request.return_value = response
+    result = gateway.update_app_binding(
+        TENANT_ID,
+        APP_ID,
+        enabled=True,
+        group_id=GROUP_ID,
+        access_points=["webapp"],
+        expected_version=1,
+        actor_account_id=ACCOUNT_ID,
+    )
+    assert result.binding.access_points == ("webapp", "future_scope", "trigger")
+    assert result.binding.group_id == GROUP_ID
+    assert result.effective_enabled is True
+    scopes.clear()
+    assert result.binding.access_points == ("webapp", "future_scope", "trigger")
+
+
+@pytest.mark.parametrize("value", [True, False, 1.0, "1.5", "invalid", 0, -1, 2**63, str(2**63)])
+def test_invalid_versions_are_rejected_at_gateway(value: object) -> None:
+    gateway, client = _gateway()
+    response = MagicMock(status_code=200)
+    response.json.return_value = {"group": _group_wire(version=value)}
+    client.request.return_value = response
+    with pytest.raises(NetworkAccessGroupInvalidResponseError):
+        gateway.get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID)
+
+
+@pytest.mark.parametrize("version", [1, "1", 2**63 - 1, str(2**63 - 1)])
+def test_int64_versions_do_not_lose_precision(version: int | str) -> None:
+    gateway, client = _gateway()
+    response = MagicMock(status_code=200)
+    response.json.return_value = {"group": _group_wire(version=version)}
+    client.request.return_value = response
+    assert gateway.get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID).version == int(version)
+
+
+@pytest.mark.parametrize("field", ["entitled", "effective_enabled", "enabled"])
+@pytest.mark.parametrize("value", ["false", "true", 0, 1, None])
+def test_wire_flags_are_strict_booleans(field: str, value: object) -> None:
+    gateway, client = _gateway()
+    binding = _binding_wire()
+    payload: dict[str, object] = {"tenant_id": TENANT_ID, "app_id": APP_ID, "binding": binding}
+    (binding if field == "enabled" else payload)[field] = value
+    response = MagicMock(status_code=200)
+    response.json.return_value = payload
+    client.request.return_value = response
+    with pytest.raises(NetworkAccessGroupInvalidResponseError):
+        gateway.get_app_binding(TENANT_ID, APP_ID, ACCOUNT_ID)
+
+
+@pytest.mark.parametrize("alias", ["groupId", "policy_id", "policyId"])
+def test_conflicting_policy_aliases_fail_instead_of_selecting_one(alias: str) -> None:
+    gateway, client = _gateway()
+    response = MagicMock(status_code=200)
+    response.json.return_value = {
+        "tenant_id": TENANT_ID,
+        "app_id": APP_ID,
+        "binding": _binding_wire(group_id=GROUP_ID, **{alias: APP_ID}),
+    }
+    client.request.return_value = response
+    with pytest.raises(NetworkAccessGroupInvalidResponseError):
+        gateway.get_app_binding(TENANT_ID, APP_ID, ACCOUNT_ID)
+    response.json.return_value["binding"][alias] = GROUP_ID
+    binding = gateway.get_app_binding(TENANT_ID, APP_ID, ACCOUNT_ID).binding
+    assert binding is not None
+    assert binding.group_id == GROUP_ID
+
+
+@pytest.mark.parametrize("payload", [{}, {"group": None}, {"group": {"version": "1"}}])
+def test_existing_policy_identity_fields_are_never_fabricated(payload: dict[str, object]) -> None:
+    gateway, client = _gateway()
+    response = MagicMock(status_code=200)
+    response.json.return_value = payload
+    client.request.return_value = response
+    with pytest.raises(NetworkAccessGroupInvalidResponseError):
+        gateway.get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID)
+
+
+@pytest.mark.parametrize("field", ["used_by_count", "enforcing_count"])
+@pytest.mark.parametrize("value", [True, 0.0, "0.5", -1])
+def test_invalid_policy_counts_are_rejected(field: str, value: object) -> None:
+    gateway, client = _gateway()
+    response = MagicMock(status_code=200)
+    response.json.return_value = {"group": _group_wire(**{field: value})}
+    client.request.return_value = response
+    with pytest.raises(NetworkAccessGroupInvalidResponseError):
+        gateway.get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID)

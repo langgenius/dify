@@ -2,6 +2,9 @@
 
 import io
 import json
+import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Literal, Never, override
 from unittest.mock import MagicMock
@@ -23,6 +26,7 @@ from controllers.common.access_response import (
 )
 from controllers.mcp import mcp
 from controllers.trigger import webhook
+from extensions import ext_request_logging
 from libs.external_api import ExternalApi
 from models.engine import db
 from models.enums import AppMCPServerStatus
@@ -164,6 +168,7 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> MCPClient:
     return http_app.test_client(), session, execute, end_user
 
 
+@pytest.mark.parametrize("cached", [False, True])
 @pytest.mark.parametrize("identity", ["missing-server", "missing-app", "inactive"])
 @pytest.mark.parametrize(
     ("body", "expected_id"),
@@ -195,17 +200,25 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> MCPClient:
         (b'{"id":1,"params":' + b"[" * 63 + b"0" + b"]" * 63 + b"}", b"1"),
         (b'{"id":1,"params":' + b"[" * 64 + b"0" + b"]" * 64 + b"}", b"null"),
         (b'{"id":1,"params":"' + b"[" * 100 + b'\\"}"}', b"1"),
+        (b'{"id":1}' + b" " * (MCP_ERROR_BODY_LIMIT - len(b'{"id":1}')), b"1"),
         (b'{"id":1}' + b" " * MCP_ERROR_BODY_LIMIT, b"null"),
     ],
 )
 def test_mcp_missing_identity_final_response_is_bounded_and_opaque(
     mcp_client: MCPClient,
     identity: Literal["missing-server", "missing-app", "inactive"],
+    cached: bool,
     body: bytes,
     expected_id: bytes,
 ) -> None:
     client, session, execute, end_user = mcp_client
-    server = SimpleNamespace(app_id="private-app", status=AppMCPServerStatus.ACTIVE)
+    server = SimpleNamespace(app_id="private-app", tenant_id="tenant", status=AppMCPServerStatus.ACTIVE)
+    if cached:
+
+        @client.application.before_request
+        def cache_body() -> None:
+            request.get_data()
+
     if identity == "missing-server":
         session.scalar.side_effect = [None]
     elif identity == "missing-app":
@@ -227,7 +240,9 @@ def test_mcp_missing_identity_final_response_is_bounded_and_opaque(
     session.execute.assert_not_called()
 
 
-def test_mcp_unknown_length_stream_read_is_capped(http_app: Flask) -> None:
+@pytest.mark.parametrize("cached", [False, True])
+@pytest.mark.parametrize("oversized", [False, True])
+def test_mcp_unknown_length_stream_read_is_capped(http_app: Flask, cached: bool, oversized: bool) -> None:
     class RecordingStream(io.BytesIO):
         requested: list[int | None] = []
 
@@ -236,23 +251,42 @@ def test_mcp_unknown_length_stream_read_is_capped(http_app: Flask) -> None:
             self.requested.append(size)
             return super().read(size)
 
-    stream = RecordingStream(b'{"id":1}' + b" " * MCP_ERROR_BODY_LIMIT)
+    stream = RecordingStream(b'{"id":1}' + (b" " * MCP_ERROR_BODY_LIMIT if oversized else b""))
     with http_app.test_request_context(
         "/", method="POST", environ_overrides={"wsgi.input": stream, "wsgi.input_terminated": True}
     ):
+        if cached:
+            request.get_data()
+            stream.requested.clear()
         response = mcp_server_not_found_response()
-    assert stream.requested == [MCP_ERROR_BODY_LIMIT + 1]
-    assert response.get_json()["id"] is None
+    assert stream.requested == ([] if cached else [MCP_ERROR_BODY_LIMIT + 1])
+    assert response.get_json()["id"] == (None if oversized else 1)
+
+
+def test_mcp_debug_request_logging_preserves_raw_error_id(
+    mcp_client: MCPClient, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, session, execute, end_user = mcp_client
+    session.scalar.return_value = None
+    caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
+    # Exercise the real existing request-started logger, including request.data caching.
+    monkeypatch.setattr(ext_request_logging.dify_config, "ENABLE_REQUEST_LOGGING", True)
+    ext_request_logging.init_app(client.application)
+    response = client.post("/mcp/server/missing-fixture/mcp", data=b'{"id":1.2500}', content_type="application/json")
+    assert response.status_code == 404
+    assert b'"id":1.2500,' in response.data
+    assert "Received Request" in caplog.text
+    execute.assert_not_called()
+    end_user.assert_not_called()
 
 
 def test_existing_mcp_keeps_normal_large_payload_and_response(
     mcp_client: MCPClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client, session, _execute, _end_user = mcp_client
-    session.scalar.side_effect = [
-        SimpleNamespace(app_id="existing-app", status=AppMCPServerStatus.ACTIVE),
-        SimpleNamespace(id="existing-app"),
-    ]
+    server = SimpleNamespace(id="server", tenant_id="tenant", app_id="existing-app", status=AppMCPServerStatus.ACTIVE)
+    app = SimpleNamespace(id="existing-app", tenant_id="tenant")
+    session.scalar.side_effect = [server, app, server, app]
     monkeypatch.setattr(mcp.MCPAppApi, "_get_user_input_form", MagicMock(return_value=[]))
     expected_body = b'{"id":2,"jsonrpc":"2.0","result":{}}'
     process = MagicMock(return_value=Response(expected_body, status=200, content_type="application/json"))
@@ -277,13 +311,112 @@ def test_existing_mcp_keeps_normal_large_payload_and_response(
 def test_existing_mcp_still_validates_malformed_payload(mcp_client: MCPClient) -> None:
     client, session, execute, end_user = mcp_client
     session.scalar.side_effect = [
-        SimpleNamespace(app_id="existing-app", status=AppMCPServerStatus.ACTIVE),
-        SimpleNamespace(id="existing-app"),
+        SimpleNamespace(id="server", tenant_id="tenant", app_id="existing-app", status=AppMCPServerStatus.ACTIVE),
+        SimpleNamespace(id="existing-app", tenant_id="tenant"),
     ]
     response = client.post("/mcp/server/existing-fixture/mcp", data=b"{", content_type="application/json")
     assert response.status_code == 400
     execute.assert_not_called()
     end_user.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "initial-missing",
+        "missing-server",
+        "missing-app",
+        "inactive",
+        "server-replaced",
+        "app-rebound",
+        "tenant-changed",
+        "unchanged",
+    ],
+)
+def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
+    mcp_client: MCPClient, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    client, _session, execute, end_user = mcp_client
+    active_sessions: list[MagicMock] = []
+    opened: list[MagicMock] = []
+    read_sessions: list[bool] = []
+    initial_server = SimpleNamespace(id="server", tenant_id="tenant", app_id="app", status=AppMCPServerStatus.ACTIVE)
+    initial_app = SimpleNamespace(id="app", tenant_id="tenant")
+    fresh_server = SimpleNamespace(**vars(initial_server))
+    fresh_app = SimpleNamespace(**vars(initial_app))
+    if change == "inactive":
+        fresh_server.status = "inactive"
+    elif change == "server-replaced":
+        fresh_server.id = "other-server"
+    elif change == "app-rebound":
+        fresh_server.app_id = fresh_app.id = "other-app"
+    elif change == "tenant-changed":
+        fresh_server.tenant_id = fresh_app.tenant_id = "other-tenant"
+    initial = MagicMock()
+    initial.scalar.side_effect = [None] if change == "initial-missing" else [initial_server, initial_app]
+    execution = MagicMock()
+    execution.scalar.side_effect = (
+        [None] if change == "missing-server" else [fresh_server, None if change == "missing-app" else fresh_app]
+    )
+    remaining = iter((initial, execution))
+
+    @contextmanager
+    def begin() -> Iterator[MagicMock]:
+        session = next(remaining)
+        opened.append(session)
+        active_sessions.append(session)
+        try:
+            yield session
+        finally:
+            active_sessions.pop()
+
+    monkeypatch.setattr(mcp, "sessionmaker", lambda *_args, **_kwargs: SimpleNamespace(begin=begin))
+    form = MagicMock(return_value=[])
+    process = MagicMock(return_value=Response("ok", status=200))
+    monkeypatch.setattr(mcp.MCPAppApi, "_get_user_input_form", form)
+    monkeypatch.setattr(mcp.MCPAppApi, "_process_mcp_message", process)
+    original_error = mcp.mcp_server_not_found_response
+
+    def error_response() -> Response:
+        assert not active_sessions, "404 response must be constructed after releasing sessions"
+        return original_error()
+
+    monkeypatch.setattr(mcp, "mcp_server_not_found_response", error_response)
+
+    class RecordingStream(io.BytesIO):
+        @override
+        def read(self, size: int | None = -1) -> bytes:
+            read_sessions.append(bool(active_sessions))
+            return super().read(size)
+
+        @override
+        def readinto(self, buffer) -> int:
+            data = self.read(len(buffer))
+            buffer[: len(data)] = data
+            return len(data)
+
+    payload = b'{"jsonrpc":"2.0","method":"ping","id":900719925474099312345678901234567890}'
+    response = client.post(
+        "/mcp/server/fixture/mcp", input_stream=RecordingStream(payload), content_type="application/json"
+    )
+    assert read_sessions
+    assert not any(read_sessions)
+    assert opened == ([initial] if change == "initial-missing" else [initial, execution])
+    if change == "unchanged":
+        assert response.status_code == 200
+        form.assert_called_once_with(fresh_app, session=execution)
+        assert process.call_args.args[2] is fresh_app
+        assert process.call_args.args[3] is fresh_server
+        assert process.call_args.args[5] is execution
+    else:
+        assert response.status_code == 404
+        assert b'"id":900719925474099312345678901234567890,' in response.data
+        form.assert_not_called()
+        process.assert_not_called()
+    execute.assert_not_called()
+    end_user.assert_not_called()
+    initial.add.assert_not_called()
+    execution.add.assert_not_called()
 
 
 @pytest.mark.parametrize("route", ["webhook", "webhook-debug"])

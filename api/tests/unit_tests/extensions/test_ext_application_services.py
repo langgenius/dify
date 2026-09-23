@@ -19,7 +19,8 @@ from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
-from models.model import AccountTrialAppRecord, DifySetup
+from models.enums import AppStatus
+from models.model import AccountTrialAppRecord, App, AppMode, AppModelConfig, CustomizeTokenStrategy, DifySetup, Site
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -724,8 +725,38 @@ def test_build_application_services_wires_trial_app_usage(
     assert record.count == 1
 
 
+@pytest.fixture
+def published_webapp_id(sqlite_session: Session) -> str:
+    """Keep public admission real so wiring tests reach the Enterprise adapter."""
+    app_id = str(uuid4())
+    config = AppModelConfig(app_id=app_id)
+    config.id = str(uuid4())
+    app = App(
+        id=app_id,
+        tenant_id=str(uuid4()),
+        name="Published adapter fixture",
+        mode=AppMode.CHAT,
+        status=AppStatus.NORMAL,
+        enable_site=True,
+        enable_api=True,
+        app_model_config_id=config.id,
+    )
+    site = Site(
+        app_id=app_id,
+        code="published-adapter-fixture",
+        title="Published adapter fixture",
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.UUID,
+        status=AppStatus.NORMAL,
+    )
+    sqlite_session.add_all([app, config, site])
+    sqlite_session.commit()
+    return app_id
+
+
 def test_build_application_services_adapts_enterprise_webapp_access_mode(
     sqlite_session_factory: sessionmaker[Session],
+    published_webapp_id: str,
 ) -> None:
     with (
         patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
@@ -740,10 +771,10 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
             initialization_password="",
             redis=MagicMock(spec=RedisClientWrapper),
         )
-        result = services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+        result = services.webapp_access.get_access_mode(app_id=published_webapp_id, app_code=None)
 
     assert result is WebAppAccessMode.PRIVATE_ALL
-    get_access_mode.assert_called_once_with("app-1")
+    get_access_mode.assert_called_once_with(published_webapp_id)
 
 
 @pytest.mark.parametrize(
@@ -762,6 +793,7 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
 )
 def test_build_application_services_maps_known_enterprise_errors(
     sqlite_session_factory: sessionmaker[Session],
+    published_webapp_id: str,
     enterprise_error: Exception,
 ) -> None:
     with (
@@ -769,7 +801,7 @@ def test_build_application_services_maps_known_enterprise_errors(
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=enterprise_error,
-        ),
+        ) as get_access_mode,
     ):
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
@@ -779,20 +811,22 @@ def test_build_application_services_maps_known_enterprise_errors(
         )
 
         with pytest.raises(WebAppAccessUnavailableError) as raised:
-            services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+            services.webapp_access.get_access_mode(app_id=published_webapp_id, app_code=None)
 
     assert raised.value.__cause__ is enterprise_error
+    get_access_mode.assert_called_once_with(published_webapp_id)
 
 
 def test_build_application_services_maps_invalid_access_mode_to_unavailable(
     sqlite_session_factory: sessionmaker[Session],
+    published_webapp_id: str,
 ) -> None:
     with (
         patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             return_value=SimpleNamespace(access_mode="invalid"),
-        ),
+        ) as get_access_mode,
     ):
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
@@ -802,13 +836,15 @@ def test_build_application_services_maps_invalid_access_mode_to_unavailable(
         )
 
         with pytest.raises(WebAppAccessUnavailableError) as raised:
-            services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+            services.webapp_access.get_access_mode(app_id=published_webapp_id, app_code=None)
 
     assert isinstance(raised.value.__cause__, ValueError)
+    get_access_mode.assert_called_once_with(published_webapp_id)
 
 
 def test_build_application_services_does_not_hide_unknown_enterprise_errors(
     sqlite_session_factory: sessionmaker[Session],
+    published_webapp_id: str,
 ) -> None:
     failure = TypeError("adapter bug")
     with (
@@ -816,7 +852,7 @@ def test_build_application_services_does_not_hide_unknown_enterprise_errors(
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
             side_effect=failure,
-        ),
+        ) as get_access_mode,
     ):
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
@@ -826,9 +862,10 @@ def test_build_application_services_does_not_hide_unknown_enterprise_errors(
         )
 
         with pytest.raises(TypeError) as raised:
-            services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+            services.webapp_access.get_access_mode(app_id=published_webapp_id, app_code=None)
 
     assert raised.value is failure
+    get_access_mode.assert_called_once_with(published_webapp_id)
 
 
 def test_build_application_services_wires_webapp_permission(

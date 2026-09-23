@@ -84,12 +84,9 @@ def _invalid_constant(_value: str) -> None:
     raise ValueError("Non-JSON numeric constant")
 
 
-def _mcp_request_id() -> str:
-    """Read at most the bounded denied request, returning serialized ID or null."""
+def _parse_mcp_error_request_id(body: bytes) -> str:
+    """Parse only an error response's ID, retaining its original numeric lexeme."""
     try:
-        if request.content_length is not None and request.content_length > MCP_ERROR_BODY_LIMIT:
-            return "null"
-        body = request.stream.read(MCP_ERROR_BODY_LIMIT + 1)
         if len(body) > MCP_ERROR_BODY_LIMIT or not _within_json_depth(body):
             return "null"
         payload = json.loads(
@@ -107,9 +104,29 @@ def _mcp_request_id() -> str:
             # Reject unpaired surrogates instead of creating invalid UTF-8.
             request_id.encode("utf-8")
             return _json(request_id)
-    except (HTTPException, ValueError, UnicodeError, RecursionError):
+    except (ValueError, UnicodeError, RecursionError):
         pass
     return "null"
+
+
+def _mcp_request_id() -> str:
+    """Read bounded raw bytes, including bodies already cached by request logging.
+
+    Werkzeug's public get_data() reuses _cached_data but otherwise reads the
+    entire stream. Its stream property does not replay that cache. Keep this
+    read-only private-attribute compatibility here: it avoids unbounded reads
+    for unknown Content-Length and never installs a partial request cache.
+    """
+    try:
+        if request.content_length is not None and request.content_length > MCP_ERROR_BODY_LIMIT:
+            return "null"
+        cached = getattr(request, "_cached_data", None)
+        if cached is not None:
+            return _parse_mcp_error_request_id(cached) if isinstance(cached, bytes) else "null"
+        body = request.stream.read(MCP_ERROR_BODY_LIMIT + 1)
+    except HTTPException:
+        return "null"
+    return _parse_mcp_error_request_id(body)
 
 
 def mcp_server_not_found_response() -> Response:

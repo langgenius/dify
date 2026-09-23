@@ -25,6 +25,7 @@ from services.network_access_group_service import (
     NetworkAccessGroupEntitlementUnavailableError,
     NetworkAccessGroupError,
     NetworkAccessGroupInvalidPolicyError,
+    NetworkAccessGroupInvalidResponseError,
     NetworkAccessGroupUnsupportedAccessPointsError,
     NetworkAccessGroupUnsupportedAppModeError,
     NetworkAccessGroupUpstreamError,
@@ -80,27 +81,21 @@ class NetworkAccessGroupAppResponse(ResponseModel):
 
 class NetworkAccessGroupResponse(ResponseModel):
     id: str
-    tenant_id: str = Field(validation_alias=AliasChoices("tenant_id", "tenantId"))
+    tenant_id: str
     name: str
     description: str = ""
     allowed_cidrs: list[str] = Field(
         min_length=1,
         max_length=100,
-        validation_alias=AliasChoices("allowed_cidrs", "allowedCidrs"),
     )
     version: int = Field(ge=1)
-    used_by_count: int = Field(ge=0, validation_alias=AliasChoices("used_by_count", "usedByCount"))
-    enforcing_count: int = Field(ge=0, validation_alias=AliasChoices("enforcing_count", "enforcingCount"))
-    app_ids: list[str] = Field(
-        validation_alias=AliasChoices("app_ids", "appIds", "used_by_app_ids", "usedByAppIds"),
-    )
+    used_by_count: int = Field(ge=0)
+    enforcing_count: int = Field(ge=0)
+    app_ids: list[str]
     apps: list[NetworkAccessGroupAppResponse]
-    updated_by_account_id: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("updated_by_account_id", "updatedByAccountId"),
-    )
-    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
-    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+    updated_by_account_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
 
     @model_validator(mode="after")
     def validate_enforcing_count(self) -> Self:
@@ -110,7 +105,7 @@ class NetworkAccessGroupResponse(ResponseModel):
 
 
 class NetworkAccessGroupListResponse(ResponseModel):
-    tenant_id: str = Field(validation_alias=AliasChoices("tenant_id", "tenantId"))
+    tenant_id: str
     entitled: bool
     groups: list[NetworkAccessGroupResponse]
 
@@ -135,24 +130,17 @@ class NetworkAccessGroupCurrentIPCheckResponse(ResponseModel):
 
 class AppNetworkAccessGroupBindingResponse(ResponseModel):
     id: str
-    tenant_id: str = Field(validation_alias=AliasChoices("tenant_id", "tenantId"))
-    app_id: str = Field(validation_alias=AliasChoices("app_id", "appId"))
+    tenant_id: str
+    app_id: str
     enabled: bool
-    group_id: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("group_id", "groupId", "policy_id", "policyId"),
-    )
+    group_id: str | None = None
     access_points: list[NetworkAccessPoint] = Field(
         max_length=4,
-        validation_alias=AliasChoices("access_points", "accessPoints"),
     )
     version: int = Field(ge=1)
-    updated_by_account_id: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("updated_by_account_id", "updatedByAccountId"),
-    )
-    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
-    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+    updated_by_account_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> Self:
@@ -160,23 +148,23 @@ class AppNetworkAccessGroupBindingResponse(ResponseModel):
             raise ValueError("access_points must not contain duplicates")
         if self.enabled and self.group_id is None:
             raise ValueError("group_id is required when network access control is enabled")
-        if self.enabled and not self.access_points:
-            raise ValueError("access_points must not be empty when network access control is enabled")
+        # A saved enabled binding can have no scopes supported by the App's
+        # current mode. Preserve its switch/reference; effective_enabled is false.
         return self
 
 
 class AppNetworkAccessGroupResponse(ResponseModel):
-    tenant_id: str = Field(validation_alias=AliasChoices("tenant_id", "tenantId"))
-    app_id: str = Field(validation_alias=AliasChoices("app_id", "appId"))
+    tenant_id: str
+    app_id: str
     entitled: bool
-    effective_enabled: bool = Field(validation_alias=AliasChoices("effective_enabled", "effectiveEnabled"))
+    effective_enabled: bool
     available_access_points: list[NetworkAccessPoint]
     binding: AppNetworkAccessGroupBindingResponse | None
 
 
 class AppNetworkAccessGroupMutationResponse(ResponseModel):
     binding: AppNetworkAccessGroupBindingResponse
-    effective_enabled: bool = Field(validation_alias=AliasChoices("effective_enabled", "effectiveEnabled"))
+    effective_enabled: bool
     available_access_points: list[NetworkAccessPoint]
 
 
@@ -225,6 +213,8 @@ def _translate_upstream_error(exc: NetworkAccessGroupUpstreamError) -> Exception
 
 
 def _translate_service_error(exc: NetworkAccessGroupError) -> Exception:
+    if isinstance(exc, NetworkAccessGroupInvalidResponseError):
+        return BadGateway("Invalid response from the network access group service.")
     if isinstance(exc, NetworkAccessGroupUpstreamError):
         return _translate_upstream_error(exc)
     if isinstance(exc, NetworkAccessGroupAccessDeniedError):
@@ -242,7 +232,7 @@ def _translate_service_error(exc: NetworkAccessGroupError) -> Exception:
     raise TypeError(f"Unsupported network access group error: {type(exc).__name__}")
 
 
-def _serialize_response(response_model: type[ResponseModel], payload: dict[str, Any]) -> dict[str, Any]:
+def _serialize_response(response_model: type[ResponseModel], payload: object) -> dict[str, Any]:
     try:
         return dump_response(response_model, payload)
     except ValidationError as exc:
@@ -296,7 +286,7 @@ class CurrentWorkspaceNetworkAccessGroupsApi(Resource):
             )
         except NetworkAccessGroupError as exc:
             raise _translate_service_error(exc) from exc
-        return _serialize_response(NetworkAccessGroupMutationResponse, payload), 201
+        return _serialize_response(NetworkAccessGroupMutationResponse, {"group": payload}), 201
 
 
 @console_ns.route("/workspaces/current/network-access-groups/<uuid:group_id>")
@@ -315,7 +305,7 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
             )
         except NetworkAccessGroupError as exc:
             raise _translate_service_error(exc) from exc
-        return _serialize_response(NetworkAccessGroupMutationResponse, payload)
+        return _serialize_response(NetworkAccessGroupMutationResponse, {"group": payload})
 
     @console_ns.expect(console_ns.models[NetworkAccessGroupUpdatePayload.__name__])
     @console_ns.response(
@@ -343,7 +333,7 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
             )
         except NetworkAccessGroupError as exc:
             raise _translate_service_error(exc) from exc
-        return _serialize_response(NetworkAccessGroupMutationResponse, payload)
+        return _serialize_response(NetworkAccessGroupMutationResponse, {"group": payload})
 
     @console_ns.doc(params=query_params_from_model(NetworkAccessGroupDeleteQuery))
     @console_ns.response(
@@ -368,7 +358,7 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
             )
         except NetworkAccessGroupError as exc:
             raise _translate_service_error(exc) from exc
-        return _serialize_response(NetworkAccessGroupDeleteResponse, payload)
+        return _serialize_response(NetworkAccessGroupDeleteResponse, {"deleted": payload})
 
 
 @console_ns.route("/workspaces/current/network-access-groups/current-ip")
@@ -396,7 +386,7 @@ class CurrentWorkspaceNetworkAccessGroupCurrentIPApi(Resource):
             raise ServiceUnavailable("Current client IP is unavailable.") from exc
         except NetworkAccessGroupError as exc:
             raise _translate_service_error(exc) from exc
-        return _serialize_response(NetworkAccessGroupCurrentIPResponse, payload)
+        return _serialize_response(NetworkAccessGroupCurrentIPResponse, {"client_ip": payload})
 
 
 @console_ns.route("/workspaces/current/network-access-groups/<uuid:group_id>/check-current-ip")
