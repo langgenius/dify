@@ -18,7 +18,7 @@ import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import {
@@ -61,10 +61,9 @@ function PopupItem({
   onSelect,
   onHide,
 }: PopupItemProps) {
-  const [modelsOpen, setModelsOpen] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const providerHeadingId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const language = useLanguage()
   const providerLabel = renderI18nObject(model.label, language)
   const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'common' })
@@ -123,8 +122,7 @@ function PopupItem({
 
   return (
     <Collapsible
-      open={modelsOpen}
-      onOpenChange={setModelsOpen}
+      defaultOpen
       className="mb-1"
       render={<section aria-labelledby={providerHeadingId} />}
     >

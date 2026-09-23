@@ -28,7 +28,7 @@ export default function Countdown({
 }
 
 function CountdownFallback() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
 
   return (
     <p className="system-xs-regular text-text-tertiary">
@@ -40,7 +40,7 @@ function CountdownFallback() {
 function CountdownContent({ onResend, resendDisabled, restartOnResend }: CountdownProps) {
   use(browser())
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const storedLeftTime = useCountdownLeftTimeValue()
   const setStoredLeftTime = useSetCountdownLeftTime()
   const [leftTime, setLeftTime] = useState(() => Number(storedLeftTime || COUNT_DOWN_TIME_MS))

@@ -4,7 +4,8 @@ import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
 import {
   RiAddLine,
   RiClipboardLine,
@@ -16,13 +17,12 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { useStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import DeliveryMethod from './components/delivery-method'
 import FormContent from './components/form-content'
 import FormContentPreview from './components/form-content-preview'
@@ -42,7 +42,10 @@ const getOutputVarType = (input: FormInputItem): VarType => {
 }
 
 const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const actionsLabelId = React.useId()
+  const formContentLabelId = React.useId()
+
+  const { t } = useTranslation(['common', 'share', 'workflow'])
   const {
     readOnly,
     inputs,
@@ -63,9 +66,14 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret, VarType.arrayString].includes(
-        varPayload.type,
-      )
+      const supportedVariableTypes: readonly VarType[] = [
+        VarType.string,
+        VarType.number,
+        VarType.secret,
+        VarType.arrayString,
+      ]
+
+      return supportedVariableTypes.includes(varPayload.type)
     },
   })
 
@@ -97,7 +105,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         readonly={readOnly}
       />
       <div className="px-4 py-2">
-        <Divider className="my-0! h-px! bg-divider-subtle!" />
+        <Separator className="my-0 bg-divider-subtle" />
       </div>
       {/* form content */}
       <div
@@ -112,13 +120,17 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
       >
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">
+            <div
+              id={formContentLabelId}
+              className="system-sm-semibold-uppercase text-text-secondary"
+            >
               {t(($) => $[`${i18nPrefix}.formContent.title`], { ns: 'workflow' })}
             </div>
-            <Infotip
-              aria-label={t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
-            >
-              {t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={formContentLabelId} />
+              <InfotipContent aria-labelledby={formContentLabelId}>
+                {t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
+              </InfotipContent>
             </Infotip>
           </div>
           {!readOnly && (
@@ -190,13 +202,14 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
       <div className="px-4 py-2">
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">
+            <div id={actionsLabelId} className="system-sm-semibold-uppercase text-text-secondary">
               {t(($) => $[`${i18nPrefix}.userActions.title`], { ns: 'workflow' })}
             </div>
-            <Infotip
-              aria-label={t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
-            >
-              {t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={actionsLabelId} />
+              <InfotipContent aria-labelledby={actionsLabelId}>
+                {t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
+              </InfotipContent>
             </Infotip>
           </div>
           {!readOnly && (
@@ -230,7 +243,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         )}
       </div>
       <div className="px-4 py-2">
-        <Divider className="my-0! h-px! bg-divider-subtle!" />
+        <Separator className="my-0 bg-divider-subtle" />
       </div>
       {/* timeout */}
       <div className="flex items-center justify-between px-4 py-2">

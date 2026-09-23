@@ -12,12 +12,12 @@ import type {
 } from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
+import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { getFileIconType } from '../orchestrate/files/file-icon'
@@ -244,8 +244,11 @@ export function AgentWorkingDirectoryPanel({
   onOpenChange,
   open,
 }: AgentWorkingDirectoryPanelProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const temporaryFilesLabelId = useId()
+  const persistentFilesLabelId = useId()
+
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const persistentFilesTooltip = t(
     ($) => $['agentDetail.configure.workingDirectory.persistentFilesTooltip'],
   )
@@ -573,14 +576,18 @@ export function AgentWorkingDirectoryPanel({
                       value={AGENT_SAVED_FILES_ROOT_PATH}
                       className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
                     >
-                      {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
+                      <span id={persistentFilesLabelId}>
+                        {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
+                      </span>
                     </TabsTab>
-                    <Infotip
-                      aria-label={persistentFilesTooltip}
-                      iconVariant="information"
-                      popupClassName="w-64"
-                    >
-                      {persistentFilesTooltip}
+                    <Infotip>
+                      <InfotipTrigger
+                        aria-labelledby={persistentFilesLabelId}
+                        iconVariant="information"
+                      />
+                      <InfotipContent aria-labelledby={persistentFilesLabelId} className="w-64">
+                        {persistentFilesTooltip}
+                      </InfotipContent>
                     </Infotip>
                   </div>
                   <div className="flex h-full items-center gap-0.5">
@@ -588,14 +595,18 @@ export function AgentWorkingDirectoryPanel({
                       value={AGENT_TEMPORARY_FILES_ROOT_PATH}
                       className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
                     >
-                      {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
+                      <span id={temporaryFilesLabelId}>
+                        {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
+                      </span>
                     </TabsTab>
-                    <Infotip
-                      aria-label={temporaryFilesTooltip}
-                      iconVariant="information"
-                      popupClassName="w-64"
-                    >
-                      {temporaryFilesTooltip}
+                    <Infotip>
+                      <InfotipTrigger
+                        aria-labelledby={temporaryFilesLabelId}
+                        iconVariant="information"
+                      />
+                      <InfotipContent aria-labelledby={temporaryFilesLabelId} className="w-64">
+                        {temporaryFilesTooltip}
+                      </InfotipContent>
                     </Infotip>
                   </div>
                   <TabsIndicator

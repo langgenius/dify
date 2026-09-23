@@ -45,7 +45,7 @@ const Installed: FC<Props> = ({
   onInstalled,
   onFailed,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const toInstallVersion = payload.version || payload.latest_version
   const pluginId = (payload as Plugin).plugin_id
   const { installedInfo, isLoading } = useCheckInstalled({

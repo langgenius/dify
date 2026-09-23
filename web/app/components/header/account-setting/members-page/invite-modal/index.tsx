@@ -17,7 +17,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
@@ -47,7 +47,7 @@ type SubmissionError =
 type InviteFormProps = Omit<InviteModalProps, 'open' | 'trigger'>
 
 function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const locale = useLocale()
   const queryClient = useQueryClient()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
@@ -190,7 +190,7 @@ export function InviteModal({
   onOpenChange,
   onSend,
 }: InviteModalProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => onOpenChange(nextOpen)}>

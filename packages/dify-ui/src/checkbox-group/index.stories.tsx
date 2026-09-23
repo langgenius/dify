@@ -68,7 +68,7 @@ export const DocumentSelection: Story = {
     docs: {
       description: {
         story:
-          'Matches Dify table/list selection patterns such as documents, segments, annotations, and install bundle items: CheckboxGroup owns the selected ID array, allValues defines the current selectable page, and the parent checkbox provides select-all plus mixed state.',
+          'The example controls `CheckboxGroup` with an array of selected document IDs. `allValues` defines the selectable IDs, and the parent checkbox provides select-all and mixed state.',
       },
     },
   },
@@ -85,8 +85,7 @@ function DynamicFormFieldDemo() {
   return (
     <Field name="allowed_file_types" className="flex w-80 flex-col gap-2">
       <FieldDescription className="body-xs-regular text-text-tertiary">
-        This mirrors Dify dynamic form fields where checkbox options are controlled by schema and
-        persisted as a string array.
+        Choose the file types to allow. You can select more than one.
       </FieldDescription>
       <Fieldset
         render={
@@ -119,7 +118,7 @@ export const DynamicFormField: Story = {
     docs: {
       description: {
         story:
-          'Matches Dify checkbox-list form usage in workflow node forms and base form rendering. Field and Fieldset provide group labeling; CheckboxGroup owns controlled array state.',
+          '`Field` integrates the selection with a form field, and `Fieldset` provides group labeling. The example controls `CheckboxGroup` with an array of selected values in React state.',
       },
     },
   },

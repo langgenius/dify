@@ -23,7 +23,6 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
@@ -34,6 +33,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
+import { toast } from '@/app/notifications'
 import { WORKFLOW_GENERATION_TIMEOUT_MS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -90,7 +90,7 @@ const workflowGeneratorErrorSelectors: Record<
   UNRESOLVED_REFERENCE: ($) => $['workflowGenerator.errors.UNRESOLVED_REFERENCE'],
 }
 
-function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<'workflow'>) {
+function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<['workflow']>) {
   return t(workflowGeneratorErrorSelectors[error.code])
 }
 
@@ -152,7 +152,7 @@ const RecoveryDialog = ({
 )
 
 function WorkflowGeneratorModal() {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow', 'common'])
   const router = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled

@@ -1,9 +1,9 @@
 import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { BlockEnum, VarType } from '../../../types'
 import Node from '../node'
 import Panel from '../panel'
@@ -13,7 +13,7 @@ const mockHandleNodeAdd = vi.fn()
 const mockHandleNodeIterationRerender = vi.fn()
 let mockNodesReadOnly = false
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -160,14 +160,12 @@ describe('iteration path', () => {
     expect(mockToastWarning).toHaveBeenCalledWith('workflow.nodes.iteration.answerNodeWarningDesc')
   })
 
-  it('should wire panel input, output, parallel, numeric, error mode, and flatten actions', async () => {
+  it('should wire panel input, output, numeric, and error mode actions', async () => {
     const user = userEvent.setup()
     const handleInputChange = vi.fn()
     const handleOutputVarChange = vi.fn()
-    const changeParallel = vi.fn()
     const changeParallelNums = vi.fn()
     const changeErrorResponseMode = vi.fn()
-    const changeFlattenOutput = vi.fn()
 
     mockUseConfig.mockReturnValueOnce(
       createConfigResult({
@@ -177,10 +175,8 @@ describe('iteration path', () => {
         }),
         handleInputChange,
         handleOutputVarChange,
-        changeParallel,
         changeParallelNums,
         changeErrorResponseMode,
-        changeFlattenOutput,
       }),
     )
 
@@ -188,7 +184,6 @@ describe('iteration path', () => {
 
     await user.click(screen.getByRole('button', { name: 'pick-input-var' }))
     await user.click(screen.getByRole('button', { name: 'pick-output-var' }))
-    await user.click(screen.getAllByRole('switch')[0]!)
     const parallelInput = screen.getByRole('textbox', {
       name: 'workflow.nodes.iteration.MaxParallelismTitle',
     })
@@ -198,7 +193,6 @@ describe('iteration path', () => {
     await user.click(
       screen.getByRole('option', { name: 'workflow.nodes.iteration.ErrorMethod.continueOnError' }),
     )
-    await user.click(screen.getAllByRole('switch')[1]!)
 
     expect(handleInputChange).toHaveBeenCalledWith(['node-1', 'items'], 'variable', {
       type: VarType.arrayString,
@@ -206,14 +200,12 @@ describe('iteration path', () => {
     expect(handleOutputVarChange).toHaveBeenCalledWith(['child-node', 'text'], 'variable', {
       type: VarType.string,
     })
-    expect(changeParallel).toHaveBeenCalledWith(false)
     expect(changeParallelNums).toHaveBeenCalledWith(7)
     expect(changeErrorResponseMode).toHaveBeenCalledWith(
       expect.objectContaining({
         value: ErrorHandleMode.ContinueOnError,
       }),
     )
-    expect(changeFlattenOutput).toHaveBeenCalledWith(true)
   })
 
   it('should hide parallel controls when parallel mode is disabled', () => {

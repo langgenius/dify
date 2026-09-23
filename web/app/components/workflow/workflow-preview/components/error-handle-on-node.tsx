@@ -9,7 +9,7 @@ import { NodeSourceHandle } from './node-handle'
 
 type ErrorHandleOnNodeProps = Pick<Node, 'id' | 'data'>
 const ErrorHandleOnNode = ({ id, data }: ErrorHandleOnNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { error_strategy } = data
   const updateNodeInternals = useUpdateNodeInternals()
 

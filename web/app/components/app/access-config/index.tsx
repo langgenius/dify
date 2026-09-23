@@ -5,13 +5,13 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useStore } from '@/app/components/app/store'
-import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import {
   useAppAccessRules,
@@ -35,7 +35,7 @@ type AppAccessConfigContentProps = {
 }
 
 const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const [currentPage, setCurrentPage] = useState(1)

@@ -26,7 +26,7 @@ const ConditionOperator = ({
   value,
   onSelect,
 }: ConditionOperatorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
 
   const options = useMemo(() => {

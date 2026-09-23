@@ -18,11 +18,10 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { editAnnotation } from '@/service/annotation'
 import EditItem, { EditItemType } from './edit-item'
@@ -54,7 +53,7 @@ const EditAnnotationModal: FC<Props> = ({
   onRemove,
   onlyEditResponse,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
   const handleSave = async (type: EditItemType, editedContent: string) => {
     let postQuery = query
@@ -161,7 +160,10 @@ const EditAnnotationModal: FC<Props> = ({
                       className="flex cursor-pointer items-center space-x-2 pl-3"
                       onClick={() => setShowModal(true)}
                     >
-                      <MessageCheckRemove />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-line-communication-message-check-remove h-6 w-6"
+                      />
                       <div>{t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}</div>
                     </div>
                     {!!createdAt && (

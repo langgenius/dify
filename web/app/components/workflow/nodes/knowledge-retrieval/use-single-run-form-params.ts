@@ -28,7 +28,7 @@ const useSingleRunFormParams = ({
   runInputDataRef,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const query = runInputData.query
   const queryAttachment = runInputData.queryAttachment
@@ -54,7 +54,9 @@ const useSingleRunFormParams = ({
   )
 
   const filterFileVar = useCallback((varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }, [])
 
   // Get all variables from previous nodes that are file or array of file

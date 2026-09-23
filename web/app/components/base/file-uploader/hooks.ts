@@ -2,7 +2,6 @@ import type { ClipboardEvent } from 'react'
 import type { FileEntity } from './types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
@@ -18,6 +17,7 @@ import {
 } from '@/app/components/base/file-uploader/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { isAppAccessError } from '@/features/app-access-error/state'
+import { toast } from '@/app/notifications'
 import { useParams, usePathname } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
@@ -57,7 +57,7 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
 }
 
 export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const fileStore = useFileStore()
   const params = useParams()
   const pathname = usePathname()

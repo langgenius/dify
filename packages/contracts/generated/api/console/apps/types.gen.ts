@@ -1994,6 +1994,7 @@ export type WorkflowNodeJobConfig = {
   human_contacts?: Array<AgentHumanContactConfig>
   metadata?: WorkflowNodeJobMetadata
   mode?: WorkflowNodeJobMode
+  output_routes?: WorkflowOutputRoutes
   previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
   schema_version?: number
   workflow_prompt?: string
@@ -2446,6 +2447,11 @@ export type WorkflowNodeJobMetadata = {
 
 export type WorkflowNodeJobMode = 'let_agent_figure_it_out' | 'tell_agent_what_to_do'
 
+export type WorkflowOutputRoutes = {
+  enabled?: boolean
+  routes?: Array<WorkflowOutputRoute>
+}
+
 export type WorkflowPreviousNodeOutputRef = {
   key?: string | null
   name?: string | null
@@ -2734,6 +2740,12 @@ export type DeclaredOutputRetryConfig = {
   enabled?: boolean
   max_retries?: number
   retry_interval_ms?: number
+}
+
+export type WorkflowOutputRoute = {
+  id: string
+  label?: string | null
+  name?: string
 }
 
 export type AgentCliToolAuthorizationStatus =
@@ -3192,7 +3204,13 @@ export type PostAppsImportsData = {
   body:
     | AppImportPayload
     | {
+        app_id?: string
+        description?: string
         file: Blob | File
+        icon?: string
+        icon_background?: string
+        icon_type?: string
+        name?: string
       }
   path?: never
   query?: never
@@ -4468,6 +4486,7 @@ export type GetAppsByAppIdExportData = {
   query?: {
     format?: 'ifpkg' | 'yaml'
     include_secret?: boolean
+    version_id?: string
     workflow_id?: string
   }
   url: '/apps/{app_id}/export'

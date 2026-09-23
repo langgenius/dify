@@ -21,7 +21,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AppModeEnum } from '@/types/app'
@@ -37,7 +37,7 @@ type ILogs = {
 const defaultValue = 'N/A'
 
 const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const { formatTime } = useTimestamp()
 
   const media = useBreakpoints()
@@ -125,7 +125,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     setCurrentLog(undefined)
   }
 
-  if (!logs || !appDetail) return <Loading />
+  if (!logs || !appDetail) return <LoadingPlaceholder />
 
   return (
     <div className="overflow-x-auto">

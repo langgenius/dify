@@ -7,7 +7,7 @@ import { AgentContentModerationSettings } from './content-moderation'
 import { AgentEnvEditor } from './env'
 
 export function AgentAdvancedSettings() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const advancedSettingsPanelId = 'agent-configure-advanced-settings-panel'
 
   return (

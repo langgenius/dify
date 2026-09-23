@@ -21,7 +21,7 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 from pydantic_ai.models import ModelRequestParameters
-from pydantic_ai.models.function import FunctionModel
+from pydantic_ai.models.function import DeltaToolCall, DeltaToolCalls, FunctionModel
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 from pydantic_ai.usage import UsageLimits
@@ -69,6 +69,8 @@ from dify_agent.protocol.schemas import (
     RunLayerSpec,
     RunSucceededEvent,
 )
+
+from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import (
@@ -264,6 +266,8 @@ def _request(
     ask_human_config: DifyAskHumanLayerConfig | None = None,
     llm_layer_name: str = DIFY_AGENT_MODEL_LAYER_ID,
     execution_context_layer_name: str = "execution_context",
+    app_id: str | None = None,
+    agent_id: str | None = None,
     on_exit: LayerExitSignals | None = None,
     output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
     model_settings: ModelSettings | None = None,
@@ -296,6 +300,8 @@ def _request(
             type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
             config=DifyExecutionContextLayerConfig(
                 tenant_id="tenant-1",
+                app_id=app_id,
+                agent_id=agent_id,
                 user_from="account",
                 agent_mode="workflow_run",
                 invoke_from="service-api",
@@ -737,6 +743,61 @@ def test_runner_passes_context_compaction(monkeypatch: pytest.MonkeyPatch) -> No
     asyncio.run(scenario())
 
     assert sink.statuses["run-compaction"] == "succeeded"
+
+
+def test_runner_instruments_agent_with_injected_observability(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeAgentObservability:
+        def __init__(self) -> None:
+            self.instrumented: list[tuple[object, DifyExecutionContextLayerConfig | None]] = []
+
+        def instrument(
+            self,
+            agent: object,
+            *,
+            execution_context: DifyExecutionContextLayerConfig | None = None,
+        ) -> None:
+            self.instrumented.append((agent, execution_context))
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            return FakeAgentRunResult("done")
+
+    observability = FakeAgentObservability()
+    created_agent = FakeAgent()
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: created_agent)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request(app_id="app-1", agent_id="agent-1"),
+                run_id="run-observed",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                agent_observability=cast(AgentObservability, observability),
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert sink.statuses["run-observed"] == "succeeded"
+    # The run's Dify context reaches observability through the model layer's
+    # execution-context dependency, whose node name the caller chooses.
+    assert len(observability.instrumented) == 1
+    instrumented_agent, execution_context = observability.instrumented[0]
+    assert instrumented_agent is created_agent
+    assert execution_context is not None
+    assert (execution_context.tenant_id, execution_context.app_id, execution_context.agent_id) == (
+        "tenant-1",
+        "app-1",
+        "agent-1",
+    )
 
 
 def test_runner_rejects_compaction_budget_before_model_resolution_or_invocation(
@@ -3269,3 +3330,149 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
 
     assert [event.type for event in sink.events["run-invalid-shell-offset"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-invalid-shell-offset"] == "failed"
+
+
+def _request_with_tool_layer(user: str) -> CreateRunRequest:
+    request = _request(user, include_history=True)
+    request.composition.layers.append(
+        RunLayerSpec(
+            name="tools",
+            type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+            deps={"execution_context": "execution_context"},
+            config=DifyPluginToolsLayerConfig(
+                tools=[
+                    DifyPluginToolConfig(
+                        plugin_id="langgenius/tools",
+                        provider="search",
+                        tool_name="web_search",
+                        credential_type="api-key",
+                        parameters=_prepared_plugin_tool_parameters(),
+                        parameters_json_schema=_prepared_plugin_tool_schema(),
+                    )
+                ]
+            ),
+        )
+    )
+    return request
+
+
+def _install_tool_calling_model_and_blocking_tool(monkeypatch: pytest.MonkeyPatch, tool_started: asyncio.Event) -> None:
+    async def blocking_tool(query: str) -> str:
+        del query
+        _ = tool_started.set()
+        await asyncio.Event().wait()
+        return "unreachable"
+
+    async def call_web_search(_messages: list[ModelMessage], _info: object) -> AsyncIterator[DeltaToolCalls]:
+        yield {
+            0: DeltaToolCall(
+                name="web_search",
+                json_args='{"query": "dify"}',
+                tool_call_id="call-1",
+            )
+        }
+
+    async def fake_get_tools(
+        _self: DifyPluginToolsLayer,
+        *,
+        http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
+    ) -> list[Tool[object]]:
+        del http_client, dify_api_http_client
+        return [Tool(blocking_tool, name="web_search")]
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        del http_client, agent_run_id
+        return FunctionModel(stream_function=call_web_search)
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr(DifyPluginToolsLayer, "get_tools", fake_get_tools)
+
+
+def test_runner_marks_unexecuted_tool_calls_when_run_is_cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
+    tool_started = asyncio.Event()
+    _install_tool_calling_model_and_blocking_tool(monkeypatch, tool_started)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> AgentRunRunner:
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request_with_tool_layer("find something"),
+                run_id="run-cancel-tool-call",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+            task = asyncio.create_task(runner.run())
+            await asyncio.wait_for(tool_started.wait(), timeout=5)
+            _ = task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            return runner
+
+    runner = asyncio.run(scenario())
+
+    assert runner.terminal_session_snapshot is not None
+    saved_history = _history_messages_from_snapshot(runner.terminal_session_snapshot)
+    pending_response = saved_history[-1]
+    assert isinstance(pending_response, ModelResponse)
+    assert pending_response.state == "interrupted"
+    assert [part.tool_call_id for part in pending_response.tool_calls] == ["call-1"]
+
+
+def test_runner_continues_conversation_after_a_cancelled_tool_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    tool_started = asyncio.Event()
+    _install_tool_calling_model_and_blocking_tool(monkeypatch, tool_started)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> AgentRunRunner:
+        async with httpx.AsyncClient() as client:
+            cancelled_runner = AgentRunRunner(
+                sink=sink,
+                request=_request_with_tool_layer("find something"),
+                run_id="run-cancel-first",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+            task = asyncio.create_task(cancelled_runner.run())
+            await asyncio.wait_for(tool_started.wait(), timeout=5)
+            _ = task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+
+            assert cancelled_runner.terminal_session_snapshot is not None
+
+            async def answer(_messages: list[ModelMessage], _info: object) -> AsyncIterator[str]:
+                yield "second answer"
+
+            def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+                del http_client, agent_run_id
+                return FunctionModel(stream_function=answer)
+
+            monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+            follow_up = _request_with_tool_layer("what happened?")
+            follow_up.session_snapshot = cancelled_runner.terminal_session_snapshot
+            follow_up_runner = AgentRunRunner(
+                sink=sink,
+                request=follow_up,
+                run_id="run-continue",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+            await follow_up_runner.run()
+            return follow_up_runner
+
+    follow_up_runner = asyncio.run(scenario())
+
+    terminal = sink.events["run-continue"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert terminal.data.output == "second answer"
+    assert follow_up_runner.terminal_session_snapshot is not None
+    saved_history = _history_messages_from_snapshot(follow_up_runner.terminal_session_snapshot)
+    interrupted_returns = [
+        part
+        for part in _flatten_message_parts(saved_history)
+        if isinstance(part, ToolReturnPart) and part.tool_call_id == "call-1"
+    ]
+    assert len(interrupted_returns) == 1
+    assert interrupted_returns[0].outcome == "interrupted"

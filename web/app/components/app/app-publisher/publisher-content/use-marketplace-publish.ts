@@ -1,10 +1,10 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { publishToCreatorsPlatform } from '@/service/apps'
 
 export function useMarketplacePublish(appId?: string) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [isPublishing, setIsPublishing] = useState(false)
 
   async function publish() {

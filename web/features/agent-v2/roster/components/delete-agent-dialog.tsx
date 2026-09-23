@@ -9,9 +9,9 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
 type DeleteAgentDialogProps = {
@@ -29,8 +29,8 @@ export function DeleteAgentDialog({
   onOpenChange,
   onDeleted,
 }: DeleteAgentDialogProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const deleteAgentMutation = useMutation(consoleQuery.agent.byAgentId.delete.mutationOptions())
 
   const handleDelete = () => {

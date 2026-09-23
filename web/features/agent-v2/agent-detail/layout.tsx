@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getAgentDefaultSection, getAgentSectionAccess } from '@/features/agent-v2/acl'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -16,10 +16,10 @@ type AgentDetailLayoutProps = {
 }
 
 export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const pathname = usePathname()
   const router = useRouter()
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
   const section = pathname.endsWith('/access-config')
     ? 'access-config'
@@ -47,7 +47,7 @@ export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps)
     if (redirectPath) router.replace(redirectPath)
   }, [router, redirectPath])
 
-  if (agentQuery.isPending) return <Loading />
+  if (agentQuery.isPending) return <LoadingPlaceholder className="h-full" />
   if (redirectPath) return null
   if (agentQuery.isError) {
     return (

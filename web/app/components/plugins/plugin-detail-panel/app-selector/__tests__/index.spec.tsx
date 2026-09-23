@@ -165,7 +165,7 @@ describe('AppSelector', () => {
     await waitFor(() => {
       expect(mockUseAppWorkflow).toHaveBeenCalledWith('app-2')
     })
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
 
   it('should reset the input draft when switching apps', async () => {

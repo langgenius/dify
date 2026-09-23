@@ -1,8 +1,8 @@
 import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 
 type TagInputProps = Pick<
   InputHTMLAttributes<HTMLInputElement>,
@@ -33,7 +33,7 @@ const TagInput = ({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
 }: TagInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
   const isSpecialMode = customizedConfirmKey === 'Tab'

@@ -36,6 +36,8 @@ from services.app_dsl_service import (
     Import,
     PendingData,
 )
+from services.app_import_source import download_app_import_source, try_read_yaml
+from services.app_package_service import AppPackageService, PreparedAppPackage
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
@@ -102,8 +104,14 @@ class AppImportApi(Resource):
                                 "file": {
                                     "type": "string",
                                     "format": "binary",
-                                    "description": "Roster Agent .ifpkg archive",
-                                }
+                                    "description": "App .ifpkg archive",
+                                },
+                                "app_id": {"type": "string", "description": "App to overwrite"},
+                                "name": {"type": "string"},
+                                "description": {"type": "string"},
+                                "icon_type": {"type": "string"},
+                                "icon": {"type": "string"},
+                                "icon_background": {"type": "string"},
                             },
                             "required": ["file"],
                         }
@@ -128,24 +136,58 @@ class AppImportApi(Resource):
     def post(self, current_user: Account):
         if request.mimetype == "multipart/form-data":
             return self._import_package(current_user)
-        return self._import_dsl(validate_request(AppImportPayload), current_user)
+        payload = validate_request(AppImportPayload)
+        if payload.mode == "yaml-url" and payload.yaml_url:
+            return self._import_url(payload, current_user)
+        return self._import_dsl(payload, current_user)
+
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()),
+        RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()),
+    )
+    def _import_url(self, payload: AppImportPayload, current_user: Account):
+        with download_app_import_source(payload.yaml_url or "") as source:
+            content = try_read_yaml(source)
+            if content is not None:
+                return self._import_dsl(
+                    payload.model_copy(update={"mode": "yaml-content", "yaml_content": content, "yaml_url": None}),
+                    current_user,
+                )
+            return self._import_package(current_user, payload, source)
+
+    def _import_package(
+        self, current_user: Account, payload: AppImportPayload | None = None, source: BinaryIO | None = None
+    ):
+        if source is None:
+            uploaded = request.files.get("file")
+            if uploaded is None or not uploaded.filename:
+                raise InvalidRosterAgentPackageError("App package file is required")
+            if not uploaded.filename.lower().endswith(".ifpkg"):
+                raise InvalidRosterAgentPackageError("App package file must use the .ifpkg extension")
+            source = cast(BinaryIO, uploaded.stream)
+        package = AppPackageService().read_package(source)
+        if package is not None:
+            with package:
+                if payload is None:
+                    payload = AppImportPayload.model_validate({**request.form.to_dict(), "mode": "yaml-content"})
+                return self._import_dsl(
+                    payload.model_copy(update={"mode": "yaml-content", "yaml_content": package.dsl, "yaml_url": None}),
+                    current_user,
+                    package=package,
+                )
+        return self._import_agent_package(current_user, source, payload)
 
     @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
     @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()))
-    def _import_package(self, current_user: Account):
-        uploaded = request.files.get("file")
-        if uploaded is None or not uploaded.filename:
-            raise InvalidRosterAgentPackageError("Roster Agent package file is required")
-        if not uploaded.filename.lower().endswith(".ifpkg"):
-            raise InvalidRosterAgentPackageError("Roster Agent package file must use the .ifpkg extension")
-        if request.form.get("app_id"):
+    def _import_agent_package(self, current_user: Account, source: BinaryIO, payload: AppImportPayload | None = None):
+        app_id = payload.app_id if payload is not None else request.form.get("app_id")
+        if app_id:
             raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
         account, tenant_id = _current_user_and_tenant_id(current_user)
         if tenant_id is None:
             raise Forbidden("Current workspace is required")
-        result = RosterAgentPackageImporter().import_package(
-            source=cast(BinaryIO, uploaded.stream), tenant_id=tenant_id, account=account
-        )
+        importer = RosterAgentPackageImporter()
+        result = importer.import_package(source=source, tenant_id=tenant_id, account=account)
         return Import(
             id=str(uuid4()),
             status=ImportStatus.COMPLETED_WITH_WARNINGS if result.warnings else ImportStatus.COMPLETED,
@@ -156,7 +198,13 @@ class AppImportApi(Resource):
 
     @cloud_edition_billing_resource_check("apps")
     @rbac_permission_required(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()))
-    def _import_dsl(self, req_data: AppImportPayload, current_user: Account | None = None):
+    def _import_dsl(
+        self,
+        req_data: AppImportPayload,
+        current_user: Account | None = None,
+        *,
+        package: PreparedAppPackage | None = None,
+    ):
         current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
 
         # AppDslService performs internal commits for some creation paths, so use a plain
@@ -177,6 +225,7 @@ class AppImportApi(Resource):
                     icon=req_data.icon,
                     icon_background=req_data.icon_background,
                     app_id=req_data.app_id,
+                    package=package,
                 )
             except NoPermissionError as e:
                 raise Forbidden(str(e))

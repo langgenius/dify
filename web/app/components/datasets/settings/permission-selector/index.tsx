@@ -31,7 +31,7 @@ const PermissionSelector = ({
   onChange,
   onMemberSelect,
 }: PermissionSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetSettings'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,

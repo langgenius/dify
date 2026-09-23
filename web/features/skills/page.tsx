@@ -2,7 +2,7 @@
 
 import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { UIEvent } from 'react'
+import type { DragEvent, UIEvent } from 'react'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,6 +14,13 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +38,6 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
@@ -40,6 +46,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { toast } from '@/app/notifications'
 import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -48,6 +55,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { formatFileSize } from '@/utils/format'
 import { fetchSkillArchiveBlob } from './client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
 import { getSkillErrorCode, getSkillErrorDetailString, normalizeSkillError } from './error'
@@ -113,7 +121,7 @@ function SkillCardSkeletonCards() {
 }
 
 function SkillCardSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -147,8 +155,8 @@ function SkillPlaceholderState({
   role,
   title,
 }: SkillPlaceholderStateProps) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <section
@@ -254,8 +262,8 @@ function DeleteSkillDialog({
   skill: SkillResponse
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const deleteMutation = useMutation(
@@ -346,7 +354,7 @@ function DeleteSkillDialog({
           )}
           {referenceCount > 0 && (
             <Field name="confirm-skill-name" className="mt-2">
-              <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
+              <FieldLabel className="system-sm-regular">
                 <Trans
                   i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
                   ns="skill"
@@ -409,10 +417,11 @@ function SkillCard({
   skill: SkillResponse
   onOpenTagManagement: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
+  const router = useRouter()
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
@@ -446,9 +455,10 @@ function SkillCard({
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (copiedSkill) => {
           toast.success(t(($) => $['skillManagement.duplicateSuccess']))
           invalidateSkillListQueries(queryClient)
+          router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
         onError: () => {
           toast.error(t(($) => $['skillManagement.duplicateFailed']))
@@ -526,60 +536,60 @@ function SkillCard({
           </div>
         </div>
       )}
-      {(canEdit || canDelete || !!skill.latest_published_version_id) && (
-        <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
-          <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
-                render={
-                  <IconButton
-                    aria-label={t(($) => $['skillManagement.moreActions'], {
-                      name: skill.display_name,
-                    })}
-                    size="lg"
-                    className="data-popup-open:bg-state-base-hover"
+      <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+        <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['skillManagement.moreActions'], {
+                    name: skill.display_name,
+                  })}
+                  size="lg"
+                  className="data-popup-open:bg-state-base-hover"
+                >
+                  <span aria-hidden className="i-ri-more-fill size-4.5" />
+                </IconButton>
+              }
+            />
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+              {canEdit && (
+                <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+                  <span
+                    aria-hidden
+                    className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
+                  />
+                  <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                className="gap-2"
+                disabled={exportMutation.isPending}
+                onClick={handleExport}
+              >
+                <span
+                  aria-hidden
+                  className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
+                />
+                <span>{tCommon(($) => $['operation.export'])}</span>
+              </DropdownMenuItem>
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    className="gap-2"
+                    onClick={() => setIsDeleteOpen(true)}
                   >
-                    <span aria-hidden className="i-ri-more-fill size-4.5" />
-                  </IconButton>
-                }
-              />
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
-                {canEdit && (
-                  <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
-                    <span
-                      aria-hidden
-                      className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
-                    />
-                    <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                    <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                    <span>{tCommon(($) => $['operation.delete'])}</span>
                   </DropdownMenuItem>
-                )}
-                {skill.latest_published_version_id && (
-                  <DropdownMenuItem className="gap-2" onClick={handleExport}>
-                    <span
-                      aria-hidden
-                      className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
-                    />
-                    <span>{tCommon(($) => $['operation.export'])}</span>
-                  </DropdownMenuItem>
-                )}
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      className="gap-2"
-                      onClick={() => setIsDeleteOpen(true)}
-                    >
-                      <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                      <span>{tCommon(($) => $['operation.delete'])}</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      )}
+      </div>
       <div className="pointer-events-none absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
         <div className="pointer-events-auto w-full min-w-0">
           <SkillCardTags
@@ -671,7 +681,7 @@ function SkillsToolbar({
   onImport: () => void
   onOpenTagManagement: () => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const [keyword, setKeyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -746,8 +756,8 @@ type SkillGridProps = {
 }
 
 function SkillGridRetryStatus({ state }: { state: SkillGridRetryState }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <div
@@ -770,7 +780,7 @@ function SkillGridPagination({
     { kind: 'list' }
   >['pagination']
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   if (state.status === 'none') return null
   if (state.status === 'error') return <SkillGridRetryStatus state={state} />
@@ -786,7 +796,7 @@ function SkillGridPagination({
 }
 
 function SkillGrid({ state }: SkillGridProps) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const isBusy =
     state.status === 'pending' ||
     (state.status === 'error' && state.isRetrying) ||
@@ -844,12 +854,175 @@ function SkillGrid({ state }: SkillGridProps) {
   )
 }
 
+function ImportSkillDialogForm({
+  importing,
+  onImport,
+}: {
+  importing: boolean
+  onImport: (file: File) => void
+}) {
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
+  const inputRef = useRef<HTMLInputElement>(null)
+  const dragDepthRef = useRef(0)
+  const descriptionId = useId()
+  const errorId = useId()
+  const [file, setFile] = useState<File>()
+  const [invalidFile, setInvalidFile] = useState(false)
+  const [dragging, setDragging] = useState(false)
+
+  const selectFiles = (files: File[]) => {
+    if (importing || files.length === 0) return
+    const [selectedFile] = files
+    if (files.length !== 1 || !selectedFile || !/\.(?:zip|skill)$/iu.test(selectedFile.name)) {
+      setFile(undefined)
+      setInvalidFile(true)
+      return
+    }
+    setFile(selectedFile)
+    setInvalidFile(false)
+  }
+
+  const hasFiles = (event: DragEvent<HTMLDivElement>) =>
+    Array.from(event.dataTransfer.types).includes('Files')
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (file && !importing) onImport(file)
+      }}
+    >
+      <div className="flex items-center justify-between border-b border-divider-subtle px-5 py-4">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(($) => $['skillManagement.importDialog.title'])}
+        </DialogTitle>
+        <DialogClose
+          disabled={importing}
+          render={
+            <IconButton aria-label={tCommon(($) => $['operation.close'])}>
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
+      </div>
+      <div className="p-5">
+        <div
+          role="group"
+          aria-label={t(($) => $['skillManagement.importDialog.title'])}
+          className={cn(
+            'flex min-h-34 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-components-dropzone-border-alt bg-components-dropzone-bg-alt px-5 py-4',
+            dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
+          )}
+          onDragEnter={(event) => {
+            if (!hasFiles(event)) return
+            event.preventDefault()
+            event.stopPropagation()
+            if (importing) return
+            dragDepthRef.current += 1
+            setDragging(true)
+          }}
+          onDragOver={(event) => {
+            if (!hasFiles(event)) return
+            event.preventDefault()
+            event.stopPropagation()
+            event.dataTransfer.dropEffect = importing ? 'none' : 'copy'
+          }}
+          onDragLeave={(event) => {
+            if (!hasFiles(event)) return
+            event.preventDefault()
+            event.stopPropagation()
+            dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+            if (dragDepthRef.current === 0) setDragging(false)
+          }}
+          onDrop={(event) => {
+            if (!hasFiles(event)) return
+            event.preventDefault()
+            event.stopPropagation()
+            dragDepthRef.current = 0
+            setDragging(false)
+            selectFiles(Array.from(event.dataTransfer.files))
+          }}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".zip,.skill,application/zip"
+            className="hidden"
+            aria-label={t(($) => $['skillManagement.importDialog.browse'])}
+            aria-describedby={invalidFile ? `${descriptionId} ${errorId}` : descriptionId}
+            aria-invalid={invalidFile}
+            disabled={importing}
+            onChange={(event) => {
+              selectFiles(Array.from(event.currentTarget.files ?? []))
+              event.currentTarget.value = ''
+            }}
+          />
+          <span aria-hidden className="i-ri-file-zip-line size-8 shrink-0 text-text-quaternary" />
+          {file ? (
+            <div className="flex w-full items-center justify-center gap-3">
+              <div className="min-w-0 text-center">
+                <p className="system-sm-medium wrap-anywhere text-text-secondary">{file.name}</p>
+                <p className="system-xs-regular text-text-tertiary">{formatFileSize(file.size)}</p>
+              </div>
+              <IconButton
+                aria-label={tCommon(($) => $['operation.remove'])}
+                disabled={importing}
+                onClick={() => setFile(undefined)}
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            </div>
+          ) : (
+            <p className="text-center system-md-medium text-text-secondary">
+              <Trans
+                ns="skill"
+                i18nKey={($) => $['skillManagement.importDialog.dropzone']}
+                components={{
+                  browse: (
+                    <button
+                      type="button"
+                      disabled={importing}
+                      aria-describedby={invalidFile ? `${descriptionId} ${errorId}` : descriptionId}
+                      className="cursor-pointer rounded-sm text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed"
+                      onClick={() => inputRef.current?.click()}
+                    />
+                  ),
+                }}
+              />
+            </p>
+          )}
+          <DialogDescription
+            id={descriptionId}
+            className="text-center system-sm-regular text-text-tertiary"
+          >
+            {t(($) => $['skillManagement.importDialog.description'])}
+          </DialogDescription>
+        </div>
+        {invalidFile && (
+          <p id={errorId} role="alert" className="mt-2 system-xs-regular text-text-destructive">
+            {t(($) => $['skillManagement.importDialog.invalidFile'])}
+          </p>
+        )}
+      </div>
+      <div className="flex justify-end gap-2 border-t border-divider-subtle px-5 py-4">
+        <DialogClose disabled={importing} render={<Button />}>
+          {tCommon(($) => $['operation.cancel'])}
+        </DialogClose>
+        <Button type="submit" variant="primary" disabled={!file} loading={importing}>
+          {t(($) => $['skillManagement.import'])}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 export default function SkillsPage() {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const { canDelete, canEdit } = useSkillPermissions()
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const listViewportRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [keyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
@@ -910,8 +1083,8 @@ export default function SkillsPage() {
     )
   }
 
-  const handleFileChange = (file: File | undefined) => {
-    if (!file || importMutation.isPending || createMutation.isPending) return
+  const handleImport = (file: File) => {
+    if (!canEdit || importMutation.isPending || createMutation.isPending) return
 
     importMutation.mutate(
       {
@@ -921,6 +1094,7 @@ export default function SkillsPage() {
       },
       {
         onSuccess: (skill) => {
+          setImportOpen(false)
           toast.success(t(($) => $['skillManagement.importSuccess']))
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
@@ -945,9 +1119,6 @@ export default function SkillsPage() {
             return
           }
           toast.error(t(($) => $['skillManagement.importFailed']))
-        },
-        onSettled: () => {
-          if (importInputRef.current) importInputRef.current.value = ''
         },
       },
     )
@@ -1010,7 +1181,7 @@ export default function SkillsPage() {
                           creating: createMutation.isPending,
                           importing: importMutation.isPending,
                           onCreate: handleCreate,
-                          onImport: () => importInputRef.current?.click(),
+                          onImport: () => setImportOpen(true),
                         }
                       : undefined,
                 }
@@ -1051,19 +1222,12 @@ export default function SkillsPage() {
           </h1>
         </div>
         <div className="mt-3.5">
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".zip,.skill,application/zip"
-            className="hidden"
-            onChange={(event) => handleFileChange(event.currentTarget.files?.[0])}
-          />
           <SkillsToolbar
             canEdit={canEdit}
             creating={createMutation.isPending}
             importing={importMutation.isPending}
             onCreate={handleCreate}
-            onImport={() => importInputRef.current?.click()}
+            onImport={() => setImportOpen(true)}
             onOpenTagManagement={() => setShowTagManagementModal(true)}
           />
         </div>
@@ -1086,6 +1250,16 @@ export default function SkillsPage() {
           </ScrollAreaScrollbar>
         </ScrollArea>
       </div>
+      <Dialog
+        open={importOpen}
+        onOpenChange={(open) => {
+          if (!importMutation.isPending) setImportOpen(open)
+        }}
+      >
+        <DialogContent className="p-0">
+          <ImportSkillDialogForm importing={importMutation.isPending} onImport={handleImport} />
+        </DialogContent>
+      </Dialog>
       <SkillListTagManagementModal
         show={showTagManagementModal}
         onClose={() => setShowTagManagementModal(false)}

@@ -1,10 +1,9 @@
-import type { FileTypesRes } from './datasets'
 import type {
   ModelParameterRule,
   ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
   CodeBasedExtension,
   CommonResponse,
@@ -100,13 +99,6 @@ export const useMailRegister = () => {
     }) => {
       return post<MailRegisterResponse>('/email-register', { body })
     },
-  })
-}
-
-export const useFileSupportTypes = () => {
-  return useQuery<FileTypesRes>({
-    queryKey: [NAME_SPACE, 'file-types'],
-    queryFn: () => get<FileTypesRes>('/files/support-type'),
   })
 }
 

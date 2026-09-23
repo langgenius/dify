@@ -60,6 +60,7 @@ from models.account import Account
 from models.agent import (
     Agent,
     AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigSnapshot,
     AgentKind,
     AgentScope,
@@ -496,6 +497,13 @@ class SkillAssistActionPlan(BaseModel):
 @dataclass(frozen=True, slots=True)
 class SkillAssistActionResult:
     plan: SkillAssistActionPlan
+
+
+@dataclass(frozen=True, slots=True)
+class DraftSkillArchive:
+    filename: str
+    mime_type: str
+    payload: bytes
 
 
 @dataclass(frozen=True, slots=True)
@@ -2059,7 +2067,7 @@ class SkillManagementService:
             }
 
     def duplicate_skill(self, *, tenant_id: str, user_id: str, skill_id: str) -> dict[str, Any]:
-        """Create a draft-only copy, preferring the latest published snapshot when present."""
+        """Create an unpublished copy of the current saved draft."""
         with self._session_scope() as session:
             source = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
@@ -2084,47 +2092,10 @@ class SkillManagementService:
                 skill_id=duplicate.id,
                 tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[source.id]).get(source.id, []),
             )
-            latest_version_id = source.latest_published_version_id
             source_draft_files = list(
                 session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == source.id))
             )
-            copied_draft_files = [self._copy_draft_file(file, skill_id=duplicate_id) for file in source_draft_files]
-            session.commit()
-
-        if latest_version_id is not None:
-            archive = self._load_version_archive(tenant_id=tenant_id, version_id=latest_version_id)
-            with self._session_scope() as session:
-                duplicate = self._require_skill(session, tenant_id=tenant_id, skill_id=duplicate_id)
-                duplicate_identity = (
-                    duplicate.name,
-                    duplicate.display_name,
-                    duplicate.description,
-                    duplicate.name_manually_edited,
-                )
-                files = self._draft_rows_from_archive_bytes(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    skill=duplicate,
-                    archive_bytes=archive,
-                )
-                # Parsing the published SKILL.md synchronizes metadata onto the
-                # supplied ORM object. A duplicate must retain its new identity,
-                # otherwise the reused request session autoflushes the source
-                # name and violates the tenant/name unique constraint.
-                (
-                    duplicate.name,
-                    duplicate.display_name,
-                    duplicate.description,
-                    duplicate.name_manually_edited,
-                ) = duplicate_identity
-        else:
-            files = copied_draft_files
-
-        with self._session_scope() as session:
-            duplicate = self._require_skill(session, tenant_id=tenant_id, skill_id=duplicate_id)
-            if latest_version_id is not None:
-                for file in files:
-                    file.skill_id = duplicate.id
+            files = [self._copy_draft_file(file, skill_id=duplicate_id) for file in source_draft_files]
             for file in files:
                 if file.path == _SKILL_MD and file.content_text is not None:
                     synced_content = self._sync_skill_md_text(duplicate, file.content_text)
@@ -2250,6 +2221,20 @@ class SkillManagementService:
         # follow-up action so restoring history cannot unexpectedly activate it.
         return self.get_skill(tenant_id=tenant_id, skill_id=skill_id)
 
+    def export_draft_archive(self, *, tenant_id: str, skill_id: str) -> DraftSkillArchive:
+        """Export the current saved draft without requiring or creating a published version."""
+        with self._session_scope() as session:
+            skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
+            files = list(session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id)))
+            # Snapshot the loaded rows so archive storage reads happen outside this scope.
+            draft_skill = Skill(
+                tenant_id=tenant_id, name=skill.name, display_name=skill.display_name, description=skill.description
+            )
+            draft_files = [self._copy_draft_file(file, skill_id=skill.id) for file in files]
+            filename = f"{skill.name}.zip"
+        archive_bytes, _ = self._build_archive_from_draft(skill=draft_skill, files=draft_files)
+        return DraftSkillArchive(filename=filename, mime_type="application/zip", payload=archive_bytes)
+
     def pull_published_archive(self, *, tenant_id: str, skill_id: str) -> PublishedSkillArchive:
         with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
@@ -2276,8 +2261,9 @@ class SkillManagementService:
         tenant_id: str,
         agent_id: str,
         include_draft: bool = False,
+        config_snapshot_id: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Return workspace Skills from the Agent draft or active published snapshot."""
+        """Return workspace Skills from the Agent draft or a published snapshot."""
         return [
             {
                 "id": item.skill_id,
@@ -2292,6 +2278,7 @@ class SkillManagementService:
                 tenant_id=tenant_id,
                 agent_id=agent_id,
                 include_draft=include_draft,
+                config_snapshot_id=config_snapshot_id,
             )
         ]
 
@@ -2301,6 +2288,7 @@ class SkillManagementService:
         tenant_id: str,
         agent_id: str,
         include_draft: bool = False,
+        config_snapshot_id: str | None = None,
     ) -> list[RuntimeAgentSkillArchive]:
         """Return export-ready workspace Skill archives with published identity compatibility."""
 
@@ -2313,7 +2301,10 @@ class SkillManagementService:
                 Agent.tenant_id == tenant_id,
             ]
             if not include_draft:
-                conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
+                if config_snapshot_id is None:
+                    conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
+                else:
+                    conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == config_snapshot_id)
             rows = list(
                 session.execute(
                     select(binding_model, Skill, SkillVersion, ToolFile)
@@ -2679,36 +2670,35 @@ class SkillManagementService:
                 )
             )
         )
-        configured_names: set[str] = set()
-        snapshot = session.scalar(
-            select(AgentConfigSnapshot).where(
-                AgentConfigSnapshot.tenant_id == tenant_id,
-                AgentConfigSnapshot.agent_id == agent_id,
-                AgentConfigSnapshot.id
-                == select(Agent.active_config_snapshot_id)
-                .where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
-                .scalar_subquery(),
-            )
-        )
-        if snapshot is not None:
-            configured_names.update(
-                skill.name
-                for skill in AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).config_skills
-                if not skill.is_missing
-            )
-        drafts = session.scalars(
+        # Bindings are edited against the normal draft, including unpublished removals.
+        config: AgentConfigDraft | AgentConfigSnapshot | None = session.scalar(
             select(AgentConfigDraft).where(
                 AgentConfigDraft.tenant_id == tenant_id,
                 AgentConfigDraft.agent_id == agent_id,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                AgentConfigDraft.account_id.is_(None),
             )
         )
-        for draft in drafts:
-            configured_names.update(
-                skill.name
-                for skill in AgentSoulConfig.model_validate(draft.config_snapshot_dict).config_skills
-                if not skill.is_missing
+        if config is None:
+            config = session.scalar(
+                select(AgentConfigSnapshot).where(
+                    AgentConfigSnapshot.tenant_id == tenant_id,
+                    AgentConfigSnapshot.agent_id == agent_id,
+                    AgentConfigSnapshot.id
+                    == select(Agent.active_config_snapshot_id)
+                    .where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
+                    .scalar_subquery(),
+                )
             )
-
+        configured_names = (
+            {
+                skill.name
+                for skill in AgentSoulConfig.model_validate(config.config_snapshot_dict).config_skills
+                if not skill.is_missing
+            }
+            if config is not None
+            else set()
+        )
         conflicts = sorted(set(selected_skill_names) & (configured_names - current_bound_names))
         if conflicts:
             raise SkillManagementServiceError(
@@ -3813,7 +3803,8 @@ class SkillManagementService:
             return {path: path for path in paths}
         root = next(iter(skill_md_roots))
         prefix = f"{root}/"
-        return {path: path.removeprefix(prefix) for path in paths if path == root or path.startswith(prefix)}
+        # The explicit wrapper directory represents the new root, not a draft item.
+        return {path: path.removeprefix(prefix) for path in paths if path.startswith(prefix)}
 
     def _draft_payload_from_zip(
         self,
@@ -4801,6 +4792,7 @@ class SkillManagementService:
 
 
 __all__ = [
+    "DraftSkillArchive",
     "PublishedSkillArchive",
     "SkillAssistAttachmentPayload",
     "SkillAssistHistoryMessagePayload",

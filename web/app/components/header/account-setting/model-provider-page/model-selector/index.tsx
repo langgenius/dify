@@ -31,8 +31,11 @@ type ModelSelectorBaseProps = {
   className?: string
   popupClassName?: string
   onValueChange?: (model: ModelSelectorValue) => void
+  onClear?: () => void
+  clearLabel?: string
   onHide?: () => void
   disabled?: boolean
+  loading?: boolean
   scopeFeatures?: readonly string[]
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
@@ -56,8 +59,11 @@ function ModelSelectorRoot({
   className,
   popupClassName,
   onValueChange,
+  onClear,
+  clearLabel,
   onHide,
   disabled,
+  loading,
   size,
   surface,
   shape,
@@ -74,7 +80,7 @@ function ModelSelectorRoot({
   surface: 'default' | 'workflow'
   shape: 'standalone' | 'split'
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [settingsDestination, setSettingsDestination] = useQueryState(
@@ -85,12 +91,12 @@ function ModelSelectorRoot({
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
-      if (disabled && newOpen) return
+      if ((disabled || loading) && newOpen) return
 
       setOpen(newOpen)
       if (!newOpen) setInputValue('')
     },
-    [disabled],
+    [disabled, loading],
   )
 
   const handleSelect = useCallback(
@@ -140,7 +146,10 @@ function ModelSelectorRoot({
         currentProvider={currentProvider}
         currentModel={currentModel}
         defaultModel={value}
-        disabled={disabled}
+        onClear={onClear}
+        clearLabel={clearLabel}
+        disabled={disabled || loading}
+        loading={loading}
         size={size}
         surface={surface}
         shape={shape}

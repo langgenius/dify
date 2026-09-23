@@ -1,12 +1,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
@@ -28,7 +28,7 @@ const getErrorMessage = (error: unknown) => {
 }
 
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const verificationCodeInputId = React.useId()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: userProfile } = useSuspenseQuery({

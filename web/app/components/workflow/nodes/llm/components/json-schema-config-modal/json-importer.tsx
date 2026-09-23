@@ -18,7 +18,7 @@ type JsonImporterProps = {
 }
 
 const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<any>(null)

@@ -1,9 +1,9 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -13,7 +13,7 @@ import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
   const workflowStore = useWorkflowStore()

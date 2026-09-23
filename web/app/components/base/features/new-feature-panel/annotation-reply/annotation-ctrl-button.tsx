@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiEditLine, RiFileEditLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { addAnnotation } from '@/service/annotation'
@@ -31,7 +31,7 @@ const AnnotationCtrlButton: FC<Props> = ({
   onAdded,
   onEdit,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({

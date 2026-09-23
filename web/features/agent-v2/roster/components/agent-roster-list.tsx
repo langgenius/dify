@@ -19,13 +19,13 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities, getAgentDefaultSection } from '@/features/agent-v2/acl'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -67,7 +67,7 @@ const emptyPlaceholderCardIds = Array.from(
 )
 
 function AgentRosterSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -111,7 +111,7 @@ function AgentRosterPlaceholderState({
   role?: 'alert' | 'status'
   title: string
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div
@@ -171,9 +171,9 @@ function AgentCardActionMenuItems({
   onEdit,
   onExport,
 }: AgentCardActionMenuItemsProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tApp } = useTranslation(['app'])
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
   const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
 
@@ -194,7 +194,7 @@ function AgentCardActionMenuItems({
       {onExport && (
         <MenuItem className="gap-2" disabled={isExporting} onClick={onExport}>
           <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
-          <span>{tApp(($) => $.export)}</span>
+          <span>{tApp(($) => $.exportApp)}</span>
         </MenuItem>
       )}
       {onDelete && (onEdit || onDuplicate || onExport) && <MenuSeparator />}
@@ -209,8 +209,8 @@ function AgentCardActionMenuItems({
 }
 
 function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
   const nameId = useId()
   const descriptionId = useId()
@@ -270,11 +270,12 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const handleExport = () => {
     if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
-      toast.error(tApp(($) => $.exportFailed))
+      toast.error(tApp(($) => $.exportAppFailed))
       return
     }
 
     return exportAppDsl({
+      format: 'ifpkg',
       appId: agent.app_id,
       appName: agent.name,
     })
@@ -344,7 +345,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
           }
         />
         {hasActions && (
-          <ContextMenuContent className="w-40">
+          <ContextMenuContent className="w-max min-w-40">
             <AgentCardActionMenuItems
               kind="context"
               isExporting={isExporting}
@@ -371,7 +372,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                   </IconButton>
                 }
               />
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-max min-w-40">
                 <AgentCardActionMenuItems
                   kind="dropdown"
                   isExporting={isExporting}
@@ -442,8 +443,8 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
 }
 
 export function AgentRosterList({ label, state }: AgentRosterListProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
 
   return (
@@ -470,16 +471,15 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
           }
         />
       )}
-      {state.status === 'ready' &&
-        state.agents.length > 0 && (
-          // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
-          // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
-          <ul role="list" className={AGENT_ROSTER_GRID_CLASS_NAME}>
-            {state.agents.map((agent) => (
-              <AgentRosterItem key={agent.id} agent={agent} />
-            ))}
-          </ul>
-        )}
+      {state.status === 'ready' && state.agents.length > 0 && (
+        // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
+        // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
+        <ul role="list" className={AGENT_ROSTER_GRID_CLASS_NAME}>
+          {state.agents.map((agent) => (
+            <AgentRosterItem key={agent.id} agent={agent} />
+          ))}
+        </ul>
+      )}
       {state.status === 'ready' && state.footer.status === 'error' && (
         <div
           className="flex items-center justify-center gap-3 pt-1 system-xs-regular text-text-destructive"

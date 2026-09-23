@@ -2,7 +2,7 @@
 
 import type { AppModeEnum } from '@/types/app'
 import type { VersionHistory } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { useAtomValue } from 'jotai'
@@ -10,9 +10,9 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
-import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
@@ -63,7 +63,9 @@ export const VersionHistoryPanel = ({
   updateVersionUrl,
   latestVersionId,
 }: VersionHistoryPanelProps) => {
-  const [filterValue, setFilterValue] = useState(WorkflowVersionFilterOptions.all)
+  const [filterValue, setFilterValue] = useState<WorkflowVersionFilterOptions>(
+    WorkflowVersionFilterOptions.all,
+  )
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
   const [operatedItem, setOperatedItem] = useState<VersionHistory>()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
@@ -94,7 +96,7 @@ export const VersionHistoryPanel = ({
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const { deleteAllInspectVars } = workflowStore.getState()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common', 'workflow'])
 
   const {
     data: versionHistory,
@@ -386,7 +388,7 @@ export const VersionHistoryPanel = ({
           onClickFilterItem={handleClickFilterItem}
           handleSwitch={handleSwitch}
         />
-        <Divider type="vertical" className="mx-1 h-3.5" />
+        <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}

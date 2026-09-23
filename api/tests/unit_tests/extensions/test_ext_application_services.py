@@ -1,6 +1,7 @@
 """Tests for application-service dependency wiring."""
 
 import json
+from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, patch
@@ -19,8 +20,8 @@ from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
-from models.enums import AppStatus
-from models.model import AccountTrialAppRecord, App, AppMode, AppModelConfig, CustomizeTokenStrategy, DifySetup, Site
+from models.enums import AppStatus, CustomizeTokenStrategy
+from models.model import AccountTrialAppRecord, App, AppMode, AppModelConfig, DifySetup, InstalledApp, Site, TrialApp
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -30,6 +31,7 @@ from repositories.account_oauth_repository import (
     RegisterServiceOAuthInvitationGateway,
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
@@ -41,7 +43,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchem
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
-from services import account_forgot_password_service, recommended_app_catalog_gateway
+from services import account_forgot_password_service, audio_provider_gateway, recommended_app_catalog_gateway
 from services.account_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -65,9 +67,14 @@ from services.account_oauth_adapters import (
     DeploymentOAuthPolicyGateway,
     RedisOAuthAccountClaimLock,
 )
+from services.app_generate_service import AppGenerateService
+from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
+from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
+from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
+from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
@@ -77,6 +84,7 @@ from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFound
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
 from services.message_file_preview_service import MessageFilePreviewService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
@@ -165,6 +173,12 @@ def test_init_app_registers_services_for_the_current_app(
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
+        assert isinstance(services.app_scoped_end_users.commands, AppScopedEndUserService)
+        assert isinstance(services.app_scoped_end_users.queries, AppScopedEndUserQueryService)
+        repository = services.app_scoped_end_users.queries._app_scoped_end_users
+        assert isinstance(repository, AppScopedEndUserRepo)
+        assert services.app_scoped_end_users.commands._app_scoped_end_users is repository
+        assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
 
 
@@ -752,6 +766,274 @@ def published_webapp_id(sqlite_session: Session) -> str:
     sqlite_session.add_all([app, config, site])
     sqlite_session.commit()
     return app_id
+
+
+@pytest.fixture
+def installed_app_ref(sqlite_session_factory: sessionmaker[Session]) -> InstalledAppRef:
+    with sqlite_session_factory.begin() as session:
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Installed app",
+            mode=AppMode.COMPLETION,
+            enable_site=True,
+            enable_api=True,
+        )
+        session.add(app)
+        session.flush()
+        installed_app = InstalledApp(
+            tenant_id=str(uuid4()),
+            app_id=app.id,
+            app_owner_tenant_id=app.tenant_id,
+            is_pinned=False,
+        )
+        session.add(installed_app)
+        session.flush()
+        result = InstalledAppRef(id=installed_app.id, app_id=app.id, tenant_id=installed_app.tenant_id)
+    return result
+
+
+@pytest.mark.parametrize(
+    ("deployment_edition", "permission_result"),
+    [
+        pytest.param(DeploymentEdition.COMMUNITY, False, id="community-skips-permission"),
+        pytest.param(DeploymentEdition.CLOUD, False, id="cloud-skips-permission"),
+        pytest.param(DeploymentEdition.ENTERPRISE, True, id="enterprise-allowed"),
+        pytest.param(DeploymentEdition.ENTERPRISE, False, id="enterprise-denied"),
+    ],
+)
+def test_build_application_services_wires_installed_app_admission(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    deployment_edition: DeploymentEdition,
+    permission_result: bool,
+) -> None:
+    account_id = str(uuid4())
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        return_value={"result": permission_result},
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=deployment_edition,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        if deployment_edition == DeploymentEdition.ENTERPRISE and not permission_result:
+            with pytest.raises(InstalledAppAccessDeniedError):
+                services.installed_app_access.get_access(
+                    installed_app_id=installed_app_ref.id,
+                    tenant_id=installed_app_ref.tenant_id,
+                    account_id=account_id,
+                )
+        else:
+            assert (
+                services.installed_app_access.get_access(
+                    installed_app_id=installed_app_ref.id,
+                    tenant_id=installed_app_ref.tenant_id,
+                    account_id=account_id,
+                )
+                == installed_app_ref
+            )
+
+    if deployment_edition == DeploymentEdition.ENTERPRISE:
+        enterprise_request.assert_called_once_with(
+            "GET", "/webapp/permission", params={"userId": account_id, "appId": installed_app_ref.app_id}
+        )
+    else:
+        enterprise_request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "enterprise_error",
+    [
+        pytest.param(EnterpriseAPINotFoundError(), id="not-found"),
+        pytest.param(EnterpriseAPIError("permission unavailable"), id="api-error"),
+        pytest.param(httpx.ConnectError("connection failed"), id="transport"),
+        pytest.param(json.JSONDecodeError("invalid", "", 0), id="invalid-json"),
+        pytest.param(UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid"), id="invalid-encoding"),
+    ],
+)
+def test_installed_app_admission_normalizes_known_enterprise_errors(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    enterprise_error: Exception,
+) -> None:
+    account_id = str(uuid4())
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        side_effect=enterprise_error,
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        with pytest.raises(WebAppAccessUnavailableError) as raised:
+            services.installed_app_access.get_access(
+                installed_app_id=installed_app_ref.id,
+                tenant_id=installed_app_ref.tenant_id,
+                account_id=account_id,
+            )
+
+    assert raised.value.__cause__ is enterprise_error
+    enterprise_request.assert_called_once_with(
+        "GET", "/webapp/permission", params={"userId": account_id, "appId": installed_app_ref.app_id}
+    )
+
+
+def test_trial_generation_uses_configured_access_runtime_and_usage(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            App(id=app_id, tenant_id=tenant_id, name="Trial", mode="completion", enable_site=True, enable_api=False)
+        )
+        account = Account(name="Account", email="trial@example.com")
+        account.id = account_id
+        session.add(account)
+        session.add(TrialApp(app_id=app_id, tenant_id=tenant_id))
+
+    admitted = services.trial_app_access.get_access(app_id=app_id, account_id=account_id)
+    with patch.object(AppGenerateService, "generate", return_value={"answer": "hello"}):
+        response = services.trial_app_generation.generate_completion(
+            trial_app=admitted, account_id=account_id, args={"inputs": {}}
+        )
+
+    assert response == {"answer": "hello"}
+    with sqlite_session_factory() as session:
+        record = session.scalar(
+            select(AccountTrialAppRecord).where(
+                AccountTrialAppRecord.app_id == app_id, AccountTrialAppRecord.account_id == account_id
+            )
+        )
+        assert record is not None
+        assert record.count == 1
+
+
+def test_app_audio_uses_the_configured_database_and_app_owner(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        config = AppModelConfig(app_id=app_id, speech_to_text='{"enabled":true}')
+        session.add(config)
+        session.flush()
+        session.add(
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="Trial",
+                mode="chat",
+                app_model_config_id=config.id,
+                enable_site=True,
+                enable_api=False,
+            )
+        )
+        session.add(TrialApp(app_id=app_id, tenant_id=tenant_id))
+
+    def transcribe(*, app: AudioAppRef, content: bytes, end_user: str | None) -> str:
+        assert app == AudioAppRef(app_id=app_id, tenant_id=tenant_id, app_mode="chat")
+        assert content == b"audio"
+        assert end_user is None
+        return "transcript"
+
+    def synthesize(*, app: AudioAppRef, text: str, voice: str | None, end_user: str | None) -> AudioOutput:
+        assert app == AudioAppRef(app_id=app_id, tenant_id=tenant_id, app_mode="chat")
+        assert (text, voice, end_user) == ("read", "voice", None)
+        return AudioOutput(data=b"audio", mime_type="audio/mpeg")
+
+    monkeypatch.setattr(audio_provider_gateway, "speech_to_text", transcribe)
+    monkeypatch.setattr(audio_provider_gateway, "text_to_speech", synthesize)
+    admitted = services.trial_app_access.get_access(app_id=app_id, account_id=account_id)
+    assert services.app_audio.transcript_asr(
+        app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
+        audio=AudioUpload(stream=BytesIO(b"audio"), mime_type="audio/mp3"),
+    ) == {"text": "transcript"}
+    assert services.app_audio.transcript_tts(
+        app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
+        account_id=account_id,
+        text=" read ",
+        voice="voice",
+        message_id=None,
+    ) == AudioOutput(data=b"audio", mime_type="audio/mpeg")
+
+
+def test_app_previews_use_the_configured_catalog_and_app_owner(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="builtin")
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, tenant_id, other_id = str(uuid4()), str(uuid4()), str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                App(id=app_id, tenant_id=tenant_id, name="Preview", mode="chat", enable_site=False, enable_api=False),
+                App(id=other_id, tenant_id=tenant_id, name="Private", mode="chat", enable_site=False, enable_api=False),
+            ]
+        )
+
+    # Catalog-only previews must work without a Trial registration or account.
+    payload = json.dumps({"app_details": {app_id: {"id": app_id}}})
+    with patch.object(recommended_app_catalog_gateway.Path, "read_text", return_value=payload):
+        assert services.app_previews.get_access(app_id=app_id) == AppPreviewRef(app_id=app_id, tenant_id=tenant_id)
+        with pytest.raises(AppPreviewUnavailableError, match=other_id):
+            services.app_previews.get_access(app_id=other_id)
+
+
+def test_app_preview_details_use_the_configured_database_without_request_globals(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id, owner_id, viewer_workspace_id = str(uuid4()), str(uuid4()), str(uuid4())
+    account = Account(name="Preview viewer", email="preview@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                account,
+                App(id=app_id, tenant_id=owner_id, name="Preview", mode="chat", enable_site=True, enable_api=False),
+                Site(
+                    app_id=app_id,
+                    title="Preview site",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.UUID,
+                ),
+            ]
+        )
+
+    detail = services.app_preview_details.get_detail(
+        app=AppPreviewRef(app_id=app_id, tenant_id=owner_id),
+        account_id=account.id,
+        active_workspace_id=viewer_workspace_id,
+    )
+
+    assert detail.id == app_id
+    assert detail.name == "Preview"
+    assert detail.site.title == "Preview site"
+    assert detail.model_config is None
 
 
 def test_build_application_services_adapts_enterprise_webapp_access_mode(

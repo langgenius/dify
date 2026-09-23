@@ -8,16 +8,20 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import {
-  markAppDeletionFailed,
-  markAppDeletionStarted,
-  markAppDeletionSucceeded,
-} from '../app-deletion'
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
     experimental_defaults: {
+      rag: {
+        pipelines: {
+          datasourcePlugins: {
+            get: {
+              queryOptions: { staleTime: 0, retry: false },
+            },
+          },
+        },
+      },
       workspaces: {
         current: {
           networkAccessGroups: {
@@ -43,6 +47,128 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   onSettled: (_data, error, _variables, _result, context) => {
                     if (error) return
                     return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+            },
+          },
+          plugin: {
+            readme: {
+              get: {
+                queryOptions: {
+                  context: { silent: true },
+                  retry: false,
+                },
+              },
+            },
+            asset: {
+              get: {
+                queryOptions: { context: { silent: true } },
+              },
+            },
+          },
+          endpoints: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, _error, _variables, _result, context) => {
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                    }),
+                  ])
+                },
+              },
+            },
+            byId: {
+              patch: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            enable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            disable: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, _error, _variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.endpoints.list.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+          },
+          skills: {
+            bySkillId: {
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
+                    })
                   },
                 },
               },
@@ -241,16 +367,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
         byAppId: {
           // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
-          networkAccessGroup: {
-            put: {
-              mutationOptions: {
-                onSettled: (_data, error, _variables, _result, context) => {
-                  if (error) return
-                  return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
-                },
-              },
-            },
-          },
           apiEnable: {
             post: {
               mutationOptions: {
@@ -631,14 +747,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           delete: {
             mutationOptions: {
-              onMutate: (variables) => {
-                markAppDeletionStarted(`installed:${variables.params.installed_app_id}`)
-              },
-              onError: (_error, variables) => {
-                markAppDeletionFailed(`installed:${variables.params.installed_app_id}`)
-              },
               onSuccess: (_response, variables, _onMutateResult, context) => {
-                markAppDeletionSucceeded(`installed:${variables.params.installed_app_id}`)
                 context.client.removeQueries({
                   queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
                     input: {
@@ -848,14 +957,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           delete: {
             mutationOptions: {
-              onMutate: (variables) => {
-                markAppDeletionStarted(`agent:${variables.params.agent_id}`)
-              },
-              onError: (_error, variables) => {
-                markAppDeletionFailed(`agent:${variables.params.agent_id}`)
-              },
               onSuccess: (_data, variables, _onMutateResult, context) => {
-                markAppDeletionSucceeded(`agent:${variables.params.agent_id}`)
                 context.client.removeQueries({
                   queryKey: consoleQuery.agent.byAgentId.key({
                     input: {

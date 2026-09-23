@@ -25,7 +25,7 @@ import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import { renderI18nObject } from '@/i18n-config/index'
+import { renderI18nObject } from '@/i18n/metadata'
 import { marketplaceQuery } from '@/service/marketplace'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 import {
@@ -60,7 +60,7 @@ type MarketplaceSearchAutocompleteProps = {
   category?: string
   inputName?: string
   locale: string
-  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => void
+  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => { preserveQuery: boolean } | void
   onValueChange: (value: string) => void
   placeholder: string
   scope: MarketplaceSearchScope
@@ -181,7 +181,9 @@ export function MarketplaceSearchAutocomplete({
   scope,
   value,
 }: MarketplaceSearchAutocompleteProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tPlugin } = useTranslation(['plugin'])
   const [isOpen, setIsOpen] = useState(false)
   const searchRootRef = useRef<HTMLDivElement>(null)
   const resultsPanelRef = useRef<HTMLDivElement>(null)
@@ -193,9 +195,9 @@ export function MarketplaceSearchAutocomplete({
   }
   const openSuggestion = (selection: MarketplaceSearchSelection) => {
     if (onSuggestionSelect) {
-      onSuggestionSelect(selection)
+      const result = onSuggestionSelect(selection)
       queueMicrotask(() => {
-        onValueChange('')
+        if (!result?.preserveQuery) onValueChange('')
         setIsOpen(false)
       })
       return
@@ -271,7 +273,7 @@ export function MarketplaceSearchAutocomplete({
           {
             id: 'template' as const,
             items: templateSuggestions,
-            label: t(($) => $['marketplace.home.templates'], { ns: 'plugin' }),
+            label: tPlugin(($) => $['marketplace.home.templates'], { ns: 'plugin' }),
           },
         ]
       : []),
@@ -280,7 +282,7 @@ export function MarketplaceSearchAutocomplete({
           {
             id: 'plugin' as const,
             items: pluginSuggestions,
-            label: t(($) => $['marketplace.home.plugins'], { ns: 'plugin' }),
+            label: tPlugin(($) => $['marketplace.home.plugins'], { ns: 'plugin' }),
           },
         ]
       : []),
@@ -297,10 +299,10 @@ export function MarketplaceSearchAutocomplete({
     suggestions.length === 0 &&
     ((searchesPlugins && pluginQuery.isError) || (searchesTemplates && templateQuery.isError))
   const emptyText = hasLoadError
-    ? t(($) => $['marketplace.loadError'], { ns: 'plugin' })
+    ? tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })
     : scope === 'templates'
       ? t(($) => $['newApp.noTemplateFound'], { ns: 'app' })
-      : t(($) => $['marketplace.noPluginFound'], { ns: 'plugin' })
+      : tPlugin(($) => $['marketplace.noPluginFound'], { ns: 'plugin' })
 
   useEffect(() => {
     if (!isPopupOpen) return
@@ -359,7 +361,7 @@ export function MarketplaceSearchAutocomplete({
           />
           {!!value && (
             <AutocompleteClear
-              aria-label={t(($) => $.clearSearch, { ns: 'plugin', label: placeholder })}
+              aria-label={tPlugin(($) => $.clearSearch, { ns: 'plugin', label: placeholder })}
               size="large"
             />
           )}
@@ -376,7 +378,7 @@ export function MarketplaceSearchAutocomplete({
                 {!isSearching && suggestions.length === 0 ? emptyText : null}
               </AutocompleteEmpty>
               <AutocompleteStatus className="empty:h-0 empty:p-0">
-                {isSearching ? t(($) => $.loading, { ns: 'common' }) : null}
+                {isSearching ? tCommon(($) => $.loading, { ns: 'common' }) : null}
               </AutocompleteStatus>
             </div>
           </AutocompletePositioner>

@@ -31,15 +31,13 @@ from services.knowledge_fs_proxy import (
 from services.knowledge_fs_proxy import (
     _forward_knowledge_fs_request as forward_knowledge_fs_request,
 )
+from tests.unit_tests.model_factories import make_account
 
 _JWT_SECRET = "production-secret-with-at-least-32-bytes"
 
 
 def _account(*, role: TenantAccountRole = TenantAccountRole.DATASET_OPERATOR) -> Account:
-    account = Account(name="Knowledge User", email="knowledge@example.com")
-    account.id = "account-1"
-    account.role = role
-    return account
+    return make_account(name="Knowledge User", email="knowledge@example.com", role=role)
 
 
 def _account_for_legacy_role(role: str) -> Account:

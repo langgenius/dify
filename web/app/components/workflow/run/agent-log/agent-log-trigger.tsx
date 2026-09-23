@@ -6,7 +6,7 @@ type AgentLogTriggerProps = {
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 export function AgentLogTrigger({ nodeInfo, onShowAgentOrToolLog }: AgentLogTriggerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog', 'workflow'])
   const { agentLog, execution_metadata } = nodeInfo
   const agentStrategy = execution_metadata?.tool_info?.agent_strategy
 
