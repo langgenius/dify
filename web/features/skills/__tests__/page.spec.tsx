@@ -432,9 +432,7 @@ describe('SkillsPage', () => {
     expect(screen.getByText('refund-approval')).toBeInTheDocument()
     expect(screen.getByText('Handle refund requests.')).toBeInTheDocument()
     expect(screen.getByText('support')).toBeInTheDocument()
-    expect(
-      screen.getByText('skill.skillManagement.referenceCount_other:{"count":2}'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('skill.skillManagement.referenceCount:{"count":2}')).toBeInTheDocument()
     expect(
       screen.getByText('skill.skillManagement.publishedAt:{"time":"2 hours ago"}'),
     ).toBeInTheDocument()
@@ -1272,7 +1270,7 @@ describe('SkillsPage', () => {
 
     expect(
       within(dialog).getByText(
-        'skill.skillManagement.deleteDialog.referencedDescription_other:{"count":2}',
+        'skill.skillManagement.deleteDialog.referencedDescription:{"count":2}',
       ),
     ).toBeInTheDocument()
     expect(await within(dialog).findByText('Support Agent')).toBeInTheDocument()
@@ -1330,7 +1328,7 @@ describe('SkillsPage', () => {
     expect(await within(dialog).findByText('Support Agent From References API')).toBeInTheDocument()
     expect(
       within(dialog).getByText(
-        'skill.skillManagement.deleteDialog.referencedDescription_one:{"count":1}',
+        'skill.skillManagement.deleteDialog.referencedDescription:{"count":1}',
       ),
     ).toBeInTheDocument()
     expect(mocks.skillReferencesQueryOptions).toHaveBeenCalledWith(

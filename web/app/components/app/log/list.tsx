@@ -915,7 +915,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <TooltipContent className="flex items-center gap-1">
           <RiEditFill aria-hidden className="size-3 shrink-0" />
           <span>
-            {`${t(($) => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+            {`${t(($) => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name ?? '-' })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         </TooltipContent>
       </Tooltip>

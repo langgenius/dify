@@ -390,6 +390,12 @@ class SQLAlchemyDocumentOperations:
                     dataset_id,
                     rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
                 )
+                rbac_service.try_sync_creator_access_policy_member_bindings(
+                    context.active_workspace_id,
+                    context.account_id,
+                    rbac_service.RBACResourceType.DATASET,
+                    dataset_id,
+                )
             return result
 
     def _check_model(self, ref: DatasetRef) -> None:

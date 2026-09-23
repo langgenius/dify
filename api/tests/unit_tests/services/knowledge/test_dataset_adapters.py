@@ -187,7 +187,7 @@ def test_create_update_and_api_status_commit_owned_changes(
 
 @pytest.mark.parametrize("entry_point", ["empty", "documents"])
 @pytest.mark.parametrize("rbac_enabled", [False, True])
-def test_created_dataset_does_not_automatically_include_workspace_members(
+def test_created_dataset_initializes_rbac_access(
     operations: SQLAlchemyDatasetOperations,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
@@ -206,6 +206,7 @@ def test_created_dataset_does_not_automatically_include_workspace_members(
 
     with (
         patch.object(rbac_service.RBACService.DatasetAccess, "replace_whitelist") as replace_whitelist,
+        patch.object(rbac_service, "try_sync_creator_access_policy_member_bindings") as sync_creator,
         patch(
             "tasks.initialize_created_app_rbac_access_task.initialize_created_app_rbac_access_task.delay"
         ) as initialize,
@@ -241,6 +242,16 @@ def test_created_dataset_does_not_automatically_include_workspace_members(
             )
         else:
             replace_whitelist.assert_not_called()
+        if entry_point == "documents":
+            if rbac_enabled:
+                sync_creator.assert_called_once_with(
+                    CONTEXT.active_workspace_id,
+                    CONTEXT.account_id,
+                    rbac_service.RBACResourceType.DATASET,
+                    dataset_id,
+                )
+            else:
+                sync_creator.assert_not_called()
         initialize.assert_not_called()
 
     with sqlite_session_factory() as session:

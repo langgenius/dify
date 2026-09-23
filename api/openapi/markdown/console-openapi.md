@@ -3408,7 +3408,7 @@ Get workflow application execution logs
 | keyword | query | Search keyword for filtering logs | No | string |
 | limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
-| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
+| status | query | Execution status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
 
 #### Responses
 
@@ -24175,7 +24175,7 @@ How a workflow node is bound to an Agent.
 | keyword | string | Search keyword for filtering logs | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page (1-100) | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
-| status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |
+| status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter | No |
 
 #### WorkflowAverageAppInteractionStatisticItem
 

@@ -352,6 +352,28 @@ describe('SegmentCard', () => {
   })
 
   describe('Callbacks', () => {
+    it('opens a chunk from its keyboard-accessible detail button', async () => {
+      const user = userEvent.setup()
+      const onClick = vi.fn()
+
+      render(
+        <SegmentCard
+          loading={false}
+          detail={createMockSegmentDetail()}
+          onClick={onClick}
+          focused={defaultFocused}
+        />,
+      )
+
+      const detailButton = screen.getByRole('button', {
+        name: 'datasetDocuments.segment.chunk-01 datasetDocuments.segment.chunkDetail',
+      })
+      detailButton.focus()
+      await user.keyboard('{Enter}')
+
+      expect(onClick).toHaveBeenCalledTimes(1)
+    })
+
     it('should call onClick when card is clicked in general mode', () => {
       const onClick = vi.fn()
       const detail = createMockSegmentDetail()
