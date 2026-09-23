@@ -374,7 +374,7 @@ export function useAgentConfigureSync({
   )
 
   useEffect(() => {
-    const scheduleDirtyDraftSave = () => {
+    return store.sub(agentComposerDraftAtom, () => {
       const agentSoulDraft = getAgentSoulDraft()
       const agentSoulDraftKey = JSON.stringify(agentSoulDraft)
       const isDirty = store.get(isAgentComposerDirtyAtom)
@@ -389,11 +389,8 @@ export function useAgentConfigureSync({
       }
 
       debouncedSaveDraft()
-    }
-
-    scheduleDirtyDraftSave()
-    return store.sub(agentComposerDraftAtom, scheduleDirtyDraftSave)
-  }, [debouncedSaveDraft, enabled, getAgentSoulDraft, store])
+    })
+  }, [debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
     const saveDraftWhenPageHidden = () => {
