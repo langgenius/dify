@@ -5,16 +5,34 @@ Fix pattern: the LLM proposes targeted intents which are dry-run-validated
 through graph_ops.filter_applicable before they can reach apply_repair.
 Degrades to an honest result on model-None / provider-error / parse-fail."""
 
-from collections.abc import Callable
+import json
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from core.dify_builder.models import MutationIntent
+from core.dify_builder.node_defaults import default_config_or_empty
 from core.workflow.graph_normalizers import declared_branch_handles
 from graphon.enums import BUILT_IN_NODE_TYPES
-from services.dify_builder import graph_ops
+from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import form_schema, llm
 
 _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
+
+# How many characters of one node's JSON config the prompt will spend. Matches
+# ``fix._culprit_config``'s budget: enough for a realistic if-else ``cases``
+# array or an LLM prompt template, small enough that a target plus its
+# neighbours still leave room for the edit rules.
+_NODE_CONFIG_LIMIT = 1500
+
+# Whole keys are dropped to fit the budget and then NAMED, rather than cutting
+# the JSON mid-string. A purpose field that happened to serialize last would
+# otherwise disappear without a trace, and the model would fill the gap from
+# imagination -- the exact failure this rendering exists to stop.
+_TRUNCATION_MARKER = "… omitted for length: "
+
+# Keys the summary line above the block already carries; a config with nothing
+# but these says nothing and is not worth a line.
+_SUMMARY_LINE_KEYS = frozenset({"type", "title"})
 
 _OP_SCHEMA = (
     'Allowed ops (each as {"op": ..., "args": {...}}):\n'
@@ -33,15 +51,122 @@ def _node_ids(graph: dict) -> set[str]:
     return {str(n.get("id")) for n in graph.get("nodes", []) if n.get("id") is not None}
 
 
-def _graph_context(graph: dict) -> str:
-    lines = ["NODES:"]
+def _authored_config(node: dict) -> dict[str, Any]:
+    """The node's ``data`` minus every key still sitting at its type default.
+
+    ``node_defaults`` is the single source of what "default" means here, so
+    this drops exactly the keys ``graph_ops._build_node`` would have supplied
+    on its own -- an http-request node's two dozen method/auth/timeout/retry
+    keys -- and keeps what an author actually chose. Without the subtraction
+    the scaffolding crowds the field the edit is ABOUT out of the prompt.
+    """
+    data = node.get("data")
+    if not isinstance(data, dict):
+        return {}
+    defaults = default_config_or_empty(str(data.get("type", "")))
+    return {k: v for k, v in data.items() if k not in defaults or defaults[k] != v}
+
+
+def _dumps(config: dict[str, Any]) -> str:
+    try:
+        return json.dumps(config, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        return str(config)
+
+
+def _config_block(node: dict) -> str:
+    """One node's authored config as JSON, with secrets withheld and any
+    over-budget keys dropped BY NAME.
+
+    Same shape as ``fix._culprit_config``: the node's own ``data`` inlined into
+    the prompt under a hard character budget. Two rules that are not
+    ``_culprit_config``'s:
+
+    * secrets go through ``credentials.redact_node_config`` first. Subtracting
+      the type defaults is exactly what un-hides them -- a live token never
+      equals the ``no-auth`` / ``""`` default -- and Edit renders the target
+      AND every neighbour, so the exposure is wider than Fix's one culprit.
+    * over-budget configs shed whole trailing keys and then say which ones,
+      instead of cutting the JSON mid-string.
+
+    Returns ``""`` when nothing survives that the summary line above does not
+    already say.
+    """
+    config = credentials.redact_node_config(_authored_config(node))
+    if not set(config) - _SUMMARY_LINE_KEYS:
+        return ""
+    text = _dumps(config)
+    if len(text) <= _NODE_CONFIG_LIMIT:
+        return text
+    kept = dict(config)
+    dropped: list[str] = []
+    while kept and len(_dumps(kept)) > _NODE_CONFIG_LIMIT:
+        key = next(reversed(kept))
+        del kept[key]
+        dropped.insert(0, key)
+    return _dumps(kept) + _TRUNCATION_MARKER + ", ".join(dropped)
+
+
+def _detailed_ids(graph: dict, target_node_ids: Sequence[str]) -> set[str]:
+    """Which nodes get their config inlined: the targets, their direct
+    neighbours, and one hop further past a BRANCH target's successors.
+
+    Neighbours are in because an edit to one node is usually only half the
+    change. The extra hop is in because a branch's arms reconverge: in the
+    live F4 failure the if-else target fed two template-transforms that fed a
+    variable-aggregator, whose ``variables`` is what says whether the new arm
+    reaches the End node at all. At one hop that aggregator rendered as a bare
+    one-liner and the model could not extend it -- triage cause (d), the one
+    that ends in "All checks passed" on empty output. The extra hop is taken
+    ONLY past a branch node, so a long linear chain does not drag the whole
+    graph into the prompt.
+    """
+    targets = {str(t) for t in target_node_ids}
+    if not targets:
+        return set()
+    nodes_by_id = {str(n.get("id")): n for n in graph.get("nodes", []) if n.get("id") is not None}
+    successors: dict[str, set[str]] = {}
+    neighbours: dict[str, set[str]] = {}
+    for e in graph.get("edges", []):
+        source, target = str(e.get("source")), str(e.get("target"))
+        successors.setdefault(source, set()).add(target)
+        neighbours.setdefault(source, set()).add(target)
+        neighbours.setdefault(target, set()).add(source)
+
+    detailed = set(targets)
+    for node_id in targets:
+        detailed |= neighbours.get(node_id, set())
+        if not declared_branch_handles(nodes_by_id.get(node_id) or {}):
+            continue
+        for successor in successors.get(node_id, set()):
+            detailed |= successors.get(successor, set())
+    return detailed
+
+
+def _graph_context(graph: dict, target_node_ids: Sequence[str] = ()) -> str:
+    detailed = _detailed_ids(graph, target_node_ids)
+    node_lines: list[str] = []
+    rendered_any_config = False
     for n in graph.get("nodes", []):
         d = n.get("data") or {}
         line = f"  {n.get('id')} ({d.get('type', '?')}): {d.get('title', '')}"
         handles = declared_branch_handles(n)
         if handles:
             line += f" handles={handles}"
-        lines.append(line)
+        node_lines.append(line)
+        if str(n.get("id")) in detailed:
+            block = _config_block(n)
+            if block:
+                node_lines.append(f"    config: {block}")
+                rendered_any_config = True
+    lines = ["NODES:"]
+    if rendered_any_config:
+        lines.append(
+            "  (config = that node's CURRENT data; keys still at their type default are omitted. "
+            f"A value shown as {credentials.REDACTED} is a secret withheld from you -- never write "
+            "it back; leave that field alone.)"
+        )
+    lines.extend(node_lines)
     lines.append("EDGES:")
     for e in graph.get("edges", []):
         handle = e.get("sourceHandle")
@@ -126,7 +251,22 @@ def build_edit_intents(
     edit_rules: dict[str, Any],
     graph: dict,
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    edit_target_node_ids: Sequence[str] = (),
+    last_edit_rejection: str | None = None,
 ) -> list[MutationIntent]:
+    """Propose the mutations that apply ``edit_rules`` to an existing graph.
+
+    ``edit_target_node_ids`` are the nodes ``analyze_impact`` said the change
+    touches; their config (and their neighbours') is inlined into the prompt so
+    the model can rewrite the one field it was asked about and leave the rest
+    byte-identical. An empty list is legal and simply yields today's
+    title/type/handles-only context.
+
+    ``last_edit_rejection`` is declared but NOT yet read: the signature is
+    fixed now so the task that feeds a refused write back into the prompt does
+    not have to change this method's arity a second time.
+    """
     if model is None:
         return []
     system = (
@@ -138,7 +278,7 @@ def build_edit_intents(
         + ", ".join(sorted(_ALLOWED_NODE_TYPES))
         + ".\n"
     )
-    user = f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph)}"
+    user = f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph, edit_target_node_ids)}"
     intents = _invoke_intents(model, system, user, on_reasoning)
     if intents is None:
         return []

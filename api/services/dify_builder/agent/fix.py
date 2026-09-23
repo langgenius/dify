@@ -20,7 +20,7 @@ from core.dify_builder.models import (
 )
 from core.model_manager import ModelInstance
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
-from services.dify_builder import graph_ops
+from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import llm
 
 _SEVERITIES = {"low", "medium", "high"}
@@ -190,9 +190,21 @@ def _no_fix() -> tuple[list[MutationIntent], Risk]:
 
 
 def _culprit_config(node_id: str, graph: Graph) -> str:
+    """The culprit node's own ``data``, with its secrets withheld.
+
+    A failing http-request node is one of the likeliest culprits there is, and
+    its ``data`` is where a live bearer token or API key sits -- so the config
+    that goes into the repair prompt goes through ``redact_node_config`` first.
+    The model still sees which header exists and how the node authenticates,
+    never the secret itself. ``graph_ops.validate_intent_args`` is the other
+    half: it refuses any repair intent that hands the placeholder back, so a
+    redacted value cannot be written over the real one.
+    """
     for node in graph.get("nodes", []):
         if node.get("id") == node_id:
-            return _truncate(node.get("data") or {}, limit=1500)
+            data = node.get("data")
+            config = credentials.redact_node_config(data) if isinstance(data, dict) else {}
+            return _truncate(config, limit=1500)
     return "(culprit node not found in graph)"
 
 

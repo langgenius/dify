@@ -1219,3 +1219,40 @@ def test_sending_a_new_edit_goal_resets_the_breaker():
 
     assert res.context.repair_attempts == 0
     assert res.context.last_repair_error == ""
+
+
+def test_plan_approval_threads_edit_targets_into_build_edit_intents():
+    """The nodes impact analysis named reach the cognition.
+
+    Without them ``build_edit_intents`` cannot show the model the config it is
+    about to rewrite, and the model regenerates whole arrays from scratch --
+    triage ``edit-branch-failure-2026-09-22`` cause (c).
+    """
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    seen: dict = {}
+
+    class _RecordingAgent(PlaceholderAgent):
+        def build_edit_intents(
+            self,
+            edit_rules,
+            graph,
+            *,
+            edit_target_node_ids=(),
+            last_edit_rejection=None,  # noqa: ARG002
+        ):
+            seen["targets"] = list(edit_target_node_ids)
+            return super().build_edit_intents(edit_rules, graph)
+
+    env, repo = _new_env(agent=_RecordingAgent())
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        checkpoint_id="cp-1",
+    )
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert seen["targets"] == ["llm"]

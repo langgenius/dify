@@ -294,7 +294,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     progress.activate("edit-prepare")
     emit_canvas(env, "create_checkpoint")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-    intents = env.agent.build_edit_intents(dict(fc.edit_rules), graph)
+    intents = env.agent.build_edit_intents(
+        dict(fc.edit_rules), graph, edit_target_node_ids=list(fc.edit_target_node_ids)
+    )
     fc.staged_repair = list(intents)
 
     progress.activate("edit-highlight")

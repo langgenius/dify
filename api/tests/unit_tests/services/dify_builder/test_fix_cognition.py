@@ -1,4 +1,5 @@
 from core.dify_builder.models import ChecklistError, Diagnosis, NodeOutput, Run
+from services.dify_builder import credentials
 from services.dify_builder.agent import fix
 
 
@@ -182,3 +183,77 @@ def test_diagnose_none_model_surfaces_launch_error_when_no_failed_nodes():
     run = Run(status="failed", per_node=[], error="query is required in input form")
     d = fix.diagnose(None, run, _GRAPH, [])
     assert "in input form" in d.root_cause
+
+
+# ---- credentials must not reach the repair prompt ----
+#
+# A failing http-request node is one of the likeliest culprits there is, and
+# ``_culprit_config`` inlines its whole ``data``. See
+# services/dify_builder/credentials.py for the two halves of the guard.
+
+
+class _RecordingInstance:
+    """Like ``_FakeInstance``, but keeps the prompt it was handed."""
+
+    def __init__(self, replies):
+        self._replies = list(replies)
+        self.calls: list[dict] = []
+
+    def invoke_llm(self, **kwargs):
+        self.calls.append(kwargs)
+        return _Result(self._replies.pop(0))
+
+
+_SECRET_HTTP_GRAPH = {
+    "nodes": [
+        {
+            "id": "http1",
+            "data": {
+                "type": "http-request",
+                "title": "HTTP",
+                "url": "https://example.test/score",
+                "authorization": {
+                    "type": "api-key",
+                    "config": {"type": "bearer", "header": "X-Auth", "api_key": "sk-live-9f3c-SECRET"},
+                },
+                "headers": "Authorization: Bearer tok-999-SECRET",
+            },
+        },
+        {"id": "end1", "data": {"type": "end", "title": "End"}},
+    ],
+    "edges": [{"id": "http1-end1", "source": "http1", "target": "end1"}],
+}
+
+
+def test_culprit_config_withholds_the_nodes_secrets():
+    block = fix._culprit_config("http1", _SECRET_HTTP_GRAPH)
+
+    assert "sk-live-9f3c-SECRET" not in block
+    assert "tok-999-SECRET" not in block
+    assert credentials.REDACTED in block
+    # structure the repair model still needs
+    assert "X-Auth" in block
+    assert "https://example.test/score" in block
+
+
+def test_propose_repair_prompt_does_not_carry_the_culprits_credentials():
+    payload = (
+        '{"intents":[{"op":"set_node_config","args":{"node_id":"http1","path":"url",'
+        '"value":"https://example.com"}}],'
+        '"risk":{"level":"low","reason":"config fix","has_external_side_effect":false}}'
+    )
+    m = _RecordingInstance([payload])
+    diag = Diagnosis(culprit_node_id="http1", root_cause="401 from the scoring API", severity="high")
+
+    fix.propose_repair(m, diag, _SECRET_HTTP_GRAPH)
+
+    prompt = "\n".join(str(msg.content) for msg in m.calls[0]["prompt_messages"])
+    assert "sk-live-9f3c-SECRET" not in prompt
+    assert "tok-999-SECRET" not in prompt
+    assert credentials.REDACTED in prompt
+
+
+def test_culprit_config_survives_a_node_whose_data_is_not_a_mapping():
+    graph = {"nodes": [{"id": "odd", "data": "not-a-dict"}], "edges": []}
+
+    assert fix._culprit_config("odd", graph) == "{}"
