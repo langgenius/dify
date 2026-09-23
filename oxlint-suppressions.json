@@ -184,7 +184,7 @@
   },
   "web/app/components/app/app-publisher/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 4
     }
   },
   "web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx": {
@@ -3632,7 +3632,7 @@
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/handle-resume.spec.ts": {
     "typescript/no-explicit-any": {
-      "count": 69
+      "count": 57
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/handle-send.spec.ts": {

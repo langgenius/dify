@@ -13,6 +13,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation
+from services.workflow_run_agg import WorkflowRunAgg
 
 
 @pytest.fixture
@@ -71,7 +72,7 @@ def runner(sqlite_session: Session):
     )
     sqlite_session.add_all([app, conversation, message])
     sqlite_session.commit()
-    return AgentChatAppRunner()
+    return AgentChatAppRunner(execution_driver=WorkflowRunAgg.run)
 
 
 def _records(session: Session) -> tuple[Conversation, Message]:

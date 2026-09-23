@@ -11,7 +11,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -79,12 +79,14 @@ def test_execute_template_transform() -> None:
     variable_pool.add(["1", "args1"], 1)
     variable_pool.add(["1", "args2"], 3)
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
 
     # Create node factory (graph init path still works regardless of renderer choice below)
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -93,8 +95,8 @@ def test_execute_template_transform() -> None:
     node = TemplateTransformNode(
         node_id=str(uuid.uuid4()),
         data=TemplateTransformNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         jinja2_template_renderer=cast(Jinja2TemplateRenderer, _SimpleJinja2Renderer()),
     )
 

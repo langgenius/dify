@@ -24,10 +24,10 @@ from core.app.entities.task_entities import WorkflowFinishStreamResponse, Workfl
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
-from graphon.filters import ResponseStreamFilter
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from libs.helper import to_timestamp
@@ -36,6 +36,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +212,7 @@ class _AppRunner:
     ):
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppGenerator().generate(
+            return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -223,7 +224,7 @@ class _AppRunner:
                 session=session,
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
-            return WorkflowAppGenerator().generate(
+            return WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -500,7 +501,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
 
     generate_entity = resumption_context.get_generate_entity()
 
-    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    graph_runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     conversation = None
@@ -617,7 +618,7 @@ def _resume_advanced_chat(
     conversation: Conversation,
     message: Message,
     generate_entity: AdvancedChatAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    graph_runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
@@ -647,7 +648,7 @@ def _resume_advanced_chat(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    generator = AdvancedChatAppGenerator()
+    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
 
     try:
         response = generator.resume(
@@ -685,7 +686,7 @@ def _resume_workflow(
     workflow: Workflow,
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    graph_runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
@@ -716,7 +717,7 @@ def _resume_workflow(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    generator = WorkflowAppGenerator()
+    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
 
     try:
         response = generator.resume(

@@ -23,6 +23,7 @@ from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
+from services.workflow_run_agg import WorkflowRunAgg
 
 register_response_schema_model(web_ns, EventStreamResponse)
 
@@ -79,9 +80,9 @@ class WorkflowEventsApi(WebApiResource):
             generator: BaseAppGenerator
             match app_mode:
                 case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator()
+                    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
                 case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator()
+                    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
                 case _:
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 

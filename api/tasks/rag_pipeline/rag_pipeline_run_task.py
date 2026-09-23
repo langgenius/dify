@@ -29,6 +29,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.file_service import FileService
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +191,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 # Since we're already in a thread pool, no need for nested threading
 
                 pipeline_generator = PipelineGenerator(
+                    execution_driver=WorkflowRunAgg.run,
                     documents=SQLAlchemyDocumentRepository(session_factory=session_factory),
                     datasource_providers=build_data_source_credentials(database_client=get_session_maker()).providers,
                 )

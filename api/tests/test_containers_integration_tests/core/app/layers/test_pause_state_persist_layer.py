@@ -1,599 +1,283 @@
-"""Comprehensive TestContainers-based integration tests for PauseStatePersistenceLayer class.
+"""Workflow pause orchestration against real Engine, PostgreSQL, Redis, and storage."""
 
-This test suite covers complete integration scenarios including:
-- Real database interactions using containerized PostgreSQL
-- Real storage operations using test storage backend
-- Complete workflow: event -> state serialization -> database save -> storage save
-- Testing with actual WorkflowRunService (not mocked)
-- Real Workflow and WorkflowRun instances in database
-- Database transactions and rollback behavior
-- Actual file upload and retrieval through storage
-- Workflow status transitions in database
-- Error handling with real database constraints
-- Multiple pause events in sequence
-- Integration with real ReadOnlyGraphRuntimeState implementations
-
-These tests use TestContainers to spin up real services for integration testing,
-providing more reliable and realistic test scenarios than mocks.
-"""
-
-import uuid
-from time import time
-from unittest.mock import Mock
+import json
+from collections.abc import Mapping
+from contextlib import closing
+from dataclasses import dataclass
+from time import perf_counter
+from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, delete, select
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.layers.pause_state_persist_layer import (
-    PauseStatePersistenceLayer,
-    WorkflowResumptionContext,
-)
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
+from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.system_variables import build_system_variables
+from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_storage import storage
-from graphon.entities.pause_reason import SchedulingPause
-from graphon.enums import WorkflowExecutionStatus
-from graphon.filters import GraphEventFilterContext, ResponseStreamFilter
-from graphon.graph_engine.entities.commands import GraphEngineCommand
-from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
-from graphon.graph_events import GraphRunPausedEvent
+from graphon.engine.command import InMemoryChannel, PauseCommand
+from graphon.engine_events import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunStartedEvent, GraphRunSucceededEvent
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
-from libs.datetime_utils import naive_utc_now
+from graphon.nodes.start.entities import StartNodeData
+from graphon.runtime import RuntimeState, VariablePool
 from models import Account
-from models import WorkflowPause as WorkflowPauseModel
-from models.model import AppMode, UploadFile
-from models.workflow import Workflow, WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from models.enums import WorkflowRunTriggeredFrom
+from models.model import AppMode
+from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-from services.file_service import FileService
-from services.workflow_run_service import WorkflowRunService
+from services.workflow_run_agg import WorkflowRunAgg
 
 
-def _create_initialized_response_stream_filter() -> ResponseStreamFilter:
-    """Build a `ResponseStreamFilter` that has already run `initialize()`.
+@dataclass
+class WorkflowCase:
+    session: Session
+    engine: Engine
+    account: Account
+    workflow: Workflow
+    run_id: str
 
-    `ResponseStreamFilter.dumps()` raises `RuntimeError` unless the filter has
-    processed a `GraphEventFilterContext` first. In production this always
-    happens before any event (including `GraphRunPausedEvent`) reaches
-    `PauseStatePersistenceLayer.on_event`, so tests that exercise `on_event`
-    or a subsequent `dumps()` call need a filter in that same state. A
-    nodeless graph is enough to satisfy the precondition.
-    """
-    response_stream_filter = ResponseStreamFilter()
-    context = GraphEventFilterContext(graph=Mock(nodes={}), runtime_state=Mock())
-    response_stream_filter.initialize(context)
-    return response_stream_filter
-
-
-class _TestCommandChannelImpl:
-    """Real implementation of CommandChannel for testing."""
-
-    def __init__(self):
-        self._commands: list[GraphEngineCommand] = []
-
-    def fetch_commands(self) -> list[GraphEngineCommand]:
-        """Fetch pending commands for this GraphEngine instance."""
-        return self._commands.copy()
-
-    def send_command(self, command: GraphEngineCommand) -> None:
-        """Send a command to be processed by this GraphEngine instance."""
-        self._commands.append(command)
-
-
-class TestPauseStatePersistenceLayerTestContainers:
-    """Comprehensive TestContainers-based integration tests for PauseStatePersistenceLayer class."""
-
-    @pytest.fixture
-    def engine(self, db_session_with_containers: Session):
-        """Get database engine from TestContainers session."""
-        bind = db_session_with_containers.get_bind()
-        assert isinstance(bind, Engine)
-        return bind
-
-    @pytest.fixture
-    def file_service(self, engine: Engine):
-        """Create FileService instance with TestContainers engine."""
-        return FileService(engine)
-
-    @pytest.fixture
-    def workflow_run_service(self, engine: Engine, file_service: FileService):
-        """Create WorkflowRunService instance with TestContainers engine and FileService."""
-        session_factory = sessionmaker(bind=engine, expire_on_commit=False)
-        workflow_runs = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=session_factory)
-        return WorkflowRunService(
-            workflow_runs=workflow_runs,
-            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-                session_maker=session_factory
-            ),
-        )
-
-    @pytest.fixture(autouse=True)
-    def setup_test_data(self, db_session_with_containers: Session, file_service, workflow_run_service):
-        """Set up test data for each test method using TestContainers."""
-        # Create test tenant and account
-        from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-
-        tenant = Tenant(
-            name="Test Tenant",
-            status=TenantStatus.NORMAL,
-        )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
-
-        account = Account(
-            email="test@example.com",
-            name="Test User",
-            interface_language="en-US",
-            status=AccountStatus.ACTIVE,
-        )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-
-        # Create tenant-account join
-        tenant_join = TenantAccountJoin(
-            tenant_id=tenant.id,
-            account_id=account.id,
-            role=TenantAccountRole.OWNER,
-            current=True,
-        )
-        db_session_with_containers.add(tenant_join)
-        db_session_with_containers.commit()
-
-        # Set test data
-        self.test_tenant_id = tenant.id
-        self.test_user_id = account.id
-        self.test_app_id = str(uuid.uuid4())
-        self.test_workflow_id = str(uuid.uuid4())
-        self.test_workflow_run_id = str(uuid.uuid4())
-
-        # Create test workflow
-        self.test_workflow = Workflow(
-            id=self.test_workflow_id,
-            tenant_id=self.test_tenant_id,
-            app_id=self.test_app_id,
-            type="workflow",
-            version="draft",
-            graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
-            created_by=self.test_user_id,
-            created_at=naive_utc_now(),
-        )
-
-        # Create test workflow run
-        self.test_workflow_run = WorkflowRun(
-            id=self.test_workflow_run_id,
-            tenant_id=self.test_tenant_id,
-            app_id=self.test_app_id,
-            workflow_id=self.test_workflow_id,
-            type="workflow",
-            triggered_from="debugging",
-            version="draft",
-            status=WorkflowExecutionStatus.RUNNING,
-            created_by=self.test_user_id,
-            created_by_role="account",
-            created_at=naive_utc_now(),
-        )
-
-        # Store session and service instances
-        self.session = db_session_with_containers
-        self.file_service = file_service
-        self.workflow_run_service = workflow_run_service
-
-        # Save test data to database
-        self.session.add(self.test_workflow)
-        self.session.add(self.test_workflow_run)
-        self.session.commit()
-
-        yield
-
-        # Cleanup
-        self._cleanup_test_data()
-
-    def _cleanup_test_data(self):
-        """Clean up test data after each test method."""
-        try:
-            # Clean up workflow pauses
-            self.session.execute(delete(WorkflowPauseModel))
-            # Clean up upload files
-            self.session.execute(
-                delete(UploadFile).where(
-                    UploadFile.tenant_id == self.test_tenant_id,
-                )
-            )
-            # Clean up workflow runs
-            self.session.execute(
-                delete(WorkflowRun).where(
-                    WorkflowRun.tenant_id == self.test_tenant_id,
-                    WorkflowRun.app_id == self.test_app_id,
-                )
-            )
-            # Clean up workflows
-            self.session.execute(
-                delete(Workflow).where(
-                    Workflow.tenant_id == self.test_tenant_id,
-                    Workflow.app_id == self.test_app_id,
-                )
-            )
-            self.session.commit()
-        except Exception as e:
-            self.session.rollback()
-            raise e
-
-    def _create_graph_runtime_state(
+    def prepare(
         self,
-        outputs: dict[str, object] | None = None,
+        *,
+        outputs: Mapping[str, object] | None = None,
+        variables: Mapping[tuple[str, str], object] | None = None,
         total_tokens: int = 0,
         node_run_steps: int = 0,
-        variables: dict[tuple[str, str], object] | None = None,
-        workflow_run_id: str | None = None,
-    ) -> ReadOnlyGraphRuntimeState:
-        """Create a real GraphRuntimeState for testing."""
-        start_at = time()
-
-        execution_id = workflow_run_id or getattr(self, "test_workflow_run_id", None) or str(uuid.uuid4())
-
-        # Create variable pool
-        variable_pool = VariablePool.from_bootstrap(
-            system_variables=build_system_variables(workflow_execution_id=execution_id)
-        )
-        if variables:
-            for (node_id, var_key), value in variables.items():
-                variable_pool.add([node_id, var_key], value)
-
-        # Create LLM usage
-        llm_usage = LLMUsage.empty_usage()
-        llm_usage.total_tokens = total_tokens
-
-        # Create graph runtime state
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=start_at,
-            llm_usage=llm_usage,
-            outputs=outputs or {},
-            node_run_steps=node_run_steps,
-        )
-
-        return ReadOnlyGraphRuntimeStateWrapper(graph_runtime_state)
-
-    def _create_generate_entity(
-        self,
-        workflow_execution_id: str | None = None,
-        user_id: str | None = None,
-        workflow_id: str | None = None,
-    ) -> WorkflowAppGenerateEntity:
-        execution_id = workflow_execution_id or getattr(self, "test_workflow_run_id", str(uuid.uuid4()))
-        wf_id = workflow_id or getattr(self, "test_workflow_id", str(uuid.uuid4()))
-        tenant_id = getattr(self, "test_tenant_id", "tenant-123")
-        app_id = getattr(self, "test_app_id", "app-123")
-        app_config = WorkflowUIBasedAppConfig(
-            tenant_id=str(tenant_id),
-            app_id=str(app_id),
-            app_mode=AppMode.WORKFLOW,
-            workflow_id=str(wf_id),
-        )
-        return WorkflowAppGenerateEntity(
-            task_id=str(uuid.uuid4()),
-            app_config=app_config,
+        pause: bool = True,
+    ) -> tuple[PreparedWorkflowRun, WorkflowRunAgg]:
+        entity = WorkflowAppGenerateEntity(
+            task_id=str(uuid4()),
+            app_config=WorkflowUIBasedAppConfig(
+                tenant_id=self.workflow.tenant_id,
+                app_id=self.workflow.app_id,
+                app_mode=AppMode.WORKFLOW,
+                workflow_id=self.workflow.id,
+            ),
             inputs={},
             files=[],
-            user_id=user_id or getattr(self, "test_user_id", str(uuid.uuid4())),
-            stream=False,
+            user_id=self.account.id,
+            stream=True,
             invoke_from=InvokeFrom.DEBUGGER,
-            workflow_execution_id=execution_id,
+            workflow_execution_id=self.run_id,
         )
-
-    def _create_pause_state_persistence_layer(
-        self,
-        workflow_run: WorkflowRun | None = None,
-        workflow: Workflow | None = None,
-        state_owner_user_id: str | None = None,
-        generate_entity: WorkflowAppGenerateEntity | None = None,
-    ) -> PauseStatePersistenceLayer:
-        """Create PauseStatePersistenceLayer with real dependencies."""
-        owner_id = state_owner_user_id
-        if owner_id is None:
-            if workflow is not None and workflow.created_by:
-                owner_id = workflow.created_by
-            elif workflow_run is not None and workflow_run.created_by:
-                owner_id = workflow_run.created_by
-            else:
-                owner_id = getattr(self, "test_user_id", None)
-
-        assert owner_id is not None
-        owner_id = str(owner_id)
-        workflow_execution_id = (
-            workflow_run.id if workflow_run is not None else getattr(self, "test_workflow_run_id", None)
+        queue = WorkflowAppQueueManager(entity.task_id, self.account.id, entity.invoke_from, AppMode.WORKFLOW)
+        runner = WorkflowBasedAppRunner(queue_manager=queue, app_id=self.workflow.app_id)
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
+                app_id=self.workflow.app_id, workflow_id=self.workflow.id, workflow_execution_id=self.run_id
+            )
         )
-        assert workflow_execution_id is not None
-        workflow_id = workflow.id if workflow is not None else getattr(self, "test_workflow_id", None)
-        assert workflow_id is not None
-        entity_user_id = getattr(self, "test_user_id", owner_id)
-        entity = generate_entity or self._create_generate_entity(
-            workflow_execution_id=str(workflow_execution_id),
-            user_id=entity_user_id,
-            workflow_id=str(workflow_id),
+        for selector, value in (variables or {}).items():
+            variable_pool.add(selector, value)
+        usage = LLMUsage.empty_usage()
+        usage.total_tokens = total_tokens
+        runtime = RuntimeState(
+            workflow_id=self.workflow.id,
+            variable_pool=variable_pool,
+            start_at=perf_counter(),
+            llm_usage=usage,
+            outputs=dict(outputs or {}),
+            node_run_steps=node_run_steps,
         )
-
-        return PauseStatePersistenceLayer(
-            session_factory=self.session.get_bind(),
-            state_owner_user_id=owner_id,
-            generate_entity=entity,
-            response_stream_filter=_create_initialized_response_stream_filter(),
+        graph = runner._init_graph(
+            graph_config=self.workflow.graph_dict,
+            graph_runtime_state=runtime,
+            workflow_id=self.workflow.id,
+            tenant_id=self.workflow.tenant_id,
+            user_id=self.account.id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
         )
-
-    def test_complete_pause_flow_with_real_dependencies(self, db_session_with_containers: Session):
-        """Test complete pause flow: event -> state serialization -> database save -> storage save."""
-        # Arrange
-        layer = self._create_pause_state_persistence_layer()
-
-        # Create real graph runtime state with test data
-        test_outputs = {"result": "test_output", "step": "intermediate"}
-        test_variables = {
-            ("node1", "var1"): "string_value",
-            ("node2", "var2"): {"complex": "object"},
-        }
-        graph_runtime_state = self._create_graph_runtime_state(
-            outputs=test_outputs,
-            total_tokens=100,
-            node_run_steps=5,
-            variables=test_variables,
+        runs = SQLAlchemyWorkflowExecutionRepository(
+            self.engine,
+            tenant_id=self.workflow.tenant_id,
+            user=self.account,
+            app_id=self.workflow.app_id,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
-
-        command_channel = _TestCommandChannelImpl()
-        layer.initialize(graph_runtime_state, command_channel)
-
-        # Create pause event
-        event = GraphRunPausedEvent(
-            reasons=[SchedulingPause(message="test pause")],
-            outputs={"intermediate": "result"},
+        nodes = SQLAlchemyWorkflowNodeExecutionRepository(
+            self.engine,
+            tenant_id=self.workflow.tenant_id,
+            user=self.account,
+            app_id=self.workflow.app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
-
-        # Act
-        layer.on_event(event)
-
-        # Assert - Verify pause state was saved to database
-        self.session.refresh(self.test_workflow_run)
-        workflow_run = self.session.get(WorkflowRun, self.test_workflow_run_id)
-        assert workflow_run is not None
-        assert workflow_run.status == WorkflowExecutionStatus.PAUSED
-
-        # Verify pause state exists in database
-        pause_model = self.session.scalars(
-            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == workflow_run.id)
-        ).first()
-        assert pause_model is not None
-        assert pause_model.workflow_id == self.test_workflow_id
-        assert pause_model.workflow_run_id == self.test_workflow_run_id
-        assert pause_model.state_object_key != ""
-        assert pause_model.resumed_at is None
-
-        storage_content = storage.load(pause_model.state_object_key).decode()
-        resumption_context = WorkflowResumptionContext.loads(storage_content)
-        assert resumption_context.version == "1"
-        assert resumption_context.serialized_graph_runtime_state == graph_runtime_state.dumps()
-        persisted_entity = resumption_context.get_generate_entity()
-        assert isinstance(persisted_entity, WorkflowAppGenerateEntity)
-        assert persisted_entity.workflow_execution_id == self.test_workflow_run_id
-
-    def test_state_persistence_and_retrieval(self, db_session_with_containers: Session):
-        """Test that pause state can be persisted and retrieved correctly."""
-        # Arrange
-        layer = self._create_pause_state_persistence_layer()
-
-        # Create complex test data
-        complex_outputs = {
-            "nested": {"key": "value", "number": 42},
-            "list": [1, 2, 3, {"nested": "item"}],
-            "boolean": True,
-            "null_value": None,
-        }
-        complex_variables = {
-            ("node1", "var1"): "string_value",
-            ("node2", "var2"): {"complex": "object"},
-            ("node3", "var3"): [1, 2, 3],
-        }
-
-        graph_runtime_state = self._create_graph_runtime_state(
-            outputs=complex_outputs,
-            total_tokens=250,
-            node_run_steps=10,
-            variables=complex_variables,
+        commands = InMemoryChannel()
+        if pause:
+            commands.send_command(PauseCommand(reason="integration pause"))
+        entry = WorkflowEntry(
+            tenant_id=self.workflow.tenant_id,
+            app_id=self.workflow.app_id,
+            workflow_id=self.workflow.id,
+            graph=graph,
+            graph_config=self.workflow.graph_dict,
+            user_id=self.account.id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            call_depth=0,
+            variable_pool=variable_pool,
+            graph_runtime_state=runtime,
+            command_channel=commands,
         )
-
-        command_channel = _TestCommandChannelImpl()
-        layer.initialize(graph_runtime_state, command_channel)
-
-        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
-
-        # Act - Save pause state
-        layer.on_event(event)
-
-        # Assert - Retrieve and verify
-        pause_entity = self.workflow_run_service._workflow_runs.get_workflow_pause(self.test_workflow_run_id)
-        assert pause_entity is not None
-        assert pause_entity.workflow_execution_id == self.test_workflow_run_id
-        assert pause_entity.get_pause_reasons() == event.reasons
-
-        state_bytes = pause_entity.get_state()
-        resumption_context = WorkflowResumptionContext.loads(state_bytes.decode())
-        retrieved_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
-
-        assert retrieved_state.outputs == complex_outputs
-        assert retrieved_state.total_tokens == 250
-        assert retrieved_state.node_run_steps == 10
-        assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
-
-    def test_database_transaction_handling(self, db_session_with_containers: Session):
-        """Test that database transactions are handled correctly."""
-        # Arrange
-        layer = self._create_pause_state_persistence_layer()
-        graph_runtime_state = self._create_graph_runtime_state(
-            outputs={"test": "transaction"},
-            total_tokens=50,
+        prepared = PreparedWorkflowRun(entry, WorkflowType.WORKFLOW, self.workflow.version, entity, ())
+        aggregate = WorkflowRunAgg(
+            prepared,
+            runner,
+            PauseStateLayerConfig(self.engine, self.workflow.created_by),
+            workflow_execution_repository=runs,
+            workflow_node_execution_repository=nodes,
         )
+        return prepared, aggregate
 
-        command_channel = _TestCommandChannelImpl()
-        layer.initialize(graph_runtime_state, command_channel)
+    def stored_pause(self) -> WorkflowPause:
+        self.session.expire_all()
+        pause = self.session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == self.run_id))
+        assert pause is not None
+        return pause
 
-        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
-        # Act
-        layer.on_event(event)
+@pytest.fixture
+def workflow_case(db_session_with_containers: Session) -> WorkflowCase:
+    session = db_session_with_containers
+    engine = session.get_bind()
+    assert isinstance(engine, Engine)
+    tenant = Tenant(name="Pause integration tenant")
+    account = Account(name="Pause integration user", email=f"{uuid4()}@example.com")
+    session.add_all([tenant, account])
+    session.flush()
+    session.add(
+        TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER, current=True)
+    )
+    graph: dict[str, object] = {
+        "nodes": [{"id": "start", "data": StartNodeData(title="Start").model_dump(mode="json")}],
+        "edges": [],
+    }
+    workflow = Workflow(
+        id=str(uuid4()),
+        tenant_id=tenant.id,
+        app_id=str(uuid4()),
+        type="workflow",
+        version="draft",
+        graph=json.dumps(graph),
+        features="{}",
+        created_by=account.id,
+    )
+    session.add(workflow)
+    session.commit()
+    return WorkflowCase(session, engine, account, workflow, str(uuid4()))
 
-        # Assert - Verify data is committed and accessible in new session
-        with Session(bind=self.session.get_bind(), expire_on_commit=False) as new_session:
-            workflow_run = new_session.get(WorkflowRun, self.test_workflow_run_id)
-            assert workflow_run is not None
-            assert workflow_run.status == WorkflowExecutionStatus.PAUSED
 
-            pause_model = new_session.scalars(
-                select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == workflow_run.id)
-            ).first()
-            assert pause_model is not None
-            assert pause_model.workflow_run_id == self.test_workflow_run_id
-            assert pause_model.resumed_at is None
-            assert pause_model.state_object_key != ""
+def test_complete_pause_flow_with_real_dependencies(workflow_case: WorkflowCase) -> None:
+    prepared, aggregate = workflow_case.prepare(outputs={"result": "intermediate"}, total_tokens=100, node_run_steps=5)
+    with closing(aggregate.iter_events()) as events:
+        assert isinstance(next(events), GraphRunStartedEvent)
+        workflow_case.session.expire_all()
+        run = workflow_case.session.get(WorkflowRun, workflow_case.run_id)
+        assert run is not None
+        assert run.status == WorkflowExecutionStatus.RUNNING
+        assert workflow_case.session.scalar(select(WorkflowPause)) is None
+        remaining = list(events)
+    assert isinstance(remaining[-1], GraphRunPausedEvent)
+    pause = workflow_case.stored_pause()
+    workflow_case.session.refresh(run)
+    assert run.status == WorkflowExecutionStatus.PAUSED
+    assert run.finished_at is None
+    assert run.outputs_dict == {"result": "intermediate"}
+    assert run.total_tokens == 100
+    assert run.total_steps == prepared.entry.graph_engine.runtime_state.node_run_steps
+    assert pause.workflow_id == workflow_case.workflow.id
+    assert pause.resumed_at is None
+    snapshot = WorkflowResumptionContext.loads(storage.load(pause.state_object_key).decode())
+    assert snapshot.serialized_graph_runtime_state == prepared.entry.graph_engine.runtime_state.dumps()
+    assert snapshot.get_response_stream_filter().dumps() == prepared.entry.response_stream_filter.dumps()
+    entity = snapshot.get_generate_entity()
+    assert isinstance(entity, WorkflowAppGenerateEntity)
+    assert entity.workflow_execution_id == workflow_case.run_id
 
-    def test_file_storage_integration(self, db_session_with_containers: Session):
-        """Test integration with file storage system."""
-        # Arrange
-        layer = self._create_pause_state_persistence_layer()
 
-        # Create large state data to test storage
-        large_outputs = {"data": "x" * 10000}  # 10KB of data
-        graph_runtime_state = self._create_graph_runtime_state(
-            outputs=large_outputs,
-            total_tokens=1000,
-        )
+def test_state_persistence_and_retrieval(workflow_case: WorkflowCase) -> None:
+    outputs = {"nested": {"key": "value", "number": 42}, "list": [1, 2, 3, {"nested": "item"}], "null": None}
+    variables = {("node", "text"): "value", ("node", "object"): {"complex": "object"}, ("node", "list"): [1, 2, 3]}
+    prepared, aggregate = workflow_case.prepare(
+        outputs=outputs, variables=variables, total_tokens=250, node_run_steps=10
+    )
+    events = list(aggregate.iter_events())
+    assert isinstance(events[-1], GraphRunPausedEvent)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(workflow_case.engine))
+    pause = repository.get_workflow_pause(workflow_case.run_id)
+    assert pause is not None
+    assert pause.workflow_execution_id == workflow_case.run_id
+    assert pause.get_pause_reasons() == events[-1].reasons
+    snapshot = WorkflowResumptionContext.loads(pause.get_state().decode())
+    restored = RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state)
+    assert restored.outputs == outputs
+    assert restored.total_tokens == 250
+    assert restored.node_run_steps == prepared.entry.graph_engine.runtime_state.node_run_steps
+    for selector, expected in variables.items():
+        variable = restored.variable_pool.get(selector)
+        assert variable is not None
+        assert variable.to_object() == expected
 
-        command_channel = _TestCommandChannelImpl()
-        layer.initialize(graph_runtime_state, command_channel)
 
-        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
+def test_database_transaction_handling(workflow_case: WorkflowCase) -> None:
+    _, aggregate = workflow_case.prepare(outputs={"test": "transaction"})
+    assert isinstance(list(aggregate.iter_events())[-1], GraphRunPausedEvent)
+    with Session(workflow_case.engine) as session:
+        run = session.get(WorkflowRun, workflow_case.run_id)
+        assert run is not None
+        assert run.status == WorkflowExecutionStatus.PAUSED
+        pause = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id))
+        assert pause is not None
+        assert pause.resumed_at is None
+        assert storage.load(pause.state_object_key)
 
-        # Act
-        layer.on_event(event)
 
-        # Assert - Verify file was uploaded to storage
-        self.session.refresh(self.test_workflow_run)
-        pause_model = self.session.scalars(
-            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == self.test_workflow_run.id)
-        ).first()
-        assert pause_model is not None
-        assert pause_model.state_object_key != ""
+def test_workflow_with_different_creators(workflow_case: WorkflowCase) -> None:
+    creator = Account(name="Workflow creator", email=f"{uuid4()}@example.com")
+    workflow_case.session.add(creator)
+    workflow_case.session.flush()
+    workflow_case.workflow.created_by = creator.id
+    workflow_case.session.commit()
+    _, aggregate = workflow_case.prepare()
+    assert isinstance(list(aggregate.iter_events())[-1], GraphRunPausedEvent)
+    pause = workflow_case.stored_pause()
+    snapshot = WorkflowResumptionContext.loads(storage.load(pause.state_object_key).decode())
+    run = workflow_case.session.get(WorkflowRun, workflow_case.run_id)
+    assert run is not None
+    assert run.created_by == workflow_case.account.id
+    assert run.created_by != workflow_case.workflow.created_by
+    assert snapshot.get_generate_entity().user_id == workflow_case.account.id
 
-        # Verify content in storage
-        storage_content = storage.load(pause_model.state_object_key).decode()
-        resumption_context = WorkflowResumptionContext.loads(storage_content)
-        assert resumption_context.serialized_graph_runtime_state == graph_runtime_state.dumps()
-        assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
 
-    def test_workflow_with_different_creators(self, db_session_with_containers: Session):
-        """Test pause state with workflows created by different users."""
-        # Arrange - Create workflow with different creator
-        different_user_id = str(uuid.uuid4())
-        different_workflow = Workflow(
-            id=str(uuid.uuid4()),
-            tenant_id=self.test_tenant_id,
-            app_id=self.test_app_id,
-            type="workflow",
-            version="draft",
-            graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
-            created_by=different_user_id,
-            created_at=naive_utc_now(),
-        )
+def test_successful_execution_creates_no_pause(workflow_case: WorkflowCase) -> None:
+    _, aggregate = workflow_case.prepare(pause=False)
+    events = list(aggregate.iter_events())
+    assert isinstance(events[-1], GraphRunSucceededEvent)
+    assert not any(isinstance(event, GraphRunPausedEvent) for event in events)
+    workflow_case.session.expire_all()
+    run = workflow_case.session.get(WorkflowRun, workflow_case.run_id)
+    assert run is not None
+    assert run.status == WorkflowExecutionStatus.SUCCEEDED
+    assert workflow_case.session.scalar(select(WorkflowPause)) is None
 
-        different_workflow_run = WorkflowRun(
-            id=str(uuid.uuid4()),
-            tenant_id=self.test_tenant_id,
-            app_id=self.test_app_id,
-            workflow_id=different_workflow.id,
-            type="workflow",
-            triggered_from="debugging",
-            version="draft",
-            status=WorkflowExecutionStatus.RUNNING,
-            created_by=self.test_user_id,  # Run created by different user
-            created_by_role="account",
-            created_at=naive_utc_now(),
-        )
 
-        self.session.add(different_workflow)
-        self.session.add(different_workflow_run)
-        self.session.commit()
-
-        layer = self._create_pause_state_persistence_layer(
-            workflow_run=different_workflow_run,
-            workflow=different_workflow,
-        )
-
-        graph_runtime_state = self._create_graph_runtime_state(
-            outputs={"creator_test": "different_creator"},
-            workflow_run_id=different_workflow_run.id,
-        )
-
-        command_channel = _TestCommandChannelImpl()
-        layer.initialize(graph_runtime_state, command_channel)
-
-        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
-
-        # Act
-        layer.on_event(event)
-
-        # Assert - Should use workflow creator (not run creator)
-        self.session.refresh(different_workflow_run)
-        pause_model = self.session.scalars(
-            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == different_workflow_run.id)
-        ).first()
-        assert pause_model is not None
-
-        # Verify the state owner is the workflow creator
-        pause_entity = self.workflow_run_service._workflow_runs.get_workflow_pause(different_workflow_run.id)
-        assert pause_entity is not None
-        resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
-        assert resumption_context.get_generate_entity().workflow_execution_id == different_workflow_run.id
-
-    def test_layer_ignores_non_pause_events(self, db_session_with_containers: Session):
-        """Test that layer ignores non-pause events."""
-        # Arrange
-        layer = self._create_pause_state_persistence_layer()
-        graph_runtime_state = self._create_graph_runtime_state()
-
-        command_channel = _TestCommandChannelImpl()
-        layer.initialize(graph_runtime_state, command_channel)
-
-        # Import other event types
-        from graphon.graph_events import (
-            GraphRunFailedEvent,
-            GraphRunStartedEvent,
-            GraphRunSucceededEvent,
-        )
-
-        # Act - Send non-pause events
-        layer.on_event(GraphRunStartedEvent())
-        layer.on_event(GraphRunSucceededEvent(outputs={"result": "success"}))
-        layer.on_event(GraphRunFailedEvent(error="test error", exceptions_count=1))
-
-        # Assert - No pause state should be created
-        self.session.refresh(self.test_workflow_run)
-        assert self.test_workflow_run.status == WorkflowExecutionStatus.RUNNING
-
-        pause_states = self.session.scalars(
-            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
-        ).all()
-        assert len(pause_states) == 0
-
-    def test_layer_requires_initialization(self, db_session_with_containers: Session):
-        """Test that layer requires proper initialization before handling events."""
-        # Arrange
-        layer = self._create_pause_state_persistence_layer()
-        # Don't initialize - graph_runtime_state should be uninitialized
-
-        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
-
-        # Act & Assert - Should raise GraphEngineLayerNotInitializedError
-        with pytest.raises(GraphEngineLayerNotInitializedError):
-            layer.on_event(event)
+def test_active_execution_cannot_publish_a_durable_pause(workflow_case: WorkflowCase) -> None:
+    prepared, aggregate = workflow_case.prepare()
+    with prepared.entry.graph_engine.runtime_state.graph_execution.track_execution():
+        events = list(aggregate.iter_events())
+    assert isinstance(events[-1], GraphRunFailedEvent)
+    assert "during active execution" in events[-1].error
+    assert not any(isinstance(event, GraphRunPausedEvent) for event in events)
+    workflow_case.session.expire_all()
+    run = workflow_case.session.get(WorkflowRun, workflow_case.run_id)
+    assert run is not None
+    assert run.status == WorkflowExecutionStatus.FAILED
+    assert workflow_case.session.scalar(select(WorkflowPause)) is None

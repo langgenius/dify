@@ -29,6 +29,7 @@ from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
+from services.workflow_run_agg import WorkflowRunAgg
 
 
 class WorkflowEventsQuery(BaseModel):
@@ -136,9 +137,9 @@ class WorkflowEventsApi(Resource):
             msg_generator = MessageGenerator()
             generator: BaseAppGenerator
             if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
+                generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
             elif app_mode == AppMode.WORKFLOW:
-                generator = WorkflowAppGenerator()
+                generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
             else:
                 raise NotWorkflowAppError()
 
