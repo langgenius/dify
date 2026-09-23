@@ -997,3 +997,306 @@ def test_a_grouped_aggregator_that_lists_the_new_branch_in_a_group_is_accepted()
     vetted = vet_intents(graph, _new_branch_intents(), _REJOIN_ALLOWED)
 
     assert vetted.rejections == []
+
+
+# ---- a whole-array write must not drop an element that had an identity ------
+
+
+_S6_CASES_REWRITE = [
+    {
+        "case_id": "excellent",
+        "logical_operator": "and",
+        "conditions": [{"variable_selector": ["node1", "score"], "comparison_operator": ">=", "value": 90}],
+    },
+    {
+        "case_id": "true",
+        "logical_operator": "and",
+        "conditions": [{"variable_selector": ["node1", "score"], "comparison_operator": ">=", "value": 60}],
+    },
+]
+
+
+def test_a_whole_array_rewrite_that_drops_an_elements_identity_is_refused():
+    """The live S6 clobber. The rewrite keeps both ``case_id``s, so it looks
+    like an append -- but it regenerated the surviving case's condition from
+    scratch, losing its ``id`` and turning ``= 60`` into ``≥ 60``. graphon's
+    ``Condition`` has no ``id`` field at all, so nothing downstream ever
+    complains."""
+    intent = MutationIntent(
+        op="set_node_config",
+        args={"node_id": "node2", "path": "cases", "value": copy.deepcopy(_S6_CASES_REWRITE)},
+    )
+
+    vetted = vet_intents(_rejoin_graph(), [intent], _REJOIN_ALLOWED)
+
+    assert len(vetted.rejections) == 1
+    reason = vetted.rejections[0]
+    assert "node2" in reason
+    assert "cases" in reason
+    assert "c1" in reason
+
+
+def test_an_append_that_repeats_every_existing_element_is_accepted():
+    """What the op schema tells the model to do, byte for byte: the existing
+    case comes back unchanged and the new one is appended."""
+    graph = _rejoin_graph()
+    existing = copy.deepcopy(next(n for n in graph["nodes"] if n["id"] == "node2")["data"]["cases"])
+    appended = [
+        *existing,
+        {
+            "case_id": "excellent",
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "id": "c2",
+                    "varType": "number",
+                    "variable_selector": ["node1", "score"],
+                    "comparison_operator": "≥",
+                    "value": "90",
+                }
+            ],
+        },
+    ]
+    intent = MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": appended})
+
+    vetted = vet_intents(graph, [intent], _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
+
+
+def test_changing_one_element_by_index_is_accepted():
+    """The indexed path writes a scalar, not an array, so there is no
+    whole-array replacement to compare identities across."""
+    intent = MutationIntent(
+        op="set_node_config",
+        args={"node_id": "node2", "path": "cases.0.conditions.0.comparison_operator", "value": "≥"},
+    )
+
+    vetted = vet_intents(_rejoin_graph(), [intent], _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
+
+
+def test_rewriting_an_llm_prompt_is_an_ordinary_edit():
+    """The false rejection this scoping exists to remove, and the commonest
+    thing anyone asks the Builder to do. A ``prompt_template`` message carries
+    an ``id`` the canvas mints and REGENERATES when it is absent, and graphon's
+    ``ChatModelMessage`` has no ``id`` field at all -- so re-sending the array
+    without those uuids loses nothing. Judged by identity alone it looked like
+    the S6 clobber and the user's change was parked."""
+    graph = _rejoin_graph()
+    graph["nodes"].append(
+        {
+            "id": "llm1",
+            "type": "custom",
+            "data": {
+                "type": "llm",
+                "title": "Grade",
+                "model": {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}},
+                "prompt_template": [
+                    {"id": "m1", "role": "system", "text": "You grade scores."},
+                    {"id": "m2", "role": "user", "text": "{{#node1.score#}}"},
+                ],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            },
+        }
+    )
+    intent = MutationIntent(
+        op="set_node_config",
+        args={
+            "node_id": "llm1",
+            "path": "prompt_template",
+            "value": [
+                {"role": "system", "text": "You grade scores strictly."},
+                {"role": "user", "text": "{{#node1.score#}}"},
+            ],
+        },
+    )
+
+    vetted = vet_intents(graph, [intent], {*_REJOIN_ALLOWED, "llm"})
+
+    assert vetted.rejections == []
+    assert vetted.applicable == [intent]
+
+
+def test_a_question_classifiers_classes_keep_their_branch_ids():
+    """The other scoped array that is a branch handle. ``ClassConfig.id`` is
+    required by graphon and is what an edge routes on, so a rewrite that drops
+    one orphans that arm exactly the way a lost ``case_id`` would.
+
+    The replacement class carries an id of its own, so the engine is perfectly
+    happy with the result -- which is the point: only this guard notices that
+    ``c-low``'s arm now hangs off nothing."""
+    graph = _rejoin_graph()
+    graph["nodes"].append(
+        {
+            "id": "qc1",
+            "type": "custom",
+            "data": {
+                "type": "question-classifier",
+                "title": "Sort",
+                "query_variable_selector": ["node1", "score"],
+                "model": {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}},
+                "classes": [{"id": "c-high", "name": "high"}, {"id": "c-low", "name": "low"}],
+            },
+        }
+    )
+    intent = MutationIntent(
+        op="set_node_config",
+        args={
+            "node_id": "qc1",
+            "path": "classes",
+            "value": [{"id": "c-high", "name": "high"}, {"id": "c-new", "name": "middling"}],
+        },
+    )
+
+    vetted = vet_intents(graph, [intent], {*_REJOIN_ALLOWED, "question-classifier"})
+
+    assert len(vetted.rejections) == 1
+    assert "c-low" in vetted.rejections[0]
+
+
+def test_an_array_whose_elements_never_had_identities_is_untouched():
+    """An aggregator's ``variables`` is a list of bare selector arrays with no
+    ids in it, and re-sending it whole is the ONLY way to extend it -- the
+    guard must not stand in the way of the fix the other guard demands."""
+    intent = MutationIntent(
+        op="set_node_config",
+        args={"node_id": "node5", "path": "variables", "value": [["node3", "output"]]},
+    )
+
+    vetted = vet_intents(_rejoin_graph(), [intent], _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
+
+
+def _two_case_graph(operator: str = "≥", value: object = "60") -> dict:
+    """The rejoin draft with a SECOND case on ``node2``, so there is something
+    to delete."""
+    graph = _rejoin_graph()
+    node2 = next(n for n in graph["nodes"] if n["id"] == "node2")
+    node2["data"]["cases"] = [
+        {
+            "case_id": "true",
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "id": "c1",
+                    "varType": "number",
+                    "variable_selector": ["node1", "score"],
+                    "comparison_operator": operator,
+                    "value": value,
+                }
+            ],
+        },
+        {
+            "case_id": "excellent",
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "id": "c2",
+                    "varType": "number",
+                    "variable_selector": ["node1", "score"],
+                    "comparison_operator": "≥",
+                    "value": "90",
+                }
+            ],
+        },
+    ]
+    return graph
+
+
+def _cases_of(graph: dict) -> list:
+    return next(n for n in graph["nodes"] if n["id"] == "node2")["data"]["cases"]
+
+
+def test_deleting_a_case_outright_is_accepted():
+    """Removing an if-else case is a legitimate edit, and a whole-array write
+    is the only way to express one. A guard that refused it would make the
+    feature unusable -- loudly, but unusably."""
+    graph = _two_case_graph()
+    kept = [copy.deepcopy(_cases_of(graph)[0])]  # the survivor, byte-identical
+    intent = MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": kept})
+
+    vetted = vet_intents(graph, [intent], _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
+    assert vetted.applicable == [intent]
+
+
+def test_deleting_one_case_while_modifying_another_is_refused():
+    """The mixed write, and the reason a deletion is recognised by what it
+    KEEPS rather than by what is missing: one element is gone and the survivor
+    was rewritten in the same breath. That is the S6 clobber wearing a
+    deletion's clothes."""
+    graph = _two_case_graph()
+    modified = copy.deepcopy(_cases_of(graph)[0])
+    modified["conditions"][0]["comparison_operator"] = "≤"
+    intent = MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": [modified]})
+
+    vetted = vet_intents(graph, [intent], _REJOIN_ALLOWED)
+
+    assert len(vetted.rejections) == 1
+    assert "c2" in vetted.rejections[0]  # the identity that went missing
+
+
+def test_a_deletion_is_not_a_licence_to_repeat_one_element_in_place_of_two():
+    """Each original may be claimed once. Re-sending the surviving case twice
+    keeps the array's length honest while still losing the other case's
+    identity, and would pass a naive subset test."""
+    graph = _two_case_graph()
+    survivor = copy.deepcopy(_cases_of(graph)[0])
+    intent = MutationIntent(
+        op="set_node_config",
+        args={"node_id": "node2", "path": "cases", "value": [survivor, copy.deepcopy(survivor)]},
+    )
+
+    vetted = vet_intents(graph, [intent], _REJOIN_ALLOWED)
+
+    assert len(vetted.rejections) == 1
+    assert "c2" in vetted.rejections[0]
+
+
+def test_a_deletion_survives_a_survivor_the_heal_set_will_normalize():
+    """``after`` is the dry run's already-healed graph, so the comparison is
+    made against a healed copy of ``before`` too. A draft holding ``">="`` and
+    a JSON ``60`` -- the ESQ1-303 shape this whole plan grew out of -- would
+    otherwise make a survivor the model re-sent verbatim look modified, and a
+    genuine deletion would be refused for a difference the heal introduced."""
+    graph = _two_case_graph(operator=">=", value=60)
+    kept = [copy.deepcopy(_cases_of(graph)[0])]
+    assert kept[0]["conditions"][0]["comparison_operator"] == ">="  # the draft really is unhealed
+    intent = MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": kept})
+
+    vetted = vet_intents(graph, [intent], _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
+
+
+def test_adding_a_case_while_dropping_another_is_still_refused():
+    """A write that both loses an identity and ADDS an element is not a
+    deletion by any reading -- this is the S6 shape at its plainest."""
+    graph = _two_case_graph()
+    intent = MutationIntent(
+        op="set_node_config",
+        args={
+            "node_id": "node2",
+            "path": "cases",
+            "value": [
+                copy.deepcopy(_cases_of(graph)[0]),
+                {
+                    "case_id": "outstanding",
+                    "logical_operator": "and",
+                    "conditions": [
+                        {"variable_selector": ["node1", "score"], "comparison_operator": "≥", "value": "95"}
+                    ],
+                },
+            ],
+        },
+    )
+
+    vetted = vet_intents(graph, [intent], _REJOIN_ALLOWED)
+
+    assert len(vetted.rejections) == 1
+    assert "c2" in vetted.rejections[0]
