@@ -791,10 +791,7 @@ class TestTenantService:
         ].get_license.return_value.workspaces.is_available.return_value = True
         mock_rsa_dependencies.return_value = "mock_public_key"
 
-        with (
-            patch("services.credit_pool_service.CreditPoolService.create_default_pool"),
-            patch("services.account_service.tenant_was_created.send") as mock_tenant_was_created,
-        ):
+        with patch("services.account_service.tenant_was_created.send") as mock_tenant_was_created:
             with sqlite_session_factory() as service_session:
                 TenantService.create_owner_tenant_if_not_exist(mock_account, session=service_session)
                 tenant = service_session.scalar(select(Tenant).where(Tenant.name == "Test User's Workspace"))
