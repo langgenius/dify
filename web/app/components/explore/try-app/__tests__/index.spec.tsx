@@ -126,16 +126,20 @@ describe('TryApp (main index.tsx)', () => {
       expect(screen.queryByRole('progressbar')).toBeInTheDocument()
     })
 
-    it('renders unavailable state when the app detail request fails', () => {
+    it('shows retry without the create panel when the app detail request fails', () => {
       mockUseGetTryAppInfo.mockReturnValue({
         data: null,
         isError: true,
-        error: new Error('App is unavailable'),
+        isFetching: false,
+        refetch: vi.fn(),
       })
 
       render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
 
-      expect(screen.getByText('App is unavailable')).toBeInTheDocument()
+      expect(screen.getByText('explore.tryApp.loadError')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
+      expect(screen.queryByTestId('app-info-component')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('create-button')).not.toBeInTheDocument()
     })
 
     it('renders unknown unavailable state when app detail is empty', () => {
@@ -143,33 +147,81 @@ describe('TryApp (main index.tsx)', () => {
         data: null,
         isLoading: false,
         isError: false,
+        isFetching: false,
+        refetch: vi.fn(),
       })
 
       render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
 
-      expect(screen.getByText('share.common.appUnknownError')).toBeInTheDocument()
+      expect(screen.getByText('explore.tryApp.loadError')).toBeInTheDocument()
+    })
+
+    it('disables retry while fetching and restores the full preview after recovery', () => {
+      const refetch = vi.fn()
+      let result = {
+        data: null as TryAppInfo | null,
+        isLoading: false,
+        isError: true,
+        isFetching: false,
+        refetch,
+      }
+      mockUseGetTryAppInfo.mockImplementation(() => result)
+      const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      expect(refetch).toHaveBeenCalledTimes(1)
+
+      result = { ...result, isFetching: true }
+      rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+      expect(screen.getByRole('button', { name: 'explore.tryApp.retrying' })).toBeDisabled()
+
+      result = { ...result, data: createMockAppDetail(), isError: false, isFetching: false }
+      rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+      expect(screen.getByTestId('preview-component')).toBeInTheDocument()
+      expect(screen.getByTestId('create-button')).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toHaveFocus()
+    })
+
+    it('allows another retry after a failed request', () => {
+      const refetch = vi.fn()
+      mockUseGetTryAppInfo.mockReturnValue({
+        data: null,
+        isLoading: false,
+        isError: true,
+        isFetching: false,
+        refetch,
+      })
+      render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      expect(refetch).toHaveBeenCalledTimes(2)
     })
   })
 
   describe('content rendering', () => {
-    it('uses app trial eligibility as the authoritative default tab', async () => {
+    it('defaults to details even when the app can be tried', async () => {
       const app: RecommendedAppResponse = { app_id: 'test-app-id', can_trial: true }
 
       render(<TryApp app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
 
-      expect(await screen.findByTestId('app-component')).toBeInTheDocument()
+      expect(await screen.findByTestId('preview-component')).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
     })
 
-    it('defaults to details and disables trial when the app is ineligible', async () => {
+    it('hides trial when the app is ineligible', async () => {
       const app: RecommendedAppResponse = { app_id: 'test-app-id', can_trial: false }
 
       render(<TryApp app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
 
       expect(await screen.findByTestId('preview-component')).toBeInTheDocument()
-      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.try' })).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      )
+      expect(
+        screen.queryByRole('tab', { name: 'explore.tryApp.tabHeader.try' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('app-component')).not.toBeInTheDocument()
     })
 
     it('renders Tab component', async () => {
@@ -181,15 +233,31 @@ describe('TryApp (main index.tsx)', () => {
       })
     })
 
-    it('renders App component by default (TRY mode)', async () => {
+    it('renders Preview component by default (DETAIL mode)', async () => {
       render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
 
       await waitFor(() => {
-        expect(document.body.querySelector('[data-testid="app-component"]')).toBeInTheDocument()
-        expect(
-          document.body.querySelector('[data-testid="preview-component"]'),
-        ).not.toBeInTheDocument()
+        expect(document.body.querySelector('[data-testid="preview-component"]')).toBeInTheDocument()
+        expect(document.body.querySelector('[data-testid="app-component"]')).not.toBeInTheDocument()
       })
+      expect(screen.getByRole('dialog', { name: 'Test App Name' })).toBeInTheDocument()
+    })
+
+    it('names the dialog after the current template in all load states', () => {
+      const app: RecommendedAppResponse = {
+        ...defaultApp,
+        app: { id: 'test-app-id', name: 'Sample template', icon_url: null },
+      }
+      const { rerender } = render(<TryApp app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
+      expect(screen.getByRole('dialog', { name: 'Sample template' })).toBeInTheDocument()
+
+      mockUseGetTryAppInfo.mockReturnValue({ data: null, isLoading: true })
+      rerender(<TryApp app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
+      expect(screen.getByRole('dialog', { name: 'Sample template' })).toBeInTheDocument()
+
+      mockUseGetTryAppInfo.mockReturnValue({ data: null, isError: true, refetch: vi.fn() })
+      rerender(<TryApp app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
+      expect(screen.getByRole('dialog', { name: 'Sample template' })).toBeInTheDocument()
     })
 
     it('renders AppInfo component', async () => {
@@ -212,39 +280,27 @@ describe('TryApp (main index.tsx)', () => {
   })
 
   describe('tab switching', () => {
-    it('switches to Preview when Detail tab is clicked', async () => {
+    it('places Details before Try it in tab order', () => {
       render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
 
-      await waitFor(() => {
-        expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByText('explore.tryApp.tabHeader.detail'))
-
-      await waitFor(() => {
-        expect(document.body.querySelector('[data-testid="preview-component"]')).toBeInTheDocument()
-        expect(document.body.querySelector('[data-testid="app-component"]')).not.toBeInTheDocument()
-      })
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+        'explore.tryApp.tabHeader.detail',
+        'explore.tryApp.tabHeader.try',
+      ])
     })
 
-    it('switches back to App when Try tab is clicked', async () => {
+    it('switches to Try it and back to Details', async () => {
       render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
-
-      await waitFor(() => {
-        expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByText('explore.tryApp.tabHeader.detail'))
-
-      await waitFor(() => {
-        expect(document.body.querySelector('[data-testid="preview-component"]')).toBeInTheDocument()
-      })
 
       fireEvent.click(screen.getByText('explore.tryApp.tabHeader.try'))
 
       await waitFor(() => {
         expect(document.body.querySelector('[data-testid="app-component"]')).toBeInTheDocument()
       })
+
+      fireEvent.click(screen.getByText('explore.tryApp.tabHeader.detail'))
+
+      expect(document.body.querySelector('[data-testid="preview-component"]')).toBeInTheDocument()
     })
   })
 
@@ -348,6 +404,8 @@ describe('TryApp (main index.tsx)', () => {
           onCreate={vi.fn()}
         />,
       )
+
+      fireEvent.click(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.try' }))
 
       await waitFor(() => {
         const appComponent = document.body.querySelector('[data-testid="app-component"]')

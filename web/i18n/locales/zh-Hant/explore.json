@@ -38,7 +38,9 @@
   "sidebar.webApps": "WEB APPS",
   "tryApp.category": "分類",
   "tryApp.createFromSampleApp": "從此範本建立應用",
+  "tryApp.loadError": "無法載入此範本",
   "tryApp.requirements": "必須配置項",
+  "tryApp.retrying": "正在重試…",
   "tryApp.tabHeader.detail": "編排詳情",
   "tryApp.tabHeader.try": "試用",
   "tryApp.tryInfo": "這是一個範例應用程式，您可以試用最多 5 則訊息。如需繼續使用，請點擊「從此範本建立應用」並完成設定！"

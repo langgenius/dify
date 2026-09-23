@@ -38,7 +38,9 @@
   "sidebar.webApps": "App web",
   "tryApp.category": "Categoria",
   "tryApp.createFromSampleApp": "Crea da questa app di esempio",
+  "tryApp.loadError": "Impossibile caricare questo modello",
   "tryApp.requirements": "Requisiti",
+  "tryApp.retrying": "Nuovo tentativo…",
   "tryApp.tabHeader.detail": "Dettagli di orchestrazione",
   "tryApp.tabHeader.try": "Prova",
   "tryApp.tryInfo": "Questa è un'app di esempio. Puoi provare fino a 5 messaggi. Per continuare a utilizzarla, fai clic su \"Crea da questa app di esempio\" e configurala!"
