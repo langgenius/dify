@@ -221,7 +221,7 @@ describe('useImportDSL', () => {
 
   it('should toast the backend error when import status is failed', async () => {
     const importError =
-      "Missing app data in YAML content. " +
+      'Missing app data in YAML content. ' +
       "Not a valid Dify app DSL: the top-level 'app' section is required (found: meta)."
     mockImportDSL.mockResolvedValue({
       id: 'import-failed',
@@ -239,6 +239,77 @@ describe('useImportDSL', () => {
         },
         { onFailed },
       )
+    })
+
+    expect(toastMocks.error).toHaveBeenCalledWith(importError)
+    expect(onFailed).toHaveBeenCalled()
+  })
+
+  it('should not toast again when the import request already failed', async () => {
+    mockImportDSL.mockRejectedValue(new Response(null, { status: 400 }))
+    const onFailed = vi.fn()
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(
+        {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: 'meta: {}\n',
+        },
+        { onFailed },
+      )
+    })
+
+    expect(toastMocks.error).not.toHaveBeenCalled()
+    expect(onFailed).toHaveBeenCalled()
+  })
+
+  it('should toast a generic failure when import throws before a response', async () => {
+    mockImportDSL.mockRejectedValue(new Error('network'))
+    const onFailed = vi.fn()
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(
+        {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: 'meta: {}\n',
+        },
+        { onFailed },
+      )
+    })
+
+    expect(toastMocks.error).toHaveBeenCalledWith('app.newApp.appCreateFailed')
+    expect(onFailed).toHaveBeenCalled()
+  })
+
+  it('should toast the backend error when a confirmed import fails', async () => {
+    const importError =
+      'Missing app data in YAML content. ' +
+      "Not a valid Dify app DSL: the top-level 'app' section is required (found: meta)."
+    mockImportDSL.mockResolvedValue({
+      id: 'import-1',
+      status: DSLImportStatus.PENDING,
+    })
+    mockImportDSLConfirm.mockResolvedValue({
+      id: 'import-1',
+      status: DSLImportStatus.FAILED,
+      error: importError,
+    })
+    const onFailed = vi.fn()
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(
+        {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: 'app: demo',
+        },
+        {},
+      )
+    })
+    await act(async () => {
+      await result.current.handleImportDSLConfirm({ onFailed })
     })
 
     expect(toastMocks.error).toHaveBeenCalledWith(importError)
