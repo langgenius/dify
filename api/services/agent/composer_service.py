@@ -406,9 +406,9 @@ class AgentComposerService:
         soul.memory = type(soul.memory)()
         for tool in soul.tools.dify_tools:
             tool.runtime_parameters = {}
-        for tool in soul.tools.cli_tools:
-            tool.env = type(tool.env)()
-            tool.invoke_metadata = {}
+        for cli_tool in soul.tools.cli_tools:
+            cli_tool.env = type(cli_tool.env)()
+            cli_tool.invoke_metadata = {}
         state["agent_soul"] = soul.model_dump(mode="json")
         state["chat_endpoint"] = None
         if state["active_config_snapshot"] is not None:

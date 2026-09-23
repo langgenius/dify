@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
 from datetime import datetime
-from functools import partial, wraps
+from functools import wraps
 from typing import Any, Literal
 from uuid import UUID
 
@@ -56,7 +56,7 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
     NotWorkflowAppError,
 )
-from controllers.console.explore.trial_app_admission import get_trial_app
+from controllers.console.explore.trial_app_admission import get_trial_app, get_trial_app_for_stop
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request_context
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
@@ -629,7 +629,7 @@ class TrialChatApi(Resource):
 class TrialChatTaskStopApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
-    @partial(get_trial_app, check_usage=False)
+    @get_trial_app_for_stop
     def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str):
         if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
             raise NotChatAppError()

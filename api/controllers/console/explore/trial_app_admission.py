@@ -49,3 +49,10 @@ def get_trial_app[T, **P, R](
         return view(self, request_context, trial_app, *args, **kwargs)
 
     return trial_feature_enable(decorated)
+
+
+def get_trial_app_for_stop[T, **P, R](
+    view: Callable[Concatenate[T, RequestContext, TrialAppRef, P], R],
+) -> Callable[Concatenate[T, RequestContext, P], R]:
+    """Keep trial access checks without requiring remaining generation quota."""
+    return get_trial_app(view, check_usage=False)

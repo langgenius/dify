@@ -217,15 +217,15 @@ class AgentPackageResourceExporter:
                     audit=RosterAgentPackageAudit(ref=item.audit_ref),
                 )
             )
-        for item in file_sources:
-            size, digest = read(item.path, item.storage_key, dify_config.AGENT_PACKAGE_MAX_BYTES)
+        for file_source in file_sources:
+            size, digest = read(file_source.path, file_source.storage_key, dify_config.AGENT_PACKAGE_MAX_BYTES)
             resources.files.append(
                 RosterAgentPackageFile(
-                    id=item.id,
-                    path=item.path,
+                    id=file_source.id,
+                    path=file_source.path,
                     size=size,
                     sha256=digest,
-                    audit=RosterAgentPackageAudit(ref=item.audit_ref),
+                    audit=RosterAgentPackageAudit(ref=file_source.audit_ref),
                 )
             )
         icons = []
