@@ -17,7 +17,7 @@ import { analyzeEnvironmentRoutes, validateRouteNamespaces } from './i18n-analys
 const SOURCE_META = 'dify:i18n-source'
 
 export type AnalysisReport = {
-  version: 3
+  version: 4
   routes: RouteNamespaceReport[]
   modules: ModuleLocation[]
   paths: [module: number, parent: number | null][]
@@ -44,7 +44,7 @@ export function i18nAnalysisPlugin(
     adapters?: readonly TranslationAdapter[]
     onAnalysis?: (report: AnalysisReport) => void
     strictNamespaces?: boolean
-    getDeclaredNamespaces?: (route: string) => readonly string[] | undefined
+    getAllowedNamespaces?: (route: string) => readonly string[] | undefined
   } = {},
 ): Plugin[] {
   let root: string
@@ -120,7 +120,7 @@ export function i18nAnalysisPlugin(
       performance.now() -
       started +
       metrics.environments.reduce((sum, item) => sum + item.resolutionMs, 0)
-    const report: AnalysisReport = { version: 3, routes, modules, paths, evidence, metrics }
+    const report: AnalysisReport = { version: 4, routes, modules, paths, evidence, metrics }
     options.onAnalysis?.(report)
     logger.info(
       `[i18n] Analysis: ${metrics.totalMs.toFixed(0)}ms; ${metrics.environments.reduce((sum, item) => sum + item.modules, 0)} environment modules; ${metrics.environments.reduce((sum, item) => sum + item.resolveCalls, 0)} resolver calls.`,
@@ -151,8 +151,8 @@ export function i18nAnalysisPlugin(
       await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`)
       logger.info(`[i18n] Full namespace sources: ${reportPath}`)
     }
-    if (options.getDeclaredNamespaces)
-      validateRouteNamespaces(routes, options.getDeclaredNamespaces, options.strictNamespaces)
+    if (options.getAllowedNamespaces)
+      validateRouteNamespaces(routes, options.getAllowedNamespaces, options.strictNamespaces)
     const keys = Object.entries(unused ?? {}).flatMap(([namespace, unused]) =>
       unused.map((key) => `${namespace}:${key}`),
     )

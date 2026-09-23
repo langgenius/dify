@@ -120,11 +120,12 @@ describe('i18n build check', () => {
       readFileSync(path.join(root, 'dist/i18n-routes.json'), 'utf8'),
     )
     expect(artifact).toMatchObject({
-      version: 3,
+      version: 4,
       routes: expect.arrayContaining([
         expect.objectContaining({
           route: '/items/[id]',
           namespaces: ['client', 'common', 'group', 'lazy', 'ssr'],
+          staticImportNamespaces: ['client', 'common', 'group', 'ssr'],
           groups: {
             page: [
               expect.objectContaining({ namespace: 'client', sources: ['component.ts'] }),
@@ -134,7 +135,7 @@ describe('i18n build check', () => {
               expect.objectContaining({ namespace: 'common', sources: ['app/layout.ts'] }),
               expect.objectContaining({ namespace: 'group', sources: ['app/(group)/layout.ts'] }),
             ],
-            lazy: [expect.objectContaining({ namespace: 'lazy', sources: ['lazy.ts'] })],
+            dynamicImports: [expect.objectContaining({ namespace: 'lazy', sources: ['lazy.ts'] })],
             slots: [],
           },
         }),
@@ -166,14 +167,14 @@ describe('i18n build check', () => {
         logLevel: 'silent',
         plugins: [
           i18nAnalysisPlugin({
-            getDeclaredNamespaces: (route) =>
+            getAllowedNamespaces: (route) =>
               enabled && route.startsWith('/signin/') ? ['common', 'login'] : undefined,
           }),
         ],
         build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
       })
     await expect(run()).rejects.toThrow(
-      /\/signin\/check-code[\s\S]*Undeclared namespace: app[\s\S]*\[lazy\] lazy.ts/,
+      /\/signin\/check-code[\s\S]*Disallowed namespace: app[\s\S]*\[dynamicImports\] lazy.ts/,
     )
     enabled = false
     await expect(run()).resolves.toBeDefined()
@@ -398,11 +399,11 @@ describe('i18n build check', () => {
         configFile: false,
         logLevel: 'silent',
         resolve: { alias: [{ find: './ns', replacement: path.join(root, 'app/actual.ts') }] },
-        plugins: [i18nAnalysisPlugin({ getDeclaredNamespaces: () => declared })],
+        plugins: [i18nAnalysisPlugin({ getAllowedNamespaces: () => declared })],
         build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
       })
     await expect(run(['actual'])).resolves.toBeDefined()
-    await expect(run(['old'])).rejects.toThrow('Undeclared namespace: actual')
+    await expect(run(['old'])).rejects.toThrow('Disallowed namespace: actual')
   })
 
   it.each([
@@ -439,12 +440,12 @@ describe('i18n build check', () => {
         plugins: [
           i18nAnalysisPlugin({
             onAnalysis: (report) => reports.push(report),
-            getDeclaredNamespaces: () => ['old'],
+            getAllowedNamespaces: () => ['old'],
           }),
         ],
         build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
       }),
-    ).rejects.toThrow('Undeclared namespace: actual')
+    ).rejects.toThrow('Disallowed namespace: actual')
     expect(reports[0]!.routes[0]!.namespaces).toEqual(['actual'])
     expect(reports[0]!.evidence.some((item) => item.kind === 'unresolved-import')).toBe(false)
   })
@@ -531,7 +532,7 @@ describe('i18n build check', () => {
                 return code.replace('placeholder:title', id.endsWith('?a') ? 'a:title' : 'b:title')
             },
           },
-          i18nAnalysisPlugin({ getDeclaredNamespaces: (route) => [route.slice(1)] }),
+          i18nAnalysisPlugin({ getAllowedNamespaces: (route) => [route.slice(1)] }),
         ],
         build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
       }),
@@ -662,7 +663,7 @@ describe('i18n build check', () => {
         plugins: [
           i18nAnalysisPlugin({
             strictNamespaces: true,
-            getDeclaredNamespaces: () => ['app'],
+            getAllowedNamespaces: () => ['app'],
             onAnalysis: (report) => reports.push(report),
           }),
         ],
@@ -703,7 +704,7 @@ describe('i18n build check', () => {
           i18nAnalysisPlugin({
             strictNamespaces: true,
             onAnalysis: (report) => reports.push(report),
-            getDeclaredNamespaces: (route) => (route === `/${selected}` ? ['app'] : undefined),
+            getAllowedNamespaces: (route) => (route === `/${selected}` ? ['app'] : undefined),
           }),
         ],
         build: { write: false, lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] } },
@@ -745,7 +746,7 @@ describe('i18n build check', () => {
           plugins: [
             i18nAnalysisPlugin({
               strictNamespaces: true,
-              getDeclaredNamespaces: () => [],
+              getAllowedNamespaces: () => [],
               onAnalysis: (report) => reports.push(report),
             }),
           ],
@@ -804,7 +805,7 @@ describe('i18n build check', () => {
         plugins: [
           i18nAnalysisPlugin({
             strictNamespaces: true,
-            getDeclaredNamespaces: () => (mode === 'undeclared' ? ['app'] : ['common']),
+            getAllowedNamespaces: () => (mode === 'undeclared' ? ['app'] : ['common']),
             onAnalysis: (report) => reports.push(report),
           }),
         ],
@@ -813,7 +814,7 @@ describe('i18n build check', () => {
       if (mode === 'dynamic')
         await expect(result).rejects.toThrow('Cannot verify namespace usage: app/page.ts')
       else if (mode === 'undeclared')
-        await expect(result).rejects.toThrow('Undeclared namespace: common')
+        await expect(result).rejects.toThrow('Disallowed namespace: common')
       else await expect(result).resolves.toBeDefined()
       expect(reports[0]!.routes[0]!.unknownNamespaceSources).toEqual(
         mode === 'dynamic' ? ['app/page.ts'] : [],
@@ -848,13 +849,13 @@ describe('i18n build check', () => {
           logLevel: 'silent',
           plugins: [
             i18nAnalysisPlugin({
-              getDeclaredNamespaces: () => ['app'],
+              getAllowedNamespaces: () => ['app'],
               onAnalysis: (report) => reports.push(report),
             }),
           ],
           build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
         }),
-      ).rejects.toThrow('Undeclared namespace: login')
+      ).rejects.toThrow('Disallowed namespace: login')
       expect(reports[0]!.routes[0]!.namespaces).toEqual(['login'])
       expect(reports[0]!.routes[0]!.unknownNamespaceSources).toEqual(['app/page.ts'])
     },
@@ -880,7 +881,7 @@ describe('i18n build check', () => {
         logLevel: 'silent',
         plugins: [
           i18nAnalysisPlugin({
-            getDeclaredNamespaces: () => ['app'],
+            getAllowedNamespaces: () => ['app'],
             onAnalysis: (report) => reports.push(report),
           }),
         ],
@@ -961,7 +962,7 @@ describe('i18n build check', () => {
           plugins: [
             i18nAnalysisPlugin({
               onAnalysis: (report) => reports.push(report),
-              getDeclaredNamespaces: () => ['old'],
+              getAllowedNamespaces: () => ['old'],
             }),
             {
               name: 'virtual-namespace',
@@ -979,7 +980,7 @@ describe('i18n build check', () => {
           ],
           build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
         }),
-      ).rejects.toThrow(/Undeclared namespace: actual/)
+      ).rejects.toThrow(/Disallowed namespace: actual/)
       expect(reports[0]!.evidence).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ kind: 'unresolved-import', file: 'app/page.ts' }),
@@ -1015,7 +1016,7 @@ describe('i18n build check', () => {
           plugins: [
             i18nAnalysisPlugin({
               onAnalysis: (report) => reports.push(report),
-              getDeclaredNamespaces: () => ['old'],
+              getAllowedNamespaces: () => ['old'],
             }),
             {
               name: 'rewrite-dynamic-import',
@@ -1031,7 +1032,7 @@ describe('i18n build check', () => {
           ],
           build: { write: false, lib: { entry: path.join(root, 'app/page.ts'), formats: ['es'] } },
         }),
-      ).rejects.toThrow(/Undeclared namespace: actual/)
+      ).rejects.toThrow(/Disallowed namespace: actual/)
       expect(reports[0]!.evidence).toEqual(
         expect.arrayContaining([
           expect.objectContaining({

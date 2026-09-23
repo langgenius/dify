@@ -8,7 +8,7 @@ The console shows route and diagnostic counts, namespaces protected by dynamic
 keys, and the report path. Diagnostic counts include separate environment records.
 Individual route/group listings are available in `i18n-routes.json` (or through
 `onAnalysis` when `build.write` is false). Each route retains its pattern, source
-page, sorted namespaces and the page/shared/lazy/slots groups. Validation failures
+page, sorted namespaces and the page/shared/dynamicImports/slots groups. Validation failures
 still print the affected route and source details.
 
 The report follows resolved static and dynamic imports, including virtual modules,
@@ -54,11 +54,11 @@ change translation loading or introduce additional build failures.
 - `page`: the page and its transitive static imports.
 - `shared`: ancestor layouts, templates and loading/error/not-found boundaries,
   including their transitive static imports. This includes same-segment boundaries.
-- `lazy`: modules reached through dynamic imports from the page or shared entries,
+- `dynamicImports`: modules reached through dynamic imports from the page or shared entries,
   excluding modules already statically reachable from either. Dynamic import does
   not prove that a feature loads only after user interaction.
 - `slots`: modules reachable from all built ancestor parallel-slot branches,
-  excluding modules already reachable from the page/shared entries (including lazy).
+  excluding modules already reachable from the page/shared entries (including dynamic imports).
 
 Page and shared groups can overlap. A namespace can appear in multiple groups
 when different modules use it; group counts must not be added to obtain the total.
@@ -71,7 +71,7 @@ This is not a client-only bundle analysis. Custom environment names or other
 framework-specific cross-environment reference mechanisms are not inferred.
 
 When build output writing is enabled, `<build.outDir>/i18n-routes.json` contains
-`{ version: 3, routes, modules, paths, evidence, metrics }`, including when no routes were detected.
+`{ version: 4, routes, modules, paths, evidence, metrics }`, including when no routes were detected.
 Every route retains `route`, `page` and `namespaces`, with `groups` mapping each
 category to `{ namespace, sources, dependencyPaths }` entries. Each dependency
 path is an index into the shared `paths` table. Each table entry is a
@@ -173,11 +173,11 @@ are not cached across environments or independent builds.
 
 ## Opt-in route namespace validation
 
-Pass `getDeclaredNamespaces(route)` to enable validation for selected route
+Pass `getAllowedNamespaces(route)` to enable validation for selected route
 subtrees. Returning `undefined` skips validation for that route; an empty array
 means no namespaces are allowed. Any detected namespace outside the declaration
 fails the production build, with the route, namespace, group and source file.
-All four groups are checked, including lazy dependencies and parallel slots.
+All four groups are checked, including dynamic imports and parallel slots.
 Set `strictNamespaces: true` to also fail declared routes whose
 `unknownNamespaceSources` is nonempty. By default these routes emit an incomplete
 analysis warning; unrelated unresolved imports do not automatically fail route
@@ -185,13 +185,25 @@ validation. Undeclared routes remain exempt from strict validation.
 Explicit, statically resolved `useTranslation` / `getTranslation` namespace
 arguments are included even when no translation key is consumed.
 
-The application passes `getDeclaredRouteNamespaces` from
-`i18n/route-namespaces.ts`, sharing declarations with server resource selection
-and client navigation. Currently only `/signin` and its descendants opt in. The
-application uses the default non-strict mode: runtime providers emit
-unknown warnings, while statically detected undeclared namespaces still fail.
-No policy callback substitutes configured values for unknown expressions.
-Undeclared routes keep the full catalog and can be migrated independently.
+The application passes `getAllowedRouteNamespaces` from
+`i18n/route-namespaces.ts`. Each application route declaration separates:
+
+- `preloadNamespaces`: resources loaded by the server and on client navigation.
+- `allowedNamespaces`: the complete permitted dependency set validated by this plugin,
+  including dynamic imports and conservative parallel-slot branches.
+
+Allowing a namespace does not preload it. Before reducing preloads, features must
+explicitly load their deferred namespaces, including automatically mounted dynamic
+components and URL-selected dialogs. This report does not verify those runtime
+loading boundaries. Do not copy the complete dependency set into preloads merely
+to satisfy validation, or treat `staticImportNamespaces` as sufficient preloads.
+
+Currently only `/signin` and its descendants opt in; both sets remain
+`common` and `login`. Undeclared routes, including `/`, still preload the full
+catalog and are exempt from route allowance validation. The application uses the
+default non-strict mode: runtime providers emit unknown warnings, while statically
+detected disallowed namespaces still fail. No policy callback substitutes
+configured values for unknown expressions.
 
 This validates statically detected usage, with the recognition and conservative
 limitations described above. It does not prove that arbitrary runtime-generated

@@ -9,7 +9,11 @@ import { I18nClientProvider } from '@/app/components/provider/i18n'
 import { I18nServerProvider } from '@/app/components/provider/i18n-server'
 import { AppToastHost } from '@/app/notifications/host'
 import { changeLanguage } from '../client'
-import { getDeclaredRouteNamespaces, getRouteNamespaces } from '../route-namespaces'
+import {
+  getAllowedRouteNamespaces,
+  getDeclaredRoutePreloadNamespaces,
+  getRouteNamespaces,
+} from '../route-namespaces'
 
 vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({ pathname: '/signin', loadResource: vi.fn() }))
@@ -212,9 +216,16 @@ describe('route translation loading', () => {
       'common',
       'login',
     ])
-    expect(getDeclaredRouteNamespaces('/signin/check-code')).toEqual(['common', 'login'])
-    expect(getDeclaredRouteNamespaces('/signin-other')).toBeUndefined()
-    expect(getDeclaredRouteNamespaces('/datasets')).toBeUndefined()
+    expect(getDeclaredRoutePreloadNamespaces('/signin/check-code')).toEqual(['common', 'login'])
+    expect(getDeclaredRoutePreloadNamespaces('/signin-other')).toBeUndefined()
+    expect(getDeclaredRoutePreloadNamespaces('/datasets')).toBeUndefined()
+    expect(getAllowedRouteNamespaces('/console/signin/check-code', '/console')).toEqual([
+      'common',
+      'login',
+    ])
+    expect(getAllowedRouteNamespaces('/signin-other')).toBeUndefined()
+    expect(getAllowedRouteNamespaces('/')).toBeUndefined()
+    expect(getRouteNamespaces('/')).toContain('workflow')
     expect(getRouteNamespaces('/signin-other')).toContain('workflow')
     expect(getRouteNamespaces(null)).toContain('workflow')
   })

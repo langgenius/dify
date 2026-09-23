@@ -11,29 +11,31 @@ export type RouteNamespaceReport = {
   route: string
   page: string
   namespaces: string[]
+  /** Page and shared static imports; not a runtime first-render manifest. */
+  staticImportNamespaces: string[]
   unknownNamespaceSources?: string[]
-  groups: Record<'page' | 'shared' | 'lazy' | 'slots', NamespaceSources[]>
+  groups: Record<'page' | 'shared' | 'dynamicImports' | 'slots', NamespaceSources[]>
 }
 
 export function validateRouteNamespaces(
   routes: readonly RouteNamespaceReport[],
-  getDeclaredNamespaces: (route: string) => readonly string[] | undefined,
+  getAllowedNamespaces: (route: string) => readonly string[] | undefined,
   strictNamespaces = false,
 ) {
   const violations: string[] = []
   for (const report of routes) {
-    const declared = getDeclaredNamespaces(report.route)
-    if (declared === undefined) continue
-    const missing = report.namespaces.filter((namespace) => !declared.includes(namespace))
+    const allowed = getAllowedNamespaces(report.route)
+    if (allowed === undefined) continue
+    const missing = report.namespaces.filter((namespace) => !allowed.includes(namespace))
     const unknown = strictNamespaces ? (report.unknownNamespaceSources ?? []) : []
     if (!missing.length && !unknown.length) continue
     violations.push(
       `  ${report.route} (${report.page})`,
-      `    Declared: ${declared.join(', ') || '(none)'}`,
+      `    Allowed: ${allowed.join(', ') || '(none)'}`,
     )
     for (const source of unknown) violations.push(`    Cannot verify namespace usage: ${source}`)
     for (const namespace of missing) {
-      violations.push(`    Undeclared namespace: ${namespace}`)
+      violations.push(`    Disallowed namespace: ${namespace}`)
       for (const [group, entries] of Object.entries(report.groups)) {
         for (const source of entries.find((entry) => entry.namespace === namespace)?.sources ?? [])
           violations.push(`      [${group}] ${source}`)
@@ -43,9 +45,9 @@ export function validateRouteNamespaces(
   if (violations.length) {
     throw new Error(
       [
-        'Route namespace declarations do not cover statically detected usage:',
+        'Route namespace allowances do not cover statically detected usage:',
         ...violations,
-        'Remove the dependency or update the route namespace declaration after reviewing its usage.',
+        'Remove the dependency or update the allowed route namespaces after reviewing its usage.',
         'Includes shared boundaries, dynamic imports and conservative parallel-slot additions; inspect the reported sources before changing declarations.',
       ].join('\n'),
     )
@@ -164,7 +166,7 @@ export function analyzeRouteNamespaces(
       const pageModules = reachable([page], false)
       const sharedModules = reachable(sharedEntries, false, true)
       const mainModules = reachable([page, ...sharedEntries], true)
-      const lazyModules = new Set(
+      const dynamicImportModules = new Set(
         [...mainModules.modules].filter(
           (id) => !pageModules.modules.has(id) && !sharedModules.modules.has(id),
         ),
@@ -174,7 +176,7 @@ export function analyzeRouteNamespaces(
       const groups = {
         page: sources(pageModules.modules, pageModules.parents),
         shared: sources(sharedModules.modules, sharedModules.parents),
-        lazy: sources(lazyModules, mainModules.parents),
+        dynamicImports: sources(dynamicImportModules, mainModules.parents),
         slots: sources(slotModules, slots.parents),
       }
       const namespaces = new Set(
@@ -185,6 +187,9 @@ export function analyzeRouteNamespaces(
         route,
         page: sourcePath(page).slice(root.replaceAll('\\', '/').length + 1),
         namespaces: [...namespaces].sort(),
+        staticImportNamespaces: [
+          ...new Set([...groups.page, ...groups.shared].map((entry) => entry.namespace)),
+        ].sort(),
         groups,
         ...(options.unknownNamespaces
           ? {
@@ -282,8 +287,11 @@ export function analyzeEnvironmentRoutes(
           ...(report.unknownNamespaceSources ?? []),
         ]),
       ].sort()
+      previous.staticImportNamespaces = [
+        ...new Set([...previous.staticImportNamespaces, ...report.staticImportNamespaces]),
+      ].sort()
       previous.namespaces = [...new Set([...previous.namespaces, ...report.namespaces])].sort()
-      for (const group of ['page', 'shared', 'lazy', 'slots'] as const) {
+      for (const group of ['page', 'shared', 'dynamicImports', 'slots'] as const) {
         const byNamespace = new Map<string, Set<string>>()
         const paths = new Map<string, Set<number>>()
         for (const item of [...previous.groups[group], ...report.groups[group]]) {

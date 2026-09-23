@@ -36,6 +36,7 @@ describe('route namespace analysis', () => {
     expect(report.find((item) => item.page === 'app/(console)/items/page.tsx')).toMatchObject({
       route: '/items',
       page: 'app/(console)/items/page.tsx',
+      staticImportNamespaces: ['common', 'console', 'error', 'items', 'loading', 'shared'],
       namespaces: [
         'common',
         'console',
@@ -69,14 +70,14 @@ describe('route namespace analysis', () => {
     expect(() =>
       validateRouteNamespaces(report, (route) => (route === '/items' ? [] : undefined)),
     ).toThrow(
-      /Route namespace declarations[\s\S]*\/items[\s\S]*\[shared\] app\/layout.tsx[\s\S]*\[slots\][\s\S]*\[page\][\s\S]*\[lazy\] lazy.ts/,
+      /Route namespace allowances[\s\S]*\/items[\s\S]*\[shared\] app\/layout.tsx[\s\S]*\[slots\][\s\S]*\[page\][\s\S]*\[dynamicImports\] lazy.ts/,
     )
     const groups = report.find((item) => item.page === 'app/(console)/items/page.tsx')!.groups
     expect(groups.page).toEqual([
       { namespace: 'items', sources: ['app/(console)/items/page.tsx'] },
       { namespace: 'shared', sources: ['shared.ts'] },
     ])
-    expect(groups.lazy).toEqual([
+    expect(groups.dynamicImports).toEqual([
       { namespace: 'items', sources: ['lazy.ts'] },
       { namespace: 'lazy', sources: ['lazy.ts'] },
     ])
@@ -88,7 +89,7 @@ describe('route namespace analysis', () => {
       route: '/',
       page: 'app/(public)/page.tsx',
       namespaces: ['common', 'public'],
-      groups: { page: [], lazy: [], slots: [] },
+      groups: { page: [], dynamicImports: [], slots: [] },
     })
   })
 })
