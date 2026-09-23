@@ -57,11 +57,11 @@ class TestAdvancedPromptTemplateService:
         assert "{{#histories#}}" in prompt_text
         assert "{{#query#}}" in prompt_text
 
-    def test_get_common_prompt_chat_app_completion_mode(
+    def test_get_prompt_chat_app_completion_mode(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test common prompt generation for chat app with completion mode.
+        Test prompt generation for chat app with completion mode.
 
         This test verifies:
         - Correct prompt template selection for chat app + completion mode
@@ -71,7 +71,9 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT, "completion", "true")
+        result = AdvancedPromptTemplateService.get_prompt(
+            app_mode=AppMode.CHAT, model_mode="completion", has_context="true"
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -88,11 +90,11 @@ class TestAdvancedPromptTemplateService:
         assert "{{#histories#}}" in prompt_text
         assert "{{#query#}}" in prompt_text
 
-    def test_get_common_prompt_chat_app_chat_mode(
+    def test_get_prompt_chat_app_chat_mode(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test common prompt generation for chat app with chat mode.
+        Test prompt generation for chat app with chat mode.
 
         This test verifies:
         - Correct prompt template selection for chat app + chat mode
@@ -102,7 +104,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT, "chat", "true")
+        result = AdvancedPromptTemplateService.get_prompt(app_mode=AppMode.CHAT, model_mode="chat", has_context="true")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -117,11 +119,11 @@ class TestAdvancedPromptTemplateService:
         assert CONTEXT in prompt_text
         assert "{{#pre_prompt#}}" in prompt_text
 
-    def test_get_common_prompt_completion_app_completion_mode(
+    def test_get_prompt_completion_app_completion_mode(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test common prompt generation for completion app with completion mode.
+        Test prompt generation for completion app with completion mode.
 
         This test verifies:
         - Correct prompt template selection for completion app + completion mode
@@ -131,7 +133,9 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.COMPLETION, "completion", "true")
+        result = AdvancedPromptTemplateService.get_prompt(
+            app_mode=AppMode.COMPLETION, model_mode="completion", has_context="true"
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -145,11 +149,11 @@ class TestAdvancedPromptTemplateService:
         assert CONTEXT in prompt_text
         assert "{{#pre_prompt#}}" in prompt_text
 
-    def test_get_common_prompt_completion_app_chat_mode(
+    def test_get_prompt_completion_app_chat_mode(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test common prompt generation for completion app with chat mode.
+        Test prompt generation for completion app with chat mode.
 
         This test verifies:
         - Correct prompt template selection for completion app + chat mode
@@ -159,7 +163,9 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.COMPLETION, "chat", "true")
+        result = AdvancedPromptTemplateService.get_prompt(
+            app_mode=AppMode.COMPLETION, model_mode="chat", has_context="true"
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -174,11 +180,9 @@ class TestAdvancedPromptTemplateService:
         assert CONTEXT in prompt_text
         assert "{{#pre_prompt#}}" in prompt_text
 
-    def test_get_common_prompt_no_context(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_prompt_no_context(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
-        Test common prompt generation without context.
+        Test prompt generation without context.
 
         This test verifies:
         - Correct handling when has_context is "false"
@@ -188,7 +192,9 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT, "completion", "false")
+        result = AdvancedPromptTemplateService.get_prompt(
+            app_mode=AppMode.CHAT, model_mode="completion", has_context="false"
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -203,11 +209,11 @@ class TestAdvancedPromptTemplateService:
         assert "{{#histories#}}" in prompt_text
         assert "{{#query#}}" in prompt_text
 
-    def test_get_common_prompt_unsupported_app_mode(
+    def test_get_prompt_unsupported_app_mode(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test common prompt generation with unsupported app mode.
+        Test prompt generation with unsupported app mode.
 
         This test verifies:
         - Proper handling of unsupported app modes
@@ -216,16 +222,18 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt("unsupported_mode", "completion", "true")
+        result = AdvancedPromptTemplateService.get_prompt(
+            app_mode="unsupported_mode", model_mode="completion", has_context="true"
+        )
 
         # Assert: Verify empty dict is returned
         assert result == {}
 
-    def test_get_common_prompt_unsupported_model_mode(
+    def test_get_prompt_unsupported_model_mode(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test common prompt generation with unsupported model mode.
+        Test prompt generation with unsupported model mode.
 
         This test verifies:
         - Proper handling of unsupported model modes
@@ -234,7 +242,9 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT, "unsupported_mode", "true")
+        result = AdvancedPromptTemplateService.get_prompt(
+            app_mode=AppMode.CHAT, model_mode="unsupported_mode", has_context="true"
+        )
 
         # Assert: Verify empty dict is returned
         assert result == {}

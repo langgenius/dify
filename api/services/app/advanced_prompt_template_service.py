@@ -14,10 +14,6 @@ from models.model import AppMode
 class AdvancedPromptTemplateService:
     @classmethod
     def get_prompt(cls, *, app_mode: str, model_mode: str, has_context: str) -> dict[str, Any]:
-        return cls.get_common_prompt(app_mode, model_mode, has_context)
-
-    @classmethod
-    def get_common_prompt(cls, app_mode: str, model_mode: str, has_context: str) -> dict[str, Any]:
         context_prompt = copy.deepcopy(CONTEXT)
 
         match app_mode:
