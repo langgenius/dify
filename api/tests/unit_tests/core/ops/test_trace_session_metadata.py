@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceTask
@@ -24,9 +24,11 @@ def _bind_trace_database(
     sqlite_session: Session,
 ) -> None:
     """Use real SQLite sessions for ORM lookups without changing trace-domain data."""
+    # Production code calls db.session() to get a Session. Mirror Flask-SQLAlchemy's scoped_session.
+    session_proxy = scoped_session(lambda: sqlite_session)
     monkeypatch.setattr(
         "core.ops.ops_trace_manager.db",
-        SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
+        SimpleNamespace(engine=sqlite_engine, session=session_proxy),
     )
 
 
@@ -84,7 +86,7 @@ def _make_message_data():
         def __init__(self, values):
             self.__dict__.update(values)
 
-        def to_dict(self):
+        def to_dict(self, *, session: Session):
             return dict(self.__dict__)
 
     return _MessageData(data)
