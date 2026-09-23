@@ -28,6 +28,9 @@ class TestAnalyzeToolDependency:
         with pytest.raises(ValueError):
             DependenciesAnalysisService.analyze_tool_dependency("bad/format")
 
+    def test_plugin_id_reference_is_preserved(self):
+        assert DependenciesAnalysisService.analyze_tool_provider_reference("acme/search") == "acme/search"
+
 
 class TestAnalyzeModelProviderDependency:
     def test_valid_three_part_id(self):
@@ -41,6 +44,42 @@ class TestAnalyzeModelProviderDependency:
     def test_single_part_expands(self):
         result = DependenciesAnalysisService.analyze_model_provider_dependency("anthropic")
         assert result == "langgenius/anthropic"
+
+
+class TestExtractExternalNodeDependencies:
+    def test_legacy_agent_includes_strategy_and_plugin_tools(self):
+        node_data = {
+            "type": "agent",
+            "agent_strategy_provider_name": "langgenius/agent/agent",
+            "agent_parameters": {
+                "tools": {
+                    "value": [
+                        {"type": "builtin", "provider_name": "langgenius/search/search"},
+                        {"provider_type": "plugin", "plugin_id": "acme/custom"},
+                        {"type": "api", "provider_name": "custom-api"},
+                        {"type": "builtin", "provider_name": "bad/provider/format/extra"},
+                    ]
+                }
+            },
+        }
+
+        assert DependenciesAnalysisService.extract_external_node_dependencies(node_data) == [
+            "langgenius/agent",
+            "langgenius/search",
+            "acme/custom",
+        ]
+
+    @pytest.mark.parametrize(
+        ("node_data", "expected"),
+        [
+            ({"type": "trigger-plugin", "plugin_id": "acme/trigger"}, ["acme/trigger"]),
+            ({"type": "datasource", "provider_type": "online_document", "plugin_id": "acme/drive"}, ["acme/drive"]),
+            ({"type": "datasource", "provider_type": "local_file", "plugin_id": "langgenius/file"}, []),
+            ({"type": "agent", "agent_node_kind": "dify_agent"}, []),
+        ],
+    )
+    def test_direct_plugin_references(self, node_data, expected):
+        assert DependenciesAnalysisService.extract_external_node_dependencies(node_data) == expected
 
 
 class TestGetLeakedDependencies:
