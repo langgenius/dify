@@ -1,0 +1,148 @@
+name: Web Bundle Size
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.npmrc'
+      - '.github/actions/setup-web/**'
+      - '.github/workflows/web-bundle-size.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-bundle-size-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  measure:
+    name: Measure ${{ matrix.revision }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - revision: base
+            sha: ${{ github.event.pull_request.base.sha }}
+          - revision: merge
+            sha: ${{ github.sha }}
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      # Keep one collector for both revisions, including when it does not exist on base yet.
+      - name: Checkout reporting tools
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Preserve collector
+        run: cp web/scripts/bundle-size.ts "$RUNNER_TEMP/bundle-size.ts"
+
+      - name: Checkout measured revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ matrix.sha }}
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      # One compilation produces both real chunks/route stats and the official analyzer UI.
+      # Compile mode avoids prerendering routes that require a running backend.
+      - name: Build with official bundle analysis
+        working-directory: web
+        run: pnpm exec next build --experimental-analyze --experimental-build-mode compile
+
+      - name: Collect sizes
+        env:
+          COMMIT_SHA: ${{ matrix.sha }}
+        run: node "$RUNNER_TEMP/bundle-size.ts" collect web "$COMMIT_SHA" "$RUNNER_TEMP/bundle-size/summary.json"
+
+      - name: Upload size snapshot
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-bundle-summary-${{ matrix.revision }}
+          path: ${{ runner.temp }}/bundle-size/summary.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload official analyzer report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-bundle-analyzer-${{ matrix.revision }}
+          path: web/.next/diagnostics/analyze/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  report:
+    name: Compare bundle sizes
+    needs: measure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout reporting tools
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          install: false
+
+      - name: Download size snapshots
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: web-bundle-summary-*
+          path: bundle-results
+
+      - name: Compare and summarize
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node web/scripts/bundle-size.ts compare \
+            bundle-results/web-bundle-summary-base/summary.json \
+            bundle-results/web-bundle-summary-merge/summary.json \
+            bundle-report.md
+          printf '\n[Download base/merge snapshots and official analyzer reports](%s#artifacts).\n' "$RUN_URL" >> bundle-report.md
+          printf '\nComparison: target branch at the event base SHA vs the PR merge commit at the event GITHUB_SHA.\n' >> bundle-report.md
+          cat bundle-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Forks still receive the job summary and artifacts, without a privileged PR build.
+      - name: Update PR report
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('node:fs');
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+            if (pr.state !== 'open' || pr.head.sha !== context.payload.pull_request.head.sha ||
+                pr.base.sha !== context.payload.pull_request.base.sha) {
+              core.info('Skipping a superseded bundle report.');
+              return;
+            }
+            const body = fs.readFileSync('bundle-report.md', 'utf8');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number: pull_number, per_page: 100,
+            });
+            const existing = comments.find(comment =>
+              comment.user?.login === 'github-actions[bot]' &&
+              comment.body?.startsWith('<!-- dify-web-bundle-size -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: pull_number, body });
+            }
