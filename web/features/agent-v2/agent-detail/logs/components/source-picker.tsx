@@ -30,7 +30,7 @@ import { LogSourceIcon } from './source-icon'
 
 export type SourceFilterValue = AgentLogSourceResponse['id'][]
 
-const getSourceGroupLabel = (group: AgentLogSourceGroupResponse, t: TFunction<'agentV2'>) => {
+const getSourceGroupLabel = (group: AgentLogSourceGroupResponse, t: TFunction<['agentV2']>) => {
   if (group.type === 'webapp') return t(($) => $['agentDetail.logs.filters.source.webapp'])
   if (group.type === 'workflow') return t(($) => $['agentDetail.logs.filters.source.workflow'])
   return group.label

@@ -122,6 +122,22 @@ Explain the concrete reason after `--`: which external contract, lifecycle, or r
 
 `reportUnusedDisableDirectives` runs at `error` repository-wide. Remove an exception when the finding no longer exists. Keep both checks active: a described disable may still be unused, and a used disable may still lack a reason.
 
+### Translation Function Types
+
+`dify/require-t-function-namespace` requires i18next `TFunction` types to declare a
+non-empty inline tuple of namespace string literals. Use `TFunction<['common']>`
+or `TFunction<['common', 'workflow']>`; readonly tuples are also supported.
+Omitted arguments, single strings, broad namespace types, tuple aliases, and
+unions or rest elements inside the tuple are rejected. Named import aliases,
+namespace imports, and inline `import('i18next').TFunction` types are checked.
+
+Declare the namespaces the helper or component actually uses. TypeScript checks
+translation keys and compatibility with callers; the lint rule does not infer
+transitive dependencies or detect unused namespaces. Keep the first namespace
+compatible with the caller because it defines the default translation namespace.
+The rule has no automatic fix because choosing the dependencies requires reading
+the translation calls.
+
 ### Introducing New Plugins or Rules
 
 Prefer a native Oxlint rule. If none exists, verify that the rule works through an Oxlint JS plugin on representative files. Record unsupported code rules as migration gaps instead of adding them to ESLint; reserve the ESLint configuration for non-code languages that Oxlint cannot parse. Do not add the Antfu ESLint config as a dependency or enable rules already covered by Oxlint.

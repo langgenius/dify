@@ -228,7 +228,7 @@ export function WorkflowToolDrawer({
   onSave,
   onCreate,
 }: WorkflowToolDrawerProps) {
-  const { t } = useTranslation(['common', 'tools', 'workflow'])
+  const { t } = useTranslation(['workflow', 'common', 'tools'])
   const parameterId = React.useId()
   const toolNameLabelId = React.useId()
 

@@ -2,7 +2,6 @@ import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { Topic } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import type { Namespace } from '@/i18n/resources'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import { NodeSourceHandle } from '../node-handle'
@@ -15,7 +14,7 @@ type TruncatedClassItemProps = {
   topic: { id: string; name: string; label?: string | null }
   index: number
   nodeId: string
-  t: TFunction<Namespace>
+  t: TFunction<['workflow']>
   defaultLabel?: string
 }
 

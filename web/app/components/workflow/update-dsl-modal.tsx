@@ -33,7 +33,7 @@ type UpdateDSLModalProps = {
 }
 
 const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
-  const { t } = useTranslation(['app', 'common', 'workflow'])
+  const { t } = useTranslation(['workflow', 'app', 'common'])
   const appDetail = useAppStore((s) => s.appDetail)
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()

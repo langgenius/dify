@@ -6,7 +6,6 @@ import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { PluginLanguage } from '@/i18n/metadata'
-import type { Namespace } from '@/i18n/resources'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -242,7 +241,7 @@ type FeaturedTriggerUninstalledItemProps = {
   language: PluginLanguage
   previewCardHandle: PreviewCardHandle<FeaturedTriggerPreviewPayload>
   onInstallSuccess?: () => Promise<void> | void
-  t: TFunction<Namespace>
+  t: TFunction<['plugin', 'workflow']>
 }
 
 function FeaturedTriggerUninstalledItem({

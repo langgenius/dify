@@ -5,6 +5,7 @@ import noFileWideDisable from './rules/no-file-wide-disable.js'
 import preferTailwindIcons from './rules/prefer-tailwind-icons.js'
 import requireDisableDirectiveDescription from './rules/require-disable-directive-description.js'
 import requireI18nNamespace from './rules/require-i18n-namespace.js'
+import requireTFunctionNamespace from './rules/require-t-function-namespace.js'
 import requireTitleForTruncatedText from './rules/require-title-for-truncated-text.js'
 
 /** @type {import('eslint').ESLint.Plugin} */
@@ -21,6 +22,7 @@ const plugin = {
     'prefer-tailwind-icons': preferTailwindIcons,
     'require-disable-directive-description': requireDisableDirectiveDescription,
     'require-i18n-namespace': requireI18nNamespace,
+    'require-t-function-namespace': requireTFunctionNamespace,
     'require-title-for-truncated-text': requireTitleForTruncatedText,
   },
 }

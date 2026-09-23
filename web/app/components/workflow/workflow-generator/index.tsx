@@ -90,7 +90,7 @@ const workflowGeneratorErrorSelectors: Record<
   UNRESOLVED_REFERENCE: ($) => $['workflowGenerator.errors.UNRESOLVED_REFERENCE'],
 }
 
-function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<'workflow'>) {
+function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<['workflow']>) {
   return t(workflowGeneratorErrorSelectors[error.code])
 }
 

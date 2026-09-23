@@ -1,6 +1,5 @@
 import type { TFunction } from 'i18next'
 import type { KnowledgeBaseNodeType } from './types'
-import type { Namespace } from '@/i18n/resources'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { RetrievalSearchMethodEnum } from './types'
@@ -161,7 +160,7 @@ export const getKnowledgeBaseValidationIssue = (
 
 export const getKnowledgeBaseValidationMessage = (
   issue: KnowledgeBaseValidationIssue | null | undefined,
-  t: TFunction<Namespace>,
+  t: TFunction<['common', 'workflow']>,
 ) => {
   if (!issue) return ''
 

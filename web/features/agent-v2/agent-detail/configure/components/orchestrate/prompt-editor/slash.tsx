@@ -592,7 +592,7 @@ function getProviderLabel(provider: ToolWithProvider, language: string) {
   return getLocalizedText(provider.label, language) || provider.name
 }
 
-function getProviderTypeLabel(provider: ToolWithProvider, t: TFunction<'agentV2'>) {
+function getProviderTypeLabel(provider: ToolWithProvider, t: TFunction<['agentV2']>) {
   if (provider.type === CollectionType.workflow)
     return t(($) => $['agentDetail.configure.tools.toolTabs.workflow'])
   if (provider.type === CollectionType.custom)
@@ -801,7 +801,7 @@ function AgentPromptKnowledgeRows({
 
 function getKnowledgeRetrievalName(
   retrieval: AgentKnowledgeRetrievalItem,
-  t: TFunction<'agentV2'>,
+  t: TFunction<['agentV2']>,
 ) {
   const nameKey = retrieval.nameKey
   return retrieval.name ?? (nameKey ? t(($) => $[nameKey]) : retrieval.id)

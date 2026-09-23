@@ -1,5 +1,4 @@
 import type { TFunction } from 'i18next'
-import type { Namespace } from '@/i18n/resources'
 import { upload } from '@/service/base'
 
 /**
@@ -12,7 +11,7 @@ import { upload } from '@/service/base'
 export const getImageUploadErrorMessage = (
   error: any,
   defaultMessage: string,
-  t: TFunction<Namespace>,
+  t: TFunction<['common']>,
 ): string => {
   const errorCode = error?.response?.code
 

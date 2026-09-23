@@ -3,7 +3,6 @@ import type {
   DeclaredOutputType,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
-import type { Namespace } from '@/i18n/resources'
 import { AGENT_V2_RESERVED_OUTPUT_NAMES } from '../../output-variables'
 
 export type DeclaredOutputChildConfig = NonNullable<DeclaredOutputConfig['children']>[number]
@@ -283,7 +282,7 @@ export function isDefaultOutput(output: DeclaredOutputConfig) {
   return AGENT_V2_RESERVED_OUTPUT_NAMES.has(output.name)
 }
 
-export function getOutputDescription(output: EditableOutputConfig, t: TFunction<Namespace>) {
+export function getOutputDescription(output: EditableOutputConfig, t: TFunction<['workflow']>) {
   if (output.name === 'text') return t(($) => $['nodes.agent.outputVars.text'], { ns: 'workflow' })
   if (output.name === 'switch')
     return t(($) => $['nodes.agent.outputVars.switch'], { ns: 'workflow' })

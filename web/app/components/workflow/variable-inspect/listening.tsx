@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
-import type { Namespace } from '@/i18n/resources'
 import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
@@ -20,7 +19,7 @@ const resolveListeningDescription = (
   message: string | undefined,
   triggerNode: Node | undefined,
   triggerType: BlockEnum,
-  t: TFunction<Namespace>,
+  t: TFunction<['workflow']>,
 ): string => {
   if (message) return message
 
@@ -56,7 +55,7 @@ const resolveListeningDescription = (
   return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflow' })
 }
 
-const resolveMultipleListeningDescription = (nodes: Node[], t: TFunction<Namespace>): string => {
+const resolveMultipleListeningDescription = (nodes: Node[], t: TFunction<['workflow']>): string => {
   if (!nodes.length)
     return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflow' })
 

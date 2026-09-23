@@ -1,6 +1,5 @@
 import type { TFunction } from 'i18next'
 import type { SchemaOptions } from './types'
-import type { Namespace } from '@/i18n/resources'
 import * as z from 'zod'
 import { InputTypeEnum } from '@/app/components/base/form/components/field/input-type-select/types'
 import { MAX_VAR_KEY_LENGTH } from '@/config'
@@ -14,7 +13,7 @@ const SupportedFileTypes = z.enum(['image', 'document', 'video', 'audio', 'custo
 
 export const createInputFieldSchema = (
   type: PipelineInputVarType,
-  t: TFunction<Namespace>,
+  t: TFunction<['appDebug']>,
   options: SchemaOptions,
 ) => {
   const { maxFileUploadLimit } = options

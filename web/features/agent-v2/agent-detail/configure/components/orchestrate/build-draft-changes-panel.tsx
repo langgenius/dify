@@ -113,7 +113,7 @@ function getChangeSections({
   t,
 }: {
   changeSummary?: AgentBuildDraftChangeSummary
-  t: TFunction<'agentV2'>
+  t: TFunction<['agentV2']>
 }): AgentBuildDraftChangeSection[] {
   if (!changeSummary) return []
 

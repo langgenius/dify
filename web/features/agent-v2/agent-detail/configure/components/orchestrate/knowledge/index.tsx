@@ -28,7 +28,7 @@ function KnowledgeRetrievalIcon() {
   )
 }
 
-function getKnowledgeRetrievalName(item: AgentKnowledgeRetrievalItem, t: TFunction<'agentV2'>) {
+function getKnowledgeRetrievalName(item: AgentKnowledgeRetrievalItem, t: TFunction<['agentV2']>) {
   const nameKey = item.nameKey
   return item.name ?? (nameKey ? t(($) => $[nameKey]) : item.id)
 }

@@ -6,7 +6,6 @@ import type { ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { PluginLanguage } from '@/i18n/metadata'
-import type { Namespace } from '@/i18n/resources'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -241,7 +240,7 @@ type FeaturedToolUninstalledItemProps = {
   language: PluginLanguage
   previewCardHandle: PreviewCardHandle<FeaturedToolPreviewPayload>
   onInstallSuccess?: () => Promise<void> | void
-  t: TFunction<Namespace>
+  t: TFunction<['plugin', 'workflow']>
 }
 
 function FeaturedToolUninstalledItem({

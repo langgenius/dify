@@ -1,11 +1,10 @@
 import type { TFunction } from 'i18next'
 import type { CardVariant } from '../use-credential-panel-state'
-import type { Namespace } from '@/i18n/resources'
 
 export function getButtonConfig(
   variant: CardVariant,
   hasCredentials: boolean,
-  t: TFunction<Namespace>,
+  t: TFunction<['common']>,
 ) {
   if (variant === 'api-required-add') {
     return {
