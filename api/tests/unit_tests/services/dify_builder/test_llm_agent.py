@@ -190,7 +190,7 @@ def test_llm_agent_edit_methods_delegate_to_edit(monkeypatch):
             "target_node_ids": [],
         },
     )
-    monkeypatch.setattr(edit_mod, "build_edit_intents", lambda _m, _r, _graph, _reasoning=None: [])
+    monkeypatch.setattr(edit_mod, "build_edit_intents", lambda _m, _r, _graph, _reasoning=None, **_kw: [])
     agent = LlmBuilderAgent("t1", {})
     assert agent.analyze_impact("g", {"nodes": [], "edges": []}) == {
         "fields": [],
@@ -214,8 +214,9 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
         seen["propose_edit_plan"] = (model, edit_rules, graph)
         return ["step"]
 
-    def mock_build_edit_intents(model, edit_rules, graph, _reasoning=None):
+    def mock_build_edit_intents(model, edit_rules, graph, _reasoning=None, **kwargs):
         seen["build_edit_intents"] = (model, edit_rules, graph)
+        seen["build_edit_intents_kwargs"] = kwargs
         return []
 
     monkeypatch.setattr(edit_mod, "analyze_impact", mock_analyze_impact)
@@ -232,8 +233,9 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
     agent.propose_edit_plan({"tone": "formal"}, graph)
     assert seen["propose_edit_plan"] == ("MODEL", {"tone": "formal"}, graph)
 
-    agent.build_edit_intents({"tone": "formal"}, graph)
+    agent.build_edit_intents({"tone": "formal"}, graph, edit_target_node_ids=["n1"])
     assert seen["build_edit_intents"] == ("MODEL", {"tone": "formal"}, graph)
+    assert seen["build_edit_intents_kwargs"] == {"edit_target_node_ids": ["n1"], "last_edit_rejection": None}
 
 
 def test_model_or_none_logs_resolution_failure_once(caplog):

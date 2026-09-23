@@ -19,7 +19,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
   ``seam_test.go``'s ``TestSeam_AnyConformingAgent_DrivesFlowToTerminal``).
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Protocol, runtime_checkable
 
 from core.dify_builder.contract import ConversationPage, ResourceOption
@@ -109,7 +109,19 @@ class DifyBuilderAgent(Protocol):
 
     def propose_edit_plan(self, edit_rules: dict[str, Any], graph: Graph) -> list[str]: ...
 
-    def build_edit_intents(self, edit_rules: dict[str, Any], graph: Graph) -> list[MutationIntent]: ...
+    # ``edit_target_node_ids``: the nodes analyze_impact said the change
+    # touches; an implementation may show the model their current config so it
+    # can leave what it was not asked about alone. ``last_edit_rejection``:
+    # why the previous attempt was refused, for a corrective re-prompt. Both
+    # are keyword-only and optional -- an agent is free to ignore either.
+    def build_edit_intents(
+        self,
+        edit_rules: dict[str, Any],
+        graph: Graph,
+        *,
+        edit_target_node_ids: Sequence[str] = (),
+        last_edit_rejection: str | None = None,
+    ) -> list[MutationIntent]: ...
 
     def respond_to_message(
         self,
