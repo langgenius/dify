@@ -819,6 +819,20 @@ def installed_app_ref(sqlite_session_factory: sessionmaker[Session]) -> Installe
     return result
 
 
+def test_build_application_services_reuses_installed_app_completion_dependencies(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert services.installed_app_access._installed_apps is services.installed_app_completion._usage
+    assert services.installed_app_completion._app_definitions is services.app_definitions
+
+
 @pytest.mark.parametrize(
     ("deployment_edition", "permission_result"),
     [

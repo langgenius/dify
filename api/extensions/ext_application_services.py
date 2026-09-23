@@ -57,7 +57,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
-from repositories.installed_app_access_repository import SQLAlchemyInstalledAppAccessRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
@@ -177,6 +177,8 @@ from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
+from services.installed_app_completion_adapters import AppGenerateServiceCompletionRuntime
+from services.installed_app_completion_service import InstalledAppCompletionService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
@@ -325,6 +327,7 @@ class ApplicationServices:
     oauth_device: OAuthDeviceApplicationService
     init_validation: InitValidationService
     installed_app_access: InstalledAppAccessService
+    installed_app_completion: InstalledAppCompletionService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
@@ -473,7 +476,14 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(session_factory=database_client)
+    installed_apps = SQLAlchemyInstalledAppRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    app_definitions = AppDefinitionQueryService(
+        definitions=app_definition_repository,
+        builtin_icon_url_prefix=(
+            dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        ),
+    )
     webapp_access = WebAppAccessQueryService(
         access=WebAppAccessQueryRepository(session_factory=database_client),
         webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
@@ -693,12 +703,7 @@ def build_application_services(
         ),
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
-        app_definitions=AppDefinitionQueryService(
-            definitions=app_definition_repository,
-            builtin_icon_url_prefix=(
-                dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
-            ),
-        ),
+        app_definitions=app_definitions,
         app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
         app_previews=AppPreviewQueryService(
             apps=app_preview_repository,
@@ -734,8 +739,13 @@ def build_application_services(
         ),
         webapp_access=webapp_access,
         installed_app_access=InstalledAppAccessService(
-            installed_apps=SQLAlchemyInstalledAppAccessRepository(session_factory=database_client),
+            installed_apps=installed_apps,
             is_user_allowed=webapp_access.is_user_allowed,
+        ),
+        installed_app_completion=InstalledAppCompletionService(
+            app_definitions=app_definitions,
+            usage=installed_apps,
+            runtime=AppGenerateServiceCompletionRuntime(session_factory=database_client),
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
