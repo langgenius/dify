@@ -13,7 +13,7 @@ const Textarea: FC<IContentProps> = React.memo(
     return (
       <textarea
         className={cn(
-          'inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-hidden',
+          'inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           className,
         )}
         placeholder={placeholder}
@@ -71,7 +71,7 @@ const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(
       <textarea
         ref={textareaRef}
         className={cn(
-          'inset-0 w-full resize-none appearance-none border-none bg-transparent outline-hidden',
+          'inset-0 w-full resize-none appearance-none border-none bg-transparent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           className,
         )}
         style={{

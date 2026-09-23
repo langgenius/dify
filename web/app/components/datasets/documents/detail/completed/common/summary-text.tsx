@@ -18,7 +18,7 @@ const SummaryText = ({ value, onChange, disabled }: SummaryTextProps) => {
       </div>
       <Textarea
         className={cn(
-          'w-full resize-none bg-transparent body-sm-regular leading-6 text-text-secondary outline-hidden',
+          'w-full resize-none bg-transparent body-sm-regular leading-6 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
         )}
         placeholder={t(($) => $['segment.summaryPlaceholder'], { ns: 'datasetDocuments' })}
         minRows={1}
