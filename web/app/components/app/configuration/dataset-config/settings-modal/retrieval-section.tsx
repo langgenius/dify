@@ -11,7 +11,7 @@ import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-me
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
 
-export type RetrievalTranslate = TFunction<['datasetSettings']>
+type RetrievalTranslate = TFunction<['datasetSettings']>
 
 type CommonSectionProps = {
   rowClass: string

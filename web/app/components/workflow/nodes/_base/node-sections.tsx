@@ -13,7 +13,7 @@ type HeaderMetaProps = {
   t: WorkflowTranslator
 }
 
-export type WorkflowTranslator = TFunction<['workflow']>
+type WorkflowTranslator = TFunction<['workflow']>
 
 export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: HeaderMetaProps) => {
   return (
