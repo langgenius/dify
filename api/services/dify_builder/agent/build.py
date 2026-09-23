@@ -730,7 +730,14 @@ def build_nodes(
             logger.info(
                 "Dify Builder: http-request %s had a placeholder credential; now read from a start variable", node_id
             )
-        applicable, rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
+        # Structure only, deliberately: these intents BUILD the graph, so a node
+        # the preflight would refuse is the generator's own retry loop's business
+        # (``_terminal_retry_instruction`` above), not a reason to drop one intent
+        # out of a whole new workflow. ``apply_repair``'s preflight is still the
+        # backstop that stops a refused draft being written.
+        applicable, rejected, _dry_run_graph = graph_ops.filter_applicable(
+            {"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES
+        )
         if not applicable:
             reason = rejected[0][1] if rejected else "no applicable node intents"
             error = f"the generated nodes were rejected by validation: {reason}"

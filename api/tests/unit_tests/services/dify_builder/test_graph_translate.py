@@ -255,7 +255,7 @@ def _apply_all(graph):
     from services.dify_builder.agent.graph_translate import to_intents
 
     intents = to_intents(graph)
-    applicable, rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents)
+    applicable, rejected, _dry = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents)
     assert rejected == [], f"intents rejected: {[(i.op, r) for i, r in rejected]}"
     persisted = {"nodes": [], "edges": []}
     for intent in applicable:

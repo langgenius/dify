@@ -1682,25 +1682,25 @@ class WorkflowGenerator:
         # dropdown in the test form -> repair it to a text-input.
         cls._normalize_start_select_variables(nodes=nodes)
 
-        # Pure value repairs shared with the Builder's apply_repair chokepoint
-        # (core.workflow.graph_normalizers), so both write paths agree:
-        # - a comparison operator written the ASCII way (``>=``) becomes the
-        #   engine's own literal (``≥``), and condition values written as JSON
-        #   numbers (ESQ1-303: ``"value": 60``) become the strings graphon's
-        #   Condition model accepts;
-        # - if-else ``varType`` (frontend operator hint) is derived only when a
-        #   declared start-variable type makes it certain;
-        # - http-request body items get the ``type`` BodyData cannot default
-        #   (ESQ1-302), and a ``none`` body drops stray items;
-        # - a parameter-extractor ``query`` written as an array of selector
-        #   arrays (Blocker A) is unwrapped to the one selector graphon wants.
-        for changed_id in graph_normalizers.normalize_conditions(nodes):
-            logger.info("Workflow generator: canonicalized condition operator(s)/value(s) on node %s", changed_id)
+        # The deterministic heal set every pre-preflight caller shares
+        # (``core.workflow.graph_normalizers.heal_nodes_for_preflight``), called
+        # as the ONE list rather than re-spelled member by member: an operator
+        # written the ASCII way (``>=`` -> ``≥``) and a condition value written
+        # as a JSON number (ESQ1-303's ``"value": 60``), the ``type`` an
+        # http-request body item cannot default (ESQ1-302), an ``authorization``
+        # with no ``type``, and a parameter-extractor ``query`` written as an
+        # array of selector arrays (Blocker A). A normalizer added there reaches
+        # this path with it, so the generator and the Builder's apply_repair
+        # chokepoint cannot drift.
+        #
+        # ``derive_if_else_var_types`` is called separately because the shared
+        # set deliberately EXCLUDES it: ``varType`` is a frontend-only operator
+        # hint the engine ignores, so it is not something a preflight can turn
+        # on -- but a generated draft is handed straight to the canvas, which
+        # wants it.
+        for changed_id in graph_normalizers.heal_nodes_for_preflight(nodes):
+            logger.info("Workflow generator: applied the shared pre-preflight heals to node %s", changed_id)
         graph_normalizers.derive_if_else_var_types(nodes)
-        for changed_id in graph_normalizers.normalize_http_request_bodies(nodes):
-            logger.info("Workflow generator: filled http-request body item type(s) on node %s", changed_id)
-        for changed_id in graph_normalizers.normalize_parameter_extractor_queries(nodes):
-            logger.info("Workflow generator: unwrapped parameter-extractor query selector on node %s", changed_id)
 
         return cast(GraphDict, {"nodes": nodes, "edges": deduped_edges, "viewport": viewport})
 
