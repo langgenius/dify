@@ -42,7 +42,7 @@ class AppGenerateServiceCompletionRuntime(InstalledAppCompletionRuntime):
         response: CompletionResponse | None = None
         try:
             with self._session_factory(expire_on_commit=False) as session:
-                response = AppGenerateService.generate(
+                generated_response: CompletionResponse = AppGenerateService.generate(
                     session=session,
                     app_model=app,
                     user=account,
@@ -50,6 +50,7 @@ class AppGenerateServiceCompletionRuntime(InstalledAppCompletionRuntime):
                     invoke_from=InvokeFrom.EXPLORE,
                     streaming=streaming,
                 )
+                response = generated_response
                 session.commit()
         except BaseException:
             if response is not None and not isinstance(response, Mapping):
@@ -59,4 +60,4 @@ class AppGenerateServiceCompletionRuntime(InstalledAppCompletionRuntime):
                     logger.exception("Failed to close the generation response after an error")
             raise
 
-        return response
+        return generated_response
