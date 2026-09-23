@@ -776,11 +776,17 @@ def test_op_schema_teaches_the_array_and_operator_rules_the_engine_enforces():
     # pinned because a single hardcoded name would RECREATE cause (d): the
     # aggregator skips a selector it cannot resolve in silence, so ["llm", "output"]
     # -- an llm node publishes `text` -- runs green and produces nothing.
+    #
+    # Read off the shared mapping rather than a literal list, because
+    # ``preflight``'s rejoin guard names the missing selector from that same
+    # mapping: this is what stops the sentence the model reads and the sentence
+    # the guard writes naming different variables.
     assert "byte-identical" in schema
     assert "variable-aggregator" in schema
     assert "variables" in schema
-    for pairing in ("llm node's is text", "template-transform's is output"):
-        assert pairing in schema
+    assert graph_prompt.OUTPUT_VARIABLE_BY_NODE_TYPE  # a silent empty mapping would pass the loop below
+    for node_type, variable in graph_prompt.OUTPUT_VARIABLE_BY_NODE_TYPE.items():
+        assert f"{node_type}'s is {variable}" in schema
 
     # and never hand the redaction sentinel back (Task 3's withheld secrets).
     assert credentials.REDACTED in schema
