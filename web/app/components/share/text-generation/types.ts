@@ -1,13 +1,7 @@
-import type { SelectorParam } from 'i18next'
+import type { TFunction } from 'i18next'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
-export type TextGenerationTranslate = <
-  Ns extends 'appDebug' | 'common' | 'share',
-  Selector extends SelectorParam<Ns>,
->(
-  selector: Selector,
-  options: { ns: Ns } & Record<string, unknown>,
-) => string
+export type TextGenerationTranslate = TFunction<['share', 'appDebug', 'common']>
 
 type TaskParam = {
   inputs: Record<string, string | boolean | undefined>
