@@ -13,6 +13,7 @@ from dify_trace_aliyun.aliyun_trace import AliyunDataTrace
 from dify_trace_aliyun.config import AliyunConfig
 from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from dify_trace_aliyun.entities.semconv import (
+    DIFY_NODE_TYPE,
     GEN_AI_AGENT_NAME,
     GEN_AI_COMPLETION,
     GEN_AI_INPUT_MESSAGE,
@@ -55,7 +56,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from graphon.entities import WorkflowNodeExecution
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class RecordingTraceClient:
@@ -522,16 +523,29 @@ def test_build_workflow_node_span_handles_errors(
     assert "Error occurred in build_workflow_node_span" in caplog.text
 
 
-def test_build_workflow_task_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize(
+    "node_type",
+    [
+        BuiltinNodeTypes.QUESTION_CLASSIFIER,
+        BuiltinNodeTypes.HTTP_REQUEST,
+        BuiltinNodeTypes.CODE,
+        BuiltinNodeTypes.AGENT,
+        BuiltinNodeTypes.IF_ELSE,
+        "custom-node",
+    ],
+)
+def test_build_workflow_task_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch, node_type: str):
     monkeypatch.setattr(aliyun_trace_module, "convert_to_span_id", lambda _, __: 9)
     monkeypatch.setattr(aliyun_trace_module, "convert_datetime_to_nanoseconds", lambda _: 123)
     status = Status(StatusCode.OK)
     monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: status)
 
-    trace_metadata = _make_trace_metadata()
+    trace_metadata = _make_trace_metadata(links=[_make_link()])
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     node_execution.id = "node-id"
     node_execution.title = "title"
+    node_execution.node_type = node_type
+    node_execution.process_data = None
     node_execution.inputs = {"a": 1}
     node_execution.outputs = {"b": 2}
     node_execution.created_at = _dt()
@@ -540,8 +554,114 @@ def test_build_workflow_task_span(trace_instance: AliyunDataTrace, monkeypatch: 
     span = trace_instance.build_workflow_task_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span.trace_id == 1
     assert span.span_id == 9
+    assert span.parent_span_id == trace_metadata.workflow_span_id
+    assert span.name == "title"
+    assert span.start_time == span.end_time == 123
+    assert span.links == trace_metadata.links
+    assert span.span_kind == SpanKind.INTERNAL
     assert span.status.status_code == StatusCode.OK
     assert span.attributes["gen_ai.span.kind"] == GenAISpanKind.TASK
+    assert span.attributes[DIFY_NODE_TYPE] == node_type
+    assert json.loads(span.attributes[INPUT_VALUE]) == {"a": 1}
+    assert json.loads(span.attributes[OUTPUT_VALUE]) == {"b": 2}
+
+
+@pytest.mark.parametrize("error", [None, "Connection refused"])
+def test_http_task_span_uses_request_snapshot(trace_instance: AliyunDataTrace, error: str | None):
+    request = (
+        "POST /collect HTTP/1.1\r\nHost: example.com\r\n"
+        "Authorization: Bearer ******\r\nContent-Type: application/json\r\n\r\n"
+        '{"message":"synthetic 测试"}'
+    )
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution.id = "00000000-0000-0000-0000-000000000006"
+    node_execution.node_type = BuiltinNodeTypes.HTTP_REQUEST
+    node_execution.title = "HTTP request"
+    node_execution.inputs = {"fallback": True}
+    node_execution.outputs = {"status_code": 200} if error is None else {"error_message": error}
+    node_execution.process_data = {"request": request, "unrelated": "must not be exported"}
+    node_execution.error = error
+    node_execution.status = (
+        WorkflowNodeExecutionStatus.SUCCEEDED if error is None else WorkflowNodeExecutionStatus.FAILED
+    )
+    node_execution.created_at = _dt()
+    node_execution.finished_at = _dt()
+    metadata = _make_trace_metadata(links=[_make_link()])
+
+    span = trace_instance.build_workflow_node_span(node_execution, _make_workflow_trace_info(), metadata)
+
+    assert span is not None
+    assert json.loads(span.attributes[INPUT_VALUE]) == {"request": request}
+    assert json.loads(span.attributes[OUTPUT_VALUE]) == node_execution.outputs
+    assert span.attributes[DIFY_NODE_TYPE] == "http-request"
+    assert span.attributes["gen_ai.span.kind"] == GenAISpanKind.TASK
+    assert span.name == node_execution.title
+    assert span.parent_span_id == metadata.workflow_span_id
+    assert span.trace_id == metadata.trace_id
+    assert span.links == metadata.links
+    assert span.span_kind == SpanKind.INTERNAL
+    assert span.status.status_code == (StatusCode.OK if error is None else StatusCode.ERROR)
+    assert span.status.description == error
+    assert node_execution.process_data == {"request": request, "unrelated": "must not be exported"}
+
+
+@pytest.mark.parametrize(
+    "process_data",
+    [
+        None,
+        {},
+        [],
+        "invalid",
+        42,
+        {"other": "data"},
+        {"request": None},
+        {"request": ""},
+        {"request": " \r\n"},
+        {"request": 42},
+        {"request": True},
+        {"request": {}},
+        {"request": []},
+    ],
+)
+@pytest.mark.parametrize("inputs", [None, {}, {"fallback": "original input"}])
+def test_http_task_span_falls_back_to_inputs(trace_instance: AliyunDataTrace, process_data, inputs):
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution.id = "00000000-0000-0000-0000-000000000006"
+    node_execution.node_type = BuiltinNodeTypes.HTTP_REQUEST
+    node_execution.title = "HTTP request"
+    node_execution.inputs = inputs
+    node_execution.outputs = {}
+    node_execution.process_data = process_data
+    node_execution.error = None
+    node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
+    node_execution.created_at = _dt()
+    node_execution.finished_at = _dt()
+
+    span = trace_instance.build_workflow_node_span(node_execution, _make_workflow_trace_info(), _make_trace_metadata())
+
+    assert span is not None
+    assert span.attributes[INPUT_VALUE] == aliyun_trace_module.serialize_json_data(inputs)
+    assert span.attributes[DIFY_NODE_TYPE] == "http-request"
+
+
+def test_non_http_task_span_ignores_request_snapshot(trace_instance: AliyunDataTrace):
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution.id = "00000000-0000-0000-0000-000000000007"
+    node_execution.node_type = BuiltinNodeTypes.CODE
+    node_execution.title = "Code"
+    node_execution.inputs = {"original": "input"}
+    node_execution.outputs = {"result": "output"}
+    node_execution.process_data = {"request": "POST /collect HTTP/1.1\r\nHost: example.com"}
+    node_execution.error = None
+    node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
+    node_execution.created_at = _dt()
+    node_execution.finished_at = _dt()
+
+    span = trace_instance.build_workflow_node_span(node_execution, _make_workflow_trace_info(), _make_trace_metadata())
+
+    assert span is not None
+    assert json.loads(span.attributes[INPUT_VALUE]) == node_execution.inputs
+    assert span.attributes[DIFY_NODE_TYPE] == "code"
 
 
 def test_build_workflow_tool_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):

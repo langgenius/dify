@@ -21,12 +21,6 @@ const SKELETONS = [
   { id: 'wide', width: 120 },
 ] as const
 
-// AbortController throws a DOMException in modern browsers and a plain Error in
-// older / non-DOM environments — accept both so a user-triggered abort (modal
-// close / regenerate) never surfaces as an error.
-const isAbortError = (e: unknown): boolean =>
-  (e instanceof DOMException || e instanceof Error) && e.name === 'AbortError'
-
 /**
  * "Ideas for you" chips under the instruction textarea.
  *
@@ -81,8 +75,7 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
       const next = (res?.suggestions ?? []).map((s) => s.trim()).filter(Boolean)
       // Keep the previous set on an empty refresh so the row never flashes empty.
       if (next.length) setCached(next)
-    } catch (e) {
-      if (isAbortError(e)) return
+    } catch {
       // Silent: the static fallback keeps the row populated.
     } finally {
       setIsLoading(false)

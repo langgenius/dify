@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
-import { ImageIndentLeft } from '@/app/components/base/icons/src/vender/line/editor'
 import { Markdown } from '@/app/components/base/markdown'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 
@@ -40,7 +39,10 @@ const ResultText: FC<ResultTextProps> = ({
       )}
       {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
         <div className="mt-30 flex flex-col items-center px-4 py-2 text-[13px] leading-4.5 text-gray-500">
-          <ImageIndentLeft className="size-6 text-gray-400" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-editor-image-indent-left size-6 text-gray-400"
+          />
           <div className="mr-2">{t(($) => $['resultEmpty.title'], { ns: 'runLog' })}</div>
           <div>
             {t(($) => $['resultEmpty.tipLeft'], { ns: 'runLog' })}

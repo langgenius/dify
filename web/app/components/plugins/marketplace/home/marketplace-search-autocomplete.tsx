@@ -25,7 +25,7 @@ import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import { renderI18nObject } from '@/i18n-config/index'
+import { renderI18nObject } from '@/i18n/metadata'
 import { marketplaceQuery } from '@/service/marketplace'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 import {
@@ -60,7 +60,7 @@ type MarketplaceSearchAutocompleteProps = {
   category?: string
   inputName?: string
   locale: string
-  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => void
+  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => { preserveQuery: boolean } | void
   onValueChange: (value: string) => void
   placeholder: string
   scope: MarketplaceSearchScope
@@ -193,9 +193,9 @@ export function MarketplaceSearchAutocomplete({
   }
   const openSuggestion = (selection: MarketplaceSearchSelection) => {
     if (onSuggestionSelect) {
-      onSuggestionSelect(selection)
+      const result = onSuggestionSelect(selection)
       queueMicrotask(() => {
-        onValueChange('')
+        if (!result?.preserveQuery) onValueChange('')
         setIsOpen(false)
       })
       return

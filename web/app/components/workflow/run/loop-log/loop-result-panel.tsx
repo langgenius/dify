@@ -11,7 +11,6 @@ import {
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
@@ -120,7 +119,10 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
             >
               <div className={cn('flex grow items-center gap-2')}>
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
-                  <Loop className="size-3 text-text-primary-on-surface" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-workflow-loop size-3 text-text-primary-on-surface"
+                  />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
                   {t(($) => $[`${i18nPrefix}.loop`], { ns: 'workflow' })} {index + 1}

@@ -1,23 +1,11 @@
 'use client'
 
-import type { RemixiconComponentType } from '@remixicon/react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiEqualizer2Fill,
-  RiEqualizer2Line,
-  RiFileTextFill,
-  RiFileTextLine,
-  RiFocus2Fill,
-  RiFocus2Line,
-  RiLock2Fill,
-  RiLock2Line,
-} from '@remixicon/react'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import ExtraInfo from '@/app/components/datasets/extra-info'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -84,15 +72,15 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       {
         name: t(($) => $['datasetMenus.hitTesting'], { ns: 'common' }),
         href: `/datasets/${datasetId}/hitTesting`,
-        icon: RiFocus2Line,
-        selectedIcon: RiFocus2Fill,
+        icon: 'i-ri-focus-2-line',
+        selectedIcon: 'i-ri-focus-2-fill',
         disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canRetrievalRecall,
       },
       {
         name: t(($) => $['datasetMenus.settings'], { ns: 'common' }),
         href: `/datasets/${datasetId}/settings`,
-        icon: RiEqualizer2Line,
-        selectedIcon: RiEqualizer2Fill,
+        icon: 'i-ri-equalizer-2-line',
+        selectedIcon: 'i-ri-equalizer-2-fill',
         disabled: false,
       },
       ...(datasetACLCapabilities.canAccessConfig
@@ -100,8 +88,8 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
             {
               name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
               href: `/datasets/${datasetId}/access-config`,
-              icon: RiLock2Line,
-              selectedIcon: RiLock2Fill,
+              icon: 'i-ri-lock-2-line',
+              selectedIcon: 'i-ri-lock-2-fill',
               disabled: false,
             },
           ]
@@ -112,15 +100,15 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       baseNavigation.unshift({
         name: t(($) => $['datasetMenus.pipeline'], { ns: 'common' }),
         href: `/datasets/${datasetId}/pipeline`,
-        icon: PipelineLine as RemixiconComponentType,
-        selectedIcon: PipelineFill as RemixiconComponentType,
+        icon: 'i-custom-vender-pipeline-pipeline-line',
+        selectedIcon: 'i-custom-vender-pipeline-pipeline-fill',
         disabled: false,
       })
       baseNavigation.unshift({
         name: t(($) => $['datasetMenus.documents'], { ns: 'common' }),
         href: `/datasets/${datasetId}/documents`,
-        icon: RiFileTextLine,
-        selectedIcon: RiFileTextFill,
+        icon: 'i-ri-file-text-line',
+        selectedIcon: 'i-ri-file-text-fill',
         disabled: isButtonDisabledWithPipeline,
       })
     }
@@ -141,10 +129,11 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
         {!expand && (
           <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
-            <Divider
-              type="horizontal"
-              bgStyle="solid"
-              className="my-0 h-px w-6.75 bg-divider-subtle"
+            <Separator
+              decorative
+              orientation="horizontal"
+              variant="solid"
+              className="my-0 w-6.75 bg-divider-subtle"
             />
           </div>
         )}

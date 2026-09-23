@@ -42,7 +42,6 @@ import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigat
 import { useGetLanguage } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
@@ -226,19 +225,18 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
   return rows
 }
 
-function GotoAnythingDialog() {
+export function GotoAnything() {
   const { t } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
-  const canManageAgents = useCanManageAgents()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const { data: enableSkill } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.enable_skill,
     }),
   )
-  const agentsAvailable = isAgentV2Enabled() && canManageAgents
+  const agentsAvailable = isAgentV2Enabled()
   const skillsAvailable = enableSkill === true && !isCurrentWorkspaceDatasetOperator
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
@@ -379,8 +377,8 @@ function GotoAnythingDialog() {
   const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)
 
-  function resetSearch() {
-    setSearchQuery('')
+  function handleDialogOpenChangeComplete(open: boolean) {
+    if (!open) setSearchQuery('')
   }
 
   useHotkey(
@@ -430,13 +428,6 @@ function GotoAnythingDialog() {
       default:
         if (result.path) router.push(result.path)
     }
-  }
-
-  function handleAutocompleteOpenChange(
-    nextOpen: boolean,
-    eventDetails: AutocompleteChangeEventDetails,
-  ) {
-    if (!nextOpen && eventDetails.reason === 'escape-key') gotoAnythingDialogHandle.close()
   }
 
   function handleAutocompleteValueChange(
@@ -500,7 +491,10 @@ function GotoAnythingDialog() {
   return (
     <>
       <SlashCommandProvider />
-      <Dialog handle={gotoAnythingDialogHandle} onOpenChange={resetSearch}>
+      <Dialog
+        handle={gotoAnythingDialogHandle}
+        onOpenChangeComplete={handleDialogOpenChangeComplete}
+      >
         <DialogPortal>
           <DialogBackdrop />
           <DialogPopup
@@ -522,7 +516,6 @@ function GotoAnythingDialog() {
               items={visibleOptions}
               value={searchQuery}
               onValueChange={handleAutocompleteValueChange}
-              onOpenChange={handleAutocompleteOpenChange}
               itemToStringValue={optionToInputValue}
               filter={null}
               grid={isCommandsMode}
@@ -708,8 +701,4 @@ function GotoAnythingDialog() {
       )}
     </>
   )
-}
-
-export function GotoAnything() {
-  return <GotoAnythingDialog />
 }

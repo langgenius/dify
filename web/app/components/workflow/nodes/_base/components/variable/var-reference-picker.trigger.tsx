@@ -1,13 +1,11 @@
 'use client'
 
 import type { FC, ReactElement } from 'react'
-import type { VarType as VarKindType } from '../../../tool/types'
-import type {
-  CredentialFormSchema,
-  CredentialFormSchemaSelect,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FormInputSchema } from '../form-input-item.helpers'
+import type { CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { Node, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -28,8 +26,6 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Line3 } from '@/app/components/base/icons/src/public/common'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
@@ -71,7 +67,7 @@ type Props = Readonly<{
   outputVarNodeId?: string
   placeholder?: string
   readonly: boolean
-  schemaWithDynamicSelect?: Partial<CredentialFormSchema>
+  schemaWithDynamicSelect?: Partial<Omit<FormInputSchema, 'default'>>
   setControlFocus: (value: number) => void
   setOpen: (value: boolean) => void
   showErrorIcon?: boolean
@@ -165,13 +161,16 @@ const VarReferencePickerTrigger: FC<Props> = ({
               >
                 {outputVarNode?.title as string | undefined}
               </div>
-              <Line3 className="mr-0.5"></Line3>
+              <span aria-hidden className="mr-0.5 i-custom-public-common-line-3 h-3 w-1.25" />
             </div>
           )}
           {isShowAPart && (
             <div className="flex items-center">
               <RiMoreLine className="size-3 text-text-secondary" />
-              <Line3 className="mr-0.5 text-divider-deep"></Line3>
+              <span
+                aria-hidden
+                className="mr-0.5 i-custom-public-common-line-3 h-3 w-1.25 text-divider-deep"
+              />
             </div>
           )}
           <div className="flex items-center text-text-accent">
@@ -337,8 +336,12 @@ const VarReferencePickerTrigger: FC<Props> = ({
             ) : (
               !hasValue && (
                 <div className="mr-1 ml-1.5">
-                  <Variable02
-                    className={`size-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'i-custom-vender-solid-development-variable-02 h-6 w-6',
+                      `size-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`,
+                    )}
                   />
                 </div>
               )

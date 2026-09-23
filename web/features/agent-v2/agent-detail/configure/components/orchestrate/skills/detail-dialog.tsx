@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AgentFileTree } from '../files/tree'
 
 type AgentSkillFileNode = AgentFileNode
@@ -109,7 +109,7 @@ function AgentSkillFileList({
           </h3>
         )}
         <div className="flex min-h-0 flex-1 items-center justify-center">
-          <Loading type="area" />
+          <LoadingPlaceholder />
         </div>
       </div>
     )
@@ -233,7 +233,7 @@ function AgentFilePreviewContent({
   if (isLoading || isDownloadLoading) {
     return (
       <div className="flex min-h-40 flex-1 items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -392,14 +392,14 @@ export function AgentSkillDetailDialog({
               </h2>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="-my-0.5 flex shrink-0 items-center gap-1">
             {detail.onDownloadFile && previewTitle && (
               <button
                 type="button"
                 aria-label={`${isHeaderDownloadLoading ? tCommon(($) => $['operation.downloading']) : tCommon(($) => $['operation.download'])} ${previewTitle}`}
                 onClick={() => detail.onDownloadFile?.('header')}
                 disabled={isHeaderDownloadLoading}
-                className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               >
                 <span
                   aria-hidden
@@ -416,8 +416,8 @@ export function AgentSkillDetailDialog({
               render={
                 <IconButton
                   aria-label={tCommon(($) => $['operation.close'])}
-                  size="sm"
-                  className="static size-7 shrink-0 rounded-md"
+                  size="lg"
+                  className="shrink-0"
                 >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </IconButton>

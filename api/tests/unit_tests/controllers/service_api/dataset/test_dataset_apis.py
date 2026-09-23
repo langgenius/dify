@@ -317,6 +317,119 @@ class TestDatasetListApiGet:
         assert response["page"] == 1
         assert mock_dataset_svc.get_datasets.call_args.args[1] == 100
 
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_reports_the_page_size_the_query_used_for_limit_zero(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """limit=0 is floored to one row by the query, so the response must report one."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        total = 7
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset], total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=1&limit=0", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["limit"] == 1
+        assert response["page"] == 1
+        assert response["has_more"] is True
+        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 1)
+
+    @pytest.mark.usefixtures("account")
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_has_more_false_past_the_last_page_for_limit_zero(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """A page past the end must end the walk instead of reporting more rows forever."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        total = 7
+        mock_dataset_svc.get_datasets.return_value = (list[Dataset](), total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=8&limit=0", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["has_more"] is False
+        assert response["limit"] == 1
+        assert response["page"] == 8
+        assert response["data"] == []
+
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_reports_the_page_size_the_query_used_for_negative_limit(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """A negative limit is floored the same way, and is never echoed back."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        total = 7
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset], total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=1&limit=-1", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["limit"] == 1
+        assert response["page"] == 1
+        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 1)
+
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_reports_the_page_the_query_used_for_page_zero(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """page=0 is served as page 1, so the response must not offer page 1 as the next one."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        total = 7
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset] * total, total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=0&limit=20", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["page"] == 1
+        assert response["has_more"] is False
+        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 20)
+
 
 class TestDatasetListApiPost:
     """Test suite for DatasetListApi.post() endpoint."""

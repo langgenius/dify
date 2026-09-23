@@ -2,6 +2,7 @@ import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -188,21 +189,26 @@ describe('AccountSetting', () => {
       )
     }
 
-    return renderWithConsoleQuery(<StatefulAccountSetting />, {
-      features: {
-        billing: { subscription: { plan: 'sandbox' } },
-        can_replace_logo: canReplaceLogo,
+    return renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <StatefulAccountSetting />
+      </NuqsTestingAdapter>,
+      {
+        features: {
+          billing: { subscription: { plan: 'sandbox' } },
+          can_replace_logo: canReplaceLogo,
+        },
+        accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
+        systemFeatures: {
+          deployment_edition: deploymentEdition,
+          webapp_auth: { enabled: true },
+          branding: { enabled: false },
+          enable_marketplace: true,
+          enable_collaboration_mode: false,
+          rbac_enabled: rbacEnabled,
+        },
       },
-      accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
-      systemFeatures: {
-        deployment_edition: deploymentEdition,
-        webapp_auth: { enabled: true },
-        branding: { enabled: false },
-        enable_marketplace: true,
-        enable_collaboration_mode: false,
-        rbac_enabled: rbacEnabled,
-      },
-    })
+    )
   }
 
   beforeEach(() => {

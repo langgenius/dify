@@ -5,9 +5,10 @@ import type {
 import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import type { DeepPartial } from '@/test/console/system-features'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
@@ -28,12 +29,18 @@ import {
 } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
 let mockFeatures: DeepPartial<GetFeaturesResponse> = {}
 let mockVectorSpace: GetFeaturesVectorSpaceResponse = { size: 0, limit: 50, usage_unknown: false }
 let mockConsoleState: Record<string, unknown> = {}
 let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
 
-const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageUnknown = false) => {
+const renderWithoutPricing = (
+  ui: ReactElement,
+  options: RenderOptions = {},
+  vectorSpaceUsageUnknown = false,
+) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     ...mockVectorSpace,
@@ -53,21 +60,18 @@ const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageU
   return renderWithConsoleState(ui, { ...options, wrapper })
 }
 
-const mockSetShowPricingModal = vi.fn()
-
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowPricingModal: mockSetShowPricingModal,
-  }),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
-  useGetPricingPageLanguage: () => 'en',
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => 'en-US',
 }))
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────
@@ -118,6 +122,11 @@ const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
 // 1. Billing Page + Plan Component Integration
 // Tests the full data flow: BillingPage → PlanComp → UsageInfo → ProgressBar
 // ═══════════════════════════════════════════════════════════════════════════
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
+
 describe('Billing Page + Plan Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -162,11 +171,10 @@ describe('Billing Page + Plan Integration', () => {
       render(<PlanComp loc="test" />)
 
       const quotaCard = screen.getByRole('group', { name: /usagePage\.teamMembers/i })
-      const quotaLabel = within(quotaCard).getByText(/usagePage\.teamMembers/i)
-      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+      const quotaLabel = within(quotaCard).getByRole('term')
+      const quotaValue = within(quotaCard).getByRole('definition')
 
-      expect(quotaLabel.tagName).toBe('DT')
-      expect(quotaValue.tagName).toBe('DD')
+      expect(quotaLabel).toHaveTextContent(/usagePage\.teamMembers/i)
       expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
     })
 
@@ -179,7 +187,7 @@ describe('Billing Page + Plan Integration', () => {
       render(<PlanComp loc="test" />, {}, true)
 
       const quotaCard = screen.getByRole('group', { name: /usagePage\.vectorSpace/i })
-      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+      const quotaValue = within(quotaCard).getByRole('definition')
       expect(quotaValue).toHaveTextContent('--')
       expect(quotaValue).not.toHaveTextContent('< 50')
     })
@@ -329,7 +337,7 @@ describe('Plan Type Display Integration', () => {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 3. Upgrade Flow Integration
-// Tests the flow: UpgradeBtn click → setShowPricingModal
+// Tests the flow: UpgradeBtn click → pricing URL
 // and PlanUpgradeModal → close + trigger pricing
 // ═══════════════════════════════════════════════════════════════════════════
 describe('Upgrade Flow Integration', () => {
@@ -341,7 +349,7 @@ describe('Upgrade Flow Integration', () => {
 
   // UpgradeBtn triggers pricing modal
   describe('UpgradeBtn triggers pricing modal', () => {
-    it('should call setShowPricingModal when clicking premium badge upgrade button', async () => {
+    it('should open pricing when clicking premium badge upgrade button', async () => {
       const user = userEvent.setup()
 
       render(<UpgradeBtn />)
@@ -349,10 +357,12 @@ describe('Upgrade Flow Integration', () => {
       const badgeText = screen.getByText(/upgradeBtn\.encourage/i)
       await user.click(badgeText)
 
-      expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
-    it('should call setShowPricingModal when clicking plain upgrade button', async () => {
+    it('should open pricing when clicking plain upgrade button', async () => {
       const user = userEvent.setup()
 
       render(<UpgradeBtn isPlain />)
@@ -360,10 +370,12 @@ describe('Upgrade Flow Integration', () => {
       const button = screen.getByRole('button')
       await user.click(button)
 
-      expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
-    it('should use custom onClick when provided instead of setShowPricingModal', async () => {
+    it('should use custom onClick when provided instead of opening pricing', async () => {
       const customOnClick = vi.fn()
       const user = userEvent.setup()
 
@@ -373,7 +385,7 @@ describe('Upgrade Flow Integration', () => {
       await user.click(badgeText)
 
       expect(customOnClick).toHaveBeenCalledTimes(1)
-      expect(mockSetShowPricingModal).not.toHaveBeenCalled()
+      expect(onPricingUrlUpdate).not.toHaveBeenCalled()
     })
 
     it('should fire gtag event with loc parameter when clicked', async () => {
@@ -393,7 +405,7 @@ describe('Upgrade Flow Integration', () => {
 
   // PlanUpgradeModal integration: close modal and trigger pricing
   describe('PlanUpgradeModal upgrade flow', () => {
-    it('should call onClose and setShowPricingModal when clicking upgrade button in modal', async () => {
+    it('should close the notice and open pricing when clicking upgrade button in modal', async () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
 
@@ -417,31 +429,9 @@ describe('Upgrade Flow Integration', () => {
       // Should close the current modal first
       expect(onClose).toHaveBeenCalledTimes(1)
       // Then open pricing modal
-      expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onClose and custom onUpgrade when provided', async () => {
-      const user = userEvent.setup()
-      const onClose = vi.fn()
-      const onUpgrade = vi.fn()
-
-      render(
-        <PlanUpgradeModal
-          show={true}
-          onClose={onClose}
-          onUpgrade={onUpgrade}
-          title="Test"
-          description="Test"
-        />,
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
       )
-
-      const upgradeText = screen.getByText(/triggerLimitModal\.upgrade/i)
-      await user.click(upgradeText)
-
-      expect(onClose).toHaveBeenCalledTimes(1)
-      expect(onUpgrade).toHaveBeenCalledTimes(1)
-      // Custom onUpgrade replaces default setShowPricingModal
-      expect(mockSetShowPricingModal).not.toHaveBeenCalled()
     })
 
     it('should call onClose when clicking dismiss button', async () => {
@@ -454,7 +444,7 @@ describe('Upgrade Flow Integration', () => {
       await user.click(dismissBtn)
 
       expect(onClose).toHaveBeenCalledTimes(1)
-      expect(mockSetShowPricingModal).not.toHaveBeenCalled()
+      expect(onPricingUrlUpdate).not.toHaveBeenCalled()
     })
   })
 
@@ -469,7 +459,9 @@ describe('Upgrade Flow Integration', () => {
       const upgradeText = screen.getByText(/upgradeBtn\.encourageShort/i)
       await user.click(upgradeText)
 
-      expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
   })
 })
@@ -611,7 +603,6 @@ describe('Capacity Full Components Integration', () => {
         <TriggerEventsLimitModal
           show={true}
           onClose={vi.fn()}
-          onUpgrade={vi.fn()}
           usage={18000}
           total={20000}
           resetInDays={5}
@@ -632,27 +623,20 @@ describe('Capacity Full Components Integration', () => {
       expect(screen.getByText(/triggerLimitModal\.dismiss/i)).toBeInTheDocument()
     })
 
-    it('should call onClose and onUpgrade when clicking upgrade', async () => {
+    it('closes the quota notice and opens pricing when upgrading', async () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
-      const onUpgrade = vi.fn()
       setupBilling({ billing: { subscription: { plan: 'professional' } } })
 
-      render(
-        <TriggerEventsLimitModal
-          show={true}
-          onClose={onClose}
-          onUpgrade={onUpgrade}
-          usage={20000}
-          total={20000}
-        />,
-      )
+      render(<TriggerEventsLimitModal show={true} onClose={onClose} usage={20000} total={20000} />)
 
       const upgradeBtn = screen.getByText(/triggerLimitModal\.upgrade/i)
       await user.click(upgradeBtn)
 
       expect(onClose).toHaveBeenCalledTimes(1)
-      expect(onUpgrade).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
   })
 })
@@ -667,12 +651,19 @@ describe('PriorityLabel Integration', () => {
     setupConsoleState()
   })
 
-  it('should display "standard" priority for sandbox plan', () => {
+  it('opens the standard priority explanation without changing the badge', async () => {
+    const user = userEvent.setup()
     setupBilling({ billing: { subscription: { plan: 'sandbox' } } })
 
     render(<PriorityLabel />)
 
     expect(screen.getByText(/plansCommon\.priority\.standard/i)).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: /plansCommon\.documentProcessingPriority$/i }),
+    )
+    expect(await screen.findByRole('dialog')).toHaveTextContent(
+      /plansCommon\.documentProcessingPriorityTip/i,
+    )
   })
 
   it('should display "priority" for professional plan with icon', () => {
@@ -809,7 +800,9 @@ describe('Cross-Component Upgrade Flow', () => {
     const upgradeText = screen.getByText(/upgradeBtn\.encourageShort/i)
     await user.click(upgradeText)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it('should trigger pricing from VectorSpaceFull upgrade button', async () => {
@@ -824,7 +817,9 @@ describe('Cross-Component Upgrade Flow', () => {
     const upgradeText = screen.getByText(/upgradeBtn\.encourage$/i)
     await user.click(upgradeText)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it('should trigger pricing from AnnotationFull upgrade button', async () => {
@@ -839,7 +834,9 @@ describe('Cross-Component Upgrade Flow', () => {
     const upgradeText = screen.getByText(/upgradeBtn\.encourage$/i)
     await user.click(upgradeText)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it('should trigger pricing from TriggerEventsLimitModal through PlanUpgradeModal', async () => {
@@ -847,18 +844,9 @@ describe('Cross-Component Upgrade Flow', () => {
     const onClose = vi.fn()
     setupBilling({ billing: { subscription: { plan: 'professional' } } })
 
-    render(
-      <TriggerEventsLimitModal
-        show={true}
-        onClose={onClose}
-        onUpgrade={vi.fn()}
-        usage={20000}
-        total={20000}
-      />,
-    )
+    render(<TriggerEventsLimitModal show={true} onClose={onClose} usage={20000} total={20000} />)
 
-    // TriggerEventsLimitModal passes onUpgrade to PlanUpgradeModal
-    // PlanUpgradeModal's upgrade button calls onClose then onUpgrade
+    // PlanUpgradeModal dismisses the quota notice before opening pricing.
     const upgradeBtn = screen.getByText(/triggerLimitModal\.upgrade/i)
     await user.click(upgradeBtn)
 
@@ -877,6 +865,8 @@ describe('Cross-Component Upgrade Flow', () => {
     const upgradeText = screen.getByText(/upgradeBtn\.encourage$/i)
     await user.click(upgradeText)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 })

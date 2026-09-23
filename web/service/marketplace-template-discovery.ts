@@ -32,8 +32,6 @@ const FAILED_COLLECTIONS_RESULT: MarketplaceTemplateCollectionsResult = {
   ok: false,
 }
 
-const COLLECTION_PREVIEW_TEMPLATE_LIMIT = 20
-
 type MarketplaceTemplateListExtras = {
   asset_files?: unknown
   asset_tree_nodes?: unknown
@@ -102,7 +100,7 @@ async function fetchCollectionsAndTemplates(): Promise<MarketplaceTemplateCollec
               const collectionResponse = await marketplaceClient.templateCollectionTemplates(
                 {
                   params: { collectionName: collection.name },
-                  body: { limit: COLLECTION_PREVIEW_TEMPLATE_LIMIT },
+                  body: {},
                 },
                 { signal: budget },
               )

@@ -75,7 +75,9 @@ const useSingleRunFormParams = ({
   )
 
   const filterVisionInputVar = useCallback((varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }, [])
   const { availableVars: availableVisionVars } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,

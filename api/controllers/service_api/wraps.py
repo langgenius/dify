@@ -32,7 +32,6 @@ from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
 from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
-from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -147,7 +146,11 @@ def validate_app_token[**P, R](
                 if user_id:
                     user_id = str(user_id)
 
-                end_user = EndUserService.get_or_create_end_user(app_model, user_id)
+                end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(
+                    app_model.tenant_id,
+                    app_model.id,
+                    user_id,
+                )
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user
@@ -197,10 +200,14 @@ def cloud_edition_billing_resource_check[**P, R](
             if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                 return view(*args, **kwargs)
 
+            tenant_id = api_token.tenant_id
+            if tenant_id is None:
+                raise Unauthorized("Tenant id is required for this token.")
+
             if resource == "vector_space":
-                vector_space = application_services().feature_queries.get_workspace_vector_space(api_token.tenant_id)
+                vector_space = application_services().feature_queries.get_workspace_vector_space(tenant_id)
                 if vector_space.usage_unknown:
-                    features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+                    features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
                     if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         raise ServiceUnavailable(
                             "Unable to verify vector space usage right now. Please try again later."
@@ -209,7 +216,7 @@ def cloud_edition_billing_resource_check[**P, R](
                     raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 return view(*args, **kwargs)
 
-            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+            features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
 
             members = features.members
             apps = features.apps
@@ -244,7 +251,11 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
             if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or resource != "add_segment":
                 return view(*args, **kwargs)
 
-            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+            tenant_id = api_token.tenant_id
+            if tenant_id is None:
+                raise Unauthorized("Tenant id is required for this token.")
+
+            features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
             if features.billing.subscription.plan == CloudPlan.SANDBOX:
                 raise Forbidden(
                     "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
@@ -267,10 +278,13 @@ def cloud_edition_billing_rate_limit_check[**P, R](
             api_token = validate_and_get_api_token(api_token_type)
 
             if resource == "knowledge":
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)
+                tenant_id = api_token.tenant_id
+                if tenant_id is None:
+                    raise Unauthorized("Tenant id is required for this token.")
+                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(tenant_id)
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{api_token.tenant_id}"
+                    key = f"rate_limit_{tenant_id}"
 
                     redis_client.zadd(key, {current_time: current_time})
 
@@ -281,7 +295,7 @@ def cloud_edition_billing_rate_limit_check[**P, R](
                     if request_count > knowledge_rate_limit.limit:
                         # add ratelimit record
                         rate_limit_log = RateLimitLog(
-                            tenant_id=api_token.tenant_id,
+                            tenant_id=tenant_id,
                             subscription_plan=knowledge_rate_limit.subscription_plan,
                             operation="knowledge",
                         )

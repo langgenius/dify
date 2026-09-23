@@ -6,7 +6,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { modelNameMap, providerIconMap } from '../utils'
+import { modelNameMap, providerLogoMap } from '../utils'
 
 type MarketplaceSectionProps = {
   marketplaceProviders: ModelProviderQuotaGetPaid[]
@@ -47,7 +47,7 @@ function MarketplaceSection({
         <div className="flex h-5.5 items-center pr-2 pl-4">
           <CollapsibleTrigger
             id={headingId}
-            className="group/marketplace min-h-0 flex-1 justify-start gap-0 rounded-none p-0 system-sm-medium text-text-primary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-primary data-panel-open:text-text-primary"
+            className="group/marketplace flex min-h-0 w-full flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-primary outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             {t(($) => $['modelProvider.selector.fromMarketplace'], { ns: 'common' })}
             <span
@@ -61,7 +61,7 @@ function MarketplaceSection({
         <CollapsiblePanel>
           <ul className="px-1 pb-1">
             {marketplaceProviders.map((key) => {
-              const Icon = providerIconMap[key]
+              const logo = providerLogoMap[key]
               const isInstalling = installingProvider === key
               const installButtonLabelId = `${headingId}-install-${key}`
               const providerNameId = `${headingId}-provider-${key}`
@@ -71,7 +71,21 @@ function MarketplaceSection({
                   className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-3 focus-within:bg-state-base-hover hover:bg-state-base-hover"
                 >
                   <div className="flex flex-1 items-center gap-2 py-0.5">
-                    <Icon aria-hidden="true" className="size-5 shrink-0 rounded-md" />
+                    {'image' in logo ? (
+                      <img
+                        aria-hidden
+                        src={logo.image.src}
+                        width={20}
+                        height={20}
+                        alt=""
+                        className="size-5 shrink-0 rounded-md"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden
+                        className={cn(logo.iconClassName, 'size-5 shrink-0 rounded-md')}
+                      />
+                    )}
                     <span id={providerNameId} className="system-sm-regular text-text-secondary">
                       {modelNameMap[key]}
                     </span>

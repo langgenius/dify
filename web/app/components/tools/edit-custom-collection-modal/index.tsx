@@ -15,7 +15,6 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounce, useGetState } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -24,8 +23,8 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
+import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
-import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
 import { AuthHeaderPrefix, AuthType } from '../types'
 import ConfigCredentials from './config-credentials'
 import GetSchema from './get-schema'
@@ -294,7 +293,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                               <div className="text-xs font-normal">
                                 {t(($) => $['createTool.viewSchemaSpec'], { ns: 'tools' })}
                               </div>
-                              <LinkExternal02 className="size-3" />
+                              <span
+                                aria-hidden
+                                className="i-custom-vender-line-general-link-external-02 size-3"
+                              />
                             </a>
                           </div>
                           <GetSchema onChange={setSchema} />

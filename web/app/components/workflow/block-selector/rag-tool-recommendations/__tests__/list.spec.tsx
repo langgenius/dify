@@ -12,6 +12,10 @@ import UninstalledItem from '../uninstalled-item'
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en_US',
 }))
 

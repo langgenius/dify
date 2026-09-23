@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
@@ -31,31 +30,25 @@ export function DetailSidebarToggleButton({
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button
-            variant="ghost"
-            size="small"
-            aria-label={label}
-            onClick={onToggle}
-            className={cn('rounded-full px-1', className)}
-          />
+          <IconButton size="lg" aria-label={label} onClick={onToggle} className={className}>
+            <span aria-hidden className="inline-flex">
+              {icon ??
+                (expand ? (
+                  <span className="i-ri-arrow-left-s-line size-4" />
+                ) : (
+                  <span className="i-ri-arrow-right-s-line size-4" />
+                ))}
+            </span>
+          </IconButton>
         }
-      >
-        {icon ??
-          (expand ? (
-            <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-          ) : (
-            <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
+      />
+      <TooltipContent placement="right" className="flex items-center gap-1">
+        <span className="px-0.5">{label}</span>
+        <KbdGroup>
+          {detailSidebarToggleShortcutKeys.map((key) => (
+            <Kbd key={key}>{formatForDisplay(key)}</Kbd>
           ))}
-      </TooltipTrigger>
-      <TooltipContent placement="right" className="rounded-lg p-1.5">
-        <div className="flex items-center gap-x-1">
-          <span className="px-0.5 system-xs-medium text-text-secondary">{label}</span>
-          <KbdGroup>
-            {detailSidebarToggleShortcutKeys.map((key) => (
-              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
-            ))}
-          </KbdGroup>
-        </div>
+        </KbdGroup>
       </TooltipContent>
     </Tooltip>
   )

@@ -9,10 +9,11 @@ from controllers.common.schema import (
     register_response_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, model_validate, setup_required
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import validate_request
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.login import login_required
-from services.advanced_prompt_template_service import AdvancedPromptTemplateArgs, AdvancedPromptTemplateService
+from machinery.context import RequestContext
 
 
 class AdvancedPromptTemplateQuery(BaseModel):
@@ -45,15 +46,13 @@ class AdvancedPromptTemplateList(Resource):
         console_ns.models[AdvancedPromptTemplateResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @model_validate(AdvancedPromptTemplateQuery)
-    def get(self, req_data: AdvancedPromptTemplateQuery):
-        prompt_args: AdvancedPromptTemplateArgs = {
-            "app_mode": req_data.app_mode,
-            "model_mode": req_data.model_mode,
-            "model_name": req_data.model_name,
-            "has_context": req_data.has_context,
-        }
-        return AdvancedPromptTemplateService.get_prompt(prompt_args)
+    @console_account_admission()
+    def get(self, context: RequestContext):
+        req_data = validate_request(AdvancedPromptTemplateQuery)
+        result = application_services().advanced_prompt_templates.get_prompt(
+            app_mode=req_data.app_mode,
+            model_mode=req_data.model_mode,
+            model_name=req_data.model_name,
+            has_context=req_data.has_context,
+        )
+        return AdvancedPromptTemplateResponse.model_validate(result).model_dump(mode="json", exclude_unset=True)

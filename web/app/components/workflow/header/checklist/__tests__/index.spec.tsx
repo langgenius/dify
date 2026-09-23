@@ -112,7 +112,7 @@ describe('WorkflowChecklist', () => {
     render(<WorkflowChecklist disabled={false} />)
 
     expect(screen.getByText('2')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     expect(screen.getByTestId('plugin-group')).toHaveTextContent('Missing Plugin')
     await user.click(screen.getByTestId('node-group-Broken Node'))
 
@@ -125,11 +125,24 @@ describe('WorkflowChecklist', () => {
     const onItemClick = vi.fn()
     render(<WorkflowChecklist disabled={false} onItemClick={onItemClick} />)
 
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     await user.click(screen.getByTestId('node-group-Broken Node'))
 
     expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'node-1' }))
     expect(mockHandleNodeSelect).not.toHaveBeenCalled()
+  })
+
+  it('should show the tooltip without replacing the warning count in the accessible name', async () => {
+    const user = userEvent.setup()
+    render(<WorkflowChecklist disabled={false} />)
+
+    const trigger = screen.getByRole('button', { name: 'workflow.panel.checklist 2' })
+    await user.hover(trigger)
+
+    expect(await screen.findByText('workflow.panel.checklist', { selector: 'div' })).toBeVisible()
+    expect(trigger).toHaveAccessibleName('workflow.panel.checklist 2')
+    await user.click(trigger)
+    expect(screen.getByTestId('plugin-group')).toBeInTheDocument()
   })
 
   it('should open the inline agent editor after selecting an inline agent reference warning', async () => {
@@ -142,7 +155,7 @@ describe('WorkflowChecklist', () => {
     }
     render(<WorkflowChecklist disabled={false} />)
 
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     await user.click(screen.getByTestId('node-group-Inline Agent'))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')

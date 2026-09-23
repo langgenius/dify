@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_QUERY_BLOCK_COMMAND } from './index'
 
@@ -17,7 +16,10 @@ const QueryBlockComponent: FC<QueryBlockComponentProps> = ({ nodeKey }) => {
       className={`inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#FFF6ED] pr-0.5 pl-1 hover:bg-[#FFEAD5] ${isSelected && 'border-[#FD853A]!'} `}
       ref={ref}
     >
-      <UserEdit02 className="mr-1 h-3.5 w-3.5 text-[#FD853A]" />
+      <span
+        aria-hidden
+        className="mr-1 i-custom-vender-solid-users-user-edit-02 h-3.5 w-3.5 text-[#FD853A]"
+      />
       <div className="text-xs font-medium text-[#EC4A0A] opacity-60">{'{{'}</div>
       <div className="text-xs font-medium text-[#EC4A0A]">
         {t(($) => $['promptEditor.query.item.title'], { ns: 'common' })}

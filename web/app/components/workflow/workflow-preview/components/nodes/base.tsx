@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { cloneElement, memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { hasErrorHandleNode } from '@/app/components/workflow/utils'
 import ErrorHandleOnNode from '../error-handle-on-node'
@@ -56,7 +57,8 @@ const BaseCard = ({ id, data, children }: NodeCardProps) => {
           />
           {data.type !== BlockEnum.IfElse &&
             data.type !== BlockEnum.QuestionClassifier &&
-            data.type !== BlockEnum.HumanInput && (
+            data.type !== BlockEnum.HumanInput &&
+            !hasAgentV2OutputRoutes(data) && (
               <NodeSourceHandle
                 id={id}
                 data={data}

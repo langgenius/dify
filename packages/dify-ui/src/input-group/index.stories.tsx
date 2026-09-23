@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../dropdown-menu'
-import { Field, FieldDescription, FieldLabel } from '../field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../field'
 import { IconButton } from '../icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from './index'
 
@@ -214,5 +214,25 @@ export const WithDropdownAction: Story = {
     await waitFor(async () => {
       await expect(trigger).toHaveFocus()
     })
+  },
+}
+
+export const Invalid: Story = {
+  render: () => (
+    <Field invalid className="w-80">
+      <FieldLabel>Repository URL</FieldLabel>
+      <InputGroup>
+        <InputGroupInput defaultValue="invalid repository" />
+        <InputGroupAddon className="pe-0">https://</InputGroupAddon>
+      </InputGroup>
+      <FieldError match>Please enter a valid repository URL.</FieldError>
+    </Field>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const input = canvas.getByRole('textbox', { name: 'Repository URL' })
+    await userEvent.click(input)
+    await expect(input).toHaveFocus()
+    await expect(input).toHaveAttribute('aria-invalid', 'true')
+    await expect(input).toHaveAccessibleDescription('Please enter a valid repository URL.')
   },
 }

@@ -1,11 +1,11 @@
 import type { TFunction } from 'i18next'
-import type { NodeDefault, ToolWithProvider, Var } from '../../types'
+import type { NodeDefault, ToolWithProvider, Var, WorkflowPluginCatalogs } from '../../types'
 import type { ToolNodeType } from './types'
 import { CollectionType } from '@/app/components/tools/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { TOOL_OUTPUT_STRUCT } from '../../constants'
 import { Type } from '../llm/types'
 import { resolveVarType } from './output-schema-utils'
@@ -108,7 +108,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
   },
   getOutputVars(
     payload: ToolNodeType,
-    allPluginInfoList: Record<string, ToolWithProvider[]>,
+    allPluginInfoList: WorkflowPluginCatalogs,
     _ragVars: any,
     { schemaTypeDefinitions } = { schemaTypeDefinitions: [] },
   ) {
@@ -130,7 +130,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       default:
         currentTools = []
     }
-    const currCollection = currentTools.find((item) => canFindTool(item.id, provider_id))
+    const currCollection = currentTools.find((item) => matchesProviderReference(item, provider_id))
     const currTool = currCollection?.tools.find((tool) => tool.name === payload.tool_name)
     const output_schema = currTool?.output_schema
     let res: Var[] = []

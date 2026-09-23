@@ -13,12 +13,12 @@ import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
@@ -32,7 +32,11 @@ import {
 } from '../constants'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
 import { useCreateInlineAgentBinding } from '../nodes/agent-v2/hooks'
-import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '../nodes/agent-v2/types'
+import {
+  hasAgentV2OutputRoutes,
+  isAgentV2NodeData,
+  needsInlineAgentBindingCreation,
+} from '../nodes/agent-v2/types'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
@@ -387,6 +391,7 @@ export const useNodesInteractions = () => {
                   connectingNode.data.type === BlockEnum.VariableAggregator) &&
                 node.data.type !== BlockEnum.IfElse &&
                 node.data.type !== BlockEnum.QuestionClassifier &&
+                !hasAgentV2OutputRoutes(node.data) &&
                 node.data.type !== BlockEnum.HumanInput
               ) {
                 n.data._isEntering = true
@@ -1017,6 +1022,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
+          !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput
         ) {
           newNode.data._connectedSourceHandleIds = [sourceHandle]
@@ -1051,6 +1057,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
+          !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
           nodeType !== BlockEnum.LoopEnd
         ) {
@@ -1212,6 +1219,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
+          !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
           nodeType !== BlockEnum.LoopEnd
         ) {
@@ -1780,7 +1788,7 @@ export const useNodesInteractions = () => {
     const selectedNodes = nodes.filter((node) => node.selected)
     // Keep this list aligned with availableBlocksFilter(inContainer)
     // in use-available-blocks.ts.
-    const commonNestedDisallowPasteNodes = [
+    const commonNestedDisallowPasteNodes: BlockEnum[] = [
       BlockEnum.End,
       BlockEnum.Iteration,
       BlockEnum.Loop,

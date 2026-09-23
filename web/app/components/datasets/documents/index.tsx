@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -138,7 +138,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   // Render content based on loading and data state
   const renderContent = () => {
-    if (isListLoading && !documentsRes) return <Loading type="app" />
+    if (isListLoading && !documentsRes) return <LoadingPlaceholder className="h-full" />
 
     if (total > 0) {
       return (

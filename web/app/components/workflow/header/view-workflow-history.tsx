@@ -2,11 +2,11 @@ import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Divider from '../../base/divider'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
 import { useNodesReadOnly } from '../hooks/use-workflow'
@@ -176,7 +176,7 @@ const ViewWorkflowHistory = () => {
       <PopoverContent placement="bottom-end" className="border-none bg-transparent shadow-none">
         <div className="flex max-w-90 min-w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
           <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
-            <div className="system-mg-regular grow text-text-secondary">
+            <div className="grow text-text-secondary">
               {t(($) => $['changeHistory.title'], { ns: 'workflow' })}
             </div>
             <PopoverClose
@@ -279,7 +279,7 @@ const ViewWorkflowHistory = () => {
           </div>
           {!!calculateChangeList.statesCount && (
             <div className="px-0.5">
-              <Divider className="m-0" />
+              <Separator className="m-0 h-[0.5px]" />
               <button
                 type="button"
                 className={cn(

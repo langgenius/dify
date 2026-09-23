@@ -1,15 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  FullTextSearch,
-  HybridSearch,
-  VectorSearch,
-} from '@/app/components/base/icons/src/vender/knowledge'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
@@ -110,17 +106,22 @@ const RetrievalMethodConfig: FC<Props> = ({
   )
 
   return (
-    <div className="flex flex-col gap-y-2">
+    <RadioGroup<RETRIEVE_METHOD>
+      aria-label={t(($) => $['form.retrievalSetting.method'], { ns: 'datasetSettings' })}
+      value={value.search_method}
+      onValueChange={onSwitch}
+      disabled={disabled}
+      className="flex flex-col items-stretch gap-x-0 gap-y-2"
+    >
       {supportedRetrievalMethods.has(RETRIEVE_METHOD.semantic) && (
         <OptionCard
           id={RETRIEVE_METHOD.semantic}
           disabled={disabled}
-          icon={<VectorSearch className="size-4" />}
+          icon={<span aria-hidden className="i-custom-vender-knowledge-vector-search size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
           title={t(($) => $['retrieval.semantic_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.semantic_search.description'], { ns: 'dataset' })}
           isActive={value.search_method === RETRIEVE_METHOD.semantic}
-          onClick={onSwitch}
           effectColor={EffectColor.purple}
           showEffectColor
           showChildren={value.search_method === RETRIEVE_METHOD.semantic}
@@ -139,12 +140,11 @@ const RetrievalMethodConfig: FC<Props> = ({
         <OptionCard
           id={RETRIEVE_METHOD.fullText}
           disabled={disabled}
-          icon={<FullTextSearch className="size-4" />}
+          icon={<span aria-hidden className="i-custom-vender-knowledge-full-text-search size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
           title={t(($) => $['retrieval.full_text_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.full_text_search.description'], { ns: 'dataset' })}
           isActive={value.search_method === RETRIEVE_METHOD.fullText}
-          onClick={onSwitch}
           effectColor={EffectColor.purple}
           showEffectColor
           showChildren={value.search_method === RETRIEVE_METHOD.fullText}
@@ -163,12 +163,11 @@ const RetrievalMethodConfig: FC<Props> = ({
         <OptionCard
           id={RETRIEVE_METHOD.hybrid}
           disabled={disabled}
-          icon={<HybridSearch className="size-4" />}
+          icon={<span aria-hidden className="i-custom-vender-knowledge-hybrid-search size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
           title={t(($) => $['retrieval.hybrid_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.hybrid_search.description'], { ns: 'dataset' })}
           isActive={value.search_method === RETRIEVE_METHOD.hybrid}
-          onClick={onSwitch}
           effectColor={EffectColor.purple}
           showEffectColor
           isRecommended
@@ -184,7 +183,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           />
         </OptionCard>
       )}
-    </div>
+    </RadioGroup>
   )
 }
 export default React.memo(RetrievalMethodConfig)

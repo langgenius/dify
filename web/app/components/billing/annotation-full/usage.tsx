@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { MessageFastPlus } from '../../base/icons/src/vender/line/communication'
 import UsageInfo from '../usage-info'
 import { parseLimit } from '../utils'
 
@@ -23,7 +22,7 @@ const Usage: FC<Props> = ({ className }) => {
   return (
     <UsageInfo
       className={className}
-      Icon={MessageFastPlus}
+      iconClassName={'i-custom-vender-line-communication-message-fast-plus'}
       name={t(($) => $['annotatedResponse.quotaTitle'], { ns: 'billing' })}
       usage={annotationQuota.size}
       total={parseLimit(annotationQuota.limit)}

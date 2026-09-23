@@ -1,9 +1,9 @@
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentContext } from '../context'
 import Empty from './common/empty'
@@ -103,7 +103,11 @@ const SegmentList = ({
               />
               {!isLast && (
                 <div className="w-full px-3">
-                  <Divider type="horizontal" className="my-1 bg-divider-subtle" />
+                  <Separator
+                    decorative
+                    orientation="horizontal"
+                    className="my-1 h-[0.5px] bg-divider-subtle"
+                  />
                 </div>
               )}
             </div>

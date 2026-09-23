@@ -126,7 +126,7 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
       expect(
         screen.getByRole('button', { name: /members\.memberDetails\.assign/i }),
       ).toBeInTheDocument()

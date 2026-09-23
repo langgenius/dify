@@ -5,6 +5,7 @@ import { produce } from 'immer'
 import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { checkKeys } from '@/utils/var'
 
 export const TEXT_MAX_LENGTH = 256
 export const CHECKBOX_DEFAULT_TRUE_VALUE = 'true'
@@ -13,14 +14,26 @@ export const CHECKBOX_DEFAULT_FALSE_VALUE = 'false'
 type ValidateConfigModalPayloadOptions = {
   tempPayload: InputVar
   payload?: InputVar
-  checkVariableName: (value: string, canBeEmpty?: boolean) => boolean
+  maxFileUploadLimit?: number
   t: SelectorTranslate<'appDebug' | 'workflow'>
+}
+
+export type ConfigModalValidationError = {
+  field:
+    | 'variable'
+    | 'label'
+    | 'options'
+    | 'allowed_file_types'
+    | 'allowed_file_extensions'
+    | 'json_schema'
+  message: string
 }
 
 type ValidateConfigModalPayloadResult = {
   payloadToSave?: InputVar
   moreInfo?: MoreInfo
   errorMessage?: string
+  errorField?: ConfigModalValidationError['field']
 }
 
 export const isStringInputType = (type: InputVarType) =>
@@ -78,10 +91,24 @@ export const updatePayloadField = (payload: InputVar, key: string, value: unknow
 
 export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
   return produce(payload, (draft) => {
+    const fileInputTypes: readonly InputVarType[] = [
+      InputVarType.singleFile,
+      InputVarType.multiFiles,
+    ]
+
     draft.type = type
     if (type === InputVarType.select) draft.default = undefined
+    if (isStringInputType(type) && typeof draft.default === 'number')
+      draft.default = String(draft.default)
+    if (type === InputVarType.number && typeof draft.default !== 'number') {
+      const value =
+        typeof draft.default === 'string' && draft.default.trim() !== ''
+          ? Number(draft.default)
+          : Number.NaN
+      draft.default = Number.isFinite(value) ? value : undefined
+    }
 
-    if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
+    if (fileInputTypes.includes(type)) {
       draft.hide = false
       const fileUploadSettingKeys = Object.keys(DEFAULT_FILE_UPLOAD_SETTING) as Array<
         keyof typeof DEFAULT_FILE_UPLOAD_SETTING
@@ -153,14 +180,22 @@ export const buildSelectOptions = ({
 export const validateConfigModalPayload = ({
   tempPayload,
   payload,
-  checkVariableName,
+  maxFileUploadLimit,
   t: rawTranslate,
 }: ValidateConfigModalPayloadOptions): ValidateConfigModalPayloadResult => {
+  const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
+
   const t = getStringSelectorTranslate(rawTranslate)
-  const normalizedTempPayload = [InputVarType.singleFile, InputVarType.multiFiles].includes(
-    tempPayload.type,
-  )
-    ? { ...tempPayload, hide: false }
+  const normalizedTempPayload = fileInputTypes.includes(tempPayload.type)
+    ? {
+        ...tempPayload,
+        hide: false,
+        ...(tempPayload.type === InputVarType.multiFiles && {
+          max_length: Number.isFinite(tempPayload.max_length)
+            ? Math.min(Math.max(tempPayload.max_length!, 1), maxFileUploadLimit ?? Infinity)
+            : 1,
+        }),
+      }
     : tempPayload
   const jsonSchemaValue = tempPayload.json_schema
   const schemaEmpty = isJsonSchemaEmpty(jsonSchemaValue)
@@ -178,10 +213,20 @@ export const validateConfigModalPayload = ({
           payload: { beforeKey: payload?.variable || '', afterKey: normalizedTempPayload.variable },
         }
 
-  if (!checkVariableName(normalizedTempPayload.variable)) return {}
+  const { isValid, errorMessageKey } = checkKeys([normalizedTempPayload.variable])
+  if (!isValid) {
+    return {
+      errorField: 'variable',
+      errorMessage: t(($) => $[`varKeyError.${errorMessageKey}`], {
+        ns: 'appDebug',
+        key: t(($) => $['variableConfig.varName'], { ns: 'appDebug' }),
+      }),
+    }
+  }
 
   if (!normalizedTempPayload.label) {
     return {
+      errorField: 'label',
       errorMessage: t(($) => $['variableConfig.errorMsg.labelNameRequired'], { ns: 'appDebug' }),
     }
   }
@@ -189,6 +234,7 @@ export const validateConfigModalPayload = ({
   if (normalizedTempPayload.type === InputVarType.select) {
     if (!normalizedTempPayload.options?.length) {
       return {
+        errorField: 'options',
         errorMessage: t(($) => $['variableConfig.errorMsg.atLeastOneOption'], { ns: 'appDebug' }),
       }
     }
@@ -203,14 +249,16 @@ export const validateConfigModalPayload = ({
 
     if (hasRepeatedItem) {
       return {
+        errorField: 'options',
         errorMessage: t(($) => $['variableConfig.errorMsg.optionRepeat'], { ns: 'appDebug' }),
       }
     }
   }
 
-  if ([InputVarType.singleFile, InputVarType.multiFiles].includes(normalizedTempPayload.type)) {
+  if (fileInputTypes.includes(normalizedTempPayload.type)) {
     if (!normalizedTempPayload.allowed_file_types?.length) {
       return {
+        errorField: 'allowed_file_types',
         errorMessage: t(($) => $['errorMsg.fieldRequired'], {
           ns: 'workflow',
           field: t(($) => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' }),
@@ -223,6 +271,7 @@ export const validateConfigModalPayload = ({
       !normalizedTempPayload.allowed_file_extensions?.length
     ) {
       return {
+        errorField: 'allowed_file_extensions',
         errorMessage: t(($) => $['errorMsg.fieldRequired'], {
           ns: 'workflow',
           field: t(($) => $['variableConfig.file.custom.name'], { ns: 'appDebug' }),
@@ -240,6 +289,7 @@ export const validateConfigModalPayload = ({
       const schema = JSON.parse(normalizedJsonSchema)
       if (schema?.type !== 'object') {
         return {
+          errorField: 'json_schema',
           errorMessage: t(($) => $['variableConfig.errorMsg.jsonSchemaMustBeObject'], {
             ns: 'appDebug',
           }),
@@ -247,6 +297,7 @@ export const validateConfigModalPayload = ({
       }
     } catch {
       return {
+        errorField: 'json_schema',
         errorMessage: t(($) => $['variableConfig.errorMsg.jsonSchemaInvalid'], { ns: 'appDebug' }),
       }
     }

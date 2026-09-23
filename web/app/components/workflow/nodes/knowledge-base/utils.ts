@@ -12,20 +12,23 @@ export const isHighQualitySearchMethod = (searchMethod: RetrievalSearchMethodEnu
   )
 }
 
-export enum KnowledgeBaseValidationIssueCode {
-  chunkStructureRequired = 'chunk-structure-required',
-  chunksVariableRequired = 'chunks-variable-required',
-  indexMethodRequired = 'index-method-required',
-  embeddingModelNotConfigured = 'embedding-model-not-configured',
-  embeddingModelConfigureRequired = 'embedding-model-configure-required',
-  embeddingModelApiKeyUnavailable = 'embedding-model-api-key-unavailable',
-  embeddingModelCreditsExhausted = 'embedding-model-credits-exhausted',
-  embeddingModelDisabled = 'embedding-model-disabled',
-  embeddingModelIncompatible = 'embedding-model-incompatible',
-  retrievalSettingRequired = 'retrieval-setting-required',
-  rerankingModelRequired = 'reranking-model-required',
-  rerankingModelInvalid = 'reranking-model-invalid',
-}
+export const KnowledgeBaseValidationIssueCode = {
+  chunkStructureRequired: 'chunk-structure-required',
+  chunksVariableRequired: 'chunks-variable-required',
+  indexMethodRequired: 'index-method-required',
+  embeddingModelNotConfigured: 'embedding-model-not-configured',
+  embeddingModelConfigureRequired: 'embedding-model-configure-required',
+  embeddingModelApiKeyUnavailable: 'embedding-model-api-key-unavailable',
+  embeddingModelCreditsExhausted: 'embedding-model-credits-exhausted',
+  embeddingModelDisabled: 'embedding-model-disabled',
+  embeddingModelIncompatible: 'embedding-model-incompatible',
+  retrievalSettingRequired: 'retrieval-setting-required',
+  rerankingModelRequired: 'reranking-model-required',
+  rerankingModelInvalid: 'reranking-model-invalid',
+} as const
+
+export type KnowledgeBaseValidationIssueCode =
+  (typeof KnowledgeBaseValidationIssueCode)[keyof typeof KnowledgeBaseValidationIssueCode]
 
 type KnowledgeBaseValidationIssue = {
   code: KnowledgeBaseValidationIssueCode

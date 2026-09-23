@@ -12,12 +12,12 @@ import {
   FileTreeIcon,
   FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import {
@@ -359,17 +359,16 @@ function AgentBuildNoteBadge() {
 }
 
 function AgentBuildNoteInfotip() {
-  const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
 
   return (
-    <Infotip
-      aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
-      className="size-5 text-text-quaternary hover:text-text-quaternary"
-      iconSize="large"
-      popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
-    >
-      <p className="body-xs-regular text-text-secondary">
+    <Infotip>
+      <InfotipTrigger
+        aria-label={BUILD_NOTE_FILE_NAME}
+        className="size-5 hover:text-text-quaternary"
+        iconSize="large"
+      />
+      <InfotipContent aria-label={BUILD_NOTE_FILE_NAME} className="w-57.5">
         <Trans
           i18nKey={($) => $['agentDetail.configure.files.buildNote.richTooltip']}
           ns="agentV2"
@@ -377,14 +376,14 @@ function AgentBuildNoteInfotip() {
             docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
           }}
         />
-      </p>
+      </InfotipContent>
     </Infotip>
   )
 }
 
 export function AgentFiles() {
   const { t } = useTranslation('agentV2')
-  const filesTip = t(($) => $['agentDetail.configure.files.tip'])
+
   const filesTreeId = 'agent-configure-files-tree'
   const readOnly = useAgentOrchestrateReadOnly()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
@@ -485,7 +484,6 @@ export function AgentFiles() {
         labelId="agent-configure-files-label"
         buildDraftChangeSection="files"
         tip={<AgentConfigureTipContent type="files" />}
-        tipAriaLabel={filesTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="pb-4"
         actions={

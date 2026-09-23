@@ -4,11 +4,11 @@ import type { BlockEnum, OnSelectBlock } from '../types'
 import type { ListRef } from './marketplace-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -31,13 +31,13 @@ const DEFAULT_TAGS: string[] = []
 
 const SectionDivider = () => (
   <div className="px-4 py-1" aria-hidden>
-    <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
+    <Separator decorative orientation="horizontal" className="my-0 bg-divider-subtle" />
   </div>
 )
 
 const MarketplaceFooterDivider = () => (
   <div className="flex h-2 w-8 items-center" aria-hidden>
-    <Divider type="horizontal" className="my-0 h-px w-8 bg-divider-subtle" />
+    <Separator decorative orientation="horizontal" className="my-0 w-8 bg-divider-subtle" />
   </div>
 )
 

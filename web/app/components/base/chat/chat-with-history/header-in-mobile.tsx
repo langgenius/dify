@@ -8,6 +8,16 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogClose,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+  DialogViewport,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -72,91 +82,109 @@ const HeaderInMobile = () => {
     },
     [showRename, handleRenameConversation, handleCancelRename],
   )
-  const [showSidebar, setShowSidebar] = useState(false)
   const [showChatSettings, setShowChatSettings] = useState(false)
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
-        <IconButton
-          aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
-          size="lg"
-          className="shrink-0"
-          onClick={() => setShowSidebar(true)}
-        >
-          <div aria-hidden="true" className="i-ri-menu-line h-4.5 w-4.5" />
-        </IconButton>
-        <div className="flex grow items-center justify-center">
-          {!currentConversationId && (
-            <>
-              <AppIcon
-                className="mr-2"
-                size="tiny"
-                icon={appData?.site.icon}
-                iconType={appData?.site.icon_type}
-                imageUrl={appData?.site.icon_url}
-                background={appData?.site.icon_background}
+      <Dialog>
+        <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
+          <DialogTrigger
+            render={
+              <IconButton
+                aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
+                size="lg"
+                className="shrink-0"
+              >
+                <div aria-hidden="true" className="i-ri-menu-line h-4.5 w-4.5" />
+              </IconButton>
+            }
+          />
+          <div className="flex grow items-center justify-center">
+            {!currentConversationId && (
+              <>
+                <AppIcon
+                  className="mr-2"
+                  size="tiny"
+                  icon={appData?.site.icon}
+                  iconType={appData?.site.icon_type}
+                  imageUrl={appData?.site.icon_url}
+                  background={appData?.site.icon_background}
+                />
+                <div className="truncate system-md-semibold text-text-secondary">
+                  {appData?.site.title}
+                </div>
+              </>
+            )}
+            {currentConversationId && (
+              <Operation
+                title={currentConversationItem?.name || ''}
+                isPinned={!!isPin}
+                togglePin={() => handleOperate(isPin ? 'unpin' : 'pin')}
+                isShowDelete
+                isShowRenameConversation
+                onRenameConversation={() => handleOperate('rename')}
+                onDelete={() => handleOperate('delete')}
               />
-              <div className="truncate system-md-semibold text-text-secondary">
-                {appData?.site.title}
-              </div>
-            </>
-          )}
-          {currentConversationId && (
-            <Operation
-              title={currentConversationItem?.name || ''}
-              isPinned={!!isPin}
-              togglePin={() => handleOperate(isPin ? 'unpin' : 'pin')}
-              isShowDelete
-              isShowRenameConversation
-              onRenameConversation={() => handleOperate('rename')}
-              onDelete={() => handleOperate('delete')}
-            />
-          )}
-        </div>
-        <MobileOperationDropdown
-          handleResetChat={handleNewConversation}
-          handleViewChatSettings={() => setShowChatSettings(true)}
-          hideViewChatSettings={inputsForms.length < 1}
-        />
-      </div>
-      {showSidebar && (
-        <div
-          className="fixed inset-0 z-50 flex bg-background-overlay p-1"
-          onClick={() => setShowSidebar(false)}
-          data-testid="mobile-sidebar-overlay"
-        >
-          <div
-            className="flex h-full w-[calc(100vw-40px)] rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-xs"
-            onClick={(e) => e.stopPropagation()}
-            data-testid="sidebar-content"
-          >
-            <Sidebar />
+            )}
           </div>
+          <MobileOperationDropdown
+            handleResetChat={handleNewConversation}
+            handleViewChatSettings={() => setShowChatSettings(true)}
+            hideViewChatSettings={inputsForms.length < 1}
+          />
         </div>
-      )}
-      {showChatSettings && (
-        <div
-          className="fixed inset-0 z-50 flex justify-end bg-background-overlay p-1"
-          onClick={() => setShowChatSettings(false)}
-          data-testid="mobile-chat-settings-overlay"
-        >
-          <div
-            className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-xs"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
-              <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
-              <div className="grow system-xl-semibold text-text-secondary">
-                {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
+        <DialogPortal>
+          <DialogBackdrop />
+          <DialogViewport className="flex p-1">
+            <DialogPopup className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl backdrop-blur-xs">
+              <DialogTitle className="sr-only">
+                {appData?.site.title || t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
+              </DialogTitle>
+              <DialogClose
+                render={
+                  <IconButton
+                    className="m-2 self-end"
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  >
+                    <span aria-hidden="true" className="i-ri-close-line size-4" />
+                  </IconButton>
+                }
+              />
+              <div className="flex min-h-0 flex-1">
+                <Sidebar />
               </div>
-            </div>
-            <div className="p-4">
-              <InputsFormContent />
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogPopup>
+          </DialogViewport>
+        </DialogPortal>
+      </Dialog>
+      <Dialog open={showChatSettings} onOpenChange={setShowChatSettings}>
+        <DialogPortal>
+          <DialogBackdrop />
+          <DialogViewport className="flex justify-end p-1">
+            <DialogPopup className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl backdrop-blur-xs">
+              <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
+                <div
+                  aria-hidden="true"
+                  className="i-custom-public-other-message-3-fill size-6 shrink-0"
+                />
+                <DialogTitle className="grow system-xl-semibold text-text-secondary">
+                  {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
+                </DialogTitle>
+                <DialogClose
+                  render={
+                    <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
+                      <span aria-hidden="true" className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
+                />
+              </div>
+              <div className="overflow-y-auto p-4">
+                <InputsFormContent />
+              </div>
+            </DialogPopup>
+          </DialogViewport>
+        </DialogPortal>
+      </Dialog>
       <AlertDialog open={!!showConfirm} onOpenChange={(open) => !open && handleCancelConfirm()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">

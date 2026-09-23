@@ -194,6 +194,32 @@ def test_openapi_json_endpoints_render():
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
 
+def test_agent_tts_routes_document_voice_queries_and_binary_audio():
+    from controllers.console import bp as console_bp
+    from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+
+    voices = payload["paths"]["/agent/{agent_id}/text-to-audio/voices"]["get"]
+    language = _parameters_by_name(voices)["language"]
+    assert language["in"] == "query"
+    assert language["required"] is True
+    assert "requestBody" not in voices
+
+    preview = payload["paths"]["/agent/{agent_id}/text-to-audio"]["post"]
+    required_fields = _json_body_schema(payload, preview)["required"]
+    assert isinstance(required_fields, list)
+    assert "text" in required_fields
+    assert _response_content_types(preview) == set(SUPPORTED_TTS_AUDIO_MIME_TYPES)
+    for media in preview["responses"]["200"]["content"].values():
+        assert media["schema"] == {"type": "string", "format": "binary"}
+    for status in ("400", "403", "404"):
+        assert _response_content_types(preview, status) == {"application/json"}
+
+
 def test_service_document_file_routes_document_multipart_form_data():
     from controllers.service_api import bp as service_api_bp
 
@@ -298,9 +324,10 @@ def test_service_openapi_documents_decorator_user_contracts():
         assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert "user" in schema["required"]
 
-    for path in ("/workflows/run", "/workflows/{workflow_id}/run"):
+    for path in ("/chat-messages", "/workflows/run", "/workflows/{workflow_id}/run"):
         rate_limit_description = paths[path]["post"]["responses"]["429"]["description"]
-        assert "upstream model provider rate limit" in rate_limit_description
+        assert "upstream model provider rate limit" not in rate_limit_description
+        assert "too_many_requests" in rate_limit_description
         assert "Dify Cloud workflow execution quota" in rate_limit_description
 
     task_stop_user_descriptions = {
@@ -836,6 +863,53 @@ def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path: P
             "title": "Plugin Ids",
             "type": "array",
         }
+    }
+
+
+def test_console_datasource_catalog_exports_domain_response_schema(tmp_path: Path) -> None:
+    from dev.generate_swagger_specs import generate_specs
+
+    written_paths = generate_specs(tmp_path)
+    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+    operation = payload["paths"]["/rag/pipelines/datasource-plugins"]["get"]
+
+    assert operation.get("parameters", []) == []
+    assert "requestBody" not in operation
+    assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RagPipelineDatasourceListResponse"
+    }
+    schemas = payload["components"]["schemas"]
+    assert schemas["RagPipelineDatasourceListResponse"]["type"] == "array"
+    assert schemas["RagPipelineDatasourceListResponse"]["items"] == {
+        "$ref": "#/components/schemas/RagPipelineDatasourceProviderResponse"
+    }
+    provider = schemas["RagPipelineDatasourceProviderResponse"]
+    assert set(provider["properties"]) == {
+        "provider",
+        "plugin_unique_identifier",
+        "plugin_id",
+        "is_authorized",
+        "declaration",
+    }
+    assert provider["properties"]["declaration"] == {"$ref": "#/components/schemas/DatasourceProviderEntityWithPlugin"}
+    assert set(schemas["DatasourceParameterType"]["enum"]) == {
+        "string",
+        "number",
+        "boolean",
+        "select",
+        "secret-input",
+        "file",
+        "files",
+        "system-files",
+    }
+    assert schemas["DatasourceEntity"]["properties"]["output_schema"]["anyOf"] == [
+        {"additionalProperties": True, "type": "object"},
+        {"type": "null"},
+    ]
+    recommended = payload["paths"]["/rag/pipelines/recommended-plugins"]["get"]
+    assert recommended["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RagPipelineOpaqueResponse"
     }
 
 

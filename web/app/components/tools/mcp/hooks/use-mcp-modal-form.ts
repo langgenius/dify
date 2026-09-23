@@ -2,11 +2,11 @@
 import type { HeaderItem } from '../headers-input'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { getDomain } from 'tldts'
 import { v4 as uuid } from 'uuid'
 import { MCPAuthMethod } from '@/app/components/tools/types'
+import { toast } from '@/app/notifications'
 import { uploadRemoteFileInfo } from '@/service/common'
 
 const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
@@ -102,7 +102,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   // Auth state
-  const [authMethod, setAuthMethod] = useState(MCPAuthMethod.authentication)
+  const [authMethod, setAuthMethod] = useState<MCPAuthMethod>(MCPAuthMethod.authentication)
   const [isDynamicRegistration, setIsDynamicRegistration] = useState(() =>
     isCreate ? true : (data?.is_dynamic_registration ?? true),
   )
