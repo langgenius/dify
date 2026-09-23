@@ -9,7 +9,7 @@ import {
   updatedAgentSoulConfig,
 } from '../../agent-v2/support/agent-soul.ts'
 import {
-  createConfiguredTestAgent,
+  createTestAgent,
   getAgentConfigurePath,
   publishAgentWithPublishableDraft,
   saveAgentComposerDraft,
@@ -22,10 +22,13 @@ Given('an Agent v2 has original and updated published prompts', async function (
     throw new Error('Create published Agent v2 versions after stable model fixture setup.')
 
   const client = this.getConsoleClient()
-  const agent = await createConfiguredTestAgent(client, {
-    agentSoul: createAgentSoulConfigWithModel(normalAgentSoulConfig, stableModel),
-  })
+  const agent = await createTestAgent(client)
   this.createdAgentIds.push(agent.id)
+  await saveAgentComposerDraft(
+    client,
+    agent.id,
+    createAgentSoulConfigWithModel(normalAgentSoulConfig, stableModel),
+  )
   await publishAgentWithPublishableDraft(client, agent.id, 'E2E original prompt')
   await saveAgentComposerDraft(
     client,
@@ -61,7 +64,7 @@ Then('the Agent v2 configuration should be saved automatically', async function 
   await waitForAgentConfigureAutosaved(this.getPage())
 })
 
-Then('the Agent v2 publication should succeed', async function (this: DifyWorld) {
+Then('the Agent v2 first publication should succeed', async function (this: DifyWorld) {
   const page = this.getPage()
 
   await expect(
