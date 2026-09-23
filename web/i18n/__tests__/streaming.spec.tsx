@@ -22,10 +22,7 @@ describe('on-demand translations during SSR', () => {
     const render = async (locale: 'en-US' | 'zh-Hans') => {
       const errors: unknown[] = []
       const stream = await renderToReadableStream(
-        <I18nClientProvider
-          locale={locale}
-          resource={{ 'en-US': { common: {} }, [locale]: { common: {} } }}
-        >
+        <I18nClientProvider locale={locale} resource={{}}>
           <Suspense fallback={<span>Loading</span>}>
             <SignIn />
           </Suspense>
@@ -59,4 +56,22 @@ describe('on-demand translations during SSR', () => {
     expect(nextEnglish).not.toContain('登录')
     expect(chinese).toContain('<h1>登录</h1>')
   })
+})
+
+function Shell() {
+  const { t } = useTranslation(['common'])
+  return <header>{t(($) => $['operation.save'])}</header>
+}
+
+it('renders the shell from empty resources without a surrounding Suspense boundary', async () => {
+  mocks.loadResource.mockReset()
+  mocks.loadResource.mockResolvedValue({ default: { 'operation.save': 'Save' } })
+  const stream = await renderToReadableStream(
+    <I18nClientProvider locale="en-US" resource={{}}>
+      <Shell />
+    </I18nClientProvider>,
+  )
+  await stream.allReady
+  expect(await new Response(stream).text()).toContain('<header>Save</header>')
+  expect(mocks.loadResource.mock.calls).toEqual([['en-US', 'common']])
 })

@@ -79,8 +79,8 @@ Use the `Translate i18n Files with Claude Code` workflow dispatch for a manual s
 ## On-demand resources
 
 The App Router client Provider uses `next-i18next/client` with `ssrBackend` and
-Suspense enabled. The root server Provider serializes only `common` for the
-requested locale and English fallback. Components keep declaring their namespaces
+Suspense enabled. The root server Provider starts with an empty resource store
+and no initial namespaces, including no `common` preload. Components keep declaring their namespaces
 through `react-i18next`; a missing namespace loads through `loadI18nResource` during
 both streaming SSR and browser rendering. Optional features load their translations
 when rendered, without a separate route namespace map or root readiness gate.
@@ -92,8 +92,8 @@ must not reset those overrides. The namespace options are created per Provider
 because i18next mutates its requested namespace list.
 
 Feature-owned Suspense boundaries can isolate translation loading along with the
-feature's other loading work. Initial shell resources avoid suspending common
-navigation, bootstrap errors and notifications. During SSR, a Provider-local
+feature's other loading work. Shell consumers load `common` on demand during SSR;
+the initial shell may wait for that dictionary. During SSR, a Provider-local
 collector reads react-i18next's reported namespaces and streams newly loaded
 resources through `useServerInsertedHTML`, including the active fallback language.
 Inline updates use the request CSP nonce and escape script-sensitive text. Each
@@ -152,3 +152,7 @@ confirmed English and Chinese `login` resources in the HTML stream, no repeated
 login translation chunk requests, and no browser hydration errors. Production
 Vinext validation remains pending; its build was stopped to limit local resource
 usage. The complete authenticated Agent creation journey must still pass CI.
+
+Empty-store coverage also verifies shell rendering without an enclosing Suspense
+boundary, concurrent locale/fallback rendering, and hydration of both `common`
+and feature namespaces without duplicate backend requests.

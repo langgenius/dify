@@ -52,12 +52,11 @@ it('hydrates the menu from automatically collected SSR resources before the firs
   mocks.callbacks = []
   delete window.__difyI18nResources
   const app = { 'newApp.startFromBlank': 'Create from Blank' }
-  mocks.load.mockResolvedValue({ default: app })
+  mocks.load.mockImplementation(async (_locale: string, namespace: string) => ({
+    default: namespace === 'common' ? { 'operation.create': 'Create' } : app,
+  }))
   const view = (
-    <I18nClientProvider
-      locale="en-US"
-      resource={{ 'en-US': { common: { 'operation.create': 'Create' } } }}
-    >
+    <I18nClientProvider locale="en-US" resource={{}}>
       <Suspense fallback={<span>Loading</span>}>
         <FeaturePage />
       </Suspense>
@@ -71,7 +70,7 @@ it('hydrates the menu from automatically collected SSR resources before the firs
   )
   const insertedHTML = await new Response(inserted).text()
   expect(insertedHTML).toContain('Create from Blank')
-  expect(insertedHTML).not.toContain('operation.create')
+  expect(insertedHTML).toContain('operation.create')
   const container = document.createElement('div')
   container.innerHTML = html
   document.body.append(container)

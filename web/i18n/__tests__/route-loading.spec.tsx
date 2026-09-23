@@ -62,13 +62,17 @@ describe('on-demand translation loading', () => {
     expect(mocks.loadResource).not.toHaveBeenCalled()
   })
 
-  it('preloads only shell resources with English fallback in the server response', async () => {
+  it('starts the root provider without preloading and loads common only when rendered', async () => {
     const page = await I18nServerProvider({
-      children: <Label />,
+      children: (
+        <Suspense fallback={<span>Loading</span>}>
+          <Label />
+        </Suspense>
+      ),
     })
-    const html = renderToString(page)
-    expect(html).toContain('保存')
-    expect(html).toContain('Cancel')
+    expect(mocks.loadResource).not.toHaveBeenCalled()
+    render(page)
+    expect(await screen.findByText('保存 / Cancel')).toBeVisible()
     expect(mocks.loadResource.mock.calls.map(([lng, ns]) => `${lng}/${ns}`).sort()).toEqual([
       'en-US/common',
       'zh-Hans/common',

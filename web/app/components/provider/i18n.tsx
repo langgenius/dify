@@ -31,7 +31,7 @@ export function I18nClientProvider({
     locale,
     resource: mergeResources(resource, getStreamedResources(streamId)),
     options: {
-      ...getInitOptions(['common']),
+      ...getInitOptions([]),
       fallbackNS: false as const,
       react: { useSuspense: true },
     },
