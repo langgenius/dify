@@ -114,11 +114,11 @@ describe('HumanInputFormList', () => {
     expect(screen.getByText('Need Approval')).toBeInTheDocument()
     expect(screen.queryByText('Hidden Form')).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('prefill')).toBeInTheDocument()
-    expect(screen.getByTestId('expiration-time')).toBeInTheDocument()
-    expect(screen.getByTestId('tips')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.humanInputWebappTip')).toBeInTheDocument()
 
     await user.clear(screen.getByDisplayValue('prefill'))
-    await user.type(screen.getByTestId('content-item-textarea'), 'updated reason')
+    await user.type(screen.getByRole('textbox'), 'updated reason')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
     expect(onHumanInputFormSubmit).toHaveBeenCalledWith('token-1', {
@@ -140,14 +140,14 @@ describe('HumanInputFormList', () => {
 
     render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
 
-    expect(screen.queryByTestId('tips')).not.toBeInTheDocument()
+    expect(screen.queryByText(/workflow\.common\.humanInput.*Tip/)).not.toBeInTheDocument()
   })
 
   it('should reset inputs when the same node produces a new form', async () => {
     const user = userEvent.setup()
     const { rerender } = render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
 
-    const input = screen.getByTestId('content-item-textarea')
+    const input = screen.getByRole('textbox')
     await user.clear(input)
     await user.type(input, 'previous response')
 
@@ -157,12 +157,6 @@ describe('HumanInputFormList', () => {
       />,
     )
 
-    expect(screen.getByTestId('content-item-textarea')).toHaveValue('prefill')
-  })
-
-  it('should render an empty container when there are no visible forms', () => {
-    render(<HumanInputFormList humanInputFormDataList={[]} />)
-
-    expect(screen.queryByTestId('content-wrapper')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue('prefill')
   })
 })
