@@ -464,7 +464,7 @@ def test_more_like_this_disabled_config_fails_eagerly_before_history_lookup(
     assert harness.committed_sessions == []
 
 
-@pytest.mark.parametrize("missing_config_id", [None, str(uuid4())])
+@pytest.mark.parametrize("missing_config_id", [None, "00000000-0000-0000-0000-000000000001"])
 def test_more_like_this_requires_historical_config_even_when_current_config_is_enabled(
     harness: _RuntimeHarness, sqlite_session_factory: sessionmaker[Session], missing_config_id: str | None
 ) -> None:
