@@ -3,7 +3,7 @@
 import io
 import json
 import logging
-from collections.abc import Iterator
+from collections.abc import Buffer, Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Literal, Never, override
@@ -361,7 +361,7 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     remaining = iter((initial, execution))
 
     @contextmanager
-    def begin() -> Iterator[MagicMock]:
+    def begin() -> Generator[MagicMock]:
         session = next(remaining)
         opened.append(session)
         active_sessions.append(session)
@@ -390,10 +390,9 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
             return super().read(size)
 
         @override
-        def readinto(self, buffer) -> int:
-            data = self.read(len(buffer))
-            buffer[: len(data)] = data
-            return len(data)
+        def readinto(self, buffer: Buffer) -> int:
+            read_sessions.append(bool(active_sessions))
+            return super().readinto(buffer)
 
     payload = b'{"jsonrpc":"2.0","method":"ping","id":900719925474099312345678901234567890}'
     response = client.post(

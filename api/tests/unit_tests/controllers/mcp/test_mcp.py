@@ -13,6 +13,7 @@ import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
 from sqlalchemy import inspect
+from sqlalchemy.orm import Session
 
 import controllers.mcp.mcp as module
 from models.engine import db
@@ -551,21 +552,31 @@ def _tools_call_payload() -> dict[str, object]:
     }
 
 
-def test_execution_reloads_attached_orm_objects_after_identity_preflight(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_execution_reloads_attached_orm_objects_after_identity_preflight(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     app_model = _app(module.AppMode.CHAT, with_model_config=True)
     server = _server(module.AppMCPServerStatus.ACTIVE)
     db.session.add_all([app_model, server])
     db.session.commit()
     api = module.MCPAppApi()
     lookup = api._get_mcp_server_and_app
-    snapshots = []
+    snapshots: list[tuple[module.AppMCPServer, module.App]] = []
 
-    def observe_lookup(code, session):
+    def observe_lookup(code: str, session: Session) -> tuple[module.AppMCPServer, module.App]:
         pair = lookup(code, session)
         snapshots.append(pair)
         return pair
 
-    def process(_mcp_request, _request_id, fresh_app, fresh_server, _form, session, _protocol):
+    def process(
+        _mcp_request: module.mcp_types.ClientRequest | module.mcp_types.ClientNotification,
+        _request_id: int | str | None,
+        fresh_app: module.App,
+        fresh_server: module.AppMCPServer,
+        _form: list[module.VariableEntity],
+        session: Session,
+        _protocol: str,
+    ) -> Response:
         old_server, old_app = snapshots[0]
         assert inspect(old_server).detached
         assert inspect(old_app).detached
@@ -585,7 +596,7 @@ def test_execution_reloads_attached_orm_objects_after_identity_preflight(app: Fl
 
 
 @pytest.mark.usefixtures("app")
-def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app():
+def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app() -> None:
     app_model = _app(module.AppMode.CHAT)
     server = _server(module.AppMCPServerStatus.ACTIVE)
     server.tenant_id = str(uuid4())
