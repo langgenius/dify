@@ -32,7 +32,6 @@ ignore_imports =
     core.app.apps.advanced_chat.app_generator -> services.conversation_service
     core.app.apps.advanced_chat.app_generator -> services.errors.conversation
     core.app.apps.advanced_chat.app_generator -> services.workflow_draft_variable_service
-    core.app.apps.advanced_chat.app_runner -> services.conversation_variable_updater
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
     core.app.apps.agent_app.app_generator -> services.agent.workspace_service
     core.app.apps.agent_app.app_generator -> services.conversation_service
@@ -62,7 +61,6 @@ ignore_imports =
     core.app.llm.quota -> services.credit_pool_service
     core.app.task_pipeline.message_cycle_manager -> services.account_service
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
-    core.app.workflow.layers.persistence -> services.workflow.inspector_events
     core.datasource.datasource_manager -> services.datasource_provider_service
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
