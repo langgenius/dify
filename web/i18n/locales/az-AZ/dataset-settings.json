@@ -1,5 +1,6 @@
 {
   "desc": "Burada bu bilik bazasının xüsusiyyətlərini və məlumat axtarışı parametrlərini dəyişə bilərsiniz.",
+  "form.changeIcon": "Bilik ikonasını dəyişdir",
   "form.chunkStructure.description": " (hissə quruluşu haqqında).",
   "form.chunkStructure.learnMore": "Ətraflı öyrən",
   "form.chunkStructure.title": "Hissə quruluşu",
