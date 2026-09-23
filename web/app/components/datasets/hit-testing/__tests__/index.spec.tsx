@@ -4,13 +4,20 @@ import type { ReactNode } from 'react'
 import type { DataSet, HitTesting, HitTestingRecord, HitTestingResponse } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
+
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'datasetHitTesting.hit.title': '{{num}} Retrieved Chunks',
+  })
+})
 
 vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
   default: ({
@@ -443,6 +450,120 @@ describe('HitTestingPage', () => {
 
     expect(screen.getByText(/noRecentTip/)).toBeInTheDocument()
     expect(screen.getByText(/hit.emptyTip/)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(screen.getByRole('heading', { name: /records/, level: 2 })).toBeInTheDocument()
+  })
+
+  it.each(['vendor', 'external'])(
+    'announces loading and failure in the same status region for %s retrieval',
+    async (provider) => {
+      mockDataset.provider = provider
+      const { useHitTesting, useExternalKnowledgeBaseHitTesting } =
+        await import('@/service/knowledge/use-hit-testing')
+      const setRetrievalState = (state: { isPending: boolean; isError: boolean }) => {
+        if (provider === 'external') {
+          vi.mocked(useExternalKnowledgeBaseHitTesting).mockReturnValue({
+            mutateAsync: mockExternalHitTestingMutateAsync,
+            ...state,
+          } as unknown as ReturnType<typeof useExternalKnowledgeBaseHitTesting>)
+        } else {
+          vi.mocked(useHitTesting).mockReturnValue({
+            mutateAsync: mockHitTestingMutateAsync,
+            ...state,
+          } as unknown as ReturnType<typeof useHitTesting>)
+        }
+      }
+      const { rerender } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+      const status = screen.getByRole('status')
+
+      setRetrievalState({ isPending: true, isError: false })
+      rerender(<HitTestingPage datasetId="dataset-1" />)
+
+      expect(status).toHaveTextContent('common.loading')
+      expect(screen.getByRole('status')).toBe(status)
+
+      setRetrievalState({ isPending: false, isError: true })
+      rerender(<HitTestingPage datasetId="dataset-1" />)
+
+      expect(screen.getByRole('status')).toBe(status)
+      expect(status).toHaveTextContent('common.api.actionFailed')
+      expect(status).not.toHaveTextContent('common.loading')
+    },
+  )
+
+  it('removes stale mobile result counts while pending or failed and restores the latest successful count', async () => {
+    const user = userEvent.setup()
+    const { default: useBreakpoints } = await import('@/hooks/use-breakpoints')
+    vi.mocked(useBreakpoints).mockReturnValue('mobile' as ReturnType<typeof useBreakpoints>)
+    const { useHitTesting } = await import('@/service/knowledge/use-hit-testing')
+    const response: HitTestingResponse = {
+      query: { content: 'Test query', tsne_position: { x: 0, y: 0 } },
+      records: [createMockHitTesting()],
+    }
+    mockHitTestingMutateAsync.mockImplementationOnce(async (_params, options) => {
+      options?.onSuccess?.(response)
+      return response
+    })
+    const { rerender } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    await user.type(screen.getByRole('textbox'), 'Test query')
+    await user.click(screen.getByRole('button', { name: /input.testing/ }))
+    expect(await screen.findByRole('dialog', { name: '1 Retrieved Chunks' })).toBeInTheDocument()
+
+    vi.mocked(useHitTesting).mockReturnValue({
+      mutateAsync: mockHitTestingMutateAsync,
+      isPending: true,
+      isError: false,
+    } as unknown as ReturnType<typeof useHitTesting>)
+    rerender(<HitTestingPage datasetId="dataset-1" />)
+
+    const pendingDialog = screen.getByRole('dialog', { name: 'datasetHitTesting.title' })
+    expect(within(pendingDialog).queryByText('1 Retrieved Chunks')).not.toBeInTheDocument()
+
+    vi.mocked(useHitTesting).mockReturnValue({
+      mutateAsync: mockHitTestingMutateAsync,
+      isPending: false,
+      isError: true,
+    } as unknown as ReturnType<typeof useHitTesting>)
+    rerender(<HitTestingPage datasetId="dataset-1" />)
+
+    const failedDialog = screen.getByRole('dialog', { name: 'datasetHitTesting.title' })
+    expect(within(failedDialog).getByText('common.api.actionFailed')).toBeInTheDocument()
+    expect(within(failedDialog).queryByText('1 Retrieved Chunks')).not.toBeInTheDocument()
+    expect(within(failedDialog).queryByText('test-document.pdf')).not.toBeInTheDocument()
+
+    await user.click(within(failedDialog).getByRole('button', { name: /operation.close/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    vi.mocked(useHitTesting).mockReturnValue({
+      mutateAsync: mockHitTestingMutateAsync,
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useHitTesting>)
+    mockHitTestingMutateAsync.mockImplementationOnce(async (_params, options) => {
+      const emptyResponse = { ...response, records: [] }
+      options?.onSuccess?.(emptyResponse)
+      return emptyResponse
+    })
+    rerender(<HitTestingPage datasetId="dataset-1" />)
+    await user.click(screen.getByRole('button', { name: /input.testing/ }))
+    expect(await screen.findByRole('dialog', { name: '0 Retrieved Chunks' })).toBeInTheDocument()
+  })
+
+  it('announces zero retrieved chunks after an empty response', async () => {
+    const user = userEvent.setup()
+    const response: HitTestingResponse = {
+      query: { content: 'No match', tsne_position: { x: 0, y: 0 } },
+      records: [],
+    }
+    mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
+      options?.onSuccess?.(response)
+      return response
+    })
+    renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    const status = screen.getByRole('status')
+    await user.type(screen.getByRole('textbox'), 'No match')
+    await user.click(screen.getByRole('button', { name: /input.testing/ }))
+
+    expect(status).toHaveTextContent('0 Retrieved Chunks')
   })
 
   it('loads a history record into the query input when selected', async () => {
@@ -510,6 +631,9 @@ describe('HitTestingPage', () => {
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByText(/semantic_search/))
+    expect(
+      await screen.findByRole('dialog', { name: /form.retrievalSetting.title/ }),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Use Top K 8' }))
     await user.click(screen.getByRole('button', { name: /operation.save/ }))
     await user.type(screen.getByRole('textbox'), 'Test query')
@@ -530,6 +654,10 @@ describe('HitTestingPage', () => {
     })
     expect(mockRecordsRefetch).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('test-document.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('1 Retrieved Chunks')
+    expect(
+      screen.getByRole('heading', { name: '1 Retrieved Chunks', level: 2 }),
+    ).toBeInTheDocument()
   })
 
   it('submits external retrieval settings and renders external results', async () => {
