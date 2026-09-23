@@ -52,3 +52,14 @@ def test_sendgrid_timeout_reraise(mock_client_cls: MagicMock):
     sg = SendGridClient(sendgrid_api_key="key", _from="noreply@example.com")
     with pytest.raises(TimeoutError):
         sg.send(_mail())
+
+
+@patch("libs.sendgrid.sendgrid.SendGridAPIClient")
+def test_sensitive_send_has_timeout_and_does_not_log_provider_error(mock_client_cls: MagicMock, caplog):
+    client = mock_client_cls.return_value
+    client.send.side_effect = UnauthorizedError(401, "otp-secret", b"provider-secret", {})
+    with pytest.raises(UnauthorizedError):
+        SendGridClient(sendgrid_api_key="key", _from="noreply@example.com").send(_mail(), sensitive=True)
+    assert client.client.timeout == 30
+    assert "otp-secret" not in caplog.text
+    assert "provider-secret" not in caplog.text

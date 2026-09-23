@@ -134,3 +134,15 @@ Redis 不可用时发码和验证返回服务不可用，不降级到本地状�
 1. 增加 Redis OTP 存储、部署级邮件模板和 access-request 实现，不新增 challenge 数据库 migration。
 2. 接入 OTP 验证失败审计，提供成功提交事务使用的审计写入能力；后续 Submission change 接入验证、成功审计和提交后清理。本 change 不把尚未接通的 public submit 声称为可用。
 3. 停用入口即可回滚 OTP 功能，Redis 临时数据自然过期。
+
+## Submission 接入契约
+
+`build_email_otp_service()` 构造请求级服务。后续 Submission 在基本请求解析后调用 `verify(form_token, challenge_token=..., otp_code=..., ip_address=...)`，取得仅限本次请求的 `VerifiedEmail`，再校验表单数据。OTP 验证失败由服务单独持久化失败审计；正确验证码不立即消费，也不写成功审计。
+
+Submission 在自己的事务内重新检查当前收件人授权、Delivery 邮箱和 Form／workflow 状态，调用 `FormRepository.submit_form`。只有其返回已接受的 Form 后，才调用 `verified.add_submission_audit(session, ip_address=...)`，并将表单提交与成功审计一起 commit。不要将早先的 `VerifiedEmail` 当成免除事务内授权复核的依据。字段校验失败或事务回滚不调用清理。commit 成功后调用 `cleanup(verified.delivery.id, challenge_token)`；清理失败仅记录不含秘密的警告，保留已提交结果。
+
+邮件通过 `ext_mail.mail.send(..., sensitive=True)` 发送固定内容。SMTP 沿用十秒 socket 超时，Resend 沿用 SDK 三十秒请求超时，SendGrid 为敏感邮件显式设置三十秒请求超时。敏感邮件禁止适配器输出 provider 响应和异常正文。本流程不增加邮件重试。
+
+验证记录：针对性单元测试使用真实 SQLite Repository 验证授权、失败审计、成功审计共同提交／回滚和并发提交；Redis 原子脚本验收位于 `api/tests/test_containers_integration_tests/human_input_v2/test_email_otp_redis.py`，仅在 CI 运行。本地未启动真实 Redis／PostgreSQL 集成服务。
+
+部署依赖：Delivery 和审计表的数据库迁移由 Runtime change 拥有；独立 worktree 未复制原目录中尚未提交的迁移。部署前必须集成该迁移，本 change 不重复新增这些表的 migration。

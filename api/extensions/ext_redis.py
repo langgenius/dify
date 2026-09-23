@@ -214,6 +214,11 @@ class RedisClientWrapper:
     def pubsub(self) -> PubSub:
         return self._require_client().pubsub()
 
+    def eval(self, script: str, numkeys: int, *args: str | int) -> Any:
+        # Lua callers supply physical names, matching the historically delegated API.
+        # Redis script responses are dynamically shaped at this SDK boundary.
+        return self._require_client().execute_command("EVAL", script, numkeys, *args)
+
     def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Any:
         return self._require_client().pipeline(transaction=transaction, shard_hint=shard_hint)
 

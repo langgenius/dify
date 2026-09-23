@@ -8,6 +8,7 @@ version when the service implementation is added.
 from __future__ import annotations
 
 from http import HTTPStatus
+from typing import override
 
 from flask import abort
 from flask_restx import Resource
@@ -21,6 +22,32 @@ from controllers.common.human_input_v2_contracts import (
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
+from libs.exception import BaseHTTPException
+from services.human_input_v2.email_otp_composition import build_email_otp_service
+from services.human_input_v2.email_otp_service import EmailOtpError, OtpFailure
+
+
+class _EmailOtpHTTPError(BaseHTTPException):
+    def __init__(self, error: EmailOtpError) -> None:
+        self.error_code = error.reason.value
+        self.code = {
+            OtpFailure.NOT_FOUND: 404,
+            OtpFailure.EXPIRED: 412,
+            OtpFailure.SUBMITTED: 412,
+            OtpFailure.RATE_LIMIT: 429,
+            OtpFailure.DELIVERY: 503,
+            OtpFailure.UNAVAILABLE: 503,
+        }.get(error.reason, 400)
+        super().__init__(description="Unable to complete email verification.")
+        self._retry_after = error.retry_after
+
+    @override
+    def get_headers(self, environ=None, scope=None):
+        headers = super().get_headers(environ, scope)
+        if self._retry_after is not None:
+            headers.append(("Retry-After", str(self._retry_after)))
+        return headers
+
 
 register_schema_models(web_ns, HumanInputV2FormSubmitRequest)
 register_response_schema_models(
@@ -64,4 +91,12 @@ class HumanInputV2FormUploadTokenApi(Resource):
 class FormAccessRequestApi(Resource):
     @web_ns.response(200, "Success", web_ns.models[FormAccessRequestResponse.__name__])
     def post(self, form_token: str):
-        _raise_stub_not_implemented()
+        try:
+            challenge = build_email_otp_service().request_access(form_token)
+        except EmailOtpError as error:
+            raise _EmailOtpHTTPError(error) from None
+        return FormAccessRequestResponse(
+            challenge_token=challenge.challenge_token,
+            expires_in_seconds=challenge.expires_in_seconds,
+            resend_after_seconds=challenge.resend_after_seconds,
+        ).model_dump(mode="json")

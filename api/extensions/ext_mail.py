@@ -67,7 +67,7 @@ class Mail:
             case _:
                 raise ValueError(f"Unsupported mail type {mail_type}")
 
-    def send(self, to: str, subject: str, html: str, from_: str = ""):
+    def send(self, to: str, subject: str, html: str, from_: str = "", *, sensitive: bool = False):
         if not self._client:
             raise ValueError("Mail client is not initialized")
 
@@ -86,14 +86,11 @@ class Mail:
         if not html:
             raise ValueError("mail html is not set")
 
-        self._client.send(
-            {
-                "from": from_,
-                "to": to,
-                "subject": subject,
-                "html": html,
-            }
-        )
+        message = {"from": from_, "to": to, "subject": subject, "html": html}
+        if sensitive and dify_config.MAIL_TYPE in ("smtp", "sendgrid"):
+            self._client.send(message, sensitive=True)
+        else:
+            self._client.send(message)
 
 
 def is_enabled() -> bool:
