@@ -28,6 +28,8 @@ the check; build, analysis, and reporting errors do.
   entries independently of output hashes. Dynamic entries are measured when
   loaded; these are not full-page first-load measurements. Entries overlap and
   cannot be summed. The comment shows the 20 largest absolute gzip changes.
+  Added/removed entry boundaries appear separately and are not treated as size
+  changes from zero.
 - **Package attribution:** groups module sizes from the official analyzer by npm
   package. This is attribution, not compressed output size; the comment shows the
   15 largest absolute changes.

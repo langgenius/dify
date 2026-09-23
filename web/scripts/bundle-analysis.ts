@@ -190,10 +190,9 @@ export function compare(a: Snapshot, b: Snapshot): string {
   const changed = [...new Set([...Object.keys(a.entries), ...Object.keys(b.entries)])]
     .filter(
       (k) =>
-        !a.entries[k] ||
-        !b.entries[k] ||
-        a.entries[k].gzip !== b.entries[k].gzip ||
-        a.entries[k].raw !== b.entries[k].raw,
+        a.entries[k] &&
+        b.entries[k] &&
+        (a.entries[k].gzip !== b.entries[k].gzip || a.entries[k].raw !== b.entries[k].raw),
     )
     .sort(
       (x, y) =>
@@ -214,6 +213,24 @@ export function compare(a: Snapshot, b: Snapshot): string {
     lines.push(
       `| ${label(k)} | ${a.entries[k] ? kib(a.entries[k].gzip) : 'New'} | ${b.entries[k] ? kib(b.entries[k].gzip) : 'Removed'} | ${delta(a.entries[k]?.gzip ?? 0, b.entries[k]?.gzip ?? 0)} |`,
     )
+  const topology = [...new Set([...Object.keys(a.entries), ...Object.keys(b.entries)])]
+    .filter((k) => !a.entries[k] || !b.entries[k])
+    .sort()
+  if (topology.length) {
+    lines.push(
+      '',
+      '### Added or removed entries',
+      '',
+      `Showing ${Math.min(20, topology.length)} of ${topology.length} entry-boundary changes. These are not size deltas from zero.`,
+      '',
+      '| Source entry | Change | Static dependencies (gzip) |',
+      '| --- | --- | ---: |',
+    )
+    for (const k of topology.slice(0, 20))
+      lines.push(
+        `| ${label(k)} | ${b.entries[k] ? 'New entry' : 'Removed entry'} | ${kib((b.entries[k] ?? a.entries[k])!.gzip)} |`,
+      )
+  }
   const packages = [...new Set([...Object.keys(a.packages), ...Object.keys(b.packages)])]
     .filter((k) => a.packages[k] !== b.packages[k])
     .sort(
