@@ -126,8 +126,8 @@ describe('tool/tool-form', () => {
         nodeId="tool-node"
         schema={schemas}
         value={{
-          source: { type: VarType.constant, value: 'first' },
-          dependent: { type: VarType.constant, value: 'selected' },
+          source: { type: VarKindType.constant, value: 'first' },
+          dependent: { type: VarKindType.constant, value: 'selected' },
         }}
         onChange={handleChange}
       />,
@@ -137,14 +137,14 @@ describe('tool/tool-form', () => {
       ([props]) => props.schema.variable === 'source',
     )![0]
     sourceItem.onChange({
-      source: { type: VarType.constant, value: 'second' },
-      dependent: { type: VarType.constant, value: 'selected' },
+      source: { type: VarKindType.constant, value: 'second' },
+      dependent: { type: VarKindType.constant, value: 'selected' },
     })
 
     expect(handleChange).toHaveBeenCalledOnce()
     expect(handleChange).toHaveBeenCalledWith({
-      source: { type: VarType.constant, value: 'second' },
-      dependent: { type: VarType.constant, value: 'default-option' },
+      source: { type: VarKindType.constant, value: 'second' },
+      dependent: { type: VarKindType.constant, value: 'default-option' },
     })
   })
 
@@ -160,8 +160,8 @@ describe('tool/tool-form', () => {
         nodeId="first-tool"
         schema={schemas}
         value={{
-          source: { type: VarType.constant, value: 'first' },
-          dependent: { type: VarType.constant, value: 'first-dependent' },
+          source: { type: VarKindType.constant, value: 'first' },
+          dependent: { type: VarKindType.constant, value: 'first-dependent' },
         }}
         onChange={handleChange}
       />,
@@ -173,8 +173,8 @@ describe('tool/tool-form', () => {
         nodeId="second-tool"
         schema={schemas}
         value={{
-          source: { type: VarType.constant, value: 'second' },
-          dependent: { type: VarType.constant, value: 'second-dependent' },
+          source: { type: VarKindType.constant, value: 'second' },
+          dependent: { type: VarKindType.constant, value: 'second-dependent' },
         }}
         onChange={handleChange}
       />,
