@@ -1,7 +1,8 @@
 import type { JSX } from 'react'
-import type { BundledTheme } from 'shiki/bundle/web'
+import type { CodeTheme } from './shiki-highlight'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Toggle } from '@langgenius/dify-ui/toggle'
+import dynamic from 'next/dynamic'
 import {
   lazy,
   memo,
@@ -16,7 +17,6 @@ import {
 import CopyIcon from '@/app/components/base/copy-icon'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
 import useTheme from '@/hooks/use-theme'
-import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
 import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import { highlightCode } from './shiki-highlight'
@@ -79,7 +79,7 @@ const ShikiCodeBlock = memo(
   }: {
     code: string
     language: string
-    theme: BundledTheme
+    theme: CodeTheme
     initial?: JSX.Element
   }) => {
     const [nodes, setNodes] = useState(initial)

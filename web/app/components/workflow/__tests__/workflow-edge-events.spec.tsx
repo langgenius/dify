@@ -157,7 +157,7 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => () => null,
 }))
 
