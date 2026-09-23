@@ -12,6 +12,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
+from sqlalchemy import inspect
 
 import controllers.mcp.mcp as module
 from models.engine import db
@@ -548,6 +549,51 @@ def _tools_call_payload() -> dict[str, object]:
         "id": 1,
         "params": {"name": "test_app", "arguments": {"query": "test question"}},
     }
+
+
+def test_execution_reloads_attached_orm_objects_after_identity_preflight(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    app_model = _app(module.AppMode.CHAT, with_model_config=True)
+    server = _server(module.AppMCPServerStatus.ACTIVE)
+    db.session.add_all([app_model, server])
+    db.session.commit()
+    api = module.MCPAppApi()
+    lookup = api._get_mcp_server_and_app
+    snapshots = []
+
+    def observe_lookup(code, session):
+        pair = lookup(code, session)
+        snapshots.append(pair)
+        return pair
+
+    def process(_mcp_request, _request_id, fresh_app, fresh_server, _form, session, _protocol):
+        old_server, old_app = snapshots[0]
+        assert inspect(old_server).detached
+        assert inspect(old_app).detached
+        assert fresh_server is not old_server
+        assert fresh_app is not old_app
+        assert inspect(fresh_server).session is session
+        assert inspect(fresh_app).session is session
+        return Response("ok")
+
+    monkeypatch.setattr(api, "_get_mcp_server_and_app", observe_lookup)
+    monkeypatch.setattr(api, "_process_mcp_message", process)
+    fake_payload({"jsonrpc": "2.0", "method": "ping", "id": 1})
+    with app.test_request_context("/"):
+        response = api.post("server-1")
+    assert response.status_code == 200
+    assert len(snapshots) == 2
+
+
+@pytest.mark.usefixtures("app")
+def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app():
+    app_model = _app(module.AppMode.CHAT)
+    server = _server(module.AppMCPServerStatus.ACTIVE)
+    server.tenant_id = str(uuid4())
+    db.session.add_all([app_model, server])
+    db.session.commit()
+    with module.sessionmaker(db.engine).begin() as session:
+        with pytest.raises(module.MCPServerNotFoundError):
+            module.MCPAppApi()._get_mcp_server_and_app("server-1", session)
 
 
 class TestMCPProtocolVersionNegotiationApi:

@@ -255,6 +255,15 @@ invalid or oversized IDs become null. Numeric lexemes retain precision. Allowed
 requests retain their existing body and protocol-validation path. Do not create
 EndUsers or execute tools just to construct a not-found response.
 
+MCP identity preflight uses a short read session that ends before body reads or
+parsing. Normal execution rechecks the same server/App/tenant identity in its
+own transaction and uses fresh ORM objects; deletion, disabling or rebinding
+during parsing must not execute against the stale identity. Construct opaque
+404 responses outside both sessions. The error ID reader reuses existing raw
+Werkzeug body-cache bytes without changing that cache, and otherwise reads at
+most the limit plus one sentinel byte; it must not use unbounded `get_data()`
+for unknown-length bodies. This error-only limit does not cap valid MCP bodies.
+
 Real dependency failures stay fail-closed errors, not a missing-policy allow.
 The Gateway can present an unresolved canonical WebApp reference as opaque404
 while still terminating the request; it must never forward it because the
