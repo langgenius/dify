@@ -66,10 +66,16 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
 
     @override
     def find_for_authentication(self, email: str) -> AccountAuthenticationSnapshot | None:
+        """Find an exact email match, falling back to the oldest normalized match."""
         with self._session_factory() as session:
-            account = session.scalar(select(Account).where(Account.email == email).limit(1))
-            if account is None and email != email.lower():
-                account = session.scalar(select(Account).where(Account.email == email.lower()).limit(1))
+            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+            if account is None:
+                account = session.execute(
+                    select(Account)
+                    .where(Account.normalized_email == normalize_email(email))
+                    .order_by(Account.created_at)
+                    .limit(1)
+                ).scalar_one_or_none()
             if account is None:
                 return None
             return AccountAuthenticationSnapshot(
