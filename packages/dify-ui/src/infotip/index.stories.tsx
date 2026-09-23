@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
-import { Infotip, InfotipContent, InfotipTrigger } from '.'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '.'
 import { Button } from '../button'
 
 const meta = {
@@ -12,7 +12,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'An information button that opens explanatory content using Popover semantics. Compose the root, icon trigger, and content. Name the trigger and the dialog; use aria-labelledby when a visible heading exists. The popup remains available to keyboard and touch users and may contain links.',
+          'An information button whose primary action is opening an explanation. Unlike Tooltip, it uses Popover semantics and supports click, touch, keyboard, and links. Name the trigger and dialog with a short topic, preferably referencing an existing visible label. Keep the explanation in the body; do not copy it into aria-label.',
       },
     },
   },
@@ -21,19 +21,24 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Default: Story = {
-  render: () => (
+function ProcessingHint() {
+  const labelId = React.useId()
+  return (
     <div className="flex items-center gap-1 text-text-secondary">
-      Document processing
+      <span id={labelId}>Document processing</span>
       <Infotip>
-        <InfotipTrigger aria-label="Document processing" />
-        <InfotipContent aria-label="Document processing">
+        <InfotipTrigger aria-labelledby={labelId} />
+        <InfotipContent aria-labelledby={labelId}>
           Documents are processed in the order they are received. Larger files can take longer to
           finish indexing.
         </InfotipContent>
       </Infotip>
     </div>
-  ),
+  )
+}
+
+export const Default: Story = {
+  render: () => <ProcessingHint />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
@@ -73,6 +78,22 @@ export const WithLink: Story = {
     await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
     expect(trigger).toHaveFocus()
   },
+}
+
+function HeadingHint() {
+  return (
+    <Infotip defaultOpen>
+      <InfotipTrigger aria-label="Processing priority" />
+      <InfotipContent>
+        <InfotipTitle>Processing priority</InfotipTitle>
+        <p>Priority determines which documents are processed first.</p>
+      </InfotipContent>
+    </Infotip>
+  )
+}
+
+export const WithHeading: Story = {
+  render: () => <HeadingHint />,
 }
 
 function ControlledExample() {

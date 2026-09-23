@@ -42,6 +42,9 @@ const getOutputVarType = (input: FormInputItem): VarType => {
 }
 
 const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
+  const actionsLabelId = React.useId()
+  const formContentLabelId = React.useId()
+
   const { t } = useTranslation()
   const {
     readOnly,
@@ -117,16 +120,15 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
       >
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">
+            <div
+              id={formContentLabelId}
+              className="system-sm-semibold-uppercase text-text-secondary"
+            >
               {t(($) => $[`${i18nPrefix}.formContent.title`], { ns: 'workflow' })}
             </div>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
-              />
-              <InfotipContent
-                aria-label={t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
-              >
+              <InfotipTrigger aria-labelledby={formContentLabelId} />
+              <InfotipContent aria-labelledby={formContentLabelId}>
                 {t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
               </InfotipContent>
             </Infotip>
@@ -200,16 +202,12 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
       <div className="px-4 py-2">
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">
+            <div id={actionsLabelId} className="system-sm-semibold-uppercase text-text-secondary">
               {t(($) => $[`${i18nPrefix}.userActions.title`], { ns: 'workflow' })}
             </div>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
-              />
-              <InfotipContent
-                aria-label={t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
-              >
+              <InfotipTrigger aria-labelledby={actionsLabelId} />
+              <InfotipContent aria-labelledby={actionsLabelId}>
                 {t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
               </InfotipContent>
             </Infotip>

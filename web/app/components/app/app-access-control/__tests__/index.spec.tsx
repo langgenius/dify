@@ -232,7 +232,7 @@ describe('AccessControl', () => {
     })
     expect(publicOption).toHaveAttribute('aria-disabled', 'true')
     expect(
-      screen.getByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip'),
+      screen.getByRole('button', { name: 'app.accessControlDialog.accessItems.anyone' }),
     ).toBeInTheDocument()
   })
 })

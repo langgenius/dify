@@ -485,7 +485,7 @@ export function AgentEnvEditor() {
   const starterVariable = starterVariableRef.current
   const [focusedVariable, setFocusedVariable] = useState<{ id: string; field: 'key' | 'value' }>()
   const envImportInputRef = useRef<HTMLInputElement>(null)
-  const envEditorTip = t(($) => $['agentDetail.configure.advancedSettings.envEditor.tip'])
+
   const envImportTip = t(($) => $[envImportTipKeys[getCurrentEnvImportPlatform()]])
   const envEditorTableId = 'agent-configure-env-editor-table'
   const visibleEnvVariables = envVariables.length > 0 ? envVariables : [starterVariable]
@@ -544,7 +544,6 @@ export function AgentEnvEditor() {
       headingLevel="h4"
       panelId={envEditorTableId}
       tip={<AgentConfigureTipContent type="env" />}
-      tipAriaLabel={envEditorTip}
       rootClassName="gap-1 py-3"
       headerClassName="mb-0 gap-1 px-3"
       panelContentClassName="px-3"
