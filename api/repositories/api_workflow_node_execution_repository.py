@@ -184,6 +184,19 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
+    def get_workflow_tool_executions(
+        self,
+        tenant_id: str,
+        workflow_run_id: str,
+        parent_node_execution_id: str,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        """Get one Tool execution's children after the service admits the owning app/run.
+
+        The parent may belong to a nested source app. Both parent and children must
+        belong to the admitted tenant and run; preserve each child's source app.
+        """
+        ...
+
     def get_execution_by_id(
         self,
         execution_id: str,

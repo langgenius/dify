@@ -1,4 +1,5 @@
 import datetime
+import json
 import sqlite3
 import time
 from collections.abc import Generator
@@ -8,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from aliyun.log import GetLogsRequest
 
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
     LogstoreAPIWorkflowNodeExecutionRepository,
@@ -203,6 +205,118 @@ def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope() -> None:
     assert (
         query["query"] == 'tenant_id: "tenant" and app_id: "app" and workflow_run_id: "run" and workflow_id: "workflow"'
     )
+
+
+@pytest.mark.parametrize("requested_id", ["parent-row", "parent-engine"])
+def test_workflow_tool_children_only_fetch_matching_latest_payloads(requested_id: str) -> None:
+    with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
+        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+    repository.logstore_client = MagicMock()
+    rows = [
+        {
+            "id": "parent-row",
+            "node_execution_id": "parent-engine",
+            "node_type": "tool",
+            "log_version": 1,
+            "created_at": 0,
+        },
+        *[
+            {
+                "id": "child",
+                "node_type": "human-input",
+                "triggered_from": "workflow-tool",
+                "process_data": json.dumps({WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "parent-engine"}),
+                "log_version": version,
+                "status": status,
+                "created_at": 1,
+                "index": 2,
+                "outputs": '{"answer":"approved"}',
+            }
+            for version, status in ((1, "running"), (2, "paused"))
+        ],
+        {
+            "id": "other-call",
+            "triggered_from": "workflow-tool",
+            "process_data": json.dumps({WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "other-engine"}),
+            "created_at": 2,
+        },
+        {
+            "id": "earlier-child",
+            "triggered_from": "workflow-tool",
+            "process_data": json.dumps({WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "parent-engine"}),
+            "created_at": 1,
+            "index": 1,
+        },
+        {
+            "id": "wrong-origin",
+            "triggered_from": "workflow-run",
+            "process_data": json.dumps({WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "parent-engine"}),
+        },
+        {
+            "id": "other-tenant",
+            "tenant_id": "other-tenant",
+            "triggered_from": "workflow-tool",
+            "process_data": json.dumps({WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "parent-engine"}),
+        },
+        {
+            "id": "other-run",
+            "workflow_run_id": "other-run",
+            "triggered_from": "workflow-tool",
+            "process_data": json.dumps({WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "parent-engine"}),
+        },
+        *[{"id": f"unrelated-{index}"} for index in range(1001)],
+    ]
+    defaults = {
+        "id": "",
+        "tenant_id": "tenant",
+        "app_id": "source-app",
+        "workflow_run_id": "run",
+        "node_execution_id": None,
+        "node_type": "start",
+        "triggered_from": "workflow-run",
+        "process_data": None,
+        "outputs": None,
+        "status": "succeeded",
+        "index": 0,
+        "created_at": 0,
+        "log_version": 1,
+        "__time__": 1,
+    }
+    rows = [{**defaults, **row} for row in rows]
+    fetched_payload_ids: list[str] = []
+    with closing(sqlite3.connect(":memory:")) as database:
+        database.row_factory = sqlite3.Row
+        database.create_function(
+            "json_extract_scalar",
+            2,
+            lambda value, path: json.loads(value).get(path.removeprefix("$.")) if value else None,
+        )
+        database.execute(
+            "CREATE TABLE workflow_node_execution (id TEXT, tenant_id TEXT, app_id TEXT, workflow_run_id TEXT, "
+            "node_execution_id TEXT, node_type TEXT, triggered_from TEXT, process_data TEXT, outputs TEXT, "
+            'status TEXT, "index" INTEGER, created_at INTEGER, log_version INTEGER, __time__ INTEGER)'
+        )
+        database.executemany(
+            "INSERT INTO workflow_node_execution VALUES "
+            "(:id, :tenant_id, :app_id, :workflow_run_id, :node_execution_id, :node_type, :triggered_from, "
+            ":process_data, :outputs, :status, :index, :created_at, :log_version, :__time__)",
+            rows,
+        )
+
+        def execute_query(*, sql: str, **_kwargs: object) -> list[dict[str, object]]:
+            result = [dict(row) for row in database.execute(sql)]
+            fetched_payload_ids.extend(str(row["id"]) for row in result if "outputs" in row)
+            return result
+
+        repository.logstore_client.execute_sql.side_effect = execute_query
+        children = repository.get_workflow_tool_executions("tenant", "run", requested_id)
+        assert repository.get_workflow_tool_executions("tenant", "run", "unknown") == []
+        assert repository.get_workflow_tool_executions("tenant", "run", "child") == []
+
+    assert [child.id for child in children] == ["earlier-child", "child"]
+    assert children[1].status.value == "paused"
+    assert children[1].outputs_dict == {"answer": "approved"}
+    assert fetched_payload_ids == ["earlier-child", "child"]
 
 
 def test_load_full_process_data_returns_logstore_mapping() -> None:

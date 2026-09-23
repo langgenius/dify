@@ -1,8 +1,10 @@
+import json
 from datetime import datetime, timedelta
 
 import pytest
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.common import workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -16,6 +18,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
 from models import AppMode
 from models.account import Account
+from models.workflow import WorkflowNodeExecutionModel
 
 
 def _build_converter() -> WorkflowResponseConverter:
@@ -92,6 +95,34 @@ def test_node_start_preserves_the_allocated_index_when_events_arrive_out_of_orde
         )
         assert response is not None
         assert response.data.index == index
+
+
+@pytest.mark.parametrize("provider_type", ["workflow", "builtin"])
+def test_workflow_tool_detail_hint_in_live_and_saved_traces(monkeypatch, provider_type):
+    monkeypatch.setattr(workflow_response_converter.ToolManager, "get_tool_icon", lambda **_kwargs: "icon")
+    converter = _build_converter()
+    converter.workflow_start_to_stream_response(
+        task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
+    )
+    response = converter.workflow_node_start_to_stream_response(
+        task_id="task-1",
+        event=QueueNodeStartedEvent(
+            node_execution_id="tool-execution",
+            node_id="tool",
+            node_title="Tool",
+            node_type=BuiltinNodeTypes.TOOL,
+            start_at=datetime(2026, 9, 7),
+            provider_type=provider_type,
+            provider_id="provider-1",
+        ),
+    )
+    saved = WorkflowNodeExecutionModel(
+        node_type=BuiltinNodeTypes.TOOL,
+        execution_metadata=json.dumps({"tool_info": {"provider_type": provider_type, "provider_id": "provider-1"}}),
+    )
+    assert response is not None
+    assert response.data.extras == saved.extras
+    assert response.data.extras.get("workflow_tool", False) == (provider_type == "workflow")
 
 
 @pytest.mark.parametrize("next_node_already_persisted", [False, True])

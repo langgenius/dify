@@ -535,6 +535,8 @@ class WorkflowResponseConverter:
 
         try:
             if event.node_type == BuiltinNodeTypes.TOOL:
+                if event.provider_type == ToolProviderType.WORKFLOW:
+                    response.data.extras["workflow_tool"] = True
                 response.data.extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self._application_generate_entity.app_config.tenant_id,
                     provider_type=ToolProviderType(event.provider_type),
