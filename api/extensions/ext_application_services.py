@@ -53,11 +53,13 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.installed_app_access_repository import SQLAlchemyInstalledAppAccessRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
@@ -174,6 +176,7 @@ from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
+from services.installed_app_access_service import InstalledAppAccessService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
@@ -197,6 +200,7 @@ from services.retention.workflow_run.archive_download_adapters import (
 )
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
+from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
@@ -306,11 +310,13 @@ class ApplicationServices:
     upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
+    installed_app_access: InstalledAppAccessService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     remote_files: RemoteFileService
+    saved_messages: SavedMessageService
     app_tasks: AppTaskControlService
     trial_app_access: TrialAppAccessService
     app_audio: AppAudio
@@ -457,6 +463,12 @@ def build_application_services(
     installation_state = InstallationStateRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    webapp_access = WebAppAccessQueryService(
+        access=WebAppAccessQueryRepository(session_factory=database_client),
+        webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
+        access_mode_for_app=_get_enterprise_webapp_access_mode,
+        is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
+    )
     app_preview_repository = AppPreviewQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
@@ -688,11 +700,10 @@ def build_application_services(
             commands=AppScopedEndUserService(end_users=app_scoped_end_user_repository),
             queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
         ),
-        webapp_access=WebAppAccessQueryService(
-            access=WebAppAccessQueryRepository(session_factory=database_client),
-            webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
-            access_mode_for_app=_get_enterprise_webapp_access_mode,
-            is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
+        webapp_access=webapp_access,
+        installed_app_access=InstalledAppAccessService(
+            installed_apps=SQLAlchemyInstalledAppAccessRepository(session_factory=database_client),
+            is_user_allowed=webapp_access.is_user_allowed,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
@@ -760,6 +771,9 @@ def build_application_services(
         ),
         recommended_app_queries=recommended_app_queries,
         remote_files=remote_file_service,
+        saved_messages=SavedMessageService(
+            saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),
+        ),
         app_tasks=AppTaskControlService(redis_client=redis),
         trial_app_access=TrialAppAccessService(apps=trial_apps),
         app_audio=AppAudioRuntime(session_factory=database_client),
