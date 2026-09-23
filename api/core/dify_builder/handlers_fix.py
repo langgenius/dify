@@ -813,6 +813,16 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         if intents
         else "No automatic fix found — review the diagnosis and edit the canvas manually, or reject."
     )
+    # Nothing staged: the agent's ``Risk.reason`` is the only record of WHY, and
+    # until now it was stored on the context and shown to nobody. It carries the
+    # semantic guards' engine-grounded text when they are what stopped the
+    # repair -- an aggregator a new branch would not feed, an array element the
+    # rewrite dropped -- which is exactly what the human at this gate needs in
+    # order to fix it by hand. The reply line stays generic; the card carries the
+    # detail, the same division Edit's refusal uses.
+    error_items: list = []
+    if not intents and risk.reason:
+        error_items = append_card(fc, ErrorCard(title="No safe automatic fix", body=risk.reason, tone="warning"))
     execution = progress.finish()
     items = append_card(
         fc,
@@ -821,10 +831,10 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
             stage_id=str(s.current_state),
             execution=execution,
             reply_text=reply_text,
-            cards=[],
+            cards=["error"] if error_items else [],
         ),
     )
-    return StepResult(next=next_state, context=fc, items=items)
+    return StepResult(next=next_state, context=fc, items=[*error_items, *items])
 
 
 def handle_await_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:

@@ -88,6 +88,7 @@ PLAIN: frozenset[str] = frozenset(
         "Repeated failure",
         "The workflow can't start",
         "The change wouldn't do what you asked",
+        "No safe automatic fix",
         "No output produced",
         "Test outcome unknown",
         "Finished without output",

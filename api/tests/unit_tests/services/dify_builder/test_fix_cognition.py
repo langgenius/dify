@@ -635,3 +635,201 @@ def test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles():
     assert "  branch1 (if-else): Score handles=['true', 'false']" in context
     assert "  branch1 -[true]-> pass1" in context
     assert "  start1 -> branch1" in context  # a default handle stays unnamed
+
+
+# ---- parity with Edit: a repair the guards condemn surfaces WITH its reason ----
+#
+# Fix already refuses to hand on a batch carrying any rejection (its retry ends
+# in ``_no_fix()``), so unlike Edit it never had a fallback that could write one.
+# What it did have is a blind surface: the engine-grounded reason was discarded
+# and the user got "No safe automatic fix found" with nothing to act on. A guard
+# Edit explains and Fix merely implies is the inconsistency Task 8 exists to
+# stop.
+
+_REJOIN_GRAPH = {
+    "nodes": [
+        {
+            "id": "node1",
+            "data": {
+                "type": "start",
+                "title": "Start",
+                "variables": [
+                    {"variable": "score", "type": "number", "label": "Score", "required": True, "options": []}
+                ],
+            },
+        },
+        {
+            "id": "node2",
+            "data": {
+                "type": "if-else",
+                "title": "Check",
+                "cases": [
+                    {
+                        "case_id": "true",
+                        "logical_operator": "and",
+                        "conditions": [
+                            {
+                                "id": "c1",
+                                "varType": "number",
+                                "variable_selector": ["node1", "score"],
+                                "comparison_operator": "=",
+                                "value": "60",
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+        {"id": "node3", "data": {"type": "template-transform", "title": "Pass", "template": "pass", "variables": []}},
+        {
+            "id": "node5",
+            "data": {
+                "type": "variable-aggregator",
+                "title": "Merge",
+                "output_type": "string",
+                "variables": [["node3", "output"]],
+            },
+        },
+        {"id": "node6", "data": {"type": "end", "title": "End", "outputs": [{"variable": "r", "value_selector": []}]}},
+    ],
+    "edges": [
+        {"id": "e1", "source": "node1", "target": "node2", "sourceHandle": "source"},
+        {"id": "e2", "source": "node2", "target": "node3", "sourceHandle": "true"},
+        {"id": "e4", "source": "node3", "target": "node5", "sourceHandle": "source"},
+        {"id": "e6", "source": "node5", "target": "node6", "sourceHandle": "source"},
+    ],
+}
+
+_REJOIN_DIAG = Diagnosis(culprit_node_id="node2", root_cause="the high branch is missing", severity="high")
+
+_UNFED_BRANCH_REPAIR = json.dumps(
+    {
+        "intents": [
+            {
+                "op": "create_node",
+                "args": {
+                    "node_type": "template-transform",
+                    "node_id": "node7",
+                    "config": {"title": "Excellent", "template": "excellent", "variables": []},
+                },
+            },
+            {"op": "connect", "args": {"from_node": "node2", "to_node": "node7", "source_handle": "true"}},
+            {"op": "connect", "args": {"from_node": "node7", "to_node": "node5"}},
+        ],
+        "risk": {"level": "low", "reason": "adds a branch", "has_external_side_effect": False},
+    }
+)
+
+_CLOBBERING_REPAIR = json.dumps(
+    {
+        "intents": [
+            {
+                "op": "set_node_config",
+                "args": {
+                    "node_id": "node2",
+                    "path": "cases",
+                    "value": [
+                        {
+                            "case_id": "excellent",
+                            "logical_operator": "and",
+                            "conditions": [
+                                {"variable_selector": ["node1", "score"], "comparison_operator": ">=", "value": 90}
+                            ],
+                        },
+                        {
+                            "case_id": "true",
+                            "logical_operator": "and",
+                            "conditions": [
+                                {"variable_selector": ["node1", "score"], "comparison_operator": ">=", "value": 60}
+                            ],
+                        },
+                    ],
+                },
+            }
+        ],
+        "risk": {"level": "low", "reason": "adds a case", "has_external_side_effect": False},
+    }
+)
+
+
+def test_a_repair_that_leaves_an_aggregator_unfed_surfaces_with_the_reason():
+    """The rejoin guard through Fix. Nothing is staged, and the reason names
+    the aggregator, the new node and the selector to append -- so the human at
+    the gate has something to act on instead of "no safe fix found"."""
+    m = _FakeInstance([_UNFED_BRANCH_REPAIR, _UNFED_BRANCH_REPAIR])
+
+    intents, risk = fix.propose_repair(m, _REJOIN_DIAG, _REJOIN_GRAPH)
+
+    assert intents == []
+    assert risk.level == "high"
+    assert "node5" in risk.reason
+    assert "node7" in risk.reason
+    assert '["node7", "output"]' in risk.reason
+
+
+def test_a_repair_that_clobbers_an_array_surfaces_with_the_reason():
+    """The identity guard through Fix, on the literal S6 rewrite: both cases
+    keep their ``case_id`` and the surviving condition's ``id`` is gone."""
+    m = _FakeInstance([_CLOBBERING_REPAIR, _CLOBBERING_REPAIR])
+
+    intents, risk = fix.propose_repair(m, _REJOIN_DIAG, _REJOIN_GRAPH)
+
+    assert intents == []
+    assert "node2" in risk.reason
+    assert "c1" in risk.reason
+
+
+def test_a_purely_structural_refusal_keeps_the_generic_surface_reason():
+    """The distinction round 2 established, in the one place Fix has it: only a
+    would-run-wrong verdict replaces the surface text. A structural refusal --
+    which DROPPED its own intent and says nothing about what remains -- still
+    ends at the same generic "no safe fix" the gate has always shown."""
+    ghost = json.dumps(
+        {
+            "intents": [{"op": "set_node_config", "args": {"node_id": "ghost", "path": "code", "value": "x"}}],
+            "risk": {"level": "low", "reason": "r", "has_external_side_effect": False},
+        }
+    )
+    m = _FakeInstance([ghost, ghost])
+
+    intents, risk = fix.propose_repair(m, _DIAG, _RG)
+
+    assert intents == []
+    assert risk.reason.startswith("No safe automatic fix found")
+    assert "node5" not in risk.reason
+
+
+def test_a_repair_that_answers_the_guard_on_the_retry_is_staged_as_normal():
+    """The corrective re-prompt still does its job: a second attempt that
+    extends the aggregator is a real fix and is staged."""
+    rejoined = json.dumps(
+        {
+            "intents": [
+                {
+                    "op": "create_node",
+                    "args": {
+                        "node_type": "template-transform",
+                        "node_id": "node7",
+                        "config": {"title": "Excellent", "template": "excellent", "variables": []},
+                    },
+                },
+                {"op": "connect", "args": {"from_node": "node2", "to_node": "node7", "source_handle": "true"}},
+                {"op": "connect", "args": {"from_node": "node7", "to_node": "node5"}},
+                {
+                    "op": "set_node_config",
+                    "args": {
+                        "node_id": "node5",
+                        "path": "variables",
+                        "value": [["node3", "output"], ["node7", "output"]],
+                    },
+                },
+            ],
+            "risk": {"level": "low", "reason": "adds a branch", "has_external_side_effect": False},
+        }
+    )
+    m = _FakeInstance([_UNFED_BRANCH_REPAIR, rejoined])
+
+    intents, risk = fix.propose_repair(m, _REJOIN_DIAG, _REJOIN_GRAPH)
+
+    assert len(intents) == 4
+    assert risk.level == "high"  # structural, so it goes to the approval gate -- but it IS staged
