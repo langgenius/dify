@@ -99,6 +99,33 @@ def test_an_authorization_without_type_is_reported_not_raised():
     assert errors == ["node 'h' (http-request): KeyError: 'type'"]
 
 
+# Exactly which ``authorization`` shapes reach ``_CRASH_LOCATION``. The rule is
+# not "no ``type``" -- graphon's ``check_config`` is a ``mode="before"`` validator
+# on ``config``, so it only runs when a ``config`` KEY is present, and it then
+# reads ``values.data["type"]``, which is absent whenever ``type`` failed its own
+# Literal check. That comment has been written wrong twice; this pins it.
+_CRASH_AUTHORIZATION_SHAPES = [
+    ({"config": {"type": "bearer", "api_key": "x"}}, True),
+    ({"type": None, "config": {"type": "bearer", "api_key": "x"}}, True),
+    ({"type": "bogus", "config": {"type": "bearer", "api_key": "x"}}, True),
+    ({}, False),
+    ({"type": None}, False),
+]
+
+
+@pytest.mark.parametrize(("authorization", "crashes"), _CRASH_AUTHORIZATION_SHAPES)
+def test_only_an_authorization_with_a_config_and_a_bad_type_crashes(authorization: dict, crashes: bool):
+    errors = preflight_errors({"nodes": [_http_node("h", authorization)], "edges": []})
+
+    assert len(errors) == 1
+    if crashes:
+        assert errors[0] == "node 'h' (http-request): KeyError: 'type'"
+    else:
+        # an ordinary ValidationError, with a real field path
+        assert "KeyError" not in errors[0]
+        assert "authorization.type" in errors[0]
+
+
 def test_a_crashing_node_does_not_hide_the_problems_of_the_nodes_after_it():
     graph = _esq1_303_draft()
     graph["nodes"].insert(0, _http_node("h", {"type": "bearer", "config": {"type": "bearer", "api_key": "x"}}))
@@ -166,11 +193,11 @@ def test_a_problem_the_draft_already_had_is_not_new():
     broken = _scoring_graph(operator="==")
 
     assert preflight_errors(broken)  # it is a problem
-    assert new_preflight_problems(broken, broken) == []  # ...just not a new one
+    assert new_preflight_problems(broken, broken, ()) == []  # ...just not a new one
 
 
 def test_a_problem_the_change_introduced_is_new_and_quotes_the_engine():
-    problems = new_preflight_problems(_scoring_graph(), _scoring_graph(operator="=="))
+    problems = new_preflight_problems(_scoring_graph(), _scoring_graph(operator="=="), ())
 
     assert len(problems) == 1
     assert problems[0].startswith("node 'branch' (if-else): ")
@@ -178,7 +205,7 @@ def test_a_problem_the_change_introduced_is_new_and_quotes_the_engine():
 
 
 def test_a_change_that_heals_a_pre_existing_problem_has_nothing_to_report():
-    assert new_preflight_problems(_scoring_graph(operator="=="), _scoring_graph()) == []
+    assert new_preflight_problems(_scoring_graph(operator="=="), _scoring_graph(), ()) == []
 
 
 def test_a_newly_broken_node_is_reported_even_while_another_stays_broken():
@@ -188,7 +215,7 @@ def test_a_newly_broken_node_is_reported_even_while_another_stays_broken():
     after = copy.deepcopy(before)
     after["nodes"][0]["data"]["variables"][0]["type"] = "not-a-type"
 
-    problems = new_preflight_problems(before, after)
+    problems = new_preflight_problems(before, after, ())
 
     assert [p.split(" ")[1] for p in problems] == ["'start'"]
 
@@ -210,7 +237,65 @@ def test_half_repairing_an_already_broken_node_is_not_a_new_problem():
 
     assert preflight_errors(before) != preflight_errors(after)  # the text really does change
     assert preflight_errors(after)  # the node is still refused...
-    assert new_preflight_problems(before, after) == []  # ...but not because of this change
+    assert new_preflight_problems(before, after, ()) == []  # ...but not because of this change
+
+
+def test_a_node_the_batch_wrote_gets_no_exemption_at_all():
+    """``touched`` is what closes the silent false success.
+
+    The same bad field replaced by a DIFFERENT bad value is not a new problem to
+    the location key, and no key short of "is it startable now?" could see it --
+    pydantic's ``input`` for a ``Field required`` error is the parent dict, so
+    keying on the input repr would refuse honest partial repairs instead. A
+    repair targets a node that is by definition already invalid, so this is Fix's
+    main line: untouched, the batch applies and the card says "Applied the
+    changes" over a draft that still cannot start."""
+    before = _code_node(code_language="klingon")
+    after = _code_node(code_language="martian")
+
+    assert new_preflight_problems(before, after, ()) == []  # nothing NEW -- and that was the bug
+    problems = new_preflight_problems(before, after, ["code1"])
+
+    assert len(problems) == 1
+    assert problems[0].startswith("node 'code1' (code): ")
+    assert "code_language" in problems[0]
+
+
+def test_a_half_repaired_node_the_batch_wrote_is_refused_even_though_it_improved():
+    """The companion to ``test_half_repairing_an_already_broken_node_is_not_a_new_problem``:
+    the exemption that test pins is for a node NOBODY wrote. Fill one of the
+    missing fields of a node this batch is answerable for and it is still not
+    startable, so the batch is still refused -- with the node's whole remaining
+    refusal, which is what the corrective re-prompt needs."""
+    before = _code_node()
+    after = _code_node(code="def main():\n    return {}")
+
+    assert new_preflight_problems(before, after, ()) == []  # untouched: a strict improvement
+    problems = new_preflight_problems(before, after, ["code1"])
+
+    assert len(problems) == 1
+    assert "code_language" in problems[0]  # what is STILL missing
+
+
+def test_a_node_the_batch_wrote_and_actually_fixed_reports_nothing():
+    """The rule is "startable", not "was touched": a repair that really works
+    passes, or every Fix would be refused."""
+    before = _code_node()
+    after = _code_node(code="def main():\n    return {}", code_language="python3", outputs={}, variables=[])
+
+    assert preflight_errors(after) == []
+    assert new_preflight_problems(before, after, ["code1"]) == []
+
+
+def test_an_untouched_node_keeps_its_exemption_while_a_written_one_does_not():
+    """Both rules in one graph, so neither can quietly become the other."""
+    before = {"nodes": [*_code_node()["nodes"], *_code_node()["nodes"]], "edges": []}
+    before["nodes"][1] = {**before["nodes"][1], "id": "code2"}
+    after = copy.deepcopy(before)
+
+    problems = new_preflight_problems(before, after, ["code2"])
+
+    assert [p.split(" ")[1] for p in problems] == ["'code2'"]
 
 
 def test_an_already_invalid_node_broken_further_is_a_new_problem():
@@ -226,20 +311,20 @@ def test_an_already_invalid_node_broken_further_is_a_new_problem():
     after = _code_node(code_language="klingon")  # ...and now it is not
 
     assert len(preflight_errors(before)) == len(preflight_errors(after)) == 1
-    problems = new_preflight_problems(before, after)
+    problems = new_preflight_problems(before, after, ())
 
     assert len(problems) == 1
     assert problems[0].startswith("node 'code1' (code): ")
     assert "code_language" in problems[0]
     # ...and the same change in reverse is a repair, not a problem
-    assert new_preflight_problems(after, before) == []
+    assert new_preflight_problems(after, before, ()) == []
 
 
 def test_a_recreated_id_of_a_different_type_is_a_new_node():
     before = {"nodes": [{"id": "n1", "type": "custom", "data": {"type": "code", "title": "Code"}}], "edges": []}
     after = {"nodes": [{"id": "n1", "type": "custom", "data": {"type": "llm", "title": "LLM"}}], "edges": []}
 
-    problems = new_preflight_problems(before, after)
+    problems = new_preflight_problems(before, after, ())
 
     assert len(problems) == 1
     assert problems[0].startswith("node 'n1' (llm): ")
@@ -327,6 +412,36 @@ def test_the_refusal_text_withholds_the_nodes_credentials(data: dict, leaked: st
     assert "url" in errors[0]
 
 
+_BODY_SECRET = "BODYSECRET"
+
+
+def test_a_secret_in_a_request_body_is_outside_redactions_declared_scope():
+    """Pins the boundary, in the honest direction.
+
+    ``credentials.redact_node_config`` covers ``authorization`` / ``headers`` /
+    ``params`` -- fields that exist to hold a secret. A ``body`` value does not,
+    and it reaches the refusal text verbatim; anything that stores or re-prompts
+    this text (``handlers_edit.last_edit_rejection``) inherits that. Asserting it
+    rather than letting a docstring claim otherwise -- and see
+    ``services.dify_builder.credentials`` for why widening the profile would
+    make http-request bodies uneditable instead of safer."""
+    node = _secret_http_node(
+        {
+            "method": "post",  # no ``url`` -> a MODEL-level error, so pydantic dumps the whole data
+            "authorization": _AUTHORIZATION,
+            "headers": _HEADERS,
+            "body": {"type": "json", "data": [{"key": "", "type": "text", "value": f'{{"token":"{_BODY_SECRET}"}}'}]},
+        }
+    )
+
+    errors = preflight_errors({"nodes": [node], "edges": []})
+
+    assert len(errors) == 1
+    assert _SECRET_KEY not in errors[0]  # in scope: withheld
+    assert _SECRET_HEADER not in errors[0]  # in scope: withheld
+    assert _BODY_SECRET in errors[0]  # OUT of scope: carried, and documented as such
+
+
 def test_withholding_the_credential_does_not_change_the_verdict():
     """The verdict is taken from the REAL node; only the text is rebuilt from a
     redacted copy. A node that starts must not be reported because redaction
@@ -344,7 +459,7 @@ def test_withholding_the_credential_does_not_change_the_verdict():
     )
 
     assert preflight_errors({"nodes": [valid], "edges": []}) == []
-    assert new_preflight_problems({"nodes": [], "edges": []}, {"nodes": [valid], "edges": []}) == []
+    assert new_preflight_problems({"nodes": [], "edges": []}, {"nodes": [valid], "edges": []}, ["h"]) == []
 
 
 def test_an_operator_no_normalizer_can_heal_is_rejected_by_the_node_data_check():
@@ -409,7 +524,8 @@ def test_an_ascii_ordering_operator_is_healed_and_so_is_never_rejected():
 
     assert vetted.rejections == []
     assert vetted.applicable
-    assert new_preflight_problems(graph, graph_ops.filter_applicable(graph, [_set_operator(">=")]).graph) == []
+    dry = graph_ops.filter_applicable(graph, [_set_operator(">=")])
+    assert new_preflight_problems(graph, dry.graph, dry.changed_nodes) == []
 
 
 def test_a_draft_the_user_already_broke_does_not_veto_an_unrelated_edit():
@@ -424,6 +540,58 @@ def test_a_draft_the_user_already_broke_does_not_veto_an_unrelated_edit():
     assert vetted.applicable == [rename]
 
 
+def test_a_batch_that_leaves_its_own_culprit_invalid_is_refused_before_the_gate():
+    """The dry run has to predict the port's refusal, or the corrective
+    re-prompt cannot fire and the handler learns nothing to carry forward.
+
+    ``branch`` is already refused at the operator; the batch rewrites that exact
+    field to another value the engine also refuses. Nothing is NEW, so before the
+    ``touched`` rule this reached the approval gate looking healthy and died at
+    the write."""
+    already_broken = _scoring_graph(operator="==")
+
+    vetted = vet_intents(already_broken, [_set_operator("klingon")], _ALLOWED)
+
+    assert len(vetted.rejections) == 1
+    assert "node 'branch' (if-else)" in vetted.rejections[0]
+    assert "comparison_operator" in vetted.rejections[0]
+
+
+def test_wiring_an_already_broken_node_does_not_make_the_batch_answerable_for_it():
+    """``touched`` is "wrote this node's DATA", not "appears in the change set".
+
+    ``apply_connect`` reports BOTH endpoints as changed -- right for a diff,
+    wrong here: an edge cannot change either endpoint's
+    ``validate_node_config`` verdict. Counting them would mean that merely
+    wiring a node the user already broke makes its pre-existing defect veto the
+    whole batch, which is the invariant the untouched rule exists to keep."""
+    already_broken = {
+        "nodes": [
+            {"id": "llm1", "type": "custom", "data": {"type": "llm", "title": "LLM"}},
+            {"id": "end1", "type": "custom", "data": {"type": "end", "title": "End"}},
+        ],
+        "edges": [],
+    }
+    assert len(preflight_errors(already_broken)) == 2  # both endpoints are refused as they stand
+
+    wire = MutationIntent(op="connect", args={"from_node": "llm1", "to_node": "end1"})
+    vetted = vet_intents(already_broken, [wire], {"llm", "end"})
+
+    assert vetted.rejections == []
+    assert vetted.applicable == [wire]
+
+
+def test_a_batch_that_really_fixes_its_culprit_still_passes():
+    """The other half: the same already-broken node, repaired properly, is not
+    refused -- otherwise ``touched`` would veto every repair."""
+    already_broken = _scoring_graph(operator="==")
+
+    vetted = vet_intents(already_broken, [_set_operator("≥")], _ALLOWED)
+
+    assert vetted.rejections == []
+    assert len(vetted.applicable) == 1
+
+
 def test_a_created_node_the_engine_would_refuse_is_named_in_the_rejection():
     """The node the batch ADDS has no "before" to compare against, so anything
     the engine refuses about it is new by definition -- and the rejection names
@@ -434,3 +602,59 @@ def test_a_created_node_the_engine_would_refuse_is_named_in_the_rejection():
 
     assert len(vetted.rejections) == 1
     assert "node 'n9' (if-else)" in vetted.rejections[0]
+
+
+def test_a_structural_rejection_line_withholds_the_nodes_credentials():
+    """A rejection line inlines the whole ``intent.args`` -- including a
+    ``create_node``'s entire ``config`` -- into a corrective re-prompt, which is
+    the same channel ``_withheld_message`` already guards for a node's stored
+    config. These args are model-authored today, so nothing stored leaks; the
+    redaction is here so a later path that round-trips a real node's data
+    through an intent cannot silently re-open the hole."""
+    intent = MutationIntent(
+        op="create_node",
+        args={
+            "node_type": "http-request",  # not in _ALLOWED -- a structural refusal
+            "node_id": "h",
+            "config": {"title": "t", "method": "get", "url": "u", "authorization": _AUTHORIZATION, "headers": _HEADERS},
+        },
+    )
+
+    vetted = vet_intents(_scoring_graph(), [intent], _ALLOWED)
+
+    assert len(vetted.rejections) == 1
+    assert _SECRET_KEY not in vetted.rejections[0]
+    assert _SECRET_HEADER not in vetted.rejections[0]
+    assert "__DIFY_BUILDER_REDACTED__" in vetted.rejections[0]  # the KEYS still reach the model
+    assert "node_type not allowed" in vetted.rejections[0]  # ...and so does the engine's reason
+
+
+def test_two_crashes_with_different_messages_are_different_problems():
+    """A node whose validation raises something other than a ``ValidationError``
+    has no field path, so its exception stands in for one. Keyed on the class
+    ALONE, every ``KeyError`` on a node would be the same problem and a change
+    that swapped one crashing shape for another would pass unnoticed, so the
+    (truncated) message is part of the key.
+
+    Reaches for the private key builder deliberately: graphon has exactly one
+    live bare-crash site today (``HttpRequestNodeAuthorization.check_config``,
+    always ``KeyError: 'type'``), so there is no pair of real nodes that differs
+    only in the crash message -- this pins the rule before there is."""
+    from services.dify_builder.preflight import _CRASH_LOCATION, _error_locations
+
+    first = _error_locations(KeyError("type"))
+    second = _error_locations(KeyError("method"))
+
+    assert first != second
+    assert first == frozenset({(_CRASH_LOCATION, "KeyError", "'type'")})
+    assert _error_locations(KeyError("type")) == first  # and the SAME crash is still the same problem
+
+
+def test_a_crash_message_never_reaches_the_text_the_model_is_shown():
+    """The crash message is the one part of a location not derived from a field
+    path, so it is the one part that could echo a value out of the node. It is
+    keyed on, never rendered."""
+    from services.dify_builder.preflight import _CRASH_LOCATION, _location_label
+
+    assert _location_label((_CRASH_LOCATION, "KeyError", "'sk-live-SECRET'")) == "<crash>.KeyError"
+    assert _location_label(("cases", "0", "comparison_operator")) == "cases.0.comparison_operator"

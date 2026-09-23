@@ -94,9 +94,11 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     if ok and text:
         fc.goal_text = text
     # A new goal is a new repair loop: the breaker's counter must not carry
-    # over from whatever the previous edit was stuck on.
+    # over from whatever the previous edit was stuck on, and neither may the
+    # engine's refusal of a change this goal has nothing to do with.
     fc.repair_attempts = 0
     fc.last_repair_error = ""
+    fc.last_edit_rejection = ""
 
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
@@ -239,6 +241,39 @@ _EDIT_EXECUTION_STEPS = [
     ("edit-apply", "Apply the change plan"),
 ]
 
+# A pydantic message quotes a truncated repr of the input it refused, so one
+# node's refusal is normally a few hundred characters -- but a batch refusal
+# concatenates one per node, and this text is persisted in the session's
+# context blob AND prepended to the next prompt. Capped with a visible marker
+# for the same reason the terminal-output preview is
+# (handlers_build._MAX_TERMINAL_OUTPUT_CHARS).
+_MAX_REJECTION_CHARS = 2000
+_REJECTION_TRUNCATED_MARKER = "\n… (truncated)"
+
+
+def _rejection_text(exc: Exception) -> str:
+    """The engine's OWN words for why it refused the write, capped.
+
+    ``str(exc)`` and nothing else: the ``PreflightError`` the Dify port raises
+    is built from ``preflight.new_preflight_problems``, whose every message is
+    produced by re-validating a ``credentials.redact_node_config`` copy of the
+    node, and the ``ValueError`` alternative comes from ``graph_ops``, whose
+    messages carry only paths, node ids, indexes and type names. So it is
+    engine-sourced: no model prose is ever mixed in, and nothing branches on
+    this string.
+
+    Credentials are withheld to REDACTION'S DECLARED SCOPE and no further --
+    an http-request node's ``authorization`` block and its ``headers`` /
+    ``params`` lines. A secret typed into a request ``body`` value is NOT
+    covered and reaches this string, and therefore the session's context blob
+    and the next prompt, verbatim. See ``services.dify_builder.credentials``
+    for why that is deliberate and what closing it would take.
+    """
+    text = str(exc)
+    if len(text) > _MAX_REJECTION_CHARS:
+        return text[:_MAX_REJECTION_CHARS] + _REJECTION_TRUNCATED_MARKER
+    return text
+
 
 def _change_not_applied(
     s: Session,
@@ -248,11 +283,20 @@ def _change_not_applied(
     title: str,
     body: str,
     reply_text: str,
+    rejection: str,
 ) -> StepResult:
     """apply_repair refused the edit and wrote nothing: say why and keep the
     change plan at its gate. (Edit applies with on_canvas=None, so no canvas
-    marker streamed and there is nothing to revert on the client.)"""
+    marker streamed and there is nothing to revert on the client.)
+
+    ``rejection`` is remembered so the NEXT approval is not blind: the gate
+    offers re-approval, the draft is unchanged, and without this the agent is
+    re-prompted with byte-identical inputs and hands back the same refused
+    batch (triage edit-branch-failure-2026-09-22). Stored unconditionally, so a
+    second refusal at the same error location with a different bad value
+    replaces the first rather than being folded into it."""
     fc.staged_repair = []
+    fc.last_edit_rejection = rejection
     progress.fail_step("edit-apply")
     execution = progress.finish(status="error")
     error_items = append_card(fc, ErrorCard(title=title, body=body, tone="danger"))
@@ -295,7 +339,14 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     emit_canvas(env, "create_checkpoint")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     intents = env.agent.build_edit_intents(
-        dict(fc.edit_rules), graph, edit_target_node_ids=list(fc.edit_target_node_ids)
+        dict(fc.edit_rules),
+        graph,
+        edit_target_node_ids=list(fc.edit_target_node_ids),
+        # What the engine said last time it refused this write, if anything.
+        # The graph and the rules are byte-identical across re-approvals, so
+        # this is the only input that changes -- and the only reason a second
+        # approval can produce a different batch.
+        last_edit_rejection=fc.last_edit_rejection or None,
     )
     fc.staged_repair = list(intents)
 
@@ -321,6 +372,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             reply_text=(
                 "I didn't apply the change: the workflow would fail before its first node. Adjust it and approve again."
             ),
+            rejection=_rejection_text(exc),
         )
     except ValueError as exc:
         # graph_ops refused an intent (e.g. "node not found") before the
@@ -334,9 +386,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             title="Couldn't apply the workflow",
             body=f"The generated workflow couldn't be applied to the draft: {exc}",
             reply_text="I couldn't apply the change -- see the error above. Adjust it and approve again.",
+            rejection=_rejection_text(exc),
         )
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
+    # The write went through: whatever the engine refused before is answered,
+    # and must not be quoted at the next edit.
+    fc.last_edit_rejection = ""
     emit_canvas(env, "apply_edit_plan")
 
     changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="no changes")

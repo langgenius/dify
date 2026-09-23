@@ -301,6 +301,25 @@ class DifyBuilderContext:
     # -- Edit fields (Slice 3, additive) --
     edit_rules: dict[str, Any] = field(default_factory=dict)
     edit_target_node_ids: list[str] = field(default_factory=list)
+    # Why the ENGINE refused the last edit write, verbatim (the
+    # ``DraftWouldNotStartError``/``ValueError`` the Dify port raised), capped
+    # at ``handlers_edit._MAX_REJECTION_CHARS``. Never prose the model wrote
+    # about its own proposal, and never branched on -- it is corrective prompt
+    # text only. Credentials are withheld only to redaction's declared scope
+    # (see ``handlers_edit._rejection_text``): an http-request ``body`` value is
+    # not covered, so this field is persisted state that can carry one.
+    #
+    # Without it every re-approval at ``edit.plan_approval`` re-reads the same
+    # unchanged draft and re-prompts the agent with byte-identical inputs, so
+    # the user can approve the same plan forever and get the same refusal card
+    # (triage edit-branch-failure-2026-09-22, "Why every retry is blind").
+    # It is also the only record fine enough to tell two refusals at the SAME
+    # pydantic error location apart -- ``preflight.new_preflight_problems`` is
+    # keyed on locations, so one bad value replaced by another bad value at the
+    # same path is not a new problem to it, but the two engine messages differ.
+    # Cleared the moment a write succeeds, and by every path that starts a new
+    # edit, so a refusal can never be quoted at an unrelated later change.
+    last_edit_rejection: str = ""
 
     # -- Lifecycle fields (Slice 4, additive) --
     paused: bool = False

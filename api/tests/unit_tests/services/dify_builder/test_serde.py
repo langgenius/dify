@@ -122,10 +122,14 @@ def test_context_roundtrip_preserves_edit_fields():
     fc = DifyBuilderContext(
         edit_rules={"risk_threshold": "high", "preserve_summary": True},
         edit_target_node_ids=["llm", "knowledge_retrieval"],
+        # multi-line, quoted, non-ASCII: a real pydantic refusal, which is what
+        # actually lands in the JSONB column.
+        last_edit_rejection="the draft would not start: node 'node2' (if-else):\n  Input should be '\u2265'",
     )
     out = context_from_dict(context_to_dict(fc))
     assert out.edit_rules == {"risk_threshold": "high", "preserve_summary": True}
     assert out.edit_target_node_ids == ["llm", "knowledge_retrieval"]
+    assert out == fc  # every edit field, last_edit_rejection included
 
 
 def test_context_from_dict_defaults_edit_fields_when_absent():
@@ -134,6 +138,7 @@ def test_context_from_dict_defaults_edit_fields_when_absent():
     out = context_from_dict({})  # an older row with no edit_* keys
     assert out.edit_rules == {}
     assert out.edit_target_node_ids == []
+    assert out.last_edit_rejection == ""
 
 
 def test_context_roundtrip_preserves_lifecycle_fields():

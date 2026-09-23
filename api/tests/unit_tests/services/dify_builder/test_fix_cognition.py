@@ -88,9 +88,26 @@ def test_diagnose_checklist_none_model_degrades():
 
 
 _DIAG = Diagnosis(culprit_node_id="code1", root_cause="x is undefined", severity="high")
+# The CULPRIT node is engine-valid; ``end1`` is deliberately left as it always
+# was -- not startable. ``preflight.new_preflight_problems`` gives a node whose
+# DATA the batch wrote no exemption, so a ``set_node_config`` on a culprit that
+# was never startable would fail for a reason that has nothing to do with what
+# these tests are about (risk classification and the re-prompt budget). ``end1``
+# is only ever CONNECTED to, never written, so its defect must keep its
+# exemption -- which is exactly what these fixtures now also guard.
 _RG = {
     "nodes": [
-        {"id": "code1", "data": {"type": "code", "title": "Code"}},
+        {
+            "id": "code1",
+            "data": {
+                "type": "code",
+                "title": "Code",
+                "code": "def main():\n    return {}",
+                "code_language": "python3",
+                "outputs": {},
+                "variables": [],
+            },
+        },
         {"id": "end1", "data": {"type": "end", "title": "End"}},
     ],
     "edges": [{"id": "code1-end1", "source": "code1", "target": "end1"}],
@@ -109,9 +126,23 @@ def test_propose_config_fix_auto_applies_low_risk():
     assert risk.level == "low"
 
 
+# Same split as ``_RG``: the culprit is startable, ``end1`` is not and is never
+# written.
 _HTTP_GRAPH = {
     "nodes": [
-        {"id": "http1", "data": {"type": "http-request", "title": "HTTP"}},
+        {
+            "id": "http1",
+            "data": {
+                "type": "http-request",
+                "title": "HTTP",
+                "method": "get",
+                "url": "https://example.test/old",
+                "authorization": {"type": "no-auth"},
+                "headers": "",
+                "params": "",
+                "body": {"type": "none", "data": []},
+            },
+        },
         {"id": "end1", "data": {"type": "end", "title": "End"}},
     ],
     "edges": [{"id": "http1-end1", "source": "http1", "target": "end1"}],
@@ -132,6 +163,13 @@ def test_propose_external_config_forced_high():
 
 
 def test_propose_structural_forced_high():
+    """Also the guard for the ``connect`` exclusion: ``end1`` is already refused
+    by the engine and this batch only WIRES to it. Counting a connect's
+    endpoints as written would make ``end1``'s pre-existing defect veto the
+    whole repair, and this test would silently become "surfaces to human"."""
+    from services.dify_builder.preflight import preflight_errors
+
+    assert preflight_errors(_RG)  # ``end1`` is not startable, and nothing here fixes it
     payload = (
         '{"intents":[{"op":"create_node","args":{"node_type":"llm","config":{},"node_id":"llm2"}},'
         '{"op":"connect","args":{"from_node":"llm2","to_node":"end1"}}],'

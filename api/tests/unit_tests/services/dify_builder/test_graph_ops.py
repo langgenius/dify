@@ -358,7 +358,7 @@ def test_filter_applicable_routes_a_create_through_the_apply_fn_that_fills_defau
         )
     ]
 
-    applicable, rejected, dry_run_graph = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents)
+    applicable, rejected, dry_run_graph, _changed = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents)
 
     assert rejected == []
     assert applicable == intents
@@ -770,42 +770,42 @@ _G = {
 
 def test_filter_applicable_all_valid():
     intents = [MutationIntent(op="set_node_config", args={"node_id": "a", "path": "code", "value": "x"})]
-    ok, bad, _dry = graph_ops.filter_applicable(_G, intents)
+    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == intents
     assert bad == []
 
 
 def test_filter_rejects_unknown_op():
     intents = [MutationIntent(op="frobnicate", args={})]
-    ok, bad, _dry = graph_ops.filter_applicable(_G, intents)
+    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == []
     assert "unknown mutation op" in bad[0][1]
 
 
 def test_filter_rejects_missing_required_arg():
     intents = [MutationIntent(op="set_node_config", args={"node_id": "a"})]
-    ok, bad, _dry = graph_ops.filter_applicable(_G, intents)
+    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == []
     assert "missing required arg" in bad[0][1]
 
 
 def test_filter_rejects_extra_arg_key():
     intents = [MutationIntent(op="delete_node", args={"node_id": "a", "bogus": 1})]
-    ok, bad, _dry = graph_ops.filter_applicable(_G, intents)
+    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == []
     assert "bogus" in bad[0][1]
 
 
 def test_filter_rejects_dangling_ref():
     intents = [MutationIntent(op="connect", args={"from_node": "a", "to_node": "zzz"})]
-    ok, bad, _dry = graph_ops.filter_applicable(_G, intents)
+    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == []
     assert "node not found" in bad[0][1]
 
 
 def test_filter_rejects_unknown_node_type():
     intents = [MutationIntent(op="create_node", args={"node_type": "made-up", "config": {}})]
-    ok, bad, _dry = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
     assert ok == []
     assert "node_type not allowed" in bad[0][1]
 
@@ -815,7 +815,7 @@ def test_filter_create_then_connect_ordering():
         MutationIntent(op="create_node", args={"node_type": "llm", "config": {}, "node_id": "c"}),
         MutationIntent(op="connect", args={"from_node": "c", "to_node": "b"}),
     ]
-    ok, bad, _dry = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
     assert ok == intents  # the connect sees the node the prior create added
     assert bad == []
 
@@ -827,7 +827,7 @@ def test_filter_treats_a_recreate_of_a_present_id_as_the_no_op_the_port_treats_i
     corrective re-prompt on a batch that was going to apply cleanly."""
     intents = [MutationIntent(op="create_node", args={"node_type": "llm", "config": {}, "node_id": "a"})]
 
-    ok, bad, dry = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    ok, bad, dry, _changed = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
 
     assert bad == []
     assert ok == intents  # left for the port, which drops it the same way
@@ -844,7 +844,7 @@ def test_filter_still_rejects_an_in_batch_duplicate_of_a_new_id():
         MutationIntent(op="create_node", args={"node_type": "llm", "config": {}, "node_id": "c"}),
     ]
 
-    ok, bad, _dry = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
 
     assert ok == intents[:1]
     assert "already exists" in bad[0][1]
@@ -859,7 +859,7 @@ def test_filter_does_not_treat_a_recreate_of_a_deleted_id_as_present():
         MutationIntent(op="create_node", args={"node_type": "llm", "config": {}, "node_id": "a"}),
     ]
 
-    ok, bad, dry = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    ok, bad, dry, _changed = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
 
     assert bad == []
     assert ok == intents
@@ -870,7 +870,7 @@ def test_filter_rejects_insert_between_with_non_dict_edge():
     # A hallucinated insert_between with a string edge (not a {source,target} dict)
     # must be REJECTED gracefully, never raise (it would crash the advance).
     intents = [MutationIntent(op="insert_between", args={"edge": "a-b", "node_type": "llm", "config": {}})]
-    ok, bad, _dry = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
     assert ok == []
     assert len(bad) == 1  # rejected with a reason, not raised
 
@@ -887,11 +887,31 @@ def test_filter_applicable_returns_the_dry_run_graph_and_leaves_the_input_alone(
     dry_run = graph_ops.filter_applicable(_G, intents)
 
     assert isinstance(dry_run, graph_ops.DryRun)
-    assert (dry_run.applicable, dry_run.rejected, dry_run.graph) == tuple(dry_run)
-    # only the applicable intent advanced the working copy
+    assert (dry_run.applicable, dry_run.rejected, dry_run.graph, dry_run.changed_nodes) == tuple(dry_run)
+    # only the applicable intent advanced the working copy, and only it is reported
+    # as written -- the rejected intent touched nothing
+    assert dry_run.changed_nodes == ["a"]
     assert dry_run.graph["nodes"][0]["data"]["code"] == "x"
     assert [n["id"] for n in dry_run.graph["nodes"]] == ["a", "b"]
     assert before == _G
+
+
+def test_a_connect_writes_an_edge_and_so_reports_no_node_as_written():
+    """``changed_nodes`` feeds ``preflight.new_preflight_problems``'s ``touched``,
+    where a node loses its pre-existing-defect exemption entirely. An edge
+    cannot change either endpoint's node-data verdict, so a connect must not put
+    them there -- otherwise wiring an already-broken node vetoes the batch.
+    ``apply_connect`` still reports both endpoints to the caller for the change
+    set and the canvas; only this accumulator skips them."""
+    intents = [
+        MutationIntent(op="connect", args={"from_node": "a", "to_node": "b"}),
+        MutationIntent(op="set_node_config", args={"node_id": "b", "path": "title", "value": "B"}),
+    ]
+
+    dry_run = graph_ops.filter_applicable(_G, intents)
+
+    assert len(dry_run.applicable) == 2  # both applied...
+    assert dry_run.changed_nodes == ["b"]  # ...but only the config write counts as written
 
 
 def test_filter_applicable_heals_its_dry_run_graph_the_way_the_write_chokepoint_will():
@@ -1006,7 +1026,7 @@ def test_filter_applicable_rejects_a_bad_path_with_a_reason():
         op="set_node_config",
         args={"node_id": "node5", "path": "cases.0.conditions.9.value", "value": "x"},
     )
-    applicable, rejected, _dry = filter_applicable(graph, [intent])
+    applicable, rejected, _dry, _changed = filter_applicable(graph, [intent])
     assert applicable == []
     assert len(rejected) == 1
     assert "out of range" in rejected[0][1]

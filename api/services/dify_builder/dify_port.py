@@ -254,6 +254,16 @@ class WorkflowServiceDifyPort:
             intents = [intent for intent in intents if not _already_present(intent)]
 
             changed_nodes: list[str] = []
+            # The nodes whose DATA this batch wrote, which is a narrower set
+            # than the change set and is kept separately for that reason: the
+            # preflight below gives a node in it no exemption at all, so an id
+            # that lands here wrongly turns someone else's pre-existing defect
+            # into a veto. ``connect`` writes an EDGE -- ``apply_connect``
+            # reports both endpoints, correctly for a diff, but adding an edge
+            # cannot change either endpoint's ``validate_node_config`` verdict.
+            # Mirrors ``graph_ops.filter_applicable``, which must produce the
+            # same set or the dry run would be predicting a different write.
+            written_nodes: list[str] = []
             for intent in intents:
                 apply_fn = graph_ops.APPLY_FNS.get(intent.op)
                 if apply_fn is None:
@@ -261,6 +271,8 @@ class WorkflowServiceDifyPort:
                 graph_ops.validate_intent_args(intent)
                 graph, changed = apply_fn(graph, **intent.args)
                 changed_nodes.extend(changed)
+                if intent.op != "connect":
+                    written_nodes.extend(changed)
                 if on_canvas is not None:
                     on_canvas(_canvas_payload(intent, changed))
 
@@ -273,6 +285,11 @@ class WorkflowServiceDifyPort:
                     structure_fingerprint=graph_ops.structural_fingerprint(before_graph),
                 )
 
+            # ``written_nodes`` is complete at this point and is deliberately
+            # NOT extended by the heal below: the healer scans the whole graph,
+            # so a node it merely normalized is not one this batch is
+            # answerable for.
+            #
             # The deterministic heal set every pre-preflight caller shares
             # (core.workflow.graph_normalizers.heal_nodes_for_preflight), for
             # the intents the generator never saw: a Fix/Edit repair that
@@ -292,12 +309,15 @@ class WorkflowServiceDifyPort:
 
             # Dry-validate what the draft would become. Whatever raises here
             # would raise at Graph.init and kill the very first test run
-            # (ESQ1-302 and ESQ1-303 both died there). Only NEW problems count:
-            # a pre-existing broken node the repair did not touch must not veto
-            # an unrelated fix -- and a repair that heals it passes. The same
-            # function the Edit/Fix dry run predicts this refusal with
-            # (``preflight.vet_intents``), so the two cannot answer differently.
-            new_problems = new_preflight_problems(before_graph, graph)
+            # (ESQ1-302 and ESQ1-303 both died there). A node this batch WROTE
+            # must be startable -- a repair that leaves its own culprit refused
+            # is not a repair, however little it changed about why. Every other
+            # node keeps the new-problems-only exemption: one the repair did not
+            # touch must not veto an unrelated fix, and a repair that heals it
+            # passes. The same function the Edit/Fix dry run predicts this
+            # refusal with (``preflight.vet_intents``), on the same ``touched``
+            # set, so the two cannot answer differently.
+            new_problems = new_preflight_problems(before_graph, graph, written_nodes)
             if new_problems:
                 raise PreflightError("the draft would not start: " + "; ".join(new_problems))
 

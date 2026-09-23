@@ -547,11 +547,28 @@ class DryRun(NamedTuple):
     way. It is returned rather than discarded so ``preflight.vet_intents`` can
     put it through the node-data validation the port's own preflight performs,
     while there is still a corrective re-prompt left to spend on the answer.
+
+    ``changed_nodes`` is the ids those applicable intents wrote NODE DATA to, in
+    order, which is what ``preflight.new_preflight_problems`` needs to tell a
+    node this batch is answerable for from one it merely left alone. It is
+    narrower than a change set in two deliberate ways, and both matter because
+    a node in it loses its pre-existing-defect exemption entirely:
+
+    * ``connect`` is EXCLUDED. ``apply_connect`` reports both endpoints as
+      changed -- correct for a diff, wrong here: adding an edge cannot change
+      either endpoint's ``validate_node_config`` verdict, so counting them would
+      let merely WIRING an already-broken node make that node's pre-existing
+      defect veto the whole batch. Nothing is given up by leaving it out.
+    * the heal is not folded in. ``heal_nodes_for_preflight`` scans EVERY node,
+      not only the ones the intents named, so its ids would make an unrelated
+      node the healer normalized count as written by this batch. Same pre-heal
+      point in the sequence as ``dify_port.apply_repair``'s own copy.
     """
 
     applicable: list[MutationIntent]
     rejected: list[tuple[MutationIntent, str]]
     graph: Graph
+    changed_nodes: list[str]
 
 
 def filter_applicable(
@@ -561,9 +578,10 @@ def filter_applicable(
 ) -> DryRun:
     """Dry-run each intent through the real validate_intent_args + apply_* on a
     working deep copy, in order (so a connect sees a node an earlier create_node
-    added). Returns a ``DryRun``: ``(applicable, rejected, graph)``, where each
-    rejected entry is ``(intent, reason)`` and ``graph`` is the mutated working
-    copy.
+    added). Returns a ``DryRun``: ``(applicable, rejected, graph, changed_nodes)``,
+    where each rejected entry is ``(intent, reason)``, ``graph`` is the mutated
+    working copy and ``changed_nodes`` is the ids whose node DATA those intents
+    wrote (see ``DryRun``).
 
     Catches every failure the live apply_repair would hit -- unknown op, missing
     required arg / extra arg key, dangling node/edge ref, duplicate id -- and
@@ -590,6 +608,7 @@ def filter_applicable(
     is_already_present = already_present_predicate(graph, intents)
     applicable: list[MutationIntent] = []
     rejected: list[tuple[MutationIntent, str]] = []
+    changed_nodes: list[str] = []
     for intent in intents:
         # Before validate_intent_args, exactly where the port drops it.
         if is_already_present(intent):
@@ -602,10 +621,14 @@ def filter_applicable(
                 if node_type not in allowed_node_types:
                     rejected.append((intent, f"node_type not allowed: {node_type!r}"))
                     continue
-            working, _changed = APPLY_FNS[intent.op](working, **intent.args)
+            working, changed = APPLY_FNS[intent.op](working, **intent.args)
         except Exception as exc:
             rejected.append((intent, str(exc)))
             continue
+        # A connect writes an EDGE; its endpoints' node data is untouched (see
+        # ``DryRun.changed_nodes``). Mirrored in ``dify_port.apply_repair``.
+        if intent.op != "connect":
+            changed_nodes.extend(changed)
         applicable.append(intent)
     heal_nodes_for_preflight(working.get("nodes") or [])
-    return DryRun(applicable, rejected, working)
+    return DryRun(applicable, rejected, working, changed_nodes)
