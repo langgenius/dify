@@ -1,5 +1,6 @@
 {
   "desc": "Burada Bilginin özelliklerini ve çalışma yöntemlerini değiştirebilirsiniz.",
+  "form.changeIcon": "Bilgi simgesini değiştir",
   "form.chunkStructure.description": "Yığın Yapısı hakkında.",
   "form.chunkStructure.learnMore": "Daha fazla bilgi edinin",
   "form.chunkStructure.title": "Yığın Yapısı",

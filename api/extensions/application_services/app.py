@@ -5,9 +5,12 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session, sessionmaker
 
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
+from services.api_token_service import ApiTokenCache
+from services.app.api_key_service import AppApiKeyService
 from services.app.console_gateway import AppLifecycleGateway, AppTransferGateway, EnterpriseConsoleAppAccess
 from services.app.console_service import ConsoleAppService
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
@@ -50,4 +53,11 @@ def build_app_services(
             lifecycle=AppLifecycleGateway(session_factory=database_client),
         ),
         queries=AppQueryService(apps=repository),
+    )
+
+
+def build_app_api_key_service(*, database_client: sessionmaker[Session]) -> AppApiKeyService:
+    return AppApiKeyService(
+        keys=AppApiKeyRepository(session_factory=database_client),
+        cache=ApiTokenCache,
     )

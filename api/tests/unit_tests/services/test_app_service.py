@@ -418,9 +418,8 @@ def test_unpublished_agent_app_access_cannot_be_enabled(
     commits: list[str] = []
     event.listen(sqlite_session, "after_commit", lambda _session: commits.append("commit"))
 
-    with patch("services.app_service.agent_has_workflow_callable_active_snapshot", return_value=False):
-        with pytest.raises(AgentAccessNotReadyError):
-            update_status(AppService(), app, True, session=sqlite_session)
+    with pytest.raises(AgentAccessNotReadyError):
+        update_status(AppService(), app, True, session=sqlite_session)
 
     assert app.enable_site is False
     assert app.enable_api is False
