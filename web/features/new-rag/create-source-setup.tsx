@@ -49,7 +49,7 @@ function ConnectedSourceConfiguration({
   draft: NewKnowledgeSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -107,8 +107,8 @@ export function CreateSourceSetup({
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCreation } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCreation } = useTranslation(['datasetCreation'])
   const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
   const sourceType = draft.sourceType

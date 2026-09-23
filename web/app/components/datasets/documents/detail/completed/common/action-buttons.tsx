@@ -28,7 +28,7 @@ export function ActionButtons({
   isChildChunk = false,
   showRegenerationButton = true,
 }: ActionButtonsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const docForm = useDocumentContext((s) => s.docForm)
   const parentMode = useDocumentContext((s) => s.parentMode)
 

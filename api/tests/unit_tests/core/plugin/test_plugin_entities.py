@@ -276,6 +276,33 @@ class TestPluginParameterEntities:
         with pytest.raises(ValueError, match="not found in tool config"):
             init_frontend_parameter(tools_rule, PluginParameterType.TOOLS_SELECTOR, None)
 
+    @pytest.mark.parametrize(
+        ("parameter_type", "default"),
+        [
+            (PluginParameterType.NUMBER, 0),
+            (PluginParameterType.NUMBER, 0.0),
+            (PluginParameterType.BOOLEAN, False),
+        ],
+    )
+    def test_required_parameter_accepts_zero_and_false_defaults(
+        self, parameter_type: PluginParameterType, default: int | float | bool
+    ) -> None:
+        rule = PluginParameter(name="required", label=self._label(), required=True, default=default)
+
+        value = init_frontend_parameter(rule, parameter_type, None)
+
+        assert value == default
+        assert type(value) is type(default)
+
+    @pytest.mark.parametrize("default", [None, "", [], {}])
+    def test_required_parameter_rejects_empty_defaults(
+        self, default: str | list[object] | dict[str, object] | None
+    ) -> None:
+        rule = PluginParameter(name="required", label=self._label(), required=True, default=default)
+
+        with pytest.raises(ValueError, match="tool parameter required not found in tool config"):
+            init_frontend_parameter(rule, PluginParameterType.ANY, None)
+
 
 class TestPluginDaemonEntities:
     def test_credential_type_helpers(self):

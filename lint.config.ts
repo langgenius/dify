@@ -6,6 +6,33 @@ import path from 'node:path'
 const rootDir = import.meta.dirname
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
+
+export const hintContentRules = {
+  'shadcn/no-restyle': [
+    'error',
+    {
+      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip)$'],
+      allow: ['*'],
+      contracts: [
+        {
+          pattern: '^TooltipContent$',
+          allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
+          // `flex` also names a shadcn class group; allow display flex without flex sizing.
+          deny: ['flex-*'],
+          message:
+            '"{{className}}" is outside the TooltipContent styling contract. Use the default surface, spacing, and typography from packages/dify-ui/src/tooltip/index.tsx; callers may compose a label/shortcut row or constrain width.',
+        },
+        {
+          pattern: '^InfotipContent$',
+          allow: ['w-*', 'max-w-*', 'whitespace-pre-wrap'],
+          message:
+            '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
+        },
+      ],
+    },
+  ],
+} satisfies NonNullable<OxlintConfig['rules']>
+
 const tailwindCanonicalClassesOverride = {
   files: [
     'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
@@ -174,6 +201,7 @@ export const lintConfig = {
   // Keep JavaScript plugins ordered by rule namespace. The `-js` aliases distinguish
   // plugins that supplement an active native Oxlint plugin with the same namespace.
   jsPlugins: [
+    '@shadcn/lint',
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
@@ -182,7 +210,6 @@ export const lintConfig = {
       name: 'dify',
       specifier: './web/plugins/eslint/index.js',
     },
-    'eslint-plugin-erasable-syntax-only',
     {
       name: 'eslint-comments',
       specifier: '@eslint-community/eslint-plugin-eslint-comments',
@@ -461,6 +488,8 @@ export const lintConfig = {
     'unicorn/no-abusive-eslint-disable': 'error',
     'dify/no-file-wide-disable': 'error',
     'dify/require-disable-directive-description': 'error',
+    'dify/require-i18n-namespace': 'error',
+    'dify/require-t-function-namespace': 'error',
     'eslint-comments/no-aggregating-enable': 'error',
     'eslint-comments/no-duplicate-disable': 'error',
     'eslint-comments/no-unlimited-disable': 'error',
@@ -495,10 +524,6 @@ export const lintConfig = {
     'import/no-duplicates': 'error',
     'import/no-mutable-exports': 'error',
     'import/no-named-default': 'error',
-    'erasable-syntax-only/enums': 'error',
-    'erasable-syntax-only/import-aliases': 'error',
-    'erasable-syntax-only/namespaces': 'error',
-    'erasable-syntax-only/parameter-properties': 'error',
     'regexp/confusing-quantifier': 'warn',
     'regexp/control-character-escape': 'error',
     'regexp/match-any': 'error',
@@ -809,6 +834,10 @@ export const lintConfig = {
       rules: jsxA11yRules,
     },
     {
+      files: ['web/**/*.{jsx,tsx}'],
+      rules: hintContentRules,
+    },
+    {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],
       rules: {
         'storybook/await-interactions': 'error',
@@ -844,11 +873,6 @@ export const lintConfig = {
               height: 'h',
             },
             libraries: [
-              {
-                prefix: 'i-custom-',
-                source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-                name: '^(?<name>.*)$',
-              },
               {
                 source: '^@remixicon/react$',
                 name: '^(?<set>Ri)(?<name>.+)$',
@@ -1345,10 +1369,6 @@ export const lintConfig = {
         'import/no-duplicates': 'off',
         'import/no-mutable-exports': 'off',
         'import/no-named-default': 'off',
-        'erasable-syntax-only/enums': 'off',
-        'erasable-syntax-only/import-aliases': 'off',
-        'erasable-syntax-only/namespaces': 'off',
-        'erasable-syntax-only/parameter-properties': 'off',
         'regexp/confusing-quantifier': 'off',
         'regexp/control-character-escape': 'off',
         'regexp/match-any': 'off',

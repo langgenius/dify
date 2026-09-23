@@ -66,7 +66,7 @@ const Authorized = ({
   onUpdate,
   notAllowCustomCredential,
 }: AuthorizedProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments', 'plugin'])
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen

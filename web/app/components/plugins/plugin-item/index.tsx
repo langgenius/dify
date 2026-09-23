@@ -23,7 +23,6 @@ import useTheme from '@/hooks/use-theme'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import { getMarketplaceUrl } from '@/utils/var'
 import Badge from '../../base/badge'
-import { Github } from '../../base/icons/src/public/common'
 import Verified from '../base/badges/verified'
 import Description from '../card/base/description'
 import OrgInfo from '../card/base/org-info'
@@ -45,7 +44,7 @@ const PluginItem: FC<Props> = ({
   className,
   plugin,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { theme } = useTheme()
   const selectedPluginID = usePluginPageContext((v) =>
     v.selectedItem?.type === 'plugin' ? v.selectedItem.id : undefined,
@@ -79,7 +78,8 @@ const PluginItem: FC<Props> = ({
   const hasEndpointDeclaration = !!plugin.declaration.endpoint
 
   const orgName = useMemo(() => {
-    return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
+    const sourcesWithAuthor: PluginSource[] = [PluginSource.github, PluginSource.marketplace]
+    return sourcesWithAuthor.includes(source) ? author : ''
   }, [source, author])
 
   const { data: currentVersion } = useSuspenseQuery({
@@ -253,7 +253,7 @@ const PluginItem: FC<Props> = ({
                   {t(($) => $.from, { ns: 'plugin' })}
                 </div>
                 <div className="flex items-center space-x-0.5 text-text-secondary">
-                  <Github className="size-3" />
+                  <span aria-hidden className="i-custom-public-common-github size-3" />
                   <div className="system-2xs-semibold-uppercase">GitHub</div>
                   <RiArrowRightUpLine className="size-3" />
                 </div>

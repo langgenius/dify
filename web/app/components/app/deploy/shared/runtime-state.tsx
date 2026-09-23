@@ -55,7 +55,7 @@ function getRuntimeStateLabel(
 }
 
 export function RuntimeStateIndicator({ runtimeState }: RuntimeStateIndicatorProps) {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments'])
   const label = getRuntimeStateLabel(runtimeState, t)
   const isInProgress =
     runtimeState === RuntimeState.RUNTIME_STATE_STARTING ||

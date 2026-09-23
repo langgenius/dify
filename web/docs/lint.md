@@ -63,6 +63,11 @@ The non-code baseline and its repository-wide file scope live in `eslint.config.
 
 The root configuration enables both `typeAware` and `typeCheck`, so `vp check` runs type-aware rules and full diagnostics through the repository's `@typescript/native` compiler.
 
+The shared `packages/tsconfig/base.json` enforces erasable TypeScript syntax through
+`erasableSyntaxOnly`. Root tooling and TypeScript packages inherit this contract; enum
+declarations, runtime namespaces, parameter properties, and import assignments are checked
+by the compiler without a separate lint plugin.
+
 The web package still runs its existing TSSLint rule separately:
 
 ```sh
@@ -116,6 +121,29 @@ Explain the concrete reason after `--`: which external contract, lifecycle, or r
 `dify/require-disable-directive-description` uses Oxlint's parsed directives to report missing explanations, including JSX comments. It runs at `error`; existing undescribed exceptions are tracked in the bulk-suppression baseline for incremental cleanup. Enable comments do not need a repeated explanation. This rule does not assess whether a reason is valid and does not replace review. Do not add generic descriptions just to silence it.
 
 `reportUnusedDisableDirectives` runs at `error` repository-wide. Remove an exception when the finding no longer exists. Keep both checks active: a described disable may still be unused, and a used disable may still lack a reason.
+
+### Translation Function Types
+
+`dify/require-i18n-namespace` requires translation hook calls to use non-empty
+inline namespace arrays, including single namespaces: `useTranslation(['common'])`.
+Strings and indirect arguments are rejected; only calls reading the `i18n`
+instance alone may omit namespaces. Both `react-i18next` and `#i18n` are checked.
+The shared client/server adapter accepts typed non-empty tuples and forwards them
+through one documented lint exception in its client implementation.
+
+`dify/require-t-function-namespace` requires i18next `TFunction` types to declare a
+non-empty inline tuple of namespace string literals. Use `TFunction<['common']>`
+or `TFunction<['common', 'workflow']>`; readonly tuples are also supported.
+Omitted arguments, single strings, broad namespace types, tuple aliases, and
+unions or rest elements inside the tuple are rejected. Named import aliases,
+namespace imports, and inline `import('i18next').TFunction` types are checked.
+
+Declare the namespaces the helper or component actually uses. TypeScript checks
+translation keys and compatibility with callers; the lint rule does not infer
+transitive dependencies or detect unused namespaces. Keep the first namespace
+compatible with the caller because it defines the default translation namespace.
+The rule has no automatic fix because choosing the dependencies requires reading
+the translation calls.
 
 ### Introducing New Plugins or Rules
 

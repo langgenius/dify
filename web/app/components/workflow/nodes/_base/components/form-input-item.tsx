@@ -2,11 +2,8 @@
 
 import type { FC } from 'react'
 import type { ResourceVarInputs } from '../types'
-import type {
-  CredentialFormSchema,
-  FormOption,
-  FormTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FormInputSchema } from './form-input-item.helpers'
+import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -57,7 +54,7 @@ type Props = Readonly<{
   readOnly: boolean
   labelId?: string
   nodeId: string
-  schema: CredentialFormSchema
+  schema: FormInputSchema
   value: ResourceVarInputs
   onChange: (value: ResourceVarInputs) => void
   inPanel?: boolean
@@ -67,6 +64,7 @@ type Props = Readonly<{
   onManageInputField?: () => void
   extraParams?: Record<string, unknown>
   providerType?: 'tool' | 'trigger'
+  staticSchema?: boolean
   disableVariableInsertion?: boolean
 }>
 
@@ -92,6 +90,7 @@ const FormInputItem: FC<Props> = ({
   onManageInputField,
   extraParams,
   providerType,
+  staticSchema = false,
   disableVariableInsertion = false,
   inPanel,
 }) => {
@@ -104,15 +103,7 @@ const FormInputItem: FC<Props> = ({
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
 
-  const formState = getFormInputState(
-    schema as CredentialFormSchema & {
-      _type?: FormTypeEnum
-      multiple?: boolean
-      options?: FormOption[]
-      scope?: string
-    },
-    value[schema.variable],
-  )
+  const formState = getFormInputState(schema, value[schema.variable])
 
   const {
     defaultValue,
@@ -141,7 +132,9 @@ const FormInputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+
+      return textVariableTypes.includes(varPayload.type)
     },
   })
 
@@ -166,7 +159,8 @@ const FormInputItem: FC<Props> = ({
         extra: extraParams,
         credential_id: currentProvider?.credential_id || '',
       },
-      isDynamicSelect &&
+      !staticSchema &&
+        isDynamicSelect &&
         providerType === PluginCategoryEnum.trigger &&
         !!currentTool &&
         !!currentProvider,
@@ -185,6 +179,7 @@ const FormInputItem: FC<Props> = ({
   useEffect(() => {
     const fetchPanelDynamicOptions = async () => {
       if (
+        !staticSchema &&
         isDynamicSelect &&
         currentTool &&
         currentProvider &&
@@ -205,6 +200,7 @@ const FormInputItem: FC<Props> = ({
 
     fetchPanelDynamicOptions()
   }, [
+    staticSchema,
     isDynamicSelect,
     currentTool?.name,
     currentProvider?.name,
@@ -346,6 +342,8 @@ const FormInputItem: FC<Props> = ({
       {isNumber && isConstant && (
         <NumberField
           step="any"
+          min={staticSchema ? schema.min : undefined}
+          max={staticSchema ? schema.max : undefined}
           className="min-w-0 grow"
           value={varInput?.value == null || varInput.value === '' ? null : Number(varInput.value)}
           readOnly={readOnly}

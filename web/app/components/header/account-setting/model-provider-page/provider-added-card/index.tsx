@@ -45,7 +45,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   provider,
   pluginSummary,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const {
     data: { deploymentEdition, rbacEnabled },
   } = useSuspenseQuery({

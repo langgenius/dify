@@ -7,11 +7,11 @@ import type { ImageFile } from '@/types/app'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
-import Divider from '@/app/components/base/divider'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import { toast } from '@/app/notifications'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
@@ -24,7 +24,7 @@ type InputImageInfo =
 type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
 
 const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
@@ -142,7 +142,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       >
         <DialogContent className="w-90.5! p-0!">
           <ImageInput onImageInput={handleImageInput} cropShape="round" />
-          <Divider className="m-0" />
+          <Separator decorative className="m-0 h-[0.5px]" />
 
           <div className="flex w-full items-center justify-center gap-2 p-3">
             {canDeleteAvatar && (

@@ -2,6 +2,7 @@ import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   Select,
   SelectContent,
@@ -14,7 +15,6 @@ import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Infotip } from '@/app/components/base/infotip'
 import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
@@ -50,7 +50,7 @@ export const CreateSubscriptionButton = ({
   buttonType = CreateButtonType.FULL_BUTTON,
   shape = 'square',
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'pluginTrigger'])
   const { subscriptions } = useSubscriptionList()
   const subscriptionCount = subscriptions?.length || 0
   const [selectedCreateInfo, setSelectedCreateInfo] = useState<{
@@ -94,6 +94,28 @@ export const CreateSubscriptionButton = ({
       [DEFAULT_METHOD]: t(($) => $['subscription.empty.button'], { ns: 'pluginTrigger' }),
     }
   }, [t])
+
+  const methodDescriptionMap = {
+    [SupportedCreationMethods.OAUTH]: t(
+      ($) => $['subscription.addType.options.oauth.description'],
+      {
+        ns: 'pluginTrigger',
+      },
+    ),
+    [SupportedCreationMethods.APIKEY]: t(
+      ($) => $['subscription.addType.options.apikey.description'],
+      {
+        ns: 'pluginTrigger',
+      },
+    ),
+    [SupportedCreationMethods.MANUAL]: t(
+      ($) => $['subscription.addType.options.manual.description'],
+      {
+        ns: 'pluginTrigger',
+      },
+    ),
+    [DEFAULT_METHOD]: '',
+  }
 
   const onClickClientSettings = useCallback(
     (e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
@@ -162,13 +184,20 @@ export const CreateSubscriptionButton = ({
           ns: 'pluginTrigger',
         }),
         extra: (
-          <Infotip
-            aria-label={t(($) => $['subscription.addType.options.manual.tip'], {
-              ns: 'pluginTrigger',
-            })}
-            className="size-3.5"
-          >
-            {t(($) => $['subscription.addType.options.manual.tip'], { ns: 'pluginTrigger' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['subscription.addType.options.manual.description'], {
+                ns: 'pluginTrigger',
+              })}
+              className="size-3.5"
+            />
+            <InfotipContent
+              aria-label={t(($) => $['subscription.addType.options.manual.description'], {
+                ns: 'pluginTrigger',
+              })}
+            >
+              {t(($) => $['subscription.addType.options.manual.tip'], { ns: 'pluginTrigger' })}
+            </InfotipContent>
           </Infotip>
         ),
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
@@ -336,13 +365,7 @@ export const CreateSubscriptionButton = ({
               <TooltipContent>
                 {subscriptionCount >= MAX_COUNT
                   ? t(($) => $['subscription.maxCount'], { ns: 'pluginTrigger', num: MAX_COUNT })
-                  : t(
-                      ($) =>
-                        $[
-                          `subscription.addType.options.${methodType!.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`
-                        ],
-                      { ns: 'pluginTrigger' },
-                    )}
+                  : methodDescriptionMap[methodType!]}
               </TooltipContent>
             </Tooltip>
           )}

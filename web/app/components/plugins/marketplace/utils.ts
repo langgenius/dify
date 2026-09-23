@@ -261,15 +261,14 @@ export const getMarketplacePlugins = async (
 }
 
 export const getMarketplaceListCondition = (pluginType: string) => {
-  if (
-    [
-      PluginCategoryEnum.tool,
-      PluginCategoryEnum.agent,
-      PluginCategoryEnum.model,
-      PluginCategoryEnum.datasource,
-      PluginCategoryEnum.trigger,
-    ].includes(pluginType as PluginCategoryEnum)
-  )
+  const marketplaceCategories: PluginCategoryEnum[] = [
+    PluginCategoryEnum.tool,
+    PluginCategoryEnum.agent,
+    PluginCategoryEnum.model,
+    PluginCategoryEnum.datasource,
+    PluginCategoryEnum.trigger,
+  ]
+  if (marketplaceCategories.includes(pluginType as PluginCategoryEnum))
     return `category=${pluginType}`
 
   if (pluginType === PluginCategoryEnum.extension) return 'category=endpoint'

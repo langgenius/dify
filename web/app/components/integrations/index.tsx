@@ -125,7 +125,7 @@ export default function IntegrationsPage({
   section: routeSection,
   syncDocumentTitle = false,
 }: IntegrationsPageProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const navigationTitleId = useId()
   const docLink = useDocLink()
   const router = useRouter()

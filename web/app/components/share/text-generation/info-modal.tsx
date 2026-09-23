@@ -14,7 +14,7 @@ type Props = Readonly<{
 }>
 
 const InfoModal = ({ isShow, onClose, data }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [currentYear] = React.useState(() => new Date().getFullYear())
 
   return (

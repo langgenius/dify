@@ -5,7 +5,6 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.orm import Session
 
-import core.ops.utils as utils_module
 from core.ops.utils import (
     filter_none_values,
     generate_dotted_order,
@@ -22,20 +21,9 @@ from models.model import Message
 from tests.unit_tests.model_factories import make_message
 
 
-class _DatabaseBinding:
-    """Expose the real SQLite session used by the message lookup helper."""
-
-    session: Session
-
-    def __init__(self, session: Session) -> None:
-        self.session = session
-
-
 @pytest.fixture
-def message_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Bind the message lookup helper to the shared SQLite test session."""
-
-    monkeypatch.setattr(utils_module, "db", _DatabaseBinding(sqlite_session))
+def message_session(sqlite_session: Session) -> Session:
+    """Provide the shared SQLite test session for message lookups."""
     return sqlite_session
 
 
@@ -292,7 +280,7 @@ class TestGetMessageData:
         message_session.add_all((target, unrelated))
         message_session.commit()
 
-        result = get_message_data("message-id")
+        result = get_message_data("message-id", message_session)
 
         assert result is target
         assert result.id == "message-id"

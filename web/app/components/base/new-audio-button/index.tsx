@@ -16,7 +16,7 @@ type AudioBtnProps = Readonly<{
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
 const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi'])
   const [audioState, setAudioState] = useState<AudioState>('initial')
 
   const params = useParams()

@@ -56,7 +56,7 @@ export default function AccountSetting({
   activeTab,
   onTabChangeAction,
 }: IAccountSettingProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'billing', 'common', 'custom'])
   const { data: enableReplaceWebAppLogo } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.can_replace_logo,

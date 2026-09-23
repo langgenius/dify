@@ -18,7 +18,7 @@ const cardClassName =
   'group relative flex h-[152px] min-w-0 w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 text-left shadow-xs outline-hidden transition-shadow hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 function CreationCardContent({ creation }: { creation: CreatorCreation }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const visibleDependencies = creation.dependencyIcons.slice(0, MAX_VISIBLE_DEPENDENCIES)
   const remainingDependencies = Math.max(0, creation.dependencyCount - visibleDependencies.length)
 
@@ -75,7 +75,13 @@ function CreationCardContent({ creation }: { creation: CreatorCreation }) {
 export default function CreationCard({ creation, action }: CreationCardProps) {
   if (action.type === 'link') {
     return (
-      <Link href={action.href} aria-label={creation.title} className={cardClassName}>
+      <Link
+        href={action.href}
+        target={action.target}
+        rel={action.target === '_blank' ? 'noopener noreferrer' : undefined}
+        aria-label={creation.title}
+        className={cardClassName}
+      >
         <CreationCardContent creation={creation} />
       </Link>
     )

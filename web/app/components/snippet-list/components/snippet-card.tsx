@@ -52,8 +52,8 @@ const SnippetCard = ({
   onRefresh,
   onTagsChange,
 }: Props) => {
-  const { t } = useTranslation('snippet')
-  const { t: tCommon } = useTranslation()
+  const { t } = useTranslation(['snippet', 'datasetDocuments'])
+  const { t: tCommon } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: membersData } = useMembers()
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)

@@ -1,530 +1,241 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { Import } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  GetExploreAppsResponse,
+  RecommendedAppDetailResponse,
+  RecommendedAppResponse,
+} from '@dify/contracts/api/console/explore/types.gen'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
 import Apps from '../index'
 
-const mockUseExploreAppList = vi.fn()
-const mockImportDSL = vi.hoisted(() => vi.fn())
-const mockFetchAppDetail = vi.fn()
-const mockHandleCheckPluginDependencies = vi.fn()
-const mockGetRedirection = vi.fn()
-const mockPush = vi.fn()
-const mockToastSuccess = vi.fn()
-const mockToastError = vi.fn()
-const mockTrackCreateApp = vi.fn()
-let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
-const mockUserProfile = { id: 'user-1' }
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('nuqs', () => ({
-  useQueryState: () => ['Recommended', vi.fn()],
-}))
-vi.mock('@/service/use-explore', () => ({
-  useExploreAppList: () => mockUseExploreAppList(),
-}))
-vi.mock('@/app/components/app/type-selector', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: AppModeEnum[]
-    onChange: (value: AppModeEnum[]) => void
-  }) => (
-    <div>
-      <button data-testid="type-selector-chat" onClick={() => onChange([AppModeEnum.CHAT])}>
-        {value.join(',')}
-      </button>
-      <button
-        data-testid="type-selector-advanced"
-        onClick={() => onChange([AppModeEnum.ADVANCED_CHAT])}
-      >
-        advanced
-      </button>
-      <button data-testid="type-selector-agent" onClick={() => onChange([AppModeEnum.AGENT_CHAT])}>
-        agent
-      </button>
-      <button
-        data-testid="type-selector-completion"
-        onClick={() => onChange([AppModeEnum.COMPLETION])}
-      >
-        completion
-      </button>
-      <button data-testid="type-selector-workflow" onClick={() => onChange([AppModeEnum.WORKFLOW])}>
-        workflow
-      </button>
-    </div>
-  ),
-}))
-vi.mock('../../app-card', () => ({
-  default: ({
-    app,
-    canCreate,
-    onCreate,
-  }: {
-    app: { app: { name: string } }
-    canCreate: boolean
-    onCreate: () => void
-  }) => (
-    <button
-      type="button"
-      data-testid="app-card"
-      data-name={app.app.name}
-      data-can-create={canCreate ? 'true' : 'false'}
-      onClick={onCreate}
-    >
-      {app.app.name}
-    </button>
-  ),
-}))
-vi.mock('@/app/components/explore/create-app-modal', () => ({
-  default: ({
-    onConfirm,
-    onHide,
-    show,
-  }: {
-    onConfirm: (payload: {
-      name: string
-      icon_type: string
-      icon: string
-      icon_background: string
-      description: string
-    }) => Promise<void>
-    onHide: () => void
-    show: boolean
-  }) =>
-    show ? (
-      <div data-testid="create-from-template-modal">
-        <button
-          data-testid="confirm-create"
-          onClick={() =>
-            onConfirm({
-              name: 'Created App',
-              icon_type: 'emoji',
-              icon: '🙂',
-              icon_background: '#fff',
-              description: 'created from template',
-            })
-          }
-        >
-          confirm-create
-        </button>
-        <button data-testid="hide-create-modal" onClick={onHide}>
-          hide-create-modal
-        </button>
-      </div>
-    ) : null,
-}))
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: (...args: unknown[]) => mockToastSuccess(...args),
-    error: (...args: unknown[]) => mockToastError(...args),
-  },
-}))
-vi.mock('@/utils/create-app-tracking', () => ({
-  trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-
-  return {
-    ...actual,
-    consoleQuery: {
-      ...actual.consoleQuery,
-      account: {
-        profile: {
-          get: {
-            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-          },
-        },
-      },
-      systemFeatures: actual.consoleQuery.systemFeatures,
-      apps: {
-        ...actual.consoleQuery.apps,
-        imports: {
-          ...actual.consoleQuery.apps.imports,
-          post: {
-            mutationOptions: () => ({
-              mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
-            }),
-          },
-        },
-      },
-    },
-  }
-})
-vi.mock('@/service/explore', () => ({
-  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
-}))
-vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
-  usePluginDependencies: () => ({
-    handleCheckPluginDependencies: (...args: unknown[]) =>
-      mockHandleCheckPluginDependencies(...args),
+const { request, locale, toast, checkDependencies, redirect, trackCreateApp, push } = vi.hoisted(
+  () => ({
+    request: vi.fn(),
+    locale: { value: 'en-US' },
+    toast: { success: vi.fn(), error: vi.fn() },
+    checkDependencies: vi.fn(),
+    redirect: vi.fn(),
+    trackCreateApp: vi.fn(),
+    push: vi.fn(),
   }),
+)
+vi.mock('@/service/base', () => ({ request }))
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => locale.value,
 }))
-vi.mock('@/utils/app-redirection', () => ({
-  getRedirection: (...args: unknown[]) => mockGetRedirection(...args),
+vi.mock('@/app/notifications', () => ({ toast }))
+vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
+  usePluginDependencies: () => ({ handleCheckPluginDependencies: checkDependencies }),
 }))
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
+vi.mock('@/utils/app-redirection', () => ({ getRedirection: redirect }))
+vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push }), useParams: () => ({}) }))
 
-const createAppEntry = (name: string, category: string) => ({
-  app_id: name,
-  categories: [category],
+const createEntry = (
+  name: string,
+  position: number | null,
+  mode = 'chat',
+  category = 'Assistant',
+): RecommendedAppResponse => ({
+  app_id: `catalog-${name}`,
   app: {
-    id: name,
+    id: `nested-${name}`,
     name,
+    mode,
     icon_type: 'emoji',
     icon: '🙂',
-    icon_background: '#000',
+    icon_background: '#fff',
     icon_url: null,
-    description: 'desc',
-    mode: AppModeEnum.CHAT,
   },
+  can_trial: false,
+  categories: [category],
+  description: 'Catalog description',
+  position,
+})
+const catalog: GetExploreAppsResponse = {
+  recommended_apps: [
+    createEntry('Bravo', 2, 'completion', 'Writing'),
+    createEntry('Alpha', null),
+    createEntry('Charlie', 1, 'workflow'),
+  ],
+  categories: ['Writing', 'Empty', 'Assistant'],
+}
+const detail: RecommendedAppDetailResponse = {
+  id: 'catalog-Alpha',
+  name: 'Alpha',
+  mode: 'chat',
+  can_trial: false,
+  export_data: 'fresh-dsl',
+}
+const imported: Import = {
+  id: 'import-1',
+  status: 'completed',
+  app_id: 'created-app',
+  app_mode: 'chat',
+  permission_keys: ['app.edit'],
+}
+const catalogKey = (language: string) =>
+  consoleQuery.explore.apps.get.queryKey({ input: { query: { language } } })
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  locale.value = 'en-US'
+  request.mockImplementation(async (url: string) => {
+    const path = new URL(url).pathname.replace('/console/api', '') + new URL(url).search
+    if (path.startsWith('/explore/apps?')) return Response.json(catalog)
+    if (path === '/explore/apps/catalog-Alpha') return Response.json(detail)
+    if (path === '/apps/imports') return Response.json(imported)
+    throw new Error(`Unexpected request: ${url}`)
+  })
+})
+const renderApps = (response = catalog, permissions = ['app.create_and_management']) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(catalogKey('en-US'), response)
+  const onClose = vi.fn()
+  return {
+    ...render(<Apps onClose={onClose} />, { queryClient, workspacePermissionKeys: permissions }),
+    onClose,
+  }
+}
+const openFirst = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getAllByRole('button', { name: 'app.newApp.useTemplate' })[0]!)
+  return screen.findByRole('dialog')
+}
+
+it('reuses the prewarmed canonical locale cache and sorts only the consumer view', () => {
+  const { queryClient } = renderApps()
+  expect(screen.getAllByTitle(/Alpha|Bravo|Charlie/).map((element) => element.textContent)).toEqual(
+    ['Alpha', 'Charlie', 'Bravo'],
+  )
+  expect(screen.queryByRole('button', { name: 'Empty' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Writing' })).toBeInTheDocument()
+  expect(request).not.toHaveBeenCalled()
+  expect(queryClient.getQueryData(catalogKey('en-US'))).toEqual(catalog)
+  expect(catalog.recommended_apps.map((app) => app.app_id)).toEqual([
+    'catalog-Bravo',
+    'catalog-Alpha',
+    'catalog-Charlie',
+  ])
 })
 
-describe('Apps', () => {
-  const defaultData = {
-    allList: [
-      createAppEntry('Alpha', 'Cat A'),
-      createAppEntry('Bravo', 'Cat B'),
-      {
-        ...createAppEntry('Charlie', 'Cat B'),
-        app: {
-          ...createAppEntry('Charlie', 'Cat B').app,
-          mode: AppModeEnum.COMPLETION,
-        },
-      },
-      {
-        ...createAppEntry('Delta', 'Cat A'),
-        app: {
-          ...createAppEntry('Delta', 'Cat A').app,
-          mode: AppModeEnum.ADVANCED_CHAT,
-        },
-      },
-      {
-        ...createAppEntry('Echo', 'Cat C'),
-        app: {
-          ...createAppEntry('Echo', 'Cat C').app,
-          mode: AppModeEnum.AGENT_CHAT,
-        },
-      },
-      {
-        ...createAppEntry('Foxtrot', 'Cat C'),
-        app: {
-          ...createAppEntry('Foxtrot', 'Cat C').app,
-          mode: AppModeEnum.WORKFLOW,
-        },
-      },
-    ],
-    categories: ['Cat A', 'Cat B', 'Cat C'],
+it('requests a separate locale and falls back from a category absent in the new catalog', async () => {
+  const user = userEvent.setup()
+  const chinese: GetExploreAppsResponse = {
+    recommended_apps: [createEntry('中文', 0)],
+    categories: ['Assistant'],
   }
+  request.mockImplementation(async () => Response.json(chinese))
+  const { rerender, queryClient } = renderApps()
+  await user.click(screen.getByRole('button', { name: 'Writing' }))
+  expect(screen.queryByTitle('Alpha')).not.toBeInTheDocument()
+  locale.value = 'zh-Hans'
+  rerender(<Apps onClose={vi.fn()} />)
+  await screen.findByTitle('中文')
+  expect(request).toHaveBeenCalledTimes(1)
+  expect(new URL(request.mock.calls[0]![0]).searchParams.get('language')).toBe('zh-Hans')
+  expect(queryClient.getQueryData(catalogKey('en-US'))).toEqual(catalog)
+  expect(queryClient.getQueryData(catalogKey('zh-Hans'))).toEqual(chinese)
+})
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['app.create_and_management']
-    mockUseExploreAppList.mockReturnValue({
-      data: defaultData,
-      isLoading: false,
-    })
-    mockFetchAppDetail.mockResolvedValue({
-      export_data: 'dsl',
-      mode: AppModeEnum.CHAT,
-    })
-    mockImportDSL.mockResolvedValue({
-      app_id: 'created-app-id',
-      app_mode: AppModeEnum.CHAT,
-      permission_keys: ['app.acl.view_layout'],
-    })
+it('combines real type selection with debounced case-insensitive search and restores focus on clear', async () => {
+  const user = userEvent.setup()
+  renderApps()
+  await user.click(screen.getByRole('button', { name: 'app.typeSelector.all' }))
+  await user.click(screen.getByRole('button', { name: 'app.typeSelector.chatbot' }))
+  await user.keyboard('{Escape}')
+  expect(screen.getByTitle('Alpha')).toBeInTheDocument()
+  expect(screen.queryByTitle('Bravo')).not.toBeInTheDocument()
+  const search = screen.getByRole('searchbox')
+  await user.type(search, 'ALP')
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Assistant' })).not.toBeInTheDocument(),
+  )
+  expect(screen.getByTitle('Alpha')).toBeInTheDocument()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.clear' })[1]!)
+  expect(search).toHaveFocus()
+  expect(search).toHaveValue('')
+  expect(screen.getByRole('button', { name: 'Assistant' })).toBeInTheDocument()
+})
+
+it('fetches fresh detail by canonical app_id and submits the actual form with an empty initial description', async () => {
+  const user = userEvent.setup()
+  const { queryClient, onClose } = renderApps()
+  queryClient.setQueryData(
+    consoleQuery.explore.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'catalog-Alpha' } },
+    }),
+    { ...detail, export_data: 'stale-dsl' },
+  )
+  await openFirst(user)
+  expect(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder')).toHaveValue('')
+  await user.clear(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'))
+  await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'My app')
+  await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+  await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  expect(
+    request.mock.calls.map(([url]) => new URL(url).pathname.replace('/console/api', '')),
+  ).toEqual(['/explore/apps/catalog-Alpha', '/apps/imports'])
+  expect(await request.mock.calls[1]![2].request.json()).toMatchObject({
+    yaml_content: 'fresh-dsl',
+    name: 'My app',
+    description: '',
   })
-
-  it('renders template cards when data is available', () => {
-    render(<Apps onClose={vi.fn()} />)
-
-    expect(screen.getAllByTestId('app-card')).toHaveLength(6)
-    expect(screen.getByText('Alpha'))!.toBeInTheDocument()
-    expect(screen.getByText('Bravo'))!.toBeInTheDocument()
+  expect(trackCreateApp).toHaveBeenCalledWith({
+    source: 'studio_template_list',
+    templateId: 'catalog-Alpha',
+    appMode: 'chat',
   })
+  expect(checkDependencies).toHaveBeenCalledWith('created-app')
+  expect(redirect).toHaveBeenCalledWith(
+    expect.objectContaining({ id: 'created-app', permission_keys: ['app.edit'] }),
+    push,
+    expect.any(Object),
+  )
+})
 
-  it('opens create modal when a template card is clicked', () => {
-    render(<Apps onClose={vi.fn()} />)
+it('closes the submitted modal immediately and reports detail failure without import or navigation', async () => {
+  const user = userEvent.setup()
+  let rejectDetail: ((reason: Error) => void) | undefined
+  request.mockImplementation(
+    () =>
+      new Promise<Response>((_resolve, reject) => {
+        rejectDetail = reject
+      }),
+  )
+  const { onClose } = renderApps()
+  await openFirst(user)
+  await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+  await waitFor(() => expect(request).toHaveBeenCalledOnce())
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await act(async () => rejectDetail?.(new Error('Unavailable')))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
+  expect(request).toHaveBeenCalledOnce()
+  expect(onClose).not.toHaveBeenCalled()
+  expect(trackCreateApp).not.toHaveBeenCalled()
+  expect(redirect).not.toHaveBeenCalled()
+})
 
-    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
-    expect(screen.getByTestId('create-from-template-modal'))!.toBeInTheDocument()
+it('supports nullable metadata without inventing a name and requires a name before importing', async () => {
+  const user = userEvent.setup()
+  renderApps({
+    recommended_apps: [{ app_id: 'null-app', app: null, can_trial: false }],
+    categories: [],
   })
+  await openFirst(user)
+  expect(screen.getByPlaceholderText('app.newApp.appNamePlaceholder')).toHaveValue('')
+  expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeDisabled()
+  expect(request).not.toHaveBeenCalled()
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
 
-  it('passes app.create_and_management permission to template cards even when user is not a workspace editor', () => {
-    mockWorkspacePermissionKeys = ['app.create_and_management']
-
-    render(<Apps onClose={vi.fn()} />)
-
-    expect(screen.getAllByTestId('app-card')[0]).toHaveAttribute('data-can-create', 'true')
-  })
-
-  it('does not allow template creation when app.create_and_management permission is missing', () => {
-    mockWorkspacePermissionKeys = []
-
-    render(<Apps onClose={vi.fn()} />)
-
-    expect(screen.getAllByTestId('app-card')[0]).toHaveAttribute('data-can-create', 'false')
-  })
-
-  it('shows no template message when list is empty', () => {
-    mockUseExploreAppList.mockReturnValueOnce({
-      data: { allList: [], categories: [] },
-      isLoading: false,
-    })
-
-    render(<Apps onClose={vi.fn()} />)
-
-    expect(screen.getByText('app.newApp.noTemplateFound'))!.toBeInTheDocument()
-    expect(screen.getByText('app.newApp.noTemplateFoundTip'))!.toBeInTheDocument()
-  })
-
-  it('filters templates by keyword and selected app type', async () => {
-    render(<Apps onClose={vi.fn()} />)
-
-    fireEvent.change(screen.getByPlaceholderText('app.newAppFromTemplate.searchAllTemplate'), {
-      target: { value: 'Bravo' },
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('Bravo'))!.toBeInTheDocument()
-      expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
-    })
-
-    fireEvent.change(screen.getByPlaceholderText('app.newAppFromTemplate.searchAllTemplate'), {
-      target: { value: '' },
-    })
-    fireEvent.click(screen.getByTestId('type-selector-chat'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Alpha'))!.toBeInTheDocument()
-      expect(screen.getByText('Bravo'))!.toBeInTheDocument()
-      expect(screen.queryByText('Charlie')).not.toBeInTheDocument()
-    })
-  })
-
-  it('creates an app from a template and redirects after import succeeds', async () => {
-    const onClose = vi.fn()
-
-    render(<Apps onClose={onClose} />)
-
-    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
-    fireEvent.click(screen.getByTestId('confirm-create'))
-
-    await waitFor(() => {
-      expect(mockFetchAppDetail).toHaveBeenCalledWith('Alpha')
-      expect(mockImportDSL).toHaveBeenCalledWith(
-        expect.objectContaining({
-          yaml_content: 'dsl',
-          name: 'Created App',
-        }),
-      )
-    })
-
-    expect(mockTrackCreateApp).toHaveBeenCalledWith({
-      source: 'studio_template_list',
-      appMode: AppModeEnum.CHAT,
-      templateId: 'Alpha',
-    })
-    expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
-    expect(onClose).toHaveBeenCalledTimes(1)
-    expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
-    expect(mockGetRedirection).toHaveBeenCalledWith(
-      {
-        id: 'created-app-id',
-        mode: AppModeEnum.CHAT,
-        permission_keys: ['app.acl.view_layout'],
-      },
-      mockPush,
-      {
-        currentUserId: 'user-1',
-        resourceMaintainer: 'user-1',
-        workspacePermissionKeys: ['app.create_and_management'],
-        isRbacEnabled: false,
-      },
-    )
-  })
-
-  it('passes creator context when template import response has no permission keys', async () => {
-    mockImportDSL.mockResolvedValueOnce({
-      app_id: 'created-without-permissions',
-      app_mode: AppModeEnum.WORKFLOW,
-    })
-
-    render(<Apps onClose={vi.fn()} />)
-
-    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
-    fireEvent.click(screen.getByTestId('confirm-create'))
-
-    await waitFor(() => {
-      expect(mockGetRedirection).toHaveBeenCalledWith(
-        {
-          id: 'created-without-permissions',
-          mode: AppModeEnum.WORKFLOW,
-          permission_keys: undefined,
-        },
-        mockPush,
-        {
-          currentUserId: 'user-1',
-          resourceMaintainer: 'user-1',
-          workspacePermissionKeys: ['app.create_and_management'],
-          isRbacEnabled: false,
-        },
-      )
-    })
-  })
-
-  it('shows an error toast when importing the template fails', async () => {
-    mockImportDSL.mockRejectedValueOnce(new Error('failed'))
-
-    render(<Apps onClose={vi.fn()} />)
-
-    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
-    fireEvent.click(screen.getByTestId('confirm-create'))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('app.newApp.appCreateFailed')
-    })
-  })
-
-  it('forwards the create-from-blank action from the sidebar', () => {
-    const onCreateFromBlank = vi.fn()
-
-    render(<Apps onClose={vi.fn()} onCreateFromBlank={onCreateFromBlank} />)
-
-    fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
-
-    expect(onCreateFromBlank).toHaveBeenCalled()
-  })
-
-  it('should render the loading state while templates are being fetched', () => {
-    mockUseExploreAppList.mockReturnValueOnce({
-      data: undefined,
-      isLoading: true,
-    })
-
-    render(<Apps onClose={vi.fn()} />)
-
-    expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
-  })
-
-  it('should handle an undefined template payload by falling back to the empty state', () => {
-    mockUseExploreAppList.mockReturnValueOnce({
-      data: undefined,
-      isLoading: false,
-    })
-
-    render(<Apps onClose={vi.fn()} />)
-
-    expect(screen.getByText('app.newApp.noTemplateFound'))!.toBeInTheDocument()
-  })
-
-  it('should filter templates by category and the remaining app modes', async () => {
-    render(<Apps onClose={vi.fn()} />)
-
-    fireEvent.click(screen.getByText('Cat C'))
-    expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
-    expect(screen.getByText('Echo'))!.toBeInTheDocument()
-    expect(screen.getByText('Foxtrot'))!.toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('type-selector-advanced'))
-    await waitFor(() => {
-      expect(screen.queryByText('Echo')).not.toBeInTheDocument()
-      expect(screen.queryByText('Foxtrot')).not.toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
-    fireEvent.click(screen.getByText('Cat C'))
-    fireEvent.click(screen.getByTestId('type-selector-agent'))
-    await waitFor(() => {
-      expect(screen.getByText('Echo'))!.toBeInTheDocument()
-      expect(screen.queryByText('Foxtrot')).not.toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByTestId('type-selector-workflow'))
-    await waitFor(() => {
-      expect(screen.getByText('Foxtrot'))!.toBeInTheDocument()
-      expect(screen.queryByText('Echo')).not.toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByTestId('type-selector-completion'))
-    await waitFor(() => {
-      expect(screen.queryByText('Foxtrot')).not.toBeInTheDocument()
-      expect(screen.queryByText('Echo')).not.toBeInTheDocument()
-    })
-  })
-
-  it('should hide categories without templates even when the API returns them', () => {
-    mockUseExploreAppList.mockReturnValueOnce({
-      data: {
-        categories: ['Cat A', 'v'],
-        allList: [createAppEntry('Alpha', 'Cat A')],
-      },
-      isLoading: false,
-    })
-
-    render(<Apps onClose={vi.fn()} />)
-
-    expect(screen.getByText('Cat A'))!.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'v' })).not.toBeInTheDocument()
-    expect(screen.getByText('Alpha'))!.toBeInTheDocument()
-  })
-
-  it('should clear the search, hide the sidebar during search, and close the modal when requested', async () => {
-    render(<Apps onClose={vi.fn()} />)
-
-    const searchInput = screen.getByPlaceholderText('app.newAppFromTemplate.searchAllTemplate')
-    fireEvent.change(searchInput, {
-      target: { value: 'Alpha' },
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByText('Cat A')).not.toBeInTheDocument()
-    })
-
-    fireEvent.change(searchInput, {
-      target: { value: '' },
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('Cat A'))!.toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
-    expect(screen.getByTestId('create-from-template-modal'))!.toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('hide-create-modal'))
-
-    expect(screen.queryByTestId('create-from-template-modal')).not.toBeInTheDocument()
-  })
-
-  it('clears an active search immediately and returns focus to the searchbox', async () => {
-    const user = userEvent.setup()
-    render(<Apps onClose={vi.fn()} />)
-
-    const searchInput = screen.getByRole('searchbox', {
-      name: 'app.newAppFromTemplate.searchAllTemplate',
-    })
-
-    await user.type(searchInput, 'Alpha')
-    await waitFor(() => {
-      expect(screen.queryByText('Bravo')).not.toBeInTheDocument()
-    })
-    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-
-    expect(searchInput).toHaveValue('')
-    expect(searchInput).toHaveFocus()
-    expect(screen.getByText('Cat A')).toBeInTheDocument()
-    expect(screen.getAllByTestId('app-card')).toHaveLength(6)
-  })
+it('does not expose creation actions without app management permission', () => {
+  renderApps(catalog, [])
+  expect(screen.getByTitle('Alpha')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'app.newApp.useTemplate' })).not.toBeInTheDocument()
 })

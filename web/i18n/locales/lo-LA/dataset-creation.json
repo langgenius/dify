@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "ລາກແລ້ວວາງໄຟລ໌ ຫຼື ໂຟນເດີ, ຫຼື",
   "stepOne.uploader.buttonSingleFile": "ລາກແລ້ວວາງໄຟລ໌, ຫຼື",
   "stepOne.uploader.change": "ປ່ຽນແປງ",
+  "stepOne.uploader.completed": "ອັບໂຫຼດສຳເລັດ",
   "stepOne.uploader.failed": "ອັບໂຫຼດລົ້ມເຫຼວ",
   "stepOne.uploader.tip": "ຮອງຮັບ {{supportTypes}}. ສູງສຸດ {{batchCount}} ໄຟລ໌ຕໍ່ຄັ້ງ ແລະ ແຕ່ລະໄຟລ໌ບໍ່ເກີນ {{size}} MB.",
   "stepOne.uploader.tipWithTotalLimit": "ຮອງຮັບ {{supportTypes}}. ສູງສຸດ {{batchCount}} ໄຟລ໌ຕໍ່ຄັ້ງ ແລະ ແຕ່ລະໄຟລ໌ບໍ່ເກີນ {{size}} MB. ສູງສຸດທັງໝົດ {{totalCount}} ໄຟລ໌.",

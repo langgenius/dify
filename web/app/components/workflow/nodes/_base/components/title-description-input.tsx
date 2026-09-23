@@ -8,7 +8,7 @@ type TitleInputProps = {
 }
 
 export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const inputId = useId()
   const [localValue, setLocalValue] = useState(value)
 
@@ -64,7 +64,7 @@ type DescriptionInputProps = {
   onChange: (value: string) => void
 }
 export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const inputId = useId()
   const [focus, setFocus] = useState(false)
   const handleFocus = useCallback(() => {

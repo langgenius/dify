@@ -19,11 +19,13 @@ export type InstallBundleCompleteCallback = (
   versionInfo: VersionProps[],
 ) => void
 
-export enum InstallType {
-  fromLocal = 'fromLocal',
-  fromMarketplace = 'fromMarketplace',
-  fromDSL = 'fromDSL',
-}
+export const InstallType = {
+  fromLocal: 'fromLocal',
+  fromMarketplace: 'fromMarketplace',
+  fromDSL: 'fromDSL',
+} as const
+
+export type InstallType = (typeof InstallType)[keyof typeof InstallType]
 
 type Props = Readonly<{
   installType?: InstallType
@@ -39,7 +41,7 @@ const InstallBundle: FC<Props> = ({
   onClose,
   onInstallComplete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [step, setStep] = useState<InstallStep>(
     installType === InstallType.fromMarketplace
       ? InstallStep.readyToInstall

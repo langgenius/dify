@@ -53,8 +53,8 @@ const getDefaultPeriodQuery = () => {
 }
 
 export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [period, setPeriod] = useState(() => ({
     name: t(($) => $['agentDetail.monitoring.timeRanges.today']),
     query: getDefaultPeriodQuery(),
@@ -187,7 +187,7 @@ function AgentMonitoringSourceFilter({
   onSelect: (item: SourceFilterItem) => void
   onClear: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const selectedItem = items.find((item) => Object.is(item.value, value))
   const selectedName = selectedItem?.name ?? ''
   const triggerLabel = selectedName ? `${label} ${selectedName}` : label

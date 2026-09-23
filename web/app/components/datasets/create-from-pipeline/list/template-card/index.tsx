@@ -37,7 +37,7 @@ type TemplateCardProps = {
 }
 
 const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCardProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)

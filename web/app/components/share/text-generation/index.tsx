@@ -20,7 +20,7 @@ type IMainProps = {
   isWorkflow?: boolean
 }
 const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share', 'appDebug', 'common'])
   const translateBatchKey: TextGenerationTranslate = useCallback(
     (selector, options) => {
       return t(selector, options)

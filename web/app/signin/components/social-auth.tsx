@@ -9,7 +9,7 @@ import { getBrowserTimezone } from '@/utils/timezone'
 import style from '../page.module.css'
 
 export default function SocialAuth() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const locale = useLocale()
 

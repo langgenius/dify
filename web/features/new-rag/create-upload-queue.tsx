@@ -62,8 +62,8 @@ export function CreateUploadQueue({
   uploads: QueuedUpload[]
   onChange: (uploads: QueuedUpload[]) => void
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const inputId = useId()
   const [dragging, setDragging] = useState(false)
   const previewUnavailable = uploads.some(
