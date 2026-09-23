@@ -79,14 +79,14 @@ Use the `Translate i18n Files with Claude Code` workflow dispatch for a manual s
 ## Initial route resources
 
 `route-namespaces.ts` owns the explicit `routeNamespaceDeclarations` opt-in map
-shared by server selection, client navigation and production build validation. `/signin` and its child routes use `common` and
-`login`. Other routes retain the complete registry until they are migrated.
+shared by server selection, client navigation and production build validation. `/signin` and its child routes use `common`,
+`login`, and `share`. Other routes retain the complete registry until they are migrated.
 
 The server reads the pathname that `proxy.ts` overwrites on every request. Missing
 or unknown paths conservatively use the full registry. Base paths are supported.
 Serialized resources include the requested locale and English fallback for the
 selected namespaces, keeping translation initialization ready for SSR and hydration.
-Sign-in still includes only `common` and `login`.
+Sign-in includes `common`, `login`, and `share` because the root app access boundary can render the unavailable app page.
 
 Client initialization uses only the provided namespaces. The default namespace is
 `common` for sign-in, so a bare `useTranslation()` does not request `app`. The

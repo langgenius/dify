@@ -24,8 +24,9 @@ const makeResources = () => ({
   'en-US': {
     common: { 'operation.save': 'Save', 'operation.cancel': 'Cancel' },
     login: { signBtn: 'Sign in' },
+    share: {},
   },
-  'zh-Hans': { common: { 'operation.save': '保存' }, login: { signBtn: '登录' } },
+  'zh-Hans': { common: { 'operation.save': '保存' }, login: { signBtn: '登录' }, share: {} },
 })
 let resources = makeResources()
 function Label() {
@@ -45,7 +46,7 @@ describe('route translation loading', () => {
     mocks.loadResource.mockReset()
     mocks.loadResource.mockImplementation(
       async (locale: keyof typeof resources, namespace: string) => ({
-        default: resources[locale]?.[namespace as 'common' | 'login'] ?? {},
+        default: resources[locale]?.[namespace as 'common' | 'login' | 'share'] ?? {},
       }),
     )
   })
@@ -79,7 +80,11 @@ describe('route translation loading', () => {
     await waitFor(() => expect(screen.getByText('Save / Cancel')).toBeVisible())
     await act(() => changeLanguage('zh-Hans'))
     expect(await screen.findByText('保存 / Cancel')).toBeVisible()
-    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual(['common', 'login'])
+    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual([
+      'common',
+      'login',
+      'share',
+    ])
     view.rerender(
       <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
         <Label />
@@ -112,7 +117,11 @@ describe('route translation loading', () => {
     mocks.loadResource.mockClear()
     await act(() => changeLanguage('zh-Hans'))
     expect(await screen.findByText('保存 / Cancel')).toBeVisible()
-    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual(['common', 'login'])
+    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual([
+      'common',
+      'login',
+      'share',
+    ])
   })
 
   it('retains committed content and shared state until destination translations are ready', async () => {
@@ -211,8 +220,9 @@ describe('route translation loading', () => {
     expect(getRouteNamespaces('/console/signin/check-code', '/console')).toEqual([
       'common',
       'login',
+      'share',
     ])
-    expect(getDeclaredRouteNamespaces('/signin/check-code')).toEqual(['common', 'login'])
+    expect(getDeclaredRouteNamespaces('/signin/check-code')).toEqual(['common', 'login', 'share'])
     expect(getDeclaredRouteNamespaces('/signin-other')).toBeUndefined()
     expect(getDeclaredRouteNamespaces('/datasets')).toBeUndefined()
     expect(getRouteNamespaces('/signin-other')).toContain('workflow')

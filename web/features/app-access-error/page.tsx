@@ -110,6 +110,7 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
               <p className="mt-8 max-w-full system-sm-regular text-text-primary">
                 <Trans
                   t={t}
+                  ns="share"
                   i18nKey={($) => $['appNotAccessible.ipAddress']}
                   values={{ ip }}
                   components={{
@@ -138,7 +139,7 @@ export default function AppNotAccessible(props: AppNotAccessibleProps) {
     // A private instance keeps browser-language selection and menu changes off the console cookie.
     const instance = createInstance()
     void instance.use(resourcesToBackend(loadI18nResource)).init({
-      ...getInitOptions(),
+      ...getInitOptions(['share', 'common', 'login']),
       lng:
         props.initialLocale ??
         getBrowserLocale(typeof navigator === 'undefined' ? [] : navigator.languages),

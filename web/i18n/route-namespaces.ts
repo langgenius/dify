@@ -4,7 +4,7 @@ import { namespaces } from './resources'
 // Opt in route subtrees only after auditing their complete namespace usage.
 // More specific declarations override an ancestor declaration.
 const routeNamespaceDeclarations: Readonly<Record<string, readonly Namespace[]>> = {
-  '/signin': ['common', 'login'],
+  '/signin': ['common', 'login', 'share'],
 }
 const declaredRoutes = Object.keys(routeNamespaceDeclarations).sort((a, b) => b.length - a.length)
 
