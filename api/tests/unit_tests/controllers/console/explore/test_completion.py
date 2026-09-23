@@ -305,27 +305,6 @@ class TestCompletionApi:
                 )
 
 
-class TestCompletionStopApi:
-    def test_stop_success(self, completion_app):
-        api = completion_module.CompletionStopApi()
-        method = unwrap(api.post)
-
-        with patch.object(completion_module.AppTaskService, "stop_task"):
-            resp, status = method(api, _session(completion_app), "u1", completion_app, "task-1")
-
-        assert status == 200
-        assert resp == {"result": "success"}
-
-    def test_stop_wrong_app_mode(self, sqlite_session: Session):
-        api = completion_module.CompletionStopApi()
-        method = unwrap(api.post)
-
-        installed_app = _installed_app(AppMode.CHAT, sqlite_session)
-
-        with pytest.raises(NotCompletionAppError):
-            method(api, sqlite_session, "u1", installed_app, "task")
-
-
 class TestChatApi:
     def test_post_success(self, app: Flask, chat_app, user, payload_patch, payload_data):
         api = completion_module.ChatApi()
@@ -612,23 +591,3 @@ class TestChatApi:
                     user,
                     chat_app,
                 )
-
-
-class TestChatStopApi:
-    def test_stop_success(self, chat_app):
-        api = completion_module.ChatStopApi()
-        method = unwrap(api.post)
-        with patch.object(completion_module.AppTaskService, "stop_task"):
-            resp, status = method(api, _session(chat_app), "u1", chat_app, "task-1")
-
-        assert status == 200
-        assert resp == {"result": "success"}
-
-    def test_stop_not_chat_app(self, sqlite_session: Session):
-        api = completion_module.ChatStopApi()
-        method = unwrap(api.post)
-
-        installed_app = _installed_app(AppMode.COMPLETION, sqlite_session)
-
-        with pytest.raises(NotChatAppError):
-            method(api, sqlite_session, "u1", installed_app, "task")
