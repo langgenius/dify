@@ -56,18 +56,19 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import build_system_variables
 from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
-from graphon.entities import GraphInitParams, WorkflowStartReason
-from graphon.enums import BuiltinNodeTypes
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.filters import GraphEventFilterContext, filter_graph_events
-from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine, GraphEngineConfig
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events import (
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine.filter import EngineEventFilterContext, filter_engine_events
+from graphon.engine_events import (
+    EngineEvent,
     GraphEdgeSkippedEvent,
     GraphEdgeTakenEvent,
-    GraphEngineEvent,
+    NodeRunHumanInputFormFilledEvent,
 )
+from graphon.entities import WorkflowStartReason
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.graph import Graph
 from graphon.nodes.answer.answer_node import AnswerNode
 from graphon.nodes.answer.entities import AnswerNodeData
 from graphon.nodes.end.end_node import EndNode
@@ -76,7 +77,8 @@ from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.runtime import InitParams, ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
+from graphon.runtime.execution import ROOT_FRAME_ID
 from graphon.variables.segments import StringSegment
 from libs.datetime_utils import naive_utc_now
 from libs.helper import compact_generate_response
@@ -119,6 +121,11 @@ class _FakeFormRepository:
     def get_form(self, *_args, **_kwargs):
         return self._form
 
+    def mark_timeout(self, _node_id: str, *, form_id: str):
+        assert form_id == self._form.id
+        self._form.status = HumanInputFormStatus.TIMEOUT
+        return self._form
+
 
 class _TestFileReferenceFactory(FileReferenceFactoryProtocol):
     def build_from_mapping(self, *, mapping: Mapping[str, Any]):
@@ -138,8 +145,8 @@ class _TestFileReferenceFactory(FileReferenceFactoryProtocol):
 def _create_human_input_node(
     *,
     config: dict,
-    graph_init_params: GraphInitParams,
-    graph_runtime_state: GraphRuntimeState,
+    init_params: InitParams,
+    runtime_state: RuntimeState,
     repo: _FakeFormRepository,
 ) -> HumanInputNode:
     node_data = (
@@ -155,8 +162,8 @@ def _create_human_input_node(
     node = HumanInputNode(
         node_id=config["id"],
         data=node_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
         hitl_callback=callback,
     )
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
@@ -175,7 +182,8 @@ def _build_node(
     node_id: str = "node-1",
 ) -> HumanInputNode:
     system_variables = build_system_variables(app_id="app", workflow_execution_id="run-1")
-    graph_runtime_state = GraphRuntimeState(
+    graph_runtime_state = RuntimeState(
+        workflow_id="workflow",
         variable_pool=VariablePool.from_bootstrap(
             system_variables=system_variables,
             user_inputs={},
@@ -183,7 +191,7 @@ def _build_node(
         ),
         start_at=0.0,
     )
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="workflow",
         graph_config={"nodes": [], "edges": []},
         run_context={
@@ -255,8 +263,8 @@ def _build_node(
     repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         repo=repo,
     )
 
@@ -268,7 +276,8 @@ def _build_timeout_node(
     node_id: str = "node-1",
 ) -> HumanInputNode:
     system_variables = build_system_variables(app_id="app", workflow_execution_id="run-1")
-    graph_runtime_state = GraphRuntimeState(
+    graph_runtime_state = RuntimeState(
+        workflow_id="workflow",
         variable_pool=VariablePool.from_bootstrap(
             system_variables=system_variables,
             user_inputs={},
@@ -276,7 +285,7 @@ def _build_timeout_node(
         ),
         start_at=0.0,
     )
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="workflow",
         graph_config={"nodes": [], "edges": []},
         run_context={
@@ -316,23 +325,27 @@ def _build_timeout_node(
     repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         repo=repo,
     )
 
 
 def _publish_node_events(node: HumanInputNode) -> list[AppQueueEvent]:
-    return _publish_graph_events(_filter_human_input_events(node.run(), node=node))
+    return _publish_graph_events(
+        _filter_human_input_events(node.run(), node=node),
+        graph=Graph(root_node=node),
+        runtime_state=node.runtime_state,
+    )
 
 
-def _filter_human_input_events(events: Iterable[GraphEngineEvent], *, node: HumanInputNode | None = None):
+def _filter_human_input_events(events: Iterable[EngineEvent], *, node: HumanInputNode | None = None):
     node = node or _build_node()
-    return filter_graph_events(
+    return filter_engine_events(
         events,
-        context=GraphEventFilterContext(
+        context=EngineEventFilterContext(
             graph=Graph(root_node=node),
-            runtime_state=ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state),
+            runtime_state=ReadOnlyRuntimeStateWrapper(node.runtime_state),
         ),
         filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
     )
@@ -341,10 +354,10 @@ def _filter_human_input_events(events: Iterable[GraphEngineEvent], *, node: Huma
 @pytest.mark.parametrize("event_type", [GraphEdgeTakenEvent, GraphEdgeSkippedEvent])
 def test_human_input_filter_forwards_traversals_without_waiting_for_completion(event_type):
     started, _ = list(_build_node().run())
-    edge = event_type(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
+    edge = event_type(frame_id=ROOT_FRAME_ID, edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
     edge_forwarded = False
 
-    def source() -> Generator[GraphEngineEvent]:
+    def source() -> Generator[EngineEvent]:
         yield started
         yield edge
         assert edge_forwarded, "The traversal must be forwarded before consuming more upstream events"
@@ -361,15 +374,35 @@ def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
     started, succeeded = list(node.run())
     first_start = started.model_copy(update={"id": "first", "node_title": "First approval"})
     second_start = started.model_copy(update={"id": "second", "node_title": "Second approval"})
-    first_result = succeeded.model_copy(update={"id": "first", "in_loop_id": "loop-1"})
-    second_result = succeeded.model_copy(update={"id": "second", "in_iteration_id": "iteration-2"})
-
-    events = _publish_graph_events(
-        _filter_human_input_events([first_start, second_start, second_result, first_result], node=node)
+    first_result = succeeded.model_copy(
+        update={
+            "id": "first",
+            "container_id": "loop-1",
+            "node_run_result": succeeded.node_run_result.model_copy(
+                update={"metadata": {WorkflowNodeExecutionMetadataKey.LOOP_ID: "loop-1"}}
+            ),
+        }
+    )
+    second_result = succeeded.model_copy(
+        update={
+            "id": "second",
+            "container_id": "iteration-2",
+            "node_run_result": succeeded.node_run_result.model_copy(
+                update={"metadata": {WorkflowNodeExecutionMetadataKey.ITERATION_ID: "iteration-2"}}
+            ),
+        }
     )
 
+    filtered = list(_filter_human_input_events([first_start, second_start, second_result, first_result], node=node))
+    form_events = [event for event in filtered if isinstance(event, NodeRunHumanInputFormFilledEvent)]
+    assert [(event.id, event.container_id, event.node_run_result.metadata) for event in form_events] == [
+        ("second", "iteration-2", second_result.node_run_result.metadata),
+        ("first", "loop-1", first_result.node_run_result.metadata),
+    ]
+    events = _publish_graph_events(filtered, graph=Graph(root_node=node), runtime_state=node.runtime_state)
+
     filled = [event for event in events if isinstance(event, QueueHumanInputFormFilledEvent)]
-    assert [(event.node_execution_id, event.node_title) for event in filled] == [
+    assert [(event.form_id, event.node_title) for event in filled] == [
         ("second", "Second approval"),
         ("first", "First approval"),
     ]
@@ -383,7 +416,7 @@ def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
 class _EventQueue(AppQueueManager):
     """Record events and replay a finite stream without starting a watchdog."""
 
-    def __init__(self, invoke_from: InvokeFrom, runtime_state: GraphRuntimeState) -> None:
+    def __init__(self, invoke_from: InvokeFrom, runtime_state: RuntimeState) -> None:
         self.invoke_from = invoke_from
         self.graph_runtime_state = runtime_state
         self.events: list[AppQueueEvent] = []
@@ -397,9 +430,9 @@ class _EventQueue(AppQueueManager):
             yield WorkflowQueueMessage(task_id="task-1", app_mode=AppMode.ADVANCED_CHAT, event=event)
 
 
-def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEvent]:
-    node = _build_node()
-    runtime_state = node.graph_runtime_state
+def _publish_graph_events(
+    events: Iterable[EngineEvent], *, graph: Graph, runtime_state: RuntimeState
+) -> list[AppQueueEvent]:
     queue_manager = _EventQueue(InvokeFrom.WEB_APP, runtime_state)
     runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app")
     workflow_entry = WorkflowEntry(
@@ -407,7 +440,7 @@ def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEv
         app_id="app",
         workflow_id="workflow",
         graph_config={},
-        graph=Graph(root_node=node),
+        graph=graph,
         user_id="user",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.WEB_APP,
@@ -416,7 +449,7 @@ def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEv
         graph_runtime_state=runtime_state,
     )
     for event in events:
-        runner._handle_event(workflow_entry, event)
+        runner.handle_event(workflow_entry, event)
     return queue_manager.events
 
 
@@ -425,7 +458,7 @@ def _sse_payloads(
     invoke_from: InvokeFrom,
     app: Flask,
     sessions: sessionmaker[Session],
-    runtime_state: GraphRuntimeState | None = None,
+    runtime_state: RuntimeState | None = None,
 ) -> list[dict[str, Any]]:
     generate_entity = AdvancedChatAppGenerateEntity(
         task_id="task-1",
@@ -444,7 +477,8 @@ def _sse_payloads(
         workflow_run_id="run-1",
     )
     if runtime_state is None:
-        runtime_state = GraphRuntimeState(
+        runtime_state = RuntimeState(
+            workflow_id="workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-1")
             ),
@@ -474,7 +508,7 @@ def _sse_payloads(
             if isinstance(event, QueueHumanInputFormFilledEvent):
                 _persist_form(
                     sessions,
-                    form_id=event.node_execution_id,
+                    form_id=event.form_id,
                     app_id="app",
                     node_id=event.node_id,
                     expiration_time=naive_utc_now() + datetime.timedelta(days=1),
@@ -530,6 +564,7 @@ def test_submitted_human_input_reaches_response_stream(
     ]
     payload = payloads[1]
     assert payload["workflow_run_id"] == "run-1"
+    assert payload["data"]["form_id"] == "00000000-0000-4000-8000-000000000001"
     assert payload["data"]["node_id"] == "node-1"
     assert payload["data"]["node_title"] == "Human Input"
     assert payload["data"]["action_id"] == "Accept"
@@ -589,6 +624,7 @@ def test_timed_out_human_input_reaches_response_stream(
         "node_finished",
     ]
     assert payloads[1]["data"] == {
+        "form_id": "00000000-0000-4000-8000-000000000001",
         "node_id": "node-1",
         "node_title": "Human Input",
         "expiration_time": 1735689600,
@@ -606,28 +642,28 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
         if timed_out
         else _build_node("Approve?", with_inputs=False, node_id="human")
     )
-    runtime_state = node.graph_runtime_state
+    runtime_state = node.runtime_state
     runtime_state.variable_pool.add(["sys", "workflow_execution_id"], StringSegment(value="run-1"))
-    init_params = GraphInitParams(workflow_id="workflow", graph_config={}, run_context={}, call_depth=0)
+    init_params = InitParams(workflow_id="workflow", graph_config={}, run_context={}, call_depth=0)
     start = StartNode(
         node_id="start",
         data=StartNodeData(title="Start", variables=[]),
-        graph_init_params=init_params,
-        graph_runtime_state=runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
     )
     if terminal == "answer":
         terminal_node = AnswerNode(
             node_id="answer",
             data=AnswerNodeData(title="Answer", answer="Action: {{#human.__action_id#}}"),
-            graph_init_params=init_params,
-            graph_runtime_state=runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
     else:
         terminal_node = EndNode(
             node_id="end",
             data=EndNodeData(title="End", outputs=[]),
-            graph_init_params=init_params,
-            graph_runtime_state=runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
     graph = (
         Graph.new()
@@ -636,12 +672,11 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
         .add_node(terminal_node, from_node_id=node.id, source_handle="__timeout" if timed_out else "Accept")
         .build()
     )
-    engine = GraphEngine(
-        workflow_id="workflow",
+    engine = Engine(
         graph=graph,
-        graph_runtime_state=runtime_state,
+        runtime_state=runtime_state,
         command_channel=InMemoryChannel(),
-        config=GraphEngineConfig(min_workers=1, max_workers=1),
+        workers=1,
     )
     bind_execution_id = node.bind_execution_id
 
@@ -658,7 +693,7 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
 
     mocker.patch.object(node, "bind_execution_id", side_effect=bind_form)
 
-    events = _publish_graph_events(iter_dify_graph_engine_events(engine))
+    events = _publish_graph_events(iter_dify_graph_engine_events(engine), graph=graph, runtime_state=runtime_state)
     payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory, runtime_state)
 
     form_event = "human_input_form_timeout" if timed_out else "human_input_form_filled"

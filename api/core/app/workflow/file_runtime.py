@@ -18,10 +18,10 @@ from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import FileTransferMethod
 from graphon.file.protocols import WorkflowFileRuntimeProtocol
-from graphon.file.runtime import set_workflow_file_runtime
 from graphon.http.protocols import HttpResponseProtocol
 
 if TYPE_CHECKING:
+    from dify_app import DifyApp
     from graphon.file import File
 
 
@@ -215,5 +215,10 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
                 raise ValueError(f"Tool file {tool_file_id} not found")
 
 
-def bind_dify_workflow_file_runtime() -> None:
-    set_workflow_file_runtime(DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController()))
+def create_dify_workflow_file_runtime() -> DifyWorkflowFileRuntime:
+    return DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
+
+
+def init_app(app: DifyApp) -> None:
+    """Bind host-side file rendering for each Flask request, task, and CLI context."""
+    app.extensions["workflow_file_runtime"] = create_dify_workflow_file_runtime()
