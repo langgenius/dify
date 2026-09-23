@@ -454,6 +454,10 @@ register_response_schema_models(
 simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/files/upload",
+    endpoint="trial_app_file_upload",
+)
 class TrialAppFileUploadApi(Resource):
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
@@ -469,6 +473,10 @@ class TrialAppFileUploadApi(Resource):
         return dump_response(FileResponse, upload_file), 201
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/remote-files/upload",
+    endpoint="trial_app_remote_file_upload",
+)
 class TrialAppRemoteFileUploadApi(Resource):
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
@@ -488,6 +496,10 @@ class TrialAppRemoteFileUploadApi(Resource):
         return dump_response(FileWithSignedUrl, remote_file), 201
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/workflows/run",
+    endpoint="trial_app_workflow_run",
+)
 class TrialAppWorkflowRunApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(200, "Success")
@@ -531,6 +543,7 @@ class TrialAppWorkflowRunApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
 class TrialAppWorkflowTaskStopApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
@@ -547,6 +560,10 @@ class TrialAppWorkflowTaskStopApi(Resource):
         return dump_response(SimpleResultResponse, {"result": "success"})
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/chat-messages",
+    endpoint="trial_app_chat_completion",
+)
 class TrialChatApi(Resource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @console_ns.response(200, "Success")
@@ -600,6 +617,10 @@ class TrialChatApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
+    endpoint="trial_app_suggested_question",
+)
 class TrialMessageSuggestedQuestionApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
@@ -675,6 +696,10 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/audio-to-text",
+    endpoint="trial_app_audio",
+)
 class TrialChatAudioApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
@@ -691,6 +716,10 @@ class TrialChatAudioApi(Resource):
         return dump_response(AudioTranscriptResponse, transcript)
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/text-to-audio",
+    endpoint="trial_app_text",
+)
 class TrialChatTextApi(Resource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
@@ -723,6 +752,10 @@ class TrialChatTextApi(Resource):
         return response
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/completion-messages",
+    endpoint="trial_app_completion",
+)
 class TrialCompletionApi(Resource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @console_ns.response(200, "Success")
@@ -768,6 +801,7 @@ class TrialCompletionApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/trial-apps/<uuid:app_id>/site")
 class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
@@ -787,6 +821,10 @@ class TrialSitApi(Resource):
         return dump_response(SiteResponse, site)
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/parameters",
+    endpoint="trial_app_parameters",
+)
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
@@ -803,6 +841,7 @@ class TrialAppParameterApi(Resource):
         return dump_response(ParametersResponse, parameters)
 
 
+@console_ns.route("/trial-apps/<uuid:app_id>", endpoint="trial_app")
 class AppApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @console_account_admission()
@@ -833,6 +872,10 @@ class AppApi(Resource):
         return dump_response(TrialAppDetailResponse, source)
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/workflows",
+    endpoint="trial_app_workflow",
+)
 class AppWorkflowApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
     @get_preview_app
@@ -847,6 +890,10 @@ class AppWorkflowApi(Resource):
         return dump_response(TrialWorkflowResponse, workflow)
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/datasets",
+    endpoint="trial_app_datasets",
+)
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
@@ -873,45 +920,3 @@ class DatasetListApi(Resource):
             "page": page,
         }
         return dump_response(TrialDatasetListResponse, response)
-
-
-console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
-
-console_ns.add_resource(
-    TrialAppFileUploadApi,
-    "/trial-apps/<uuid:app_id>/files/upload",
-    endpoint="trial_app_file_upload",
-)
-
-console_ns.add_resource(
-    TrialAppRemoteFileUploadApi,
-    "/trial-apps/<uuid:app_id>/remote-files/upload",
-    endpoint="trial_app_remote_file_upload",
-)
-
-console_ns.add_resource(
-    TrialMessageSuggestedQuestionApi,
-    "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
-    endpoint="trial_app_suggested_question",
-)
-
-console_ns.add_resource(TrialChatAudioApi, "/trial-apps/<uuid:app_id>/audio-to-text", endpoint="trial_app_audio")
-console_ns.add_resource(TrialChatTextApi, "/trial-apps/<uuid:app_id>/text-to-audio", endpoint="trial_app_text")
-
-console_ns.add_resource(
-    TrialCompletionApi, "/trial-apps/<uuid:app_id>/completion-messages", endpoint="trial_app_completion"
-)
-
-console_ns.add_resource(TrialSitApi, "/trial-apps/<uuid:app_id>/site")
-
-console_ns.add_resource(TrialAppParameterApi, "/trial-apps/<uuid:app_id>/parameters", endpoint="trial_app_parameters")
-
-console_ns.add_resource(AppApi, "/trial-apps/<uuid:app_id>", endpoint="trial_app")
-
-console_ns.add_resource(
-    TrialAppWorkflowRunApi, "/trial-apps/<uuid:app_id>/workflows/run", endpoint="trial_app_workflow_run"
-)
-console_ns.add_resource(TrialAppWorkflowTaskStopApi, "/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
-
-console_ns.add_resource(AppWorkflowApi, "/trial-apps/<uuid:app_id>/workflows", endpoint="trial_app_workflow")
-console_ns.add_resource(DatasetListApi, "/trial-apps/<uuid:app_id>/datasets", endpoint="trial_app_datasets")

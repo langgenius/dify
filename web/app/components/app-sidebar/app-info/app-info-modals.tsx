@@ -15,11 +15,11 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppExportConfirmContent } from '@/app/components/app/export-confirm-modal'
-import dynamic from '@/next/dynamic'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,

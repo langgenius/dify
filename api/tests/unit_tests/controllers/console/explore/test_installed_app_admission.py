@@ -32,9 +32,7 @@ from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from models import Account, App, AppMode, InstalledApp, Tenant
 from models.account import AccountStatus
-from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
-from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_task_service import AppTaskControlService
 from services.installed_app_access_service import InstalledAppAccessService, InstalledAppRef
 from services.saved_message_service import SavedMessageActor, SavedMessagePage, SavedMessageRecord, SavedMessageService
@@ -441,10 +439,6 @@ class _AppDefinitions:
     app_id: str
     parameters: dict[str, object]
 
-    def get_mode(self, app_id: str) -> str:
-        assert app_id == self.app_id
-        return "completion"
-
     def get_parameters(self, app_id: str) -> dict[str, object]:
         assert app_id == self.app_id
         return self.parameters
@@ -549,7 +543,6 @@ def test_migrated_saved_message_and_parameter_handlers_dispatch_through_full_adm
 
 @dataclass(frozen=True)
 class _StopServices:
-    app_definitions: AppDefinitionQueryService
     app_tasks: AppTaskControlService
 
 
@@ -576,15 +569,10 @@ def _stop_global_redis(monkeypatch: pytest.MonkeyPatch) -> Generator[_StopRedis]
 def stop_redis(
     harness: _Harness,
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_session_factory: sessionmaker[Session],
     _stop_global_redis: _StopRedis,
 ) -> _StopRedis:
     redis = _StopRedis(values={f"generate_task_belong:{_TASK_ID}": f"account-{harness.account.id}".encode()})
     services = _StopServices(
-        app_definitions=AppDefinitionQueryService(
-            definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
-            builtin_icon_url_prefix="/tools/icons",
-        ),
         app_tasks=AppTaskControlService(redis_client=redis),
     )
     monkeypatch.setattr(completion_module, "application_services", lambda: services)
@@ -708,13 +696,18 @@ def test_stop_handlers_reject_wrong_modes_without_sending_commands(
     assert f"generate_task_stopped:{_TASK_ID}" not in stop_redis.values
 
 
-@pytest.mark.parametrize("message_kind", ["completion", "chat"])
-def test_stop_handlers_reject_app_removed_after_admission_before_sending_commands(
+@pytest.mark.parametrize(
+    ("message_kind", "mode"), [("completion", AppMode.COMPLETION), ("chat", AppMode.ADVANCED_CHAT)]
+)
+def test_stop_handlers_use_admitted_mode_when_app_is_removed(
     harness: _Harness,
     stop_redis: _StopRedis,
     sqlite_session_factory: sessionmaker[Session],
     message_kind: str,
+    mode: AppMode,
 ) -> None:
+    _set_app_mode(harness, sqlite_session_factory, mode)
+
     def remove_app() -> None:
         with sqlite_session_factory.begin() as session:
             app = session.get(App, harness.target_app.id)
@@ -725,18 +718,13 @@ def test_stop_handlers_reject_app_removed_after_admission_before_sending_command
 
     response = harness.app.test_client().post(_stop_url(harness, message_kind))
 
-    _assert_json_response(
-        response,
-        status=400,
-        body={
-            "code": "app_unavailable",
-            "message": "App unavailable, please check your app configurations.",
-            "status": 400,
-        },
-    )
+    _assert_json_response(response, status=200, body={"result": "success"})
     assert harness.state.permission_calls == [(harness.account.id, harness.target_app.id)]
-    assert stop_redis.reads == []
-    assert stop_redis.commands == {}
+    assert stop_redis.reads == [f"generate_task_belong:{_TASK_ID}"]
+    assert stop_redis.values[f"generate_task_stopped:{_TASK_ID}"] == b"1"
+    assert stop_redis.operations == (
+        ["legacy_flag", "graph_command"] if mode == AppMode.ADVANCED_CHAT else ["legacy_flag"]
+    )
 
 
 @pytest.mark.parametrize("message_kind", ["completion", "chat"])

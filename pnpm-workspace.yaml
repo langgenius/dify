@@ -1,5 +1,7 @@
 allowBuilds:
   '@parcel/watcher': false
+  # i18next-resources-for-ts uses the published SWC native binaries.
+  '@swc/core': false
   canvas: false
   esbuild: false
   sharp: false
@@ -196,6 +198,7 @@ catalog:
   html-entities: 2.6.0
   html-to-image: 1.11.13
   i18next: 26.4.2
+  i18next-resources-for-ts: 2.1.0
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
   immer: 11.1.18

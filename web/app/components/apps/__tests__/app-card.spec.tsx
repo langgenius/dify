@@ -247,7 +247,7 @@ vi.mock('@/utils/time', () => ({
 }))
 
 // Mock dynamic imports
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     void importFn().catch(() => {})
     const fnString = importFn.toString()

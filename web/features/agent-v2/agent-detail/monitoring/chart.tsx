@@ -3,9 +3,10 @@
 import type { AgentMonitoringChartRow, AgentMonitoringChartType } from './chart-utils'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import ReactECharts from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react/esm/core'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { echarts } from '@/app/components/base/line-chart/echarts'
 import { buildChartOptions, getChartValueField, getTokenSummary } from './chart-utils'
 
 type AgentMonitoringChartProps = {
@@ -84,7 +85,7 @@ export function AgentMonitoringChart({
       </div>
 
       <div className="h-60 px-6">
-        <ReactECharts option={options} style={{ height: 240, width: '100%' }} />
+        <ReactECharts echarts={echarts} option={options} style={{ height: 240, width: '100%' }} />
       </div>
     </article>
   )
