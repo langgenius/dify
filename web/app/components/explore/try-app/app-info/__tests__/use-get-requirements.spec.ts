@@ -166,7 +166,7 @@ describe('useGetRequirements', () => {
     })
 
     it('does not inspect workflow data for new agent requirements', () => {
-      mockUseGetTryAppFlowPreview.mockReturnValue({
+      mockUseQuery.mockReturnValue({
         data: {
           graph: {
             nodes: [
@@ -185,7 +185,7 @@ describe('useGetRequirements', () => {
       const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
       expect(result.current.requirements).toEqual([])
-      expect(mockUseGetTryAppFlowPreview).toHaveBeenCalledWith('test-app-id', true)
+      expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }))
     })
   })
 
