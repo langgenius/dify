@@ -313,9 +313,17 @@ def _change_not_applied(
     re-prompted with byte-identical inputs and hands back the same refused
     batch (triage edit-branch-failure-2026-09-22). Stored unconditionally, so a
     second refusal at the same error location with a different bad value
-    replaces the first rather than being folded into it. Re-approval is one of
-    three exits the gate now offers (see ``handle_plan_approval``); the other
-    two leave the rules behind, and both clear this store."""
+    replaces the first rather than being folded into it.
+
+    Re-approval is one of three exits the gate now offers (see
+    ``handle_plan_approval``), and none of the three clears this store on its
+    own: only ``handle_impact_analysis`` does, and only when the rules it was
+    submitted differ from the ones this refusal was earned on. Continue-adjusting
+    routes THROUGH there, so it clears only if the user actually changed
+    something; a gate revert writes nothing at all, so the restored draft IS the
+    refused draft and its Retry needs this text more than anything else does.
+    ``test_a_gate_revert_keeps_the_refusal_its_retry_still_needs`` and
+    ``test_routing_back_to_the_form_does_not_forget_the_refusal`` pin both."""
     fc.staged_repair = []
     fc.last_edit_rejection = rejection
     progress.fail_step("edit-apply")
