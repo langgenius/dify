@@ -58,6 +58,7 @@ from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessToke
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
@@ -197,6 +198,7 @@ from services.retention.workflow_run.archive_download_adapters import (
 )
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
+from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
@@ -311,6 +313,7 @@ class ApplicationServices:
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     remote_files: RemoteFileService
+    saved_messages: SavedMessageService
     app_tasks: AppTaskControlService
     trial_app_access: TrialAppAccessService
     app_audio: AppAudio
@@ -760,6 +763,9 @@ def build_application_services(
         ),
         recommended_app_queries=recommended_app_queries,
         remote_files=remote_file_service,
+        saved_messages=SavedMessageService(
+            saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),
+        ),
         app_tasks=AppTaskControlService(redis_client=redis),
         trial_app_access=TrialAppAccessService(apps=trial_apps),
         app_audio=AppAudioRuntime(session_factory=database_client),
