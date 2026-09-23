@@ -7,11 +7,11 @@ import type {
 } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import {
   pricingQueryParamName,
@@ -64,7 +64,7 @@ function buildArchiveDownloadFileUrl(downloadId: string) {
 }
 
 export default function WorkflowLogArchivesPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -281,7 +281,7 @@ export default function WorkflowLogArchivesPage() {
 }
 
 function ArchivedLogsUpgradeBanner() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'billing'])
   const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   return (
@@ -306,7 +306,7 @@ function ArchivedLogsUpgradeBanner() {
 }
 
 function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonthResponse }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const archiveMonthLabelId = useId()
   const downloadActionLabelId = useId()
   const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(
@@ -422,12 +422,17 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
             )}
             <span id={downloadActionLabelId}>{buttonContent}</span>
           </Button>
-          <Infotip
-            aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
-            iconVariant={isFailed ? 'warning' : 'information'}
-            popupClassName="wrap-anywhere whitespace-pre-wrap"
-          >
-            {downloadHint}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
+              iconVariant={isFailed ? 'warning' : 'information'}
+            />
+            <InfotipContent
+              aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
+              className="whitespace-pre-wrap"
+            >
+              {downloadHint}
+            </InfotipContent>
           </Infotip>
         </div>
       </td>

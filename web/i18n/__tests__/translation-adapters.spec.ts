@@ -24,18 +24,18 @@ vi.mock('@/i18n/server', () => ({
 beforeEach(() => vi.clearAllMocks())
 
 describe('translation adapter contracts', () => {
-  it.each(['common', undefined] as const)(
+  it.each([{ ns: ['common'] }, { ns: ['common', 'plugin'] }, { ns: undefined }] as const)(
     'forwards the client namespace %s unchanged',
-    async (ns) => {
+    async ({ ns }) => {
       const { useTranslation } = await import('../lib.client')
       expect(useTranslation(ns)).toBe(mocks.translations)
       expect(mocks.client).toHaveBeenCalledExactlyOnceWith(ns)
     },
   )
 
-  it.each(['common', undefined] as const)(
+  it.each([{ ns: ['common'] }, { ns: ['common', 'plugin'] }, { ns: undefined }] as const)(
     'loads the server namespace %s with the current locale',
-    async (ns) => {
+    async ({ ns }) => {
       const { useTranslation } = await import('../lib.server')
       expect(await useTranslation(ns)).toBe(mocks.translations)
       expect(mocks.locale).toHaveBeenCalledTimes(1)

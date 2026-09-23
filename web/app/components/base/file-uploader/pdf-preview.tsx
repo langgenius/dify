@@ -16,7 +16,7 @@ type PdfPreviewProps = {
 }
 
 const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const media = useBreakpoints()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })

@@ -178,7 +178,7 @@ export function useAgentSkillDetail({
   isOpen: boolean
   skill: AgentSkill
 }): AgentSkillDetail {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const [downloadActionLoadingTarget, setDownloadActionLoadingTarget] =

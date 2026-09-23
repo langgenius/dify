@@ -22,7 +22,7 @@ export default function AccountAboutDialog({
   langGeniusVersionInfo,
   deploymentEdition,
 }: AccountAboutDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const isLatest = langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
 

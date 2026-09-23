@@ -31,7 +31,7 @@ const RoleList = ({
   onView,
   onEdit,
 }: RoleListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission'])
 
   if (isLoading) {
     return (

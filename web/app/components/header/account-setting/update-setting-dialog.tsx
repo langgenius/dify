@@ -43,7 +43,7 @@ type Props = {
 }
 
 const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const { data: timezone } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.timezone || 'UTC',

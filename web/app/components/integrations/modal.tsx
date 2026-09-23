@@ -18,7 +18,7 @@ export default function IntegrationsSettingModal({
   onCancel,
   onSectionChange,
 }: IntegrationsSettingModalProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const handleSwitchToMarketplace = useCallback((path: string) => {
     window.open(
       getMarketplaceUrl(path, undefined, { source: window.location.origin }),

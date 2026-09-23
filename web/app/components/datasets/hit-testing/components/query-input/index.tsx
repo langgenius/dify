@@ -62,7 +62,7 @@ const QueryInput = ({
   hitTestingMutation,
   externalKnowledgeBaseHitTestingMutation,
 }: QueryInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetHitTesting'])
   const isMultimodal = useDatasetDetailContextWithSelector((s) => !!s.dataset?.is_multimodal)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [externalRetrievalSettings, setExternalRetrievalSettings] = useState({

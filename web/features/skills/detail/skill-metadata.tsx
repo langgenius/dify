@@ -49,8 +49,8 @@ export function SkillTagsEditor({
   readonly: boolean
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [addOpen, setAddOpen] = useState(false)
   const [showTagManagement, setShowTagManagement] = useState(false)
@@ -301,7 +301,7 @@ export function SkillReferencesPanel({
   testId?: string
   visibleLimit?: number
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
       input: {
@@ -381,7 +381,7 @@ export function SkillReferencesList({
   testId?: string
   visibleLimit?: number
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const [expanded, setExpanded] = useState(false)
   const hasMoreReferences = visibleLimit != null && references.length > visibleLimit
   const visibleReferences =
@@ -442,8 +442,8 @@ export function SkillPublishConfirmPanel({
   referenceCount: number
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   if (!open) return null
 
   return (

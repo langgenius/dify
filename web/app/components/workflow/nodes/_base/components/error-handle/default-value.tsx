@@ -11,7 +11,7 @@ type DefaultValueProps = {
   onFormChange: (form: DefaultValueForm) => void
 }
 const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const id = useId()
 
   return (

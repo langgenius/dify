@@ -90,7 +90,7 @@ function Operation({
   hasWorkflowProcess,
   noChatInput,
 }: OperationProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const {
     config,
     onAnnotationAdded,

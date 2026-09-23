@@ -56,7 +56,7 @@ const KeyValueItem: FC<Props> = ({
   keyNotSupportVar,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const hasValuePayload = payload.type === 'file' ? !!payload.file?.length : !!payload.value
 
   const handleChange = useCallback(
@@ -82,7 +82,9 @@ const KeyValueItem: FC<Props> = ({
   )
 
   const filterOnlyFileVariable = (varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }
 
   const handleValueContainerClick = useCallback(() => {

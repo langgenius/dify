@@ -9,15 +9,15 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import GridMask from '@/app/components/base/grid-mask'
-import { Infotip } from '@/app/components/base/infotip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
@@ -53,7 +53,9 @@ const ModelLoadBalancingConfigs = ({
   onUpdate,
   onRemove,
 }: ModelLoadBalancingConfigsProps) => {
-  const { t } = useTranslation()
+  const loadBalancingLabelId = useId()
+
+  const { t } = useTranslation(['common'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -187,13 +189,18 @@ const ModelLoadBalancingConfigs = ({
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
-              {t(($) => $['modelProvider.loadBalancing'], { ns: 'common' })}
-              <Infotip
-                aria-label={t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
-                className="size-3"
-                iconSize="small"
-              >
-                {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
+              <span id={loadBalancingLabelId}>
+                {t(($) => $['modelProvider.loadBalancing'], { ns: 'common' })}
+              </span>
+              <Infotip>
+                <InfotipTrigger
+                  aria-labelledby={loadBalancingLabelId}
+                  className="size-3"
+                  iconSize="small"
+                />
+                <InfotipContent aria-labelledby={loadBalancingLabelId}>
+                  {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
+                </InfotipContent>
               </Infotip>
             </div>
             <div className="text-xs text-text-tertiary">

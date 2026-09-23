@@ -2,7 +2,6 @@ import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 type IterationLogTriggerProps = {
@@ -62,7 +61,7 @@ const IterationLogTrigger = ({
   allExecutions,
   onShowIterationResultList,
 }: IterationLogTriggerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const getNodesForInstance = (key: string): NodeTracing[] => {
     if (!allExecutions) return []
@@ -73,7 +72,7 @@ const IterationLogTrigger = ({
     if (parallelNodes.length > 0) return parallelNodes
 
     const serialIndex = Number.parseInt(key, 10)
-    if (!isNaN(serialIndex)) {
+    if (!Number.isNaN(serialIndex)) {
       const serialNodes = allExecutions.filter(
         (exec) =>
           exec.execution_metadata?.iteration_id === nodeInfo.node_id &&
@@ -135,8 +134,10 @@ const IterationLogTrigger = ({
       className="flex w-full cursor-pointer items-center self-stretch rounded-lg bg-components-button-tertiary-bg-hover px-3 py-2 inset-ring-0 hover:bg-components-button-tertiary-bg-hover"
       onClick={handleOnShowIterationDetail}
     >
-      {/* oxlint-disable-next-line dify/prefer-tailwind-icons */}
-      <Iteration className="size-4 shrink-0 text-components-button-tertiary-text" />
+      <span
+        aria-hidden
+        className="i-custom-vender-workflow-iteration size-4 shrink-0 text-components-button-tertiary-text"
+      />
       <div className="flex-1 text-left system-sm-medium text-components-button-tertiary-text">
         {t(($) => $['nodes.iteration.iteration'], { ns: 'workflow', count: displayIterationCount })}
         {errorCount > 0 && (
@@ -146,7 +147,6 @@ const IterationLogTrigger = ({
           </>
         )}
       </div>
-      {/* oxlint-disable-next-line dify/prefer-tailwind-icons */}
       <RiArrowRightSLine className="size-4 shrink-0 text-components-button-tertiary-text" />
     </Button>
   )

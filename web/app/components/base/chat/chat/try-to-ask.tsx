@@ -10,7 +10,7 @@ type TryToAskProps = {
   onSend: OnSend
 }
 const TryToAsk: FC<TryToAskProps> = ({ suggestedQuestions, onSend }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
 
   return (
     <div className="mb-2 py-2">

@@ -43,7 +43,7 @@ const DuplicateAppModal = ({
   onConfirm,
   onHide,
 }: DuplicateAppModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
 

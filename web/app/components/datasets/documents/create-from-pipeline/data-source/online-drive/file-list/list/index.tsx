@@ -31,7 +31,7 @@ const List = ({
   isLoading,
   supportBatchUpload,
 }: FileListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'datasetPipeline'])
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
   const dataSourceStore = useDataSourceStore()

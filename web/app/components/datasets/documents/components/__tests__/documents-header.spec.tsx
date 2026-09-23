@@ -63,7 +63,7 @@ describe('DocumentsHeader', () => {
   describe('Rendering', () => {
     it('should render title', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/list\.title/i)
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/list\.title/i)
     })
 
     it('should render description text', () => {
@@ -74,7 +74,7 @@ describe('DocumentsHeader', () => {
     it('should render learn more link', () => {
       render(<DocumentsHeader {...defaultProps} />)
       const link = screen.getByRole('link')
-      expect(link).toHaveTextContent(/list\.learnMore/i)
+      expect(link.textContent).toMatch(/list\.learnMore/i)
       expect(link).toHaveAttribute('href', expect.stringContaining('use-dify/knowledge'))
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')

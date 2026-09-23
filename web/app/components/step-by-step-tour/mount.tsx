@@ -151,7 +151,7 @@ export default function StepByStepTourMount({
   const router = useRouter()
   const pathname = usePathname()
   const docLink = useDocLink()
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)

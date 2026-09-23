@@ -212,3 +212,24 @@ describe('RadioSkeleton', () => {
     expect(screen.container.querySelector('[role="radio"]')).not.toBeInTheDocument()
   })
 })
+
+it('resolves Radio classes again when selection changes', async () => {
+  const screen = await render(
+    <RadioGroup defaultValue="a">
+      <Radio
+        value="a"
+        aria-label="Option A"
+        className={(state) => (state.checked ? 'opacity-50' : 'opacity-100')}
+      />
+      <Radio value="b" aria-label="Option B" />
+    </RadioGroup>,
+  )
+
+  await expect
+    .element(screen.getByRole('radio', { name: 'Option A' }))
+    .toHaveStyle({ opacity: '0.5' })
+  await screen.getByRole('radio', { name: 'Option B' }).click()
+  await expect
+    .element(screen.getByRole('radio', { name: 'Option A' }))
+    .toHaveStyle({ opacity: '1' })
+})

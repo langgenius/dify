@@ -32,8 +32,8 @@ export function AgentSkillItem({
   skill: AgentSkill
   onRemove: (skillId: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isActionsOpen, setIsActionsOpen] = useState(false)

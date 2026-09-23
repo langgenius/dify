@@ -173,7 +173,7 @@ describe('WorkflowToolDrawer', () => {
 
     expect(
       screen.queryByRole('button', {
-        name: /reservedParameterDuplicateTip|duplicateOutputVariable/,
+        name: 'answer',
       }),
     ).not.toBeInTheDocument()
   })
@@ -186,7 +186,7 @@ describe('WorkflowToolDrawer', () => {
     const userOutputRow = screen.getByRole('row', { name: /text.*Reserved output duplicate/ })
     expect(
       within(userOutputRow).getByRole('button', {
-        name: 'tools.createTool.toolOutput.reservedParameterDuplicateTip',
+        name: 'text',
       }),
     ).toBeInTheDocument()
 
@@ -228,7 +228,7 @@ describe('WorkflowToolDrawer', () => {
     ).toBeInTheDocument()
 
     const duplicateWarnings = screen.getAllByRole('button', {
-      name: /workflow\.errorMsg\.duplicateOutputVariable/,
+      name: 'result',
     })
     expect(duplicateWarnings).toHaveLength(2)
 
@@ -266,7 +266,7 @@ describe('WorkflowToolDrawer', () => {
     )
 
     const issueWarnings = screen.getAllByRole('button', {
-      name: /tools\.createTool\.toolOutput\.reservedParameterDuplicateTip.*workflow\.errorMsg\.duplicateOutputVariable/,
+      name: 'text',
     })
     expect(issueWarnings).toHaveLength(2)
 

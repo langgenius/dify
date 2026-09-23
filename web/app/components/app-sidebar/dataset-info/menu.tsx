@@ -26,7 +26,7 @@ const Menu = ({
   detectIsUsedByApp,
   openAccessConfig,
 }: MenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const runtimeMode = useDatasetDetailContextWithSelector((state) => state.dataset?.runtime_mode)
 
   return (

@@ -710,7 +710,7 @@ describe('AgentFiles', () => {
 
     await user.click(
       within(buildNoteRow!).getByRole('button', {
-        name: 'agentV2.agentDetail.configure.files.buildNote.tooltip',
+        name: 'build_note.md',
       }),
     )
 

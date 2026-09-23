@@ -9,7 +9,7 @@ import Link from '@/next/link'
 import Avatar from './avatar'
 
 const Header = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const logoLabel =
     systemFeatures.branding.enabled && systemFeatures.branding.application_title

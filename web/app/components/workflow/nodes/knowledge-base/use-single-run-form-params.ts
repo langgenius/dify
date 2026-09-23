@@ -13,7 +13,7 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({ payload, runInputData, setRunInputData }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const query = runInputData.query
   const setQuery = useCallback(
     (newQuery: string) => {

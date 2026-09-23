@@ -57,7 +57,7 @@ export default function CreatorContent({
   locale = 'en-US',
   onRecordsLoaded,
 }: CreatorContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [sort, setSort] = useQueryStates(creatorSortSearchParsers, sortSearchOptions)
   const sortField = sort.sort_by
   const sortOrder = sort.sort_order

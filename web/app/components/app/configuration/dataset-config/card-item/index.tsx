@@ -34,7 +34,7 @@ const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, edita
   const isMobile = media === MediaType.mobile
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
   const handleSave = (newDataset: DataSet) => {
     onSave(newDataset)

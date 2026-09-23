@@ -37,10 +37,12 @@ import {
 // Types
 // ============================================================================
 
-export enum ApiKeyStep {
-  Verify = 'verify',
-  Configuration = 'configuration',
-}
+export const ApiKeyStep = {
+  Verify: 'verify',
+  Configuration: 'configuration',
+} as const
+
+export type ApiKeyStep = (typeof ApiKeyStep)[keyof typeof ApiKeyStep]
 
 const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialType> = {
   [SupportedCreationMethods.APIKEY]: TriggerCredentialType.ApiKey,
@@ -105,7 +107,7 @@ export const useCommonModalState = ({
   builder,
   onClose,
 }: UseCommonModalStateParams): UseCommonModalStateReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   const translatePluginTriggerKey = useCallback<PluginTriggerTranslate>(
     (selector, options) => t(selector, options),
     [t],

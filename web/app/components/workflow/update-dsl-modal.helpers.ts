@@ -45,7 +45,7 @@ type ImportNotificationPayload = {
   children?: string
 }
 
-export const getInvalidNodeTypes = (mode?: AppModeEnum) => {
+export const getInvalidNodeTypes = (mode?: AppModeEnum): BlockEnum[] => {
   if (mode === AppModeEnum.ADVANCED_CHAT) {
     return [
       BlockEnum.End,
@@ -75,7 +75,7 @@ export const isImportCompleted = (status: Import['status']) => {
 
 export const getImportNotificationPayload = (
   status: Import['status'],
-  t: TFunction,
+  t: TFunction<['workflow']>,
 ): ImportNotificationPayload => {
   return {
     type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',

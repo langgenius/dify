@@ -24,7 +24,7 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
   initialScoreThreshold,
   initialScoreThresholdEnabled,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetHitTesting'])
   const [topK, setTopK] = useState(initialTopK)
   const [scoreThreshold, setScoreThreshold] = useState(initialScoreThreshold)
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(initialScoreThresholdEnabled)

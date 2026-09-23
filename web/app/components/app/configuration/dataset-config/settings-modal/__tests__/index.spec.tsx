@@ -509,6 +509,87 @@ describe('SettingsModal', () => {
       )
     })
 
+    it('should persist reranking_enable=true for hybrid search with a rerank model and a stale false flag', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const hybridRetrieval = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.hybrid,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_model: {
+          reranking_provider_name: 'rerank-provider',
+          reranking_model_name: 'rerank-model',
+        },
+      })
+      const dataset = createDataset({
+        retrieval_model: hybridRetrieval,
+        retrieval_model_dict: hybridRetrieval,
+      })
+
+      // Act
+      await renderSettingsModal(dataset)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      // Assert
+      await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
+
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              search_method: RETRIEVE_METHOD.hybrid,
+              reranking_enable: true,
+            }),
+          }),
+        }),
+      )
+    })
+
+    it('should keep reranking_enable=false for hybrid search using weighted score', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const hybridRetrieval = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.hybrid,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.WeightedScore,
+        reranking_model: {
+          reranking_provider_name: 'rerank-provider',
+          reranking_model_name: 'rerank-model',
+        },
+        weights: {
+          vector_setting: {
+            vector_weight: 0.7,
+            embedding_provider_name: 'embed-provider',
+            embedding_model_name: 'embed-model',
+          },
+          keyword_setting: {
+            keyword_weight: 0.3,
+          },
+        },
+      } as Partial<RetrievalConfig>)
+      const dataset = createDataset({
+        retrieval_model: hybridRetrieval,
+        retrieval_model_dict: hybridRetrieval,
+      })
+
+      // Act
+      await renderSettingsModal(dataset)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      // Assert
+      await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
+
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              reranking_enable: false,
+            }),
+          }),
+        }),
+      )
+    })
+
     it('should save external dataset changes when partial members configured', async () => {
       // Arrange
       const user = userEvent.setup()
