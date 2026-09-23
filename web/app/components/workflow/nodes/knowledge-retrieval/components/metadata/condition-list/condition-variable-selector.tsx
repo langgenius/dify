@@ -22,7 +22,7 @@ const ConditionVariableSelector = ({
   onChange,
 }: ConditionVariableSelectorProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
 
   const handleChange = useCallback(

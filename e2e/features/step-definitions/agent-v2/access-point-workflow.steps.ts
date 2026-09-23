@@ -1,9 +1,9 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentReferencingWorkflows } from '../../agent-v2/support/agent'
-import { agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
-import { getAccessRegion, getPreseededResource } from './access-point-helpers'
+import { agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources.ts'
+import { getAgentReferencingWorkflows } from '../../agent-v2/support/agent.ts'
+import { getAccessRegion, getPreseededResource } from './access-point-helpers.ts'
 
 Then(
   'I should see the Agent v2 Workflow access reference for {string}',

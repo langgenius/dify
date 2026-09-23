@@ -9,7 +9,7 @@ type RequiredSwitchProps = {
 }
 
 const RequiredSwitch: FC<RequiredSwitchProps> = ({ defaultValue, toggleRequired }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="flex items-center gap-x-1 rounded-[5px] border border-divider-subtle bg-background-default-lighter px-1.5 py-1">

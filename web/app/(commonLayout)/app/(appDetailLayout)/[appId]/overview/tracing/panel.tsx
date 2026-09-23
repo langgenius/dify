@@ -42,7 +42,7 @@ import { TracingProvider } from './type'
 const I18N_PREFIX = 'tracing'
 
 const Panel: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = matched?.length && matched[1] ? matched[1] : ''

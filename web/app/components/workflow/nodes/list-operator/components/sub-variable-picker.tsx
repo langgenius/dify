@@ -28,7 +28,7 @@ type SubVariableOption = {
 }
 
 const SubVariablePicker: FC<Props> = ({ value, onChange, className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const subVarOptions = useMemo<SubVariableOption[]>(
     () =>
       SUB_VARIABLES.map((item) => ({

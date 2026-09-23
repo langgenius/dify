@@ -42,7 +42,7 @@ const Editor: FC<Props> = ({
   availableNodes = [],
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean(false)
 

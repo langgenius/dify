@@ -24,8 +24,8 @@ const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) =
   `/app/${reference.app_id}/workflow`
 
 export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowReferencesTableProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const workflowReferencesQuery = useQuery(
     consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
       input: {
@@ -109,7 +109,7 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
 }
 
 function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowResponse }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const { formatTime } = useTimestamp()
   const imageUrl =
     reference.app_icon_type === 'image' || reference.app_icon_type === 'link'

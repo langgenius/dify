@@ -13,7 +13,7 @@ import { useLazyModelProviderDetail, useModelModalHandler } from '../hooks'
 type ProviderSummary = ModelProviderSummaryResponse | ModelProvider
 
 export default function LazyCustomModelActions({ provider }: { provider: ProviderSummary }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const handleOpenModelModal = useModelModalHandler()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isManageOpen, setIsManageOpen] = useState(false)

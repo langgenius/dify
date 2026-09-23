@@ -20,7 +20,7 @@ const EntryNodeContainer: FC<EntryNodeContainerProps> = ({
   customLabel,
   nodeType = StartNodeTypeEnum.Trigger,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const label = useMemo(() => {
     const translationKey =

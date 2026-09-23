@@ -13,7 +13,7 @@ type Props = Readonly<{
 }>
 
 const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
 
   return (
     <div className={cn('px-4 py-2')}>

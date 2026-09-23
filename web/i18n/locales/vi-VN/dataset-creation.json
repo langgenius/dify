@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Kéo và thả các tập tin hoặc thư mục, hoặc",
   "stepOne.uploader.buttonSingleFile": "Kéo và thả tệp hoặc",
   "stepOne.uploader.change": "Thay đổi",
+  "stepOne.uploader.completed": "Tải lên hoàn tất",
   "stepOne.uploader.failed": "Tải lên thất bại",
   "stepOne.uploader.tip": "Hỗ trợ {{supportTypes}}. Tối đa {{batchCount}} tệp trong một lô và {{size}} MB mỗi tệp.",
   "stepOne.uploader.tipWithTotalLimit": "Hỗ trợ {{supportTypes}}. Tối đa {{batchCount}} tệp trong một lô và {{size}} MB mỗi tệp. Tổng tối đa {{totalCount}} tệp.",

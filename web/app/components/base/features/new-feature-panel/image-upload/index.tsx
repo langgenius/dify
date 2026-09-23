@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const FileUpload = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
   const [modalOpen, setModalOpen] = useState(false)

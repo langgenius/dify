@@ -1,5 +1,6 @@
 {
   "desc": "Tutaj możesz modyfikować właściwości i metody działania Wiedzy.",
+  "form.changeIcon": "Zmień ikonę wiedzy",
   "form.chunkStructure.description": "o strukturze porcji.",
   "form.chunkStructure.learnMore": "Dowiedz się więcej",
   "form.chunkStructure.title": "Struktura porcji",

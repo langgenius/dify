@@ -31,7 +31,7 @@ const CategoryMarketplacePanel = ({
   searchText: string
   tags?: string[]
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'workflow'])
   const { theme } = useTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapsed, setCollapsed] = useState(false)

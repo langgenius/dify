@@ -54,8 +54,8 @@ export function RestoreVersionDialog({
   open: boolean
   versionTitle: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -114,7 +114,7 @@ function CurrentDraftItem({
   isLast: boolean
   onSelect: () => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
 
   return (
     <button
@@ -146,8 +146,8 @@ function VersionFilter({
   value: VersionFilterValue
   onChange: (value: VersionFilterValue) => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['skill'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const isFiltering = value !== 'all'
 
@@ -222,8 +222,8 @@ function VersionRow({
   skillId: string
   version: SkillVersionResponse
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const [renameOpen, setRenameOpen] = useState(false)
@@ -503,8 +503,8 @@ export function VersionPanel({
   skillId: string
   versions: SkillVersionResponse[]
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['skill'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const [filterValue, setFilterValue] = useState<VersionFilterValue>('all')
   const titleId = useId()
   const filteredVersions = versions.filter((version) => {

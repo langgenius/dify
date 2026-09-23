@@ -68,7 +68,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (nonce !== undefined) themeProviderProps.nonce = nonce
 
   return (
-    <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
+    <html lang={locale} className="h-full" suppressHydrationWarning>
       <head>
         <ReactScanLoader />
       </head>

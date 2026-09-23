@@ -13,7 +13,7 @@ type DeleteAccountProps = {
 }
 
 export default function DeleteAccount(props: DeleteAccountProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const setCountdownLeftTime = useSetCountdownLeftTime()
 
   const [showVerifyEmail, setShowVerifyEmail] = useState(false)

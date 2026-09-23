@@ -2068,14 +2068,6 @@ class OperationLog(TypeBase):
     )
 
 
-class DefaultEndUserSessionID(StrEnum):
-    """
-    End User Session ID enum.
-    """
-
-    DEFAULT_SESSION_ID = "DEFAULT-USER"
-
-
 class EndUser(Base, UserMixin):
     __tablename__ = "end_users"
     __table_args__ = (
@@ -2244,9 +2236,6 @@ class ApiToken(Base):
       key with binding rows is limited to exactly those datasets). Enforcement lives in
       ``validate_dataset_token`` (controllers/service_api/wraps.py).
 
-    Note: controllers/console/apikey.py assigns the ``*_id`` columns via ``setattr``
-    keyed on ``resource_id_field``, so renaming ``app_id`` requires updating those
-    controllers too.
     """
 
     __tablename__ = "api_tokens"

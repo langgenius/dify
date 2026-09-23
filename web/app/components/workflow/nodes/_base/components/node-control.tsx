@@ -16,7 +16,7 @@ type NodeControlProps = Pick<Node, 'id' | 'data'> & {
   pluginInstallLocked?: boolean
 }
 const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleNodeSelect } = useNodesInteractions()
   const nodesReadOnly = useNodesReadOnly()
   const workflowStore = useWorkflowStore()

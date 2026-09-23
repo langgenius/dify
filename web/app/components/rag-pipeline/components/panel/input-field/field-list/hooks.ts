@@ -23,7 +23,7 @@ export const useFieldList = ({
   nodeId,
   allVariableNames,
 }: useFieldListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const { toggleInputFieldEditPanel } = useInputFieldPanel()
   const [inputFields, setInputFields] = useState<InputVar[]>(initialInputFields)
   const inputFieldsRef = useRef<InputVar[]>(inputFields)

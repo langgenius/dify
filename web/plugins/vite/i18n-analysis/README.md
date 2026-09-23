@@ -185,13 +185,10 @@ validation. Undeclared routes remain exempt from strict validation.
 Explicit, statically resolved `useTranslation` / `getTranslation` namespace
 arguments are included even when no translation key is consumed.
 
-The application passes `getDeclaredRouteNamespaces` from
-`i18n/route-namespaces.ts`, sharing declarations with server resource selection
-and client navigation. Currently only `/signin` and its descendants opt in. The
-application uses the default non-strict mode: runtime providers emit
-unknown warnings, while statically detected undeclared namespaces still fail.
-No policy callback substitutes configured values for unknown expressions.
-Undeclared routes keep the full catalog and can be migrated independently.
+Dify does not currently enable this optional validation. Components load their
+namespaces through the next-i18next Provider at render time, so there is no
+exhaustive route allowlist. Route reports remain available for diagnostics and
+preload investigations.
 
 This validates statically detected usage, with the recognition and conservative
 limitations described above. It does not prove that arbitrary runtime-generated

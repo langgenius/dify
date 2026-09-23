@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const ArrayValueList: FC<Props> = ({ className, list, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const handleChange = useCallback(
     (index: number) => {

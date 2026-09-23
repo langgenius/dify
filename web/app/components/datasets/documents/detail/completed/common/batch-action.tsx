@@ -56,7 +56,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   onBatchReIndex,
   onCancel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

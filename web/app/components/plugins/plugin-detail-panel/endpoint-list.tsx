@@ -23,7 +23,7 @@ type EndpointListContentProps = Readonly<{
 }>
 
 const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const docLink = useDocLink()
   const pluginUniqueID = detail.plugin_unique_identifier
   const showTopBorder = detail.declaration.tool

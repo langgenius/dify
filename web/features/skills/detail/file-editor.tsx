@@ -137,7 +137,7 @@ export function FileEditor({
   selectedVersionId: string | null
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const initialContent =

@@ -27,7 +27,7 @@ type Props = Readonly<{
 }>
 
 const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore', 'share'])
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const { removeConversationIdInfo, ...chatData } = useEmbeddedChatbot(AppSourceType.tryApp, appId)

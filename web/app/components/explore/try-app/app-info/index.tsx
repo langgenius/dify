@@ -60,7 +60,7 @@ const AppInfo: FC<Props> = ({
   appDetail,
   onCreate,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'explore'])
   const mode = appDetail?.mode
   const visibleCategories = Array.from(new Set(categories?.filter(Boolean) ?? []))
   const { requirements } = useGetRequirements({ appDetail, appId })

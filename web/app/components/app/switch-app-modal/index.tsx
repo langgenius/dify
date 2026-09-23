@@ -43,7 +43,7 @@ type SwitchAppModalProps = {
 const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const nameInputId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled

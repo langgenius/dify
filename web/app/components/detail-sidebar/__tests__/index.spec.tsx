@@ -1,5 +1,6 @@
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DetailSidebarFrame } from '..'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
@@ -27,10 +28,12 @@ vi.mock('@/app/components/header/env-nav', () => ({
 function renderDetailSidebarFrame(
   currentEnv: string | null = null,
   platform: 'mac' | 'windows' = 'mac',
+  compact = false,
 ) {
   return renderWithConsoleQuery(
     <HotkeysProvider defaultOptions={{ hotkey: { platform } }}>
       <DetailSidebarFrame
+        compact={compact}
         renderTop={({ expand, onToggle }) => (
           <div data-testid="detail-top" data-expand={expand}>
             <button type="button" data-testid="detail-toggle" onClick={onToggle}>
@@ -64,6 +67,20 @@ describe('DetailSidebarFrame', () => {
 
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
+  })
+
+  it('starts compact navigation collapsed and toggles without changing the desktop preference', async () => {
+    const user = userEvent.setup()
+    renderDetailSidebarFrame(null, 'mac', true)
+
+    expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
+    expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Expanded account')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('expand')
+
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
+    expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('expand')
   })
 
   describe.each(['mac', 'windows'] as const)('%s shortcut', (platform) => {

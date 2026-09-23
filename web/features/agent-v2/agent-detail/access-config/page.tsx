@@ -13,7 +13,7 @@ import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/con
 import { consoleQuery } from '@/service/console'
 
 export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const language = getAccessControlTemplateLanguage(useLocale())
   const { agentQuery, canAccessConfig } = useAgentPermissions(agentId)
   const [page, setPage] = useState(1)
