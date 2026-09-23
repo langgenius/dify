@@ -396,7 +396,9 @@ def test_message_factory_uses_the_app_queue_and_rejects_foreign_pipelines(
 
 
 @pytest.mark.parametrize("provider", ["weave", None])
-def test_disable_tracing_does_not_load_provider(sqlite_session, sqlite_engine, monkeypatch, provider):
+def test_disable_tracing_does_not_load_provider(
+    sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, provider: str | None
+) -> None:
     monkeypatch.setattr("extensions.ext_database.db", SimpleNamespace(engine=sqlite_engine))
     tenant, app, _ = seed_trace_owner(sqlite_session)
     load_provider = Mock()
@@ -413,7 +415,9 @@ def test_disable_tracing_does_not_load_provider(sqlite_session, sqlite_engine, m
     load_provider.assert_not_called()
 
 
-def test_enable_tracing_requires_provider_dependencies(sqlite_session, sqlite_engine, monkeypatch):
+def test_enable_tracing_requires_provider_dependencies(
+    sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("extensions.ext_database.db", SimpleNamespace(engine=sqlite_engine))
     tenant, app, _ = seed_trace_owner(sqlite_session)
     previous = app.tracing

@@ -1,6 +1,8 @@
 import builtins
+from collections.abc import Callable
 from functools import partial
-from typing import override
+from types import ModuleType
+from typing import cast, override
 from unittest.mock import Mock, patch
 
 import pytest
@@ -167,13 +169,15 @@ def test_present_config_reports_missing_provider_dependencies() -> None:
         (ModuleNotFoundError("No module named 'json.missing_module'", name="json.missing_module"), False),
     ],
 )
-def test_provider_loaders_distinguish_missing_dependencies_from_broken_imports(load_provider, failure, unavailable):
+def test_provider_loaders_distinguish_missing_dependencies_from_broken_imports(
+    load_provider: Callable[[str], object], failure: ImportError, unavailable: bool
+) -> None:
     original_import = builtins.__import__
 
-    def broken_import(name, *args, **kwargs):
+    def broken_import(name: str, *args: object, **kwargs: object) -> ModuleType:
         if name.startswith("dify_trace_weave."):
             raise failure
-        return original_import(name, *args, **kwargs)
+        return cast(Callable[..., ModuleType], original_import)(name, *args, **kwargs)
 
     expected = TraceProviderNotInstalledError if unavailable else ImportError
     with patch("builtins.__import__", side_effect=broken_import), pytest.raises(expected) as caught:
