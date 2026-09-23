@@ -11,6 +11,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiAlertFill, RiSearchEyeLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -82,6 +83,8 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
   summaryIndexSetting,
   onSummaryIndexSettingChange,
 }) => {
+  const qaLabelId = useId()
+
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -180,7 +183,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                         else onDocFormChange(ChunkingMode.qa)
                       }}
                     />
-                    <span className="ml-2 system-sm-regular text-text-secondary">
+                    <span id={qaLabelId} className="ml-2 system-sm-regular text-text-secondary">
                       {t(($) => $['stepTwo.useQALanguage'], { ns: 'datasetCreation' })}
                     </span>
                   </label>
@@ -190,13 +193,8 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
                   <Infotip>
-                    <InfotipTrigger
-                      aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
-                      className="size-3.5"
-                    />
-                    <InfotipContent
-                      aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
-                    >
+                    <InfotipTrigger aria-labelledby={qaLabelId} className="size-3.5" />
+                    <InfotipContent aria-labelledby={qaLabelId}>
                       {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                     </InfotipContent>
                   </Infotip>

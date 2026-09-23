@@ -171,11 +171,10 @@ describe('Billing Page + Plan Integration', () => {
       render(<PlanComp loc="test" />)
 
       const quotaCard = screen.getByRole('group', { name: /usagePage\.teamMembers/i })
-      const quotaLabel = within(quotaCard).getByText(/usagePage\.teamMembers/i)
-      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+      const quotaLabel = within(quotaCard).getByRole('term')
+      const quotaValue = within(quotaCard).getByRole('definition')
 
-      expect(quotaLabel.tagName).toBe('DT')
-      expect(quotaValue.tagName).toBe('DD')
+      expect(quotaLabel).toHaveTextContent(/usagePage\.teamMembers/i)
       expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
     })
 
@@ -188,7 +187,7 @@ describe('Billing Page + Plan Integration', () => {
       render(<PlanComp loc="test" />, {}, true)
 
       const quotaCard = screen.getByRole('group', { name: /usagePage\.vectorSpace/i })
-      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+      const quotaValue = within(quotaCard).getByRole('definition')
       expect(quotaValue).toHaveTextContent('--')
       expect(quotaValue).not.toHaveTextContent('< 50')
     })

@@ -47,6 +47,8 @@ const UsageInfo: FC<Props> = ({
   isSandboxPlan = false,
   usageUnknown = false,
 }) => {
+  const labelId = React.useId()
+
   const { t } = useTranslation()
 
   const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
@@ -167,11 +169,11 @@ const UsageInfo: FC<Props> = ({
       )}
       <dl className="flex flex-col gap-2">
         <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
-          {name}
+          <span id={labelId}>{name}</span>
           {tooltip && (
             <Infotip>
-              <InfotipTrigger aria-label={tooltip} />
-              <InfotipContent aria-label={tooltip} className="w-45">
+              <InfotipTrigger aria-labelledby={labelId} />
+              <InfotipContent aria-labelledby={labelId} className="w-45">
                 {tooltip}
               </InfotipContent>
             </Infotip>

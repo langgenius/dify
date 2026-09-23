@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next'
 import VarPicker from './var-picker'
 
 const ContextVar: FC<Props> = (props) => {
+  const titleId = React.useId()
+
   const { t } = useTranslation()
   const { value, options } = props
   const currItem = options.find((item) => item.value === value)
@@ -28,17 +30,12 @@ const ContextVar: FC<Props> = (props) => {
             className="i-custom-vender-line-development-brackets-x size-4 text-text-accent"
           />
         </div>
-        <div className="mr-1 text-sm font-medium text-text-secondary">
+        <div id={titleId} className="mr-1 text-sm font-medium text-text-secondary">
           {t(($) => $['feature.dataSet.queryVariable.title'], { ns: 'appDebug' })}
         </div>
         <Infotip>
-          <InfotipTrigger
-            aria-label={t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
-          />
-          <InfotipContent
-            aria-label={t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
-            className="w-45"
-          >
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-45">
             {t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
           </InfotipContent>
         </Infotip>

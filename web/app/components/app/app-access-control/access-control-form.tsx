@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { AccessMode as AccessModeValue } from '@/models/access-control'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
-import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
+import SpecificGroupsOrMembers from './specific-groups-or-members'
 
 export type AccessControlFormProps = {
   accessMode: AccessMode
@@ -43,6 +43,8 @@ export function AccessControlForm({
   onClose,
   onConfirm,
 }: AccessControlFormProps) {
+  const publicAccessLabelId = useId()
+  const externalAccessLabelId = useId()
   const accessControlOptionsLabelId = useId()
   const { t } = useTranslation()
   const confirmDisabled =
@@ -97,32 +99,37 @@ export function AccessControlForm({
                   aria-hidden="true"
                   className="i-ri-verified-badge-line size-4 text-text-primary"
                 />
-                <p className="system-sm-medium text-text-primary">
+                <p id={externalAccessLabelId} className="system-sm-medium text-text-primary">
                   {t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })}
                 </p>
               </div>
-              {!externalMembersTipHidden && <WebAppSSONotEnabledTip />}
+              {!externalMembersTipHidden && (
+                <Infotip>
+                  <InfotipTrigger
+                    aria-labelledby={externalAccessLabelId}
+                    className="text-text-warning-secondary hover:text-text-warning-secondary"
+                    iconSize="large"
+                  />
+                  <InfotipContent aria-labelledby={externalAccessLabelId}>
+                    {t(($) => $['accessControlDialog.webAppSSONotEnabledTip'], { ns: 'app' })}
+                  </InfotipContent>
+                </Infotip>
+              )}
             </div>
           </AccessControlItem>
           <AccessControlItem type={AccessModeValue.PUBLIC} disabled={publicAccessDisabled}>
             <div className="flex items-center gap-x-2 p-3">
               <span aria-hidden="true" className="i-ri-global-line size-4 text-text-primary" />
-              <p className="system-sm-medium text-text-primary">
+              <p id={publicAccessLabelId} className="system-sm-medium text-text-primary">
                 {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
               </p>
               {publicAccessDisabled && (
                 <Infotip>
                   <InfotipTrigger
-                    aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
-                      ns: 'app',
-                    })}
+                    aria-labelledby={publicAccessLabelId}
                     className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
                   />
-                  <InfotipContent
-                    aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
-                      ns: 'app',
-                    })}
-                  >
+                  <InfotipContent aria-labelledby={publicAccessLabelId}>
                     {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
                       ns: 'app',
                     })}

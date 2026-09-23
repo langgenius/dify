@@ -77,13 +77,8 @@ const SummaryIndexSetting = ({
               {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
             </span>
             <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
-                className="ml-1"
-              />
-              <InfotipContent
-                aria-label={t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
-              >
+              <InfotipTrigger aria-labelledby={summaryLabelId} className="ml-1" />
+              <InfotipContent aria-labelledby={summaryLabelId}>
                 {t(($) => $['form.summaryAutoGenTip'], { ns: 'datasetSettings' })}
               </InfotipContent>
             </Infotip>
