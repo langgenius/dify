@@ -849,6 +849,60 @@ def test_starred_app_list_api_returns_empty_when_no_starred_apps(
     assert resp == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
 
+def test_starred_app_list_api_attaches_permission_keys_when_rbac_disabled(
+    app, app_module, sqlite_session: Session, config_overrides: Callable[..., None]
+):
+    config_overrides(RBAC_ENABLED=False)
+    method = app_module.StarredAppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    app_obj = _app(
+        app_id="app-1",
+        tenant_id="tenant-1",
+        name="Starred App",
+        created_at=_ts(15),
+    )
+    app_obj.is_starred = True
+    pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_obj])
+    get_paginate_starred_apps = MagicMock(return_value=pagination)
+
+    with app.test_request_context("/apps/starred"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(
+                app_module.AppService,
+                "get_paginate_starred_apps",
+                get_paginate_starred_apps,
+            )
+            monkeypatch.setattr(
+                app_module.SystemFeatureService,
+                "is_webapp_auth_enabled",
+                lambda: False,
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                        default_permission_keys=["app.preview"],
+                        overrides=[
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-1",
+                                permission_keys=["app.acl.monitor"],
+                            )
+                        ],
+                    )
+                ),
+            )
+
+            resp, status = method(app_module.StarredAppListApi(), "tenant-1", "acct-1", sqlite_session)
+
+    assert status == 200
+    params = get_paginate_starred_apps.call_args.args[2]
+    assert params.accessible_app_ids is None
+    assert resp["data"][0]["permission_keys"] == ["app.acl.monitor"]
+
+
 def test_recent_app_list_api_returns_only_home_card_fields(
     app,
     app_module,
