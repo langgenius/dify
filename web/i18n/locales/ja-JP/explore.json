@@ -36,7 +36,9 @@
   "sidebar.webApps": "Webアプリ",
   "tryApp.category": "カテゴリー",
   "tryApp.createFromSampleApp": "テンプレートから作成",
+  "tryApp.loadError": "このテンプレートを読み込めませんでした",
   "tryApp.requirements": "必要項目",
+  "tryApp.retrying": "再試行中…",
   "tryApp.tabHeader.detail": "オーケストレーション詳細",
   "tryApp.tabHeader.try": "お試し",
   "tryApp.tryInfo": "これはサンプルアプリです。最大5件のメッセージまでお試しいただけます。引き続き利用するには、「テンプレートから作成」 をクリックして設定を行ってください。"

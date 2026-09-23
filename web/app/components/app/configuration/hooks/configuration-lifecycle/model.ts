@@ -1,4 +1,4 @@
-import type { SelectorTranslate } from '../../utils'
+import type { TFunction } from 'i18next'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelConfig } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
@@ -7,7 +7,6 @@ import { useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
-import { getStringSelectorTranslate } from '../../utils'
 
 type ModelChangeHandlerOptions = {
   chatPromptLength: number
@@ -29,7 +28,7 @@ type ModelChangeHandlerOptions = {
   resolvedModelModeType: ModelModeType
   setCompletionParams: (value: FormValue) => void
   setModelConfig: (config: ModelConfig) => void
-  t: SelectorTranslate<'appDebug' | 'common'>
+  t: TFunction<['appDebug', 'common']>
   visionConfig: VisionSettings
 }
 
@@ -46,7 +45,7 @@ export const createModelChangeHandler =
     resolvedModelModeType,
     setCompletionParams,
     setModelConfig,
-    t: rawTranslate,
+    t,
     visionConfig,
   }: ModelChangeHandlerOptions) =>
   async ({
@@ -60,7 +59,6 @@ export const createModelChangeHandler =
     mode?: string
     features?: string[]
   }) => {
-    const t = getStringSelectorTranslate(rawTranslate)
     if (isAdvancedMode) {
       if (nextModelMode === ModelModeType.completion) {
         if (mode !== AppModeEnum.COMPLETION) {

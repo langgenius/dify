@@ -1,11 +1,11 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useQueryState } from 'nuqs'
 import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
-import dynamic from '@/next/dynamic'
 import { useEducationExpireNotice } from './use-expire-notice'
 
 const ExpireNoticeModal = dynamic(() => import('./modal'), { ssr: false })

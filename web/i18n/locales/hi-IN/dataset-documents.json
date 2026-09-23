@@ -257,6 +257,7 @@
   "segment.searchResults_one": "परिणाम",
   "segment.searchResults_other": "परिणाम",
   "segment.searchResults_zero": "परिणाम",
+  "segment.statusFilterLabel": "स्थिति के अनुसार सेगमेंट फ़िल्टर करें",
   "segment.summary": "सारांश",
   "segment.summaryPlaceholder": "बेहतर पुनर्प्राप्ति के लिए संक्षिप्त सारांश लिखें…"
 }

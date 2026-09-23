@@ -37,11 +37,7 @@ export function VersionLabel({
   const latest = isLatest ?? versionsBehind === 0
   const behind = versionsBehind !== undefined && versionsBehind > 0 ? versionsBehind : undefined
   const versionsBehindLabel =
-    behind === undefined
-      ? ''
-      : behind === 1
-        ? t(($) => $['studio.versionsBehind_one'], { count: behind })
-        : t(($) => $['studio.versionsBehind_other'], { count: behind })
+    behind === undefined ? '' : t(($) => $['studio.versionsBehind'], { count: behind })
 
   return (
     <div className="flex min-w-0 items-center gap-1">

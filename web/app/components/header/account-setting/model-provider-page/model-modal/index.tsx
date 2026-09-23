@@ -193,7 +193,7 @@ const ModelModal: FC<ModelModalProps> = ({
   ])
 
   const modalTitle = useMemo(() => {
-    let label = t(($) => $['modelProvider.auth.apiKeyModal.title'], { ns: 'common' })
+    let label: string = t(($) => $['modelProvider.auth.apiKeyModal.title'], { ns: 'common' })
 
     if (
       mode === ModelModalModeEnum.configCustomModel ||

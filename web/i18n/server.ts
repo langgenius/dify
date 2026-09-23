@@ -24,7 +24,6 @@ const getOrCreateI18next = cache(async (lng: Locale) => {
     )
     .init({
       ...getInitOptions([]),
-      defaultNS: 'app',
       lng,
     })
   return instance
