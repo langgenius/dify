@@ -122,6 +122,11 @@ class InstalledAppConversationService:
         name: str | None,
         auto_generate: bool,
     ) -> ConversationRecord:
+        """Rename a conversation manually or generate its name.
+
+        When auto_generate is False, name is required and cannot be None.
+        When auto_generate is True, name is ignored.
+        """
         app_mode = self._get_chat_mode(installed_app)
         if not auto_generate:
             if name is None:

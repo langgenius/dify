@@ -4,9 +4,10 @@ import logging
 
 from sqlalchemy.orm import Session
 
+from core.agent.workspace import AgentWorkspaceNotFoundError, WorkspaceOwnerScope
 from models.agent import AgentWorkspaceOwnerType
 from models.model import App, Conversation
-from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +19,8 @@ def retire_conversation(*, app_model: App, conversation: Conversation, session: 
     all lifecycle changes together, then enqueue cleanup after that commit.
     This function neither commits nor dispatches background tasks.
     """
+    workspaces = AgentWorkspaceRepository(session=session)
     binding_id = conversation.agent_workspace_binding_id
-    # Reuse the existing Workspace lifecycle owner. These methods only
-    # read and mutate the supplied session; they do not perform external I/O.
     if binding_id is not None:
         owner_scope = WorkspaceOwnerScope(
             tenant_id=app_model.tenant_id,
@@ -28,8 +28,7 @@ def retire_conversation(*, app_model: App, conversation: Conversation, session: 
             owner_type=AgentWorkspaceOwnerType.CONVERSATION,
             owner_id=conversation.id,
         )
-        binding = AgentWorkspaceService.get_active_binding(
-            session=session,
+        binding = workspaces.get_active_binding(
             tenant_id=app_model.tenant_id,
             binding_id=binding_id,
             expected_owner_scope=owner_scope,
@@ -42,8 +41,7 @@ def retire_conversation(*, app_model: App, conversation: Conversation, session: 
         app_model.name,
         conversation.id,
     )
-    retired_workspace_ids = AgentWorkspaceService.retire_all_for_conversation(
-        session=session,
+    retired_workspace_ids = workspaces.retire_all_for_conversation(
         tenant_id=app_model.tenant_id,
         app_id=app_model.id,
         conversation_id=conversation.id,
