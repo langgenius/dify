@@ -1316,6 +1316,8 @@ class AppTraceApi(Resource):
     @get_app_model
     @model_validate(AppTracePayload)
     def post(self, req_data: AppTracePayload, app_model: App):
+        # add app trace
+
         try:
             OpsTraceManager.update_app_tracing_config(
                 app_id=app_model.id,

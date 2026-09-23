@@ -41,7 +41,9 @@ def _provider_entry(*, other_keys: list[str] | None = None) -> TracingProviderCo
     }
 
 
-def test_validate_provider_rejects_unknown_provider() -> None:
+def test_validate_provider_rejects_unknown_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(gateway_module, "provider_config_map", {})
+
     with pytest.raises(AppTracingConfigInvalidProviderError, match="Invalid tracing provider: unknown"):
         OpsTraceManagerGateway().validate_provider("unknown")
 
