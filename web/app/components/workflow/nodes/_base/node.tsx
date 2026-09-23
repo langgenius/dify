@@ -137,9 +137,10 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
 
   const LoopIndex = useMemo(() => {
     const translationKey = getLoopIndexTextKey(data._runningStatus)
-    const text = translationKey
-      ? t(($) => $[translationKey], { ns: 'workflow', count: data._loopIndex })
-      : ''
+    const text =
+      translationKey && data._loopIndex !== undefined
+        ? t(($) => $[translationKey], { ns: 'workflow', count: data._loopIndex })
+        : ''
 
     if (text) {
       return (

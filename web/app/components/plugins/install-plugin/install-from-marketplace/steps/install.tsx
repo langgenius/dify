@@ -152,7 +152,8 @@ const Installed: FC<Props> = ({
             <p className="system-md-regular text-text-warning">
               {t(($) => $.difyVersionNotCompatible, {
                 ns: 'plugin',
-                minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version,
+                minimalDifyVersion:
+                  pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0',
               })}
             </p>
           )}

@@ -38,7 +38,10 @@ export const useGetValidators = () => {
           },
           onBlur: ({ value }: any) => {
             if (!value && value !== 0)
-              return t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: memorizedLabel })
+              return t(($) => $['errorMsg.fieldRequired'], {
+                ns: 'common',
+                field: memorizedLabel || name,
+              })
           },
         }
       }
