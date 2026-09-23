@@ -658,3 +658,342 @@ def test_a_crash_message_never_reaches_the_text_the_model_is_shown():
 
     assert _location_label((_CRASH_LOCATION, "KeyError", "'sk-live-SECRET'")) == "<crash>.KeyError"
     assert _location_label(("cases", "0", "comparison_operator")) == "cases.0.comparison_operator"
+
+
+# ---- a new branch must feed the variable-aggregator it rejoins ---------------
+
+_REJOIN_ALLOWED = {"start", "if-else", "template-transform", "variable-aggregator", "end"}
+
+_EXISTING_SELECTORS = [["node3", "output"], ["node4", "output"]]
+
+
+def _rejoin_graph(aggregator_data: dict | None = None) -> dict:
+    """The live S6 draft's shape: start -> if-else -> two template-transforms ->
+    variable-aggregator -> end, every node as the engine accepts it."""
+    return {
+        "nodes": [
+            {
+                "id": "node1",
+                "type": "custom",
+                "data": {
+                    "type": "start",
+                    "title": "Start",
+                    "variables": [
+                        {"variable": "score", "type": "number", "label": "Score", "required": True, "options": []}
+                    ],
+                },
+            },
+            {
+                "id": "node2",
+                "type": "custom",
+                "data": {
+                    "type": "if-else",
+                    "title": "Check Threshold",
+                    "cases": [
+                        {
+                            "case_id": "true",
+                            "logical_operator": "and",
+                            "conditions": [
+                                {
+                                    "id": "c1",
+                                    "varType": "number",
+                                    "variable_selector": ["node1", "score"],
+                                    "comparison_operator": "=",
+                                    "value": "60",
+                                }
+                            ],
+                        }
+                    ],
+                },
+            },
+            {
+                "id": "node3",
+                "type": "custom",
+                "data": {"type": "template-transform", "title": "Pass", "template": "pass", "variables": []},
+            },
+            {
+                "id": "node4",
+                "type": "custom",
+                "data": {"type": "template-transform", "title": "Fail", "template": "fail", "variables": []},
+            },
+            {
+                "id": "node5",
+                "type": "custom",
+                "data": aggregator_data
+                or {
+                    "type": "variable-aggregator",
+                    "title": "Merge Result",
+                    "output_type": "string",
+                    "variables": copy.deepcopy(_EXISTING_SELECTORS),
+                },
+            },
+            {
+                "id": "node6",
+                "type": "custom",
+                "data": {"type": "end", "title": "End", "outputs": [{"variable": "result", "value_selector": []}]},
+            },
+        ],
+        "edges": [
+            {"id": "e1", "source": "node1", "target": "node2", "sourceHandle": "source", "targetHandle": "target"},
+            {"id": "e2", "source": "node2", "target": "node3", "sourceHandle": "true", "targetHandle": "target"},
+            {"id": "e3", "source": "node2", "target": "node4", "sourceHandle": "false", "targetHandle": "target"},
+            {"id": "e4", "source": "node3", "target": "node5", "sourceHandle": "source", "targetHandle": "target"},
+            {"id": "e5", "source": "node4", "target": "node5", "sourceHandle": "source", "targetHandle": "target"},
+            {"id": "e6", "source": "node5", "target": "node6", "sourceHandle": "source", "targetHandle": "target"},
+        ],
+    }
+
+
+def _new_branch_intents(target: str = "node5") -> list[MutationIntent]:
+    """The structural half of the live S6 batch: a new arm off the if-else that
+    rejoins at ``target``."""
+    return [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "template-transform",
+                "node_id": "node7",
+                "config": {"title": "Excellent Message", "template": "excellent", "variables": []},
+            },
+        ),
+        MutationIntent(op="connect", args={"from_node": "node2", "to_node": "node7", "source_handle": "true"}),
+        MutationIntent(op="connect", args={"from_node": "node7", "to_node": target}),
+    ]
+
+
+def test_a_new_branch_into_an_aggregator_that_does_not_list_it_is_refused():
+    """The one shape that still produced "All checks passed" on empty output:
+    the aggregator stays engine-VALID (its two existing selectors resolve), so
+    the preflight has nothing to say, and graphon's ``VariableAggregatorNode``
+    skips the arm it was never told about in silence."""
+    vetted = vet_intents(_rejoin_graph(), _new_branch_intents(), _REJOIN_ALLOWED)
+
+    assert len(vetted.rejections) == 1
+    reason = vetted.rejections[0]
+    assert "node5" in reason
+    assert "node7" in reason
+    assert '["node7", "output"]' in reason
+
+
+def test_the_same_branch_is_accepted_once_the_aggregator_lists_it():
+    """The other half: the batch that does the whole job goes through
+    untouched, so the guard cannot be satisfied by refusing everything."""
+    intents = [
+        *_new_branch_intents(),
+        MutationIntent(
+            op="set_node_config",
+            args={
+                "node_id": "node5",
+                "path": "variables",
+                "value": [*copy.deepcopy(_EXISTING_SELECTORS), ["node7", "output"]],
+            },
+        ),
+    ]
+
+    vetted = vet_intents(_rejoin_graph(), intents, _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
+    assert len(vetted.applicable) == 4
+
+
+def test_a_new_branch_that_reaches_no_aggregator_is_accepted():
+    """The guard fires on an edge whose TARGET is an aggregator and nothing
+    else. A new arm that routes to the End node is an ordinary edit."""
+    vetted = vet_intents(_rejoin_graph(), _new_branch_intents(target="node6"), _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
+    assert len(vetted.applicable) == 3
+
+
+def test_an_edge_into_an_aggregator_that_already_existed_is_not_re_checked():
+    """A draft the user already wired badly must not veto an unrelated edit --
+    the same rule ``new_preflight_problems`` keeps for node data. ``node4``
+    already feeds ``node5`` and is already missing from its ``variables``."""
+    graph = _rejoin_graph(
+        aggregator_data={
+            "type": "variable-aggregator",
+            "title": "Merge Result",
+            "output_type": "string",
+            "variables": [["node3", "output"]],
+        }
+    )
+    rename = MutationIntent(op="set_node_config", args={"node_id": "node3", "path": "title", "value": "Passed"})
+
+    vetted = vet_intents(graph, [rename], _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
+    assert vetted.applicable == [rename]
+
+
+def test_a_two_node_branch_is_accepted_when_the_aggregator_lists_its_head():
+    """A branch of more than one node is an ordinary shape. The batch adds
+    ``node7 -> node8`` and ``node8 -> node5``; both run whenever the new arm
+    runs, so an aggregator that lists EITHER of them has been told about it.
+    Keyed on the edge's immediate source alone, this was refused."""
+    graph = _rejoin_graph(
+        aggregator_data={
+            "type": "variable-aggregator",
+            "title": "Merge Result",
+            "output_type": "string",
+            "variables": [*copy.deepcopy(_EXISTING_SELECTORS), ["node7", "output"]],
+        }
+    )
+    intents = [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "template-transform",
+                "node_id": "node7",
+                "config": {"title": "Excellent", "template": "excellent", "variables": []},
+            },
+        ),
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "template-transform",
+                "node_id": "node8",
+                "config": {"title": "Decorate", "template": "{{ x }}", "variables": []},
+            },
+        ),
+        MutationIntent(op="connect", args={"from_node": "node2", "to_node": "node7", "source_handle": "true"}),
+        MutationIntent(op="connect", args={"from_node": "node7", "to_node": "node8"}),
+        MutationIntent(op="connect", args={"from_node": "node8", "to_node": "node5"}),
+    ]
+
+    vetted = vet_intents(graph, intents, _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
+
+
+def test_the_ancestor_walk_does_not_cross_into_the_graphs_other_arms():
+    """The soundness limit of that walk, and the reason it follows only the
+    batch's OWN new edges. ``node5`` lists ``node3``/``node4``, which sit on the
+    if-else's OTHER arms -- they never run when the new one does. A walk through
+    pre-existing edges would find ``node2`` above them all and accept exactly
+    the batch that produces nothing."""
+    vetted = vet_intents(_rejoin_graph(), _new_branch_intents(), _REJOIN_ALLOWED)
+
+    assert len(vetted.rejections) == 1
+
+
+def test_a_selector_naming_a_variable_the_node_does_not_publish_is_refused():
+    """Rooted-at is not enough. A template-transform publishes ``output``; a
+    selector naming ``text`` on it is exactly as unresolvable as no selector at
+    all and the run skips it in the same silence, so accepting any name would
+    leave the failure intact behind a selector that looks right."""
+    graph = _rejoin_graph(
+        aggregator_data={
+            "type": "variable-aggregator",
+            "title": "Merge Result",
+            "output_type": "string",
+            "variables": [*copy.deepcopy(_EXISTING_SELECTORS), ["node7", "text"]],
+        }
+    )
+
+    vetted = vet_intents(graph, _new_branch_intents(), _REJOIN_ALLOWED)
+
+    assert len(vetted.rejections) == 1
+    assert '["node7", "output"]' in vetted.rejections[0]  # ...and it says which name to use
+
+
+def test_a_variable_name_this_module_cannot_know_is_accepted():
+    """The other side of the same rule: a tool's outputs are whatever the tool
+    decides at run time, so no closed set exists and the guard must not invent
+    one. A name it cannot confirm is accepted; only a name it KNOWS is wrong is
+    refused."""
+    graph = _rejoin_graph(
+        aggregator_data={
+            "type": "variable-aggregator",
+            "title": "Merge Result",
+            "output_type": "string",
+            "variables": [*copy.deepcopy(_EXISTING_SELECTORS), ["node7", "whatever_the_tool_returns"]],
+        }
+    )
+    intents = [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "tool",
+                "node_id": "node7",
+                "config": {
+                    "title": "Call",
+                    "provider_id": "p",
+                    "provider_type": "builtin",
+                    "provider_name": "p",
+                    "tool_name": "t",
+                    "tool_label": "T",
+                    "tool_parameters": {},
+                    "tool_configurations": {},
+                },
+            },
+        ),
+        MutationIntent(op="connect", args={"from_node": "node2", "to_node": "node7", "source_handle": "true"}),
+        MutationIntent(op="connect", args={"from_node": "node7", "to_node": "node5"}),
+    ]
+
+    vetted = vet_intents(graph, intents, {*_REJOIN_ALLOWED, "tool"})
+
+    assert [r for r in vetted.rejections if "variable-aggregator" in r] == []
+
+
+def test_a_code_nodes_published_names_are_read_off_the_node_itself():
+    """A code node declares its own outputs, so that is where the answer is --
+    ``result`` is published and accepted, and nothing else would be."""
+    graph = _rejoin_graph(
+        aggregator_data={
+            "type": "variable-aggregator",
+            "title": "Merge Result",
+            "output_type": "string",
+            "variables": [*copy.deepcopy(_EXISTING_SELECTORS), ["node7", "result"]],
+        }
+    )
+    intents = [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "code",
+                "node_id": "node7",
+                "config": {
+                    "title": "Grade",
+                    "code": "def main():\n    return {'result': 'excellent'}",
+                    "code_language": "python3",
+                    "variables": [],
+                    "outputs": {"result": {"type": "string"}},
+                },
+            },
+        ),
+        MutationIntent(op="connect", args={"from_node": "node2", "to_node": "node7", "source_handle": "true"}),
+        MutationIntent(op="connect", args={"from_node": "node7", "to_node": "node5"}),
+    ]
+
+    vetted = vet_intents(graph, intents, {*_REJOIN_ALLOWED, "code"})
+
+    assert [r for r in vetted.rejections if "variable-aggregator" in r] == []
+
+
+def test_a_grouped_aggregator_that_lists_the_new_branch_in_a_group_is_accepted():
+    """graphon reads the selectors out of ``advanced_settings.groups`` when
+    ``group_enabled`` is set, so a guard that only looked at ``variables``
+    would refuse a branch that is already wired correctly."""
+    graph = _rejoin_graph(
+        aggregator_data={
+            "type": "variable-aggregator",
+            "title": "Merge Result",
+            "output_type": "string",
+            "variables": copy.deepcopy(_EXISTING_SELECTORS),
+            "advanced_settings": {
+                "group_enabled": True,
+                "groups": [
+                    {
+                        "group_name": "result",
+                        "output_type": "string",
+                        "variables": [*copy.deepcopy(_EXISTING_SELECTORS), ["node7", "output"]],
+                    }
+                ],
+            },
+        }
+    )
+
+    vetted = vet_intents(graph, _new_branch_intents(), _REJOIN_ALLOWED)
+
+    assert vetted.rejections == []
