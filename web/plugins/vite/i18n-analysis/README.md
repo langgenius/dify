@@ -198,9 +198,20 @@ components and URL-selected dialogs. This report does not verify those runtime
 loading boundaries. Do not copy the complete dependency set into preloads merely
 to satisfy validation, or treat `staticImportNamespaces` as sufficient preloads.
 
-Currently only `/signin` and its descendants opt in; both sets remain
-`common` and `login`. Undeclared routes, including `/`, still preload the full
-catalog and are exempt from route allowance validation. The application uses the
+`/signin` and its descendants preload and allow `common` and `login`.
+The home route `/` preloads `app`, `billing`, `common`, `explore`, `skill`, and
+`agentV2`; the last two are needed by globally mounted search commands.
+Optional home features declare their subtree's resources in their entry component's
+existing `useTranslation([...])` call. Existing dynamic/Suspense boundaries wait
+for those resources before rendering descendants, which can keep using `t` with
+an explicit `ns`. Keep the first namespace consistent with the hook's previous
+default so unqualified translations do not change. These entry lists require
+maintenance when descendants add translation dependencies; build validation checks
+route allowances, not completeness of each entry's runtime loading declaration.
+
+The home declaration matches only `/`, including under a configured base path.
+Undeclared routes still preload the full catalog and are exempt from route
+allowance validation. The application uses the
 default non-strict mode: runtime providers emit unknown warnings, while statically
 detected disallowed namespaces still fail. No policy callback substitutes
 configured values for unknown expressions.

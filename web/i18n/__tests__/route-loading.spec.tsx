@@ -64,6 +64,25 @@ describe('route translation loading', () => {
     expect(mocks.loadResource).not.toHaveBeenCalled()
   })
 
+  it('sends only home resources and English fallback, with no follow-up translation fetch on mount', async () => {
+    mocks.pathname = '/'
+    const page = await I18nServerProvider({ children: <Label /> })
+    const expectedNamespaces = ['app', 'billing', 'common', 'explore', 'skill', 'agentV2']
+    for (const locale of ['en-US', 'zh-Hans']) {
+      expect(
+        mocks.loadResource.mock.calls
+          .filter(([lng]) => lng === locale)
+          .map(([, ns]) => ns)
+          .sort(),
+      ).toEqual([...expectedNamespaces].sort())
+    }
+    expect(renderToString(page)).toContain('保存')
+    mocks.loadResource.mockClear()
+    render(page)
+    expect(await screen.findByText('保存 / Cancel')).toBeVisible()
+    expect(mocks.loadResource).not.toHaveBeenCalled()
+  })
+
   it('includes localized content and English fallback in an unmigrated route server response', async () => {
     mocks.pathname = '/agents/example/configure'
     const page = await I18nServerProvider({
@@ -224,8 +243,11 @@ describe('route translation loading', () => {
       'login',
     ])
     expect(getAllowedRouteNamespaces('/signin-other')).toBeUndefined()
-    expect(getAllowedRouteNamespaces('/')).toBeUndefined()
-    expect(getRouteNamespaces('/')).toContain('workflow')
+    expect(getAllowedRouteNamespaces('/')).toContain('workflow')
+    expect(getRouteNamespaces('/')).not.toContain('workflow')
+    expect(getRouteNamespaces('/console', '/console')).toEqual(getRouteNamespaces('/'))
+    expect(getRouteNamespaces('/console/', '/console')).toEqual(getRouteNamespaces('/'))
+    expect(getRouteNamespaces('/apps')).toContain('workflow')
     expect(getRouteNamespaces('/signin-other')).toContain('workflow')
     expect(getRouteNamespaces(null)).toContain('workflow')
   })

@@ -29,7 +29,31 @@ function TryApp({
   onClose,
   onCreate,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'app',
+    'agentV2',
+    'appAnnotation',
+    'appApi',
+    'appDebug',
+    'appLog',
+    'appOverview',
+    'common',
+    'custom',
+    'dataset',
+    'datasetCreation',
+    'datasetDocuments',
+    'datasetSettings',
+    'explore',
+    'pipeline',
+    'plugin',
+    'pluginTags',
+    'runLog',
+    'share',
+    'snippet',
+    'time',
+    'tools',
+    'workflow',
+  ])
   const appId = app.app_id
   const canUseTryTab = app.can_trial
   const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))

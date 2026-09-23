@@ -22,7 +22,17 @@ type ReadmeDrawerProps = {
 }
 
 export function ReadmeDrawer({ detail, open, onOpenChange, triggerId }: ReadmeDrawerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'app',
+    'appLog',
+    'appOverview',
+    'common',
+    'datasetDocuments',
+    'datasetSettings',
+    'plugin',
+    'pluginTags',
+    'time',
+  ])
 
   return (
     <Drawer

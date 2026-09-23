@@ -152,7 +152,18 @@ const RecoveryDialog = ({
 )
 
 function WorkflowGeneratorModal() {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation([
+    'workflow',
+    'app',
+    'appDebug',
+    'common',
+    'custom',
+    'datasetDocuments',
+    'datasetSettings',
+    'pipeline',
+    'plugin',
+    'snippet',
+  ])
   const router = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled

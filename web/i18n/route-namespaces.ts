@@ -11,6 +11,43 @@ type RouteNamespaceDeclaration = {
 
 // More specific declarations override an ancestor declaration.
 const routeNamespaceDeclarations: Readonly<Record<string, RouteNamespaceDeclaration>> = {
+  '/': {
+    // Search commands are mounted globally, including skill and agent descriptions.
+    preloadNamespaces: ['app', 'billing', 'common', 'explore', 'skill', 'agentV2'],
+    allowedNamespaces: [
+      'agentV2',
+      'app',
+      'appAnnotation',
+      'appApi',
+      'appDebug',
+      'appLog',
+      'appOverview',
+      'billing',
+      'common',
+      'custom',
+      'dataset',
+      'datasetCreation',
+      'datasetDocuments',
+      'datasetPipeline',
+      'datasetSettings',
+      'education',
+      'explore',
+      'layout',
+      'permission',
+      'permissionKeys',
+      'pipeline',
+      'plugin',
+      'pluginTags',
+      'pluginTrigger',
+      'runLog',
+      'share',
+      'skill',
+      'snippet',
+      'time',
+      'tools',
+      'workflow',
+    ],
+  },
   '/signin': {
     preloadNamespaces: ['common', 'login'],
     allowedNamespaces: ['common', 'login'],
@@ -23,9 +60,13 @@ function getRouteNamespaceDeclaration(
   basePath = '',
 ): RouteNamespaceDeclaration | undefined {
   const route =
-    basePath && pathname?.startsWith(`${basePath}/`) ? pathname.slice(basePath.length) : pathname
+    basePath && pathname === basePath
+      ? '/'
+      : basePath && pathname?.startsWith(`${basePath}/`)
+        ? pathname.slice(basePath.length)
+        : pathname
   const declaredRoute = declaredRoutes.find(
-    (path) => route === path || route?.startsWith(`${path}/`),
+    (path) => route === path || (path !== '/' && route?.startsWith(`${path}/`)),
   )
   return declaredRoute ? routeNamespaceDeclarations[declaredRoute] : undefined
 }
