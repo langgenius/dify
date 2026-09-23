@@ -40,7 +40,7 @@ const ToolForm: FC<Props> = ({
   extraParams,
 }) => {
   const handleChange = useCallback(
-    (nextValue: ToolVarInputs) => {
+    (nextValue: ResourceVarInputs) => {
       onChange(
         applyResetOnChange({
           schemas: schema,
