@@ -346,9 +346,12 @@ def test_insert_between_fills_required_fields_too():
     assert data["code"] == "print(1)"
 
 
-def test_filter_applicable_dry_run_sees_the_same_defaults_the_port_will_write():
-    """The dry run and the live apply must agree, or a create the dry run
-    accepts is a create the preflight refuses."""
+def test_filter_applicable_routes_a_create_through_the_apply_fn_that_fills_defaults():
+    """``filter_applicable`` does not return its working graph, so this cannot
+    assert on the node the dry run built. What it CAN pin is the link that makes
+    the dry run and the live apply agree: the dry run dispatches through
+    ``APPLY_FNS``, whose ``create_node`` entry is the very function that merges
+    the defaults in -- and it accepts a config that omits one."""
     intents = [
         MutationIntent(
             op="create_node",
@@ -360,8 +363,9 @@ def test_filter_applicable_dry_run_sees_the_same_defaults_the_port_will_write():
 
     assert rejected == []
     assert applicable == intents
-    dry_run, _ = graph_ops.apply_create_node({"nodes": [], "edges": []}, **intents[0].args)
-    assert dry_run["nodes"][0]["data"]["variables"] == []
+    assert graph_ops.APPLY_FNS["create_node"] is graph_ops.apply_create_node
+    built, _ = graph_ops.apply_create_node({"nodes": [], "edges": []}, **intents[0].args)
+    assert built["nodes"][0]["data"]["variables"] == []
 
 
 # ---- apply_delete_node ------------------------------------------------------
