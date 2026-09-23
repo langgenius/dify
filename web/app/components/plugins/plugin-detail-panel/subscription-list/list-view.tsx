@@ -1,9 +1,9 @@
 'use client'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { CreateSubscriptionButton } from './create'
 import { CreateButtonType } from './create/types'
 import SubscriptionCard from './subscription-card'
@@ -18,6 +18,8 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
   showTopBorder = false,
   pluginDetail,
 }) => {
+  const titleId = React.useId()
+
   const { t } = useTranslation()
   const { subscriptions } = useSubscriptionList()
 
@@ -28,14 +30,14 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
       <div className="relative flex items-center justify-between">
         {subscriptionCount > 0 && (
           <div className="flex h-8 shrink-0 items-center gap-1">
-            <span className="system-sm-semibold-uppercase text-text-secondary">
+            <span id={titleId} className="system-sm-semibold-uppercase text-text-secondary">
               {t(($) => $['subscription.listNum'], { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
-            <Infotip
-              aria-label={t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
-              className="size-3.5"
-            >
-              {t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} className="size-3.5" />
+              <InfotipContent aria-labelledby={titleId}>
+                {t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
+              </InfotipContent>
             </Infotip>
           </div>
         )}

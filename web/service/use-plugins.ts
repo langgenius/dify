@@ -34,6 +34,11 @@ import type {
   VersionListResponse,
 } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
+import {
+  zAgentStrategyProviderEntity,
+  zDatasourceProviderEntity,
+  zEndpointProviderDeclarationResponse,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useAtomValue } from 'jotai'
@@ -219,19 +224,6 @@ const normalizePluginToolDeclaration = (value: unknown): PluginDeclaration['tool
       tags: getStringArray(identity.tags),
     },
     credentials_schema: getRecordArray(value, 'credentials_schema').map(normalizeToolCredential),
-  }
-}
-
-const normalizePluginEndpointDeclaration = (value: unknown): PluginDeclaration['endpoint'] => {
-  if (!isRecord(value)) return undefined
-
-  return {
-    settings: getRecordArray(value, 'settings').map(normalizeToolCredential),
-    endpoints: getRecordArray(value, 'endpoints').map((endpoint) => ({
-      path: getString(endpoint.path),
-      method: getString(endpoint.method),
-      hidden: endpoint.hidden === undefined ? undefined : getBoolean(endpoint.hidden),
-    })),
   }
 }
 
@@ -440,12 +432,20 @@ const normalizePluginDeclaration = (plugin: InstalledPluginResponse): PluginDecl
     resource: declaration.resource,
     plugins: declaration.plugins,
     verified: declaration.verified ?? false,
-    endpoint: normalizePluginEndpointDeclaration(declaration.endpoint),
+    endpoint: isRecord(declaration.endpoint)
+      ? zEndpointProviderDeclarationResponse.parse(declaration.endpoint)
+      : undefined,
     tool: normalizePluginToolDeclaration(declaration.tool),
-    datasource: normalizePluginToolDeclaration(declaration.datasource),
+    datasource:
+      declaration.datasource == null
+        ? declaration.datasource
+        : zDatasourceProviderEntity.parse(declaration.datasource),
     model: declaration.model,
     tags: declaration.tags ?? [],
-    agent_strategy: declaration.agent_strategy,
+    agent_strategy:
+      declaration.agent_strategy == null
+        ? declaration.agent_strategy
+        : zAgentStrategyProviderEntity.parse(declaration.agent_strategy),
     meta: {
       version: getString(declaration.meta.version) || declaration.version,
       minimum_dify_version: getString(declaration.meta.minimum_dify_version) || undefined,
@@ -1527,46 +1527,5 @@ export const useFetchDynamicOptions = (
           ...extra,
         },
       }),
-  })
-}
-
-export const usePluginReadme = ({
-  plugin_unique_identifier,
-  language,
-}: {
-  plugin_unique_identifier: string
-  language?: string
-}) => {
-  return useQuery({
-    queryKey: ['pluginReadme', plugin_unique_identifier, language],
-    queryFn: () =>
-      get<{ readme: string }>(
-        '/workspaces/current/plugin/readme',
-        { params: { plugin_unique_identifier, language } },
-        { silent: true },
-      ),
-    enabled: !!plugin_unique_identifier,
-    retry: 0,
-  })
-}
-
-export const usePluginReadmeAsset = ({
-  file_name,
-  plugin_unique_identifier,
-}: {
-  file_name?: string
-  plugin_unique_identifier?: string
-}) => {
-  const normalizedFileName = file_name?.replace(/^\.\/_assets\//, '').replace(/^_assets\//, '')
-  const isAssetFile = file_name?.startsWith('./_assets') || file_name?.startsWith('_assets')
-  return useQuery({
-    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, normalizedFileName],
-    queryFn: () =>
-      get<Blob>(
-        '/workspaces/current/plugin/asset',
-        { params: { plugin_unique_identifier, file_name: normalizedFileName } },
-        { silent: true },
-      ),
-    enabled: !!plugin_unique_identifier && !!isAssetFile,
   })
 }

@@ -474,10 +474,8 @@ export function HomeContent() {
 
       {currentTryApp && (
         <TryApp
-          appId={currentTryApp.app_id}
           app={currentTryApp}
           canCreate={canCreateApp}
-          categories={currentTryApp.categories ?? []}
           createButtonStepByStepTourTarget={
             canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal
               ? STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate

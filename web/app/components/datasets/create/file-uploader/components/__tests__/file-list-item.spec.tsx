@@ -1,6 +1,7 @@
 import type { FileListItemProps } from '../file-list-item'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
 import FileListItem from '../file-list-item'
@@ -113,8 +114,10 @@ describe('FileListItem', () => {
     })
 
     it('should render delete button', () => {
-      const { container } = render(<FileListItem {...defaultProps} />)
-      const deleteButton = container.querySelector('.cursor-pointer')
+      render(<FileListItem {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', {
+        name: 'common.operation.remove test-document.pdf',
+      })
       expect(deleteButton).toBeInTheDocument()
     })
   })
@@ -190,6 +193,25 @@ describe('FileListItem', () => {
     })
   })
 
+  it('supports keyboard preview and removal without triggering both actions', async () => {
+    const user = userEvent.setup()
+    const fileItem = createMockFileItem({ file: createMockFile({ id: 'uploaded-id' }) })
+    render(<FileListItem {...defaultProps} fileItem={fileItem} />)
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'datasetCreation.stepOne.filePreview test-document.pdf' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(defaultProps.onPreview).toHaveBeenCalledWith(fileItem.file)
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'common.operation.remove test-document.pdf' }),
+    ).toHaveFocus()
+    await user.keyboard(' ')
+    expect(defaultProps.onRemove).toHaveBeenCalledWith(fileItem.fileID)
+    expect(defaultProps.onPreview).toHaveBeenCalledOnce()
+  })
+
   describe('event handlers', () => {
     it('should call onPreview when item is clicked with file id', () => {
       const onPreview = vi.fn()
@@ -198,7 +220,9 @@ describe('FileListItem', () => {
       })
       render(<FileListItem {...defaultProps} fileItem={fileItem} onPreview={onPreview} />)
 
-      const item = screen.getByText('test-document.pdf').closest('[class*="flex h-12"]')!
+      const item = screen.getByRole('button', {
+        name: 'datasetCreation.stepOne.filePreview test-document.pdf',
+      })
       fireEvent.click(item)
 
       expect(onPreview).toHaveBeenCalledTimes(1)
@@ -210,7 +234,9 @@ describe('FileListItem', () => {
       const fileItem = createMockFileItem()
       render(<FileListItem {...defaultProps} fileItem={fileItem} onPreview={onPreview} />)
 
-      const item = screen.getByText('test-document.pdf').closest('[class*="flex h-12"]')!
+      const item = screen.getByRole('button', {
+        name: 'datasetCreation.stepOne.filePreview test-document.pdf',
+      })
       fireEvent.click(item)
 
       expect(onPreview).not.toHaveBeenCalled()
@@ -219,11 +245,11 @@ describe('FileListItem', () => {
     it('should call onRemove when delete button is clicked', () => {
       const onRemove = vi.fn()
       const fileItem = createMockFileItem()
-      const { container } = render(
-        <FileListItem {...defaultProps} fileItem={fileItem} onRemove={onRemove} />,
-      )
+      render(<FileListItem {...defaultProps} fileItem={fileItem} onRemove={onRemove} />)
 
-      const deleteButton = container.querySelector('.cursor-pointer')!
+      const deleteButton = screen.getByRole('button', {
+        name: 'common.operation.remove test-document.pdf',
+      })
       fireEvent.click(deleteButton)
 
       expect(onRemove).toHaveBeenCalledTimes(1)
@@ -236,7 +262,7 @@ describe('FileListItem', () => {
       const fileItem = createMockFileItem({
         file: createMockFile({ id: 'uploaded-id' } as Partial<File>),
       })
-      const { container } = render(
+      render(
         <FileListItem
           {...defaultProps}
           fileItem={fileItem}
@@ -245,7 +271,9 @@ describe('FileListItem', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('.cursor-pointer')!
+      const deleteButton = screen.getByRole('button', {
+        name: 'common.operation.remove test-document.pdf',
+      })
       fireEvent.click(deleteButton)
 
       expect(onRemove).toHaveBeenCalledTimes(1)

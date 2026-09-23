@@ -3,10 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import KeyValueItem from '../key-value-item'
 
-vi.mock('../../../base/icons/src/vender/line/files', () => ({
-  CopyCheck: () => <span />,
-}))
-
 const mockCopy = vi.fn()
 vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),

@@ -52,7 +52,7 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
                 </button>
               }
             />
-            <TooltipContent className="rounded-xl">
+            <TooltipContent>
               {t(($) => $['runDetail.testWithParams'], { ns: 'appLog' })}
             </TooltipContent>
           </Tooltip>

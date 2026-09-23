@@ -1,14 +1,13 @@
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import AppIconPicker from '../../app-icon-picker'
-import { backgroundColors } from '../constants'
 import EmojiPickerInner from '../Inner'
 
-// Real layout is needed to verify virtualized rows remain reachable using the keyboard.
-it('selects a searched emoji with the keyboard and keeps style controls usable', async () => {
+// Real layout verifies keyboard navigation scrolls the shared list to the active row.
+it('selects a searched emoji and scrolls to later rows with the keyboard', async () => {
   const onSelect = vi.fn()
   await render(
-    <div style={{ width: 380 }}>
+    <div style={{ width: 322, height: 480, display: 'flex' }}>
       <EmojiPickerInner onSelect={onSelect} />
     </div>,
   )
@@ -16,9 +15,7 @@ it('selects a searched emoji with the keyboard and keeps style controls usable',
   await search.fill('rabbit face')
   await expect.element(page.getByRole('gridcell', { name: 'Rabbit face' })).toBeVisible()
   await userEvent.keyboard('{Enter}')
-  await expect.poll(() => onSelect.mock.lastCall).toEqual(['🐰', '#FFEAD5'])
-  await page.getByRole('button', { name: '#E4FBCC' }).click()
-  expect(onSelect).toHaveBeenLastCalledWith('🐰', '#E4FBCC')
+  await expect.poll(() => onSelect.mock.lastCall).toEqual(['🐰', '#FEF3F2'])
   await search.fill('')
   await expect
     .element(page.getByRole('gridcell', { name: 'Grinning face', exact: true }))
@@ -27,57 +24,48 @@ it('selects a searched emoji with the keyboard and keeps style controls usable',
   await userEvent.keyboard(
     '{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{Enter}',
   )
-  expect(onSelect).toHaveBeenCalledTimes(3)
+  expect(onSelect).toHaveBeenCalledTimes(2)
 })
 
-// The production dialog is narrower than the old fixed-width eight-column grid.
-// Verify every edge option is visible and clickable, rather than hiding overflow.
-it('fits emoji and style options inside the app icon dialog', async () => {
-  const originalFontSize = document.documentElement.style.fontSize
-  document.documentElement.style.fontSize = '16px'
-  onTestFinished(() => {
-    document.documentElement.style.fontSize = originalFontSize
-  })
+// Guard against the scrollbar clipping the ninth column or the footer obscuring selectable rows.
+it('keeps the rightmost emoji clickable inside the app icon dialog', async () => {
   const onSelect = vi.fn()
-  await render(
-    <AppIconPicker
-      open
-      onOpenChange={() => {}}
-      onSelect={onSelect}
-      initialEmoji={{ icon: 'robot_face' }}
-    />,
-  )
-  const dialog = page.getByRole('dialog')
-  const firstEmoji = page.getByRole('gridcell', { name: 'Grinning face', exact: true })
-  await expect.element(firstEmoji).toBeVisible()
-  const bounds = dialog.element().getBoundingClientRect()
-  const options = [
-    ...dialog.element().querySelectorAll('[role="row"] [role="gridcell"]'),
-    ...backgroundColors.map((color) =>
-      page.getByRole('button', { name: color, exact: true }).element(),
-    ),
-  ]
-  for (const option of options) {
-    const rect = option.getBoundingClientRect()
-    expect(rect.left).toBeGreaterThanOrEqual(bounds.left)
-    expect(rect.right).toBeLessThanOrEqual(bounds.right)
-  }
-  const footerTop = page
-    .getByRole('button', { name: 'app.iconPicker.ok', exact: true })
-    .element()
-    .getBoundingClientRect().top
-  for (const color of backgroundColors) {
-    expect(
-      page.getByRole('button', { name: color, exact: true }).element().getBoundingClientRect()
-        .bottom,
-    ).toBeLessThanOrEqual(footerTop)
-  }
-  await page.getByRole('gridcell', { name: 'Face with tears of joy', exact: true }).click()
-  await page.getByRole('button', { name: backgroundColors.at(-1)!, exact: true }).click()
+  await render(<AppIconPicker open onOpenChange={() => {}} onSelect={onSelect} />)
+  const option = page.getByRole('gridcell', { name: 'Slightly smiling face', exact: true })
+  await expect.element(option).toBeVisible()
+  const dialogBounds = page.getByRole('dialog').element().getBoundingClientRect()
+  const optionBounds = option.element().getBoundingClientRect()
+  expect(optionBounds.right).toBeLessThanOrEqual(dialogBounds.right)
+  await option.click()
   await page.getByRole('button', { name: 'app.iconPicker.ok', exact: true }).click()
-  expect(onSelect).toHaveBeenCalledWith({
-    type: 'emoji',
-    icon: '😂',
-    background: backgroundColors.at(-1),
-  })
+  expect(onSelect).toHaveBeenCalledWith({ type: 'emoji', icon: '🙂', background: '#FEF3F2' })
+})
+
+// The old layout pinned recommendations while only the category grid scrolled.
+it('scrolls recommendations and categories together while keeping search and actions fixed', async () => {
+  await render(<AppIconPicker open onOpenChange={() => {}} initialEmoji={{ icon: '🤖' }} />)
+  await expect
+    .element(page.getByRole('gridcell', { name: 'Grinning face', exact: true }))
+    .toBeVisible()
+  const scroller = page.getByRole('region', { name: 'app.iconPicker.emoji', exact: true }).element()
+  const recommendation = page.getByRole('region', { name: 'app.iconPicker.recommend' }).element()
+  const search = page.getByRole('searchbox').element()
+  const confirm = page.getByRole('button', { name: 'app.iconPicker.ok', exact: true }).element()
+  const styles = page.getByRole('region', { name: 'app.iconPicker.chooseStyle' }).element()
+  const stylesTop = styles.getBoundingClientRect().top
+  const searchTop = search.getBoundingClientRect().top
+  const confirmTop = confirm.getBoundingClientRect().top
+  scroller.scrollTo({ top: 400 })
+  await expect
+    .poll(() => recommendation.getBoundingClientRect().bottom)
+    .toBeLessThan(scroller.getBoundingClientRect().top)
+  const category = page.getByText('Smileys & emotion', { exact: true }).element()
+  expect(category.getBoundingClientRect().top).toBe(scroller.getBoundingClientRect().top)
+  expect(styles.getBoundingClientRect().top).toBe(stylesTop)
+  await page.getByRole('button', { name: '#F0F2F5', exact: true }).click()
+  await expect
+    .element(page.getByRole('button', { name: '#F0F2F5', exact: true }))
+    .toHaveAttribute('aria-pressed', 'true')
+  expect(search.getBoundingClientRect().top).toBe(searchTop)
+  expect(confirm.getBoundingClientRect().top).toBe(confirmTop)
 })

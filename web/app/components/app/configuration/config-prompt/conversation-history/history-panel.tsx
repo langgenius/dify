@@ -4,7 +4,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
-import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type Props = Readonly<{
   showWarning: boolean
@@ -23,7 +22,10 @@ const HistoryPanel: FC<Props> = ({ showWarning, onShowEditModal }) => {
       }
       headerIcon={
         <div className="rounded-md p-1 shadow-xs">
-          <MessageClockCircle className="h-4 w-4 text-[#DD2590]" />
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-general-message-clock-circle h-4 w-4 text-[#DD2590]"
+          />
         </div>
       }
       headerRight={

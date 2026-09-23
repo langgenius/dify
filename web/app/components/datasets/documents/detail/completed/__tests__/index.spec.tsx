@@ -244,10 +244,6 @@ vi.mock('../common/batch-action', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <hr data-testid="divider" />,
-}))
-
 const createMockSegmentDetail = (
   overrides: Partial<SegmentDetailModel> = {},
 ): SegmentDetailModel => ({
@@ -477,12 +473,6 @@ describe('Completed Component', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
-    })
-
-    it('should render Divider component', () => {
-      render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByTestId('divider'))!.toBeInTheDocument()
     })
 
     it('should render DrawerGroup when docForm is available', () => {

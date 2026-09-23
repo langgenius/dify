@@ -64,8 +64,10 @@ Toast remains one layer above ordinary overlays.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
 - Use `Drawer` for side-panel interactions that follow the drawer model.
 - Use `DropdownMenu` for button-triggered action lists and `ContextMenu` for context actions.
-- Use [`Tooltip`] only for a short, non-interactive visual label. The trigger already needs an
-  accessible name; use Popover for information users must reach on touch.
+- Use [`Tooltip`] for a supplementary visual label on a control that already has a primary
+  action and an accessible name. Use `Infotip` when the information icon's action is to open
+  the explanation. Text length alone does not determine the component. Follow the
+  [Infotip contract] for its composition and accessible names.
 - Use [`PreviewCard`] as a non-interactive enhancement for a link destination. Essential
   information must also exist without the preview.
 - Use [`Popover`] for explanatory, structured, or interactive content that users must reach on
@@ -76,6 +78,7 @@ renders a non-button element, set `nativeButton={false}`. Let the primitive own 
 spacing unless its API documents a measured exception.
 
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
+[Infotip contract]: ../src/infotip/README.md
 [MDN `isolation`]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/isolation
 [`Dialog.Portal`]: https://base-ui.com/react/components/dialog#portal
 [`Popover`]: https://base-ui.com/react/components/popover

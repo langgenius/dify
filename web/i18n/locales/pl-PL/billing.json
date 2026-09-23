@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "WYDARZENIA WYZWALAJĄCE",
   "upgrade.addChunks.description": "Osiągnąłeś limit dodawania fragmentów w tym planie.",
   "upgrade.addChunks.title": "Uaktualnij, aby kontynuować dodawanie fragmentów",
+  "upgrade.agentRestore.description": "Przywracanie wersji aplikacji agenta nie jest dostępne w obecnym planie.",
+  "upgrade.agentRestore.title": "Ulepsz plan, aby przywracać wersje aplikacji agenta",
   "upgrade.uploadMultipleFiles.description": "Przesyłaj wiele dokumentów jednocześnie i zwiększ maksymalny rozmiar pojedynczego pliku do 50 MB.",
   "upgrade.uploadMultipleFiles.title": "Przejdź na wyższy plan, aby odblokować przesyłanie zbiorcze i większe pliki",
   "upgrade.uploadMultiplePages.description": "Osiągnąłeś limit przesyłania — w ramach obecnego planu można wybrać i przesłać tylko jeden dokument naraz.",

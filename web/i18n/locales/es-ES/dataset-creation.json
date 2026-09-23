@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Arrastre y suelte archivos o carpetas, o",
   "stepOne.uploader.buttonSingleFile": "Arrastre y suelte archivo, o",
   "stepOne.uploader.change": "Cambiar",
+  "stepOne.uploader.completed": "Carga completada",
   "stepOne.uploader.failed": "Error al cargar",
   "stepOne.uploader.tip": "Soporta {{supportTypes}}. Máximo {{batchCount}} archivos por lote y {{size}} MB cada uno.",
   "stepOne.uploader.tipWithTotalLimit": "Soporta {{supportTypes}}. Máximo {{batchCount}} archivos por lote y {{size}} MB cada uno. Total máximo de {{totalCount}} archivos.",

@@ -160,6 +160,8 @@
   "triggerLimitModal.usageTitle": "EVENTOS DE GATILHO",
   "upgrade.addChunks.description": "Você atingiu o limite de adição de blocos para este plano.",
   "upgrade.addChunks.title": "Faça upgrade para continuar adicionando blocos",
+  "upgrade.agentRestore.description": "A restauração de versões do aplicativo de agente não está disponível no seu plano atual.",
+  "upgrade.agentRestore.title": "Faça upgrade para restaurar versões do aplicativo de agente",
   "upgrade.uploadMultipleFiles.description": "Envie vários documentos de uma só vez e aumente o tamanho máximo por arquivo para 50 MB.",
   "upgrade.uploadMultipleFiles.title": "Faça upgrade para liberar uploads em lote e arquivos maiores",
   "upgrade.uploadMultiplePages.description": "Você atingiu o limite de upload — apenas um documento pode ser selecionado e enviado por vez no seu plano atual.",

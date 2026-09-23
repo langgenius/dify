@@ -71,7 +71,7 @@ export function AgentKnowledgeRetrieval() {
   const [addDialogName, setAddDialogName] = useState<string>()
   const [editingRetrieval, setEditingRetrieval] = useState<AgentKnowledgeRetrievalItem | null>(null)
   const addOptionsRef = useRef<AgentOrchestrateAddActionOptions | undefined>(undefined)
-  const knowledgeRetrievalTip = t(($) => $['agentDetail.configure.knowledgeRetrieval.tip'])
+
   const retrievalListId = 'agent-configure-knowledge-retrieval-list'
   const isDialogOpen = isAddDialogOpen || !!editingRetrieval
   const updateRetrieval = (nextRetrieval: AgentKnowledgeRetrievalItem) => {
@@ -105,7 +105,6 @@ export function AgentKnowledgeRetrieval() {
         labelId="agent-configure-knowledge-retrieval-label"
         panelId={retrievalListId}
         tip={<AgentConfigureTipContent type="knowledge" />}
-        tipAriaLabel={knowledgeRetrievalTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={

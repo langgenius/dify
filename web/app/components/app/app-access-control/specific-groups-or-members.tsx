@@ -6,7 +6,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AccessMode } from '@/models/access-control'
-import { Infotip } from '../../base/infotip'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
 
 export type AccessControlSubjects = {
@@ -214,20 +213,5 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
         />
       </IconButton>
     </div>
-  )
-}
-
-export function WebAppSSONotEnabledTip() {
-  const { t } = useTranslation()
-  const tip = t(($) => $['accessControlDialog.webAppSSONotEnabledTip'], { ns: 'app' })
-
-  return (
-    <Infotip
-      aria-label={tip}
-      className="text-text-warning-secondary hover:text-text-warning-secondary"
-      iconSize="large"
-    >
-      {tip}
-    </Infotip>
   )
 }

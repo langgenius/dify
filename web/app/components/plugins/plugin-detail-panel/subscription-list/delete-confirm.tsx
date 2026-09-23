@@ -83,8 +83,8 @@ export const DeleteConfirm = (props: Props) => {
                 : t(($) => $[`${tPrefix}.content`], { ns: 'pluginTrigger' })}
             </AlertDialogDescription>
             {workflowsInUse > 0 && (
-              <Field className="mt-6 gap-2" name="confirmation">
-                <FieldLabel className="py-0">
+              <Field className="mt-6" name="confirmation">
+                <FieldLabel>
                   {t(($) => $[`${tPrefix}.confirmInputTip`], {
                     ns: 'pluginTrigger',
                     name: currentName,

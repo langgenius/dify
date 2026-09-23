@@ -2,13 +2,13 @@ import type { FC } from 'react'
 import type { Theme } from '../theme/theme'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
-import Divider from '@/app/components/base/divider'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isClient } from '@/utils/client'
@@ -110,7 +110,9 @@ const Header: FC<IHeaderProps> = ({
               </div>
             )}
           </div>
-          {currentConversationId && <Divider type="vertical" className="h-3.5" />}
+          {currentConversationId && (
+            <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
+          )}
           {showToggleExpandButton && (
             <Tooltip>
               <TooltipTrigger

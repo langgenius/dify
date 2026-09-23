@@ -7,16 +7,6 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
-import {
-  Citations,
-  ContentModeration,
-  FolderUpload,
-  LoveMessage,
-  MessageFast,
-  Microphone01,
-  TextToAudio,
-  VirtualAssistant,
-} from '@/app/components/base/icons/src/vender/features'
 
 type Props = Readonly<{
   isChatMode?: boolean
@@ -83,7 +73,10 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-                      <LoveMessage className="size-3.5 text-text-primary-on-surface" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-features-love-message size-3.5 text-text-primary-on-surface"
+                      />
                     </div>
                   }
                 />
@@ -97,7 +90,10 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-text-success p-1 shadow-xs">
-                      <ContentModeration className="size-3.5 text-text-primary-on-surface" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-features-content-moderation size-3.5 text-text-primary-on-surface"
+                      />
                     </div>
                   }
                 />
@@ -111,7 +107,10 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs">
-                      <Microphone01 className="size-3.5 text-text-primary-on-surface" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-features-microphone-01 size-3.5 text-text-primary-on-surface"
+                      />
                     </div>
                   }
                 />
@@ -135,7 +134,10 @@ const FeatureBar = ({
                           !disabled && 'cursor-pointer',
                         )}
                       >
-                        <TextToAudio className="size-3.5 text-text-primary-on-surface" />
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-features-text-to-audio size-3.5 text-text-primary-on-surface"
+                        />
                       </div>
                     }
                   />
@@ -150,7 +152,10 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-600 p-1 shadow-xs">
-                      <FolderUpload className="size-3.5 text-text-primary-on-surface" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-features-folder-upload size-3.5 text-text-primary-on-surface"
+                      />
                     </div>
                   }
                 />
@@ -164,7 +169,10 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-                      <VirtualAssistant className="size-3.5 text-text-primary-on-surface" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-features-virtual-assistant size-3.5 text-text-primary-on-surface"
+                      />
                     </div>
                   }
                 />
@@ -178,7 +186,10 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-warning-warning-500 p-1 shadow-xs">
-                      <Citations className="size-4 text-text-primary-on-surface" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-features-citations size-4 text-text-primary-on-surface"
+                      />
                     </div>
                   }
                 />
@@ -192,7 +203,10 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-                      <MessageFast className="size-3.5 text-text-primary-on-surface" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-features-message-fast size-3.5 text-text-primary-on-surface"
+                      />
                     </div>
                   }
                 />

@@ -1,11 +1,13 @@
 """Unit tests for MCP client."""
 
 from contextlib import ExitStack
-from types import TracebackType
+from types import SimpleNamespace, TracebackType
 from unittest.mock import MagicMock, Mock, patch
 
 import httpx
 import pytest
+from sqlalchemy import event, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.entities.mcp_provider import MCPProviderEntity
@@ -531,14 +533,16 @@ class TestMCPClientWithAuthRetry:
         assert client.authorization_code == "initial-code"
         assert client._has_retried is False
 
-    @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_success(
-        self, mock_service_class, mock_session_class, mock_db, auth_client, mock_provider
+        self,
+        mock_service_class,
+        auth_client,
+        mock_provider,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
     ):
-        mock_session = MagicMock(spec=Session)
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
 
         mock_service = mock_service_class.return_value
         new_provider = MagicMock(spec=MCPProviderEntity)
@@ -555,6 +559,10 @@ class TestMCPClientWithAuthRetry:
         error = MCPAuthError("Auth failed", www_authenticate_header=www_auth)
 
         auth_client._handle_auth_error(error)
+
+        service_session = mock_service_class.call_args.kwargs["session"]
+        assert isinstance(service_session, Session)
+        assert service_session.in_transaction() is False
 
         # Verify service calls - error.resource_metadata_url and error.scope_hint are parsed from header
         mock_service.auth_with_actions.assert_called_once_with(
@@ -593,14 +601,17 @@ class TestMCPClientWithAuthRetry:
 
         assert exc_info.value == error
 
-    @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_no_token(
-        self, mock_service_class, mock_session_class, mock_db, auth_client, mock_provider
+        self,
+        mock_service_class,
+        auth_client,
+        mock_provider,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
     ):
         """Test auth error handling when no token is received."""
-        mock_session_class.return_value.__enter__.return_value = MagicMock()
+        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
         mock_service = mock_service_class.return_value
 
         new_provider = MagicMock(spec=MCPProviderEntity)
@@ -614,28 +625,48 @@ class TestMCPClientWithAuthRetry:
 
         assert "Authentication failed - no token received" in str(exc_info.value)
 
-    @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
-    def test_handle_auth_error_generic_exception(self, mock_service_class, mock_session_class, mock_db, auth_client):
+    def test_handle_auth_error_generic_exception(
+        self,
+        mock_service_class,
+        auth_client,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+    ):
         """Test auth error handling when a generic exception occurs."""
-        mock_session_class.side_effect = Exception("DB error")
+        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
+        service = mock_service_class.return_value
+
+        def fail_statement(*_args, **_kwargs):
+            raise RuntimeError("DB error")
+
+        def execute_statement(*_args, **_kwargs):
+            service_session = mock_service_class.call_args.kwargs["session"]
+            service_session.execute(text("SELECT 1"))
+
+        service.auth_with_actions.side_effect = execute_statement
+        event.listen(sqlite_engine, "before_cursor_execute", fail_statement)
 
         error = MCPAuthError("Auth failed")
 
-        with pytest.raises(MCPAuthError) as exc_info:
-            auth_client._handle_auth_error(error)
+        try:
+            with pytest.raises(MCPAuthError) as exc_info:
+                auth_client._handle_auth_error(error)
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", fail_statement)
 
         assert "Authentication retry failed: DB error" in str(exc_info.value)
 
-    @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_mcp_auth_error_propagation(
-        self, mock_service_class, mock_session_class, mock_db, auth_client
+        self,
+        mock_service_class,
+        auth_client,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
     ):
         """Test that MCPAuthError during refresh is propagated as is."""
-        mock_session_class.return_value.__enter__.return_value = MagicMock()
+        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
         mock_service = mock_service_class.return_value
         mock_service.auth_with_actions.side_effect = MCPAuthError("Refresh failed")
 

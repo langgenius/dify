@@ -1,5 +1,7 @@
 import type { Datasource } from '../../types'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useDatasourceOptions } from '../hooks'
 import OptionCard from './option-card'
 
@@ -10,6 +12,7 @@ type DataSourceOptionsProps = {
 
 const DataSourceOptions = ({ dataSourceNodeId, onSelect }: DataSourceOptionsProps) => {
   const options = useDatasourceOptions()
+  const { t } = useTranslation()
 
   const handelSelect = useCallback(
     (value: string) => {
@@ -29,7 +32,12 @@ const DataSourceOptions = ({ dataSourceNodeId, onSelect }: DataSourceOptionsProp
   }, [])
 
   return (
-    <div className="grid w-full grid-cols-4 gap-1">
+    <RadioGroup
+      value={dataSourceNodeId}
+      onValueChange={handelSelect}
+      aria-label={t(($) => $['testRun.steps.dataSource'], { ns: 'datasetPipeline' })}
+      className="grid w-full grid-cols-4 gap-1"
+    >
       {options.map((option) => (
         <OptionCard
           key={option.value}
@@ -37,10 +45,9 @@ const DataSourceOptions = ({ dataSourceNodeId, onSelect }: DataSourceOptionsProp
           value={option.value}
           nodeData={option.data}
           selected={dataSourceNodeId === option.value}
-          onClick={handelSelect}
         />
       ))}
-    </div>
+    </RadioGroup>
   )
 }
 
