@@ -148,7 +148,9 @@ class TestWorkflowEventsApi:
         workflow_generator = Mock()
         workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
         snapshot_builder = Mock(return_value=["snapshot-events"])
-        monkeypatch.setattr("controllers.web.workflow_events.WorkflowAppGenerator", lambda: workflow_generator)
+        monkeypatch.setattr(
+            "controllers.web.workflow_events.WorkflowAppGenerator", lambda **_kwargs: workflow_generator
+        )
         monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
 
         with app.test_request_context("/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true"):

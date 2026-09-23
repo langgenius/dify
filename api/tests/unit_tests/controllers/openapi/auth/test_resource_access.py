@@ -267,16 +267,17 @@ def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) 
     with (
         patch("controllers.openapi.app_run.redis_client") as redis,
         patch("controllers.openapi.app_run.AppQueueManager.set_stop_flag_no_user_check") as stop,
-        patch("controllers.openapi.app_run.GraphEngineManager") as engine,
+        patch("controllers.openapi.app_run.send_abort_command") as abort,
     ):
         redis.get.return_value = b"end-user-other-user"
         with pytest.raises(NotFound):
             inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
         stop.assert_not_called()
-        engine.assert_not_called()
+        abort.assert_not_called()
         redis.get.return_value = b"end-user-machine-user"
         inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
         stop.assert_called_once_with("task")
+        abort.assert_called_once_with("task")
 
 
 @pytest.mark.parametrize("search_unbound", [False, True])

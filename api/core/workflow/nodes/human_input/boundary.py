@@ -1,29 +1,24 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 
-from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+from core.repositories.human_input_repository import HumanInputFormRecord, HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import resolve_variable_select_input_options
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-from graphon.enums import BuiltinNodeTypes
-from graphon.filters import GraphEventFilterContext
-from graphon.graph_events import (
-    GraphEngineEvent,
+from graphon.engine.filter import EngineEventFilterContext
+from graphon.engine_events import (
+    EngineEvent,
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.entities.pause_reason import HitlRequired
+from graphon.enums import BuiltinNodeTypes
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 
 from .constants import OUTPUT_FIELD_ACTION_ID, OUTPUT_FIELD_ACTION_VALUE, OUTPUT_FIELD_RENDERED_CONTENT, TIMEOUT_HANDLE
-from .pause_reason import HumanInputRequired, PauseReason
-from .session_binding import default_session_binding
-
-
-class HumanInputPauseReasonResolutionError(LookupError):
-    """Raised when a graph pause reason cannot be resolved into Dify-owned form state."""
+from .pause_reason import HumanInputRequired
 
 
 class HumanInputFormEventFilter:
@@ -38,11 +33,11 @@ class HumanInputFormEventFilter:
     def filter_id(self) -> str:
         return "dify-human-input-form-events"
 
-    def initialize(self, context: GraphEventFilterContext) -> None:
+    def initialize(self, context: EngineEventFilterContext) -> None:
         self._node_titles.clear()
         self._app_id = get_system_text(context.runtime_state.variable_pool, SystemVariableKey.APP_ID)
 
-    def on_event(self, event: GraphEngineEvent) -> Iterable[GraphEngineEvent]:
+    def on_event(self, event: EngineEvent) -> Iterable[EngineEvent]:
         if isinstance(event, NodeRunStartedEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
             self._node_titles[event.id] = event.node_title
         elif isinstance(event, NodeRunSucceededEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
@@ -50,7 +45,7 @@ class HumanInputFormEventFilter:
 
         yield event
 
-    def flush(self) -> Iterable[GraphEngineEvent]:
+    def flush(self) -> Iterable[EngineEvent]:
         return ()
 
     def _completion_event(
@@ -72,8 +67,8 @@ class HumanInputFormEventFilter:
                 node_type=event.node_type,
                 node_title=node_title,
                 node_version=event.node_version,
-                in_iteration_id=event.in_iteration_id,
-                in_loop_id=event.in_loop_id,
+                container_id=event.container_id,
+                node_run_result=result,
                 expiration_time=form.expiration_time,
             )
 
@@ -83,8 +78,8 @@ class HumanInputFormEventFilter:
             node_type=event.node_type,
             node_title=node_title,
             node_version=event.node_version,
-            in_iteration_id=event.in_iteration_id,
-            in_loop_id=event.in_loop_id,
+            container_id=event.container_id,
+            node_run_result=result,
             rendered_content=result.outputs[OUTPUT_FIELD_RENDERED_CONTENT].text,
             action_id=result.outputs[OUTPUT_FIELD_ACTION_ID].text,
             action_text=result.outputs[OUTPUT_FIELD_ACTION_VALUE].text,
@@ -92,47 +87,17 @@ class HumanInputFormEventFilter:
         )
 
 
-def enrich_graph_pause_reasons(
-    *,
-    reasons: Sequence[HitlRequired | PauseReason],
-    form_repository: HumanInputFormSubmissionRepository,
-    variable_pool: ReadOnlyVariablePool | None,
-) -> list[PauseReason]:
-    enriched: list[PauseReason] = []
-    for reason in reasons:
-        if isinstance(reason, HitlRequired):
-            enriched_reason = _enrich_hitl_required(
-                reason=reason,
-                form_repository=form_repository,
-                variable_pool=variable_pool,
-            )
-            if enriched_reason is not None:
-                enriched.append(enriched_reason)
-            continue
-        if isinstance(reason, HumanInputRequired | SchedulingPause):
-            enriched.append(reason)
-    return enriched
-
-
-def _enrich_hitl_required(
-    *,
-    reason: HitlRequired,
-    form_repository: HumanInputFormSubmissionRepository,
-    variable_pool: ReadOnlyVariablePool | None,
+def build_human_input_pause_reason(
+    *, reason: HitlRequired, record: HumanInputFormRecord, variable_pool: ReadOnlyVariablePool | None
 ) -> HumanInputRequired:
-    form_id = default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
-    record = form_repository.get_by_form_id(form_id)
-    if record is None:
-        raise HumanInputPauseReasonResolutionError(
-            f"missing human input form while enriching pause reason: form_id={form_id}, session_id={reason.session_id}"
-        )
-
+    """Format a materialized form without reading its repository."""
+    definition = record.definition
     return HumanInputRequired(
         form_id=record.form_id,
         form_content=record.rendered_content,
-        inputs=resolve_variable_select_input_options(record.definition.inputs, variable_pool=variable_pool),
-        actions=list(record.definition.user_actions),
+        inputs=resolve_variable_select_input_options(definition.inputs, variable_pool=variable_pool),
+        actions=list(definition.user_actions),
         node_id=reason.node_id,
-        node_title=reason.node_title or record.definition.node_title or record.node_id,
-        resolved_default_values=dict(record.definition.default_values),
+        node_title=reason.node_title or definition.node_title or record.node_id,
+        resolved_default_values=dict(definition.default_values),
     )

@@ -15,6 +15,7 @@ from graphon.model_runtime.entities.message_entities import UserPromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
+from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from models.account import Tenant
 from models.provider import ProviderType
 
@@ -129,7 +130,7 @@ def test_invoke_tts_emits_the_verified_mime_type_for_backwards_invocation():
         patch.object(
             model_instance.model_type_instance,
             "invoke",
-            return_value=[b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data"],
+            return_value=[TTSChunk(data=b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data", mime_type=None)],
         ),
         patch.object(model_instance.model_type_instance, "get_model_schema", return_value=_tts_schema("wav")),
     ):
@@ -183,7 +184,12 @@ def test_backwards_event_stream_serializes_a_deferred_mime_error():
         patch.object(
             model_instance.model_type_instance,
             "invoke",
-            return_value=[TTSAudioChunk(b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data", "audio/mpeg")],
+            return_value=[
+                TTSChunk(
+                    data=TTSAudioChunk(b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data", "audio/mpeg"),
+                    mime_type="audio/mpeg",
+                )
+            ],
         ),
         patch.object(model_instance.model_type_instance, "get_model_schema", return_value=_tts_schema("mp3")),
     ):

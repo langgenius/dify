@@ -8,7 +8,7 @@ from core.workflow.system_variables import build_system_variables
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variables import build_segment, segment_to_variable
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from graphon.variables.variables import Variable
@@ -24,7 +24,8 @@ def make_start_node(user_inputs, variables):
 
     node_data = StartNodeData(title="Start", variables=variables)
 
-    graph_runtime_state = GraphRuntimeState(
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=variable_pool,
         start_at=time.perf_counter(),
     )
@@ -32,7 +33,7 @@ def make_start_node(user_inputs, variables):
     return StartNode(
         node_id="start",
         data=node_data,
-        graph_init_params=build_test_graph_init_params(
+        init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},
             tenant_id="tenant",
@@ -42,7 +43,7 @@ def make_start_node(user_inputs, variables):
             invoke_from="debugger",
             call_depth=0,
         ),
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
     )
 
 
@@ -257,11 +258,13 @@ def test_start_node_outputs_full_variable_pool_snapshot():
         ],
     )
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
     node = StartNode(
         node_id="start",
         data=node_data,
-        graph_init_params=build_test_graph_init_params(
+        init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},
             tenant_id="tenant",
@@ -271,7 +274,7 @@ def test_start_node_outputs_full_variable_pool_snapshot():
             invoke_from="debugger",
             call_depth=0,
         ),
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
     )
 
     result = node._run()

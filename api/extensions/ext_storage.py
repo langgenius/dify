@@ -141,6 +141,6 @@ storage = Storage()
 
 def init_app(app: DifyApp):
     storage.init_app(app)
-    from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
+    from core.app.workflow import file_runtime
 
-    bind_dify_workflow_file_runtime()
+    file_runtime.init_app(app)

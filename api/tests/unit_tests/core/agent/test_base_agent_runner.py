@@ -42,6 +42,7 @@ from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.tool_fixtures import make_runtime_tool
 from tests.unit_tests.core.model_fixtures import make_model_config
 
@@ -239,6 +240,7 @@ def runner(
     mocker.patch.object(model_instance.model_type_instance, "get_model_schema", return_value=None)
 
     return BaseAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
         session=sqlite_session,
         tenant_id="tenant",
         application_generate_entity=_app_generate(app_config=app_config),
@@ -710,6 +712,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
     message = _message(message_id="msg1")
 
     initialized = BaseAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
         session=sqlite_session,
         tenant_id="tenant",
         application_generate_entity=app_generate,
