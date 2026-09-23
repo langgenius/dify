@@ -113,17 +113,14 @@ When(
   },
 )
 
-Then(
-  'the Agent v2 publish action should be available for unpublished changes',
-  async function (this: DifyWorld) {
-    const page = this.getPage()
+Then('the Agent v2 Publish update action should be available', async function (this: DifyWorld) {
+  const page = this.getPage()
 
-    await expect(
-      page.getByRole('status', { name: /^(?:Draft|Unpublished changes)\./ }),
-    ).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByRole('button', { name: /^Publish(?: update)?$/ })).toBeEnabled()
-  },
-)
+  await expect(page.getByRole('status', { name: /^Unpublished changes\./ })).toBeVisible({
+    timeout: 30_000,
+  })
+  await expect(page.getByRole('button', { name: 'Publish update' })).toBeEnabled()
+})
 
 When(
   'I view the original Agent v2 published version in version history',
