@@ -33,8 +33,6 @@
   "sidebar.action.pin": "置顶",
   "sidebar.action.rename": "重命名",
   "sidebar.action.unpin": "取消置顶",
-  "sidebar.delete.content": "您确定要删除此程序吗？",
-  "sidebar.delete.title": "删除程序",
   "sidebar.webApps": "WEB APPS",
   "tryApp.category": "分类",
   "tryApp.createFromSampleApp": "从此模板创建应用",
