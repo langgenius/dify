@@ -4,7 +4,7 @@ import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { getDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
+import { mergeDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import { useWorkflow } from '../../../hooks/use-workflow'
@@ -42,6 +42,12 @@ function useOutputVarList<T>({
   )
   const handleVarsChange = useCallback(
     (newVars: OutputVar, changedIndex?: number, newKey?: string) => {
+      // a renamed output keeps its configured fallback under the new name
+      const renamedKey =
+        changedIndex !== undefined && newKey
+          ? { from: outputKeyOrders[changedIndex]!, to: newKey }
+          : undefined
+
       const newInputs = produce(inputs, (draft: any) => {
         draft[varKey] = newVars
 
@@ -50,7 +56,11 @@ function useOutputVarList<T>({
           (inputs as CodeNodeType).error_strategy === ErrorHandleTypeEnum.defaultValue &&
           varKey === 'outputs'
         )
-          draft.default_value = getDefaultValue(draft as any)
+          draft.default_value = mergeDefaultValue(
+            draft as any,
+            (inputs as CodeNodeType).default_value,
+            renamedKey,
+          )
       })
       setInputs(newInputs)
 
@@ -110,7 +120,10 @@ function useOutputVarList<T>({
         (inputs as CodeNodeType).error_strategy === ErrorHandleTypeEnum.defaultValue &&
         varKey === 'outputs'
       )
-        draft.default_value = getDefaultValue(draft as any)
+        draft.default_value = mergeDefaultValue(
+          draft as any,
+          (inputs as CodeNodeType).default_value,
+        )
     })
     setInputs(newInputs)
     onOutputKeyOrdersChange([...outputKeyOrders, newKey])
@@ -134,7 +147,10 @@ function useOutputVarList<T>({
           (inputs as CodeNodeType).error_strategy === ErrorHandleTypeEnum.defaultValue &&
           varKey === 'outputs'
         )
-          draft.default_value = getDefaultValue(draft as any)
+          draft.default_value = mergeDefaultValue(
+            draft as any,
+            (inputs as CodeNodeType).default_value,
+          )
       })
       setInputs(newInputs)
       onOutputKeyOrdersChange(newOutputKeyOrders)
@@ -150,6 +166,7 @@ function useOutputVarList<T>({
     },
     [
       outputKeyOrders,
+      id,
       inputs,
       setInputs,
       onOutputKeyOrdersChange,

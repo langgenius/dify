@@ -212,4 +212,139 @@ describe('useOutputVarList', () => {
     const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
     expect(lastInputs.default_value).toEqual([{ key: 'primary', type: VarType.string, value: '' }])
   })
+
+  it('keeps the configured fallbacks of the outputs that stay behind a confirmed removal', () => {
+    mockIsVarUsedInNodes.mockReturnValue(true)
+    const payload = createPayload({
+      error_strategy: ErrorHandleTypeEnum.defaultValue,
+      default_value: [
+        { key: 'primary', type: VarType.string, value: 'sentinel' },
+        { key: 'secondary', type: VarType.number, value: 7 },
+      ],
+    })
+    const { result } = renderUseOutputVarList(payload)
+
+    act(() => {
+      result.current.handleRemoveVariable(1)
+    })
+    act(() => {
+      result.current.onRemoveVarConfirm()
+    })
+
+    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
+    expect(lastInputs.default_value).toEqual([
+      { key: 'primary', type: VarType.string, value: 'sentinel' },
+    ])
+  })
+
+  it('keeps the configured fallbacks of the outputs that stay behind a direct removal', () => {
+    const payload = createPayload({
+      error_strategy: ErrorHandleTypeEnum.defaultValue,
+      default_value: [
+        { key: 'primary', type: VarType.string, value: 'sentinel' },
+        { key: 'secondary', type: VarType.number, value: 7 },
+      ],
+    })
+    const { result } = renderUseOutputVarList(payload)
+
+    act(() => {
+      result.current.handleRemoveVariable(1)
+    })
+
+    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
+    expect(lastInputs.default_value).toEqual([
+      { key: 'primary', type: VarType.string, value: 'sentinel' },
+    ])
+  })
+
+  it('keeps the configured fallbacks when another output is added', () => {
+    const payload = createPayload({
+      error_strategy: ErrorHandleTypeEnum.defaultValue,
+      default_value: [
+        { key: 'primary', type: VarType.string, value: 'sentinel' },
+        { key: 'secondary', type: VarType.number, value: 7 },
+      ],
+    })
+    const { result } = renderUseOutputVarList(payload)
+
+    act(() => {
+      result.current.handleAddVariable()
+    })
+
+    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
+    expect(lastInputs.default_value).toEqual([
+      { key: 'primary', type: VarType.string, value: 'sentinel' },
+      { key: 'secondary', type: VarType.number, value: 7 },
+      { key: 'var_3', type: VarType.string, value: '' },
+    ])
+  })
+
+  it('carries the configured fallback over to the new name of a renamed output', () => {
+    const payload = createPayload({
+      error_strategy: ErrorHandleTypeEnum.defaultValue,
+      default_value: [
+        { key: 'primary', type: VarType.string, value: 'sentinel' },
+        { key: 'secondary', type: VarType.number, value: 7 },
+      ],
+    })
+    const { result } = renderUseOutputVarList(payload)
+
+    act(() => {
+      result.current.handleVarsChange(
+        {
+          renamed: { type: VarType.string, children: null },
+          secondary: { type: VarType.number, children: null },
+        },
+        0,
+        'renamed',
+      )
+    })
+
+    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
+    expect(lastInputs.default_value).toEqual([
+      { key: 'renamed', type: VarType.string, value: 'sentinel' },
+      { key: 'secondary', type: VarType.number, value: 7 },
+    ])
+  })
+
+  it('only resets the fallback of the output whose type changed', () => {
+    const payload = createPayload({
+      error_strategy: ErrorHandleTypeEnum.defaultValue,
+      default_value: [
+        { key: 'primary', type: VarType.string, value: 'sentinel' },
+        { key: 'secondary', type: VarType.number, value: 7 },
+      ],
+    })
+    const { result } = renderUseOutputVarList(payload)
+
+    act(() => {
+      result.current.handleVarsChange({
+        primary: { type: VarType.number, children: null },
+        secondary: { type: VarType.number, children: null },
+      })
+    })
+
+    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
+    expect(lastInputs.default_value).toEqual([
+      { key: 'primary', type: VarType.number, value: 0 },
+      { key: 'secondary', type: VarType.number, value: 7 },
+    ])
+  })
+
+  it('does not touch the fallbacks when the error strategy is not default-value', () => {
+    const payload = createPayload({
+      error_strategy: ErrorHandleTypeEnum.failBranch,
+      default_value: [{ key: 'primary', type: VarType.string, value: 'sentinel' }],
+    })
+    const { result } = renderUseOutputVarList(payload)
+
+    act(() => {
+      result.current.handleRemoveVariable(1)
+    })
+
+    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
+    expect(lastInputs.default_value).toEqual([
+      { key: 'primary', type: VarType.string, value: 'sentinel' },
+    ])
+  })
 })
