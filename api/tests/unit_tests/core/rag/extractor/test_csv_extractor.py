@@ -144,6 +144,11 @@ class TestCSVSeparatorDetection:
 
         assert self._extract(tmp_path, text) == self.EXPECTED
 
+    def test_a_whitespace_only_line_is_not_a_row(self, tmp_path: Path) -> None:
+        text = "name;region;units\nwidget;EU;12\n   \ngadget;US;7\n"
+
+        assert self._extract(tmp_path, text) == self.EXPECTED
+
     def test_a_single_column_file_stays_a_single_column(self, tmp_path: Path) -> None:
         """Guard: a separator that does not line up across the rows is not one."""
         text = "note\na; b\nc; d\n"

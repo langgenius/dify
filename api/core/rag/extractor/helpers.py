@@ -35,7 +35,7 @@ def _consistent_column_count(sample: str, delimiter: str, truncated: bool = Fals
         for index, row in enumerate(csv.reader(io.StringIO(sample, newline=""), delimiter=delimiter)):
             if index >= CSV_DELIMITER_SAMPLE_ROWS:
                 break
-            if row:  # a blank line says nothing about the separator
+            if any(cell.strip() for cell in row):  # a blank or whitespace-only line says nothing
                 rows.append(row)
         else:
             if truncated and len(rows) > 1:
