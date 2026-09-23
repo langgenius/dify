@@ -29,6 +29,14 @@ const concurrentAgentPrompts = [concurrentFirstAgentPrompt, concurrentSecondAgen
 const getPromptEditor = (page: Page) =>
   page.getByRole('region', { name: 'Prompt' }).getByRole('textbox', { name: 'Prompt' })
 
+const getAgentModelSelector = (page: Page) =>
+  page
+    .getByRole('region', { name: 'Configure' })
+    .getByText('Model', { exact: true })
+    .locator('..')
+    .getByRole('button')
+    .first()
+
 async function fillAgentPromptEditor(page: Page, prompt: string) {
   const promptSection = page.getByRole('region', { name: 'Prompt' })
 
@@ -37,7 +45,7 @@ async function fillAgentPromptEditor(page: Page, prompt: string) {
 }
 
 async function selectAgentModel(page: Page, modelName: string) {
-  await page.getByRole('button', { name: 'Configure model' }).click()
+  await getAgentModelSelector(page).click()
   await page.getByPlaceholder('Search model').fill(modelName)
   const escapedModelName = modelName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   await page.getByRole('button', { name: new RegExp(`${escapedModelName}(?:\\s|$)`) }).click()
@@ -297,7 +305,7 @@ Then(
     if (!stableModel)
       throw new Error('Stable chat model fixture setup must run before asserting the Agent model.')
 
-    await expect(this.getPage().getByText(stableModel.name, { exact: true })).toBeVisible({
+    await expect(getAgentModelSelector(this.getPage())).toContainText(stableModel.name, {
       timeout: 30_000,
     })
   },
@@ -312,7 +320,7 @@ Then(
         'Agent-decision chat model fixture setup must run before asserting the Agent model.',
       )
 
-    await expect(this.getPage().getByText(model.name, { exact: true })).toBeVisible({
+    await expect(getAgentModelSelector(this.getPage())).toContainText(model.name, {
       timeout: 30_000,
     })
   },
