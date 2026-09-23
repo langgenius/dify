@@ -145,6 +145,12 @@ class PlaceholderAgent:
         # Start -> Knowledge-Retrieval -> LLM -> End. Creates and connects are
         # interleaved so each connect's endpoints already exist when
         # apply_connect validates them.
+        #
+        # ``node_defaults`` deliberately refuses to fabricate a node's PURPOSE
+        # fields, so this agent -- which builds a blank skeleton for the user to
+        # fill in on the canvas, and genuinely means "no dataset, no output" --
+        # spells those two blanks out itself. A default that said them for every
+        # caller would let an LLM's forgotten field through as a silent success.
         return BuildNodesResult(
             intents=[
                 MutationIntent(
@@ -159,7 +165,10 @@ class PlaceholderAgent:
                     op="create_node",
                     args={
                         "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-                        "config": node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
+                        "config": {
+                            **node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
+                            "dataset_ids": [],
+                        },
                         "node_id": BUILD_KNOWLEDGE_ID,
                     },
                 ),
@@ -177,7 +186,7 @@ class PlaceholderAgent:
                     op="create_node",
                     args={
                         "node_type": BuiltinNodeTypes.END,
-                        "config": node_defaults.default_config(BuiltinNodeTypes.END),
+                        "config": {**node_defaults.default_config(BuiltinNodeTypes.END), "outputs": []},
                         "node_id": BUILD_END_ID,
                     },
                 ),

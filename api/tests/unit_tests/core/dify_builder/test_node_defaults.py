@@ -2,22 +2,21 @@
 
 Values are pinned against the FE registry they mirror (``web/app/components
 /workflow/nodes/<type>/default.ts``) -- see the per-entry comments in
-``node_defaults.py`` for the exact source lines -- and each entry is validated
-against the engine node data class that consumes it, so a graphon field that
-gains or loses a default fails here rather than in a live Edit.
+``node_defaults.py`` for the exact source lines -- and every entry is run
+through the engine node data class that consumes it, pinned in BOTH directions:
+no structural field is missing, and no PURPOSE field is fabricated.
 """
 
+import importlib
+
 import pytest
+from pydantic import ValidationError
 
 from core.dify_builder.node_defaults import default_config, default_config_or_empty
 
 
 def test_default_config_start_matches_fe_default():
     assert default_config("start") == {"variables": []}
-
-
-def test_default_config_end_matches_fe_default():
-    assert default_config("end") == {"outputs": []}
 
 
 def test_default_config_llm_matches_fe_default():
@@ -34,11 +33,10 @@ def test_default_config_llm_matches_fe_default():
     }
 
 
-def test_default_config_knowledge_retrieval_matches_fe_default():
+def test_default_config_knowledge_retrieval_matches_fe_default_without_dataset_ids():
     assert default_config("knowledge-retrieval") == {
         "query_variable_selector": [],
         "query_attachment_selector": [],
-        "dataset_ids": [],
         "retrieval_mode": "multiple",
         "multiple_retrieval_config": {
             "top_k": 4,
@@ -48,15 +46,15 @@ def test_default_config_knowledge_retrieval_matches_fe_default():
     }
 
 
-def test_default_config_answer_matches_fe_default():
-    assert default_config("answer") == {"variables": [], "answer": ""}
-
-
-def test_default_config_template_transform_matches_fe_default():
-    assert default_config("template-transform") == {"template": "", "variables": []}
+def test_default_config_template_transform_keeps_variables_and_drops_template():
+    """The F4 fix is ``variables`` -- structural, engine-required, and the exact
+    field the live Edit omitted. ``template`` is the node's purpose."""
+    assert default_config("template-transform") == {"variables": []}
 
 
 def test_default_config_code_matches_fe_default():
+    """Both empty values fail loudly (no ``main`` to call; ``CodeNodeError("Not
+    all output parameters are validated.")``), so neither is a purpose field."""
     assert default_config("code") == {
         "code": "",
         "code_language": "python3",
@@ -65,14 +63,16 @@ def test_default_config_code_matches_fe_default():
     }
 
 
-def test_default_config_variable_aggregator_matches_fe_default():
+def test_default_config_variable_aggregator_keeps_only_output_type():
     """``nodes/variable-assigner/default.ts`` is the variable-AGGREGATOR's
     frontend directory; there is no ``nodes/variable-aggregator/``."""
-    assert default_config("variable-aggregator") == {"output_type": "any", "variables": []}
+    assert default_config("variable-aggregator") == {"output_type": "any"}
 
 
 def test_default_config_http_request_matches_fe_default():
-    """``nodes/http/default.ts``; there is no ``nodes/http-request/``."""
+    """``nodes/http/default.ts``; there is no ``nodes/http-request/``. ``url``
+    is kept: an empty one raises ``InvalidURLError("url is required")`` before
+    any request goes out, so it is loud, not silent."""
     assert default_config("http-request") == {
         "variables": [],
         "method": "get",
@@ -87,32 +87,16 @@ def test_default_config_http_request_matches_fe_default():
     }
 
 
-def test_default_config_if_else_matches_fe_default_without_target_branches():
-    """``_targetBranches`` is editor-only state the canvas regenerates from
-    ``cases``. A caller-supplied ``cases`` wins the merge while a default
-    ``_targetBranches`` would not, so shipping one would attach a stale branch
-    list to every Builder-created if-else."""
-    default = default_config("if-else")
-
-    assert default == {"cases": [{"case_id": "true", "logical_operator": "and", "conditions": []}]}
-    assert "_targetBranches" not in default
-
-
-def test_default_config_question_classifier_matches_fe_default_without_target_branches():
+def test_default_config_question_classifier_keeps_only_model_and_vision():
     default = default_config("question-classifier")
 
     assert default == {
-        "query_variable_selector": [],
         "model": {
             "provider": "",
             "name": "",
             "mode": "chat",
             "completion_params": {"temperature": 0.7},
         },
-        "classes": [
-            {"id": "1", "name": "", "label": "CLASS 1"},
-            {"id": "2", "name": "", "label": "CLASS 2"},
-        ],
         "vision": {"enabled": False},
     }
     assert "_targetBranches" not in default
@@ -140,6 +124,57 @@ def test_default_config_returns_a_fresh_copy_each_call():
     assert second == {"variables": []}
 
 
+# ---- a default must never fabricate a node's purpose ------------------------
+
+
+@pytest.mark.parametrize(
+    ("node_type", "forbidden"),
+    [
+        ("end", "outputs"),  # End runs OK -> "All checks passed" on an empty result
+        ("answer", "answer"),  # streams nothing
+        ("template-transform", "template"),  # renders ""
+        ("variable-aggregator", "variables"),  # SUCCEEDED, outputs={} -- triage cause (d)
+        ("question-classifier", "classes"),  # two blank categories + fabricated handle ids
+        ("question-classifier", "query_variable_selector"),  # classifies ""
+        ("knowledge-retrieval", "dataset_ids"),  # retrieves from no dataset, succeeds empty
+    ],
+)
+def test_no_entry_fabricates_a_purpose_field(node_type: str, forbidden: str):
+    """A field whose empty value produces a node that RUNS and yields nothing
+    must be left to the caller. Supplying it turns a loud preflight refusal into
+    a silent wrong answer -- the failure shape this module exists to prevent."""
+    assert forbidden not in default_config(node_type)
+
+
+def test_if_else_has_no_entry_at_all():
+    """The frontend default is one case with an empty ``conditions`` list, and
+    graphon combines zero conditions with ``all([])`` -- so it always matches
+    and the node silently routes everything down the IF arm. Omitting it costs
+    nothing: ``cases`` is optional and ``iter_cases()`` synthesizes the same
+    empty case, so the engine behaves identically."""
+    assert default_config_or_empty("if-else") == {}
+    with pytest.raises(ValueError, match="if-else"):
+        default_config("if-else")
+
+
+def test_an_if_else_without_cases_still_declares_both_branch_handles():
+    """Proof that dropping the entry did not weaken handle validation."""
+    from core.workflow.graph_normalizers import declared_branch_handles
+
+    bare = {"id": "n1", "data": {"type": "if-else", "title": "Check", **default_config_or_empty("if-else")}}
+
+    assert declared_branch_handles(bare) == ["true", "false"]
+
+
+def test_an_empty_condition_group_always_matches_so_it_is_not_safe_to_default():
+    """The engine evidence behind the if-else decision."""
+    from graphon.utils.condition.processor import ConditionProcessor
+
+    result = ConditionProcessor().process_conditions(variable_pool=None, conditions=[], operator="and")
+
+    assert result[2] is True
+
+
 # ---- default_config_or_empty ------------------------------------------------
 
 
@@ -160,65 +195,81 @@ def test_default_config_or_empty_returns_a_fresh_copy_each_call():
     assert default_config_or_empty("code")["outputs"] == {}
 
 
-# ---- the engine accepts every default --------------------------------------
+# ---- what the engine says about each default -------------------------------
 #
-# The point of the registry is that a node built from it alone is a node the
-# draft preflight will not refuse. Each case names the graphon data class that
-# consumes the type and the fields that class requires with NO default.
+# Pinned in both directions: the fields the engine still reports missing from a
+# node built from the default ALONE must be exactly the purpose fields the
+# registry deliberately refuses to fabricate -- no more (a structural field
+# would be a regression of the F4 fix) and no fewer (a purpose field creeping
+# back in would be a silent-success regression).
 
-_ENGINE_DATA_CLASSES: list[tuple[str, str, str]] = [
-    ("start", "graphon.nodes.start.entities", "StartNodeData"),
-    ("end", "graphon.nodes.end.entities", "EndNodeData"),
-    ("answer", "graphon.nodes.answer.entities", "AnswerNodeData"),
-    ("if-else", "graphon.nodes.if_else.entities", "IfElseNodeData"),
-    ("code", "graphon.nodes.code.entities", "CodeNodeData"),
-    ("template-transform", "graphon.nodes.template_transform.entities", "TemplateTransformNodeData"),
-    ("http-request", "graphon.nodes.http_request.entities", "HttpRequestNodeData"),
-    ("variable-aggregator", "graphon.nodes.variable_aggregator.entities", "VariableAggregatorNodeData"),
-    ("question-classifier", "graphon.nodes.question_classifier.entities", "QuestionClassifierNodeData"),
+_ENGINE_EXPECTATIONS: list[tuple[str, str, str, set[str]]] = [
+    ("start", "graphon.nodes.start.entities", "StartNodeData", set()),
+    ("llm", "graphon.nodes.llm.entities", "LLMNodeData", set()),
+    ("code", "graphon.nodes.code.entities", "CodeNodeData", set()),
+    ("http-request", "graphon.nodes.http_request.entities", "HttpRequestNodeData", set()),
+    ("end", "graphon.nodes.end.entities", "EndNodeData", {"outputs"}),
+    ("answer", "graphon.nodes.answer.entities", "AnswerNodeData", {"answer"}),
+    (
+        "knowledge-retrieval",
+        "core.workflow.nodes.knowledge_retrieval.entities",
+        "KnowledgeRetrievalNodeData",
+        {"dataset_ids"},
+    ),
+    (
+        "template-transform",
+        "graphon.nodes.template_transform.entities",
+        "TemplateTransformNodeData",
+        {"template"},
+    ),
+    (
+        "variable-aggregator",
+        "graphon.nodes.variable_aggregator.entities",
+        "VariableAggregatorNodeData",
+        {"variables"},
+    ),
+    (
+        "question-classifier",
+        "graphon.nodes.question_classifier.entities",
+        "QuestionClassifierNodeData",
+        {"query_variable_selector", "classes"},
+    ),
+    (
+        "tool",
+        "graphon.nodes.tool.entities",
+        "ToolNodeData",
+        {"provider_id", "provider_type", "provider_name", "tool_name", "tool_label"},
+    ),
 ]
 
 
-@pytest.mark.parametrize(("node_type", "module_name", "class_name"), _ENGINE_DATA_CLASSES)
-def test_the_engine_validates_a_node_built_from_the_default_alone(node_type: str, module_name: str, class_name: str):
-    import importlib
-
+@pytest.mark.parametrize(("node_type", "module_name", "class_name", "expected_missing"), _ENGINE_EXPECTATIONS)
+def test_the_engine_reports_exactly_the_purpose_fields_as_missing(
+    node_type: str, module_name: str, class_name: str, expected_missing: set[str]
+):
     data_class = getattr(importlib.import_module(module_name), class_name)
+    payload = {"type": node_type, "title": "T", **default_config(node_type)}
 
-    data_class.model_validate({"type": node_type, "title": "T", **default_config(node_type)})
-
-
-def test_the_engine_still_rejects_a_template_transform_without_the_default():
-    """The registry entry is load-bearing, not decoration: this is the exact
-    shape the Edit LLM emitted in the F4 failure."""
-    from pydantic import ValidationError
-
-    from graphon.nodes.template_transform.entities import TemplateTransformNodeData
-
-    with pytest.raises(ValidationError, match="variables"):
-        TemplateTransformNodeData.model_validate({"type": "template-transform", "template": "excellent"})
-
-
-def test_the_engine_still_rejects_a_variable_aggregator_without_an_output_type():
-    """``VariableAggregatorNodeData`` requires ``output_type`` as well as
-    ``variables``; the frontend default supplies both."""
-    from pydantic import ValidationError
-
-    from graphon.nodes.variable_aggregator.entities import VariableAggregatorNodeData
-
-    with pytest.raises(ValidationError, match="output_type"):
-        VariableAggregatorNodeData.model_validate({"type": "variable-aggregator", "variables": []})
-
-
-def test_the_engine_rejects_a_tool_built_from_the_default_alone_for_identity_only():
-    """The tool default cannot invent a provider/tool identity -- only the
-    caller knows it. Everything the default DOES cover validates."""
-    from pydantic import ValidationError
-
-    from graphon.nodes.tool.entities import ToolNodeData
+    if not expected_missing:
+        data_class.model_validate(payload)  # must not raise
+        return
 
     with pytest.raises(ValidationError) as excinfo:
-        ToolNodeData.model_validate({"type": "tool", "title": "T", **default_config("tool")})
+        data_class.model_validate(payload)
+    missing = {str(error["loc"][0]) for error in excinfo.value.errors() if error["type"] == "missing"}
+    assert missing == expected_missing
 
-    missing = {error["loc"][0] for error in excinfo.value.errors()}
-    assert missing == {"provider_id", "provider_type", "provider_name", "tool_name", "tool_label"}
+
+def test_an_if_else_needs_nothing_the_registry_would_have_to_supply():
+    from graphon.nodes.if_else.entities import IfElseNodeData
+
+    IfElseNodeData.model_validate({"type": "if-else", "title": "T"})  # must not raise
+
+
+def test_the_llm_defaults_fail_loudly_rather_than_silently():
+    """Why ``model`` and ``prompt_template`` are kept while other purpose fields
+    are dropped: neither empty value lets the node run and yield nothing."""
+    from graphon.nodes.llm.exc import NoPromptFoundError
+
+    assert issubclass(NoPromptFoundError, Exception)
+    assert default_config("llm")["model"]["provider"] == ""  # -> "model not configured" at launch
