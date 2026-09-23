@@ -1,4 +1,5 @@
 'use client'
+import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -13,41 +14,29 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type DSLExportConfirmModalProps = {
-  envList: Array<{ name: string; value: unknown }>
-  onConfirm: (state: boolean) => void | Promise<void>
+type PipelineExportConfirmModalProps = {
+  envList: Pick<EnvironmentVariableItemResponse, 'name' | 'value'>[]
+  onConfirm: (includeSecret: boolean) => Promise<boolean>
+  isExporting: boolean
   onClose: () => void
 }
 
-type DSLExportConfirmContentProps = DSLExportConfirmModalProps & {
-  onExportingChange?: (isExporting: boolean) => void
-}
-
-export const DSLExportConfirmContent = ({
-  envList = [],
+const PipelineExportConfirmContent = ({
+  envList,
   onConfirm,
   onClose,
-  onExportingChange,
-}: DSLExportConfirmContentProps) => {
+  isExporting,
+}: PipelineExportConfirmModalProps) => {
   const { t } = useTranslation(['common', 'workflow'])
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
-  const [isExporting, setIsExporting] = useState(false)
   const exportButtonLabelId = React.useId()
 
   const submit = useCallback(async () => {
     if (isExporting) return
 
-    setIsExporting(true)
-    onExportingChange?.(true)
-    try {
-      await onConfirm(exportSecrets)
-      onClose()
-    } finally {
-      setIsExporting(false)
-      onExportingChange?.(false)
-    }
-  }, [exportSecrets, isExporting, onClose, onConfirm, onExportingChange])
+    if (await onConfirm(exportSecrets)) onClose()
+  }, [exportSecrets, isExporting, onClose, onConfirm])
 
   return (
     <AlertDialogContent className="w-120 max-w-120">
@@ -148,9 +137,8 @@ export const DSLExportConfirmContent = ({
   )
 }
 
-const DSLExportConfirmModal = (props: DSLExportConfirmModalProps) => {
-  const { envList, onClose } = props
-  const [isExporting, setIsExporting] = useState(false)
+const PipelineExportConfirmModal = (props: PipelineExportConfirmModalProps) => {
+  const { envList, onClose, isExporting } = props
   const isDialogOpen = envList.length > 0
 
   const handleOpenChange = useCallback(
@@ -164,9 +152,9 @@ const DSLExportConfirmModal = (props: DSLExportConfirmModalProps) => {
 
   return (
     <AlertDialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-      <DSLExportConfirmContent {...props} onExportingChange={setIsExporting} />
+      <PipelineExportConfirmContent {...props} />
     </AlertDialog>
   )
 }
 
-export default DSLExportConfirmModal
+export default PipelineExportConfirmModal

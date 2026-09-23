@@ -181,7 +181,7 @@ function AgentSkillPackageUploader({
       {file && (
         <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
           <div className="flex items-center justify-center p-3">
-            <span aria-hidden className="i-custom-public-files-yaml size-6 shrink-0" />
+            <span aria-hidden className="i-ri-file-zip-line size-6 shrink-0 text-text-tertiary" />
           </div>
           <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
             <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
