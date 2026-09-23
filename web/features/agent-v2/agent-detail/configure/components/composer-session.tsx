@@ -16,7 +16,6 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
-import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import {
@@ -39,6 +38,7 @@ import {
 } from '../use-agent-configure-build-draft'
 import { useAgentConfigureSessionController } from '../use-agent-configure-session-controller'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
+import { AgentConfigureComposerProvider } from './composer-provider'
 import { AgentConfigureClearSessionConfirmDialog } from './confirm-clear-session-dialog'
 import { AgentOrchestratePanel } from './orchestrate'
 import { AgentBuildDraftBar } from './orchestrate/build-draft-bar'
@@ -225,9 +225,15 @@ function AgentConfigurePageComposerSession({
       ]}
       name="AgentConfigureConversation"
     >
-      <AgentComposerProvider
+      <AgentConfigureComposerProvider
         key={composerSessionKey}
-        initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
+        initialConfig={buildDraft.agentSoulConfig}
+        initializeDefaultModel={
+          configureData.capabilities.canEdit &&
+          configureData.composerQuery.isSuccess &&
+          !isViewingVersion &&
+          !buildDraft.isActive
+        }
       >
         <AgentConfigurePageComposerContent
           agentId={agentId}
@@ -247,7 +253,7 @@ function AgentConfigurePageComposerSession({
           onRefreshPreviewConversation={refreshPreviewConversation}
           onSelectVersion={onSelectVersion}
         />
-      </AgentComposerProvider>
+      </AgentConfigureComposerProvider>
     </ScopeProvider>
   )
 }
@@ -349,7 +355,7 @@ function AgentConfigurePageComposerContent({
     },
     [rebaseComposerDraft],
   )
-  const [currentModel, setConfigureModel] = useAtom(agentComposerModelAtom)
+  const [currentModel, setCurrentModel] = useAtom(agentComposerModelAtom)
   const { isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
     agentId,
     agentName: agentQuery.data?.name,
@@ -511,7 +517,7 @@ function AgentConfigurePageComposerContent({
               />
             ) : undefined
           }
-          onSelectModel={setConfigureModel}
+          onSelectModel={setCurrentModel}
           onPublish={publishDraft}
           onOpenVersions={() => {
             workingDirectoryPanel.closeWorkingDirectory()
