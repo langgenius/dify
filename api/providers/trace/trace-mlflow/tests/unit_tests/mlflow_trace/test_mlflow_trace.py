@@ -863,6 +863,13 @@ class TestGetWorkflowNodes:
         result = trace_instance._get_workflow_nodes(_make_workflow_trace_info())
         assert result == ["n1", "n2"]
 
+    @pytest.mark.parametrize("metadata", [{}, {"app_id": ""}, {"app_id": 123}], ids=["missing", "empty", "non-string"])
+    def test_rejects_invalid_app_id_before_querying_nodes(self, metadata, trace_instance, mock_db):
+        with pytest.raises(ValueError, match="No app_id found in workflow trace metadata"):
+            trace_instance._get_workflow_nodes(_make_workflow_trace_info(metadata=metadata))
+
+        mock_db.session.scalars.assert_not_called()
+
 
 # ── _get_node_span_type ─────────────────────────────────────────────────────
 
