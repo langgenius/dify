@@ -441,6 +441,61 @@ export const zErrorDocsResponse = z.object({
 })
 
 /**
+ * EvaluationFileResponse
+ */
+export const zEvaluationFileResponse = z.object({
+  created_at: z.int().nullish(),
+  download_url: z.string(),
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string(),
+  name: z.string(),
+  size: z.int(),
+})
+
+/**
+ * EvaluationMetricsResponse
+ */
+export const zEvaluationMetricsResponse = z.object({
+  metrics: z.union([z.record(z.string(), z.array(z.string())), z.array(z.string())]),
+})
+
+/**
+ * EvaluationRunResponse
+ */
+export const zEvaluationRunResponse = z.object({
+  completed_at: z.int().nullish(),
+  completed_items: z.int(),
+  created_at: z.int().nullish(),
+  created_by: z.string(),
+  dataset_file_id: z.string().nullish(),
+  error: z.string().nullish(),
+  evaluation_config_id: z.string(),
+  failed_items: z.int(),
+  id: z.string(),
+  metrics_summary: z.record(z.string(), z.unknown()).optional(),
+  progress: z.number(),
+  result_file_id: z.string().nullish(),
+  started_at: z.int().nullish(),
+  status: z.string(),
+  target_id: z.string(),
+  target_type: z.string(),
+  target_workflow_version_id: z.string().nullish(),
+  tenant_id: z.string(),
+  total_items: z.int(),
+})
+
+/**
+ * EvaluationRunPaginationResponse
+ */
+export const zEvaluationRunPaginationResponse = z.object({
+  data: z.array(zEvaluationRunResponse),
+  page: z.int(),
+  page_size: z.int(),
+  total: z.int(),
+})
+
+/**
  * ExternalHitTestingPayload
  */
 export const zExternalHitTestingPayload = z.object({
@@ -1147,6 +1202,48 @@ export const zConsoleSegmentListResponse = z.object({
 })
 
 /**
+ * CustomizedMetricOutputField
+ */
+export const zCustomizedMetricOutputField = z.object({
+  value_type: z.string(),
+  variable: z.string(),
+})
+
+/**
+ * CustomizedMetrics
+ *
+ * Custom evaluator selection.
+ *
+ * ``evaluation_workflow_id`` is the evaluator App ID retained for API
+ * compatibility. ``evaluation_workflow_version_id`` is resolved at run
+ * creation so an in-flight or historical run never follows a later publish.
+ */
+export const zCustomizedMetrics = z.object({
+  evaluation_workflow_id: z.string(),
+  evaluation_workflow_version_id: z.string().nullish(),
+  input_fields: z.record(z.string(), z.unknown()),
+  output_fields: z.array(zCustomizedMetricOutputField),
+})
+
+/**
+ * NodeInfo
+ */
+export const zNodeInfo = z.object({
+  node_id: z.string(),
+  title: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DefaultMetric
+ */
+export const zDefaultMetric = z.object({
+  metric: z.string(),
+  node_info_list: z.array(zNodeInfo),
+  value_type: z.string().optional().default(''),
+})
+
+/**
  * HitTestingChildChunk
  */
 export const zHitTestingChildChunk = z.object({
@@ -1544,6 +1641,144 @@ export const zHitTestingPayload = z.object({
     .nullish(),
   query: z.string().max(250),
   retrieval_model: zRetrievalModel.nullish(),
+})
+
+export const zSupportedComparisonOperator = z.enum([
+  '<',
+  '=',
+  '>',
+  'all of',
+  'contains',
+  'empty',
+  'end with',
+  'exists',
+  'in',
+  'is',
+  'is not',
+  'not contains',
+  'not empty',
+  'not exists',
+  'not in',
+  'not null',
+  'null',
+  'start with',
+  '≠',
+  '≤',
+  '≥',
+])
+
+/**
+ * JudgmentCondition
+ *
+ * A single judgment condition that checks one metric value.
+ *
+ * Mirrors ``graphon.utils.condition.entities.Condition`` with the left-hand
+ * side being a metric selector instead of a workflow variable selector.
+ *
+ * Attributes:
+ * variable_selector: ``[node_id, metric_name]`` identifying the metric.
+ * comparison_operator: Reuses workflow's ``SupportedComparisonOperator``.
+ * value: The comparison target (right side).  For unary operators such
+ * as ``empty`` or ``null`` this can be ``None``.
+ */
+export const zJudgmentCondition = z.object({
+  comparison_operator: zSupportedComparisonOperator,
+  value: z.union([z.string(), z.array(z.string()), z.boolean()]).nullish(),
+  variable_selector: z.array(z.string()),
+})
+
+/**
+ * JudgmentConfig
+ *
+ * A group of judgment conditions combined with a logical operator.
+ *
+ * Attributes:
+ * logical_operator: How to combine condition results — "and" requires
+ * all conditions to pass, "or" requires at least one.
+ * conditions: The list of individual conditions to evaluate.
+ */
+export const zJudgmentConfig = z.object({
+  conditions: z.array(zJudgmentCondition).optional(),
+  logical_operator: z.enum(['and', 'or']).optional().default('and'),
+})
+
+/**
+ * EvaluationConfigResponse
+ */
+export const zEvaluationConfigResponse = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).nullish(),
+  evaluation_model: z.string().nullish(),
+  evaluation_model_provider: z.string().nullish(),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationConfigPayload
+ */
+export const zEvaluationConfigPayload = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_model: z.string().optional().default(''),
+  evaluation_model_provider: z.string().optional().default(''),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationRunPayload
+ */
+export const zEvaluationRunPayload = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_model: z.string().optional().default(''),
+  evaluation_model_provider: z.string().optional().default(''),
+  file_id: z.string(),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationMetric
+ */
+export const zEvaluationMetric = z.object({
+  details: z.record(z.string(), z.unknown()).optional(),
+  name: z.string(),
+  node_info: zNodeInfo.nullish(),
+  value: z.unknown(),
+})
+
+/**
+ * EvaluationRunItemResponse
+ */
+export const zEvaluationRunItemResponse = z.object({
+  actual_output: z.string().nullish(),
+  error: z.string().nullish(),
+  expected_output: z.string().nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  item_index: z.int(),
+  judgment: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  metrics: z.array(zEvaluationMetric).optional(),
+  overall_score: z.number().nullish(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * EvaluationRunItemPaginationResponse
+ */
+export const zEvaluationRunItemPaginationResponse = z.object({
+  data: z.array(zEvaluationRunItemResponse),
+  page: z.int(),
+  page_size: z.int(),
+  total: z.int(),
+})
+
+/**
+ * EvaluationRunDetailResponse
+ */
+export const zEvaluationRunDetailResponse = z.object({
+  items: zEvaluationRunItemPaginationResponse,
+  run: zEvaluationRunResponse,
 })
 
 /**
@@ -2606,6 +2841,116 @@ export const zGetDatasetsByDatasetIdErrorDocsPath = z.object({
  * Error documents retrieved successfully
  */
 export const zGetDatasetsByDatasetIdErrorDocsResponse = zErrorDocsResponse
+
+export const zGetDatasetsByDatasetIdEvaluationPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Evaluation configuration
+ */
+export const zGetDatasetsByDatasetIdEvaluationResponse = zEvaluationConfigResponse
+
+export const zPutDatasetsByDatasetIdEvaluationBody = zEvaluationConfigPayload
+
+export const zPutDatasetsByDatasetIdEvaluationPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Evaluation configuration saved
+ */
+export const zPutDatasetsByDatasetIdEvaluationResponse = zEvaluationConfigResponse
+
+export const zGetDatasetsByDatasetIdEvaluationFilesByFileIdPath = z.object({
+  dataset_id: z.uuid(),
+  file_id: z.uuid(),
+})
+
+/**
+ * Evaluation file
+ */
+export const zGetDatasetsByDatasetIdEvaluationFilesByFileIdResponse = zEvaluationFileResponse
+
+export const zGetDatasetsByDatasetIdEvaluationLogsPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+export const zGetDatasetsByDatasetIdEvaluationLogsQuery = z.object({
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  page_size: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Evaluation runs
+ */
+export const zGetDatasetsByDatasetIdEvaluationLogsResponse = zEvaluationRunPaginationResponse
+
+export const zGetDatasetsByDatasetIdEvaluationMetricsPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Retrieval evaluation metrics
+ */
+export const zGetDatasetsByDatasetIdEvaluationMetricsResponse = zEvaluationMetricsResponse
+
+export const zPostDatasetsByDatasetIdEvaluationRunBody = zEvaluationRunPayload
+
+export const zPostDatasetsByDatasetIdEvaluationRunPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Evaluation run started
+ */
+export const zPostDatasetsByDatasetIdEvaluationRunResponse = zEvaluationRunResponse
+
+export const zGetDatasetsByDatasetIdEvaluationRunsByRunIdPath = z.object({
+  dataset_id: z.uuid(),
+  run_id: z.uuid(),
+})
+
+export const zGetDatasetsByDatasetIdEvaluationRunsByRunIdQuery = z.object({
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  page_size: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * Evaluation run detail
+ */
+export const zGetDatasetsByDatasetIdEvaluationRunsByRunIdResponse = zEvaluationRunDetailResponse
+
+export const zPostDatasetsByDatasetIdEvaluationRunsByRunIdCancelPath = z.object({
+  dataset_id: z.uuid(),
+  run_id: z.uuid(),
+})
+
+/**
+ * Evaluation run cancelled
+ */
+export const zPostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponse = zEvaluationRunResponse
+
+export const zPostDatasetsByDatasetIdEvaluationRunsByRunIdRetryPath = z.object({
+  dataset_id: z.uuid(),
+  run_id: z.uuid(),
+})
+
+/**
+ * Evaluation run retry scheduled
+ */
+export const zPostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponse = zEvaluationRunResponse
+
+export const zPostDatasetsByDatasetIdEvaluationTemplateDownloadPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Knowledge base evaluation template
+ */
+export const zPostDatasetsByDatasetIdEvaluationTemplateDownloadResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostDatasetsByDatasetIdExternalHitTestingBody = zExternalHitTestingPayload
 

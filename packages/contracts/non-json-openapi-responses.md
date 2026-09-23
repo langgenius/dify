@@ -14,6 +14,8 @@ The current Flask-RESTX generator still emits these response entries under `appl
 | web     | POST   | `/text-to-audio`                                                        | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
 | service | POST   | `/text-to-audio`                                                        | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
 | console | POST   | `/datasets/{dataset_id}/documents/download-zip`                         | `application/zip` attachment                   | `BinaryFileResponse`  |
+| console | POST   | `/datasets/{dataset_id}/evaluation/template/download`                   | XLSX attachment                                | `BinaryFileResponse`  |
+| console | POST   | `/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download` | XLSX attachment                               | `BinaryFileResponse`  |
 | service | POST   | `/datasets/{dataset_id}/documents/download-zip`                         | `application/zip` attachment                   | `BinaryFileResponse`  |
 | service | GET    | `/files/{file_id}/preview`                                              | Original file MIME type, optionally attachment | `BinaryFileResponse`  |
 | console | GET    | `/workspaces/current/plugin/icon`                                       | Plugin asset MIME type                         | `BinaryFileResponse`  |

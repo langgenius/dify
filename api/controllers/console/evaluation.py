@@ -16,6 +16,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 
 import services
 from configs import dify_config
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import DatasetId, PlainApp, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import (
     query_params_from_model,
@@ -45,6 +46,7 @@ from extensions.ext_storage import storage
 from fields.base import ResponseModel
 from fields.member_fields import SimpleAccount
 from graphon.file import helpers as file_helpers
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import Account, App, Dataset, UploadFile
@@ -65,6 +67,7 @@ from services.workflow_service import WorkflowService
 P = ParamSpec("P")
 R = TypeVar("R")
 EvaluationTarget = App | CustomizedSnippet
+XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 class EvaluationConfigPayload(EvaluationConfigData):
@@ -281,6 +284,7 @@ register_response_schema_models(
     EvaluationFileResponse,
     AvailableEvaluationWorkflowPaginationResponse,
     EvaluationAssociatedTargetListResponse,
+    BinaryFileResponse,
 )
 
 
@@ -580,7 +584,7 @@ def _evaluation_file_response(
 def _xlsx_response(content: bytes, filename: str) -> Response:
     response = Response(
         content,
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        mimetype=XLSX_MIME_TYPE,
     )
     response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
     response.headers["Content-Length"] = str(len(content))
@@ -589,7 +593,15 @@ def _xlsx_response(content: bytes, filename: str) -> Response:
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/dataset-template/download")
 class EvaluationDatasetTemplateDownloadApi(Resource):
-    @console_ns.response(200, "Evaluation dataset template")
+    @console_ns.doc(
+        produces=[XLSX_MIME_TYPE],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: [XLSX_MIME_TYPE]},
+    )
+    @console_ns.response(
+        200,
+        "Evaluation dataset template",
+        console_ns.models[BinaryFileResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -1037,7 +1049,15 @@ class EvaluationWorkflowAssociatedTargetsApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/template/download")
 class DatasetEvaluationTemplateDownloadApi(Resource):
-    @console_ns.response(200, "Knowledge base evaluation template")
+    @console_ns.doc(
+        produces=[XLSX_MIME_TYPE],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: [XLSX_MIME_TYPE]},
+    )
+    @console_ns.response(
+        200,
+        "Knowledge base evaluation template",
+        console_ns.models[BinaryFileResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
