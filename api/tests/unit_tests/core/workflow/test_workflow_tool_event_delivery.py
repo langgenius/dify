@@ -286,6 +286,10 @@ def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_th
         "source-end",
     ]
     assert all(not event.container_id for event in persisted)
+    completed_tool = next(
+        event for event in events if isinstance(event, NodeRunSucceededEvent) and event.node_id == node.id
+    )
+    assert completed_tool.node_run_result.outputs["json"] == [{}]
     parent = next(event for event in events if isinstance(event, NodeRunStartedEvent) and event.node_id == node.id)
     assert {event.node_run_result.process_data[WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY] for event in persisted} == {
         parent.id

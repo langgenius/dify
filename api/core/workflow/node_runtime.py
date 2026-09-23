@@ -697,16 +697,14 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 "inputs_for_log": dict(inputs_for_log),
             }
         )
-        return WorkflowToolContainerPayload.model_validate(
-            {
-                "source_app_id": str(tool.workflow_app_id),
-                "source_workflow_id": str(tool.workflow_id),
-                "source_workflow_version": str(tool.version),
-                "inputs": json_inputs["inputs"],
-                "system_files": json_inputs["system_files"],
-                "inputs_for_log": json_inputs["inputs_for_log"],
-                "call_depth": workflow_call_depth + 1,
-            }
+        return WorkflowToolContainerPayload(
+            source_app_id=str(tool.workflow_app_id),
+            source_workflow_id=str(tool.workflow_id),
+            source_workflow_version=str(tool.version),
+            inputs=json_inputs["inputs"],
+            system_files=json_inputs["system_files"],
+            inputs_for_log=json_inputs["inputs_for_log"],
+            call_depth=workflow_call_depth + 1,
         )
 
     def resolve_provider_icons(

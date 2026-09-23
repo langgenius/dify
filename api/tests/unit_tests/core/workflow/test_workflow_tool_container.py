@@ -870,12 +870,6 @@ def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
         assert any(isinstance(event, NodeRunSucceededEvent) and event.node_id == "source-code" for event in persisted)
 
 
-def test_workflow_tool_empty_outputs_match_direct_invocation() -> None:
-    outputs = WorkflowToolContainerHandler._build_tool_outputs({})
-
-    assert outputs["json"].to_object() == [{}]
-
-
 def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
