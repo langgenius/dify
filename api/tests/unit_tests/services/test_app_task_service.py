@@ -112,7 +112,7 @@ def _assert_stop_flag(redis: _StopRedis) -> None:
 def _assert_graph_command(redis: _StopRedis) -> None:
     assert set(redis.commands) == {_COMMAND_KEY}
     assert [json.loads(command) for command in redis.commands[_COMMAND_KEY]] == [
-        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+        {"command_type": "abort", "reason": "User requested stop"}
     ]
     assert redis.expirations[_COMMAND_KEY] == 3600
     assert redis.values[f"{_COMMAND_KEY}:pending"] == b"1"
@@ -231,7 +231,7 @@ def test_graph_redis_failure_is_swallowed_after_legacy_flag(unchecked: bool, cap
     _assert_stop_flag(redis)
     assert redis.operations == ["legacy_flag", "graph_command"]
     assert redis.commands == {}
-    assert "Failed to send graph engine command AbortCommand" in caplog.text
+    assert "Failed to send Engine abort command" in caplog.text
 
 
 def test_ownership_read_failure_propagates_without_either_stop_signal() -> None:

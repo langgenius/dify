@@ -599,7 +599,7 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
     tool_database.session.commit()
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     workflow_tool = Mock()
-    workflow_tool.fork_tool_runtime.return_value = "wf-runtime"
+    workflow_tool.fork_tool_runtime.return_value = SimpleNamespace(execution_driver=None)
     workflow_controller = Mock()
     workflow_controller.get_tools.return_value = [workflow_tool]
     with patch(
@@ -613,7 +613,7 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
                 tool_name="wf",
                 tenant_id=tenant_id,
             )
-            == "wf-runtime"
+            is workflow_tool.fork_tool_runtime.return_value
         )
 
 
@@ -705,6 +705,7 @@ def test_get_agent_runtime_apply_runtime_parameters():
         invoke_from=InvokeFrom.DEBUGGER,
         tool_invoke_from=ToolInvokeFrom.AGENT,
         credential_id=None,
+        execution_driver=None,
     )
 
 
@@ -752,6 +753,7 @@ def test_get_workflow_runtime_apply_runtime_parameters():
         invoke_from=InvokeFrom.DEBUGGER,
         tool_invoke_from=ToolInvokeFrom.WORKFLOW,
         credential_id=None,
+        execution_driver=None,
     )
 
 
@@ -815,6 +817,7 @@ def test_get_tool_runtime_from_plugin_only_uses_form_parameters():
         invoke_from=InvokeFrom.SERVICE_API,
         tool_invoke_from=ToolInvokeFrom.PLUGIN,
         credential_id=None,
+        execution_driver=None,
     )
 
 

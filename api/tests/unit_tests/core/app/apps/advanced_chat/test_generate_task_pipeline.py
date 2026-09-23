@@ -5,7 +5,6 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest import mock
 
-import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -63,13 +62,10 @@ def _message(*, status: MessageStatus, answer: str = "") -> Message:
     )
 
 
-def test_persist_human_input_extra_content_adds_record(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_persist_human_input_extra_content_adds_record(sqlite_session: Session) -> None:
     pipeline = _build_pipeline()
-    monkeypatch.setattr(pipeline, "_load_human_input_form_id", lambda **kwargs: "form-1")
 
-    pipeline._persist_human_input_extra_content(node_id="node-1")
+    pipeline._persist_human_input_extra_content(form_id="form-1")
 
     content = sqlite_session.scalar(select(HumanInputContent))
     assert content is not None
@@ -78,27 +74,13 @@ def test_persist_human_input_extra_content_adds_record(
     assert content.form_id == "form-1"
 
 
-def test_persist_human_input_extra_content_skips_when_form_missing(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_persist_human_input_extra_content_skips_when_existing(sqlite_session: Session) -> None:
     pipeline = _build_pipeline()
-    monkeypatch.setattr(pipeline, "_load_human_input_form_id", lambda **kwargs: None)
-
-    pipeline._persist_human_input_extra_content(node_id="node-1")
-
-    assert sqlite_session.scalar(select(HumanInputContent)) is None
-
-
-def test_persist_human_input_extra_content_skips_when_existing(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    pipeline = _build_pipeline()
-    monkeypatch.setattr(pipeline, "_load_human_input_form_id", lambda **kwargs: "form-1")
     existing = HumanInputContent.new(workflow_run_id="run-1", message_id="message-1", form_id="form-1")
     sqlite_session.add(existing)
     sqlite_session.commit()
 
-    pipeline._persist_human_input_extra_content(node_id="node-1")
+    pipeline._persist_human_input_extra_content(form_id="form-1")
 
     contents = list(sqlite_session.scalars(select(HumanInputContent)))
     assert [content.id for content in contents] == [existing.id]
@@ -138,7 +120,7 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content(unbound
 
     list(pipeline._handle_workflow_paused_event(event))
 
-    pipeline._persist_human_input_extra_content.assert_called_once_with(form_id="form-1", node_id="node-1")
+    pipeline._persist_human_input_extra_content.assert_called_once_with(form_id="form-1")
     assert message.status == MessageStatus.PAUSED
 
 

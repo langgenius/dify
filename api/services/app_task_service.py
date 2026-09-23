@@ -2,14 +2,13 @@
 
 This service provides centralized logic for task control operations
 like stopping tasks, handling both legacy Redis flag mechanism and
-new GraphEngine command channel mechanism.
+new Engine command channel mechanism.
 """
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.execution_coordinator import set_app_task_stop_flag
+from core.app.apps.execution_coordinator import send_abort_command, set_app_task_stop_flag
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_redis import RedisClientWrapper, redis_client
-from graphon.graph_engine.manager import GraphEngineManager
 from models.model import AppMode
 
 
@@ -30,7 +29,7 @@ class AppTaskControlService:
 
         This method handles stopping tasks using both mechanisms:
         1. Legacy Redis flag mechanism (for backward compatibility)
-        2. New GraphEngine command channel (for workflow-based apps)
+        2. New Engine command channel (for workflow-based apps)
 
         Args:
             task_id: The task ID to stop
@@ -44,19 +43,19 @@ class AppTaskControlService:
         # Legacy mechanism: Set stop flag in Redis
         AppQueueManager.set_stop_flag(task_id, invoke_from, user_id, redis=self._redis_client)
 
-        # New mechanism: Send stop command via GraphEngine for workflow-based apps
+        # New mechanism: Send stop command via Engine for workflow-based apps
         # This ensures proper workflow status recording in the persistence layer
         if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
-            GraphEngineManager(self._redis_client).send_stop_command(task_id)
+            send_abort_command(task_id, redis=self._redis_client)
 
     def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
         """Stop a workflow after app admission, without consulting the user ownership cache.
 
-        Keep the legacy stop flag before the GraphEngine command, including when
+        Keep the legacy stop flag before the Engine command, including when
         the latter fails. Callers must authorize access to the workflow app first.
         """
         set_app_task_stop_flag(task_id, redis=self._redis_client)
-        GraphEngineManager(self._redis_client).send_stop_command(task_id)
+        send_abort_command(task_id, redis=self._redis_client)
 
 
 class AppTaskService:
