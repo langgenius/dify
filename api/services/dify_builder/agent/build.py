@@ -735,7 +735,7 @@ def build_nodes(
         # (``_terminal_retry_instruction`` above), not a reason to drop one intent
         # out of a whole new workflow. ``apply_repair``'s preflight is still the
         # backstop that stops a refused draft being written.
-        applicable, rejected, _dry_run_graph = graph_ops.filter_applicable(
+        applicable, rejected, _dry_run_graph, _changed = graph_ops.filter_applicable(
             {"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES
         )
         if not applicable:

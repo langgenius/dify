@@ -128,6 +128,9 @@ def _reset_working_fields(fc: DifyBuilderContext) -> None:
     fc.resource_selection = {}
     fc.built_node_ids = []
     fc.edit_target_node_ids = []
+    # The engine's refusal of a batch that is no longer staged: quoting it at
+    # the next proposal would send the agent after a problem that is gone.
+    fc.last_edit_rejection = ""
     fc.last_snapshot_hash = ""
     fc.last_structure_fingerprint = ""
     fc.paused = False
