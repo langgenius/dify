@@ -25,7 +25,9 @@ from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
+from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
 from extensions.application_services.knowledge import build_dataset_api_key_service
+from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now, utc_now
@@ -56,9 +58,6 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
-from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
-from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
-from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
@@ -170,7 +169,6 @@ from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthS
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
-from services.conversation_service import ConversationService
 from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
@@ -184,13 +182,6 @@ from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
-from services.installed_app_access_service import InstalledAppAccessService
-from services.installed_app_conversation_service import InstalledAppConversationService
-from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
-from services.installed_app_generation_service import InstalledAppGenerationService
-from services.installed_app_message_adapters import InstalledAppMessageRuntime, emit_installed_app_feedback
-from services.installed_app_message_service import InstalledAppMessageService
-from services.installed_app_service import InstalledAppService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
@@ -236,10 +227,6 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
-from services.trial_app_access_service import TrialAppAccessService
-from services.trial_app_generation_adapters import AppGenerateServiceRuntime
-from services.trial_app_generation_service import TrialAppGenerationService
-from services.trial_app_usage import TrialAppUsageRecorder
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_passport_gateways import (
@@ -263,18 +250,6 @@ from tasks.mail_inner_task import enqueue_inner_mail
 logger = logging.getLogger(__name__)
 
 _EXTENSION_KEY = "application_services"
-
-
-def _generate_installed_app_conversation_name(
-    *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str
-) -> str:
-    # Legacy provider and tracing lookups use db.session. Give them their own
-    # scope so teardown releases it before the conversation write transaction,
-    # without removing a session owned by the surrounding request.
-    with current_app.app_context():
-        return ConversationService.generate_name(
-            tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id, query=query, app_mode=app_mode
-        )
 
 
 # TODO: Normalize EnterpriseService.WebAppAuth result/error contracts in the SDK,
@@ -352,22 +327,6 @@ class AccountServices:
 class AppScopedEndUserServices:
     commands: AppScopedEndUserService[EndUser]
     queries: AppScopedEndUserQueryService
-
-
-@dataclass(frozen=True, slots=True)
-class InstalledAppServices:
-    access: InstalledAppAccessService
-    management: InstalledAppService
-    generation: InstalledAppGenerationService
-    conversations: InstalledAppConversationService
-    messages: InstalledAppMessageService
-
-
-@dataclass(frozen=True, slots=True)
-class TrialAppServices:
-    access: TrialAppAccessService
-    generation: TrialAppGenerationService
-    usage: TrialAppUsageRecorder
 
 
 @dataclass(frozen=True, slots=True)
@@ -582,7 +541,6 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(session_factory=database_client)
-    installed_apps = SQLAlchemyInstalledAppRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
@@ -600,14 +558,7 @@ def build_application_services(
         get_access_modes=_batch_get_enterprise_webapp_access_modes,
         get_user_permissions=_batch_get_enterprise_webapp_user_permissions,
     )
-    installed_app_access = InstalledAppAccessService(
-        installed_apps=installed_apps,
-        is_user_allowed=webapp_access.is_user_allowed,
-        get_access_modes=webapp_access.batch_get_access_modes,
-        get_user_permissions=webapp_access.batch_get_user_permissions,
-    )
     app_preview_repository = AppPreviewQueryRepository(session_factory=database_client)
-    installed_app_message_runtime = InstalledAppMessageRuntime(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
     integrations = SQLAlchemyAccountIntegrationRepository(session_factory=database_client)
@@ -841,28 +792,11 @@ def build_application_services(
             queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
         ),
         webapp_access=webapp_access,
-        installed_apps=InstalledAppServices(
-            access=installed_app_access,
-            conversations=InstalledAppConversationService(
-                conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),
-                generate_name=_generate_installed_app_conversation_name,
-                enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
-            ),
-            generation=InstalledAppGenerationService(
-                usage=installed_apps,
-                runtime=InstalledAppGenerateServiceRuntime(session_factory=database_client),
-            ),
-            messages=InstalledAppMessageService(
-                messages=SQLAlchemyInstalledAppMessageRepository(session_factory=database_client),
-                get_extra_contents=installed_app_message_runtime.get_extra_contents,
-                suggested_questions=installed_app_message_runtime.get_suggested_questions,
-                emit_feedback=emit_installed_app_feedback,
-            ),
-            management=InstalledAppService(
-                installed_apps=installed_apps,
-                get_workspace_role=workspace_query_repository.get_account_role,
-                get_visible_app_ids=installed_app_access.get_visible_app_ids if webapp_auth_enabled else None,
-            ),
+        installed_apps=build_installed_app_services(
+            database_client=database_client,
+            webapp_access=webapp_access,
+            get_workspace_role=workspace_query_repository.get_account_role,
+            webapp_auth_enabled=webapp_auth_enabled,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
@@ -941,13 +875,7 @@ def build_application_services(
         ),
         app_tasks=AppTaskControlService(redis_client=redis),
         app_audio=AppAudioRuntime(session_factory=database_client),
-        trial_apps=TrialAppServices(
-            access=TrialAppAccessService(apps=trial_apps),
-            generation=TrialAppGenerationService(
-                runtime=AppGenerateServiceRuntime(session_factory=database_client), usage=trial_apps
-            ),
-            usage=trial_apps,
-        ),
+        trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
