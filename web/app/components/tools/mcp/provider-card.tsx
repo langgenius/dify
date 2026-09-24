@@ -88,8 +88,8 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
             )}
           </div>
           {isConfigured && (
-            <span className="flex shrink-0 items-center gap-1 system-xs-medium text-text-secondary">
-              {t(($) => $['mcp.configured'], { ns: 'tools' })}
+            <span className="flex shrink-0 items-center">
+              <span className="sr-only">{t(($) => $['mcp.configured'], { ns: 'tools' })}</span>
               <StatusDot status="success" size="small" />
             </span>
           )}
