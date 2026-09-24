@@ -153,4 +153,51 @@ describe('runSkillsInstall', () => {
       await readFile(join(home, '.pi', 'agent', 'skills', 'difyctl', 'SKILL.md'), 'utf8'),
     ).toBe(SKILL)
   })
+
+  it('writes qoder, windsurf and hermes to their documented dirs', async () => {
+    await mkdir(join(home, '.qoder'))
+    await mkdir(join(home, '.codeium', 'windsurf'), { recursive: true })
+    await mkdir(join(home, '.hermes'))
+    const result = await runSkillsInstall(opts({ write: true }))
+    expect(result.kind).toBe('ok')
+    if (result.kind !== 'ok') return
+    expect(result.wrote).toEqual([
+      join(home, '.qoder', 'skills', 'difyctl', 'SKILL.md'),
+      join(home, '.codeium', 'windsurf', 'skills', 'difyctl', 'SKILL.md'),
+      join(home, '.hermes', 'skills', 'difyctl', 'SKILL.md'),
+    ])
+  })
+
+  it('writes the shared ~/.agents/skills path once for codex, amp and openclaw', async () => {
+    await mkdir(join(home, '.codex'))
+    await mkdir(join(home, '.config', 'amp'), { recursive: true })
+    await mkdir(join(home, '.openclaw'))
+    const shared = join(home, '.agents', 'skills', 'difyctl', 'SKILL.md')
+    const result = await runSkillsInstall(opts({ write: true }))
+    expect(result).toEqual({ kind: 'ok', text: `wrote ${shared}\n`, wrote: [shared] })
+    expect(await readFile(shared, 'utf8')).toBe(SKILL)
+  })
+
+  it('dry-run merges agents sharing a target into one line', async () => {
+    await mkdir(join(home, '.codex'))
+    await mkdir(join(home, '.config', 'amp'), { recursive: true })
+    await mkdir(join(home, '.openclaw'))
+    const shared = join(home, '.agents', 'skills', 'difyctl', 'SKILL.md')
+    const result = await runSkillsInstall(opts({}))
+    expect(result.kind).toBe('ok')
+    if (result.kind !== 'ok') return
+    // The header counts agents; the target line merges the ones sharing a path.
+    expect(result.text).toContain('Detected 3 agents: codex, amp, openclaw')
+    expect(result.text).toContain(`would write to codex, amp, openclaw: ${shared}`)
+    expect(result.wrote).toEqual([])
+  })
+
+  it('--agent amp alone writes the shared path once', async () => {
+    await mkdir(join(home, '.config', 'amp'), { recursive: true })
+    const shared = join(home, '.agents', 'skills', 'difyctl', 'SKILL.md')
+    const result = await runSkillsInstall(opts({ write: true, agents: ['amp'] }))
+    expect(result.kind).toBe('ok')
+    if (result.kind !== 'ok') return
+    expect(result.wrote).toEqual([shared])
+  })
 })

@@ -30,12 +30,22 @@ describe('detectAgents', () => {
     await mkdir(join(home, '.config', 'opencode'), { recursive: true })
     await mkdir(join(home, '.cursor'))
     await mkdir(join(home, '.pi'))
+    await mkdir(join(home, '.config', 'amp'), { recursive: true })
+    await mkdir(join(home, '.openclaw'))
+    await mkdir(join(home, '.qoder'))
+    await mkdir(join(home, '.codeium', 'windsurf'), { recursive: true })
+    await mkdir(join(home, '.hermes'))
     expect(detectAgents(home).map((a) => a.name)).toEqual([
       'claude-code',
       'codex',
       'opencode',
       'cursor',
       'pi',
+      'amp',
+      'openclaw',
+      'qoder',
+      'windsurf',
+      'hermes',
     ])
   })
 
@@ -72,5 +82,43 @@ describe('agent registry paths', () => {
     const pi = AGENTS.find((a) => a.name === 'pi')
     expect(pi?.probeDir(home)).toBe(join(home, '.pi'))
     expect(pi?.skillDir(home)).toBe(join(home, '.pi', 'agent', 'skills', 'difyctl'))
+  })
+
+  it('installs Amp into shared ~/.agents/skills, detected via ~/.config/amp', () => {
+    const amp = AGENTS.find((a) => a.name === 'amp')
+    expect(amp?.probeDir(home)).toBe(join(home, '.config', 'amp'))
+    expect(amp?.skillDir(home)).toBe(join(home, '.agents', 'skills', 'difyctl'))
+  })
+
+  it('installs OpenClaw into shared ~/.agents/skills, detected via ~/.openclaw', () => {
+    const openclaw = AGENTS.find((a) => a.name === 'openclaw')
+    expect(openclaw?.probeDir(home)).toBe(join(home, '.openclaw'))
+    expect(openclaw?.skillDir(home)).toBe(join(home, '.agents', 'skills', 'difyctl'))
+  })
+
+  it('installs Qoder under ~/.qoder/skills, detected via ~/.qoder', () => {
+    const qoder = AGENTS.find((a) => a.name === 'qoder')
+    expect(qoder?.probeDir(home)).toBe(join(home, '.qoder'))
+    expect(qoder?.skillDir(home)).toBe(join(home, '.qoder', 'skills', 'difyctl'))
+  })
+
+  it('installs Windsurf under ~/.codeium/windsurf/skills, detected via ~/.codeium/windsurf', () => {
+    const windsurf = AGENTS.find((a) => a.name === 'windsurf')
+    expect(windsurf?.probeDir(home)).toBe(join(home, '.codeium', 'windsurf'))
+    expect(windsurf?.skillDir(home)).toBe(join(home, '.codeium', 'windsurf', 'skills', 'difyctl'))
+  })
+
+  it('installs Hermes under ~/.hermes/skills, detected via ~/.hermes', () => {
+    const hermes = AGENTS.find((a) => a.name === 'hermes')
+    expect(hermes?.probeDir(home)).toBe(join(home, '.hermes'))
+    expect(hermes?.skillDir(home)).toBe(join(home, '.hermes', 'skills', 'difyctl'))
+  })
+
+  it('codex, amp and openclaw share one skillDir (the ~/.agents/skills convention)', () => {
+    const shared = ['codex', 'amp', 'openclaw'].map((name) =>
+      AGENTS.find((a) => a.name === name)?.skillDir(home),
+    )
+    expect(new Set(shared).size).toBe(1)
+    expect(shared[0]).toBe(join(home, '.agents', 'skills', 'difyctl'))
   })
 })
