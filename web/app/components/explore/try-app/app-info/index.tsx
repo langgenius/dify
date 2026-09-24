@@ -1,4 +1,5 @@
 'use client'
+import type { AgentAppComposerResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
 import { Button } from '@langgenius/dify-ui/button'
@@ -17,6 +18,7 @@ type Props = Readonly<{
   className?: string
   createButtonStepByStepTourTarget?: string
   onCreate: () => void
+  agentComposer?: AgentAppComposerResponse
 }>
 
 const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
@@ -59,11 +61,14 @@ const AppInfo: FC<Props> = ({
   createButtonStepByStepTourTarget,
   appDetail,
   onCreate,
+  agentComposer,
 }) => {
   const { t } = useTranslation(['app', 'explore'])
   const mode = appDetail?.mode
   const visibleCategories = Array.from(new Set(categories?.filter(Boolean) ?? []))
-  const { requirements } = useGetRequirements({ appDetail, appId })
+  const { requirements } = useGetRequirements({ appDetail, appId, agentComposer })
+  const skills = agentComposer?.agent_soul.config_skills ?? []
+  const files = agentComposer?.agent_soul.config_files ?? []
   return (
     <div className={cn('flex h-full flex-col px-4 pt-2', className)}>
       {/* name and icon */}
@@ -99,7 +104,7 @@ const AppInfo: FC<Props> = ({
                 {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {mode === 'agent-chat' && (
+            {(mode === 'agent-chat' || mode === 'agent') && (
               <div className="truncate">
                 {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
               </div>
@@ -138,35 +143,62 @@ const AppInfo: FC<Props> = ({
 
       {visibleCategories.length > 0 && (
         <div className="mt-6 shrink-0">
-          <div className={headerClassName}>{t(($) => $['tryApp.category'], { ns: 'explore' })}</div>
-          <div className="flex flex-wrap gap-1.5">
+          <h2 className={headerClassName}>{t(($) => $['tryApp.category'], { ns: 'explore' })}</h2>
+          <ul className="flex flex-wrap gap-1.5">
             {visibleCategories.map((category) => (
-              <span
+              <li
                 key={category}
                 className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-2 py-0.5 system-xs-medium text-text-secondary shadow-xs"
               >
                 {category}
-              </span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
       {requirements.length > 0 && (
         <div className="mt-5 grow overflow-y-auto">
-          <div className={headerClassName}>
+          <h2 className={headerClassName}>
             {t(($) => $['tryApp.requirements'], { ns: 'explore' })}
-          </div>
-          <div className="space-y-0.5">
+          </h2>
+          <ul className="space-y-0.5">
             {requirements.map((item) => (
-              <div className="flex items-center space-x-2 py-1" key={item.name}>
+              <li className="flex items-center space-x-2 py-1" key={item.name}>
                 <RequirementIcon iconUrl={item.iconUrl} />
                 <div className="w-0 grow truncate system-md-regular text-text-secondary">
                   {item.name}
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
+      )}
+      {mode === 'agent' && (skills.length > 0 || files.length > 0) && (
+        <section className="mt-5 min-h-0 overflow-y-auto">
+          <h2 className={headerClassName}>{t(($) => $['tryApp.included'], { ns: 'explore' })}</h2>
+          <ul className="space-y-1 system-sm-regular text-text-secondary">
+            {skills.map((skill) => (
+              <li key={`skill-${skill.name}`} className="flex items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="i-custom-vender-agent-v2-building-blocks size-3.5 shrink-0"
+                />
+                <span className="min-w-0">{skill.name}</span>
+              </li>
+            ))}
+            {files.map((file) => (
+              <li key={`file-${file.name}`} className="flex items-center gap-2">
+                <span aria-hidden="true" className="i-ri-file-line size-3.5 shrink-0" />
+                <span className="min-w-0">{file.name}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {mode === 'agent' && (
+        <p className="mt-auto pt-4 system-xs-regular text-text-tertiary">
+          {t(($) => $['tryApp.agentSetupHint'], { ns: 'explore' })}
+        </p>
       )}
     </div>
   )

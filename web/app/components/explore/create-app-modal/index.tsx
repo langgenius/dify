@@ -45,6 +45,7 @@ export type CreateAppModalProps = {
     max_active_requests?: number | null
   }) => Promise<void>
   confirmDisabled?: boolean
+  confirmLoading?: boolean
   onHide: () => void
 }
 
@@ -66,6 +67,7 @@ const CreateAppModal = ({
   max_active_requests,
   onConfirm,
   confirmDisabled,
+  confirmLoading,
   onHide,
 }: CreateAppModalProps) => {
   const nameInputId = React.useId()
@@ -274,6 +276,7 @@ const CreateAppModal = ({
           </div>
           <div className="flex flex-row-reverse">
             <Button
+              loading={confirmLoading}
               disabled={
                 isAppQuotaUnavailable ||
                 (!isEditModal && isAppsFull) ||
