@@ -99,7 +99,7 @@ const AppInfo: FC<Props> = ({
                 {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {(mode === 'agent-chat' || mode === 'agent') && (
+            {mode === 'agent-chat' && (
               <div className="truncate">
                 {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
               </div>

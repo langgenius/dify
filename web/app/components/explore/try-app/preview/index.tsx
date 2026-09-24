@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
 import * as React from 'react'
-import { AgentTrialPreview } from '@/features/agent-v2/trial-preview'
 import BasicAppPreview from './basic-app-preview'
 import FlowAppPreview from './flow-app-preview'
 
@@ -12,8 +11,6 @@ type Props = {
 }
 
 const Preview: FC<Props> = ({ appId, appDetail }) => {
-  if (appDetail.mode === 'agent') return <AgentTrialPreview appId={appId} />
-
   const isBasicApp = ['agent-chat', 'chat', 'completion'].includes(appDetail.mode)
 
   return (

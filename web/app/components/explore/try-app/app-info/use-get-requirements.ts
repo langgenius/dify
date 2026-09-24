@@ -102,7 +102,7 @@ const hasToolRequirementData = (
 }
 
 const useGetRequirements = ({ appDetail, appId }: Params) => {
-  const isBasic = ['chat', 'completion', 'agent-chat', 'agent'].includes(appDetail.mode)
+  const isBasic = ['chat', 'completion', 'agent-chat'].includes(appDetail.mode)
   const isAgent = appDetail.mode === 'agent-chat'
   const isAdvanced = !isBasic
   const { data: flowData } = useQuery(
