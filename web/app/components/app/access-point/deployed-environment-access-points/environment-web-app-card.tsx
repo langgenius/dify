@@ -1,6 +1,5 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -62,7 +61,7 @@ export function EnvironmentWebAppCard({
     'navigation',
   ])
   const queryClient = useQueryClient()
-  const appInfo = useAppStore((state) => state.appDetail) as AccessPointAppInfo | null
+  const appInfo = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const actions = useAccessPointActions(appId, canManageAccessPoint)
   const [showSettings, setShowSettings] = useState(false)
