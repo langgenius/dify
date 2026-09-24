@@ -161,7 +161,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             started_at=naive_utc_now(),
         )
 
-        self._workflow_execution_repository.save(workflow_execution)
+        self._workflow_execution_repository.save_synchronously(workflow_execution)
         self._workflow_execution = workflow_execution
         if event is not None and event.reason == WorkflowStartReason.RESUMPTION:
             node_executions = self._workflow_node_execution_repository.get_by_workflow_execution(execution_id)

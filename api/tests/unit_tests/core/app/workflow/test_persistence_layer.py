@@ -172,7 +172,8 @@ class TestWorkflowPersistenceLayer:
 
         layer._handle_graph_run_started()
 
-        assert exec_repo.saved
+        assert exec_repo.synchronously_saved
+        assert exec_repo.saved == []
 
     def test_resumption_restores_container_execution_before_terminal_event(self):
         layer, _, node_repo, _ = _make_layer()
@@ -342,7 +343,7 @@ class TestWorkflowPersistenceLayer:
 
         layer._handle_graph_run_paused(GraphRunPausedEvent(outputs={"pause": True}))
 
-        saved = exec_repo.saved[-1]
+        saved = exec_repo.synchronously_saved[-1]
         assert saved.status == WorkflowExecutionStatus.PAUSED
         assert saved.outputs == {"pause": True}
         assert saved.finished_at is None
