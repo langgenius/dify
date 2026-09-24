@@ -57,7 +57,14 @@ const RETRIEVAL_WARNING_CODES = new Set<KnowledgeBaseValidationIssueCode>([
 ])
 
 const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'common',
+    'datasetCreation',
+    'datasetSettings',
+    'plugin',
+    'workflow',
+    'modelProvider',
+  ])
   const language = useLanguage()
   const settingsDisplay = useSettingsDisplay()
   const { data: embeddingModelList = [] } = useQuery(
@@ -153,7 +160,7 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
         DERIVED_MODEL_STATUS_BADGE_I18N[
           embeddingModelStatus as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N
         ]
-      if (statusI18nKey) return t(($) => $[statusI18nKey], { ns: 'common' })
+      if (statusI18nKey) return t(($) => $[statusI18nKey], { ns: 'modelProvider' })
     }
 
     return (

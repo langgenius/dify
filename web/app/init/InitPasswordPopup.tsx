@@ -16,7 +16,7 @@ const InitPasswordPopup = () => {
   const [validated, setValidated] = useState(false)
   const router = useRouter()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const pageTitle = t(($) => $.adminInitPassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 

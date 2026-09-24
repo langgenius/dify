@@ -31,7 +31,7 @@ const mocks = vi.hoisted(() => ({
   })),
 }))
 
-vi.mock('echarts-for-react', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: ({ option, style }: { option: EChartsOption; style?: React.CSSProperties }) => {
     mocks.chartOptions.push(option)
 

@@ -44,7 +44,7 @@ const PermissionSetModalBody = ({
   onClose,
   onSubmit,
 }: PermissionSetModalBodyProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const [name, setName] = useState(initialValues?.name ?? '')

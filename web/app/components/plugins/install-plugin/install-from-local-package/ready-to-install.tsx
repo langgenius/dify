@@ -53,6 +53,13 @@ const ReadyToInstall: FC<Props> = ({
     [onError, onStepChange, setIsInstalling],
   )
 
+  const completedSteps: InstallStep[] = [
+    InstallStep.uploadFailed,
+    InstallStep.installed,
+    InstallStep.installFailed,
+  ]
+  const failedSteps: InstallStep[] = [InstallStep.uploadFailed, InstallStep.installFailed]
+
   return (
     <>
       {step === InstallStep.readyToInstall && (
@@ -65,12 +72,10 @@ const ReadyToInstall: FC<Props> = ({
           onStartToInstall={onStartToInstall}
         />
       )}
-      {[InstallStep.uploadFailed, InstallStep.installed, InstallStep.installFailed].includes(
-        step,
-      ) && (
+      {completedSteps.includes(step) && (
         <Installed
           payload={manifest}
-          isFailed={[InstallStep.uploadFailed, InstallStep.installFailed].includes(step)}
+          isFailed={failedSteps.includes(step)}
           errMsg={errorMsg}
           installContextCategory={installContextCategory}
           onCancel={onClose}

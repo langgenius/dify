@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
@@ -7,7 +8,7 @@ const t = withSelectorKey((key: string, options?: Record<string, string>) => {
   if (key === 'common.parallel') return 'Parallel'
   if (key === 'common.branch') return 'Branch'
   return options?.ns ? `${options.ns}.${key}` : key
-}, 'workflow')
+}, 'workflow') as TFunction<['workflow']>
 
 const createNodeTracing = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
   id: 'trace-1',

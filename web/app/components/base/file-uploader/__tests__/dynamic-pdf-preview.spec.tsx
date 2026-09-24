@@ -38,7 +38,7 @@ const mockDynamic = vi.hoisted(() =>
 
 const mockPdfPreview = vi.hoisted(() => vi.fn(() => null))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: mockDynamic,
 }))
 

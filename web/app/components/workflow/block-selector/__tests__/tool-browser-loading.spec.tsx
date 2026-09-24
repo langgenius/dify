@@ -16,8 +16,8 @@ const moduleReady = vi.hoisted(() => {
 })
 
 // Delay delivery at the framework boundary while keeping the real list and loader.
-vi.mock('@/next/dynamic', async (importOriginal) => {
-  const { default: dynamic } = await importOriginal<typeof import('@/next/dynamic')>()
+vi.mock('next/dynamic', async (importOriginal) => {
+  const { default: dynamic } = await importOriginal<typeof import('next/dynamic')>()
   return {
     default: <P extends object>(
       loader: () => Promise<{ default: ComponentType<P> }>,
@@ -67,7 +67,7 @@ it('keeps filters usable while loading and selects from the latest filtered list
   })
 
   try {
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('中文工具')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'workflow.tabs.plugin' }))

@@ -47,6 +47,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.client_payload.head_sha || github.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
@@ -162,7 +163,7 @@ jobs:
 
       - name: Run Claude Code for Translation Sync
         if: steps.context.outputs.CHANGED_FILES != ''
-        uses: anthropics/claude-code-action@3b8197d3d486006dd4af54613517f21ac6ac625e # v1.0.227
+        uses: anthropics/claude-code-action@4036a180cf690f49529f5d8c79c998855287f590 # v1.0.230
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -285,6 +286,7 @@ jobs:
           BASE_SHA: ${{ steps.context.outputs.BASE_SHA }}
           HEAD_SHA: ${{ steps.context.outputs.HEAD_SHA }}
           REPO_NAME: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           PR_BODY_FILE=/tmp/i18n-pr-body.md
@@ -295,6 +297,7 @@ jobs:
           export LANG_COUNT
 
           node <<'NODE' > "$PR_BODY_FILE"
+          const { execFileSync } = require('node:child_process')
           const fs = require('node:fs')
 
           const changesPath = '/tmp/i18n-changes.json'
@@ -303,7 +306,25 @@ jobs:
             : { changes: {} }
 
           const filesInScope = (process.env.FILES_IN_SCOPE || '').split(/\s+/).filter(Boolean)
+          const sourceCommit = process.env.HEAD_SHA
+          let sourcePr
+          if (process.env.EVENT_NAME === 'repository_dispatch') {
+            try {
+              const pulls = JSON.parse(execFileSync('gh', [
+                'api', `repos/${process.env.REPO_NAME}/commits/${sourceCommit}/pulls`,
+              ], { encoding: 'utf8' }))
+              sourcePr = pulls.find(pr => pr.merged_at && pr.merge_commit_sha === sourceCommit)
+            } catch (error) {
+              console.error(`Could not resolve source PR: ${error.message}`)
+            }
+          }
+
           const lines = [
+            '## Source',
+            '',
+            ...(sourcePr ? [`- **PR**: [#${sourcePr.number}](${sourcePr.html_url})`] : []),
+            `- **Commit**: [\`${sourceCommit.slice(0, 12)}\`](https://github.com/${process.env.REPO_NAME}/commit/${sourceCommit})`,
+            '',
             '## Summary',
             '',
             `- **Files synced**: \`${process.env.FILES_IN_SCOPE || '<none>'}\``,

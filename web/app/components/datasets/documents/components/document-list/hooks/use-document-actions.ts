@@ -42,7 +42,7 @@ export const useDocumentActions = ({
   onUpdate,
   onClearSelection,
 }: UseDocumentActionsOptions) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const { mutateAsync: archiveDocument } = useDocumentArchive()
   const { mutateAsync: generateSummary } = useDocumentSummary()

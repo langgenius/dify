@@ -1,10 +1,10 @@
 import type { SchemaRoot } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { toast } from '@/app/notifications'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { Type } from '../../types'
@@ -60,7 +60,7 @@ const DEFAULT_SCHEMA: SchemaRoot = {
 }
 
 function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaConfigProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowModels'])
   const [selectedSchemaView, setSelectedSchemaView] = useState<SchemaView>('visualEditor')
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
   const [json, setJson] = useState(() => JSON.stringify(jsonSchema, null, 2))
@@ -184,7 +184,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
     } else if (selectedSchemaView === 'visualEditor') {
       if (advancedEditing || isAddingNewField) {
         toast.warning(
-          t(($) => $['nodes.llm.jsonSchema.warningTips.saveSchema'], { ns: 'workflow' }),
+          t(($) => $['nodes.llm.jsonSchema.warningTips.saveSchema'], { ns: 'workflowModels' }),
         )
         return
       }
@@ -204,7 +204,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
       {/* Header */}
       <div className="relative flex p-6 pr-14 pb-3">
         <div className="grow truncate title-2xl-semi-bold text-text-primary">
-          {t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflow' })}
+          {t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflowModels' })}
         </div>
         <button
           type="button"
@@ -217,7 +217,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
       </div>
       <div className="flex items-center justify-between px-6 py-2">
         <TabsList
-          aria-label={t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflow' })}
+          aria-label={t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflowModels' })}
           className="inline-flex items-center gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5"
         >
           {SCHEMA_VIEW_OPTIONS.map(({ Icon, text, value }) => (
@@ -234,7 +234,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
         <div className="flex items-center gap-x-0.5">
           {/* JSON Schema Generator */}
           <JsonSchemaGenerator crossAxisOffset={btnWidth} onApply={handleApplySchema} />
-          <Divider type="vertical" className="h-3" />
+          <Separator decorative orientation="vertical" className="mx-2 h-3" />
           {/* JSON Schema Importer */}
           <JsonImporter updateBtnWidth={updateBtnWidth} onSubmit={handleSubmit} />
         </div>
@@ -254,9 +254,9 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
         <div className="flex items-center gap-x-3">
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleResetDefaults}>
-              {t(($) => $['nodes.llm.jsonSchema.resetDefaults'], { ns: 'workflow' })}
+              {t(($) => $['nodes.llm.jsonSchema.resetDefaults'], { ns: 'workflowModels' })}
             </Button>
-            <Divider type="vertical" className="mr-0 ml-1 h-4" />
+            <Separator orientation="vertical" className="mr-0 ml-1 h-4" />
           </div>
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleCancel}>

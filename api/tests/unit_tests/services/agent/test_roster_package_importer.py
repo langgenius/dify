@@ -591,34 +591,64 @@ def test_import_validates_all_file_limits_before_staging(
     assert storage.files == {}
 
 
-def test_import_rejects_duplicate_agent_name_before_staging(
+@pytest.mark.parametrize(
+    ("requested", "existing_names", "expected"),
+    [
+        ("Imported Agent", [], "Imported Agent"),
+        ("Imported Agent", ["Imported Agent"], "Imported Agent import"),
+        (
+            "Imported Agent",
+            ["Imported Agent", "Imported Agent import", "Imported Agent import 2"],
+            "Imported Agent import 3",
+        ),
+        (
+            "Imported Agent",
+            ["Imported Agent", "Imported Agent import 2"],
+            "Imported Agent import",
+        ),
+        ("A" * 255, ["A" * 255], "A" * 248 + " import"),
+    ],
+)
+def test_import_uses_available_name_for_app_and_agent(
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    requested: str,
+    existing_names: list[str],
+    expected: str,
 ) -> None:
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
     with sqlite_session_factory() as session, session.begin():
-        session.add(
-            Agent(
-                tenant_id="tenant-1",
-                name="Imported Agent",
-                description="",
-                role="",
-                agent_kind=AgentKind.DIFY_AGENT,
-                scope=AgentScope.ROSTER,
-                source=AgentSource.AGENT_APP,
-                status=AgentStatus.ACTIVE,
-                created_by=_account().id,
-                updated_by=_account().id,
+        for name in existing_names:
+            session.add(
+                Agent(
+                    tenant_id="tenant-1",
+                    name=name,
+                    description="",
+                    role="",
+                    agent_kind=AgentKind.DIFY_AGENT,
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.AGENT_APP,
+                    status=AgentStatus.ACTIVE,
+                    created_by=_account().id,
+                    updated_by=_account().id,
+                )
             )
-        )
     storage = _MemoryStorage()
 
-    with pytest.raises(AgentNameConflictError):
-        RosterAgentPackageImporter(storage_backend=storage).import_package(
-            source=io.BytesIO(_package()),
-            tenant_id="tenant-1",
-            account=_account(),
-        )
+    result = RosterAgentPackageImporter(storage_backend=storage).import_package(
+        source=io.BytesIO(_package(name=requested)),
+        tenant_id="tenant-1",
+        account=_account(),
+    )
 
-    assert storage.files == {}
+    with sqlite_session_factory() as session:
+        app = session.get(App, result.app_id)
+        agent = session.get(Agent, result.agent_id)
+        assert app is not None
+        assert agent is not None
+        assert app.name == agent.name == expected
+        assert _count(session, Agent) == len(existing_names) + 1
+    assert len(storage.files) == 4
 
 
 @pytest.mark.parametrize("fail_after_write", [False, True])
@@ -672,7 +702,7 @@ def test_import_preserves_error_mapping(
     def fail(**_kwargs) -> None:
         raise failure
 
-    monkeypatch.setattr(importer, "_ensure_name_available", fail)
+    monkeypatch.setattr(importer._resources, "materialize", fail)
     with pytest.raises(expected) as caught:
         importer.import_package(source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account())
     if isinstance(failure, expected):
@@ -815,3 +845,55 @@ def test_import_succeeds_when_post_commit_initialization_fails(
         uploaded = session.scalar(select(UploadFile))
         assert uploaded is not None
         assert uploaded.used is True
+
+
+@pytest.mark.parametrize("shared_icon", [False, True])
+@pytest.mark.parametrize("duplicate_name", [False, True])
+def test_import_restores_app_and_agent_image_icons(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    shared_icon: bool,
+    duplicate_name: bool,
+) -> None:
+    with zipfile.ZipFile(io.BytesIO(_package())) as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+    manifest = yaml.safe_load(members["manifest.yaml"])
+    app = yaml.safe_load(members["app.yaml"])
+    app["app"].update(icon_type="image", icon="i_000001")
+    agent_icon = "i_000001" if shared_icon else "i_000002"
+    app["agent_packages"]["agent_1"]["metadata"].update(icon_type="image", icon=agent_icon)
+    manifest["icons"] = []
+    for icon_id in sorted({"i_000001", agent_icon}):
+        payload = f"image-{icon_id}".encode()
+        members[f"{icon_id}.png"] = payload
+        manifest["icons"].append(
+            {
+                "id": icon_id,
+                "path": f"{icon_id}.png",
+                "size": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            }
+        )
+    members["app.yaml"] = yaml.safe_dump(app).encode()
+    manifest["apps"][0].update(size=len(members["app.yaml"]), sha256=hashlib.sha256(members["app.yaml"]).hexdigest())
+    members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
+    storage = _MemoryStorage()
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    importer = RosterAgentPackageImporter(storage_backend=storage)
+    if duplicate_name:
+        importer.import_package(source=io.BytesIO(_zip(members)), tenant_id="destination", account=_account())
+    result = importer.import_package(source=io.BytesIO(_zip(members)), tenant_id="destination", account=_account())
+    with sqlite_session_factory() as session:
+        imported_app = session.get(App, result.app_id)
+        agent = session.get(Agent, result.agent_id)
+        assert imported_app is not None
+        assert agent is not None
+        for owner, original_id in [(imported_app, "i_000001"), (agent, agent_icon)]:
+            assert owner.icon_type == "image"
+            upload = session.get(UploadFile, owner.icon)
+            assert upload is not None
+            assert upload.tenant_id == "destination"
+            assert upload.created_by == _account().id
+            assert storage.files[upload.key] == members[f"{original_id}.png"]
+        assert imported_app.name == agent.name == ("Imported Agent import" if duplicate_name else "Imported Agent")
+        assert (imported_app.icon == agent.icon) is shared_icon

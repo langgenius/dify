@@ -49,7 +49,7 @@ export const AppCard = memo(
     stepByStepTourCardHighlightPart,
     stepByStepTourActionMenuHighlightPart,
   }: AppCardProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['app', 'common', 'time'])
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),
@@ -80,9 +80,9 @@ export const AppCard = memo(
 
       const timeText = formatTime({
         date: timestamp * 1000,
-        dateFormat: `${t(($) => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
+        dateFormat: `${t(($) => $['dateFormats.compact'], { ns: 'time' })}`,
       })
-      return `${t(($) => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
+      return `${t(($) => $.editedAt, { ns: 'common' })} ${timeText}`
     }, [app.updated_at, app.created_at, t])
 
     const appModeLabel = useMemo(() => {

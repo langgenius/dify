@@ -61,13 +61,12 @@ function PopupItem({
   onSelect,
   onHide,
 }: PopupItemProps) {
-  const [modelsOpen, setModelsOpen] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const providerHeadingId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const language = useLanguage()
   const providerLabel = renderI18nObject(model.label, language)
-  const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'common' })
+  const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'modelProvider' })
   const { setShowModelModal } = useModalContext()
   const { data: currentProvider } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
@@ -123,8 +122,7 @@ function PopupItem({
 
   return (
     <Collapsible
-      open={modelsOpen}
-      onOpenChange={setModelsOpen}
+      defaultOpen
       className="mb-1"
       render={<section aria-labelledby={providerHeadingId} />}
     >
@@ -158,7 +156,7 @@ function PopupItem({
                         className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
                       />
                       <span className="ml-1 truncate">
-                        {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}
+                        {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'modelProvider' })}
                       </span>
                     </>
                   ) : (
@@ -168,7 +166,9 @@ function PopupItem({
                         className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
                       />
                       <span className="ml-1 truncate text-text-warning">
-                        {t(($) => $['modelProvider.selector.creditsExhausted'], { ns: 'common' })}
+                        {t(($) => $['modelProvider.selector.creditsExhausted'], {
+                          ns: 'modelProvider',
+                        })}
                       </span>
                     </>
                   )
@@ -181,7 +181,9 @@ function PopupItem({
                   <>
                     <StatusDot size="small" status="disabled" />
                     <span className="ml-1 truncate text-text-tertiary">
-                      {t(($) => $['modelProvider.selector.configureRequired'], { ns: 'common' })}
+                      {t(($) => $['modelProvider.selector.configureRequired'], {
+                        ns: 'modelProvider',
+                      })}
                     </span>
                   </>
                 )}

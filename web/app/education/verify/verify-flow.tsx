@@ -48,7 +48,7 @@ export function EducationVerifyFlow({
 }: {
   requestVerification?: EducationVerificationRequest
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education'])
   const router = useRouter()
   const { data: userEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -196,7 +196,7 @@ function EducationVerifyLoading() {
 }
 
 function EducationVerifiedContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education', 'navigation'])
 
   return (
     <EducationVerifyContent>
@@ -208,7 +208,7 @@ function EducationVerifiedContent() {
         actions={
           <>
             <Link className={buttonVariants({ variant: 'primary' })} href="/?settings=billing">
-              {t(($) => $['settings.billing'], { ns: 'common' })}
+              {t(($) => $['settings.billing'], { ns: 'navigation' })}
             </Link>
             <Link className={buttonVariants({ variant: 'ghost-accent' })} href="/">
               <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
@@ -222,7 +222,7 @@ function EducationVerifiedContent() {
 }
 
 function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
 
   return (
     <EducationVerifyContent>

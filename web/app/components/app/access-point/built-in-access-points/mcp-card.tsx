@@ -1,6 +1,7 @@
 'use client'
 
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
+import type { PublishedWorkflow } from '../shared/utils'
+import type { App } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -30,7 +31,7 @@ import { useAccessPointStatusLabel } from '../shared/use-access-point-status-lab
 import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 
 type MCPAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: App
   canManageAccessPoint: boolean
   highlighted?: boolean
   triggerModeDisabled: boolean
@@ -46,7 +47,7 @@ export function MCPAccessPointCard({
   workflow,
   workflowLoading,
 }: MCPAccessPointCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'common', 'deployments', 'tools'])
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
   const workflowApp = appInfo.mode === AppModeEnum.WORKFLOW

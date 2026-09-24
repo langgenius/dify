@@ -1,16 +1,18 @@
 import logging
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import and_, select
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from models.account import Account
 
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
+from core.entities.model_entities import DefaultModelSetting, ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.entities.provider_entities import CredentialConfiguration
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -70,6 +72,31 @@ class ModelProviderService:
     @staticmethod
     def _get_provider_manager(tenant_id: str) -> ProviderManager:
         return create_plugin_provider_manager(tenant_id=tenant_id)
+
+    def get_default_model_selection(
+        self, tenant_id: str, model_type: ModelType, *, session: Session
+    ) -> tuple[str, str] | None:
+        """Resolve a workspace default without creating or committing a default-model record."""
+        saved_model = session.execute(
+            select(TenantDefaultModel.provider_name, TenantDefaultModel.model_name).where(
+                TenantDefaultModel.tenant_id == tenant_id,
+                TenantDefaultModel.model_type == model_type,
+            )
+        ).one_or_none()
+        if saved_model is not None:
+            return saved_model.provider_name, saved_model.model_name
+
+        try:
+            configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+            available_models = configurations.get_models(model_type=model_type, only_active=True)
+        except Exception:
+            logger.warning("Could not resolve available default model, tenant_id: %s", tenant_id, exc_info=True)
+            return None
+        if not available_models:
+            return None
+
+        first_model = available_models[0]
+        return first_model.provider.provider, first_model.model
 
     def _get_provider_configuration(self, tenant_id: str, provider: str):
         """
@@ -850,6 +877,12 @@ class ModelProviderService:
         model_type_enum = ModelType(model_type)
         self._get_provider_manager(tenant_id).update_default_model_record(
             tenant_id=tenant_id, model_type=model_type_enum, provider=provider, model=model
+        )
+
+    def update_default_models(self, tenant_id: str, model_settings: Sequence[DefaultModelSetting]) -> None:
+        """Replace all configured default models for the workspace."""
+        self._get_provider_manager(tenant_id).replace_default_model_records(
+            tenant_id=tenant_id, model_settings=model_settings
         )
 
     def get_model_provider_icon(

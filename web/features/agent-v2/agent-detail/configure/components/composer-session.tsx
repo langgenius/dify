@@ -73,7 +73,7 @@ export function AgentConfigureComposerScope({
   onRightPanelModeChange: (mode: AgentConfigureRightPanelMode) => void | Promise<unknown>
   onSelectVersion: (versionId: string | null) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const { composerQuery, selectedVersionId, activeVersionId, agentSoulConfig } = configureData
   const soulSourceOverride = useAtomValue(agentConfigureSoulSourceOverrideAtom)
   const setSoulSourceOverride = useSetAtom(agentConfigureSoulSourceOverrideAtom)
@@ -293,8 +293,8 @@ function AgentConfigurePageComposerContent({
     activeConfigSnapshot,
     agentSoulConfig,
   } = configureData
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['modelProvider'])
   const [clearChatByMode, setClearChatByMode] = useState<
     Record<AgentConfigureRightPanelMode, boolean>
   >({
@@ -596,7 +596,9 @@ function AgentConfigurePageComposerContent({
                   rightPanelChatMode === 'build'
                     ? async () => {
                         if (!currentModel?.provider || !currentModel.model) {
-                          toast.error(tCommon(($) => $['modelProvider.selectModel']))
+                          toast.error(
+                            tCommon(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' }),
+                          )
                           throw new Error('Agent model is required.')
                         }
 

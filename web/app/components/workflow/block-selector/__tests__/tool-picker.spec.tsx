@@ -483,13 +483,13 @@ describe('ToolPicker', () => {
     expect(trigger).toHaveFocus()
   })
 
-  it('should link the find-more footer to the marketplace tool category', () => {
+  it('should link the find-more footer to the marketplace tool category', async () => {
     renderToolPicker({
       isShow: true,
       selectedTools: [],
     })
 
-    const footerLink = screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })
+    const footerLink = await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/i })
     expect(footerLink.closest('footer')).toBeInTheDocument()
     expect(footerLink).toHaveAttribute('href', 'https://marketplace.test/plugins/tool')
   })

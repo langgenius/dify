@@ -98,7 +98,7 @@ const MultiSteps = ({
   currentStep: EditStep
   onStepClick?: (step: EditStep) => void
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   return (
     <div className="mb-6 flex w-1/3 items-center gap-2">
       <StatusStep
@@ -117,7 +117,7 @@ const MultiSteps = ({
 }
 
 export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 

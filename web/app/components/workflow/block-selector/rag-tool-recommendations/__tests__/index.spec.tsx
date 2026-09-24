@@ -17,8 +17,8 @@ const moduleReady = vi.hoisted(() => {
 })
 
 // Delay delivery at the framework boundary while keeping the real list and loader.
-vi.mock('@/next/dynamic', async (importOriginal) => {
-  const { default: dynamic } = await importOriginal<typeof import('@/next/dynamic')>()
+vi.mock('next/dynamic', async (importOriginal) => {
+  const { default: dynamic } = await importOriginal<typeof import('next/dynamic')>()
   return {
     default: <P extends object>(
       loader: () => Promise<{ default: ComponentType<P> }>,
@@ -68,7 +68,7 @@ it('can collapse while recommendations load, then reopen and select an installed
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
 
     await user.click(toggle)
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('中文工具')).not.toBeInTheDocument()
 
     await user.click(toggle)

@@ -14,6 +14,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -21,7 +22,6 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
-import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreatorsFilter from '../apps/creators-filter'
@@ -70,7 +70,7 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
 }
 
 const SnippetList = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'navigation'])
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
@@ -192,7 +192,7 @@ const SnippetList = () => {
             <BreadcrumbList className="text-[18px]/[21.6px] font-semibold">
               <BreadcrumbItem>
                 <BreadcrumbLink render={<Link href="/apps" />} className="block truncate">
-                  {t(($) => $['menus.apps'], { ns: 'common' })}
+                  {t(($) => $['menus.apps'], { ns: 'navigation' })}
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-base/6 font-light text-divider-deep" />

@@ -26,7 +26,7 @@ export function MainNavSearchButton({
 }: {
   initialPlatform?: ShortcutPlatform | null
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const displayPlatform = useDisplayPlatform(initialPlatform)
   const ariaKeyShortcuts =
     displayPlatform === null

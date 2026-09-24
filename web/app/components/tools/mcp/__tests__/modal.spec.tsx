@@ -2,6 +2,7 @@ import type { SsoProtocol } from '@dify/contracts/api/console/system-features/ty
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
@@ -681,65 +682,41 @@ describe('MCPModal', () => {
     it('should open app icon picker when app icon is clicked', async () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Find the app icon container with cursor-pointer and rounded-2xl classes
-      const appIconContainer = document.querySelector(
-        '[class*="rounded-2xl"][class*="cursor-pointer"]',
-      )
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
 
-      if (appIconContainer) {
-        fireEvent.click(appIconContainer)
-
-        await waitFor(() => {
-          expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
-        })
-      }
+      expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
 
     it('should close app icon picker and update icon when selecting an icon', async () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Open the icon picker
-      const appIconContainer = document.querySelector(
-        '[class*="rounded-2xl"][class*="cursor-pointer"]',
-      )
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
+      expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
 
-      if (appIconContainer) {
-        fireEvent.click(appIconContainer)
+      fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
-        await waitFor(() => {
-          expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
-        })
-
-        fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
-        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-
-        await waitFor(() => {
-          expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
+      })
     })
 
-    it('should close app icon picker and reset icon when close button is clicked', async () => {
+    it('should close app icon picker and reset icon when Escape is pressed', async () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Open the icon picker
-      const appIconContainer = document.querySelector(
-        '[class*="rounded-2xl"][class*="cursor-pointer"]',
-      )
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
+      expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
 
-      if (appIconContainer) {
-        fireEvent.click(appIconContainer)
+      await user.keyboard('{Escape}')
 
-        await waitFor(() => {
-          expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
-        })
-
-        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
-
-        await waitFor(() => {
-          expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
+      })
     })
   })
 

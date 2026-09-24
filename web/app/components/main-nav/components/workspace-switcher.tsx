@@ -21,7 +21,6 @@ import { WorkspaceMenuItemContent } from './workspace-menu-content'
 const workspaceSwitchActionIconWrapClassName = 'flex size-5 shrink-0 items-center justify-center'
 const workspaceSwitchActionIconClassName = 'size-3.5 shrink-0'
 const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-contain scroll-py-1'
-const workspaceSwitchI18nKey = (key: string) => key as 'mainNav.workspace.settings'
 type WorkspaceSort = 'lastOpened' | 'createdAt'
 
 const getWorkspaceName = (workspace: TenantListItemResponse) => workspace.name || workspace.id
@@ -44,22 +43,22 @@ function WorkspaceSwitchControls({
   onSearchTextChange: (value: string) => void
   onSortChange: (value: WorkspaceSort) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'navigation'])
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
-  const sortMenuLabel = t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.sort.openMenu')], {
-    ns: 'common',
+  const sortMenuLabel = t(($) => $['mainNav.workspace.sort.openMenu'], {
+    ns: 'navigation',
   })
   const sortOptions: Array<{ value: WorkspaceSort; label: string }> = [
     {
       value: 'lastOpened',
-      label: t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.sort.lastOpened')], {
-        ns: 'common',
+      label: t(($) => $['mainNav.workspace.sort.lastOpened'], {
+        ns: 'navigation',
       }),
     },
     {
       value: 'createdAt',
-      label: t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.sort.createdTime')], {
-        ns: 'common',
+      label: t(($) => $['mainNav.workspace.sort.createdTime'], {
+        ns: 'navigation',
       }),
     },
   ]
@@ -133,10 +132,7 @@ function WorkspaceSwitchControls({
           <SearchInput
             value={searchText}
             onValueChange={onSearchTextChange}
-            placeholder={t(
-              ($) => $[workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder')],
-              { ns: 'common' },
-            )}
+            placeholder={t(($) => $['mainNav.workspace.searchPlaceholder'], { ns: 'navigation' })}
             autoFocus
           />
         </div>
@@ -156,7 +152,7 @@ export function WorkspaceSwitcher({
   isPending,
   onSwitchWorkspace,
 }: WorkspaceSwitcherProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'navigation'])
   const workspaceListLabelId = useId()
   const [workspaceSearchText, setWorkspaceSearchText] = useState('')
   const [workspaceSort, setWorkspaceSort] = useState<WorkspaceSort>('lastOpened')
@@ -208,8 +204,8 @@ export function WorkspaceSwitcher({
             role="status"
             className="flex h-8 items-center px-3 system-xs-regular text-text-tertiary"
           >
-            {t(($) => $[workspaceSwitchI18nKey('mainNav.workspace.noResults')], {
-              ns: 'common',
+            {t(($) => $['mainNav.workspace.noResults'], {
+              ns: 'navigation',
             })}
           </div>
         ) : (

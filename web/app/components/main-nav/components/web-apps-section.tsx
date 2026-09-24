@@ -5,15 +5,6 @@ import type {
   InstalledAppResponse,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { InfiniteData } from '@tanstack/react-query'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -24,13 +15,13 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue } from 'jotai'
 import { use, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { browser } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { SearchInput } from '@/app/components/base/search-input'
 import AppNavItem from '@/app/components/explore/installed-app-navigation/app-nav-item'
@@ -67,17 +58,15 @@ type WebAppListRow =
     }
 
 const WebAppsSectionContent = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'explore', 'navigation'])
   const pathname = usePathname()
   const scrollRef = useRef<HTMLDivElement>(null)
-  const sectionToggleRef = useRef<HTMLButtonElement>(null)
   const searchFocusRequestedRef = useRef(false)
   const sectionLabelId = useId()
   const [lastFocusedAppId, setLastFocusedAppId] = useState<string | null>(null)
   const [appsExpanded, setAppsExpanded] = useState(true)
   const [searchVisible, setSearchVisible] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [uninstallDialogAppId, setUninstallDialogAppId] = useState<string | null>(null)
   const normalizedSearchText = searchText.trim()
 
   const installedAppsQuery = useInfiniteQuery(
@@ -97,9 +86,6 @@ const WebAppsSectionContent = () => {
     }),
   )
   const installedApps = installedAppsQuery.data ?? emptyInstalledApps
-  const uninstallAppMutation = useMutation(
-    consoleQuery.installedApps.byInstalledAppId.delete.mutationOptions(),
-  )
   const updatePinStatusMutation = useMutation(
     consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions(),
   )
@@ -152,7 +138,7 @@ const WebAppsSectionContent = () => {
   })
 
   const canLoadMore = !installedAppsQuery.isFetching && !installedAppsQuery.error
-  const noResultsMessage = t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })
+  const noResultsMessage = t(($) => $['mainNav.webApps.noResults'], { ns: 'navigation' })
   const showNoResults =
     !installedAppsQuery.isError &&
     !installedAppsQuery.isFetching &&
@@ -176,22 +162,6 @@ const WebAppsSectionContent = () => {
     input.focus()
   }, [])
 
-  const handleDelete = () => {
-    if (!uninstallDialogAppId) return
-
-    uninstallAppMutation.mutate(
-      {
-        params: { installed_app_id: uninstallDialogAppId },
-      },
-      {
-        onSuccess: () => {
-          setUninstallDialogAppId(null)
-          toast.success(t(($) => $['api.remove'], { ns: 'common' }))
-        },
-      },
-    )
-  }
-
   const handleUpdatePinStatus = (id: string, isPinned: boolean) => {
     updatePinStatusMutation.mutate(
       {
@@ -211,9 +181,7 @@ const WebAppsSectionContent = () => {
     !installedAppsQuery.isPlaceholderData &&
     installedApps.length === 0 &&
     !normalizedSearchText &&
-    !searchVisible &&
-    uninstallDialogAppId === null &&
-    !uninstallAppMutation.isSuccess
+    !searchVisible
   )
     return null
 
@@ -223,10 +191,7 @@ const WebAppsSectionContent = () => {
       onOpenChange={setAppsExpanded}
       className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto_minmax(0,1fr)]"
     >
-      <CollapsibleTrigger
-        ref={sectionToggleRef}
-        className="group/collapsible col-start-1 row-start-1 my-1 ml-2 flex min-h-6 w-fit min-w-0 touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-left system-sm-medium text-text-tertiary outline-hidden select-none hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-      >
+      <CollapsibleTrigger className="group/collapsible col-start-1 row-start-1 my-1 ml-2 flex min-h-6 w-fit min-w-0 touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-left system-sm-medium text-text-tertiary outline-hidden select-none hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid">
         <span id={sectionLabelId} className="system-xs-medium-uppercase">
           {t(($) => $['sidebar.webApps'], { ns: 'explore' })}
         </span>
@@ -254,8 +219,8 @@ const WebAppsSectionContent = () => {
               ref={focusSearchOnAttach}
               value={searchText}
               onValueChange={handleSearchTextChange}
-              placeholder={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'common' })}
-              aria-label={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'common' })}
+              placeholder={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'navigation' })}
+              aria-label={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'navigation' })}
             />
           </div>
         </CollapsiblePanel>
@@ -325,17 +290,13 @@ const WebAppsSectionContent = () => {
                       >
                         {row.kind === 'separator' ? (
                           <div className="flex h-3 items-center px-1">
-                            <Divider className="m-0 h-px bg-divider-subtle" />
+                            <Separator decorative className="m-0 bg-divider-subtle" />
                           </div>
                         ) : (
                           <AppNavItem
                             app={row.app}
                             isSelected={isInstalledAppPath(pathname, row.app.id)}
                             onTogglePin={handleUpdatePinStatus}
-                            onDelete={(id) => {
-                              uninstallAppMutation.reset()
-                              setUninstallDialogAppId(id)
-                            }}
                           />
                         )}
                       </li>
@@ -383,40 +344,6 @@ const WebAppsSectionContent = () => {
           </ScrollAreaScrollbar>
         </ScrollArea>
       </CollapsiblePanel>
-      <AlertDialog
-        open={uninstallDialogAppId !== null}
-        onOpenChange={(open, details) => {
-          if (uninstallAppMutation.isPending) {
-            details.cancel()
-            return
-          }
-          if (!open) setUninstallDialogAppId(null)
-        }}
-      >
-        <AlertDialogContent
-          finalFocus={() => (uninstallAppMutation.isSuccess ? sectionToggleRef.current : true)}
-        >
-          <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
-            <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
-              {t(($) => $['sidebar.delete.title'], { ns: 'explore' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['sidebar.delete.content'], { ns: 'explore' })}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton disabled={uninstallAppMutation.isPending}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={uninstallAppMutation.isPending}
-              onClick={handleDelete}
-            >
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
     </Collapsible>
   )
 }

@@ -91,7 +91,7 @@ describe('human-input/delivery-method/recipient/email-input', () => {
     fireEvent.click(container.querySelector('.max-h-24') as HTMLDivElement)
     expect(input).toHaveAttribute(
       'placeholder',
-      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.placeholder',
+      'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.placeholder',
     )
 
     fireEvent.change(input, { target: { value: 'member' } })

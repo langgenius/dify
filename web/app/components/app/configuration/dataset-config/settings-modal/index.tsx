@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import type { RetrievalTranslate } from './retrieval-section'
 import type { Member } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -14,7 +13,10 @@ import { useQueryState } from 'nuqs'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import {
+  isReRankModelSelected,
+  normalizeRetrievalConfigForSave,
+} from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
@@ -65,8 +67,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       select: (response) => response.data,
     }),
   )
-  const { t } = useTranslation()
-  const translateRetrieval: RetrievalTranslate = (selector, options) => t(selector, options)
+  const { t } = useTranslation(['datasetSettings', 'appDebug', 'common'])
   const docLink = useDocLink()
   const ref = useRef(null)
   const nameInputId = useId()
@@ -139,6 +140,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
     try {
       setLoading(true)
       const { id, name, description, permission } = localeCurrentDataset
+      // Hybrid Search renders no rerank on/off switch, so derive `reranking_enable` from the
+      // selected rerank model on save. See `normalizeRetrievalConfigForSave` for details.
+      const retrievalConfigForSave = normalizeRetrievalConfigForSave(retrievalConfig)
       const requestParams = {
         datasetId: id,
         body: {
@@ -148,9 +152,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
           indexing_technique: indexMethod,
           keyword_number: keywordNumber,
           retrieval_model: {
-            ...retrievalConfig,
-            score_threshold: retrievalConfig.score_threshold_enabled
-              ? retrievalConfig.score_threshold
+            ...retrievalConfigForSave,
+            score_threshold: retrievalConfigForSave.score_threshold_enabled
+              ? retrievalConfigForSave.score_threshold
               : 0,
           },
           embedding_model: localeCurrentDataset.embedding_model,
@@ -346,7 +350,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             isExternal
             rowClass={rowClass}
             labelClass={labelClass}
-            t={translateRetrieval}
+            t={t}
             topK={topK}
             scoreThreshold={scoreThreshold}
             scoreThresholdEnabled={scoreThresholdEnabled}
@@ -358,7 +362,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             isExternal={false}
             rowClass={rowClass}
             labelClass={labelClass}
-            t={translateRetrieval}
+            t={t}
             indexMethod={indexMethod}
             retrievalConfig={retrievalConfig}
             showMultiModalTip={showMultiModalTip}

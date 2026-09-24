@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { mockEmojiData } from '@/test/emoji-picker'
 import EmojiPicker from '../index'
 
@@ -23,8 +24,8 @@ describe('EmojiPicker', () => {
         render(<EmojiPicker open onOpenChange={mockOnOpenChange} />)
       })
       expect(screen.getByRole('dialog', { name: /Emoji/i }))!.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
-      expect(screen.getByText(/Cancel/i))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search'))!.toBeInTheDocument()
+      expect(screen.getByText(/tryYourLuck/i))!.toBeInTheDocument()
       expect(screen.getByText(/OK/i))!.toBeInTheDocument()
     })
 
@@ -55,16 +56,20 @@ describe('EmojiPicker', () => {
       expect(mockOnSelect).toHaveBeenCalledWith(expect.any(String), expect.any(String))
     })
 
-    it('closes when Cancel is clicked', async () => {
-      await act(async () => {
-        render(<EmojiPicker open onOpenChange={mockOnOpenChange} />)
-      })
-
-      const cancelButton = screen.getByText(/Cancel/i)
-      await act(async () => {
-        fireEvent.click(cancelButton)
-      })
-
+    it('randomizes emoji and background without submitting until confirmed', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0)
+      const user = userEvent.setup()
+      render(<EmojiPicker open onOpenChange={mockOnOpenChange} onSelect={mockOnSelect} />)
+      await user.click(screen.getByRole('button', { name: /tryYourLuck/i }))
+      expect(mockOnSelect).not.toHaveBeenCalled()
+      expect(mockOnOpenChange).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: /ok/i })).toBeEnabled()
+      await user.click(screen.getByRole('button', { name: /ok/i }))
+      expect(screen.getByRole('button', { name: '#FFF1F3' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      expect(mockOnSelect).toHaveBeenCalledWith('😃', '#FFF1F3')
       expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     })
   })

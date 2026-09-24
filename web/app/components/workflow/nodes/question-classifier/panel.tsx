@@ -8,16 +8,16 @@ import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import ClassList from '../_base/components/branch-list/class-list'
 import ConfigVision from '../_base/components/config-vision'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import AdvancedSetting from './components/advanced-setting'
-import ClassList from './components/class-list'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.questionClassifiers'
 
 const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowModels'])
 
   const {
     readOnly,
@@ -92,7 +92,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
         />
         <Split />
       </div>
-      <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflow' })}>
+      <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflowModels' })}>
         <AdvancedSetting
           hideMemorySetting={!isChatMode}
           instruction={inputs.instruction}
@@ -114,17 +114,21 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
             <VarItem
               name="class_name"
               type="string"
-              description={t(($) => $[`${i18nPrefix}.outputVars.className`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.className`], {
+                ns: 'workflowModels',
+              })}
             />
             <VarItem
               name="class_label"
               type="string"
-              description={t(($) => $[`${i18nPrefix}.outputVars.classLabel`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.classLabel`], {
+                ns: 'workflowModels',
+              })}
             />
             <VarItem
               name="usage"
               type="object"
-              description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflowModels' })}
             />
           </>
         </OutputVars>

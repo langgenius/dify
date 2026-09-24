@@ -71,7 +71,7 @@ describe('app-publisher sections', () => {
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
     expect(handleRestore).toHaveBeenCalled()
-    expect(screen.getByRole('status')).toHaveTextContent(/common\.currentDraft\b/)
+    expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
 
   it('should disable publish and restore after publishing in the current open session', async () => {
@@ -100,7 +100,7 @@ describe('app-publisher sections', () => {
     })
     expect(restoreButton).toBeDisabled()
     expect(screen.getByRole('button', { name: /common\.published\b/ })).toBeDisabled()
-    expect(screen.getByRole('status')).toHaveTextContent(/common\.upToDate\b/)
+    expect(screen.getByRole('status').textContent).toMatch(/common\.upToDate\b/)
     await user.click(restoreButton)
     expect(handleRestore).not.toHaveBeenCalled()
   })
@@ -126,7 +126,7 @@ describe('app-publisher sections', () => {
     expect(screen.getByText(/(?:^|\.)common\.notPublishedYet(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText('P')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(/common\.currentDraft\b/)
+    expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
 
   it('should expose naming and keep publishing available for an unnamed published workflow', () => {
@@ -227,7 +227,7 @@ describe('app-publisher sections', () => {
     expect(screen.queryByText('#5')).not.toBeInTheDocument()
     expect(screen.queryByText(/versionHistory\.nameIt\b/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /common\.publishUpdate\b/ })).toBeEnabled()
-    expect(screen.getByRole('status')).toHaveTextContent(/common\.currentDraft\b/)
+    expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
 
   it('should keep multiple-model publishing available without publish config changes', () => {

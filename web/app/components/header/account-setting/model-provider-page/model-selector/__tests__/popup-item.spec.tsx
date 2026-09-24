@@ -323,9 +323,9 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-5.5')).toBeInTheDocument()
     expect(screen.getByText('GPT-5')).toBeInTheDocument()
     const modelButton = screen.getByRole('button', {
-      name: /GPT-5\.5.*common.modelProvider.selector.suggestionTip/,
+      name: /GPT-5\.5.*modelProvider.modelProvider.selector.suggestionTip/,
     })
-    const suggestionText = screen.getByText('common.modelProvider.selector.suggestionTip')
+    const suggestionText = screen.getByText('modelProvider.modelProvider.selector.suggestionTip')
     const suggestionIndicator = suggestionText.parentElement
 
     expect(modelButton).toBeInTheDocument()
@@ -336,7 +336,7 @@ describe('PopupItem', () => {
     expect(
       await screen.findByText(
         (content, element) =>
-          content === 'common.modelProvider.selector.suggestionTip' &&
+          content === 'modelProvider.modelProvider.selector.suggestionTip' &&
           !!element &&
           !modelButton.contains(element),
       ),
