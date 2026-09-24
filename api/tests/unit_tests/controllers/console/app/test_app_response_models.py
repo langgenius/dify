@@ -458,6 +458,28 @@ def test_app_detail_preserves_historical_agent_strategy(
     assert response["model_config"]["agent_mode"] == agent_mode
 
 
+def test_app_detail_preserves_historical_agent_mode_without_tools(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    app_obj = _persist_response_graph(sqlite_session)
+    app_obj.mode = AppMode.AGENT_CHAT
+    config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+    assert config is not None
+    agent_mode = {"enabled": True, "max_iteration": 5, "strategy": "function_call"}
+    config.agent_mode = json.dumps(agent_mode)
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+    )
+
+    with app.test_request_context("/"):
+        response = controller._app_detail_response(
+            app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        ).model_dump(mode="json")
+
+    assert response["model_config"]["agent_mode"] == agent_mode
+
+
 def test_app_model_config_response_round_trips_persisted_dataset_and_external_tool_fields(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
@@ -564,6 +586,7 @@ def test_app_detail_rejects_invalid_known_configuration_fields(
     for invalid in (
         {"speech_to_text": {"enabled": "not-a-boolean"}},
         {"agent_mode": {"enabled": True, "strategy": "unsupported", "tools": []}},
+        {"agent_mode": {"enabled": True, "tools": "not-a-list"}},
         {"agent_mode": {"enabled": True, "tools": [{"provider_id": "only-id"}]}},
         {"dataset_configs": {"retrieval_model": "unsupported"}},
         {"dataset_configs": {"retrieval_model": "multiple", "reranking_mode": "unsupported"}},

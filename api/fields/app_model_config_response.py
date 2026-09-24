@@ -225,7 +225,7 @@ class AppAgentPromptResponse(TypedDict, total=False):
 class AppAgentModeResponse(TypedDict):
     enabled: bool
     strategy: NotRequired[PlanningStrategy | Literal["cot", "function-calling"] | None]
-    tools: list[AppAgentToolResponse]
+    tools: NotRequired[list[AppAgentToolResponse]]
     prompt: NotRequired[AppAgentPromptResponse | str | None]
     max_iteration: NotRequired[int]
 

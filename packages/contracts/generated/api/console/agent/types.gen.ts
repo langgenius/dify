@@ -1032,7 +1032,7 @@ export type AppAgentModeResponse = {
   max_iteration?: number
   prompt?: AppAgentPromptResponse | string | null
   strategy?: PlanningStrategy | 'cot' | 'function-calling' | null
-  tools: Array<
+  tools?: Array<
     | AppProviderAgentToolResponse
     | AppLegacyDatasetToolResponse
     | AppLegacyGoogleSearchToolResponse

@@ -3637,17 +3637,19 @@ export const zAppAgentModeResponse = z.object({
   max_iteration: z.int().optional(),
   prompt: z.union([zAppAgentPromptResponse, z.string()]).nullish(),
   strategy: z.union([zPlanningStrategy, z.enum(['cot', 'function-calling'])]).nullish(),
-  tools: z.array(
-    z.union([
-      zAppProviderAgentToolResponse,
-      zAppLegacyDatasetToolResponse,
-      zAppLegacyGoogleSearchToolResponse,
-      zAppLegacyWebReaderToolResponse,
-      zAppLegacyWikipediaToolResponse,
-      zAppLegacyCurrentDatetimeToolResponse,
-      zAppLegacySensitiveWordToolResponseItem,
-    ]),
-  ),
+  tools: z
+    .array(
+      z.union([
+        zAppProviderAgentToolResponse,
+        zAppLegacyDatasetToolResponse,
+        zAppLegacyGoogleSearchToolResponse,
+        zAppLegacyWebReaderToolResponse,
+        zAppLegacyWikipediaToolResponse,
+        zAppLegacyCurrentDatetimeToolResponse,
+        zAppLegacySensitiveWordToolResponseItem,
+      ]),
+    )
+    .optional(),
 })
 
 /**
