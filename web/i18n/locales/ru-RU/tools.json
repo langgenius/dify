@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "После авторизации инструменты будут отображены здесь.",
   "mcp.authorizing": "Авторизация...",
   "mcp.authorizingRequired": "Требуется авторизация",
+  "mcp.configured": "Настроен",
   "mcp.create.cardLink": "Узнайте больше об интеграции MCP сервера",
   "mcp.create.cardTitle": "Добавить MCP сервер (HTTP)",
   "mcp.delete": "Удалить MCP сервер",

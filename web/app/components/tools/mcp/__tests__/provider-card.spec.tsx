@@ -249,7 +249,7 @@ describe('MCPCard', () => {
     it('should show green indicator when authorized and has tools', () => {
       const data = createMockData({ is_team_authorization: true, tools: [{ name: 'tool1' }] })
       render(<MCPCard {...defaultProps} data={data} />, { wrapper: createWrapper() })
-      // Should have green indicator (not showing red badge)
+      expect(screen.getByText('tools.mcp.configured')).toBeInTheDocument()
       expect(screen.queryByText('tools.mcp.noConfigured')).not.toBeInTheDocument()
     })
 

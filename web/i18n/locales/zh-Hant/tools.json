@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "授權後，這裡將顯示工具。",
   "mcp.authorizing": "正在授權...",
   "mcp.authorizingRequired": "需要授權",
+  "mcp.configured": "已設定",
   "mcp.create.cardLink": "了解更多關於 MCP 伺服器集成",
   "mcp.create.cardTitle": "新增 MCP 伺服器 (HTTP)",
   "mcp.delete": "刪除 MCP 伺服器",

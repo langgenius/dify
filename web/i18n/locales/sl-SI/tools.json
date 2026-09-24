@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "Po avtorizaciji bodo orodja prikazana tukaj.",
   "mcp.authorizing": "Avtoriziranje...",
   "mcp.authorizingRequired": "Avtorizacija je zahtevana",
+  "mcp.configured": "Konfigurirano",
   "mcp.create.cardLink": "Več o integraciji strežnika MCP",
   "mcp.create.cardTitle": "Dodaj strežnik MCP (HTTP)",
   "mcp.delete": "Odstrani strežnik MCP",

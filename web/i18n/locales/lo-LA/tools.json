@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "ຫຼັງຈາກການອະນຸຍາດ, ເຄື່ອງມືຈະສະແດງຢູ່ນີ້.",
   "mcp.authorizing": "ກຳລັງອະນຸຍາດ...",
   "mcp.authorizingRequired": "ຈຳເປັນຕ້ອງມີການອະນຸຍາດ",
+  "mcp.configured": "ຕັ້ງຄ່າແລ້ວ",
   "mcp.create.cardLink": "ຮຽນຮູ້ເພີ່ມເຕີມກ່ຽວກັບການເຊື່ອມຕໍ່ເຊີເວີ MCP",
   "mcp.create.cardTitle": "ເພີ່ມເຊີເວີ MCP (HTTP)",
   "mcp.delete": "ລຶບເຊີເວີ MCP",

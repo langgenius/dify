@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "หลังจากอนุญาต เครื่องมือจะถูกแสดงที่นี่",
   "mcp.authorizing": "กำลังอนุญาต...",
   "mcp.authorizingRequired": "ต้องมีการอนุญาต",
+  "mcp.configured": "กำหนดค่าแล้ว",
   "mcp.create.cardLink": "เรียนรู้เพิ่มเติมเกี่ยวกับการรวมเซิร์ฟเวอร์ MCP",
   "mcp.create.cardTitle": "เพิ่มเซิร์ฟเวอร์ MCP (HTTP)",
   "mcp.delete": "ลบเซิร์ฟเวอร์ MCP",

@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "Sau khi ủy quyền, công cụ sẽ hiển thị tại đây.",
   "mcp.authorizing": "Đang ủy quyền...",
   "mcp.authorizingRequired": "Cần ủy quyền",
+  "mcp.configured": "Đã cấu hình",
   "mcp.create.cardLink": "Tìm hiểu thêm về tích hợp máy chủ MCP",
   "mcp.create.cardTitle": "Thêm Máy chủ MCP (HTTP)",
   "mcp.delete": "Xóa Máy chủ MCP",

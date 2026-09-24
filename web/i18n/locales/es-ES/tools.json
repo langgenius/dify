@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "Tras la autorización, las herramientas se mostrarán aquí.",
   "mcp.authorizing": "Autorizando...",
   "mcp.authorizingRequired": "Se requiere autorización",
+  "mcp.configured": "Configurado",
   "mcp.create.cardLink": "Más información sobre integración de servidores MCP",
   "mcp.create.cardTitle": "Añadir servidor MCP (HTTP)",
   "mcp.delete": "Eliminar servidor MCP",

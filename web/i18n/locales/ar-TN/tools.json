@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "بعد التفويض، سيتم عرض الأدوات هنا.",
   "mcp.authorizing": "جارٍ التفويض...",
   "mcp.authorizingRequired": "التفويض مطلوب",
+  "mcp.configured": "مُهيأ",
   "mcp.create.cardLink": "تعرف على المزيد حول تكامل خادم MCP",
   "mcp.create.cardTitle": "إضافة خادم MCP (HTTP)",
   "mcp.delete": "إزالة خادم MCP",

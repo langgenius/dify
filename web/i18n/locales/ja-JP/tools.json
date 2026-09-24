@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "承認後、このページにツールが表示されるようになります。",
   "mcp.authorizing": "承認中...",
   "mcp.authorizingRequired": "承認が必要です。",
+  "mcp.configured": "設定済み",
   "mcp.create.cardLink": "MCP サーバー統合について詳しく知る",
   "mcp.create.cardTitle": "MCP サーバー（HTTP）を追加",
   "mcp.delete": "MCP サーバーを削除",

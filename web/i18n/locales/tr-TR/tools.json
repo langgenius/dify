@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "Yetkilendirmeden sonra araçlar burada görüntülenecektir.",
   "mcp.authorizing": "Yetkilendiriliyor...",
   "mcp.authorizingRequired": "Yetkilendirme gerekli",
+  "mcp.configured": "Yapılandırıldı",
   "mcp.create.cardLink": "MCP sunucu entegrasyonu hakkında daha fazla bilgi edinin",
   "mcp.create.cardTitle": "MCP Sunucusu Ekle (HTTP)",
   "mcp.delete": "MCP Sunucusunu Kaldır",

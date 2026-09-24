@@ -4633,6 +4633,7 @@ export default interface Resources {
     'mcp.authorizeTip': 'After authorization, tools will be displayed here.'
     'mcp.authorizing': 'Authorizing...'
     'mcp.authorizingRequired': 'Authorization is required'
+    'mcp.configured': 'Configured'
     'mcp.create.cardLink': 'Learn more about MCP server integration'
     'mcp.create.cardTitle': 'Add MCP Server (HTTP)'
     'mcp.delete': 'Delete MCP Server'

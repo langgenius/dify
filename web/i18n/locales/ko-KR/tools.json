@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "권한 부여 후 도구가 여기에 표시됩니다.",
   "mcp.authorizing": "권한 부여 중...",
   "mcp.authorizingRequired": "권한이 필요합니다",
+  "mcp.configured": "구성됨",
   "mcp.create.cardLink": "MCP 서버 통합에 대해 자세히 알아보기",
   "mcp.create.cardTitle": "MCP 서버 추가 (HTTP)",
   "mcp.delete": "MCP 서버 제거",

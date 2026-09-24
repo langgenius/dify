@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "अधिकृत होने के बाद, टूल यहाँ प्रदर्शित होंगे।",
   "mcp.authorizing": "अधिकृत किया जा रहा है...",
   "mcp.authorizingRequired": "प्राधिकरण आवश्यक है",
+  "mcp.configured": "कॉन्फ़िगर किया गया",
   "mcp.create.cardLink": "MCP सर्वर एकीकरण के बारे में अधिक जानें",
   "mcp.create.cardTitle": "MCP सर्वर जोड़ें (HTTP)",
   "mcp.delete": "MCP सर्वर हटाएँ",

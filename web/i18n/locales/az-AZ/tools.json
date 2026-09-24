@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "İcazə verildikdən sonra alətlər burada göstəriləcək.",
   "mcp.authorizing": "İcazə verilir...",
   "mcp.authorizingRequired": "İcazə tələb olunur",
+  "mcp.configured": "Konfiqurasiya edilib",
   "mcp.create.cardLink": "MCP serverinin inteqrasiyası haqqında ətraflı öyrən",
   "mcp.create.cardTitle": "MCP serveri əlavə et (HTTP)",
   "mcp.delete": "MCP serverini sil",

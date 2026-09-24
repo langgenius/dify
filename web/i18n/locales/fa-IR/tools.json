@@ -103,6 +103,7 @@
   "mcp.authorizeTip": "پس از مجوزدهی، ابزارها در اینجا نمایش داده می‌شوند.",
   "mcp.authorizing": "در حال مجوزدهی...",
   "mcp.authorizingRequired": "مجوز مورد نیاز است",
+  "mcp.configured": "پیکربندی‌شده",
   "mcp.create.cardLink": "اطلاعات بیشتر درباره یکپارچه‌سازی سرور MCP",
   "mcp.create.cardTitle": "افزودن سرور MCP (HTTP)",
   "mcp.delete": "حذف سرور MCP",
