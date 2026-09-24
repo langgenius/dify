@@ -90,7 +90,7 @@ const InputField: React.FC<InputFieldProps> = ({
     const name = tempPayload.output_variable_name.trim()
     if (!name) return null
     if (name.includes(' ')) return 'variableNameInvalid'
-    if (!/^[a-z_]\w{0,29}$/.test(name)) return 'variableNameInvalid'
+    if (!/^[a-z_]\w{0,29}$/i.test(name)) return 'variableNameInvalid'
     if (unavailableVariableNameSet.has(name)) return 'variableNameDuplicated'
     return null
   }, [tempPayload.output_variable_name, unavailableVariableNameSet])
