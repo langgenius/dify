@@ -42,6 +42,7 @@ from services.app_creation_records import create_installed_app_record, create_si
 from services.app_service import AppService
 from services.entities.dsl_entities import DslImportWarning
 from services.entities.site_dsl import SiteDsl, apply_site_dsl
+from services.feature_service import FeatureService
 from services.icon_configuration import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE, is_valid_image_icon
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,10 @@ class RosterAgentPackageImporter:
 
             check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
             try:
+                # Resolve billing before uploading package members or opening the write transaction.
+                allow_premium_site_settings = app_dsl.site is None or FeatureService.can_import_premium_site_settings(
+                    tenant_id
+                )
                 icons = self._resources.materialize_icons(
                     archive=package, icons=package.manifest.icons, tenant_id=tenant_id, account_id=account.id
                 )
@@ -114,6 +119,7 @@ class RosterAgentPackageImporter:
                     metadata=agent_package.metadata,
                     app_metadata=app_metadata,
                     site_data=site_data,
+                    allow_premium_site_settings=allow_premium_site_settings,
                     soul=resolved_soul,
                 )
             except Exception as exc:
@@ -151,6 +157,7 @@ class RosterAgentPackageImporter:
         soul: AgentSoulConfig,
         app_metadata: AgentPackageMetadata | None = None,
         site_data: SiteDsl | None = None,
+        allow_premium_site_settings: bool,
     ) -> tuple[str, str]:
         with session_factory.create_session() as session, session.begin():
             name = AgentDslService(session).unique_roster_name(tenant_id=tenant_id, requested=metadata.name)
@@ -233,7 +240,13 @@ class RosterAgentPackageImporter:
                 site = app.site_with_session(session=session)
                 if site is None:
                     raise RuntimeError("Imported App Site is unavailable")
-                apply_site_dsl(site=site, app=app, data=site_data, session=session)
+                apply_site_dsl(
+                    site=site,
+                    app=app,
+                    data=site_data,
+                    session=session,
+                    allow_premium_settings=allow_premium_site_settings,
+                )
             create_installed_app_record(app=app, session=session)
             return app.id, agent.id
 
