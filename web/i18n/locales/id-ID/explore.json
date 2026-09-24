@@ -34,6 +34,7 @@
   "sidebar.action.rename": "Ganti nama",
   "sidebar.action.unpin": "Lepaskan sematan",
   "sidebar.webApps": "Aplikasi web",
+  "tryApp.agentConfiguration": "Konfigurasi Agen",
   "tryApp.agentSetupHint": "Anda dapat mengaturnya setelah membuat aplikasi.",
   "tryApp.category": "Kategori",
   "tryApp.createFromSampleApp": "Buat dari aplikasi contoh ini",

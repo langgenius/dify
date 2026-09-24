@@ -34,6 +34,7 @@
   "sidebar.action.rename": "Yeniden Adlandır",
   "sidebar.action.unpin": "Sabitlemeyi Kaldır",
   "sidebar.webApps": "Web uygulamaları",
+  "tryApp.agentConfiguration": "Ajan yapılandırması",
   "tryApp.agentSetupHint": "Bunları uygulamayı oluşturduktan sonra ayarlayabilirsiniz.",
   "tryApp.category": "Kategori",
   "tryApp.createFromSampleApp": "Bu örnek uygulamadan oluştur",

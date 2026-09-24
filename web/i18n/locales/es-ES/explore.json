@@ -34,6 +34,7 @@
   "sidebar.action.rename": "Renombrar",
   "sidebar.action.unpin": "Desanclar",
   "sidebar.webApps": "Aplicaciones web",
+  "tryApp.agentConfiguration": "Configuración del agente",
   "tryApp.agentSetupHint": "Puedes configurarlos después de crear la aplicación.",
   "tryApp.category": "Categoría",
   "tryApp.createFromSampleApp": "Crear desde esta aplicación de ejemplo",

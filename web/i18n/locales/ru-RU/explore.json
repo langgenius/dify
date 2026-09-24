@@ -34,6 +34,7 @@
   "sidebar.action.rename": "Переименовать",
   "sidebar.action.unpin": "Открепить",
   "sidebar.webApps": "Веб-приложения",
+  "tryApp.agentConfiguration": "Конфигурация агента",
   "tryApp.agentSetupHint": "Вы сможете настроить это после создания приложения.",
   "tryApp.category": "Категория",
   "tryApp.createFromSampleApp": "Создать из этого примера приложения",

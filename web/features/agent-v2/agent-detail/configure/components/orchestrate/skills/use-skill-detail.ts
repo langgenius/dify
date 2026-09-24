@@ -10,9 +10,9 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
+import { getDriveFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
-import { getDriveFileIconType } from '../files/file-icon'
 
 const skillFileContentQueryKey = (url?: string) => ['agent-v2', 'skill-file-content', url] as const
 

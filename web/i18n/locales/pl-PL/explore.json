@@ -34,6 +34,7 @@
   "sidebar.action.rename": "Zmień nazwę",
   "sidebar.action.unpin": "Odepnij",
   "sidebar.webApps": "Aplikacje internetowe",
+  "tryApp.agentConfiguration": "Konfiguracja agenta",
   "tryApp.agentSetupHint": "Możesz je skonfigurować po utworzeniu aplikacji.",
   "tryApp.category": "Kategoria",
   "tryApp.createFromSampleApp": "Utwórz z tej przykładowej aplikacji",

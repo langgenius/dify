@@ -18,6 +18,7 @@ import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
+import { CollectionType } from '@/app/components/tools/types'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import {
   addProviderToolsAtom,
@@ -26,9 +27,16 @@ import {
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useInvalidateAllBuiltInTools } from '@/service/use-tools'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+  useInvalidateAllBuiltInTools,
+} from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 import {
+  createAgentToolProviderCatalog,
   getAgentProviderPluginId,
   getAgentProviderToolDisplayName,
   getLocalizedText,
@@ -185,7 +193,7 @@ function useDisplayTools(
       }
 
       const providerToolByName = new Map(
-        provider.tools.map((providerTool) => [providerTool.name, providerTool]),
+        (provider.tools ?? []).map((providerTool) => [providerTool.name, providerTool]),
       )
       const providerCredentialType = getProviderCredentialType(provider)
 
@@ -247,7 +255,9 @@ function AddToolMenuItem({
       />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1">
-          <span className="truncate system-sm-semibold text-text-secondary">{label}</span>
+          <span className="truncate system-sm-semibold text-text-secondary" title={label}>
+            {label}
+          </span>
           {badge && (
             <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
               {badge}
@@ -590,6 +600,26 @@ export function AgentTemplateTools() {
   const labelId = useId()
   const tools = useAtomValue(agentComposerToolsAtom)
   const visibleTools = ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')
+  const providerTypes = new Set(
+    visibleTools.filter((tool) => tool.kind === 'provider').map((tool) => tool.providerType),
+  )
+  const { data: buildInTools } = useAllBuiltInTools(
+    providerTypes.has(CollectionType.builtIn) || providerTypes.has('plugin'),
+  )
+  const { data: customTools } = useAllCustomTools(providerTypes.has(CollectionType.custom))
+  const { data: workflowTools } = useAllWorkflowTools(providerTypes.has(CollectionType.workflow))
+  const { data: mcpTools } = useAllMCPTools(providerTypes.has(CollectionType.mcp))
+  const catalog = useMemo(
+    () => createAgentToolProviderCatalog({ buildInTools, customTools, workflowTools, mcpTools }),
+    [buildInTools, customTools, workflowTools, mcpTools],
+  )
+  const presentation = useAgentToolPresentation(visibleTools, catalog)
+  const displayTools = useDisplayTools(
+    visibleTools,
+    catalog.providerById,
+    catalog.resolvedProviderTypes,
+    presentation,
+  )
 
   return (
     <ConfigureSection
@@ -598,17 +628,17 @@ export function AgentTemplateTools() {
       rootClassName="border-b border-divider-subtle pt-4"
       panelContentClassName="flex flex-col gap-1 pb-4"
     >
-      {visibleTools.length === 0 ? (
+      {displayTools.length === 0 ? (
         <ConfigureSectionEmpty
           title={t(($) => $['agentDetail.configure.tools.empty.title'])}
           description={t(($) => $['agentDetail.configure.tools.empty.description'])}
         />
       ) : (
-        visibleTools.map((tool) => (
+        displayTools.map((tool, index) => (
           <AgentToolItem
             key={tool.id}
-            tool={tool.kind === 'provider' ? { ...tool, isInstalled: true } : tool}
-            defaultExpanded
+            tool={tool.kind === 'provider' ? { ...tool, isInstalled: undefined } : tool}
+            defaultExpanded={index === 0}
             onConfigureAction={noop}
             onDeleteCliTool={noop}
             onDeleteProviderTool={noop}

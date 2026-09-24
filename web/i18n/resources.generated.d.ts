@@ -3122,6 +3122,7 @@ export default interface Resources {
     'sidebar.action.rename': 'Rename'
     'sidebar.action.unpin': 'Unpin'
     'sidebar.webApps': 'Web apps'
+    'tryApp.agentConfiguration': 'Agent Configuration'
     'tryApp.agentSetupHint': 'You can set these up after creating the app.'
     'tryApp.category': 'Category'
     'tryApp.createFromSampleApp': 'Create from this sample app'

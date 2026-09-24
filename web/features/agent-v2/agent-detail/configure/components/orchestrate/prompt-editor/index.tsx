@@ -1206,9 +1206,17 @@ export function AgentTemplatePromptEditor() {
       className="flex flex-col gap-2 border-b border-divider-subtle pb-4"
       aria-labelledby={labelId}
     >
-      <h3 id={labelId} className="system-sm-semibold-uppercase text-text-secondary">
-        {t(($) => $['agentDetail.configure.prompt.label'])}
-      </h3>
+      <div className="flex items-center gap-0.5">
+        <h3 id={labelId} className="system-sm-semibold-uppercase text-text-secondary">
+          {t(($) => $['agentDetail.configure.prompt.label'])}
+        </h3>
+        <Infotip>
+          <InfotipTrigger aria-labelledby={labelId} />
+          <InfotipContent aria-labelledby={labelId} className="max-w-64">
+            <AgentConfigureTipContent type="prompt" />
+          </InfotipContent>
+        </Infotip>
+      </div>
       <PromptEditor
         instanceId="agent-template-prompt"
         aria-labelledby={labelId}

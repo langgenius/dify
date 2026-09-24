@@ -34,6 +34,7 @@
   "sidebar.action.rename": "Redenumire",
   "sidebar.action.unpin": "Deblocați",
   "sidebar.webApps": "Aplicații web",
+  "tryApp.agentConfiguration": "Configurarea agentului",
   "tryApp.agentSetupHint": "Le poți configura după crearea aplicației.",
   "tryApp.category": "Categorie",
   "tryApp.createFromSampleApp": "Creați din această aplicație exemplu",

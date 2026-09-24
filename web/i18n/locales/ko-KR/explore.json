@@ -34,6 +34,7 @@
   "sidebar.action.rename": "이름 변경",
   "sidebar.action.unpin": "고정 해제",
   "sidebar.webApps": "웹 앱",
+  "tryApp.agentConfiguration": "에이전트 구성",
   "tryApp.agentSetupHint": "앱을 만든 후 설정할 수 있습니다.",
   "tryApp.category": "카테고리",
   "tryApp.createFromSampleApp": "이 샘플 앱에서 만들기",
