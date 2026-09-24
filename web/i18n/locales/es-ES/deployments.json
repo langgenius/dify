@@ -73,6 +73,8 @@
   "studio.noCredentialsYetDescription": "Añade credenciales en Integraciones o en la configuración del nodo",
   "studio.precheck.description": "Contiene tipos de nodos que aún no son compatibles:",
   "studio.precheck.from": "De",
+  "studio.precheck.nodeCount_many": "{{count}} nodos",
+  "studio.precheck.nodeCount_one": "{{count}} nodo",
   "studio.precheck.nodeCount_other": "{{count}} nodos",
   "studio.precheck.supportMessage": "La compatibilidad con estos tipos de nodos estará disponible en una versión futura.",
   "studio.precheck.title": "Esta versión no se puede implementar en este entorno",
@@ -84,6 +86,7 @@
   "studio.undeployConfirmTitle": "Retirar {{versionName}} de {{envName}}",
   "studio.updatedAtBy": "Actualizado el {{time}} por {{name}}",
   "studio.versionValue": "Valor de la versión",
+  "studio.versionsBehind_many": "{{count}} versiones por detrás",
   "studio.versionsBehind_one": "{{count}} versión por detrás",
   "studio.versionsBehind_other": "{{count}} versiones por detrás",
   "versions.deployTo": "Desplegar a {{name}}"

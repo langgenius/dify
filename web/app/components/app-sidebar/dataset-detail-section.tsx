@@ -68,7 +68,13 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   const navigation = useMemo(() => {
     if (!datasetId) return []
 
-    const baseNavigation = [
+    const baseNavigation: {
+      name: string
+      href: string
+      icon: string
+      selectedIcon: string
+      disabled: boolean
+    }[] = [
       {
         name: t(($) => $['datasetMenus.hitTesting'], { ns: 'common' }),
         href: `/datasets/${datasetId}/hitTesting`,

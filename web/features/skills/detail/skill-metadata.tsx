@@ -327,7 +327,7 @@ export function SkillReferencesPanel({
           embedded ? 'w-full px-1' : 'w-max',
         )}
       >
-        {t(($) => $['skillManagement.detail.referencedBy_other'], { count: 0 })}
+        {t(($) => $['skillManagement.detail.referencedBy'], { count: 0 })}
       </div>
     )
   }
@@ -461,13 +461,9 @@ export function SkillPublishConfirmPanel({
           {t(($) => $['skillManagement.detail.publishReferencesTitle'])}
         </h2>
         <p className="mt-0.5 px-1 system-xs-regular text-util-colors-warning-warning-600">
-          {t(
-            ($) =>
-              referenceCount === 1
-                ? $['skillManagement.detail.publishReferencesDescription_one']
-                : $['skillManagement.detail.publishReferencesDescription_other'],
-            { count: referenceCount },
-          )}
+          {t(($) => $['skillManagement.detail.publishReferencesDescription'], {
+            count: referenceCount,
+          })}
         </p>
       </div>
       <div className="px-4 py-2">

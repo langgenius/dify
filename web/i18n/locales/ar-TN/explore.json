@@ -36,7 +36,9 @@
   "sidebar.webApps": "تطبيقات الويب",
   "tryApp.category": "الفئة",
   "tryApp.createFromSampleApp": "إنشاء من هذا التطبيق النموذجي",
+  "tryApp.loadError": "تعذّر تحميل هذا القالب",
   "tryApp.requirements": "المتطلبات",
+  "tryApp.retrying": "جارٍ إعادة المحاولة…",
   "tryApp.tabHeader.detail": "تفاصيل التنسيق",
   "tryApp.tabHeader.try": "جرب",
   "tryApp.tryInfo": "هذا تطبيق نموذجي. يمكنك تجربة ما يصل إلى 5 رسائل. لمواصلة استخدامه، انقر فوق \"إنشاء من هذا التطبيق النموذجي\" وقم بإعداده!"

@@ -36,7 +36,9 @@
   "sidebar.webApps": "Web uygulamaları",
   "tryApp.category": "Kategori",
   "tryApp.createFromSampleApp": "Bu örnek uygulamadan oluştur",
+  "tryApp.loadError": "Bu şablon yüklenemedi",
   "tryApp.requirements": "Gereksinimler",
+  "tryApp.retrying": "Yeniden deneniyor…",
   "tryApp.tabHeader.detail": "Orkestrasyon Detayları",
   "tryApp.tabHeader.try": "Deneyin",
   "tryApp.tryInfo": "Bu bir örnek uygulamadır. 5 mesaja kadar deneyebilirsiniz. Kullanmaya devam etmek için \"Bu örnek uygulamadan oluştur\" seçeneğine tıklayın ve ayarlayın!"

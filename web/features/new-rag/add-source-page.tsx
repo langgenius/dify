@@ -412,7 +412,7 @@ function ConnectionForm({
       </div>
       {error && (
         <p role="alert" className="mt-3 system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.connectionFailed'])}
+          {t(($) => $['newKnowledge.connectionFailed'], { provider: FIRECRAWL_CONNECTION_NAME })}
         </p>
       )}
       <Button
@@ -425,7 +425,7 @@ function ConnectionForm({
         <span id={connectButtonLabelId}>
           {pending
             ? t(($) => $['newKnowledge.connectingProvider'])
-            : t(($) => $['newKnowledge.connectProvider'])}
+            : t(($) => $['newKnowledge.connectProvider'], { provider: FIRECRAWL_CONNECTION_NAME })}
         </span>
       </Button>
     </form>
@@ -529,7 +529,9 @@ function ConnectionProblem({
   return (
     <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
       <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionNeedsAttention'])}
+        {t(($) => $['newKnowledge.connectionNeedsAttention'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </h3>
       <p className="mt-1 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.connectionNeedsAttentionDescription'])}
@@ -581,7 +583,9 @@ function ProvisioningConnection({
   return (
     <div className="rounded-xl bg-background-section p-4">
       <p className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionProvisioning'])}
+        {t(($) => $['newKnowledge.connectionProvisioning'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">

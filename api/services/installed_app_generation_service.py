@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Protocol
 
 from libs.datetime_utils import naive_utc_now
-from services.app_definition_query_service import AppDefinitionQueryService
 from services.installed_app_access_service import InstalledAppRef
 
 
@@ -46,23 +45,30 @@ class InstalledAppGenerationRuntime(Protocol):
         streaming: bool,
     ) -> GenerationResponse: ...
 
+    def generate_more_like_this(
+        self,
+        *,
+        app_id: str,
+        account_id: str,
+        message_id: str,
+        streaming: bool,
+    ) -> GenerationResponse: ...
+
 
 class InstalledAppGenerationService:
     def __init__(
         self,
         *,
-        app_definitions: AppDefinitionQueryService,
         usage: InstalledAppUsageRecorder,
         runtime: InstalledAppGenerationRuntime,
     ) -> None:
-        self._app_definitions: AppDefinitionQueryService = app_definitions
         self._usage: InstalledAppUsageRecorder = usage
         self._runtime: InstalledAppGenerationRuntime = runtime
 
     def generate_completion(
         self, *, installed_app: InstalledAppRef, account_id: str, args: Mapping[str, object]
     ) -> GenerationResponse:
-        if self._app_definitions.get_mode(installed_app.app_id) != "completion":
+        if installed_app.app_mode != "completion":
             raise InstalledAppNotCompletionError(f"App {installed_app.app_id} is not a completion app")
 
         return self._generate(
@@ -75,15 +81,34 @@ class InstalledAppGenerationService:
     def generate_chat(
         self, *, installed_app: InstalledAppRef, account_id: str, args: Mapping[str, object]
     ) -> GenerationResponse:
-        if self._app_definitions.get_mode(installed_app.app_id) not in {"chat", "agent-chat", "advanced-chat"}:
+        if installed_app.app_mode not in {"chat", "agent-chat", "advanced-chat"}:
             raise InstalledAppNotChatError(f"App {installed_app.app_id} is not a chat app")
 
         return self._generate(installed_app=installed_app, account_id=account_id, args=args, streaming=True)
 
+    def generate_more_like_this(
+        self,
+        *,
+        installed_app: InstalledAppRef,
+        account_id: str,
+        message_id: str,
+        streaming: bool,
+    ) -> GenerationResponse:
+        if installed_app.app_mode != "completion":
+            raise InstalledAppNotCompletionError(f"App {installed_app.app_id} is not a completion app")
+
+        # Regenerating an earlier message does not record installation usage.
+        return self._runtime.generate_more_like_this(
+            app_id=installed_app.app_id,
+            account_id=account_id,
+            message_id=message_id,
+            streaming=streaming,
+        )
+
     def generate_workflow(
         self, *, installed_app: InstalledAppRef, account_id: str, args: Mapping[str, object]
     ) -> GenerationResponse:
-        if self._app_definitions.get_mode(installed_app.app_id) != "workflow":
+        if installed_app.app_mode != "workflow":
             raise InstalledAppNotWorkflowError(f"App {installed_app.app_id} is not a workflow app")
 
         # Workflow runs do not update installation usage or add chat naming options.

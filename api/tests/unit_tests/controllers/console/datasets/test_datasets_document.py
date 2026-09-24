@@ -580,6 +580,46 @@ class TestDatasetInitApi(_UsesSQLiteSession):
         assert response["batch"] == "batch-init"
         assert created_dataset.permission == DatasetPermissionEnum.ALL_TEAM
 
+    def test_post_success_syncs_creator_access_on_upload_create(self, app: Flask, patch_tenant):
+        """RBAC: the console upload create must keep the creator bound to their own dataset.
+
+        Regression guard for the #42430 flip to automatic_include_workspace_members=False:
+        unlike POST /console/api/datasets (DatasetService.create_empty_dataset syncs the
+        creator internally), this path bypasses that helper, so the controller has to sync
+        the creator explicitly or the creator gets 403 on their own dataset.
+        """
+        api = DatasetInitApi()
+        method = unwrap(api.post)
+        user, tenant_id = patch_tenant
+        payload = {"indexing_technique": "economy"}
+        created_dataset = make_dataset()
+        created_document = make_document(id="doc-init")
+        session = self.session
+        captured = {}
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            config_overrides_context(RBAC_ENABLED=True),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.save_document_without_dataset_id",
+                return_value=(created_dataset, [created_document], "batch-init"),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
+            ) as sync_creator,
+        ):
+            response = method(api, session, tenant_id, user)
+        captured["sync_calls"] = sync_creator.call_args_list
+        assert sync_creator.called, "upload create must sync the creator's own access byte-through"
+        assert response["dataset"]["id"] == "ds-1"
+
 
 class TestDocumentResource(_UsesSQLiteSession):
     def test_get_document_resolves_owner_chain(self, dataset):

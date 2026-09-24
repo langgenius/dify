@@ -79,7 +79,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
                   plugin: pluginDetail?.declaration.label
                     ? renderI18nObject(pluginDetail?.declaration.label)
                     : undefined,
-                  strategy: inputs.agent_strategy_label,
+                  strategy: inputs.agent_strategy_label ?? inputs.agent_strategy_name,
                 })
               : undefined
           }
