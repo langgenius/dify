@@ -72,6 +72,11 @@ def test_native_qdrant_fulltext_roundtrip_authorized_ranking_retry_and_delete(qd
         matches = execute_text_request(qdrant, request("search", ids=[A, C], query=query))["matches"]
         assert [m["id"] for m in matches] == [A]
         assert matches[0]["score"] > 0
+    assert not execute_text_request(qdrant, request("search", ids=[A, B, C], query="refund vacation"))["matches"]
+    assert [
+        m["id"]
+        for m in execute_text_request(qdrant, request("search", ids=[A, B, C], query="refund policy"))["matches"]
+    ] == [A]
     ranked = execute_text_request(qdrant, request("search", ids=[A, B, C], query="refund"))["matches"]
     assert [m["id"] for m in ranked] == [B, A]
     assert not execute_text_request(qdrant, request("search", ids=[A], query="missing"))["matches"]

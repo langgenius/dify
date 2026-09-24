@@ -48,6 +48,15 @@ def test_fulltext_native_write_search_isolation_retry_and_delete(monkeypatch, ba
             assert not execute_text_request(
                 store, request("search", ids=[p["id"] for p in points], query="absentword")
             )["matches"]
+            assert not execute_text_request(
+                store, request("search", ids=[p["id"] for p in points], query="refund vacation")
+            )["matches"]
+            assert [
+                m["id"]
+                for m in execute_text_request(
+                    store, request("search", ids=[p["id"] for p in points], query="refund policy")
+                )["matches"]
+            ] == [points[0]["id"]]
             for key in scope:
                 isolated = TextPayload.model_validate(
                     {"operation": "get", "scope": {**scope, key: str(uuid4())}, "ids": [points[0]["id"]]}

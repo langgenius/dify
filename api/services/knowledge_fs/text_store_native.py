@@ -80,7 +80,10 @@ class ElasticsearchTextStore:
                 source=False,
                 allow_partial_search_results=False,
                 query={
-                    "bool": {"must": [{"match": {"text": payload.query}}], "filter": [{"ids": {"values": payload.ids}}]}
+                    "bool": {
+                        "must": [{"match": {"text": {"query": payload.query, "operator": "and"}}}],
+                        "filter": [{"ids": {"values": payload.ids}}],
+                    }
                 },
             )
             if result.get("timed_out") or result.get("_shards", {}).get("failed", 0):
@@ -109,7 +112,7 @@ class WeaviateTextStore:
             Tokenization,
         )
         from weaviate.classes.data import DataObject
-        from weaviate.classes.query import Filter, MetadataQuery
+        from weaviate.classes.query import BM25Operator, Filter, MetadataQuery
 
         name = payload.scope.collection_name.capitalize()
         description = "KnowledgeFS full-text v1; whitespace tokens; BM25"
@@ -167,6 +170,7 @@ class WeaviateTextStore:
             objects = collection.query.bm25(
                 query=payload.query,
                 query_properties=["text"],
+                operator=BM25Operator.and_(),
                 filters=Filter.by_id().contains_any(payload.ids),
                 limit=payload.limit,
                 return_metadata=MetadataQuery(score=True),
@@ -262,7 +266,10 @@ class QdrantTextStore:
                 query_filter=m.Filter(
                     must=[
                         m.HasIdCondition(has_id=list(payload.ids)),
-                        m.FieldCondition(key="terms", match=m.MatchAny(any=sorted(set(payload.query.split())))),
+                        *[
+                            m.FieldCondition(key="terms", match=m.MatchValue(value=term))
+                            for term in sorted(set(payload.query.split()))
+                        ],
                     ]
                 ),
                 limit=payload.limit,

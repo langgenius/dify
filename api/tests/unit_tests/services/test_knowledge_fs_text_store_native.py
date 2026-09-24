@@ -37,7 +37,12 @@ def test_es_fulltext_uses_native_match_bm25_filtered_ids_and_refresh(es):
     assert execute_text_request(es, request("get", ids=[A]))["points"] == [point()]
     assert execute_text_request(es, request("search", ids=[A], query="refund"))["matches"] == [{"id": A, "score": 2.0}]
     args = es.client.search.call_args.kwargs
-    assert args["query"] == {"bool": {"must": [{"match": {"text": "refund"}}], "filter": [{"ids": {"values": [A]}}]}}
+    assert args["query"] == {
+        "bool": {
+            "must": [{"match": {"text": {"query": "refund", "operator": "and"}}}],
+            "filter": [{"ids": {"values": [A]}}],
+        }
+    }
     assert args["allow_partial_search_results"] is False
     assert es.client.bulk.call_args.kwargs["refresh"] == "wait_for"
     es.client.bulk.return_value = {"items": [{"delete": {"status": 200}}]}

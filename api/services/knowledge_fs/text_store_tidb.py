@@ -123,13 +123,20 @@ class TidbTextStore:
                 return {"points": self._get(payload), "matches": []}
             elif payload.operation == "search":
                 placeholders = ",".join(["%s"] * len(payload.ids))
+                # FTS_MATCH_WORD ranks with OR semantics. Preserve KnowledgeFS's
+                # all-terms matching before top-k using exact normalized token boundaries.
+                terms = sorted(set(payload.query.split()))
+                patterns = [
+                    "% " + term.replace("!", "!!").replace("%", "!%").replace("_", "!_") + " %" for term in terms
+                ]
+                token_filter = " AND ".join(["CONCAT(' ',text,' ') LIKE %s ESCAPE '!'" for _ in terms])
                 # TiDB otherwise picks Batch_Point_Get for the authorized UUID list;
                 # that TiKV plan cannot execute FTS_MATCH_WORD (error 1815).
                 cursor.execute(
                     f"SELECT /*+ READ_FROM_STORAGE(TIFLASH[{name}]) */ id, fts_match_word(%s,text) AS score "
                     f"FROM `{name}` IGNORE INDEX (PRIMARY) WHERE fts_match_word(%s,text) "
-                    f"AND id IN ({placeholders}) ORDER BY score DESC LIMIT %s",
-                    (payload.query, payload.query, *payload.ids, payload.limit),
+                    f"AND id IN ({placeholders}) AND {token_filter} ORDER BY score DESC LIMIT %s",
+                    (payload.query, payload.query, *payload.ids, *patterns, payload.limit),
                 )
                 return {
                     "points": [],

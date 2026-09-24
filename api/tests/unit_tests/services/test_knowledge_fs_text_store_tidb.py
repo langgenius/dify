@@ -38,8 +38,9 @@ def test_native_tidb_ddl_write_readback_query_and_delete(store):
     sql, params = cursor.execute.call_args.args
     assert "IGNORE INDEX (PRIMARY)" in sql
     assert "READ_FROM_STORAGE(TIFLASH[" in sql
+    assert "CONCAT(' ',text,' ') LIKE %s ESCAPE '!'" in sql
     assert "id IN (%s)" in sql
-    assert params == ("退 款", "退 款", A, 10)
+    assert params == ("退 款", "退 款", A, "% 款 %", "% 退 %", 10)
     cursor.fetchall.return_value = []
     execute_text_request(store, request("delete", ids=[A]))
     cursor.fetchall.return_value = [(A, GENERATION, point()["content_hash"], point()["text"])]
