@@ -51,7 +51,7 @@ const Prompt: FC<ISimplePromptInput> = ({
   editorHeight: initEditorHeight,
   noResize,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const titleId = useId()
   const title =
     mode !== AppModeEnum.COMPLETION
@@ -207,15 +207,9 @@ const Prompt: FC<ISimplePromptInput> = ({
               </h2>
               {!readonly && (
                 <Infotip>
-                  <InfotipTrigger
-                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                    className="ml-1"
-                  />
-                  <InfotipContent
-                    aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                    className="w-45"
-                  >
-                    {t(($) => $.promptTip, { ns: 'appDebug' })}
+                  <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+                  <InfotipContent aria-labelledby={titleId} className="w-45">
+                    {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
                   </InfotipContent>
                 </Infotip>
               )}

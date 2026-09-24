@@ -8,7 +8,7 @@ type ToolDetailProps = {
   payload: ToolInfoInThought
 }
 const ToolDetail = ({ payload }: ToolDetailProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'tools'])
   const { name, label, input, isFinished, output } = payload
   const toolLabel = name.startsWith('dataset_') ? t(($) => $.knowledge, { ns: 'dataset' }) : label
   const [expand, setExpand] = useState(false)

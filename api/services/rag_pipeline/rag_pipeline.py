@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
@@ -1528,11 +1527,7 @@ class RagPipelineService:
         workflow = self.get_published_workflow(pipeline)
         if not workflow:
             raise ValueError("Workflow not found")
-        PipelineGenerator(
-            file_uploads=application_services().file_uploads,
-            files=application_services().files,
-            index_processor=application_services().knowledge_index,
-        ).generate(
+        application_services().create_pipeline_generator().generate(
             session=self._session,
             pipeline=pipeline,
             workflow=workflow,

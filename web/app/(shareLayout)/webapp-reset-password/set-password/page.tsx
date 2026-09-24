@@ -17,7 +17,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')

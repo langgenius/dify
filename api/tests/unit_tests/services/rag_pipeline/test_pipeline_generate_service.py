@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.ext_application_services import application_services
 from models.dataset import Dataset, Document, Pipeline
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import Account, App, AppMode, EndUser
@@ -144,6 +145,7 @@ def test_generate_updates_document_status_and_returns_event_stream(
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
     generator_instance = generator_cls.return_value
+    mocker.patch.object(application_services(), "create_pipeline_generator", return_value=generator_instance)
     generator_instance.generate.return_value = "raw-events"
     generator_cls.convert_to_event_stream.return_value = "stream-events"
 
@@ -258,6 +260,7 @@ def test_generate_single_iteration_delegates(mocker: MockerFixture, sqlite_sessi
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
     generator_instance = generator_cls.return_value
+    mocker.patch.object(application_services(), "create_pipeline_generator", return_value=generator_instance)
     generator_instance.single_iteration_generate.return_value = "raw-iter"
     generator_cls.convert_to_event_stream.return_value = "stream-iter"
 
@@ -281,6 +284,7 @@ def test_generate_single_loop_delegates(mocker: MockerFixture, sqlite_session: S
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
     generator_instance = generator_cls.return_value
+    mocker.patch.object(application_services(), "create_pipeline_generator", return_value=generator_instance)
     generator_instance.single_loop_generate.return_value = "raw-loop"
     generator_cls.convert_to_event_stream.return_value = "stream-loop"
 

@@ -7,10 +7,10 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from core.file.uploads import FileUploadData
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from repositories.file_repository import SQLAlchemyFileRepository
-from services.file_upload_service import FileUploadData
 
 
 @pytest.mark.parametrize("role", [CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])

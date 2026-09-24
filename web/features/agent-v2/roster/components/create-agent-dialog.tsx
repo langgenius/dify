@@ -49,8 +49,8 @@ function CreateAgentFormSession({
   onCancel,
   onSubmit,
 }: CreateAgentFormSessionProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(defaultAgentIcon)
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
@@ -99,7 +99,7 @@ function CreateAgentFormSession({
 }
 
 export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps = {}) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)

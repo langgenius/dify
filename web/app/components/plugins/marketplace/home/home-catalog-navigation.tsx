@@ -27,7 +27,7 @@ function HomeCatalogNavigation({
   catalogTrailing,
   isMarketplacePlatform,
 }: HomeCatalogNavigationProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const isPinned = useAtomValue(homeCatalogPinnedAtom)
   const setIsPinned = useSetAtom(homeCatalogPinnedAtom)
   const isPinnedRef = useRef(isPinned)

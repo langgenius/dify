@@ -1,11 +1,11 @@
 """Create document processors with application-scoped dependencies."""
 
+from core.file.uploads import FileUploadWriter
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.index_processor.processor.qa_index_processor import QAIndexProcessor
-from services.file_upload_service import FileUploadWriter
 
 
 class IndexProcessorFactory:

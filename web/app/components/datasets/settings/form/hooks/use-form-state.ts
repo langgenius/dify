@@ -33,7 +33,7 @@ const DEFAULT_APP_ICON: IconInfo = {
 }
 
 export const useFormState = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'datasetSettings'])
   const currentDataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)
   const { data: currentUserId } = useSuspenseQuery({

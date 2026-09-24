@@ -67,7 +67,7 @@ const emptyPlaceholderCardIds = Array.from(
 )
 
 function AgentRosterSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -111,7 +111,7 @@ function AgentRosterPlaceholderState({
   role?: 'alert' | 'status'
   title: string
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div
@@ -171,9 +171,9 @@ function AgentCardActionMenuItems({
   onEdit,
   onExport,
 }: AgentCardActionMenuItemsProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tApp } = useTranslation(['app'])
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
   const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
 
@@ -209,8 +209,8 @@ function AgentCardActionMenuItems({
 }
 
 function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tApp } = useTranslation('app')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
   const nameId = useId()
   const descriptionId = useId()
@@ -218,6 +218,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const [activeDialog, setActiveDialog] = useState<'delete' | 'duplicate' | 'edit' | null>(null)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const capabilities = getAgentACLCapabilities(agent.permission_keys)
+  const isPreviewOnly = agent.permission_keys?.length === 1 && capabilities.canPreview
   const canDuplicate = useCanCreateAgents() && capabilities.canPreview
   const hasActions =
     capabilities.canEdit ||
@@ -281,6 +282,10 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     })
   }
 
+  const showPreviewOnlyAccessWarning = () => {
+    toast.warning(tApp(($) => $.noAccessResourcePermission))
+  }
+
   const cardContent = (
     <>
       <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
@@ -325,7 +330,12 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     <li
       aria-labelledby={nameId}
       aria-describedby={defaultSection ? undefined : accessibleDescriptionIds || undefined}
-      className="group relative isolate col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt"
+      className={cn(
+        "group relative isolate col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
+        isPreviewOnly
+          ? 'opacity-60'
+          : 'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 [@media(hover:none)]:bg-components-card-bg-alt',
+      )}
     >
       <ContextMenu>
         <ContextMenuTrigger
@@ -339,6 +349,16 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               >
                 {cardContent}
               </Link>
+            ) : isPreviewOnly ? (
+              <button
+                type="button"
+                aria-labelledby={nameId}
+                aria-describedby={accessibleDescriptionIds || undefined}
+                className={cn(cardClassName, 'w-full cursor-not-allowed text-left')}
+                onClick={showPreviewOnlyAccessWarning}
+              >
+                {cardContent}
+              </button>
             ) : (
               <div className={cardClassName}>{cardContent}</div>
             )
@@ -443,8 +463,8 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
 }
 
 export function AgentRosterList({ label, state }: AgentRosterListProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
 
   return (

@@ -13,6 +13,7 @@ import core.workflow.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.file.uploads import FileUploadWriter
 from core.repositories.factory import (
     WorkflowNodeExecutionQuery,
     WorkflowNodeExecutionRepositories,
@@ -45,7 +46,6 @@ from models.account import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import Workflow, WorkflowType
-from services.file_upload_service import FileUploadService
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
@@ -295,7 +295,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
 
     resumed_state = GraphRuntimeState.from_snapshot(snapshot)
 
-    generator = wf_app_gen_module.WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+    generator = wf_app_gen_module.WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
 
     def _fake_generate(**kwargs):
         state: GraphRuntimeState = kwargs["graph_runtime_state"]
@@ -341,7 +341,7 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbo
 
     resumed_state = GraphRuntimeState.from_snapshot(snapshot)
 
-    generator = adv_app_gen_module.AdvancedChatAppGenerator(file_uploads=Mock(spec=FileUploadService))
+    generator = adv_app_gen_module.AdvancedChatAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
 
     def _fake_generate(**kwargs):
         state: GraphRuntimeState = kwargs["graph_runtime_state"]

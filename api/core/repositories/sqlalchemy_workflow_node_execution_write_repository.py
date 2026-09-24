@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from configs import dify_config
+from core.file.uploads import FileUploadActor, FileUploadWriter
 from core.repositories.factory import WorkflowNodeExecutionWriter
 from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from graphon.entities import WorkflowNodeExecution
@@ -31,7 +32,6 @@ from models import (
 )
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionOffload
-from services.file_upload_service import FileUploadActor, FileUploadService
 from services.variable_truncator import VariableTruncator
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ class SQLAlchemyWorkflowNodeExecutionWriteRepository(WorkflowNodeExecutionWriter
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
         *,
-        file_uploads: FileUploadService,
+        file_uploads: FileUploadWriter,
     ) -> None:
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.

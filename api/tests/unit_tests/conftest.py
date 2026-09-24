@@ -285,6 +285,9 @@ def file_upload_services(
     from functools import partial
     from types import SimpleNamespace
 
+    from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+    from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
     from core.indexing_runner import IndexingRunner
     from services.file_service import FileStorage
     from tests.file_service_test_utils import make_file_service
@@ -303,5 +306,10 @@ def file_upload_services(
             index_processors=index_processors,
             knowledge_index=knowledge_index,
             create_indexing_runner=partial(IndexingRunner, index_processors=index_processors),
+            create_advanced_chat_app_generator=partial(AdvancedChatAppGenerator, file_uploads=file_uploads),
+            create_workflow_app_generator=partial(WorkflowAppGenerator, file_uploads=file_uploads),
+            create_pipeline_generator=partial(
+                PipelineGenerator, files=file_uploads, file_uploads=file_uploads, index_processor=knowledge_index
+            ),
         ),
     )

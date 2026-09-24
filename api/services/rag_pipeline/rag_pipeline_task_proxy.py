@@ -5,10 +5,10 @@ from functools import cached_property
 
 from configs import dify_config
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
+from core.file.uploads import FileTextWriter
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
 from services.feature_service import FeatureService
-from services.file_service import FileService
 from tasks.rag_pipeline.priority_rag_pipeline_run_task import priority_rag_pipeline_run_task
 from tasks.rag_pipeline.rag_pipeline_run_task import rag_pipeline_run_task
 
@@ -25,7 +25,7 @@ class RagPipelineTaskProxy:
         user_id: str,
         rag_pipeline_invoke_entities: Sequence[RagPipelineInvokeEntity],
         *,
-        files: FileService,
+        files: FileTextWriter,
     ) -> None:
         self._files = files
         self._dataset_tenant_id = dataset_tenant_id

@@ -242,7 +242,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   },
   checkValid(
     payload: PluginTriggerNodeType,
-    t: TFunction<'workflow'>,
+    t: TFunction<['workflow']>,
     moreDataForCheckValid: {
       triggerInputsSchema?: Array<{
         variable: string

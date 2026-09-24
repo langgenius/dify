@@ -14,6 +14,7 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.file.uploads import FileUploadWriter
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionWriteRepository
 from core.repositories.factory import WorkflowNodeExecutionRepositories
@@ -26,7 +27,6 @@ from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from services.file_upload_service import FileUploadService
 from tests.file_service_test_utils import make_file_upload_service
 from tests.unit_tests.model_factories import make_workflow
 
@@ -197,7 +197,7 @@ def test_ensure_snippet_start_node_in_worker_applies_snippet_start_injection(
 def test_generate_includes_parent_trace_context_in_extras(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    generator = WorkflowAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+    generator = WorkflowAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
 
     monkeypatch.setattr(
@@ -290,7 +290,7 @@ def test_resume_delegates_to_generate(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    generator = WorkflowAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+    generator = WorkflowAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     mock_generate = MagicMock(return_value="ok")
     monkeypatch.setattr(generator, "_generate", mock_generate)
@@ -337,7 +337,7 @@ def test_generate_appends_pause_layer_and_forwards_state(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    generator = WorkflowAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+    generator = WorkflowAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
 
     queue_manager = MagicMock()
@@ -356,7 +356,7 @@ def test_generate_appends_pause_layer_and_forwards_state(
     get_draft_var_saver_factory = WorkflowAppGenerator._get_draft_var_saver_factory
 
     def get_recording_draft_var_saver_factory(
-        invoke_from: InvokeFrom, account: EndUser, *, tenant_id: str, file_uploads: FileUploadService
+        invoke_from: InvokeFrom, account: EndUser, *, tenant_id: str, file_uploads: FileUploadWriter
     ) -> DraftVariableSaverFactory:
         draft_factory_tenant_ids.append(tenant_id)
         return get_draft_var_saver_factory(invoke_from, account, tenant_id=tenant_id, file_uploads=file_uploads)
@@ -429,7 +429,7 @@ def test_resume_path_runs_worker_with_runtime_state(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    generator = WorkflowAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+    generator = WorkflowAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     workflow_run = WorkflowRun(
         id="run",

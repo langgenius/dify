@@ -47,13 +47,13 @@ from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
     PipelineRunApi,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.file.uploads import FileUploadActor, FileUploadResult
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset, Pipeline
 from models.enums import CreatorUserRole
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.errors.file import UnsupportedFileTypeError
-from services.file_upload_service import FileUploadActor, FileUploadResult
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
     PipelineRunApiEntity,
@@ -710,8 +710,8 @@ class TestFileUploadApiPost:
         )
 
         mock_file_svc_instance = Mock()
-        mock_file_svc_instance.upload_file.return_value = upload
-        mock_application_services.return_value.files = mock_file_svc_instance
+        mock_file_svc_instance.upload_file_for_actor.return_value = upload
+        mock_application_services.return_value.file_uploads = mock_file_svc_instance
 
         file_data = FileStorage(
             stream=io.BytesIO(b"fake pdf content"),
@@ -734,9 +734,9 @@ class TestFileUploadApiPost:
         assert status == 201
         assert response["name"] == "doc.pdf"
         assert response["extension"] == "pdf"
-        kwargs = mock_file_svc_instance.upload_file.call_args.kwargs
-        assert kwargs["user"] == FileUploadActor(id=current_account.id, creator_role=CreatorUserRole.ACCOUNT)
-        assert kwargs["tenant_id"] == tenant_id
+        kwargs = mock_file_svc_instance.upload_file_for_actor.call_args.kwargs
+        assert kwargs["actor"] == FileUploadActor(id=current_account.id, creator_role=CreatorUserRole.ACCOUNT)
+        assert kwargs["resource_tenant_id"] == tenant_id
 
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FeatureService"
@@ -751,7 +751,9 @@ class TestFileUploadApiPost:
     def test_upload_file_too_large_returns_http_413(
         self, current_account, mock_application_services, mock_get_limit, app: Flask, sqlite_engine
     ):
-        mock_application_services.return_value.files.upload_file.side_effect = FileTooLargeServiceError()
+        mock_application_services.return_value.file_uploads.upload_file_for_actor.side_effect = (
+            FileTooLargeServiceError()
+        )
         file_data = FileStorage(
             stream=io.BytesIO(b"oversized content"),
             filename="doc.pdf",

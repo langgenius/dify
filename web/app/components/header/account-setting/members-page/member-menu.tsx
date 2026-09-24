@@ -42,7 +42,7 @@ const MemberMenu = ({
   allowMultipleRoles = true,
   onTransferOwnership,
 }: MemberMenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)

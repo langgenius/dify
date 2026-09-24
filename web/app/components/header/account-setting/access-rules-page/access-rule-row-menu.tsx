@@ -31,7 +31,7 @@ type AccessRuleRowMenuProps = {
 }
 
 const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 

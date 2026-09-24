@@ -6,10 +6,10 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 
 from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import PipelineUploadFileResponse
+from core.file.uploads import FileUploadResult
 from extensions.storage.storage_type import StorageType
 from libs.helper import dump_response
 from models.enums import CreatorUserRole
-from services.file_upload_service import FileUploadResult
 
 
 def _upload_file(*, created_at: datetime) -> FileUploadResult:

@@ -17,11 +17,9 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.schema import event_stream_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
 from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
@@ -93,8 +91,6 @@ class WorkflowEventsApi(Resource):
     @service_api_ns.response(200, "SSE event stream", service_api_ns.models[EventStreamResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
     def get(self, app_model: App, end_user: EndUser, workflow_run_id: str):
-        from extensions.ext_application_services import application_services
-
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
             raise NotWorkflowAppError()
@@ -136,13 +132,6 @@ class WorkflowEventsApi(Resource):
             event_generator = _generate_finished_events
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
-            if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator(file_uploads=application_services().file_uploads)
-            elif app_mode == AppMode.WORKFLOW:
-                generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
-            else:
-                raise NotWorkflowAppError()
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
@@ -150,7 +139,7 @@ class WorkflowEventsApi(Resource):
 
             def _generate_stream_events():
                 if include_state_snapshot:
-                    return generator.convert_to_event_stream(
+                    return BaseAppGenerator.convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,
                             workflow_run=workflow_run_entity,
@@ -161,7 +150,7 @@ class WorkflowEventsApi(Resource):
                             close_on_pause=not continue_on_pause,
                         )
                     )
-                return generator.convert_to_event_stream(
+                return BaseAppGenerator.convert_to_event_stream(
                     msg_generator.retrieve_events(
                         app_mode,
                         workflow_run_entity.id,

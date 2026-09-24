@@ -11,7 +11,7 @@ export function CurrentDraftItem({
   isLast: boolean
   onSelect: () => void
 }) {
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t: tWorkflow } = useTranslation(['workflow'])
 
   return (
     <button

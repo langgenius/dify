@@ -21,7 +21,7 @@ type CommentIconProps = {
 
 export const CommentIcon: FC<CommentIconProps> = memo(
   ({ comment, onClick, isActive = false, onPositionUpdate }) => {
-    const { t } = useTranslation('workflow')
+    const { t } = useTranslation(['workflow'])
     const descriptionId = useId()
     const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
     const viewport = useViewport()

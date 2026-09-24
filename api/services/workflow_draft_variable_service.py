@@ -16,6 +16,7 @@ from sqlalchemy.sql.expression import and_, or_
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
+from core.file.uploads import FileUploadActor, FileUploadWriter
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import (
@@ -47,7 +48,6 @@ from models.enums import ConversationFromSource, CreatorUserRole, DraftVariableT
 from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
 from repositories.factory import DifyAPIRepositoryFactory
-from services.file_upload_service import FileUploadActor, FileUploadService
 from services.variable_truncator import VariableTruncator
 
 logger = logging.getLogger(__name__)
@@ -881,7 +881,7 @@ class DraftVariableSaver:
         user: Account,
         enclosing_node_id: str | None = None,
         *,
-        file_uploads: FileUploadService,
+        file_uploads: FileUploadWriter,
     ) -> None:
         # Important: `node_execution_id` parameter refers to the primary key (`id`) of the
         # WorkflowNodeExecutionModel/WorkflowNodeExecution, not their `node_execution_id`

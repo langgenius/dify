@@ -35,14 +35,8 @@ def make_file_service(
     files = SQLAlchemyFileRepository(session_factory=session_factory)
     file_storage = storage if storage is not None else default_storage
     signer = sign_file_url if sign_file_url is not None else file_helpers.get_signed_file_url
-    uploads = make_file_upload_service(
-        session_factory,
-        storage=file_storage,
-        sign_file_url=signer,
-    )
     return FileService(
         files=files,
-        uploads=uploads,
         storage=file_storage,
         storage_type=dify_config.STORAGE_TYPE,
         extract_text=extract_text if extract_text is not None else extract_file_text,

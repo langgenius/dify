@@ -30,7 +30,7 @@ export function EmailRecipientsField({
   onChange,
   disabled = false,
 }: EmailRecipientsFieldProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const internalInputRef = useRef<HTMLInputElement>(null)
   const chipButtonRef = useRef<Array<HTMLButtonElement | null>>([])
   const selectDraftOnRenderRef = useRef(false)

@@ -8,7 +8,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useBoolean } from 'ahooks'
 import { $insertNodes } from 'lexical'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { $createCustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
@@ -20,7 +20,7 @@ import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 const i18nPrefix = 'nodes.agent'
 
 function AgentTaskToolbar({ taskLength, onInsert }: { taskLength: number; onInsert: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
 
   const handleInsert = useCallback(() => {
@@ -68,7 +68,9 @@ export function AgentTaskField({
   onOutputsChange: (outputs: DeclaredOutputConfig[], prompt?: string) => void
   onEditOutput?: (name: string, outputType: AgentOutputTypeOptionValue) => void
 }) {
-  const { t } = useTranslation()
+  const taskLabelId = useId()
+
+  const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const getVarType = useWorkflowVariableType()
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id)
@@ -94,16 +96,15 @@ export function AgentTaskField({
   return (
     <Field name="agent_task" className="gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-1">
-        <FieldLabel className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary">
+        <FieldLabel
+          id={taskLabelId}
+          className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary"
+        >
           {t(($) => $[`${i18nPrefix}.task.label`], { ns: 'workflow' })}
         </FieldLabel>
         <Infotip>
-          <InfotipTrigger
-            aria-label={t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}
-          />
-          <InfotipContent
-            aria-label={t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}
-          >
+          <InfotipTrigger aria-labelledby={taskLabelId} />
+          <InfotipContent aria-labelledby={taskLabelId}>
             {t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}{' '}
             <a
               href={docLink('/use-dify/nodes/agent#give-it-a-task')}

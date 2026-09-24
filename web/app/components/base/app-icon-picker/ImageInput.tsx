@@ -22,7 +22,7 @@ type UploaderProps = {
 }
 
 const ImageInput: FC<UploaderProps> = ({ className, cropShape, onImageInput }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
   const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
   useEffect(() => {

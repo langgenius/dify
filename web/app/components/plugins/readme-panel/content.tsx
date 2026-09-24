@@ -2,13 +2,14 @@
 
 import type { ReactNode } from 'react'
 import type { ReadmePanelState } from './store'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { resolveDatasourceIcon } from '@/app/components/rag-pipeline/utils/datasource-icon'
 import { useGetLanguage } from '@/context/i18n'
-import { usePluginReadme } from '@/service/use-plugins'
+import { consoleQuery } from '@/service/console'
 import Icon from '../card/base/card-icon'
 import Description from '../card/base/description'
 import OrgInfo from '../card/base/org-info'
@@ -22,19 +23,27 @@ type ReadmePanelContentProps = {
 }
 
 export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const language = useLanguage()
   const locale = useGetLanguage()
-  const pluginUniqueIdentifier = detail.plugin_unique_identifier || ''
+  const pluginUniqueIdentifier = detail.plugin_unique_identifier
 
   const {
     data: readmeData,
     isLoading,
     error,
-  } = usePluginReadme({
-    plugin_unique_identifier: pluginUniqueIdentifier,
-    language: language === 'zh-Hans' ? undefined : language,
-  })
+  } = useQuery(
+    consoleQuery.workspaces.current.plugin.readme.get.queryOptions({
+      input: pluginUniqueIdentifier
+        ? {
+            query: {
+              plugin_unique_identifier: pluginUniqueIdentifier,
+              language,
+            },
+          }
+        : skipToken,
+    }),
+  )
 
   let readmeContent: ReactNode
   if (isLoading) {

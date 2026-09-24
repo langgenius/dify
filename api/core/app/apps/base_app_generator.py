@@ -14,6 +14,7 @@ from core.app.apps.draft_variable_saver import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.file.uploads import FileUploadWriter
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.enums import NodeType
@@ -21,7 +22,6 @@ from graphon.file import File, FileUploadConfig
 from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
 from models import Account, EndUser, Workflow, WorkflowRun
-from services.file_upload_service import FileUploadService
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ class _DebuggerDraftVariableSaver:
         self,
         *,
         account: Account,
-        file_uploads: FileUploadService,
+        file_uploads: FileUploadWriter,
         tenant_id: str,
         app_id: str,
         node_id: str,
@@ -338,7 +338,7 @@ class BaseAppGenerator:
         account: Account | EndUser,
         *,
         tenant_id: str,
-        file_uploads: FileUploadService,
+        file_uploads: FileUploadWriter,
     ) -> DraftVariableSaverFactory:
         if invoke_from == InvokeFrom.DEBUGGER:
             assert isinstance(account, Account)

@@ -11,6 +11,7 @@ from sqlalchemy import Engine, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.file.uploads import FileUploadWriter
 from core.repositories.sqlalchemy_workflow_node_execution_write_repository import (
     SQLAlchemyWorkflowNodeExecutionWriteRepository,
 )
@@ -21,7 +22,6 @@ from graphon.entities.workflow_node_execution import (
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-from services.file_upload_service import FileUploadService
 from tests.unit_tests.model_factories import make_account, make_tenant
 
 
@@ -65,7 +65,7 @@ def _account() -> Account:
 @pytest.fixture
 def repository(conflict_database: ConflictDatabase) -> SQLAlchemyWorkflowNodeExecutionWriteRepository:
     return SQLAlchemyWorkflowNodeExecutionWriteRepository(
-        file_uploads=Mock(spec=FileUploadService),
+        file_uploads=Mock(spec=FileUploadWriter),
         session_factory=conflict_database.session_factory,
         tenant_id="test-tenant-id",
         user=_account(),

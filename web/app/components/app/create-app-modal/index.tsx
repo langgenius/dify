@@ -49,7 +49,7 @@ const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
 }
 
 function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { push } = useRouter()
   const nameInputId = useId()
 
@@ -433,7 +433,7 @@ const CreateAppModal = ({
   onCreateFromTemplate,
   defaultAppMode,
 }: CreateAppDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <CreateAppDialogShell
@@ -482,7 +482,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
 }
 
 function AppPreview({ mode }: { mode: AppModeEnum }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const previewInfo = (() => {
     switch (mode) {
       case AppModeEnum.CHAT:

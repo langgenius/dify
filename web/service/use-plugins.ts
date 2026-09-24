@@ -1499,14 +1499,6 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
-export const useMutationCheckDependencies = () => {
-  return useMutation({
-    mutationFn: (appId: string) => {
-      return get<{ leaked_dependencies: Dependency[] }>(`/apps/imports/${appId}/check-dependencies`)
-    },
-  })
-}
-
 export const useFetchDynamicOptions = (
   plugin_id: string,
   provider: string,
@@ -1527,46 +1519,5 @@ export const useFetchDynamicOptions = (
           ...extra,
         },
       }),
-  })
-}
-
-export const usePluginReadme = ({
-  plugin_unique_identifier,
-  language,
-}: {
-  plugin_unique_identifier: string
-  language?: string
-}) => {
-  return useQuery({
-    queryKey: ['pluginReadme', plugin_unique_identifier, language],
-    queryFn: () =>
-      get<{ readme: string }>(
-        '/workspaces/current/plugin/readme',
-        { params: { plugin_unique_identifier, language } },
-        { silent: true },
-      ),
-    enabled: !!plugin_unique_identifier,
-    retry: 0,
-  })
-}
-
-export const usePluginReadmeAsset = ({
-  file_name,
-  plugin_unique_identifier,
-}: {
-  file_name?: string
-  plugin_unique_identifier?: string
-}) => {
-  const normalizedFileName = file_name?.replace(/^\.\/_assets\//, '').replace(/^_assets\//, '')
-  const isAssetFile = file_name?.startsWith('./_assets') || file_name?.startsWith('_assets')
-  return useQuery({
-    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, normalizedFileName],
-    queryFn: () =>
-      get<Blob>(
-        '/workspaces/current/plugin/asset',
-        { params: { plugin_unique_identifier, file_name: normalizedFileName } },
-        { silent: true },
-      ),
-    enabled: !!plugin_unique_identifier && !!isAssetFile,
   })
 }

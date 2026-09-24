@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.file.uploads import FileUploadActor, FileUploadWriter
 from core.repositories.sqlalchemy_workflow_node_execution_write_repository import (
     SQLAlchemyWorkflowNodeExecutionWriteRepository,
     _deterministic_json_dump,
@@ -30,7 +31,7 @@ from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 from repositories.file_repository import SQLAlchemyFileRepository
-from services.file_upload_service import FileUploadActor, FileUploadService, FileUploadStorage
+from services.file_upload_service import FileUploadService, FileUploadStorage
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 
 
@@ -112,7 +113,7 @@ def _repository(
     triggered_from: WorkflowNodeExecutionTriggeredFrom | None = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
 ) -> SQLAlchemyWorkflowNodeExecutionWriteRepository:
     return SQLAlchemyWorkflowNodeExecutionWriteRepository(
-        file_uploads=Mock(spec=FileUploadService),
+        file_uploads=Mock(spec=FileUploadWriter),
         session_factory=factory,
         tenant_id=tenant_id,
         user=user or _account(tenant_id=tenant_id),
@@ -153,7 +154,7 @@ def test_init_accepts_real_engine_and_sessionmaker_and_sets_role(
 def test_init_rejects_invalid_factory_and_missing_tenant() -> None:
     with pytest.raises(ValueError, match="Invalid session_factory type"):
         SQLAlchemyWorkflowNodeExecutionWriteRepository(
-            file_uploads=Mock(spec=FileUploadService),
+            file_uploads=Mock(spec=FileUploadWriter),
             session_factory=object(),  # type: ignore[arg-type]
             tenant_id="tenant-1",
             user=_account(),
@@ -164,7 +165,7 @@ def test_init_rejects_invalid_factory_and_missing_tenant() -> None:
     user._current_tenant = None
     with pytest.raises(ValueError, match="tenant_id"):
         SQLAlchemyWorkflowNodeExecutionWriteRepository(
-            file_uploads=Mock(spec=FileUploadService),
+            file_uploads=Mock(spec=FileUploadWriter),
             session_factory=sessionmaker(),
             tenant_id="",
             user=user,

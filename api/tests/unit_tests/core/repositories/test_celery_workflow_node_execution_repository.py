@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.file.uploads import FileUploadWriter
 from core.repositories.celery_workflow_node_execution_query_repository import (
     CeleryWorkflowNodeExecutionCache,
     CeleryWorkflowNodeExecutionQueryRepository,
@@ -22,7 +23,6 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models import Account, CreatorUserRole, EndUser, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-from services.file_upload_service import FileUploadService
 
 RESOURCE_TENANT_ID = "resource-tenant-id"
 
@@ -75,7 +75,7 @@ def cache() -> CeleryWorkflowNodeExecutionCache:
 def writer(
     sqlite_session_factory: sessionmaker[Session],
     account: Account,
-    file_uploads: FileUploadService,
+    file_uploads: FileUploadWriter,
     cache: CeleryWorkflowNodeExecutionCache,
 ) -> CeleryWorkflowNodeExecutionWriteRepository:
     return CeleryWorkflowNodeExecutionWriteRepository(
@@ -92,7 +92,7 @@ def writer(
 def test_writer_retains_explicit_dependencies(
     writer: CeleryWorkflowNodeExecutionWriteRepository,
     account: Account,
-    file_uploads: FileUploadService,
+    file_uploads: FileUploadWriter,
     cache: CeleryWorkflowNodeExecutionCache,
 ) -> None:
     assert writer._sql_repository._file_uploads is file_uploads
@@ -108,7 +108,7 @@ def test_writer_retains_explicit_dependencies(
 
 
 def test_writer_accepts_engine_and_end_user(
-    sqlite_engine: Engine, file_uploads: FileUploadService, cache: CeleryWorkflowNodeExecutionCache
+    sqlite_engine: Engine, file_uploads: FileUploadWriter, cache: CeleryWorkflowNodeExecutionCache
 ) -> None:
     user = EndUser(id=str(uuid4()), tenant_id="creator-tenant")
     writer = CeleryWorkflowNodeExecutionWriteRepository(
@@ -127,7 +127,7 @@ def test_writer_accepts_engine_and_end_user(
 
 
 def test_writer_requires_resource_tenant_without_reading_account_tenant(
-    sqlite_session_factory: sessionmaker[Session], account: Account, file_uploads: FileUploadService
+    sqlite_session_factory: sessionmaker[Session], account: Account, file_uploads: FileUploadWriter
 ) -> None:
     account._current_tenant = None
     with pytest.raises(ValueError, match="tenant_id is required"):

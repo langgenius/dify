@@ -60,6 +60,7 @@ from controllers.service_api.wraps import (
     cloud_edition_billing_resource_check,
 )
 from core.errors.error import ProviderTokenNotInitError
+from core.file.uploads import FileUploadActor
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_application_services import application_services
@@ -88,7 +89,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.feature_service import FeatureService
 from services.file_service import FileArchiveEntry
-from services.file_upload_service import FileUploadActor
 from services.summary_index_service import SummaryIndexService
 
 
@@ -428,7 +428,7 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
     if not current_user:
         raise ValueError("current_user is required")
 
-    upload_file = application_services().files.upload_text(
+    upload_file = application_services().file_uploads.upload_text(
         text=payload.text, text_name=payload.name, user_id=current_user.id, tenant_id=tenant_id_str
     )
     data_source = {
@@ -493,7 +493,7 @@ def _update_document_by_text(
         name = args.get("name")
         if not current_user:
             raise ValueError("current_user is required")
-        upload_file = application_services().files.upload_text(
+        upload_file = application_services().file_uploads.upload_text(
             text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
         )
         data_source = {
@@ -805,12 +805,12 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not current_user:
             raise ValueError("current_user is required")
         try:
-            upload_file = application_services().files.upload_file(
+            upload_file = application_services().file_uploads.upload_file_for_actor(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
-                tenant_id=tenant_id,
+                actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=tenant_id,
                 source="datasets",
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
@@ -884,12 +884,12 @@ def _update_document_by_file(
             raise ValueError("current_user is required")
 
         try:
-            upload_file = application_services().files.upload_file(
+            upload_file = application_services().file_uploads.upload_file_for_actor(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
-                tenant_id=tenant_id,
+                actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=tenant_id,
                 source="datasets",
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )

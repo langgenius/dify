@@ -15,12 +15,12 @@ from controllers.common.schema import JsonResponseWithStatus, register_response_
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.file.uploads import FileUploadActor
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
 from libs.helper import dump_response
 from models import App, EndUser
 from models.enums import CreatorUserRole
-from services.file_upload_service import FileUploadActor
 
 register_response_schema_models(service_api_ns, FileResponse)
 
@@ -80,12 +80,12 @@ class FileApi(Resource):
             raise FilenameNotExistsError()
 
         try:
-            upload_file = application_services().files.upload_file(
+            upload_file = application_services().file_uploads.upload_file_for_actor(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
-                tenant_id=end_user.tenant_id,
+                actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+                resource_tenant_id=end_user.tenant_id,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description) from file_too_large_error

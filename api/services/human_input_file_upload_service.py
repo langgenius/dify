@@ -6,14 +6,14 @@ from datetime import datetime, timedelta
 from typing import Protocol
 
 from configs import dify_config
+from core.file.uploads import FileUploadActor, FileUploadResult
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from services.file_service import FileService
-from services.file_upload_service import FileUploadActor, FileUploadResult
+from services.file_upload_service import FileUploadService
 from services.human_input_service import FormExpiredError, FormNotFoundError, FormSubmittedError
 from services.remote_file_service import RemoteFileService, RemoteFileUploadResult
 
@@ -102,7 +102,7 @@ class HumanInputFileUploadService:
 
     _uploads: HumanInputFileUploadRepository
     _workflow_run_repository: APIWorkflowRunRepository
-    _files: FileService
+    _file_uploads: FileUploadService
     _remote_files: RemoteFileService
 
     def __init__(
@@ -110,12 +110,12 @@ class HumanInputFileUploadService:
         *,
         uploads: HumanInputFileUploadRepository,
         workflow_run_repository: APIWorkflowRunRepository,
-        files: FileService,
+        file_uploads: FileUploadService,
         remote_files: RemoteFileService,
     ) -> None:
         self._uploads = uploads
         self._workflow_run_repository = workflow_run_repository
-        self._files = files
+        self._file_uploads = file_uploads
         self._remote_files = remote_files
 
     def issue_upload_token(self, form_token: str) -> HumanInputUploadToken:
@@ -168,17 +168,17 @@ class HumanInputFileUploadService:
         content: bytes,
         mimetype: str,
     ) -> FileUploadResult:
-        upload_file = self._files.upload_file(
+        upload_file = self._file_uploads.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(
+            actor=FileUploadActor(
                 id=context.owner.id,
                 creator_role=CreatorUserRole.ACCOUNT
                 if isinstance(context.owner, Account)
                 else CreatorUserRole.END_USER,
             ),
-            tenant_id=context.tenant_id,
+            resource_tenant_id=context.tenant_id,
             source=None,
         )
         self.record_upload_file(context=context, file_id=upload_file.id)

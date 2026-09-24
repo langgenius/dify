@@ -11,12 +11,12 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.file.uploads import FileUploadWriter
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.qa_index_processor import QAIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from services.file_upload_service import FileUploadService
 
 
 class _ImmediateThread:
@@ -34,7 +34,7 @@ class _ImmediateThread:
 
 class TestQAIndexProcessor:
     @pytest.fixture
-    def processor(self, file_uploads: FileUploadService) -> QAIndexProcessor:
+    def processor(self, file_uploads: FileUploadWriter) -> QAIndexProcessor:
         return QAIndexProcessor(file_uploads=file_uploads)
 
     @pytest.fixture

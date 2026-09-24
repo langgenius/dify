@@ -18,7 +18,7 @@ export function OutputTypeSelect({
   value: OutputTypeOptionValue
   onChange: (value: OutputTypeOptionValue) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const selected = getOutputTypeOption(value)
 
   return (

@@ -3,65 +3,15 @@
 import hashlib
 import os
 import uuid
-from dataclasses import dataclass, replace
-from datetime import datetime
+from dataclasses import replace
 from typing import Literal, Protocol
 
 from configs import dify_config
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
+from core.file.uploads import FileUploadActor, FileUploadData, FileUploadResult
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
-
-
-@dataclass(frozen=True, slots=True)
-class FileUploadActor:
-    """Creator identity, independent of the tenant receiving the upload."""
-
-    id: str
-    creator_role: CreatorUserRole
-
-
-@dataclass(frozen=True, slots=True)
-class FileUploadData:
-    """Metadata stored with an upload, before persistence assigns its ID."""
-
-    name: str
-    size: int
-    extension: str
-    mime_type: str
-    created_by: str
-    created_at: datetime
-    tenant_id: str
-    source_url: str
-    key: str
-    storage_type: str
-    created_by_role: CreatorUserRole
-    hash: str | None
-    used: bool
-    used_by: str | None
-    used_at: datetime | None
-
-
-@dataclass(frozen=True, slots=True)
-class FileUploadResult(FileUploadData):
-    """Detached upload metadata; source_url may contain a response-only signed URL."""
-
-    id: str
-
-
-class FileUploadWriter(Protocol):
-    """Upload capability used by indexing without depending on service assembly."""
-
-    def upload_file_for_actor(
-        self,
-        *,
-        actor: FileUploadActor,
-        resource_tenant_id: str,
-        filename: str,
-        content: bytes,
-        mimetype: str,
-    ) -> FileUploadResult: ...
 
 
 class FileUploadRepository(Protocol):
@@ -136,6 +86,31 @@ class FileUploadService:
         if not upload.source_url:
             return replace(upload, source_url=self._sign_file_url(upload_file_id=upload.id))
         return upload
+
+    def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> FileUploadResult:
+        """Store internal text offloads, already used, without ordinary upload quotas or signing."""
+        file_key = f"upload_files/{tenant_id}/{uuid.uuid4()}.txt"
+        content = text.encode("utf-8")
+        self._storage.save(file_key, content)
+        return self._uploads.create(
+            upload=FileUploadData(
+                tenant_id=tenant_id,
+                storage_type=self._storage_type,
+                key=file_key,
+                name=text_name[:200],
+                size=len(content),
+                extension="txt",
+                mime_type="text/plain",
+                created_by=user_id,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_at=naive_utc_now(),
+                used=True,
+                used_by=user_id,
+                used_at=naive_utc_now(),
+                hash=None,
+                source_url="",
+            )
+        )
 
     @staticmethod
     def validate_upload(

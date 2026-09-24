@@ -23,7 +23,7 @@ const Breadcrumbs = ({
   searchResultsLength,
   isInPipeline,
 }: BreadcrumbsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const dataSourceStore = useDataSourceStore()
   const hasBucket = useDataSourceStoreWithSelector((s) => s.hasBucket)
   const showSearchResult = !!keywords && searchResultsLength > 0
@@ -101,7 +101,7 @@ const Breadcrumbs = ({
           {t(($) => $['onlineDrive.breadcrumbs.searchResult'], {
             ns: 'datasetPipeline',
             searchResultsLength,
-            folderName: breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : bucket,
+            folderName: breadcrumbs.at(-1) ?? bucket ?? '',
           })}
         </div>
       )}

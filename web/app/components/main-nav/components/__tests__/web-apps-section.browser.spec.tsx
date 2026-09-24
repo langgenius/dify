@@ -10,7 +10,6 @@ import WebAppsSection from '../web-apps-section'
 
 const service = vi.hoisted(() => ({
   list: vi.fn<() => Promise<InstalledAppListResponse>>(),
-  remove: vi.fn<() => Promise<void>>(),
   pin: vi.fn<() => Promise<void>>(),
 }))
 
@@ -32,7 +31,6 @@ vi.mock('@/service/console', () => ({
         }),
       },
       byInstalledAppId: {
-        delete: { mutationOptions: () => ({ mutationFn: service.remove }) },
         patch: { mutationOptions: () => ({ mutationFn: service.pin }) },
       },
     },
@@ -45,7 +43,6 @@ function createApp(index: number): InstalledAppResponse {
     app_owner_tenant_id: 'tenant-1',
     editable: true,
     last_used_at: null,
-    uninstallable: false,
     is_pinned: index === 0,
     app: {
       id: `app-${index}`,
@@ -93,7 +90,6 @@ async function renderSection(count = 40) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  service.remove.mockResolvedValue(undefined)
   service.pin.mockResolvedValue(undefined)
 })
 

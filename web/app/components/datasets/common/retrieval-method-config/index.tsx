@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -27,7 +28,7 @@ const RetrievalMethodConfig: FC<Props> = ({
   showMultiModalTip = false,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetSettings'])
   const { data: retrievalSetting } = useQuery(
     consoleQuery.datasets.retrievalSetting.get.queryOptions(),
   )
@@ -105,7 +106,13 @@ const RetrievalMethodConfig: FC<Props> = ({
   )
 
   return (
-    <div className="flex flex-col gap-y-2">
+    <RadioGroup<RETRIEVE_METHOD>
+      aria-label={t(($) => $['form.retrievalSetting.method'], { ns: 'datasetSettings' })}
+      value={value.search_method}
+      onValueChange={onSwitch}
+      disabled={disabled}
+      className="flex flex-col items-stretch gap-x-0 gap-y-2"
+    >
       {supportedRetrievalMethods.has(RETRIEVE_METHOD.semantic) && (
         <OptionCard
           id={RETRIEVE_METHOD.semantic}
@@ -115,7 +122,6 @@ const RetrievalMethodConfig: FC<Props> = ({
           title={t(($) => $['retrieval.semantic_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.semantic_search.description'], { ns: 'dataset' })}
           isActive={value.search_method === RETRIEVE_METHOD.semantic}
-          onClick={onSwitch}
           effectColor={EffectColor.purple}
           showEffectColor
           showChildren={value.search_method === RETRIEVE_METHOD.semantic}
@@ -139,7 +145,6 @@ const RetrievalMethodConfig: FC<Props> = ({
           title={t(($) => $['retrieval.full_text_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.full_text_search.description'], { ns: 'dataset' })}
           isActive={value.search_method === RETRIEVE_METHOD.fullText}
-          onClick={onSwitch}
           effectColor={EffectColor.purple}
           showEffectColor
           showChildren={value.search_method === RETRIEVE_METHOD.fullText}
@@ -163,7 +168,6 @@ const RetrievalMethodConfig: FC<Props> = ({
           title={t(($) => $['retrieval.hybrid_search.title'], { ns: 'dataset' })}
           description={t(($) => $['retrieval.hybrid_search.description'], { ns: 'dataset' })}
           isActive={value.search_method === RETRIEVE_METHOD.hybrid}
-          onClick={onSwitch}
           effectColor={EffectColor.purple}
           showEffectColor
           isRecommended
@@ -179,7 +183,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           />
         </OptionCard>
       )}
-    </div>
+    </RadioGroup>
   )
 }
 export default React.memo(RetrievalMethodConfig)

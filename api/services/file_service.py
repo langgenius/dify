@@ -3,34 +3,24 @@
 import base64
 import os
 import posixpath
-import uuid
 from collections.abc import Generator, Sequence
 from contextlib import closing, contextmanager, suppress
 from dataclasses import dataclass
 from tempfile import NamedTemporaryFile
-from typing import Literal, Protocol
+from typing import Protocol
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
+from core.file.uploads import FileUploadResult
 from enums import DeploymentEdition
-from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
 from services.errors.file import FileNotExistsError, UnsupportedFileTypeError
-from services.file_upload_service import (
-    FileUploadActor,
-    FileUploadData,
-    FileUploadRepository,
-    FileUploadResult,
-    FileUploadService,
-    FileUploadStorage,
-    FileUploadUrlSigner,
-)
+from services.file_upload_service import FileUploadUrlSigner
 
 PREVIEW_WORDS_LIMIT = 3000
 
 
-class FileRepository(FileUploadRepository, Protocol):
+class FileRepository(Protocol):
     def get(self, *, file_id: str, tenant_id: str | None = None) -> FileUploadResult | None:
         """Return metadata, or None when missing. No tenant filter is for trusted internal IDs only."""
         ...
@@ -40,7 +30,7 @@ class FileRepository(FileUploadRepository, Protocol):
         ...
 
 
-class FileStorage(FileUploadStorage, Protocol):
+class FileStorage(Protocol):
     def load_once(self, filename: str) -> bytes: ...
 
     def load_stream(self, filename: str) -> Generator[bytes, None, None]: ...
@@ -65,53 +55,16 @@ class FileService:
         self,
         *,
         files: FileRepository,
-        uploads: FileUploadService,
         storage: FileStorage,
         storage_type: str,
         extract_text: FileTextExtractor,
         sign_file_url: FileUploadUrlSigner,
     ) -> None:
         self._files: FileRepository = files
-        self._uploads: FileUploadService = uploads
         self._storage: FileStorage = storage
         self._storage_type: str = storage_type
         self._extract_text: FileTextExtractor = extract_text
         self._sign_file_url: FileUploadUrlSigner = sign_file_url
-
-    def upload_file(
-        self,
-        *,
-        filename: str,
-        content: bytes,
-        mimetype: str,
-        user: FileUploadActor,
-        tenant_id: str,
-        source: Literal["datasets"] | None = None,
-        source_url: str = "",
-        default_file_size_limit: int | None = None,
-    ) -> FileUploadResult:
-        return self._uploads.upload_file_for_actor(
-            actor=user,
-            resource_tenant_id=tenant_id,
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            source=source,
-            source_url=source_url,
-            default_file_size_limit=default_file_size_limit,
-        )
-
-    @staticmethod
-    def is_file_size_within_limit(
-        *, extension: str, file_size: int, default_file_size_limit: int | None = None
-    ) -> bool:
-        return FileUploadService.is_file_size_within_limit(
-            extension=extension, file_size=file_size, default_file_size_limit=default_file_size_limit
-        )
-
-    @staticmethod
-    def file_size_limit(*, extension: str, default_file_size_limit: int | None = None) -> int:
-        return FileUploadService.file_size_limit(extension=extension, default_file_size_limit=default_file_size_limit)
 
     def _get_file(self, *, file_id: str, tenant_id: str | None = None) -> FileUploadResult:
         file = self._files.get(file_id=file_id, tenant_id=tenant_id)
@@ -138,31 +91,6 @@ class FileService:
         except FileNotExistsError as exc:
             raise FileNotExistsError("File reference not found") from exc
         return self._sign_file_url(upload_file_id=file_id)
-
-    def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> FileUploadResult:
-        """Store internal text offloads, already used, without ordinary upload quotas or signing."""
-        file_key = f"upload_files/{tenant_id}/{uuid.uuid4()}.txt"
-        content = text.encode("utf-8")
-        self._storage.save(file_key, content)
-        return self._files.create(
-            upload=FileUploadData(
-                tenant_id=tenant_id,
-                storage_type=self._storage_type,
-                key=file_key,
-                name=text_name[:200],
-                size=len(content),
-                extension="txt",
-                mime_type="text/plain",
-                created_by=user_id,
-                created_by_role=CreatorUserRole.ACCOUNT,
-                created_at=naive_utc_now(),
-                used=True,
-                used_by=user_id,
-                used_at=naive_utc_now(),
-                hash=None,
-                source_url="",
-            )
-        )
 
     def get_file_preview(self, file_id: str, tenant_id: str) -> str:
         """Return a short text preview extracted after the metadata query has closed."""

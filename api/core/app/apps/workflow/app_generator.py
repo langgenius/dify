@@ -33,6 +33,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
+from core.file.uploads import FileUploadWriter
 from core.helper.trace_id_helper import (
     extract_external_trace_id_from_args,
     extract_parent_trace_context_from_args,
@@ -55,7 +56,6 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
-from services.file_upload_service import FileUploadService
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -71,7 +71,7 @@ def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> 
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
-    def __init__(self, *, file_uploads: FileUploadService) -> None:
+    def __init__(self, *, file_uploads: FileUploadWriter) -> None:
         self._file_uploads = file_uploads
 
     @staticmethod

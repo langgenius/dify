@@ -35,7 +35,7 @@ type AppAccessConfigContentProps = {
 }
 
 const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const [currentPage, setCurrentPage] = useState(1)

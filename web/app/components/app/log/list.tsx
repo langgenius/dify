@@ -196,7 +196,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       currentLogModalActiveTab: state.currentLogModalActiveTab,
     })),
   )
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
   const isLoadingRef = useRef(false)
@@ -661,7 +661,7 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
   // Text Generator App Session Details Including Message List
   const { data: conversationDetail, refetch: conversationDetailMutate } =
     useCompletionConversationDetail(appDetail.id, conversationId)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (
     mid: string,
@@ -724,7 +724,7 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   onClose,
 }) => {
   const { data: conversationDetail } = useChatConversationDetail(appDetail.id, conversationId)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (
     mid: string,
@@ -780,7 +780,7 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
  * Conversation list component including basic information
  */
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const { formatTime } = useTimestamp()
   const [conversationIdInUrl, setConversationIdInUrl] = useQueryState(
     'conversation_id',
@@ -915,7 +915,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <TooltipContent className="flex items-center gap-1">
           <RiEditFill aria-hidden className="size-3 shrink-0" />
           <span>
-            {`${t(($) => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+            {`${t(($) => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name ?? '-' })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         </TooltipContent>
       </Tooltip>

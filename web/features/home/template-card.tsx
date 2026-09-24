@@ -18,7 +18,7 @@ type TemplateCardProps = {
 }
 
 export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

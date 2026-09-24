@@ -27,7 +27,7 @@ type DatasetDetailSectionProps = {
 }
 
 const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -68,7 +68,13 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   const navigation = useMemo(() => {
     if (!datasetId) return []
 
-    const baseNavigation = [
+    const baseNavigation: {
+      name: string
+      href: string
+      icon: string
+      selectedIcon: string
+      disabled: boolean
+    }[] = [
       {
         name: t(($) => $['datasetMenus.hitTesting'], { ns: 'common' }),
         href: `/datasets/${datasetId}/hitTesting`,

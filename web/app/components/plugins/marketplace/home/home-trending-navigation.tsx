@@ -47,7 +47,7 @@ function TrendingNavigation({
   onNext: () => void
   onPausedChange?: (paused: boolean) => void
 }) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const progressRef = useRef<HTMLSpanElement>(null)
   const progressAnimationRef = useRef<Animation | null>(null)
   const pauseReasonsRef = useRefWithInit(

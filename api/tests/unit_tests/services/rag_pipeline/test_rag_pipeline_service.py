@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.repositories.factory import WorkflowNodeExecutionQuery, WorkflowNodeExecutionRepositories
+from extensions.ext_application_services import application_services
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -1006,7 +1007,7 @@ def test_retry_error_document_success(
 
     # Mock PipelineGenerator
     mock_gen_instance = mocker.Mock()
-    mocker.patch("services.rag_pipeline.rag_pipeline.PipelineGenerator", return_value=mock_gen_instance)
+    mocker.patch.object(application_services(), "create_pipeline_generator", return_value=mock_gen_instance)
 
     # 2. Run test
     user = mocker.Mock()

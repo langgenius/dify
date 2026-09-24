@@ -47,11 +47,9 @@ class PipelineGenerateService:
                 document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, original_document_id)
                 cls.update_document_status(document_ref, session=session)
             return PipelineGenerator.convert_to_event_stream(
-                PipelineGenerator(
-                    file_uploads=application_services().file_uploads,
-                    files=application_services().files,
-                    index_processor=application_services().knowledge_index,
-                ).generate(
+                application_services()
+                .create_pipeline_generator()
+                .generate(
                     session=session,
                     pipeline=pipeline,
                     workflow=workflow,
@@ -83,11 +81,9 @@ class PipelineGenerateService:
 
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator(
-                file_uploads=application_services().file_uploads,
-                files=application_services().files,
-                index_processor=application_services().knowledge_index,
-            ).single_iteration_generate(
+            application_services()
+            .create_pipeline_generator()
+            .single_iteration_generate(
                 pipeline=pipeline,
                 workflow=workflow,
                 node_id=node_id,
@@ -106,11 +102,9 @@ class PipelineGenerateService:
 
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator(
-                file_uploads=application_services().file_uploads,
-                files=application_services().files,
-                index_processor=application_services().knowledge_index,
-            ).single_loop_generate(
+            application_services()
+            .create_pipeline_generator()
+            .single_loop_generate(
                 pipeline=pipeline,
                 workflow=workflow,
                 node_id=node_id,

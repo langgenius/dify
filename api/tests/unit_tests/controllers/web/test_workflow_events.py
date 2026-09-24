@@ -16,8 +16,6 @@ from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
 from tests.unit_tests.model_factories import make_end_user
 
-pytestmark = pytest.mark.usefixtures("file_upload_services")
-
 
 def _workflow_app() -> App:
     return App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
@@ -147,18 +145,13 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        workflow_generator = Mock()
-        workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
-        snapshot_builder = Mock(return_value=["snapshot-events"])
-        monkeypatch.setattr(
-            "controllers.web.workflow_events.WorkflowAppGenerator", Mock(return_value=workflow_generator)
-        )
+        snapshot_builder = Mock(return_value=iter([{"event": "snapshot"}]))
         monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
 
         with app.test_request_context("/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true"):
             response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
-        assert response.get_data(as_text=True) == "data: snapshot\n\n"
+        assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
         snapshot_builder.assert_called_once_with(
             app_mode=AppMode.WORKFLOW,
             workflow_run=run,

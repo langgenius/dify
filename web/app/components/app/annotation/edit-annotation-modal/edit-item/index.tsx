@@ -35,7 +35,7 @@ export const EditTitle: FC<{ className?: string; title: string }> = ({ className
   </div>
 )
 const EditItem: FC<Props> = ({ type, readonly, content, onSave }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const [newContent, setNewContent] = useState('')
   const showNewContent = newContent && newContent !== content
   const avatar =

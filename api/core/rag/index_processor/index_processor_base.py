@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
 from core.file import remote_fetcher
+from core.file.uploads import FileUploadActor, FileUploadWriter
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import AttachmentDocument, Document
@@ -31,7 +32,6 @@ from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.file_upload_service import FileUploadActor, FileUploadWriter
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance

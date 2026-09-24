@@ -1,5 +1,4 @@
 import base64
-import hashlib
 import os
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -16,18 +15,11 @@ from models.enums import CreatorUserRole
 from models.model import UploadFile
 from repositories.file_repository import SQLAlchemyFileRepository
 from services.errors.file import (
-    BlockedFileExtensionError,
     FileNotExistsError,
-    FileTooLargeError,
     UnsupportedFileTypeError,
 )
 from services.file_service import FileArchiveEntry, FileService, FileStorage
-from services.file_upload_service import FileUploadActor, FileUploadResult
 from tests.file_service_test_utils import make_file_service
-
-
-def _account() -> FileUploadActor:
-    return FileUploadActor(id="user_id", creator_role=CreatorUserRole.ACCOUNT)
 
 
 class TestFileService:
@@ -95,170 +87,6 @@ class TestFileService:
         session.add(upload_file)
         session.commit()
         return upload_file
-
-    def test_upload_file_success(self, file_service: FileService, file_storage: MagicMock, db_session: Session):
-        content = b"file content"
-        result = file_service.upload_file(
-            filename="test.jpg", content=content, mimetype="image/jpeg", user=_account(), tenant_id="tenant_id"
-        )
-
-        assert isinstance(result, FileUploadResult)
-        assert result.name == "test.jpg"
-        assert result.tenant_id == "tenant_id"
-        assert result.size == len(content)
-        assert result.extension == "jpg"
-        assert result.mime_type == "image/jpeg"
-        assert result.created_by_role == CreatorUserRole.ACCOUNT
-        assert result.created_by == "user_id"
-        assert result.hash == hashlib.sha3_256(content).hexdigest()
-        assert result.source_url == "http://signed-url"
-        file_storage.save.assert_called_once_with(result.key, content)
-        persisted = db_session.get(UploadFile, result.id)
-        assert persisted is not None
-        assert persisted.hash == result.hash
-
-    @pytest.mark.parametrize("text", ["ASCII text", "包含多字节 UTF-8 文本 🚀"])
-    def test_upload_text_uses_utf8_byte_length(self, text: str, file_service: FileService, file_storage: MagicMock):
-        result = file_service.upload_text(text=text, text_name="test.txt", user_id="user_id", tenant_id="tenant_id")
-        expected_content = text.encode("utf-8")
-        assert result.size == len(expected_content)
-        file_storage.save.assert_called_once_with(result.key, expected_content)
-
-    def test_upload_file_uses_explicit_resource_tenant(self, file_service: FileService, file_storage: MagicMock):
-        result = file_service.upload_file(
-            filename="test.txt",
-            content=b"test",
-            mimetype="text/plain",
-            user=_account(),
-            tenant_id="resource-tenant-id",
-        )
-        assert result.tenant_id == "resource-tenant-id"
-        assert file_storage.save.call_args.args[0].startswith("upload_files/resource-tenant-id/")
-
-    def test_upload_file_invalid_characters(self, file_service):
-        with pytest.raises(ValueError, match="Filename contains invalid characters"):
-            file_service.upload_file(
-                filename="invalid/file.txt", content=b"", mimetype="text/plain", user=_account(), tenant_id="tenant_id"
-            )
-
-    def test_upload_file_long_filename(self, file_service: FileService, db_session: Session):
-        result = file_service.upload_file(
-            filename="a" * 210 + ".txt",
-            content=b"test",
-            mimetype="text/plain",
-            user=_account(),
-            tenant_id="tenant",
-        )
-        assert len(result.name) <= 205
-        assert result.name.endswith(".txt")
-        assert db_session.get(UploadFile, result.id) is not None
-
-    def test_upload_file_blocked_extension(self, file_service, config_overrides: Callable[..., None]):
-        config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
-        with pytest.raises(BlockedFileExtensionError):
-            file_service.upload_file(
-                filename="test.exe",
-                content=b"",
-                mimetype="application/octet-stream",
-                user=_account(),
-                tenant_id="tenant_id",
-            )
-
-    def test_upload_file_unsupported_type_for_datasets(self, file_service):
-        with pytest.raises(UnsupportedFileTypeError):
-            file_service.upload_file(
-                filename="test.jpg",
-                content=b"",
-                mimetype="image/jpeg",
-                user=_account(),
-                tenant_id="tenant_id",
-                source="datasets",
-            )
-
-    def test_upload_file_too_large(self, file_service, config_overrides: Callable[..., None]):
-        # 16MB file for an image with 15MB limit
-        content = b"a" * (16 * 1024 * 1024)
-        config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=15)
-        with pytest.raises(FileTooLargeError):
-            file_service.upload_file(
-                filename="test.jpg", content=content, mimetype="image/jpeg", user=_account(), tenant_id="tenant_id"
-            )
-
-    def test_upload_file_end_user(self, file_service: FileService, db_session: Session):
-        user = FileUploadActor(id="end_user_id", creator_role=CreatorUserRole.END_USER)
-        result = file_service.upload_file(
-            filename="test.txt", content=b"test", mimetype="text/plain", user=user, tenant_id="tenant"
-        )
-        assert result.created_by_role == CreatorUserRole.END_USER
-        assert db_session.get(UploadFile, result.id) is not None
-
-    def test_is_file_size_within_limit(self, config_overrides: Callable[..., None]):
-        config_overrides(
-            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
-            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
-            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
-            UPLOAD_FILE_SIZE_LIMIT=5,
-        )
-        # Image
-        assert FileService.is_file_size_within_limit(extension="jpg", file_size=10 * 1024 * 1024) is True
-        assert FileService.is_file_size_within_limit(extension="png", file_size=11 * 1024 * 1024) is False
-
-        # Video
-        assert FileService.is_file_size_within_limit(extension="mp4", file_size=20 * 1024 * 1024) is True
-        assert FileService.is_file_size_within_limit(extension="avi", file_size=21 * 1024 * 1024) is False
-
-        # Audio
-        assert FileService.is_file_size_within_limit(extension="mp3", file_size=30 * 1024 * 1024) is True
-        assert FileService.is_file_size_within_limit(extension="wav", file_size=31 * 1024 * 1024) is False
-
-        # Default
-        assert FileService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
-        assert FileService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
-        assert FileService.is_file_size_within_limit(extension="txt", file_size=0, default_file_size_limit=0) is True
-        assert FileService.is_file_size_within_limit(extension="txt", file_size=1, default_file_size_limit=0) is False
-        assert (
-            FileService.is_file_size_within_limit(
-                extension="pdf",
-                file_size=6 * 1024 * 1024,
-                default_file_size_limit=7,
-            )
-            is True
-        )
-        assert (
-            FileService.is_file_size_within_limit(
-                extension="pdf",
-                file_size=8 * 1024 * 1024,
-                default_file_size_limit=7,
-            )
-            is False
-        )
-
-        # Media-specific limits are not affected by the knowledge document override.
-        assert (
-            FileService.is_file_size_within_limit(
-                extension="jpg",
-                file_size=11 * 1024 * 1024,
-                default_file_size_limit=100,
-            )
-            is False
-        )
-
-    def test_file_size_limit(self, config_overrides: Callable[..., None]):
-        config_overrides(
-            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
-            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
-            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
-            UPLOAD_FILE_SIZE_LIMIT=5,
-        )
-
-        assert FileService.file_size_limit(extension="jpg") == 10 * 1024 * 1024
-        assert FileService.file_size_limit(extension="mp4") == 20 * 1024 * 1024
-        assert FileService.file_size_limit(extension="mp3") == 30 * 1024 * 1024
-        assert FileService.file_size_limit(extension="txt") == 5 * 1024 * 1024
-        assert FileService.file_size_limit(extension="txt", default_file_size_limit=None) == 5 * 1024 * 1024
-        assert FileService.file_size_limit(extension="txt", default_file_size_limit=0) == 0
-        assert FileService.file_size_limit(extension="jpg", default_file_size_limit=0) == 10 * 1024 * 1024
-        assert FileService.file_size_limit(extension="txt", default_file_size_limit=7) == 7 * 1024 * 1024
 
     def test_get_file_base64_success(self, file_service: FileService, file_storage: MagicMock, db_session: Session):
         self._persist_upload_file(db_session, key="test_key")
@@ -371,23 +199,6 @@ class TestFileService:
 
         with pytest.raises(FileNotExistsError, match="File reference not found"):
             file_service.get_icon_url("file_id", "tenant_id")
-
-    def test_upload_text_success(self, file_service: FileService, file_storage: MagicMock, db_session: Session):
-        result = file_service.upload_text("sample text", "test.txt", "user_id", "tenant_id")
-        assert isinstance(result, FileUploadResult)
-        assert result.name == "test.txt"
-        assert result.size == len(b"sample text")
-        assert result.tenant_id == "tenant_id"
-        assert result.created_by == "user_id"
-        assert result.used is True
-        assert result.extension == "txt"
-        file_storage.save.assert_called_once_with(result.key, b"sample text")
-        assert db_session.get(UploadFile, result.id) is not None
-
-    def test_upload_text_long_name(self, file_service: FileService, db_session: Session):
-        result = file_service.upload_text("text", "a" * 210, "user", "tenant")
-        assert len(result.name) == 200
-        assert db_session.get(UploadFile, result.id) is not None
 
     def test_get_file_preview_success(self, file_service: FileService, extract_text: MagicMock, db_session: Session):
         self._persist_upload_file(db_session, extension="pdf", mime_type="application/pdf")

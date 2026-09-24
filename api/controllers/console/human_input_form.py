@@ -25,11 +25,9 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
 from libs.login import login_required
@@ -169,8 +167,6 @@ class ConsoleWorkflowEventsApi(Resource):
 
         Returns Server-Sent Events stream.
         """
-        from extensions.ext_application_services import application_services
-
         session_maker = sessionmaker(db.engine)
         repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
@@ -207,21 +203,15 @@ class ConsoleWorkflowEventsApi(Resource):
 
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
-            match app.mode:
-                case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator(file_uploads=application_services().file_uploads)
-                case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
-                case _:
-                    raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
+            if app.mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+                raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
 
             def _generate_stream_events():
                 if include_state_snapshot:
-                    return generator.convert_to_event_stream(
+                    return BaseAppGenerator.convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=AppMode(app.mode),
                             workflow_run=workflow_run,
@@ -232,7 +222,7 @@ class ConsoleWorkflowEventsApi(Resource):
                             close_on_pause=not continue_on_pause,
                         )
                     )
-                return generator.convert_to_event_stream(
+                return BaseAppGenerator.convert_to_event_stream(
                     msg_generator.retrieve_events(AppMode(app.mode), workflow_run.id),
                 )
 

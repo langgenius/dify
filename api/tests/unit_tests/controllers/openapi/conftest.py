@@ -11,9 +11,11 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from app_factory import create_flask_app_with_configs
+from constants.oauth_bearer import TokenType
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, TokenType
+from libs.oauth_bearer import AuthContext
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
@@ -118,5 +120,5 @@ def admitted_bearer(
         workspace_id=workspace_id,
         app_id=app_id,
         member_id=str(uuid.uuid4()),
-        headers={"Authorization": "Bearer dfoa_admitted"},
+        headers={"Authorization": "Bearer dfoa_admitted", CATALOG_HEADER: catalog_for(openapi_app)[1]},
     )

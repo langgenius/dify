@@ -22,6 +22,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
 )
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+from core.file.uploads import FileUploadWriter
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.factory import (
     WorkflowNodeExecutionQuery,
@@ -33,7 +34,6 @@ from models.account import Account
 from models.enums import ConversationFromSource, EndUserType, MessageStatus
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowType
-from services.file_upload_service import FileUploadService
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -116,7 +116,7 @@ def _make_message(
 
 class TestAdvancedChatAppGeneratorValidation:
     def test_generate_requires_query(self, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
 
         with pytest.raises(ValueError, match="query is required"):
             generator.generate(
@@ -131,7 +131,7 @@ class TestAdvancedChatAppGeneratorValidation:
             )
 
     def test_generate_requires_string_query(self, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
 
         with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
@@ -146,7 +146,7 @@ class TestAdvancedChatAppGeneratorValidation:
             )
 
     def test_single_iteration_generate_validates_args(self, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_iteration_generate(
@@ -171,7 +171,7 @@ class TestAdvancedChatAppGeneratorValidation:
             )
 
     def test_single_loop_generate_validates_args(self, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_loop_generate(
@@ -211,7 +211,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_loads_conversation_and_files(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         app_config = self._build_app_config()
 
         conversation = _make_conversation()
@@ -297,7 +297,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert get_conversation.call_args.kwargs["session"] is session
 
     def test_resume_delegates_to_generate(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
@@ -348,7 +348,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_single_iteration_generate_builds_debug_task(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         app_config = self._build_app_config()
         captured: dict[str, object] = {}
         prefill_calls: list[object] = []
@@ -411,7 +411,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_single_loop_generate_builds_debug_task(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         app_config = self._build_app_config()
         captured: dict[str, object] = {}
         prefill_calls: list[object] = []
@@ -474,7 +474,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_internal_flow_initial_conversation_with_pause_layer(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         generator._dialogue_count = 0
         app_config = self._build_app_config()
 
@@ -595,7 +595,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_internal_flow_with_existing_records_skips_init(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         generator._dialogue_count = 0
         app_config = self._build_app_config()
 
@@ -701,7 +701,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_raises_when_workflow_not_found(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -753,7 +753,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_raises_when_app_not_found_for_internal_call(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -807,7 +807,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_handles_stopped_error(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -876,7 +876,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_handles_validation_error(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -969,7 +969,7 @@ class TestAdvancedChatAppGeneratorInternals:
             return _Runner
 
         for raised_error in [ValueError("bad input"), RuntimeError("unexpected")]:
-            generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+            generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
             generator._dialogue_count = 1
             application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
                 task_id="task",
@@ -1019,7 +1019,7 @@ class TestAdvancedChatAppGeneratorInternals:
             queue_manager.publish_error.assert_called_once()
 
     def test_handle_response_closed_file_raises_stopped(self, monkeypatch: pytest.MonkeyPatch):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         generator._dialogue_count = 1
 
         app_config = WorkflowUIBasedAppConfig(
@@ -1077,7 +1077,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_handle_response_re_raises_value_error(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         generator._dialogue_count = 1
         app_config = self._build_app_config()
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
@@ -1127,7 +1127,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_handles_invoke_auth_error(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         generator._dialogue_count = 1
 
         app_config = WorkflowUIBasedAppConfig(
@@ -1202,7 +1202,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_debugger_enables_retrieve_source(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -1277,7 +1277,7 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_service_api_sets_parent_message_id(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: Engine
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -1363,7 +1363,7 @@ class TestAdvancedChatAppGeneratorResume:
     def test_resume_restores_trace_manager_when_missing(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
     ):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
             app_config=self._build_app_config(),
@@ -1425,7 +1425,7 @@ class TestAdvancedChatAppGeneratorResume:
         assert trace_manager.user_id == "session-id"
 
     def test_resume_preserves_existing_trace_manager(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+        generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
         existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",

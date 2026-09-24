@@ -35,7 +35,7 @@ const Result: FC<Props> = ({
   onApply,
   generatorType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const isGeneratorPrompt = generatorType === GeneratorType.prompt
 
   return (

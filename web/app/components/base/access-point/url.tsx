@@ -60,7 +60,7 @@ export function AccessPointUrl({
   unavailableLabel,
   value,
 }: AccessPointUrlProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const detailsAvailable = !loading && !unavailable
   const disabledOpenButton = (
     <Button

@@ -7,11 +7,11 @@ from unittest.mock import MagicMock
 import pytest
 
 import services.human_input_file_upload_service as service_module
+from core.file.uploads import FileUploadActor
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.enums import CreatorUserRole
-from services.file_upload_service import FileUploadActor
 from services.human_input_file_upload_service import (
     HITL_UPLOAD_TOKEN_PREFIX,
     HumanInputFileUploadRepository,
@@ -66,7 +66,7 @@ def _create_service(
     return HumanInputFileUploadService(
         uploads=uploads if uploads is not None else MagicMock(spec=HumanInputFileUploadRepository),
         workflow_run_repository=workflow_runs if workflow_runs is not None else MagicMock(),
-        files=files if files is not None else MagicMock(),
+        file_uploads=files if files is not None else MagicMock(),
         remote_files=remote_files if remote_files is not None else MagicMock(),
     )
 
@@ -171,7 +171,7 @@ def test_upload_local_file_records_the_form_file_link() -> None:
     uploads = MagicMock(spec=HumanInputFileUploadRepository)
     files = MagicMock()
     upload_file = MagicMock(id="file-1")
-    files.upload_file.return_value = upload_file
+    files.upload_file_for_actor.return_value = upload_file
     context = _upload_context()
 
     result = _create_service(uploads=uploads, files=files).upload_local_file(
@@ -182,12 +182,12 @@ def test_upload_local_file_records_the_form_file_link() -> None:
     )
 
     assert result is upload_file
-    files.upload_file.assert_called_once_with(
+    files.upload_file_for_actor.assert_called_once_with(
         filename="sample.txt",
         content=b"content",
         mimetype="text/plain",
-        user=FileUploadActor(id=context.owner.id, creator_role=CreatorUserRole.ACCOUNT),
-        tenant_id=context.tenant_id,
+        actor=FileUploadActor(id=context.owner.id, creator_role=CreatorUserRole.ACCOUNT),
+        resource_tenant_id=context.tenant_id,
         source=None,
     )
     uploads.add_file.assert_called_once_with(

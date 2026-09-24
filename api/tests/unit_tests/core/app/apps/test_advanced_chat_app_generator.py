@@ -13,12 +13,12 @@ from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
+from core.file.uploads import FileUploadWriter
 from core.ops.ops_trace_manager import TraceQueueManager
 from models import Account, Workflow
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation
 from services.errors.conversation import ConversationNotExistsError
-from services.file_upload_service import FileUploadService
 
 
 def _make_app_config() -> WorkflowUIBasedAppConfig:
@@ -87,7 +87,7 @@ def test_init_generate_records_sets_conversation_metadata(sqlite_session: Sessio
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 
-    generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+    generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
 
     conversation, _ = generator._init_generate_records(
         entity,
@@ -126,7 +126,7 @@ def test_init_generate_records_marks_existing_conversation(sqlite_session: Sessi
     sqlite_session.add(existing_conversation)
     sqlite_session.flush()
 
-    generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService))
+    generator = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter))
 
     conversation, _ = generator._init_generate_records(
         entity,
@@ -188,7 +188,7 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
 
     monkeypatch.setattr(AdvancedChatAppGenerator, "_generate", fake_generate)
 
-    result = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadService)).generate(
+    result = AdvancedChatAppGenerator(file_uploads=MagicMock(spec=FileUploadWriter)).generate(
         app_model=app_model,
         workflow=workflow,
         user=user,

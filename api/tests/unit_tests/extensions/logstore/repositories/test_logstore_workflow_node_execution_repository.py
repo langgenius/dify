@@ -3,12 +3,12 @@ from unittest.mock import MagicMock, Mock, patch
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.file.uploads import FileUploadWriter
 from extensions.logstore.repositories.logstore_workflow_node_execution_write_repository import (
     LogstoreWorkflowNodeExecutionWriteRepository,
 )
 from models.account import Account
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
-from services.file_upload_service import FileUploadService
 
 
 def _make_account() -> Account:
@@ -21,7 +21,7 @@ def test_save_synchronously_writes_sql_when_dual_write_is_disabled(
     config_overrides: Callable[..., None], sqlite_session_factory: sessionmaker[Session]
 ) -> None:
     config_overrides(LOGSTORE_DUAL_WRITE_ENABLED=False)
-    file_uploads = Mock(spec=FileUploadService)
+    file_uploads = Mock(spec=FileUploadWriter)
     with (
         patch("extensions.logstore.repositories.logstore_workflow_node_execution_write_repository.AliyunLogStore"),
         patch(

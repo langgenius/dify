@@ -29,7 +29,7 @@ from services.agent.roster_package_entities import AgentPackageResources, Packag
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.entities.dsl_entities import DslImportWarning
-from services.file_service import FileService
+from services.file_upload_service import FileUploadService
 
 
 class _Storage(Protocol):
@@ -63,7 +63,7 @@ class AgentPackageResourceImporter:
         for resource in resources.files:
             filename = file_refs[resource.id].name
             extension = cls._extension(filename)
-            limit = FileService.file_size_limit(extension=extension)
+            limit = FileUploadService.file_size_limit(extension=extension)
             if resource.size > limit:
                 raise InvalidRosterAgentPackageError(
                     f"Roster Agent package file {filename!r} exceeds its file size limit"

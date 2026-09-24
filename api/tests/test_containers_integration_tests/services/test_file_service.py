@@ -7,6 +7,8 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.file.uploads import FileUploadActor
+from extensions.ext_storage import Storage
 from extensions.storage.storage_type import StorageType
 from models import Account, Tenant
 from models.enums import CreatorUserRole, EndUserType
@@ -17,9 +19,9 @@ from services.errors.file import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
-from services.file_service import FileService, FileStorage
-from services.file_upload_service import FileUploadActor
-from tests.file_service_test_utils import make_file_service
+from services.file_service import FileService
+from services.file_upload_service import FileUploadService
+from tests.file_service_test_utils import make_file_service, make_file_upload_service
 
 
 class TestFileService:
@@ -33,7 +35,7 @@ class TestFileService:
 
     @pytest.fixture
     def mock_external_service_dependencies(self):
-        storage = MagicMock(spec=FileStorage)
+        storage = MagicMock(spec=Storage)
         storage.load_once.return_value = b"mock file content"
         return {
             "storage": storage,
@@ -44,6 +46,16 @@ class TestFileService:
     @pytest.fixture
     def file_service(self, engine: Engine, mock_external_service_dependencies) -> FileService:
         return make_file_service(sessionmaker(bind=engine), **mock_external_service_dependencies)
+
+    @pytest.fixture
+    def file_upload_service(
+        self, engine: Engine, mock_external_service_dependencies: dict[str, MagicMock]
+    ) -> FileUploadService:
+        return make_file_upload_service(
+            sessionmaker(bind=engine),
+            storage=mock_external_service_dependencies["storage"],
+            sign_file_url=mock_external_service_dependencies["sign_file_url"],
+        )
 
     def _create_test_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -159,8 +171,12 @@ class TestFileService:
 
     # Test upload_file method
     def test_upload_file_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test successful file upload with valid parameters.
         """
@@ -171,12 +187,12 @@ class TestFileService:
         content = b"test file content"
         mimetype = "application/pdf"
 
-        upload_file = file_service.upload_file(
+        upload_file = file_upload_service.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=account.current_tenant_id,
+            actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=account.current_tenant_id,
         )
 
         assert upload_file is not None
@@ -195,8 +211,12 @@ class TestFileService:
         assert upload_file.id is not None
 
     def test_upload_file_with_end_user(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with end user instead of account.
         """
@@ -207,12 +227,12 @@ class TestFileService:
         content = b"test image content"
         mimetype = "image/jpeg"
 
-        upload_file = file_service.upload_file(
+        upload_file = file_upload_service.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
-            tenant_id=end_user.tenant_id,
+            actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+            resource_tenant_id=end_user.tenant_id,
         )
 
         assert upload_file is not None
@@ -220,8 +240,12 @@ class TestFileService:
         assert upload_file.created_by_role == CreatorUserRole.END_USER
 
     def test_upload_file_with_datasets_source(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with datasets source parameter.
         """
@@ -232,12 +256,12 @@ class TestFileService:
         content = b"test file content"
         mimetype = "application/pdf"
 
-        upload_file = file_service.upload_file(
+        upload_file = file_upload_service.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=account.current_tenant_id,
+            actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=account.current_tenant_id,
             source="datasets",
             source_url="https://example.com/source",
         )
@@ -246,8 +270,12 @@ class TestFileService:
         assert upload_file.source_url == "https://example.com/source"
 
     def test_upload_file_invalid_filename_characters(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with invalid filename characters.
         """
@@ -259,17 +287,21 @@ class TestFileService:
         mimetype = "text/plain"
 
         with pytest.raises(ValueError, match="Filename contains invalid characters"):
-            file_service.upload_file(
+            file_upload_service.upload_file_for_actor(
                 filename=filename,
                 content=content,
                 mimetype=mimetype,
-                user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-                tenant_id=account.current_tenant_id,
+                actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=account.current_tenant_id,
             )
 
     def test_upload_file_allows_regular_punctuation_in_filename(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload allows punctuation that is safe when stored as metadata.
         """
@@ -279,19 +311,23 @@ class TestFileService:
         content = b"test content"
         mimetype = "text/plain"
 
-        upload_file = file_service.upload_file(
+        upload_file = file_upload_service.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=account.current_tenant_id,
+            actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=account.current_tenant_id,
         )
 
         assert upload_file.name == filename
 
     def test_upload_file_filename_too_long(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with filename that exceeds length limit.
         """
@@ -304,12 +340,12 @@ class TestFileService:
         content = b"test content"
         mimetype = "text/plain"
 
-        upload_file = file_service.upload_file(
+        upload_file = file_upload_service.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=account.current_tenant_id,
+            actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=account.current_tenant_id,
         )
 
         # Verify filename was truncated (the logic truncates the base name to 200 chars + extension)
@@ -321,8 +357,12 @@ class TestFileService:
         assert len(base_name) <= 200
 
     def test_upload_file_datasets_unsupported_type(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload for datasets with unsupported file type.
         """
@@ -334,18 +374,22 @@ class TestFileService:
         mimetype = "image/jpeg"
 
         with pytest.raises(UnsupportedFileTypeError):
-            file_service.upload_file(
+            file_upload_service.upload_file_for_actor(
                 filename=filename,
                 content=content,
                 mimetype=mimetype,
-                user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-                tenant_id=account.current_tenant_id,
+                actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=account.current_tenant_id,
                 source="datasets",
             )
 
     def test_upload_file_too_large(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with file size exceeding limit.
         """
@@ -358,97 +402,125 @@ class TestFileService:
         mimetype = "image/jpeg"
 
         with pytest.raises(FileTooLargeError):
-            file_service.upload_file(
+            file_upload_service.upload_file_for_actor(
                 filename=filename,
                 content=content,
                 mimetype=mimetype,
-                user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-                tenant_id=account.current_tenant_id,
+                actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=account.current_tenant_id,
             )
 
     # Test is_file_size_within_limit method
     def test_is_file_size_within_limit_image_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file size check for image files within limit.
         """
         extension = "jpg"
         file_size = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024  # Exactly at limit
 
-        result = file_service.is_file_size_within_limit(extension=extension, file_size=file_size)
+        result = file_upload_service.is_file_size_within_limit(extension=extension, file_size=file_size)
 
         assert result is True
 
     def test_is_file_size_within_limit_video_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file size check for video files within limit.
         """
         extension = "mp4"
         file_size = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024  # Exactly at limit
 
-        result = file_service.is_file_size_within_limit(extension=extension, file_size=file_size)
+        result = file_upload_service.is_file_size_within_limit(extension=extension, file_size=file_size)
 
         assert result is True
 
     def test_is_file_size_within_limit_audio_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file size check for audio files within limit.
         """
         extension = "mp3"
         file_size = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024  # Exactly at limit
 
-        result = file_service.is_file_size_within_limit(extension=extension, file_size=file_size)
+        result = file_upload_service.is_file_size_within_limit(extension=extension, file_size=file_size)
 
         assert result is True
 
     def test_is_file_size_within_limit_document_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file size check for document files within limit.
         """
         extension = "pdf"
         file_size = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024  # Exactly at limit
 
-        result = file_service.is_file_size_within_limit(extension=extension, file_size=file_size)
+        result = file_upload_service.is_file_size_within_limit(extension=extension, file_size=file_size)
 
         assert result is True
 
     def test_is_file_size_within_limit_image_exceeded(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file size check for image files exceeding limit.
         """
         extension = "jpg"
         file_size = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024 + 1  # Exceeds limit
 
-        result = file_service.is_file_size_within_limit(extension=extension, file_size=file_size)
+        result = file_upload_service.is_file_size_within_limit(extension=extension, file_size=file_size)
 
         assert result is False
 
     def test_is_file_size_within_limit_unknown_extension(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file size check for unknown file extension.
         """
         extension = "xyz"
         file_size = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024  # Uses default limit
 
-        result = file_service.is_file_size_within_limit(extension=extension, file_size=file_size)
+        result = file_upload_service.is_file_size_within_limit(extension=extension, file_size=file_size)
 
         assert result is True
 
     # Test upload_text method
     def test_upload_text_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test successful text upload.
         """
@@ -461,7 +533,7 @@ class TestFileService:
         mock_current_user.current_tenant_id = str(fake.uuid4())
         mock_current_user.id = str(fake.uuid4())
 
-        upload_file = file_service.upload_text(
+        upload_file = file_upload_service.upload_text(
             text=text,
             text_name=text_name,
             user_id=mock_current_user.id,
@@ -480,8 +552,12 @@ class TestFileService:
         mock_external_service_dependencies["storage"].save.assert_called_once()
 
     def test_upload_text_name_too_long(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test text upload with name that exceeds length limit.
         """
@@ -494,7 +570,7 @@ class TestFileService:
         mock_current_user.current_tenant_id = str(fake.uuid4())
         mock_current_user.id = str(fake.uuid4())
 
-        upload_file = file_service.upload_text(
+        upload_file = file_upload_service.upload_text(
             text=text,
             text_name=long_name,
             user_id=mock_current_user.id,
@@ -588,8 +664,12 @@ class TestFileService:
 
     # Test edge cases and boundary conditions
     def test_upload_file_empty_content(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with empty content.
         """
@@ -600,20 +680,24 @@ class TestFileService:
         content = b""
         mimetype = "text/plain"
 
-        upload_file = file_service.upload_file(
+        upload_file = file_upload_service.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=account.current_tenant_id,
+            actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=account.current_tenant_id,
         )
 
         assert upload_file is not None
         assert upload_file.size == 0
 
     def test_upload_file_special_characters_in_name(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with special characters in filename (but valid ones).
         """
@@ -624,20 +708,24 @@ class TestFileService:
         content = b"test content"
         mimetype = "text/plain"
 
-        upload_file = file_service.upload_file(
+        upload_file = file_upload_service.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=account.current_tenant_id,
+            actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=account.current_tenant_id,
         )
 
         assert upload_file is not None
         assert upload_file.name == filename
 
     def test_upload_file_different_case_extensions(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with different case extensions.
         """
@@ -648,20 +736,24 @@ class TestFileService:
         content = b"test content"
         mimetype = "application/pdf"
 
-        upload_file = file_service.upload_file(
+        upload_file = file_upload_service.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=account.current_tenant_id,
+            actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=account.current_tenant_id,
         )
 
         assert upload_file is not None
         assert upload_file.extension == "pdf"  # Should be converted to lowercase
 
     def test_upload_text_empty_text(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test text upload with empty text.
         """
@@ -674,7 +766,7 @@ class TestFileService:
         mock_current_user.current_tenant_id = str(fake.uuid4())
         mock_current_user.id = str(fake.uuid4())
 
-        upload_file = file_service.upload_text(
+        upload_file = file_upload_service.upload_text(
             text=text,
             text_name=text_name,
             user_id=mock_current_user.id,
@@ -685,8 +777,12 @@ class TestFileService:
         assert upload_file.size == 0
 
     def test_file_size_limits_edge_cases(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file size limits with edge case values.
         """
@@ -698,17 +794,21 @@ class TestFileService:
             ("pdf", dify_config.UPLOAD_FILE_SIZE_LIMIT),
         ]:
             file_size = limit_config * 1024 * 1024
-            result = file_service.is_file_size_within_limit(extension=extension, file_size=file_size)
+            result = file_upload_service.is_file_size_within_limit(extension=extension, file_size=file_size)
             assert result is True
 
             # Test one byte over limit
             file_size = limit_config * 1024 * 1024 + 1
-            result = file_service.is_file_size_within_limit(extension=extension, file_size=file_size)
+            result = file_upload_service.is_file_size_within_limit(extension=extension, file_size=file_size)
             assert result is False
 
     def test_upload_file_with_source_url(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with source URL that gets overridden by signed URL.
         """
@@ -720,12 +820,12 @@ class TestFileService:
         mimetype = "application/pdf"
         source_url = "https://original-source.com/file.pdf"
 
-        upload_file = file_service.upload_file(
+        upload_file = file_upload_service.upload_file_for_actor(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=account.current_tenant_id,
+            actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=account.current_tenant_id,
             source_url=source_url,
         )
 
@@ -734,12 +834,12 @@ class TestFileService:
 
         # The signed URL should only be set when source_url is empty
         # Let's test that scenario
-        upload_file2 = file_service.upload_file(
+        upload_file2 = file_upload_service.upload_file_for_actor(
             filename="test2.pdf",
             content=b"test content 2",
             mimetype="application/pdf",
-            user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=account.current_tenant_id,
+            actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=account.current_tenant_id,
             source_url="",  # Empty source_url
         )
 
@@ -748,8 +848,12 @@ class TestFileService:
 
     # Test file extension blacklist
     def test_upload_file_blocked_extension(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with blocked extension.
         """
@@ -763,17 +867,21 @@ class TestFileService:
             mimetype = "application/x-msdownload"
 
             with pytest.raises(BlockedFileExtensionError):
-                file_service.upload_file(
+                file_upload_service.upload_file_for_actor(
                     filename=filename,
                     content=content,
                     mimetype=mimetype,
-                    user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-                    tenant_id=account.current_tenant_id,
+                    actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+                    resource_tenant_id=account.current_tenant_id,
                 )
 
     def test_upload_file_blocked_extension_case_insensitive(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with blocked extension (case insensitive).
         """
@@ -788,17 +896,21 @@ class TestFileService:
             mimetype = "application/x-msdownload"
 
             with pytest.raises(BlockedFileExtensionError):
-                file_service.upload_file(
+                file_upload_service.upload_file_for_actor(
                     filename=filename,
                     content=content,
                     mimetype=mimetype,
-                    user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-                    tenant_id=account.current_tenant_id,
+                    actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+                    resource_tenant_id=account.current_tenant_id,
                 )
 
     def test_upload_file_not_in_blacklist(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with extension not in blacklist.
         """
@@ -811,12 +923,12 @@ class TestFileService:
             content = b"test content"
             mimetype = "application/pdf"
 
-            upload_file = file_service.upload_file(
+            upload_file = file_upload_service.upload_file_for_actor(
                 filename=filename,
                 content=content,
                 mimetype=mimetype,
-                user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-                tenant_id=account.current_tenant_id,
+                actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=account.current_tenant_id,
             )
 
             assert upload_file is not None
@@ -824,8 +936,12 @@ class TestFileService:
             assert upload_file.extension == "pdf"
 
     def test_upload_file_empty_blacklist(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with empty blacklist (default behavior).
         """
@@ -839,20 +955,24 @@ class TestFileService:
             content = b"#!/bin/bash\necho test"
             mimetype = "application/x-sh"
 
-            upload_file = file_service.upload_file(
+            upload_file = file_upload_service.upload_file_for_actor(
                 filename=filename,
                 content=content,
                 mimetype=mimetype,
-                user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-                tenant_id=account.current_tenant_id,
+                actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=account.current_tenant_id,
             )
 
             assert upload_file is not None
             assert upload_file.extension == "sh"
 
     def test_upload_file_multiple_blocked_extensions(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with multiple blocked extensions.
         """
@@ -868,17 +988,21 @@ class TestFileService:
                 mimetype = "application/octet-stream"
 
                 with pytest.raises(BlockedFileExtensionError):
-                    file_service.upload_file(
+                    file_upload_service.upload_file_for_actor(
                         filename=filename,
                         content=content,
                         mimetype=mimetype,
-                        user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-                        tenant_id=account.current_tenant_id,
+                        actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+                        resource_tenant_id=account.current_tenant_id,
                     )
 
     def test_upload_file_no_extension_with_blacklist(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies, file_service
-    ):
+        self,
+        db_session_with_containers: Session,
+        engine: Engine,
+        mock_external_service_dependencies: dict[str, MagicMock],
+        file_upload_service: FileUploadService,
+    ) -> None:
         """
         Test file upload with no extension when blacklist is configured.
         """
@@ -892,12 +1016,12 @@ class TestFileService:
             content = b"test content"
             mimetype = "text/plain"
 
-            upload_file = file_service.upload_file(
+            upload_file = file_upload_service.upload_file_for_actor(
                 filename=filename,
                 content=content,
                 mimetype=mimetype,
-                user=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
-                tenant_id=account.current_tenant_id,
+                actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=account.current_tenant_id,
             )
 
             assert upload_file is not None

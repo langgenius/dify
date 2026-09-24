@@ -1,21 +1,25 @@
 'use client'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import * as React from 'react'
-import { useState } from 'react'
+import { Suspense, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useGetTryAppInfo } from '@/service/use-try-app'
-import App from './app'
 import AppInfo from './app-info'
 import Preview from './preview'
 import { TypeEnum } from './types'
 
+const App = React.lazy(() => import('./app'))
+
 type Props = Readonly<{
-  app: RecommendedAppResponse
+  appId: RecommendedAppResponse['app_id']
+  canTrial: RecommendedAppResponse['can_trial']
+  categories?: RecommendedAppResponse['categories']
+  templateName?: NonNullable<RecommendedAppResponse['app']>['name']
   canCreate?: boolean
   createButtonStepByStepTourTarget?: string
   onClose: () => void
@@ -23,18 +27,25 @@ type Props = Readonly<{
 }>
 
 function TryApp({
-  app,
+  appId,
+  canTrial,
+  categories,
+  templateName,
   canCreate = true,
   createButtonStepByStepTourTarget,
   onClose,
   onCreate,
 }: Props) {
-  const { t } = useTranslation()
-  const appId = app.app_id
-  const canUseTryTab = app.can_trial
-  const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))
-  const activeType = canUseTryTab ? type : TypeEnum.DETAIL
-  const { data: appDetail, isLoading, isError, error } = useGetTryAppInfo(appId)
+  const { t } = useTranslation(['common', 'explore'])
+  const { data: appDetail, isLoading, isFetching, refetch } = useGetTryAppInfo(appId)
+  const hasLoadError = !isLoading && !appDetail
+  const retryLabelId = useId()
+  const detailTabRef = useRef<HTMLButtonElement>(null)
+
+  const handleRetry = async () => {
+    const { data } = await refetch()
+    if (data) detailTabRef.current?.focus()
+  }
 
   return (
     <Dialog
@@ -43,78 +54,121 @@ function TryApp({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-7xl overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
-        {isLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <LoadingPlaceholder />
-          </div>
-        ) : isError ? (
-          <div className="flex h-full items-center justify-center">
-            <AppUnavailable
-              className="size-auto"
-              isUnknownReason={!error}
-              unknownReason={error instanceof Error ? error.message : undefined}
-            />
-          </div>
-        ) : !appDetail ? (
-          <div className="flex h-full items-center justify-center">
-            <AppUnavailable className="size-auto" isUnknownReason />
-          </div>
-        ) : (
-          <Tabs
-            value={activeType}
-            onValueChange={(selectedValue) => setType(selectedValue)}
-            className="flex h-full flex-col"
-          >
-            <div className="flex shrink-0 justify-between pl-4">
-              <TabsList>
+      <DialogContent
+        initialFocus={detailTabRef}
+        className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-full max-w-[calc(100vw-16px)] min-w-7xl overflow-hidden overflow-x-auto border-none p-2 text-left align-middle"
+      >
+        <DialogTitle className="sr-only">
+          {templateName ?? appDetail?.name ?? t(($) => $['apps.title'], { ns: 'explore' })}
+        </DialogTitle>
+        <Tabs defaultValue={TypeEnum.DETAIL} className="flex h-full flex-col">
+          <div className="flex shrink-0 justify-between pl-4">
+            <TabsList>
+              <TabsTab
+                ref={detailTabRef}
+                value={TypeEnum.DETAIL}
+                className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
+              >
+                <span className="system-md-semibold-uppercase">
+                  {t(($) => $['tryApp.tabHeader.detail'], { ns: 'explore' })}
+                </span>
+              </TabsTab>
+              {canTrial && (
                 <TabsTab
                   value={TypeEnum.TRY}
-                  disabled={!canUseTryTab}
+                  disabled={!appDetail}
                   className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
                 >
                   <span className="system-md-semibold-uppercase">
                     {t(($) => $['tryApp.tabHeader.try'], { ns: 'explore' })}
                   </span>
                 </TabsTab>
-                <TabsTab
-                  value={TypeEnum.DETAIL}
-                  className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
+              )}
+            </TabsList>
+            <IconButton
+              size="lg"
+              variant="tertiary"
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              onClick={onClose}
+            >
+              <span aria-hidden className="i-ri-close-line size-5" />
+            </IconButton>
+          </div>
+          <div className="mt-2 flex h-0 grow justify-between space-x-2">
+            <TabsPanel value={TypeEnum.DETAIL} className="min-w-0 flex-1">
+              {isLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <LoadingPlaceholder />
+                </div>
+              ) : hasLoadError ? (
+                <div className="flex h-full flex-col items-center justify-center gap-5">
+                  <div className="flex flex-col items-center gap-5" role="alert">
+                    <span className="flex size-12 items-center justify-center rounded-xl bg-background-body">
+                      <span
+                        aria-hidden
+                        className="i-ri-error-warning-line size-6 text-text-tertiary"
+                      />
+                    </span>
+                    <p className="title-xl-semi-bold text-text-primary">
+                      {t(($) => $['tryApp.loadError'], { ns: 'explore' })}
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary-accent"
+                    disabled={isFetching}
+                    focusableWhenDisabled={isFetching}
+                    aria-labelledby={retryLabelId}
+                    onClick={handleRetry}
+                  >
+                    <span id={retryLabelId}>
+                      {isFetching
+                        ? t(($) => $['tryApp.retrying'], { ns: 'explore' })
+                        : t(($) => $['operation.retry'], { ns: 'common' })}
+                    </span>
+                  </Button>
+                </div>
+              ) : appDetail ? (
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center">
+                      <LoadingPlaceholder />
+                    </div>
+                  }
                 >
-                  <span className="system-md-semibold-uppercase">
-                    {t(($) => $['tryApp.tabHeader.detail'], { ns: 'explore' })}
-                  </span>
-                </TabsTab>
-              </TabsList>
-              <IconButton
-                size="lg"
-                variant="tertiary"
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                onClick={onClose}
-              >
-                <span aria-hidden className="i-ri-close-line size-5" />
-              </IconButton>
-            </div>
-            {/* Main content */}
-            <div className="mt-2 flex h-0 grow justify-between space-x-2">
+                  <Preview appId={appId} appDetail={appDetail} />
+                </Suspense>
+              ) : null}
+            </TabsPanel>
+            {canTrial && (
               <TabsPanel value={TypeEnum.TRY} className="min-w-0 flex-1">
-                <App appId={appId} appDetail={appDetail} />
+                {appDetail && (
+                  <Suspense
+                    fallback={
+                      <div className="flex h-full items-center justify-center">
+                        <LoadingPlaceholder />
+                      </div>
+                    }
+                  >
+                    <App appId={appId} appDetail={appDetail} />
+                  </Suspense>
+                )}
               </TabsPanel>
-              <TabsPanel value={TypeEnum.DETAIL} className="min-w-0 flex-1">
-                <Preview appId={appId} appDetail={appDetail} />
-              </TabsPanel>
-              <AppInfo
-                className="w-90 shrink-0"
-                appDetail={appDetail}
-                appId={appId}
-                canCreate={canCreate}
-                categories={app.categories ?? []}
-                createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
-                onCreate={onCreate}
-              />
-            </div>
-          </Tabs>
-        )}
+            )}
+            {appDetail && (
+              <Suspense fallback={<div className="w-90 shrink-0" />}>
+                <AppInfo
+                  className="w-90 shrink-0"
+                  appDetail={appDetail}
+                  appId={appId}
+                  canCreate={canCreate}
+                  categories={categories ?? []}
+                  createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
+                  onCreate={onCreate}
+                />
+              </Suspense>
+            )}
+          </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

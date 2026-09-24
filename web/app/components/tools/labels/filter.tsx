@@ -13,7 +13,7 @@ type LabelFilterProps = {
   onChange: (v: string[]) => void
 }
 const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { tags: labelList } = useTags()
   const [keywords, setKeywords] = useState('')
 

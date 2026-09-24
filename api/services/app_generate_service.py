@@ -267,7 +267,7 @@ class AppGenerateService:
                         workflow_based_app_execution_task.delay(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
-                    generator = AdvancedChatAppGenerator(file_uploads=application_services().file_uploads)
+                    generator = application_services().create_advanced_chat_app_generator()
                     return rate_limit.generate(
                         generator.convert_to_event_stream(
                             generator.retrieve_events(
@@ -285,7 +285,7 @@ class AppGenerateService:
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
-                advanced_generator = AdvancedChatAppGenerator(file_uploads=application_services().file_uploads)
+                advanced_generator = application_services().create_advanced_chat_app_generator()
                 return rate_limit.generate(
                     advanced_generator.convert_to_event_stream(
                         advanced_generator.generate(
@@ -342,7 +342,9 @@ class AppGenerateService:
                 )
                 return rate_limit.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
-                        WorkflowAppGenerator(file_uploads=application_services().file_uploads).generate(
+                        application_services()
+                        .create_workflow_app_generator()
+                        .generate(
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
@@ -409,9 +411,9 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator(
-                        file_uploads=application_services().file_uploads
-                    ).single_iteration_generate(
+                    application_services()
+                    .create_advanced_chat_app_generator()
+                    .single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -424,7 +426,9 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator(file_uploads=application_services().file_uploads).single_iteration_generate(
+                    application_services()
+                    .create_workflow_app_generator()
+                    .single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -458,7 +462,9 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator(file_uploads=application_services().file_uploads).single_loop_generate(
+                    application_services()
+                    .create_advanced_chat_app_generator()
+                    .single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -471,7 +477,9 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator(file_uploads=application_services().file_uploads).single_loop_generate(
+                    application_services()
+                    .create_workflow_app_generator()
+                    .single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -573,7 +581,7 @@ class AppGenerateService:
             # TODO(QuantumGhost): handled the ended scenario.
             pass
 
-        generator = AdvancedChatAppGenerator(file_uploads=application_services().file_uploads)
+        generator = application_services().create_advanced_chat_app_generator()
 
         return generator.convert_to_event_stream(
             generator.retrieve_events(AppMode(app_model.mode), workflow_run.id),

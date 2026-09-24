@@ -38,6 +38,7 @@ from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormK
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -324,7 +325,6 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
 
 class TestHitlServiceApi:
     # Service API event-stream continuation
-    @pytest.mark.usefixtures("file_upload_services")
     def test_workflow_events_continue_on_pause_keeps_stream_open(
         self,
         app: Flask,
@@ -339,11 +339,8 @@ class TestHitlServiceApi:
             sqlite_engine=sqlite_engine,
         )
         msg_generator = Mock()
-        msg_generator.retrieve_events.return_value = ["raw-event"]
-        workflow_generator = Mock()
-        workflow_generator.convert_to_event_stream.return_value = iter(["data: streamed\n\n"])
+        msg_generator.retrieve_events.return_value = iter([{"event": "streamed"}])
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda *, file_uploads: workflow_generator)
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
@@ -353,15 +350,13 @@ class TestHitlServiceApi:
         with app.test_request_context("/workflow/run-1/events?user=u1&continue_on_pause=true", method="GET"):
             response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
-        assert response.get_data(as_text=True) == "data: streamed\n\n"
+        assert response.get_data(as_text=True) == 'data: {"event":"streamed"}\n\n'
         msg_generator.retrieve_events.assert_called_once_with(
             AppMode.WORKFLOW,
             "run-1",
             terminal_events=[],
         )
-        workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
-    @pytest.mark.usefixtures("file_upload_services")
     def test_workflow_events_snapshot_continue_on_pause_keeps_pause_open(
         self,
         app: Flask,
@@ -376,11 +371,8 @@ class TestHitlServiceApi:
             sqlite_engine=sqlite_engine,
         )
         msg_generator = Mock()
-        workflow_generator = Mock()
-        workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
-        snapshot_builder = Mock(return_value=["snapshot-events"])
+        snapshot_builder = Mock(return_value=iter([{"event": "snapshot"}]))
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda *, file_uploads: workflow_generator)
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
@@ -394,7 +386,7 @@ class TestHitlServiceApi:
         ):
             response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
-        assert response.get_data(as_text=True) == "data: snapshot\n\n"
+        assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
         msg_generator.retrieve_events.assert_not_called()
         snapshot_builder.assert_called_once_with(
             app_mode=AppMode.WORKFLOW,
@@ -408,7 +400,6 @@ class TestHitlServiceApi:
         snapshot_session_maker = snapshot_builder.call_args.kwargs["session_maker"]
         assert isinstance(snapshot_session_maker, sessionmaker)
         assert snapshot_session_maker.kw["bind"] is sqlite_engine
-        workflow_generator.convert_to_event_stream.assert_called_once_with(["snapshot-events"])
 
     @pytest.mark.usefixtures("file_upload_services")
     def test_advanced_chat_blocking_injects_pause_state_config(
@@ -427,7 +418,7 @@ class TestHitlServiceApi:
         generator_instance = MagicMock()
         generator_instance.generate.return_value = {"result": "advanced-blocking"}
         generator_instance.convert_to_event_stream.side_effect = lambda payload: payload
-        monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", lambda *, file_uploads: generator_instance)
+        monkeypatch.setattr(application_services(), "create_advanced_chat_app_generator", lambda: generator_instance)
 
         app_model = _app(app_id="app-id", tenant_id="tenant-id", mode=AppMode.ADVANCED_CHAT)
         user = _end_user(user_id="user-id", app_id="app-id", tenant_id="tenant-id")

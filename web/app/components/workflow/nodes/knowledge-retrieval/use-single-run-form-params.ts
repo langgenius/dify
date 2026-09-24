@@ -28,7 +28,7 @@ const useSingleRunFormParams = ({
   runInputDataRef,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const query = runInputData.query
   const queryAttachment = runInputData.queryAttachment

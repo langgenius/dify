@@ -13,6 +13,7 @@ import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.file.uploads import FileTextWriter, FileUploadWriter
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.repositories.factory import (
     WorkflowNodeExecutionQuery,
@@ -23,8 +24,6 @@ from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipe
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
-from services.file_service import FileService
-from services.file_upload_service import FileUploadService
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -47,8 +46,8 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine, knowledge_index: IndexProcessor):
     gen = module.PipelineGenerator(
-        files=MagicMock(spec=FileService),
-        file_uploads=MagicMock(spec=FileUploadService),
+        files=MagicMock(spec=FileTextWriter),
+        file_uploads=MagicMock(spec=FileUploadWriter),
         index_processor=knowledge_index,
     )
 

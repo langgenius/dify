@@ -11,7 +11,7 @@ type ActionsProps = {
 }
 
 const Actions: FC<ActionsProps> = ({ disableAddBtn, onAddChildField, onEdit, onDelete }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const addChildFieldLabel = t(($) => $['nodes.llm.jsonSchema.addChildField'], { ns: 'workflow' })
   const editLabel = t(($) => $['operation.edit'], { ns: 'common' })
   const removeLabel = t(($) => $['operation.remove'], { ns: 'common' })

@@ -25,7 +25,7 @@ export type ActionMenuProps = {
 const ActionMenu: FC<ActionMenuProps> = (props: ActionMenuProps) => {
   const { isShowDelete, handleClickActionMenuItem, open, setOpen } = props
   const { deleteOperation, options } = useActionMenu(props)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>

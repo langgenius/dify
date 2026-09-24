@@ -145,7 +145,7 @@ const ProviderConfigModal: FC<Props> = ({
   onSaved,
   onChosen,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)

@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.file.uploads import FileUploadWriter
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
@@ -19,7 +20,6 @@ from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
-from services.file_upload_service import FileUploadService
 from tests.unit_tests.config_override import config_overrides_context
 
 
@@ -107,7 +107,7 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
 
 class TestBaseIndexProcessor:
     @pytest.fixture
-    def processor(self, file_uploads: FileUploadService) -> _ForwardingBaseIndexProcessor:
+    def processor(self, file_uploads: FileUploadWriter) -> _ForwardingBaseIndexProcessor:
         return _ForwardingBaseIndexProcessor(file_uploads=file_uploads)
 
     def test_abstract_methods_raise_not_implemented(

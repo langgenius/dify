@@ -18,15 +18,13 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import NotFound
 
-from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
+from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
 from core.db.session_factory import session_factory
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
-
-pytestmark = pytest.mark.usefixtures("file_upload_services")
 
 
 class _SealableContext:
@@ -121,9 +119,6 @@ class TestOpenApiWorkflowEventsApi:
 
     def _bind_generators(self, monkeypatch: pytest.MonkeyPatch) -> None:
         module = sys.modules["controllers.openapi.workflow_events"]
-        generator_mock = Mock()
-        generator_mock.convert_to_event_stream.return_value = iter([])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda *, file_uploads: generator_mock)
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
@@ -139,6 +134,7 @@ class TestOpenApiWorkflowEventsApi:
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     task_id="wf-run-1",
+                    query=WorkflowEventsQuery(),
                 )
 
         # The stream outlives the guard's session, so the repository gets the guard's
@@ -157,6 +153,7 @@ class TestOpenApiWorkflowEventsApi:
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     task_id="wf-run-1",
+                    query=WorkflowEventsQuery(),
                 )
 
     def test_account_caller_rejected_for_end_user_run(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -170,6 +167,7 @@ class TestOpenApiWorkflowEventsApi:
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     task_id="wf-run-1",
+                    query=WorkflowEventsQuery(),
                 )
 
     def test_end_user_caller_checks_created_by_end_user(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -184,6 +182,7 @@ class TestOpenApiWorkflowEventsApi:
                 _context(_make_end_user(), CreatorUserRole.END_USER),
                 app_id="app-1",
                 task_id="wf-run-1",
+                query=WorkflowEventsQuery(),
             )
         assert resp.mimetype == "text/event-stream"
 
@@ -220,7 +219,7 @@ class TestOpenApiWorkflowEventsApi:
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            resp = api.get.__handler__(api, ctx, app_id="app-1", task_id="wf-run-1")
+            resp = api.get.__handler__(api, ctx, app_id="app-1", task_id="wf-run-1", query=WorkflowEventsQuery())
             ctx.seal()
             body = "".join(resp.response)
 
@@ -241,21 +240,42 @@ class TestOpenApiWorkflowEventsApi:
         module = sys.modules["controllers.openapi.workflow_events"]
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
 
-        generator_mock = Mock()
-        generator_mock.convert_to_event_stream.return_value = iter(["event: a\n\n", "event: b\n\n"])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda *, file_uploads: generator_mock)
         msg_gen_mock = Mock()
-        msg_gen_mock.retrieve_events.return_value = iter([])
+        msg_gen_mock.retrieve_events.return_value = iter(["a", "b"])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
-        monkeypatch.setattr(module, "build_workflow_event_stream", Mock(return_value=iter([])))
+        monkeypatch.setattr(module, "build_workflow_event_stream", Mock(return_value=iter(["a", "b"])))
 
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
-        query = "?include_state_snapshot=true" if include_state_snapshot else ""
-        with app.test_request_context(f"/openapi/v1/apps/app-1/tasks/wf-run-1/events{query}"):
-            resp = api.get.__handler__(api, ctx, app_id="app-1", task_id="wf-run-1")
+        query = WorkflowEventsQuery(include_state_snapshot=include_state_snapshot)
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+            resp = api.get.__handler__(api, ctx, app_id="app-1", task_id="wf-run-1", query=query)
             ctx.seal()
             body = "".join(resp.response)
 
         assert resp.mimetype == "text/event-stream"
         assert body == "event: a\n\nevent: b\n\n"
+
+    @pytest.mark.parametrize("continue_on_pause", [False, True], ids=["close", "keep_open"])
+    def test_continue_on_pause_comes_off_the_declared_query_model(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, continue_on_pause: bool
+    ):
+        module = sys.modules["controllers.openapi.workflow_events"]
+        self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
+        msg_gen_mock = Mock()
+        msg_gen_mock.retrieve_events.return_value = iter([])
+        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
+
+        api = OpenApiWorkflowEventsApi()
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+            resp = api.get.__handler__(
+                api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
+                app_id="app-1",
+                task_id="wf-run-1",
+                query=WorkflowEventsQuery(continue_on_pause=continue_on_pause),
+            )
+            "".join(resp.response)
+
+        terminal_events = msg_gen_mock.retrieve_events.call_args.kwargs["terminal_events"]
+        assert terminal_events == ([] if continue_on_pause else None)

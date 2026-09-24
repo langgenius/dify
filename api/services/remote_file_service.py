@@ -7,6 +7,7 @@ import httpx
 
 from core.file import remote_fetcher
 from core.file.remote_file_metadata import InvalidRemoteFileMetadataError, guess_file_info_from_response
+from core.file.uploads import FileUploadActor
 from core.helper.ssrf_proxy import MaxRetriesExceededError
 from core.tools.errors import ToolSSRFError
 from graphon.file import helpers as file_helpers
@@ -15,7 +16,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
 from services.errors.file import FileTooLargeError
-from services.file_upload_service import FileUploadActor, FileUploadService
+from services.file_upload_service import FileUploadService
 
 
 @dataclass(frozen=True, slots=True)

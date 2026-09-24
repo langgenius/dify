@@ -6,12 +6,12 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
+from core.file.uploads import FileTextWriter
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.file_service import FileService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -64,7 +64,7 @@ class RagPipelineTaskProxyTestDataFactory:
         dataset_tenant_id: str = "tenant-123",
         user_id: str = "user-456",
         rag_pipeline_invoke_entities: list[RagPipelineInvokeEntity] | None = None,
-        files: FileService | None = None,
+        files: FileTextWriter | None = None,
     ) -> RagPipelineTaskProxy:
         """Create RagPipelineTaskProxy instance for testing."""
         if rag_pipeline_invoke_entities is None:
@@ -73,7 +73,7 @@ class RagPipelineTaskProxyTestDataFactory:
             dataset_tenant_id,
             user_id,
             rag_pipeline_invoke_entities,
-            files=files if files is not None else Mock(spec=FileService),
+            files=files if files is not None else Mock(spec=FileTextWriter),
         )
 
     @staticmethod
@@ -98,7 +98,7 @@ class RagPipelineTaskProxyTestDataFactory:
 
 @pytest.fixture
 def file_service() -> MagicMock:
-    return MagicMock(spec=FileService)
+    return MagicMock(spec=FileTextWriter)
 
 
 class TestRagPipelineTaskProxy:
@@ -113,7 +113,7 @@ class TestRagPipelineTaskProxy:
 
         # Act
         proxy = RagPipelineTaskProxy(
-            dataset_tenant_id, user_id, rag_pipeline_invoke_entities, files=Mock(spec=FileService)
+            dataset_tenant_id, user_id, rag_pipeline_invoke_entities, files=Mock(spec=FileTextWriter)
         )
 
         # Assert
@@ -133,7 +133,7 @@ class TestRagPipelineTaskProxy:
 
         # Act
         proxy = RagPipelineTaskProxy(
-            dataset_tenant_id, user_id, rag_pipeline_invoke_entities, files=Mock(spec=FileService)
+            dataset_tenant_id, user_id, rag_pipeline_invoke_entities, files=Mock(spec=FileTextWriter)
         )
 
         # Assert
@@ -154,7 +154,7 @@ class TestRagPipelineTaskProxy:
 
         # Act
         proxy = RagPipelineTaskProxy(
-            dataset_tenant_id, user_id, rag_pipeline_invoke_entities, files=Mock(spec=FileService)
+            dataset_tenant_id, user_id, rag_pipeline_invoke_entities, files=Mock(spec=FileTextWriter)
         )
 
         # Assert
@@ -475,7 +475,7 @@ class TestRagPipelineTaskProxy:
     def test_delay_method_with_empty_entities(self, caplog: pytest.LogCaptureFixture):
         """Test delay method with empty rag_pipeline_invoke_entities."""
         # Arrange
-        proxy = RagPipelineTaskProxy("tenant-123", "user-456", [], files=Mock(spec=FileService))
+        proxy = RagPipelineTaskProxy("tenant-123", "user-456", [], files=Mock(spec=FileTextWriter))
 
         # Act
         with caplog.at_level(logging.WARNING, logger="services.rag_pipeline.rag_pipeline_task_proxy"):

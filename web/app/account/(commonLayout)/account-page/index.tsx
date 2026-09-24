@@ -8,7 +8,7 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -33,7 +33,7 @@ const descriptionClassName = `
 type AccountAppItem = AppPartial & IItem
 
 export default function AccountPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const editNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appList } = useQuery(
@@ -49,6 +49,7 @@ export default function AccountPage() {
   )
   const apps = appList?.data || []
   const queryClient = useQueryClient()
+  const updateProfile = useMutation(consoleQuery.account.profile.patch.mutationOptions())
   // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
@@ -87,9 +88,8 @@ export default function AccountPage() {
   const handleSaveName = async () => {
     try {
       setEditing(true)
-      await updateUserProfile({ url: 'account/name', body: { name: editName } })
+      await updateProfile.mutateAsync({ body: { name: editName } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      mutateUserProfile()
       setEditNameModalVisible(false)
       setEditing(false)
     } catch (e) {
@@ -172,12 +172,7 @@ export default function AccountPage() {
         </h4>
       </div>
       <div className="mb-8 flex items-center rounded-xl bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
-        <AvatarWithEdit
-          avatar={userProfile.avatar_url}
-          name={userProfile.name}
-          onSave={mutateUserProfile}
-          size="3xl"
-        />
+        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} size="3xl" />
         <div className="ml-4">
           <p className="system-xl-semibold text-text-primary">
             {userProfile.name}

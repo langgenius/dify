@@ -93,7 +93,7 @@ from models.skill import (
 from models.tools import ToolFile
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.roster_service import AgentRosterService
-from services.file_service import FileService
+from services.file_upload_service import FileUploadService
 
 logger = logging.getLogger(__name__)
 
@@ -671,7 +671,7 @@ class SkillManagementService:
     ) -> dict[str, Any]:
         """Store one draft file payload as a ToolFile for later ``upsert_tool_file`` operations."""
         extension = posixpath.splitext(filename)[1].lstrip(".").lower()
-        if not FileService.is_file_size_within_limit(extension=extension, file_size=len(content)):
+        if not FileUploadService.is_file_size_within_limit(extension=extension, file_size=len(content)):
             raise SkillManagementServiceError(
                 "skill_assistant_attachment_too_large",
                 "Skill Builder attachment exceeds the configured file size limit",

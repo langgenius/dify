@@ -28,7 +28,6 @@ from models.agent import (
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
-from services.agent_app_sandbox_service import WorkflowAgentSandboxService
 
 
 def _scope() -> WorkflowAgentSessionScope:
@@ -341,20 +340,6 @@ def test_load_or_create_persists_binding_on_node_execution(
     persisted_binding = sqlite_session.get(AgentWorkspaceBinding, stored.binding_id)
     assert persisted_binding is not None
     assert persisted_binding.base_home_snapshot_id == home_snapshot_id
-
-    resolved = WorkflowAgentSandboxService._resolve_binding(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        workflow_run_id="run-1",
-        node_id="node-1",
-        node_execution_id="execution-1",
-        session=sqlite_session,
-    )
-
-    assert resolved.backend_binding_ref == "backend-binding-1"
-    assert resolved.agent_id == "agent-1"
-    assert resolved.agent_config_version_id == "config-1"
-    assert resolved.agent_config_version_kind == "snapshot"
 
 
 def test_load_existing_pointer_rejects_missing_workflow_identity(sqlite_session: Session) -> None:

@@ -38,6 +38,7 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
+from core.file.uploads import FileTextWriter, FileUploadWriter
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.repositories.factory import (
@@ -54,8 +55,6 @@ from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.datasource_provider_service import DatasourceProviderService
-from services.file_service import FileService
-from services.file_upload_service import FileUploadService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
@@ -63,7 +62,9 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
-    def __init__(self, *, files: FileService, file_uploads: FileUploadService, index_processor: IndexProcessor) -> None:
+    def __init__(
+        self, *, files: FileTextWriter, file_uploads: FileUploadWriter, index_processor: IndexProcessor
+    ) -> None:
         self._files = files
         self._file_uploads = file_uploads
         self._index_processor = index_processor

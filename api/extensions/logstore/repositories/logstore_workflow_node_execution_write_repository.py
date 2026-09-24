@@ -15,6 +15,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.file.uploads import FileUploadWriter
 from core.repositories import SQLAlchemyWorkflowNodeExecutionWriteRepository
 from core.repositories.factory import WorkflowNodeExecutionWriter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
@@ -27,7 +28,6 @@ from models import (
     EndUser,
     WorkflowNodeExecutionTriggeredFrom,
 )
-from services.file_upload_service import FileUploadService
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class LogstoreWorkflowNodeExecutionWriteRepository(WorkflowNodeExecutionWriter):
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
         *,
-        file_uploads: FileUploadService,
+        file_uploads: FileUploadWriter,
     ) -> None:
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.

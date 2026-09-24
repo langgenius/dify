@@ -6,12 +6,13 @@ import httpx
 import pytest
 
 from core.file.remote_file_metadata import FileInfo, InvalidRemoteFileMetadataError
+from core.file.uploads import FileUploadActor
 from core.helper.ssrf_proxy import MaxRetriesExceededError
 from core.tools.errors import ToolSSRFError
 from models.enums import CreatorUserRole
 from models.model import Account
 from services.errors.file import FileTooLargeError
-from services.file_upload_service import FileUploadActor, FileUploadService
+from services.file_upload_service import FileUploadService
 from services.remote_file_service import (
     RemoteFileAccessDeniedError,
     RemoteFileError,

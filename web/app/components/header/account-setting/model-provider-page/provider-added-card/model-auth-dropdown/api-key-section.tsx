@@ -26,7 +26,7 @@ function ApiKeySection({
   onDelete,
   onAdd,
 }: ApiKeySectionProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const notAllowCustomCredential = provider.allow_custom_token === false
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
 

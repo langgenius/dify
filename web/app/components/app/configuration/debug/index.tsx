@@ -67,7 +67,7 @@ const Debug: FC<IDebug> = ({
   multipleModelConfigs,
   onMultipleModelConfigsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const {
     canTestAndRun = false,
     appId,

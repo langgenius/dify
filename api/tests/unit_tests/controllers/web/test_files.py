@@ -18,12 +18,12 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.web.files import FileApi
+from core.file.uploads import FileUploadActor, FileUploadResult
 from extensions.storage.storage_type import StorageType
 from libs.exception import BaseHTTPException
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from services.errors import file as file_errors
-from services.file_upload_service import FileUploadActor, FileUploadResult
 from tests.unit_tests.model_factories import make_end_user
 
 
@@ -105,8 +105,8 @@ class TestFileApi:
         form_source: str | None,
         expected_source: str | None,
     ) -> None:
-        file_service = mock_application_services.return_value.files
-        file_service.upload_file.return_value = _upload_file()
+        file_uploads = mock_application_services.return_value.file_uploads
+        file_uploads.upload_file_for_actor.return_value = _upload_file()
         app_model = _app_model()
         end_user = _end_user()
 
@@ -120,12 +120,12 @@ class TestFileApi:
         assert result["id"] == "file-1"
         assert result["name"] == "test.txt"
         assert result["tenant_id"] == app_model.tenant_id
-        file_service.upload_file.assert_called_once_with(
+        file_uploads.upload_file_for_actor.assert_called_once_with(
             filename="test.txt",
             content=b"content",
             mimetype="text/plain",
-            user=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
-            tenant_id=end_user.tenant_id,
+            actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+            resource_tenant_id=end_user.tenant_id,
             source=expected_source,
         )
 
@@ -160,7 +160,7 @@ class TestFileApi:
         expected_code: str,
         expected_message: str,
     ) -> None:
-        mock_application_services.return_value.files.upload_file.side_effect = service_error
+        mock_application_services.return_value.file_uploads.upload_file_for_actor.side_effect = service_error
 
         data = {"file": (BytesIO(b"big"), "big.txt")}
         with app.test_request_context("/files/upload", method="POST", data=data, content_type="multipart/form-data"):

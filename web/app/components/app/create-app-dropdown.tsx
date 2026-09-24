@@ -31,7 +31,7 @@ export function CreateAppDropdown({
   stepByStepTourTarget,
   stepByStepTourHighlightPart,
 }: CreateAppDropdownProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const menu = useStepByStepTourControlledDropdown({
     controlledOpen: stepByStepTourControlledOpen,
   })

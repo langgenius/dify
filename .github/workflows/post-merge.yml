@@ -36,7 +36,6 @@ jobs:
               - 'e2e/package.json'
               - 'e2e/test-env.ts'
               - 'e2e/tsconfig.json'
-              - 'e2e/tsx-register.js'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - '.github/workflows/post-merge.yml'

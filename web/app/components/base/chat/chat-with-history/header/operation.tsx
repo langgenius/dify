@@ -32,7 +32,7 @@ const Operation: FC<Props> = ({
   isShowDelete,
   onDelete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
 
   return (
     <DropdownMenu>

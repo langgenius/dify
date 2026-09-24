@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 from configs import dify_config
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
@@ -146,7 +145,7 @@ def _execute_workflow_common(
             user = _get_user(session, trigger_log)
 
             # Execute workflow using WorkflowAppGenerator
-            generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
+            generator = application_services().create_workflow_app_generator()
 
             # Adapt trigger inputs and files for the generator.
             args = _build_generator_args(trigger_data)
@@ -262,7 +261,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         state_owner_user_id=workflow.created_by,
     )
 
-    generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
+    generator = application_services().create_workflow_app_generator()
     start_time = datetime.now(UTC)
     graph_engine_layers = []
     trigger_log = _query_trigger_log_info(session_factory, task_data.workflow_run_id)

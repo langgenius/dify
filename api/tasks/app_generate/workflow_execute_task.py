@@ -11,10 +11,8 @@ from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -213,29 +211,37 @@ class _AppRunner:
 
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppGenerator(file_uploads=application_services().file_uploads).generate(
-                app_model=app,
-                workflow=workflow,
-                user=user,
-                args=exec_params.args,
-                invoke_from=exec_params.invoke_from,
-                streaming=exec_params.streaming,
-                workflow_run_id=exec_params.workflow_run_id,
-                pause_state_config=pause_state_config,
-                session=session,
+            return (
+                application_services()
+                .create_advanced_chat_app_generator()
+                .generate(
+                    app_model=app,
+                    workflow=workflow,
+                    user=user,
+                    args=exec_params.args,
+                    invoke_from=exec_params.invoke_from,
+                    streaming=exec_params.streaming,
+                    workflow_run_id=exec_params.workflow_run_id,
+                    pause_state_config=pause_state_config,
+                    session=session,
+                )
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
-            return WorkflowAppGenerator(file_uploads=application_services().file_uploads).generate(
-                app_model=app,
-                workflow=workflow,
-                user=user,
-                args=exec_params.args,
-                invoke_from=exec_params.invoke_from,
-                streaming=exec_params.streaming,
-                call_depth=exec_params.call_depth,
-                root_node_id=exec_params.root_node_id,
-                workflow_run_id=exec_params.workflow_run_id,
-                pause_state_config=pause_state_config,
+            return (
+                application_services()
+                .create_workflow_app_generator()
+                .generate(
+                    app_model=app,
+                    workflow=workflow,
+                    user=user,
+                    args=exec_params.args,
+                    invoke_from=exec_params.invoke_from,
+                    streaming=exec_params.streaming,
+                    call_depth=exec_params.call_depth,
+                    root_node_id=exec_params.root_node_id,
+                    workflow_run_id=exec_params.workflow_run_id,
+                    pause_state_config=pause_state_config,
+                )
             )
 
         logger.error("Unsupported app mode for execution: %s", exec_params.app_mode)
@@ -652,7 +658,7 @@ def _resume_advanced_chat(
         file_uploads=application_services().file_uploads,
     )
 
-    generator = AdvancedChatAppGenerator(file_uploads=application_services().file_uploads)
+    generator = application_services().create_advanced_chat_app_generator()
 
     try:
         response = generator.resume(
@@ -724,7 +730,7 @@ def _resume_workflow(
         file_uploads=application_services().file_uploads,
     )
 
-    generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
+    generator = application_services().create_workflow_app_generator()
 
     try:
         response = generator.resume(

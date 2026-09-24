@@ -169,14 +169,18 @@ class SnippetGenerateService:
         # Adapt snippet to App-like interface for WorkflowAppGenerator
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = WorkflowAppGenerator(file_uploads=application_services().file_uploads).generate(
-            app_model=app_proxy,
-            workflow=workflow,
-            user=user,
-            args=args,
-            invoke_from=invoke_from,
-            streaming=streaming,
-            call_depth=0,
+        response = (
+            application_services()
+            .create_workflow_app_generator()
+            .generate(
+                app_model=app_proxy,
+                workflow=workflow,
+                user=user,
+                args=args,
+                invoke_from=invoke_from,
+                streaming=streaming,
+                call_depth=0,
+            )
         )
 
         return WorkflowAppGenerator.convert_to_event_stream(cls._filter_virtual_start_events(response))
@@ -216,14 +220,18 @@ class SnippetGenerateService:
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = WorkflowAppGenerator(file_uploads=application_services().file_uploads).generate(
-            app_model=app_proxy,
-            workflow=workflow,
-            user=user,
-            args=args,
-            invoke_from=invoke_from,
-            streaming=False,
-            call_depth=0,
+        response = (
+            application_services()
+            .create_workflow_app_generator()
+            .generate(
+                app_model=app_proxy,
+                workflow=workflow,
+                user=user,
+                args=args,
+                invoke_from=invoke_from,
+                streaming=False,
+                call_depth=0,
+            )
         )
         return response
 
@@ -410,7 +418,9 @@ class SnippetGenerateService:
 
         with session_maker() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator(file_uploads=application_services().file_uploads).single_iteration_generate(
+                application_services()
+                .create_workflow_app_generator()
+                .single_iteration_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,
@@ -459,7 +469,9 @@ class SnippetGenerateService:
 
         with session_maker() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator(file_uploads=application_services().file_uploads).single_loop_generate(
+                application_services()
+                .create_workflow_app_generator()
+                .single_loop_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,

@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
+from extensions.ext_application_services import application_services
 from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
@@ -170,6 +171,7 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch
     ensure_start_node = Mock(return_value=workflow)
     monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
+    monkeypatch.setattr(application_services(), "create_workflow_app_generator", workflow_generator_class)
 
     result = SnippetGenerateService.generate(
         snippet=snippet,
@@ -202,7 +204,7 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch
     )
     ensure_start_node = Mock(return_value=workflow)
     monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", Mock(return_value=generator))
+    monkeypatch.setattr(application_services(), "create_workflow_app_generator", Mock(return_value=generator))
 
     result = SnippetGenerateService.run_published(
         snippet=snippet,
@@ -298,6 +300,7 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
         lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
     )
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
+    monkeypatch.setattr(application_services(), "create_workflow_app_generator", workflow_generator_class)
 
     result = SnippetGenerateService.generate_single_iteration(
         snippet=snippet,
@@ -354,6 +357,7 @@ def test_generate_single_loop_delegates_to_workflow_generator(
         lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
     )
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
+    monkeypatch.setattr(application_services(), "create_workflow_app_generator", workflow_generator_class)
 
     result = SnippetGenerateService.generate_single_loop(
         snippet=snippet,

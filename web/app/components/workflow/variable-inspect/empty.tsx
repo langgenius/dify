@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
 const Empty: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
 
   return (

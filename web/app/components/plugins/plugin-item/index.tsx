@@ -44,7 +44,7 @@ const PluginItem: FC<Props> = ({
   className,
   plugin,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { theme } = useTheme()
   const selectedPluginID = usePluginPageContext((v) =>
     v.selectedItem?.type === 'plugin' ? v.selectedItem.id : undefined,
@@ -165,7 +165,7 @@ const PluginItem: FC<Props> = ({
                     openOnHover
                     aria-label={t(($) => $.difyVersionNotCompatible, {
                       ns: 'plugin',
-                      minimalDifyVersion: declarationMeta.minimum_dify_version,
+                      minimalDifyVersion: declarationMeta.minimum_dify_version ?? '0.0.0',
                     })}
                     className="ml-0.5 inline-flex size-4 shrink-0 border-0 bg-transparent p-0"
                   >
@@ -174,7 +174,7 @@ const PluginItem: FC<Props> = ({
                   <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
                     {t(($) => $.difyVersionNotCompatible, {
                       ns: 'plugin',
-                      minimalDifyVersion: declarationMeta.minimum_dify_version,
+                      minimalDifyVersion: declarationMeta.minimum_dify_version ?? '0.0.0',
                     })}
                   </PopoverContent>
                 </Popover>

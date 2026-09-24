@@ -14,6 +14,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow import app_generator as app_generator_module
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.file.uploads import FileUploadWriter
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.factory import (
     WorkflowNodeExecutionQuery,
@@ -24,7 +25,6 @@ from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
-from services.file_upload_service import FileUploadService
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -159,7 +159,7 @@ class TestWorkflowAppGeneratorValidation:
     def test_generate_stream_joins_worker_after_response_exhaustion(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ):
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
         app = _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)
         user = _persist_end_user(sqlite_session)
@@ -273,7 +273,7 @@ class TestWorkflowAppGeneratorValidation:
         ensure_start_node.assert_called_once_with(workflow, snippet)
 
     def test_single_iteration_generate_validates_args(self, sqlite_session: Session):
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_iteration_generate(
@@ -298,7 +298,7 @@ class TestWorkflowAppGeneratorValidation:
             )
 
     def test_single_loop_generate_validates_args(self, sqlite_session: Session):
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_loop_generate(
@@ -317,7 +317,7 @@ class TestWorkflowAppGeneratorValidation:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
     ):
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
         app = _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)
         user = _persist_end_user(sqlite_session)
@@ -377,7 +377,7 @@ class TestWorkflowAppGeneratorValidation:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
     ):
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
         app = _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)
         user = _persist_end_user(sqlite_session)
@@ -445,7 +445,7 @@ class TestWorkflowAppGeneratorValidation:
 
 class TestWorkflowAppGeneratorHandleResponse:
     def test_handle_response_closed_file_raises_stopped(self, monkeypatch: pytest.MonkeyPatch):
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -496,7 +496,7 @@ class TestWorkflowAppGeneratorGenerate:
     @pytest.fixture
     def generation(self, monkeypatch: pytest.MonkeyPatch, sqlite_generator_session: Session):
         """Keep input preparation real and stop at the execution boundary."""
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
         app = _persist_app(sqlite_generator_session)
         workflow = _persist_workflow(sqlite_generator_session)
         user = _persist_end_user(sqlite_generator_session)
@@ -586,7 +586,7 @@ class TestWorkflowAppGeneratorGenerate:
 
 class TestWorkflowAppGeneratorResume:
     def test_resume_restores_trace_manager_when_missing(self, monkeypatch: pytest.MonkeyPatch):
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
             app_id="app",
@@ -650,7 +650,7 @@ class TestWorkflowAppGeneratorResume:
         assert trace_manager.user_id == "session-id"
 
     def test_resume_preserves_existing_trace_manager(self, monkeypatch: pytest.MonkeyPatch):
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
             app_id="app",
@@ -705,7 +705,7 @@ class TestWorkflowAppGeneratorWorker:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
     ):
-        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadService))
+        generator = WorkflowAppGenerator(file_uploads=Mock(spec=FileUploadWriter))
         _persist_app(sqlite_session)
         _persist_workflow(sqlite_session)
         _persist_end_user(sqlite_session)

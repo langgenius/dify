@@ -187,7 +187,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
       select: (data) => data.profile,
     })
     const currentUserId = userProfile.id
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflow'])
     const [replyContent, setReplyContent] = useState('')
     const [editingCommentContent, setEditingCommentContent] = useState('')
     const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)

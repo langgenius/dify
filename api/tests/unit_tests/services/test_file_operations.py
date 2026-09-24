@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from configs import dify_config
+from core.file.uploads import FileUploadResult
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.models.document import Document
@@ -21,8 +22,7 @@ from services import file_service as file_service_module
 from services.errors.file import FileNotExistsError
 from services.file_service import PREVIEW_WORDS_LIMIT, FileArchiveEntry
 from services.file_service_adapters import extract_file_text
-from services.file_upload_service import FileUploadResult
-from tests.file_service_test_utils import make_file_service
+from tests.file_service_test_utils import make_file_service, make_file_upload_service
 
 
 class _Storage:
@@ -87,7 +87,9 @@ def test_file_operations_release_database_before_storage_extraction_and_signing(
 
     service = make_file_service(sqlite_session_factory, storage=storage, extract_text=extract, sign_file_url=sign)
     tenant_id = str(uuid4())
-    file = service.upload_text("hello", "report.txt", str(uuid4()), tenant_id)
+    file = make_file_upload_service(sqlite_session_factory, storage=storage).upload_text(
+        "hello", "report.txt", str(uuid4()), tenant_id
+    )
 
     assert service.get_file_content(file.id) == "hello"
     assert service.get_file_base64(file.id) == "aGVsbG8="
@@ -119,10 +121,10 @@ def test_text_offload_preserves_internal_metadata_without_upload_quota_or_signed
     def unexpected_sign(*, upload_file_id: str) -> str:
         pytest.fail(f"Internal text offload {upload_file_id} must not sign a public URL")
 
-    service = make_file_service(sqlite_session_factory, storage=storage, sign_file_url=unexpected_sign)
+    uploads = make_file_upload_service(sqlite_session_factory, storage=storage, sign_file_url=unexpected_sign)
     text = "包含多字节 UTF-8 文本 🚀"
     owner_id, tenant_id = str(uuid4()), str(uuid4())
-    file = service.upload_text(text, "a" * 210, owner_id, tenant_id)
+    file = uploads.upload_text(text, "a" * 210, owner_id, tenant_id)
 
     assert isinstance(file, FileUploadResult)
     assert file.name == "a" * 200
@@ -153,7 +155,9 @@ def test_storage_delete_failure_preserves_metadata_for_retry(
 ) -> None:
     storage = _Storage(sqlite_engine)
     service = make_file_service(sqlite_session_factory, storage=storage)
-    file = service.upload_text("content", "report.txt", str(uuid4()), str(uuid4()))
+    file = make_file_upload_service(sqlite_session_factory, storage=storage).upload_text(
+        "content", "report.txt", str(uuid4()), str(uuid4())
+    )
     storage.delete_error = True
 
     with pytest.raises(OSError, match="delete failed"):
@@ -175,7 +179,9 @@ def test_zip_removes_partial_tempfile_and_closes_stream_on_read_failure(
 ) -> None:
     storage = _Storage(sqlite_engine)
     service = make_file_service(sqlite_session_factory, storage=storage)
-    file = service.upload_text("content", "report.txt", str(uuid4()), str(uuid4()))
+    file = make_file_upload_service(sqlite_session_factory, storage=storage).upload_text(
+        "content", "report.txt", str(uuid4()), str(uuid4())
+    )
     storage.stream_error = True
     monkeypatch.setattr(file_service_module, "NamedTemporaryFile", partial(NamedTemporaryFile, dir=tmp_path))
 
@@ -194,7 +200,9 @@ def test_extraction_adapter_keeps_file_identity_through_real_extract_setting(
 ) -> None:
     storage = _Storage(sqlite_engine)
     service = make_file_service(sqlite_session_factory, storage=storage)
-    file = service.upload_text("content", "report.txt", str(uuid4()), str(uuid4()))
+    file = make_file_upload_service(sqlite_session_factory, storage=storage).upload_text(
+        "content", "report.txt", str(uuid4()), str(uuid4())
+    )
 
     def extract(
         _cls: type[ExtractProcessor], extract_setting: ExtractSetting, is_automatic: bool = False

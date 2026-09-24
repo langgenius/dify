@@ -5,18 +5,18 @@ from unittest.mock import Mock
 import pytest
 from pytest_mock import MockerFixture
 
+from core.file.uploads import FileTextWriter
 from enums import CloudPlan, DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.file_service import FileService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
 def file_service() -> Mock:
-    return Mock(spec=FileService)
+    return Mock(spec=FileTextWriter)
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def test_delay_with_empty_entities_logs_warning_and_returns(mocker: MockerFixtur
         dataset_tenant_id="tenant-1",
         user_id="user-1",
         rag_pipeline_invoke_entities=[],
-        files=Mock(spec=FileService),
+        files=Mock(spec=FileTextWriter),
     )
     dispatch_mock = mocker.patch.object(proxy, "_dispatch")
 

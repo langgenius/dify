@@ -41,7 +41,7 @@ export const usePluginOperations = ({
   isFromMarketplace,
   onUpdate,
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshPluginList } = useRefreshPluginList()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()

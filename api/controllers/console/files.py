@@ -29,6 +29,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
+from core.file.uploads import FileUploadActor, FileUploadResult
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, UploadConfig
 from libs.helper import dump_response
@@ -37,7 +38,6 @@ from machinery.context import RequestContext
 from models import Account
 from models.enums import CreatorUserRole
 from services.feature_service import FeatureService
-from services.file_upload_service import FileUploadActor, FileUploadResult
 
 register_response_schema_models(
     console_ns,
@@ -109,12 +109,14 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
     )
 
     with _file_upload_errors():
-        return application_services().files.upload_file(
+        return application_services().file_uploads.upload_file_for_actor(
             filename=filename,
             content=file.stream.read(),
             mimetype=file.mimetype,
-            user=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=resource_tenant_id if resource_tenant_id is not None else current_user.current_tenant_id or "",
+            actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=resource_tenant_id
+            if resource_tenant_id is not None
+            else current_user.current_tenant_id or "",
             source=source,
             default_file_size_limit=default_file_size_limit,
         )

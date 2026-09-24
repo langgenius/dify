@@ -19,7 +19,7 @@ function ToolSelectorTrigger({
   tagsMap,
   onTagsChange,
 }: ToolSelectorTriggerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTags'])
   const triggerRef = useRef<HTMLButtonElement>(null)
   const shouldRestoreFocusRef = useRef(false)
   const selectedTagLabels = tags.map((tag) => tagsMap[tag]?.label).filter(Boolean)

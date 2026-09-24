@@ -2,7 +2,6 @@ import hashlib
 from collections.abc import Iterator
 from dataclasses import FrozenInstanceError, dataclass
 from datetime import datetime
-from unittest.mock import MagicMock
 
 import httpx
 import pytest
@@ -11,12 +10,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.file import remote_fetcher
+from core.file.uploads import FileUploadActor, FileUploadResult
 from graphon.file import helpers as file_helpers
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from repositories.file_repository import SQLAlchemyFileRepository
-from services.file_service import FileService, FileStorage
-from services.file_upload_service import FileUploadActor, FileUploadResult, FileUploadService
+from services.file_upload_service import FileUploadService
 from services.remote_file_service import RemoteFileService
 
 _TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -38,7 +37,6 @@ class _UploadStorage:
 
 @dataclass
 class _UploadHarness:
-    files: FileService
     uploads: FileUploadService
     stored: dict[str, bytes]
     active_transactions: set[Connection]
@@ -66,14 +64,6 @@ def upload_harness(
         sign_file_url=signed_url,
     )
     harness = _UploadHarness(
-        files=FileService(
-            files=SQLAlchemyFileRepository(session_factory=sqlite_session_factory),
-            uploads=uploads,
-            storage=MagicMock(spec=FileStorage, save=saved.save),
-            storage_type="opendal",
-            sign_file_url=signed_url,
-            extract_text=MagicMock(return_value=""),
-        ),
         uploads=uploads,
         stored=saved.stored,
         active_transactions=saved.active_transactions,
@@ -258,15 +248,15 @@ def test_remote_actor_upload_without_target_tenant_fails_before_external_io(
 
 
 @pytest.mark.parametrize("source_url", ["", _REMOTE_URL])
-def test_file_service_upload_returns_immutable_metadata_without_reloading_row(
+def test_upload_returns_immutable_metadata_without_reloading_row(
     upload_harness: _UploadHarness,
     sqlite_session_factory: sessionmaker[Session],
     source_url: str,
 ) -> None:
     actor = FileUploadActor(id=_ACTOR_ID, creator_role=CreatorUserRole.ACCOUNT)
-    upload = upload_harness.files.upload_file(
-        user=actor,
-        tenant_id=_TENANT_ID,
+    upload = upload_harness.uploads.upload_file_for_actor(
+        actor=actor,
+        resource_tenant_id=_TENANT_ID,
         filename="report.txt",
         content=b"file content",
         mimetype="text/plain",

@@ -21,6 +21,7 @@ from core.repositories.factory import (
     WorkflowNodeExecutionRepositories,
     WorkflowNodeExecutionWriter,
 )
+from extensions.ext_application_services import application_services
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
@@ -1044,8 +1045,9 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
     response_stream = _single_event_generator({"event": "message"})
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.AdvancedChatAppGenerator",
-        lambda *, file_uploads: generator_instance,
+        application_services(),
+        "create_advanced_chat_app_generator",
+        lambda: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
@@ -1105,8 +1107,9 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(
     response_stream = _single_event_generator({"event": "workflow_finished"})
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.WorkflowAppGenerator",
-        lambda *, file_uploads: generator_instance,
+        application_services(),
+        "create_workflow_app_generator",
+        lambda: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
@@ -1168,8 +1171,9 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
     response_stream = _single_event_generator({"event": "workflow_paused"})
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.WorkflowAppGenerator",
-        lambda *, file_uploads: generator_instance,
+        application_services(),
+        "create_workflow_app_generator",
+        lambda: generator_instance,
     )
 
     publish_streaming_response = MagicMock()

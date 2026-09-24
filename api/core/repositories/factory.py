@@ -13,12 +13,12 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.file.uploads import FileUploadWriter
 from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
-from services.file_upload_service import FileUploadService
 
 
 @dataclass
@@ -123,7 +123,7 @@ class DifyCoreRepositoryFactory:
         app_id: str,
         triggered_from: WorkflowNodeExecutionTriggeredFrom,
         *,
-        file_uploads: FileUploadService,
+        file_uploads: FileUploadWriter,
     ) -> WorkflowNodeExecutionRepositories:
         """Assemble independent read/write ports, sharing pending Celery executions.
 

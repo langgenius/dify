@@ -1,4 +1,4 @@
-import type { SelectorParam, TFunction } from 'i18next'
+import type { TFunction } from 'i18next'
 import type { AnswerNodeType } from '../../../answer/types'
 import type { CodeNodeType } from '../../../code/types'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
@@ -68,21 +68,7 @@ import { AppModeEnum } from '@/types/app'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import { Type } from '../../../llm/types'
 
-type WorkflowTranslate = <const Selector extends SelectorParam<'workflow'>>(
-  selector: Selector,
-  options: { ns: 'workflow' } & Record<string, unknown>,
-) => ReturnType<TFunction>
-
-const translateWorkflowString = <const Selector extends SelectorParam<'workflow'>>(
-  t: WorkflowTranslate,
-  selector: Selector,
-): string => {
-  const result = t(selector, { ns: 'workflow' })
-  if (typeof result !== 'string')
-    throw new TypeError('Expected workflow translation selector to return a string')
-
-  return result
-}
+type WorkflowTranslate = TFunction<['workflow']>
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
@@ -1164,7 +1150,7 @@ export const toNodeAvailableVars = ({
         : {}
     const iterationVar = {
       nodeId: iterationNode?.id,
-      title: translateWorkflowString(t!, ($) => $['nodes.iteration.currentIteration']),
+      title: t!(($) => $['nodes.iteration.currentIteration'], { ns: 'workflow' }),
       vars: [
         {
           variable: 'item',
@@ -1228,7 +1214,8 @@ const replaceOldVarInPromptItem = (
     : {}),
 })
 
-export const getNodeUsedVars = (node: Node): ValueSelector[] => {
+/** Include saved references for rename/delete/copy; execution excludes inactive route conditions. */
+export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): ValueSelector[] => {
   const { data } = node
   const { type } = data
   let res: ValueSelector[] = []
@@ -1341,7 +1328,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     case BlockEnum.Agent: {
       if (isAgentV2NodeData(data)) {
         const payload = data as AgentV2NodeType
-        res = matchNotSystemVars([payload.agent_task || ''])
+        res = matchNotSystemVars([
+          payload.agent_task || '',
+          ...(!forExecution || payload.agent_output_routes?.enabled
+            ? (payload.agent_output_routes?.routes?.map((route) => route.name ?? '') ?? [])
+            : []),
+        ])
         break
       }
 
@@ -1358,7 +1350,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
     case BlockEnum.AgentV2: {
       const payload = data as AgentV2NodeType
-      res = matchNotSystemVars([payload.agent_task || ''])
+      res = matchNotSystemVars([
+        payload.agent_task || '',
+        ...(!forExecution || payload.agent_output_routes?.enabled
+          ? (payload.agent_output_routes?.routes?.map((route) => route.name ?? '') ?? [])
+          : []),
+      ])
       break
     }
     case BlockEnum.DataSource: {
@@ -1734,6 +1731,9 @@ export const updateNodeVars = (
             oldVarSelector,
             newVarSelector,
           )
+          payload.agent_output_routes?.routes?.forEach((route) => {
+            route.name = replaceOldVarInText(route.name ?? '', oldVarSelector, newVarSelector)
+          })
           break
         }
 
@@ -1779,6 +1779,9 @@ export const updateNodeVars = (
           oldVarSelector,
           newVarSelector,
         )
+        payload.agent_output_routes?.routes?.forEach((route) => {
+          route.name = replaceOldVarInText(route.name ?? '', oldVarSelector, newVarSelector)
+        })
         break
       }
       case BlockEnum.DataSource: {

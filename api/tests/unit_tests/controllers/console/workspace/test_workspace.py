@@ -38,6 +38,7 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionApi,
     WorkspacePermissionResponse,
 )
+from core.file.uploads import FileUploadActor, FileUploadResult
 from enums import CloudPlan, DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
@@ -46,7 +47,6 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfi
 from models.enums import CreatorUserRole
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services import workspace_plan_gateway
-from services.file_upload_service import FileUploadActor, FileUploadResult
 from services.workspace_query_service import WorkspaceQueryService, WorkspaceRecord
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -607,14 +607,14 @@ class TestWebappLogoWorkspaceApi:
             app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
             patch("controllers.console.workspace.workspace.application_services") as services_provider,
         ):
-            services_provider.return_value.files.upload_file.return_value = upload
+            services_provider.return_value.file_uploads.upload_file_for_actor.return_value = upload
             result, status = method(api, user)
-        services_provider.return_value.files.upload_file.assert_called_once_with(
+        services_provider.return_value.file_uploads.upload_file_for_actor.assert_called_once_with(
             filename="logo.png",
             content=b"data",
             mimetype="image/png",
-            user=FileUploadActor(id=user.id, creator_role=CreatorUserRole.ACCOUNT),
-            tenant_id=user.current_tenant_id or "",
+            actor=FileUploadActor(id=user.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=user.current_tenant_id or "",
         )
         assert status == HTTPStatus.CREATED
         assert result == {"id": "file1"}
@@ -638,8 +638,8 @@ class TestWebappLogoWorkspaceApi:
             app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
             patch("controllers.console.workspace.workspace.application_services") as services_provider,
         ):
-            services_provider.return_value.files.upload_file.side_effect = services.errors.file.FileTooLargeError(
-                "too big"
+            services_provider.return_value.file_uploads.upload_file_for_actor.side_effect = (
+                services.errors.file.FileTooLargeError("too big")
             )
             with pytest.raises(FileTooLargeError):
                 method(api, user)
@@ -653,7 +653,7 @@ class TestWebappLogoWorkspaceApi:
             app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
             patch("controllers.console.workspace.workspace.application_services") as services_provider,
         ):
-            services_provider.return_value.files.upload_file.side_effect = (
+            services_provider.return_value.file_uploads.upload_file_for_actor.side_effect = (
                 services.errors.file.UnsupportedFileTypeError()
             )
             with pytest.raises(UnsupportedFileTypeError):

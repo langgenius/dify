@@ -11,6 +11,7 @@ from typing import override
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.file.uploads import FileUploadWriter
 from core.repositories.celery_workflow_node_execution_query_repository import CeleryWorkflowNodeExecutionCache
 from core.repositories.factory import WorkflowNodeExecutionWriter
 from core.repositories.sqlalchemy_workflow_node_execution_write_repository import (
@@ -19,7 +20,6 @@ from core.repositories.sqlalchemy_workflow_node_execution_write_repository impor
 from graphon.entities import WorkflowNodeExecution
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
-from services.file_upload_service import FileUploadService
 from tasks.workflow_node_execution_tasks import (
     save_workflow_node_execution_task,
 )
@@ -59,7 +59,7 @@ class CeleryWorkflowNodeExecutionWriteRepository(WorkflowNodeExecutionWriter):
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
         *,
-        file_uploads: FileUploadService,
+        file_uploads: FileUploadWriter,
         cache: CeleryWorkflowNodeExecutionCache,
     ) -> None:
         """

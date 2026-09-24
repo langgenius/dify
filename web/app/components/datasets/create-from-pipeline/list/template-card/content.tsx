@@ -13,7 +13,7 @@ type ContentProps = {
 }
 
 const Content = ({ name, description, iconInfo, chunkStructure }: ContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const iconClassName =
     DOC_FORM_ICON_CLASS_WITH_BG[chunkStructure] || 'i-custom-public-knowledge-dataset-card-general'
 

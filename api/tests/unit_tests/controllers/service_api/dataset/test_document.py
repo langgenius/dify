@@ -1624,7 +1624,7 @@ class TestDocumentAddByTextApi(SQLiteControllerTest):
         mock_upload_file = _upload_file()
         mock_file_svc = Mock()
         mock_file_svc.upload_text.return_value = mock_upload_file
-        mock_application_services.return_value.files = mock_file_svc
+        mock_application_services.return_value.file_uploads = mock_file_svc
 
         mock_config = Mock()
         mock_knowledge_config.model_validate.return_value = mock_config
@@ -1800,7 +1800,7 @@ class TestDocumentUpdateByTextApiPost(SQLiteControllerTest):
         self._persist_dataset(mock_dataset)
 
         mock_upload = _upload_file()
-        mock_application_services.return_value.files.upload_text.return_value = mock_upload
+        mock_application_services.return_value.file_uploads.upload_text.return_value = mock_upload
 
         mock_document = make_serializable_document(id="doc-update-text", name="Updated Doc")
         mock_doc_svc.document_create_args_validate.return_value = None
@@ -1887,7 +1887,7 @@ class TestDocumentAddByFileApiPost(SQLiteControllerTest):
         self._persist_dataset(mock_dataset)
 
         mock_upload = _upload_file()
-        mock_application_services.return_value.files.upload_file.return_value = mock_upload
+        mock_application_services.return_value.file_uploads.upload_file_for_actor.return_value = mock_upload
 
         mock_document = make_serializable_document(id="doc-create-file", name="File Document")
         mock_doc_svc.document_create_args_validate.return_value = None
@@ -1933,7 +1933,9 @@ class TestDocumentAddByFileApiPost(SQLiteControllerTest):
         mock_dataset.indexing_technique = "economy"
         mock_dataset.chunk_structure = None
         self._persist_dataset(mock_dataset)
-        mock_application_services.return_value.files.upload_file.side_effect = FileTooLargeServiceError()
+        mock_application_services.return_value.file_uploads.upload_file_for_actor.side_effect = (
+            FileTooLargeServiceError()
+        )
 
         from io import BytesIO
 
@@ -2231,7 +2233,7 @@ class TestDocumentUpdateByFileApiPatch(SQLiteControllerTest):
         self._persist_dataset(mock_dataset)
 
         mock_upload = _upload_file()
-        mock_application_services.return_value.files.upload_file.return_value = mock_upload
+        mock_application_services.return_value.file_uploads.upload_file_for_actor.return_value = mock_upload
 
         mock_document = make_serializable_document(id="doc-update-file", name="File Document", batch="batch-1")
         mock_doc_svc.document_create_args_validate.return_value = None

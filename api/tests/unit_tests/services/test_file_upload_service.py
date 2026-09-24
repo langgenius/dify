@@ -10,11 +10,12 @@ from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.file.uploads import FileUploadActor, FileUploadResult
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from repositories.file_repository import SQLAlchemyFileRepository
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
-from services.file_upload_service import FileUploadActor, FileUploadResult, FileUploadService
+from services.file_upload_service import FileUploadService
 
 
 @dataclass
@@ -47,6 +48,7 @@ class _Harness:
         *,
         filename: str = "Report.TXT",
         content: bytes = b"content",
+        mimetype: str = "text/plain",
         source: Literal["datasets"] | None = None,
         source_url: str = "",
     ) -> FileUploadResult:
@@ -55,7 +57,7 @@ class _Harness:
             resource_tenant_id=self.tenant_id,
             filename=filename,
             content=content,
-            mimetype="text/plain",
+            mimetype=mimetype,
             source=source,
             source_url=source_url,
         )
@@ -113,11 +115,17 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
 
 @pytest.mark.parametrize("role", [CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])
 @pytest.mark.parametrize("source_url", ["", "https://source.example.com/report.txt"])
+@pytest.mark.parametrize(("filename", "mimetype"), [("Report.TXT", "text/plain"), ("photo.jpg", "image/jpeg")])
 def test_upload_persists_owner_and_creator_before_signing_response_only_url(
-    harness: _Harness, sqlite_session_factory: sessionmaker[Session], role: CreatorUserRole, source_url: str
+    harness: _Harness,
+    sqlite_session_factory: sessionmaker[Session],
+    role: CreatorUserRole,
+    source_url: str,
+    filename: str,
+    mimetype: str,
 ) -> None:
     harness.actor = FileUploadActor(id=harness.actor.id, creator_role=role)
-    result = harness.upload(source_url=source_url)
+    result = harness.upload(filename=filename, mimetype=mimetype, source_url=source_url)
 
     expected_url = source_url or f"https://files.example.com/{result.id}?sign=test"
     assert result.source_url == expected_url
@@ -128,8 +136,9 @@ def test_upload_persists_owner_and_creator_before_signing_response_only_url(
     assert result.storage_type == "opendal"
     assert result.used is False
     assert result.used_by is result.used_at is None
-    assert result.name == "Report.TXT"
-    assert result.extension == "txt"
+    assert result.name == filename
+    assert result.extension == PurePosixPath(filename).suffix.removeprefix(".").lower()
+    assert result.mime_type == mimetype
     assert result.size == 7
     assert harness.storage.saved == {result.key: b"content"}
     assert result.key.startswith(f"upload_files/{harness.tenant_id}/")
@@ -145,6 +154,64 @@ def test_upload_persists_owner_and_creator_before_signing_response_only_url(
         assert persisted.tenant_id == harness.tenant_id
         assert persisted.created_by == harness.actor.id
         assert persisted.created_by_role == role
+
+
+@pytest.mark.parametrize(
+    ("text", "text_name", "expected_name"),
+    [
+        ("ASCII text", "test.txt", "test.txt"),
+        ("包含多字节 UTF-8 文本 🚀", "test.txt", "test.txt"),
+        ("text", "a" * 210, "a" * 200),
+    ],
+)
+def test_text_offload_persists_used_utf8_metadata_without_upload_policy_or_signing(
+    harness: _Harness,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    text: str,
+    text_name: str,
+    expected_name: str,
+) -> None:
+    config_overrides(UPLOAD_FILE_SIZE_LIMIT=0, inner_UPLOAD_FILE_EXTENSION_BLACKLIST="txt")
+    harness.signing_failure = AssertionError("Internal text offloads must not request signed URLs")
+
+    result = harness.uploads.upload_text(
+        text=text,
+        text_name=text_name,
+        user_id=harness.actor.id,
+        tenant_id=harness.tenant_id,
+    )
+
+    content = text.encode("utf-8")
+    assert result.name == expected_name
+    assert result.size == len(content)
+    assert result.tenant_id == harness.tenant_id
+    assert result.created_by == harness.actor.id
+    assert result.created_by_role == CreatorUserRole.ACCOUNT
+    assert result.used is True
+    assert result.used_by == harness.actor.id
+    assert result.used_at is not None
+    assert result.extension == "txt"
+    assert result.mime_type == "text/plain"
+    assert result.hash is None
+    assert result.source_url == ""
+    assert result.key.startswith(f"upload_files/{harness.tenant_id}/")
+    assert harness.storage.saved == {result.key: content}
+    assert harness.events == ["storage", "begin", "commit"]
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(UploadFile, result.id)
+        assert persisted is not None
+        assert persisted.name == expected_name
+        assert persisted.size == len(content)
+        assert persisted.tenant_id == harness.tenant_id
+        assert persisted.created_by == harness.actor.id
+        assert persisted.created_by_role == CreatorUserRole.ACCOUNT
+        assert persisted.used is True
+        assert persisted.used_by == harness.actor.id
+        assert persisted.used_at == result.used_at
+        assert persisted.hash is None
+        assert persisted.source_url == ""
 
 
 def test_storage_failure_creates_no_metadata(harness: _Harness, sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -273,3 +340,73 @@ def test_context_size_override_preserves_media_limits_and_inclusive_boundary(
     assert not FileUploadService.is_file_size_within_limit(
         extension=extension, file_size=limit + 1, default_file_size_limit=7
     )
+
+
+def test_is_file_size_within_limit(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
+        UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
+        UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
+        UPLOAD_FILE_SIZE_LIMIT=5,
+    )
+    # Image
+    assert FileUploadService.is_file_size_within_limit(extension="jpg", file_size=10 * 1024 * 1024) is True
+    assert FileUploadService.is_file_size_within_limit(extension="png", file_size=11 * 1024 * 1024) is False
+
+    # Video
+    assert FileUploadService.is_file_size_within_limit(extension="mp4", file_size=20 * 1024 * 1024) is True
+    assert FileUploadService.is_file_size_within_limit(extension="avi", file_size=21 * 1024 * 1024) is False
+
+    # Audio
+    assert FileUploadService.is_file_size_within_limit(extension="mp3", file_size=30 * 1024 * 1024) is True
+    assert FileUploadService.is_file_size_within_limit(extension="wav", file_size=31 * 1024 * 1024) is False
+
+    # Default
+    assert FileUploadService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
+    assert FileUploadService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
+    assert FileUploadService.is_file_size_within_limit(extension="txt", file_size=0, default_file_size_limit=0) is True
+    assert FileUploadService.is_file_size_within_limit(extension="txt", file_size=1, default_file_size_limit=0) is False
+    assert (
+        FileUploadService.is_file_size_within_limit(
+            extension="pdf",
+            file_size=6 * 1024 * 1024,
+            default_file_size_limit=7,
+        )
+        is True
+    )
+    assert (
+        FileUploadService.is_file_size_within_limit(
+            extension="pdf",
+            file_size=8 * 1024 * 1024,
+            default_file_size_limit=7,
+        )
+        is False
+    )
+
+    # Media-specific limits are not affected by the knowledge document override.
+    assert (
+        FileUploadService.is_file_size_within_limit(
+            extension="jpg",
+            file_size=11 * 1024 * 1024,
+            default_file_size_limit=100,
+        )
+        is False
+    )
+
+
+def test_file_size_limit(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
+        UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
+        UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
+        UPLOAD_FILE_SIZE_LIMIT=5,
+    )
+
+    assert FileUploadService.file_size_limit(extension="jpg") == 10 * 1024 * 1024
+    assert FileUploadService.file_size_limit(extension="mp4") == 20 * 1024 * 1024
+    assert FileUploadService.file_size_limit(extension="mp3") == 30 * 1024 * 1024
+    assert FileUploadService.file_size_limit(extension="txt") == 5 * 1024 * 1024
+    assert FileUploadService.file_size_limit(extension="txt", default_file_size_limit=None) == 5 * 1024 * 1024
+    assert FileUploadService.file_size_limit(extension="txt", default_file_size_limit=0) == 0
+    assert FileUploadService.file_size_limit(extension="jpg", default_file_size_limit=0) == 10 * 1024 * 1024
+    assert FileUploadService.file_size_limit(extension="txt", default_file_size_limit=7) == 7 * 1024 * 1024

@@ -1,9 +1,9 @@
 """Bridge detached file metadata to the existing document extraction engine."""
 
+from core.file.uploads import FileUploadResult
 from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.storage.storage_type import StorageType
 from models.model import UploadFile
-from services.file_upload_service import FileUploadResult
 
 
 def extract_file_text(*, file: FileUploadResult) -> str:

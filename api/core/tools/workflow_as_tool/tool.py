@@ -98,9 +98,7 @@ class WorkflowTool(Tool):
         # transform the tool parameters
         tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
 
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-
-        generator = WorkflowAppGenerator(file_uploads=application_services().file_uploads)
+        generator = application_services().create_workflow_app_generator()
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
 

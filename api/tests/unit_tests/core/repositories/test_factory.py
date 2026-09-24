@@ -14,6 +14,7 @@ from flask import has_app_context
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.file.uploads import FileUploadWriter
 from core.repositories.celery_workflow_node_execution_query_repository import (
     CeleryWorkflowNodeExecutionQueryRepository,
 )
@@ -328,7 +329,7 @@ def test_legacy_node_backend_keeps_its_original_five_constructor_arguments(
     config_overrides: Callable[..., None],
     sqlite_session_factory: sessionmaker[Session],
     node_user: Account,
-    file_uploads: FileUploadService,
+    file_uploads: FileUploadWriter,
     query_only: bool,
 ) -> None:
     config_overrides(CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY=f"{__name__}.LegacyNodeExecutionRepository")
@@ -367,7 +368,7 @@ def test_builtin_node_backend_and_class_alias_create_separate_ports(
     config_overrides: Callable[..., None],
     sqlite_session_factory: sessionmaker[Session],
     node_user: Account,
-    file_uploads: FileUploadService,
+    file_uploads: FileUploadWriter,
     logstore_client: MagicMock,
     class_path: str,
     writer_type: type,
@@ -462,7 +463,7 @@ def test_node_backend_errors_preserve_the_original_cause(
     config_overrides: Callable[..., None],
     sqlite_session_factory: sessionmaker[Session],
     node_user: Account,
-    file_uploads: FileUploadService,
+    file_uploads: FileUploadWriter,
     class_path: str,
     error_type: type[Exception],
     query_only: bool,

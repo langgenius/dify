@@ -16,9 +16,7 @@ type IItemOperationProps = {
   isPinned: boolean
   isShowRenameConversation?: boolean
   onRenameConversation?: () => void
-  isShowDelete: boolean
   togglePin: () => void
-  onDelete: () => void
 }
 
 function ItemOperation({
@@ -28,11 +26,9 @@ function ItemOperation({
   togglePin,
   isShowRenameConversation,
   onRenameConversation,
-  isShowDelete,
-  onDelete,
 }: IItemOperationProps) {
-  const { t } = useTranslation('explore')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['explore'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <DropdownMenu modal={false}>
@@ -77,30 +73,6 @@ function ItemOperation({
           >
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-secondary" />
             <span className={s.actionName}>{t(($) => $['sidebar.action.rename'])}</span>
-          </DropdownMenuItem>
-        )}
-        {isShowDelete && (
-          <DropdownMenuItem
-            className={cn(
-              s.actionItem,
-              s.deleteActionItem,
-              'gap-2 px-3 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
-            )}
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                s.deleteActionItemChild,
-                'i-ri-delete-bin-line size-4 shrink-0 text-inherit',
-              )}
-            />
-            <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>
-              {t(($) => $['sidebar.action.delete'])}
-            </span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

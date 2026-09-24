@@ -41,6 +41,7 @@ from core.app.entities.task_entities import (
     ChatbotAppStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.file.uploads import FileUploadWriter
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
@@ -58,7 +59,6 @@ from models import Account, App, Conversation, EndUser, Message, Workflow, Workf
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
-from services.file_upload_service import FileUploadService
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,
@@ -74,7 +74,7 @@ def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> 
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
-    def __init__(self, *, file_uploads: FileUploadService) -> None:
+    def __init__(self, *, file_uploads: FileUploadWriter) -> None:
         self._file_uploads = file_uploads
 
     _dialogue_count: int

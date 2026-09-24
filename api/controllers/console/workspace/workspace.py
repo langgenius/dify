@@ -38,6 +38,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.file.uploads import FileUploadActor
 from enums import CloudPlan
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -49,7 +50,6 @@ from models.account import Account, Tenant, TenantAccountRole, TenantCustomConfi
 from models.enums import CreatorUserRole
 from services.account_service import TenantService
 from services.enterprise.enterprise_service import EnterpriseService
-from services.file_upload_service import FileUploadActor
 from services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
@@ -400,12 +400,12 @@ class WebappLogoWorkspaceApi(Resource):
             raise UnsupportedFileTypeError()
 
         try:
-            upload_file = application_services().files.upload_file(
+            upload_file = application_services().file_uploads.upload_file_for_actor(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
-                tenant_id=current_user.current_tenant_id or "",
+                actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+                resource_tenant_id=current_user.current_tenant_id or "",
             )
 
         except services.errors.file.FileTooLargeError as file_too_large_error:

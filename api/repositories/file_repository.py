@@ -7,11 +7,12 @@ from typing import cast, override
 from sqlalchemy import Row, Select, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.file.uploads import FileUploadData, FileUploadResult
 from extensions.storage.storage_type import StorageType
 from models.account import Tenant, TenantCustomConfigDict
 from models.model import UploadFile
 from services.file_service import FileRepository
-from services.file_upload_service import FileUploadData, FileUploadResult
+from services.file_upload_service import FileUploadRepository
 from services.upload_file_delivery_service import (
     UploadFileDeliveryNotFoundError,
     UploadFileDeliveryQuery,
@@ -19,7 +20,7 @@ from services.upload_file_delivery_service import (
 )
 
 
-class SQLAlchemyFileRepository(FileRepository, UploadFileDeliveryQuery):
+class SQLAlchemyFileRepository(FileRepository, FileUploadRepository, UploadFileDeliveryQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
 
