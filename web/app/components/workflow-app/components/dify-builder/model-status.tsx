@@ -26,7 +26,7 @@ export const DifyBuilderModelStatus = ({
   retry,
   rejected,
 }: ModelStatusProps) => {
-  const { t } = useTranslation(['workflow', 'common'])
+  const { t } = useTranslation(['workflow', 'common', 'workflowGenerator', 'modelProvider'])
   const permissions = useAtomValue(workspacePermissionKeysAtom)
   const canConfigure = hasPermission(permissions, 'plugin.model_config')
   const [_settings, setSettings] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -37,9 +37,9 @@ export const DifyBuilderModelStatus = ({
       : rejected
         ? t(($) => $['difyBuilder.modelUnavailable'], { ns: 'workflow' })
         : hasAvailableModels
-          ? t(($) => $['workflowGenerator.modelRequired'], { ns: 'workflow' })
+          ? t(($) => $['workflowGenerator.modelRequired'], { ns: 'workflowGenerator' })
           : canConfigure
-            ? t(($) => $['modelProvider.noneConfigured'], { ns: 'common' })
+            ? t(($) => $['modelProvider.noneConfigured'], { ns: 'modelProvider' })
             : t(($) => $['difyBuilder.modelContactAdmin'], { ns: 'workflow' })
 
   return (

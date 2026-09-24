@@ -18,7 +18,7 @@ type JsonImporterProps = {
 }
 
 const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflowModels'])
   const [open, setOpen] = useState(false)
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<any>(null)
@@ -78,7 +78,7 @@ const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
         className="flex shrink-0 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover data-popup-open:bg-components-button-ghost-bg-hover"
       >
         <span className="px-0.5">
-          {t(($) => $['nodes.llm.jsonSchema.import'], { ns: 'workflow' })}
+          {t(($) => $['nodes.llm.jsonSchema.import'], { ns: 'workflowModels' })}
         </span>
       </PopoverTrigger>
       <PopoverContent
@@ -99,7 +99,7 @@ const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
               <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
             </button>
             <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
-              {t(($) => $['nodes.llm.jsonSchema.import'], { ns: 'workflow' })}
+              {t(($) => $['nodes.llm.jsonSchema.import'], { ns: 'workflowModels' })}
             </div>
           </div>
           {/* Content */}

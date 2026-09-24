@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
 const Empty: FC = () => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowDebug'])
   const docLink = useDocLink()
 
   return (
@@ -16,10 +16,10 @@ const Empty: FC = () => {
       </div>
       <div className="flex flex-col gap-1">
         <div className="system-sm-semibold text-text-secondary">
-          {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+          {t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
         </div>
         <div className="system-xs-regular text-text-tertiary">
-          {t(($) => $['debug.variableInspect.emptyTip'], { ns: 'workflow' })}
+          {t(($) => $['debug.variableInspect.emptyTip'], { ns: 'workflowDebug' })}
         </div>
         <a
           className="cursor-pointer system-xs-regular text-text-accent"
@@ -27,7 +27,7 @@ const Empty: FC = () => {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {t(($) => $['debug.variableInspect.emptyLink'], { ns: 'workflow' })}
+          {t(($) => $['debug.variableInspect.emptyLink'], { ns: 'workflowDebug' })}
         </a>
       </div>
     </div>

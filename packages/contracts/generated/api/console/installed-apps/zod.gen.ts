@@ -3,20 +3,6 @@
 import * as z from 'zod'
 
 /**
- * InstalledAppCreatePayload
- */
-export const zInstalledAppCreatePayload = z.object({
-  app_id: z.string(),
-})
-
-/**
- * SimpleMessageResponse
- */
-export const zSimpleMessageResponse = z.object({
-  message: z.string(),
-})
-
-/**
  * InstalledAppUpdatePayload
  */
 export const zInstalledAppUpdatePayload = z.object({
@@ -619,7 +605,6 @@ export const zInstalledAppResponse = z.object({
   id: z.string(),
   is_pinned: z.boolean(),
   last_used_at: z.int().nullable(),
-  uninstallable: z.boolean(),
 })
 
 /**
@@ -941,7 +926,6 @@ export const zInstalledAppResponseWritable = z.object({
   id: z.string(),
   is_pinned: z.boolean(),
   last_used_at: z.int().nullable(),
-  uninstallable: z.boolean(),
 })
 
 /**
@@ -1002,22 +986,6 @@ export const zGetInstalledAppsQuery = z.object({
  * Success
  */
 export const zGetInstalledAppsResponse = zInstalledAppListResponse
-
-export const zPostInstalledAppsBody = zInstalledAppCreatePayload
-
-/**
- * Success
- */
-export const zPostInstalledAppsResponse = zSimpleMessageResponse
-
-export const zDeleteInstalledAppsByInstalledAppIdPath = z.object({
-  installed_app_id: z.uuid(),
-})
-
-/**
- * App uninstalled successfully
- */
-export const zDeleteInstalledAppsByInstalledAppIdResponse = z.void()
 
 export const zGetInstalledAppsByInstalledAppIdPath = z.object({
   installed_app_id: z.uuid(),

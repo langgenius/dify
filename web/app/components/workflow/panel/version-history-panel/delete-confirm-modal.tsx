@@ -26,7 +26,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
   onClose,
   onDelete,
 }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflowHistory'])
 
   return (
     <AlertDialog
@@ -40,11 +40,11 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
             {`${t(($) => $['operation.delete'], { ns: 'common' })} ${getWorkflowVersionName(
               versionInfo,
-              t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+              t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
             )}`}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-md-regular text-text-secondary">
-            {t(($) => $['versionHistory.deletionTip'], { ns: 'workflow' })}
+            {t(($) => $['versionHistory.deletionTip'], { ns: 'workflowHistory' })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>

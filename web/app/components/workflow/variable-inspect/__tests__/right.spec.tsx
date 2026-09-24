@@ -109,7 +109,9 @@ describe('VariableInspect Right', () => {
     const user = userEvent.setup()
     const { handleOpenMenu } = renderRight(createCurrentNodeVar(), { bottomPanelWidth: 400 })
 
-    await user.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.title' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.title' }),
+    )
 
     expect(handleOpenMenu).toHaveBeenCalledTimes(1)
   })
@@ -126,7 +128,7 @@ describe('VariableInspect Right', () => {
     )
 
     expect(
-      screen.getByRole('link', { name: 'workflow.debug.variableInspect.exportToolTip' }),
+      screen.getByRole('link', { name: 'workflowDebug.debug.variableInspect.exportToolTip' }),
     ).toHaveAttribute('href', 'https://example.com/result.txt')
   })
 
@@ -135,7 +137,9 @@ describe('VariableInspect Right', () => {
 
     renderRight(createCurrentNodeVar({ edited: true }))
 
-    await user.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.reset' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.reset' }),
+    )
 
     expect(mockResetToLastRunVar).toHaveBeenCalledWith('node-1', 'var-1')
   })
@@ -152,7 +156,7 @@ describe('VariableInspect Right', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.debug.variableInspect.resetConversationVar',
+        name: 'workflowDebug.debug.variableInspect.resetConversationVar',
       }),
     )
 

@@ -43,9 +43,9 @@ const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslatio
     return t(($) => $['appMenus.annotations'], { ns: 'common' })
   if (pathname.endsWith('/overview')) return t(($) => $['appMenus.overview'], { ns: 'common' })
   if (pathname.endsWith('/access-config'))
-    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+    return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
 
-  return t(($) => $['menus.appDetail'], { ns: 'common' })
+  return t(($) => $['menus.appDetail'], { ns: 'navigation' })
 }
 
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -53,7 +53,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     children,
     appId, // get appId in path
   } = props
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const router = useRouter()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -95,7 +95,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       : false
   const shouldBlockAccessPointAccess = pathname.endsWith('/access-point') && !canViewAccessPoint
 
-  useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
+  useDocumentTitle(
+    `${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'navigation' })}`,
+  )
 
   useEffect(() => {
     let ignore = false

@@ -58,7 +58,7 @@ const PanelMemorySection: FC<Props> = ({
   const userLabelId = React.useId()
   const memoryLabelId = React.useId()
 
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const isSnippetFlow = flowType === FlowType.snippet
   const shouldCheckSysQuery = !isSnippetFlow
   const defaultMemory = isSnippetFlow ? SNIPPET_DEFAULT_MEMORY : DEFAULT_MEMORY
@@ -101,7 +101,7 @@ const PanelMemorySection: FC<Props> = ({
                   <Infotip>
                     <InfotipTrigger aria-labelledby={userLabelId} />
                     <InfotipContent aria-labelledby={userLabelId} className="w-45">
-                      {t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflow' })}
+                      {t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflowModels' })}
                     </InfotipContent>
                   </Infotip>
                 </div>

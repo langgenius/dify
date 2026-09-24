@@ -82,7 +82,7 @@ describe('AgentOutputBlockComponent', () => {
     )
 
     const input = screen.getByRole('textbox', {
-      name: 'workflow.nodes.agent.outputVars.nameLabel',
+      name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
     }) as HTMLInputElement
 
     expect(input).toHaveFocus()
@@ -103,7 +103,7 @@ describe('AgentOutputBlockComponent', () => {
     )
 
     const input = screen.getByRole('textbox', {
-      name: 'workflow.nodes.agent.outputVars.nameLabel',
+      name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
     }) as HTMLInputElement
 
     expect(input).toHaveFocus()
@@ -125,7 +125,7 @@ describe('AgentOutputBlockComponent', () => {
     )
 
     expect(
-      screen.getByRole('combobox', { name: 'workflow.nodes.agent.outputVars.typeLabel' }),
+      screen.getByRole('combobox', { name: 'workflowAgent.nodes.agent.outputVars.typeLabel' }),
     ).toHaveAttribute('aria-expanded', 'true')
   })
 
@@ -144,7 +144,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    const input = screen.getByRole('textbox', {
+      name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
+    })
 
     await user.clear(input)
     await user.type(input, 'summary')
@@ -201,7 +203,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    const input = screen.getByRole('textbox', {
+      name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
+    })
 
     await user.clear(input)
     await user.type(input, 'summary')
@@ -224,7 +228,7 @@ describe('AgentOutputBlockComponent', () => {
     )
     expect(mockSelectNext).toHaveBeenCalledTimes(1)
     expect(
-      screen.getByRole('combobox', { name: 'workflow.nodes.agent.outputVars.typeLabel' }),
+      screen.getByRole('combobox', { name: 'workflowAgent.nodes.agent.outputVars.typeLabel' }),
     ).toHaveAttribute('aria-expanded', 'false')
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining([
@@ -255,7 +259,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    const input = screen.getByRole('textbox', {
+      name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
+    })
 
     await user.clear(input)
     await user.type(input, 'summary')
@@ -278,7 +284,7 @@ describe('AgentOutputBlockComponent', () => {
     )
     expect(mockSelectNext).not.toHaveBeenCalled()
     expect(
-      screen.getByRole('combobox', { name: 'workflow.nodes.agent.outputVars.typeLabel' }),
+      screen.getByRole('combobox', { name: 'workflowAgent.nodes.agent.outputVars.typeLabel' }),
     ).toHaveAttribute('aria-expanded', 'true')
     expect(input).not.toHaveFocus()
     expect((input as HTMLInputElement).selectionStart).toBe('summary'.length)
@@ -307,7 +313,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    const input = screen.getByRole('textbox', {
+      name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
+    })
 
     fireEvent.change(input, { target: { value: 'summary' } })
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -343,7 +351,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    const input = screen.getByRole('textbox', {
+      name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
+    })
 
     fireEvent.change(input, { target: { value: 'qna_report.pdf' } })
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -369,9 +379,11 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    const input = screen.getByRole('textbox', {
+      name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
+    })
     const typeTrigger = screen.getByRole('combobox', {
-      name: 'workflow.nodes.agent.outputVars.typeLabel',
+      name: 'workflowAgent.nodes.agent.outputVars.typeLabel',
     })
 
     fireEvent.change(input, { target: { value: 'summary' } })
@@ -414,7 +426,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    const input = screen.getByRole('textbox', {
+      name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
+    })
 
     await user.clear(input)
     await user.type(input, 'summary')
@@ -437,10 +451,10 @@ describe('AgentOutputBlockComponent', () => {
     )
 
     expect(
-      screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+      screen.queryByRole('textbox', { name: 'workflowAgent.nodes.agent.outputVars.nameLabel' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('combobox', { name: 'workflow.nodes.agent.outputVars.typeLabel' }),
+      screen.queryByRole('combobox', { name: 'workflowAgent.nodes.agent.outputVars.typeLabel' }),
     ).not.toBeInTheDocument()
     expect(screen.getByText('qna_report_pdf')).toBeInTheDocument()
     expect(screen.getByText('file')).toBeInTheDocument()

@@ -923,7 +923,9 @@ describe('HomeContent', () => {
 
       renderHomeContent({ searchParams: { category: 'Writing' } })
 
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
+      })
       await user.type(input, 'alp')
       await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
@@ -945,11 +947,45 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
+      })
       await user.type(input, 'gam')
 
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()
+    })
+
+    it('should find templates by description and explain empty results', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [
+          createApp({ description: 'Summarize invoices' }),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, name: 'Gamma' },
+            description: 'Translate documents',
+          }),
+        ],
+      }
+      renderHomeContent()
+
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
+      })
+      await user.type(input, 'INVOICE')
+
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+      expect(screen.queryByText('Gamma')).not.toBeInTheDocument()
+
+      await user.clear(input)
+      await user.type(input, 'unmatched')
+
+      expect(screen.getByText('app.newApp.noTemplateFound')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.noTemplateFoundTip')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('app.newApp.noTemplateFound')
     })
 
     it('should handle create flow from app card when outside cloud edition and confirm DSL when pending', async () => {
@@ -1388,7 +1424,9 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
+      })
       await user.type(input, 'gam')
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 

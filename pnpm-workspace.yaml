@@ -1,8 +1,11 @@
 allowBuilds:
   '@parcel/watcher': false
+  # i18next-resources-for-ts uses the published SWC native binaries.
+  '@swc/core': false
   canvas: false
   esbuild: false
   sharp: false
+autoDedupe: true
 autoInstallPeers: false
 blockExoticSubdeps: true
 catalogMode: strict
@@ -156,7 +159,7 @@ catalog:
   code-inspector-plugin: 1.6.6
   concurrently: 10.0.5
   copy-to-clipboard: 4.0.2
-  cron-parser: 5.6.2
+  cron-parser: 5.7.0
   dayjs: 1.11.23
   decimal.js: 10.6.0
   dompurify: 3.4.15
@@ -196,6 +199,7 @@ catalog:
   html-entities: 2.6.0
   html-to-image: 1.11.13
   i18next: 26.4.2
+  i18next-resources-for-ts: 2.1.0
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
   immer: 11.1.18

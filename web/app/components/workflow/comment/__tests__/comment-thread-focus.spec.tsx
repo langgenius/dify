@@ -129,7 +129,9 @@ describe('Comment thread focus', () => {
     const replyInput = screen.getByRole('textbox')
     expect(replyInput).toHaveFocus()
 
-    await user.click(screen.getByRole('button', { name: 'workflow.comments.aria.nextComment' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowComments.comments.aria.nextComment' }),
+    )
     await act(() => vi.advanceTimersByTimeAsync(100))
     expect(replyInput).toHaveFocus()
   })

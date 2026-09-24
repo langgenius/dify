@@ -25,7 +25,7 @@ const ManageCustomModelCredentials = ({
   isOpen,
   onOpenChange,
 }: ManageCustomModelCredentialsProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const customModels = useCustomModels(provider)
   const noModels = !customModels.length
 
@@ -37,7 +37,7 @@ const ManageCustomModelCredentials = ({
           size="small"
           className={cn('mr-0.5 text-text-tertiary', open && 'bg-components-button-ghost-bg-hover')}
         >
-          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'modelProvider' })}
         </Button>
       )
       return Item
@@ -71,11 +71,11 @@ const ManageCustomModelCredentials = ({
       }}
       hideAddAction
       disableItemClick
-      popupTitle={t(($) => $['modelProvider.auth.customModelCredentials'], { ns: 'common' })}
+      popupTitle={t(($) => $['modelProvider.auth.customModelCredentials'], { ns: 'modelProvider' })}
       showModelTitle
       disableDeleteButShowAction
       disableDeleteTip={t(($) => $['modelProvider.auth.customModelCredentialsDeleteTip'], {
-        ns: 'common',
+        ns: 'modelProvider',
       })}
     />
   )

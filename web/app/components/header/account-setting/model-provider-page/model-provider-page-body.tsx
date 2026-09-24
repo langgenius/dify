@@ -65,7 +65,7 @@ function EmptyProviderState({
   enableMarketplace: boolean
   stepByStepTourTarget?: string
 }) {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['plugin', 'modelProvider', 'navigation'])
 
   return (
     <div
@@ -76,13 +76,13 @@ function EmptyProviderState({
         <span aria-hidden className="i-ri-brain-2-line size-5 text-text-primary" />
       </div>
       <div className="mt-2 system-sm-medium text-text-secondary">
-        {t(($) => $['modelProvider.emptyProviderTitle'], { ns: 'common' })}
+        {t(($) => $['modelProvider.emptyProviderTitle'], { ns: 'modelProvider' })}
       </div>
       <p className="mt-1 system-xs-regular text-text-tertiary">
         {enableMarketplace ? (
           <Trans
             i18nKey={($) => $['modelProvider.emptyProviderTipWithMarketplace']}
-            ns="common"
+            ns="modelProvider"
             components={{
               marketplace: (
                 <a
@@ -90,13 +90,13 @@ function EmptyProviderState({
                   aria-label={t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
                   className="system-xs-medium text-text-accent hover:underline"
                 >
-                  {t(($) => $['mainNav.marketplace'], { ns: 'common' })}
+                  {t(($) => $['mainNav.marketplace'], { ns: 'navigation' })}
                 </a>
               ),
             }}
           />
         ) : (
-          t(($) => $['modelProvider.emptyProviderTip'], { ns: 'common' })
+          t(($) => $['modelProvider.emptyProviderTip'], { ns: 'modelProvider' })
         )}
       </p>
     </div>
@@ -168,7 +168,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   pluginSummaryMap,
   onOpenMarketplace,
 }) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -208,7 +208,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
       {showNotConfiguredProviders && (
         <div className="flex flex-col gap-2 pt-2">
           <div className="flex h-5 items-center system-md-semibold text-text-primary">
-            {t(($) => $['modelProvider.toBeConfigured'], { ns: 'common' })}
+            {t(($) => $['modelProvider.toBeConfigured'], { ns: 'modelProvider' })}
           </div>
           <ProviderCardList
             firstCardTarget={

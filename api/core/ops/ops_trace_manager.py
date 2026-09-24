@@ -1000,7 +1000,7 @@ class TraceTask:
         message_trace_info = MessageTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             conversation_model=conversation_mode,
             message_tokens=message_tokens,
             answer_tokens=message_data.answer_tokens,
@@ -1052,7 +1052,7 @@ class TraceTask:
             trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
             inputs=inputs,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             flagged=moderation_result.flagged,
             action=moderation_result.action,
             preset_response=moderation_result.preset_response,
@@ -1094,7 +1094,7 @@ class TraceTask:
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
             trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             inputs=message_data.message,
             outputs=message_data.answer,
             start_time=timer.get("start"),
@@ -1197,7 +1197,7 @@ class TraceTask:
             start_time=timer.get("start"),
             end_time=timer.get("end"),
             metadata=metadata,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             error=kwargs.get("error"),
         )
 
@@ -1262,7 +1262,7 @@ class TraceTask:
         tool_trace_info = ToolTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             tool_name=tool_name,
             start_time=timer.get("start") if timer else created_time,
             end_time=timer.get("end") if timer else end_time,

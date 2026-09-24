@@ -281,8 +281,18 @@ vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-vi.mock('@/next/dynamic', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/next/dynamic')>()
+vi.mock('@/app/components/app/use-improve-builder-prompt', () => ({
+  useImproveBuilderPrompt: () => ({
+    improve: vi.fn(),
+    isPending: false,
+    modelStatus: 'unavailable',
+    isCheckingModel: false,
+    retryModelCheck: vi.fn(),
+  }),
+}))
+
+vi.mock('next/dynamic', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/dynamic')>()
   return {
     default: (importFn: () => Promise<unknown>) => {
       const fnString = importFn.toString()
@@ -1117,7 +1127,7 @@ describe('List', () => {
       const searchBox = screen.getByRole('searchbox', {
         name: 'app.gotoAnything.actions.searchApplications',
       })
-      const scrollContainer = screen.getByRole('region', { name: 'common.menus.apps' })
+      const scrollContainer = screen.getByRole('region', { name: 'navigation.menus.apps' })
       expect(scrollContainer).not.toContainElement(searchBox)
       const scrollTo = vi.fn()
       scrollContainer.scrollTo = scrollTo

@@ -79,7 +79,7 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
 
 export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps) {
   const { t: tApp } = useTranslation(['app'])
-  const { t: tCommon } = useTranslation(['common', 'agentV2'])
+  const { t: tCommon } = useTranslation(['agentV2', 'navigation'])
 
   if (!expand) {
     return (
@@ -107,7 +107,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
               render={<Link href="/" />}
-              aria-label={tCommon(($) => $['mainNav.home'])}
+              aria-label={tCommon(($) => $['mainNav.home'], { ns: 'navigation' })}
               className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
             >
               <span aria-hidden className="i-ri-arrow-left-s-line size-4" />

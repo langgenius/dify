@@ -30,7 +30,7 @@ export function EmailRecipientsField({
   onChange,
   disabled = false,
 }: EmailRecipientsFieldProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const internalInputRef = useRef<HTMLInputElement>(null)
   const chipButtonRef = useRef<Array<HTMLButtonElement | null>>([])
   const selectDraftOnRenderRef = useRef(false)
@@ -42,17 +42,18 @@ export function EmailRecipientsField({
   )
   const fieldError =
     hasInvalidRecipient || hasInvalidDraft
-      ? t(($) => $['members.emailInvalid'], { ns: 'common' })
+      ? t(($) => $['members.emailInvalid'], { ns: 'workspaceMembers' })
       : null
 
   const validateRecipients = (value: unknown) => {
     const nextDraft = typeof value === 'string' ? value : draft
     const nextRecipients = mergeEmailRecipients(recipients, nextDraft)
 
-    if (nextRecipients.length === 0) return t(($) => $['members.emailRequired'], { ns: 'common' })
+    if (nextRecipients.length === 0)
+      return t(($) => $['members.emailRequired'], { ns: 'workspaceMembers' })
 
     if (nextRecipients.some(({ isValid }) => !isValid))
-      return t(($) => $['members.emailInvalid'], { ns: 'common' })
+      return t(($) => $['members.emailInvalid'], { ns: 'workspaceMembers' })
 
     return null
   }
@@ -158,11 +159,13 @@ export function EmailRecipientsField({
   return (
     <Field name="emails" invalid={Boolean(fieldError)} validate={validateRecipients}>
       <div className="flex items-center justify-between gap-3">
-        <FieldLabel>{t(($) => $['members.emailRecipients'], { ns: 'common' })}</FieldLabel>
+        <FieldLabel>
+          {t(($) => $['members.emailRecipients'], { ns: 'workspaceMembers' })}
+        </FieldLabel>
         {recipients.length > 0 && (
           <span aria-live="polite" className="py-1 body-xs-regular text-text-tertiary tabular-nums">
             {t(($) => $['members.recipientCount'], {
-              ns: 'common',
+              ns: 'workspaceMembers',
               count: recipients.length,
             })}
           </span>
@@ -180,7 +183,7 @@ export function EmailRecipientsField({
       >
         {recipients.length > 0 && (
           <ul
-            aria-label={t(($) => $['members.emailRecipients'], { ns: 'common' })}
+            aria-label={t(($) => $['members.emailRecipients'], { ns: 'workspaceMembers' })}
             className="contents"
           >
             {recipients.map(({ value, isValid }, index) => {
@@ -236,7 +239,7 @@ export function EmailRecipientsField({
                   </button>
                   {!isValid && (
                     <span id={errorId} className="sr-only">
-                      {t(($) => $['members.emailInvalid'], { ns: 'common' })}
+                      {t(($) => $['members.emailInvalid'], { ns: 'workspaceMembers' })}
                     </span>
                   )}
                 </li>
@@ -253,7 +256,7 @@ export function EmailRecipientsField({
           inputMode="email"
           placeholder={
             recipients.length === 0
-              ? t(($) => $['members.emailPlaceholder'], { ns: 'common' }) || ''
+              ? t(($) => $['members.emailPlaceholder'], { ns: 'workspaceMembers' }) || ''
               : ''
           }
           value={draft}
@@ -312,7 +315,7 @@ export function EmailRecipientsField({
         <>
           <FieldError />
           <FieldDescription className="group-data-invalid/field:hidden">
-            {t(($) => $['members.emailRecipientsTip'], { ns: 'common' })}
+            {t(($) => $['members.emailRecipientsTip'], { ns: 'workspaceMembers' })}
           </FieldDescription>
         </>
       )}
