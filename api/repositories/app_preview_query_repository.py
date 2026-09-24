@@ -287,6 +287,8 @@ class AppPreviewQueryRepository(AppPreviewQuery, AppPreviewDetailsQuery):
             annotation_reply=load_annotation_reply_config(session, model_config.app_id)
         )
         result: dict[str, JsonValue | datetime] = dict(cast(Mapping[str, JsonValue], configuration))
+        if not result.get("model"):
+            result["model"] = None
         result.update(
             created_by=model_config.created_by,
             created_at=model_config.created_at,
