@@ -104,7 +104,7 @@ describe('ProviderCard', () => {
     expect(screen.getByText('search')).toBeInTheDocument()
     expect(screen.getByText('rag')).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: /plugin.detailPanel.operation.detail/i }),
+      screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail Provider One' }),
     ).toHaveAttribute('href', '/marketplace/dify/provider-one?language=en-US&theme=system')
   })
 

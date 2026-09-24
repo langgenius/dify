@@ -35,6 +35,7 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
   ] = useBoolean(false)
   const { canInstallPlugin } = usePluginInstallPermission()
   const { org, label } = payload
+  const pluginLabel = getValueFromI18nObject(label)
   const locale = useLocale()
   const navigation = useMarketplaceDetailNavigation()
 
@@ -53,7 +54,7 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
         <Icon src={payload.icon} />
         <div className="ml-3 w-0 grow">
           <div className="flex h-5 items-center">
-            <Title title={getValueFromI18nObject(label)} />
+            <Title title={pluginLabel} />
             {/* <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" /> */}
           </div>
           <div className="mb-1 flex h-4 items-center justify-between">
@@ -82,6 +83,7 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
           </Button>
         )}
         <a
+          aria-label={`${t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })} ${pluginLabel}`}
           href={
             navigation.pluginHref(payload) ??
             getPluginLinkInMarketplace(payload, marketplaceLinkParams)
