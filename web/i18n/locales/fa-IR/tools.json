@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "مسیر",
   "createTool.availableTools.test": "آزمایش",
   "createTool.availableTools.title": "ابزارهای موجود",
+  "createTool.changeIcon": "تغییر نماد ابزار",
   "createTool.confirmTip": "برنامه‌هایی که از این ابزار استفاده می‌کنند تحت تأثیر قرار خواهند گرفت",
   "createTool.confirmTitle": "آیا می‌خواهید ذخیره کنید؟",
   "createTool.customDisclaimer": "توجهیه سفارشی",

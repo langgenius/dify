@@ -4582,6 +4582,7 @@ export default interface Resources {
     'createTool.availableTools.path': 'Path'
     'createTool.availableTools.test': 'Test'
     'createTool.availableTools.title': 'Available Tools'
+    'createTool.changeIcon': 'Change tool icon'
     'createTool.confirmTip': 'Apps using this tool will be affected'
     'createTool.confirmTitle': 'Confirm to save ?'
     'createTool.customDisclaimer': 'Custom disclaimer'

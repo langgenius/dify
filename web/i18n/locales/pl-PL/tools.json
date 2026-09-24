@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Ścieżka",
   "createTool.availableTools.test": "Test",
   "createTool.availableTools.title": "Dostępne narzędzia",
+  "createTool.changeIcon": "Zmień ikonę narzędzia",
   "createTool.confirmTip": "Będzie to miało wpływ na aplikacje korzystające z tego narzędzia",
   "createTool.confirmTitle": "Potwierdź, aby zapisać ?",
   "createTool.customDisclaimer": "Oświadczenie niestandardowe",

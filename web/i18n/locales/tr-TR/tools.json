@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Yol",
   "createTool.availableTools.test": "Test",
   "createTool.availableTools.title": "Kullanılabilir Araçlar",
+  "createTool.changeIcon": "Araç simgesini değiştir",
   "createTool.confirmTip": "Bu aracı kullanan uygulamalar etkilenecek",
   "createTool.confirmTitle": "Kaydetmek için onaylıyor musunuz?",
   "createTool.customDisclaimer": "Özel feragatname",

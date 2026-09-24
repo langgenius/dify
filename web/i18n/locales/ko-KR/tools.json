@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "경로",
   "createTool.availableTools.test": "테스트",
   "createTool.availableTools.title": "사용 가능한 도구",
+  "createTool.changeIcon": "도구 아이콘 변경",
   "createTool.confirmTip": "이 도구를 사용하는 앱은 영향을 받습니다.",
   "createTool.confirmTitle": "저장하시겠습니까?",
   "createTool.customDisclaimer": "사용자 정의 권리 포기 문구",

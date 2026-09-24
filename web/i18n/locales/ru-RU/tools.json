@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Путь",
   "createTool.availableTools.test": "Тест",
   "createTool.availableTools.title": "Доступные инструменты",
+  "createTool.changeIcon": "Изменить значок инструмента",
   "createTool.confirmTip": "Приложения, использующие этот инструмент, будут затронуты",
   "createTool.confirmTitle": "Подтвердить сохранение?",
   "createTool.customDisclaimer": "Пользовательский отказ от ответственности",

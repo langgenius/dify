@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Pfad",
   "createTool.availableTools.test": "Test",
   "createTool.availableTools.title": "Verfügbare Werkzeuge",
+  "createTool.changeIcon": "Tool-Symbol ändern",
   "createTool.confirmTip": "Apps, die dieses Tool verwenden, sind davon betroffen",
   "createTool.confirmTitle": "Bestätigen, um zu speichern?",
   "createTool.customDisclaimer": "Benutzer Haftungsausschluss",

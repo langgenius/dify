@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Cale",
   "createTool.availableTools.test": "Testează",
   "createTool.availableTools.title": "Instrumente Disponibile",
+  "createTool.changeIcon": "Schimbă pictograma instrumentului",
   "createTool.confirmTip": "Aplicațiile care folosesc acest instrument vor fi afectate",
   "createTool.confirmTitle": "Confirmați pentru a salva?",
   "createTool.customDisclaimer": "Declinarea responsabilității personalizate",

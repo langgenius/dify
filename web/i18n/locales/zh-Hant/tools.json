@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "路徑",
   "createTool.availableTools.test": "測試",
   "createTool.availableTools.title": "可用工具",
+  "createTool.changeIcon": "更改工具圖示",
   "createTool.confirmTip": "使用此工具的應用程式將受到影響",
   "createTool.confirmTitle": "確認儲存？",
   "createTool.customDisclaimer": "自定義免責聲明",

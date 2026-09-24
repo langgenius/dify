@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Đường dẫn",
   "createTool.availableTools.test": "Kiểm tra",
   "createTool.availableTools.title": "Công cụ hiện có",
+  "createTool.changeIcon": "Thay đổi biểu tượng công cụ",
   "createTool.confirmTip": "Các ứng dụng sử dụng công cụ này sẽ bị ảnh hưởng",
   "createTool.confirmTitle": "Xác nhận để lưu ?",
   "createTool.customDisclaimer": "Tuyên bố từ chối trách nhiệm tùy chỉnh",

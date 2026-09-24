@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "المسار",
   "createTool.availableTools.test": "اختبار",
   "createTool.availableTools.title": "الأدوات المتاحة",
+  "createTool.changeIcon": "تغيير أيقونة الأداة",
   "createTool.confirmTip": "ستتأثر التطبيقات التي تستخدم هذه الأداة",
   "createTool.confirmTitle": "تأكيد الحفظ؟",
   "createTool.customDisclaimer": "إخلاء مسؤولية مخصص",

@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "パス",
   "createTool.availableTools.test": "テスト",
   "createTool.availableTools.title": "利用可能なツール",
+  "createTool.changeIcon": "ツールのアイコンを変更",
   "createTool.confirmTip": "このツールを使用しているアプリは影響を受けます",
   "createTool.confirmTitle": "保存しますか？",
   "createTool.customDisclaimer": "カスタム免責事項",

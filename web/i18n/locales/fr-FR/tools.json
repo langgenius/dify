@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Chemin",
   "createTool.availableTools.test": "Test",
   "createTool.availableTools.title": "Outils Disponibles",
+  "createTool.changeIcon": "Modifier l’icône de l’outil",
   "createTool.confirmTip": "Les applications utilisant cet outil seront affectées",
   "createTool.confirmTitle": "Confirmer pour enregistrer ?",
   "createTool.customDisclaimer": "Clause de non-responsabilité personnalisée",

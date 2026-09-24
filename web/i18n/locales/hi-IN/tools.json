@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "पथ",
   "createTool.availableTools.test": "परीक्षण",
   "createTool.availableTools.title": "उपलब्ध उपकरण",
+  "createTool.changeIcon": "टूल आइकन बदलें",
   "createTool.confirmTip": "इस उपकरण का उपयोग करने वाले ऐप्स प्रभावित होंगे",
   "createTool.confirmTitle": "सहेजने की पुष्टि करें ?",
   "createTool.customDisclaimer": "कस्टम अस्वीकरण",

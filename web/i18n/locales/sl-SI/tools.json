@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Pot",
   "createTool.availableTools.test": "Testiraj",
   "createTool.availableTools.title": "Razpoložljiva orodja",
+  "createTool.changeIcon": "Spremeni ikono orodja",
   "createTool.confirmTip": "Aplikacije, ki uporabljajo to orodje, bodo vplivane",
   "createTool.confirmTitle": "Potrditi shranjevanje?",
   "createTool.customDisclaimer": "Prilagojeno zavrnitev odgovornosti",

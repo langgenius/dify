@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Jalan",
   "createTool.availableTools.test": "Ujian",
   "createTool.availableTools.title": "Alat yang Tersedia",
+  "createTool.changeIcon": "Ubah ikon alat",
   "createTool.confirmTip": "Aplikasi yang menggunakan alat ini akan terpengaruh",
   "createTool.confirmTitle": "Konfirmasi untuk menyimpan?",
   "createTool.customDisclaimer": "Penafian khusus",

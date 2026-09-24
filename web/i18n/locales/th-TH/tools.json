@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "ทาง",
   "createTool.availableTools.test": "ทดสอบ",
   "createTool.availableTools.title": "เครื่องมือที่มี",
+  "createTool.changeIcon": "เปลี่ยนไอคอนเครื่องมือ",
   "createTool.confirmTip": "แอปที่ใช้เครื่องมือนี้จะได้รับผลกระทบ",
   "createTool.confirmTitle": "ยืนยันการบันทึก ?",
   "createTool.customDisclaimer": "ข้อจํากัดความรับผิดชอบที่กําหนดเอง",

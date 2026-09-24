@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Caminho",
   "createTool.availableTools.test": "Testar",
   "createTool.availableTools.title": "Ferramentas Disponíveis",
+  "createTool.changeIcon": "Alterar ícone da ferramenta",
   "createTool.confirmTip": "Os aplicativos que usam essa ferramenta serão afetados",
   "createTool.confirmTitle": "Confirme para salvar ?",
   "createTool.customDisclaimer": "Aviso Personalizado",

@@ -393,6 +393,14 @@ describe('EditCustomCollectionModal', () => {
 
   // Tests for Icon Section
   describe('Icon Section', () => {
+    it('names the button that changes the tool icon', () => {
+      renderModal()
+
+      expect(
+        screen.getByRole('button', { name: 'tools.createTool.changeIcon' }),
+      ).toBeInTheDocument()
+    })
+
     it('should render icon section', () => {
       renderModal()
 

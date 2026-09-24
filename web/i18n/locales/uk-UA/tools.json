@@ -52,6 +52,7 @@
   "createTool.availableTools.path": "Шлях",
   "createTool.availableTools.test": "Перевірка",
   "createTool.availableTools.title": "Доступні інструменти",
+  "createTool.changeIcon": "Змінити піктограму інструмента",
   "createTool.confirmTip": "Це вплине на програми, які використовують цей інструмент",
   "createTool.confirmTitle": "Підтвердьте, щоб зберегти?",
   "createTool.customDisclaimer": "Власний відомості",
