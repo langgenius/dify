@@ -93,7 +93,6 @@ const mockAppInfo = {
     use_icon_as_answer_icon: true,
   },
   mode: AppModeEnum.ADVANCED_CHAT,
-  enable_sso: false,
 } satisfies SettingsAppInfo
 
 const renderSettingsModal = (appInfo: SettingsAppInfo = mockAppInfo, canDeploy = false) =>
@@ -235,7 +234,6 @@ describe('SettingsModal', () => {
         icon_background: mockAppInfo.site.icon_background,
         show_workflow_steps: mockAppInfo.site.show_workflow_steps,
         use_icon_as_answer_icon: mockAppInfo.site.use_icon_as_answer_icon,
-        enable_sso: mockAppInfo.enable_sso,
       }),
     )
     expect(mockOnClose).toHaveBeenCalled()
