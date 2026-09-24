@@ -1041,7 +1041,7 @@ describe('DocumentDetailPage', () => {
       query: { limit: 100 },
     })
     expect(
-      screen.queryByRole('button', { name: /knowledgeSpace\.documentActions/ }),
+      screen.queryByRole('button', { name: /knowledgeDocuments\.documentActions/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -1050,7 +1050,9 @@ describe('DocumentDetailPage', () => {
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
+    ).toBeDisabled()
     expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
   })
 
@@ -1210,7 +1212,7 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByText('Generated guide summary.')).toBeInTheDocument()
     expect(screen.getByText('Generated setup summary.')).toBeInTheDocument()
     const summaryButtons = screen.getAllByRole('button', {
-      name: 'knowledgeSpace.documentSummary',
+      name: 'knowledgeDocuments.documentSummary',
     })
     expect(summaryButtons[0]).toHaveAttribute('aria-expanded', 'true')
     await user.click(summaryButtons[0]!)
@@ -1438,7 +1440,7 @@ describe('DocumentDetailPage', () => {
     ).toHaveAttribute('src', 'blob:spreadsheet-image')
     expect(screen.queryByText('image1.jpeg')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('heading', { name: 'knowledgeSpace.documentImages' }),
+      screen.queryByRole('heading', { name: 'knowledgeDocuments.documentImages' }),
     ).not.toBeInTheDocument()
     const chunkCountRow = screen.getByText('knowledgeSpace.chunkCount').closest('div')
     expect(chunkCountRow).not.toBeNull()
@@ -1576,7 +1578,7 @@ describe('DocumentDetailPage', () => {
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    const tree = screen.getByRole('tree', { name: 'knowledgeSpace.documentContents' })
+    const tree = screen.getByRole('tree', { name: 'knowledgeDocuments.documentContents' })
     const parent = within(tree).getByRole('treeitem', { name: /Setup requirements/ })
     expect(parent).toHaveAttribute('aria-expanded', 'true')
     const previousContentScroller = screen.getByTestId('chunk-content-scroll')
@@ -1596,7 +1598,9 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('heading', { name: 'dataset.metadata.metadata' })).toBeInTheDocument()
     expect(screen.getByText('common.operation.added')).toBeInTheDocument()
     expect(
-      screen.getByText('knowledgeSpace.parentChildChunkCount:{"childCount":"1","parentCount":"1"}'),
+      screen.getByText(
+        'knowledgeDocuments.parentChildChunkCount:{"childCount":"1","parentCount":"1"}',
+      ),
     ).toBeInTheDocument()
     expect(screen.queryByText('knowledgeSpace.characterCount')).not.toBeInTheDocument()
     expect(screen.queryByText('section')).not.toBeInTheDocument()
@@ -1770,7 +1774,7 @@ describe('DocumentDetailPage', () => {
     await user.type(category, 'product')
 
     await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
-    expect(screen.getByText('knowledgeSpace.documentLoadErrorDescription')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeCitation.documentLoadErrorDescription')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(metadataFieldsQuery.refetch).toHaveBeenCalledOnce()
 
@@ -2086,11 +2090,11 @@ describe('DocumentDetailPage', () => {
     await user.click(parent)
     expect(parent).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('treeitem', { name: /Child node/ })).toBeNull()
-    expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.documentReindexStatus')
+    expect(screen.getByRole('status')).toHaveTextContent('knowledgeDocuments.documentReindexStatus')
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.cancelDocumentReindex' }),
+      screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
     ).not.toHaveAttribute('data-disabled')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.viewTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
     const taskDrawer = screen.getByRole('dialog', {
       name: 'knowledgeSpace.backgroundTasks',
     })
@@ -2108,7 +2112,7 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(documentsOptions.mock.lastCall?.[0]).toEqual(expect.objectContaining({ enabled: false }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.viewTask' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
     expect(documentsOptions.mock.lastCall?.[0]).toEqual(expect.objectContaining({ enabled: true }))
   })
 
@@ -2118,7 +2122,9 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelDocumentReindex' }))
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
+    )
 
     expect(cancelMutation.mutateAsync).toHaveBeenCalledWith({
       params: {
@@ -2137,10 +2143,10 @@ describe('DocumentDetailPage', () => {
     const user = userEvent.setup()
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
     await user.click(
       await screen.findByRole('button', {
-        name: 'knowledgeSpace.cancelDocumentReindex',
+        name: 'knowledgeDocuments.cancelDocumentReindex',
       }),
     )
 
@@ -2158,10 +2164,10 @@ describe('DocumentDetailPage', () => {
     const rendered = render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
     expect(
       await screen.findByRole('button', {
-        name: 'knowledgeSpace.cancelDocumentReindex',
+        name: 'knowledgeDocuments.cancelDocumentReindex',
       }),
     ).toBeInTheDocument()
 
@@ -2169,9 +2175,9 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.cancelDocumentReindex' }),
+      screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.documentReindexStatus')
+    expect(screen.getByRole('status')).toHaveTextContent('knowledgeDocuments.documentReindexStatus')
   })
 
   it('reconciles a restored re-index through its exact compilation job', async () => {
@@ -2203,7 +2209,7 @@ describe('DocumentDetailPage', () => {
       }),
     )
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.cancelDocumentReindex' }),
+      screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
     ).toBeInTheDocument()
 
     submittedJobQuery.data = {
@@ -2216,7 +2222,7 @@ describe('DocumentDetailPage', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' }),
+        screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
       ).toBeInTheDocument(),
     )
     await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4))
@@ -2239,10 +2245,10 @@ describe('DocumentDetailPage', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' }),
+        screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
       ).toBeInTheDocument(),
     )
-    expect(screen.queryByText('knowledgeSpace.documentReindexStatus')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeDocuments.documentReindexStatus')).not.toBeInTheDocument()
     expect(globalThis.sessionStorage.getItem('dify-new-rag-reindex:space-1:document-1')).toBeNull()
   })
 
@@ -2257,7 +2263,7 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.documentRevisionMissingTitle' }),
+      screen.getByRole('heading', { name: 'knowledgeDocuments.documentRevisionMissingTitle' }),
     ).toBeInTheDocument()
     expect(chunksOptions).not.toHaveBeenCalled()
   })
@@ -2271,11 +2277,13 @@ describe('DocumentDetailPage', () => {
 
     expect(screen.getByRole('treeitem', { name: 'Cached content' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Cached content' })).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.documentChunksLoadError')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'knowledgeDocuments.documentChunksLoadError',
+    )
     expect(screen.queryByText('knowledgeSpace.documentContentIncomplete')).toBeNull()
     expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'false')
     const indexInformation = screen
-      .getByRole('heading', { name: 'knowledgeSpace.indexInformation' })
+      .getByRole('heading', { name: 'knowledgeDocuments.indexInformation' })
       .closest('section')
     expect(indexInformation).not.toBeNull()
     expect(within(indexInformation!).getAllByText('—')).toHaveLength(3)
@@ -2293,7 +2301,7 @@ describe('DocumentDetailPage', () => {
     })
 
     expect(
-      screen.queryByRole('combobox', { name: 'knowledgeSpace.documentRevision' }),
+      screen.queryByRole('combobox', { name: 'knowledgeDocuments.documentRevision' }),
     ).not.toBeInTheDocument()
     expect(infiniteInput(chunksOptions.mock.lastCall?.[0])(null)).toEqual({
       params: {
@@ -2318,7 +2326,7 @@ describe('DocumentDetailPage', () => {
       searchParams: '?revision=2',
     })
 
-    expect(screen.getByText('knowledgeSpace.documentRevisionsLoadError')).toBeVisible()
+    expect(screen.getByText('knowledgeDocuments.documentRevisionsLoadError')).toBeVisible()
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
     expect(revisionsQuery.fetchNextPage).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -2336,10 +2344,10 @@ describe('DocumentDetailPage', () => {
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: 'knowledgeSpace.documentNotFoundTitle',
+        name: 'knowledgeDocuments.documentNotFoundTitle',
       }),
     ).toBeVisible()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' })).toBeEnabled()
   })
 
   it('resolves an exact URL revision from later revision pages before rendering content', async () => {
@@ -2393,8 +2401,8 @@ describe('DocumentDetailPage', () => {
       pages: [{ items: [task({ documentRevision: 2, state: 'failed' })] }],
     }
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    expect(screen.queryByText('knowledgeSpace.documentReindexFailed')).toBeNull()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' })).toBeEnabled()
+    expect(screen.queryByText('knowledgeDocuments.documentReindexFailed')).toBeNull()
+    expect(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' })).toBeEnabled()
   })
 
   it('polls active work through the unified background-task contract', () => {
@@ -2431,7 +2439,7 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.cancelDocumentReindex' }),
+      screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
     ).toBeEnabled()
     const options = taskSnapshotOptions.mock.lastCall?.[0] as {
       refetchInterval: (query: {
@@ -2496,7 +2504,7 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'knowledgeSpace.documentChunksLoadMoreError',
+      'knowledgeDocuments.documentChunksLoadMoreError',
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
@@ -2671,7 +2679,7 @@ describe('DocumentDetailPage', () => {
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.documentNotFoundTitle' }),
+      screen.getByRole('heading', { name: 'knowledgeDocuments.documentNotFoundTitle' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).toBeNull()
 
@@ -2692,10 +2700,10 @@ describe('DocumentDetailPage', () => {
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.documentReindexFailed')
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.viewTask' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeDocuments.documentReindexFailed')
+    expect(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' })).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.retryReindexDocument' }),
+      screen.getByRole('button', { name: 'knowledgeDocuments.retryReindexDocument' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Parent content' })).toBeInTheDocument()
   })
@@ -2716,7 +2724,7 @@ describe('DocumentDetailPage', () => {
     const rendered = render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
 
     expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({
       body: { documentIds: ['document-1'] },
@@ -2728,7 +2736,7 @@ describe('DocumentDetailPage', () => {
     knowledgeSpacePermissionState.keys = []
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const readonlyReindexButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.cancelDocumentReindex',
+      name: 'knowledgeDocuments.cancelDocumentReindex',
     })
     expect(readonlyReindexButton).toHaveAttribute('data-disabled')
     expect(readonlyReindexButton).toHaveAccessibleDescription(
@@ -2742,7 +2750,7 @@ describe('DocumentDetailPage', () => {
     settingsState.configurationState = 'setup-required'
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
 
     expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
     const dialog = screen.getByRole('dialog', {
@@ -2769,14 +2777,14 @@ describe('DocumentDetailPage', () => {
     )
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const button = screen.getByRole('button', {
-      name: 'knowledgeSpace.reindexDocument',
+      name: 'knowledgeDocuments.reindexDocument',
     })
 
     await user.dblClick(button)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     resolveReindex?.(missingReindexResult())
     await waitFor(() =>
-      expect(toastState.error).toHaveBeenCalledWith('knowledgeSpace.documentNotFoundTitle'),
+      expect(toastState.error).toHaveBeenCalledWith('knowledgeDocuments.documentNotFoundTitle'),
     )
     expect(toastState.success).not.toHaveBeenCalled()
     expect(queryClient.invalidateQueries).toHaveBeenCalledOnce()
@@ -2785,7 +2793,7 @@ describe('DocumentDetailPage', () => {
       queryKey: ['knowledge-fs', 'document', 'space-1', 'document-1'],
     })
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.documentNotFoundTitle' }),
+      screen.getByRole('heading', { name: 'knowledgeDocuments.documentNotFoundTitle' }),
     ).toBeInTheDocument()
   })
 
@@ -2796,7 +2804,7 @@ describe('DocumentDetailPage', () => {
     )
 
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.documentNotFoundTitle' }),
+      screen.getByRole('heading', { name: 'knowledgeDocuments.documentNotFoundTitle' }),
     ).toBeInTheDocument()
     expect(screen.queryByText('sso-enterprise.pdf')).toBeNull()
 
@@ -2820,7 +2828,7 @@ describe('DocumentDetailPage', () => {
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
     queryClient.invalidateQueries.mockClear()
     taskSnapshotQuery.data = task({
@@ -2839,7 +2847,7 @@ describe('DocumentDetailPage', () => {
     tasksQuery.hasNextPage = true
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.cancelDocumentReindex' }),
+      screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
     ).toBeEnabled()
     expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
   })
@@ -2853,16 +2861,16 @@ describe('DocumentDetailPage', () => {
     queryClient.invalidateQueries.mockReturnValue(invalidation)
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    const button = screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' })
+    const button = screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' })
     await user.click(button)
 
-    expect(button).toHaveAccessibleName('knowledgeSpace.cancelDocumentReindex')
+    expect(button).toHaveAccessibleName('knowledgeDocuments.cancelDocumentReindex')
     expect(button).not.toHaveAttribute('data-disabled')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
-    expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.documentReindexStatus')
+    expect(screen.getByRole('status')).toHaveTextContent('knowledgeDocuments.documentReindexStatus')
     finishInvalidation?.()
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
-    expect(button).toHaveTextContent('knowledgeSpace.cancelDocumentReindex')
+    expect(button).toHaveTextContent('knowledgeDocuments.cancelDocumentReindex')
     expect(button).not.toHaveAttribute('data-disabled')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(cancelMutation.mutateAsync).not.toHaveBeenCalled()
@@ -2874,12 +2882,12 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const button = screen.getByRole('button', {
-      name: 'knowledgeSpace.retryReindexDocument',
+      name: 'knowledgeDocuments.retryReindexDocument',
     })
 
     await user.click(button)
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
-    expect(button).toHaveTextContent('knowledgeSpace.cancelDocumentReindex')
+    expect(button).toHaveTextContent('knowledgeDocuments.cancelDocumentReindex')
     expect(button).not.toHaveAttribute('data-disabled')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(cancelMutation.mutateAsync).not.toHaveBeenCalled()
@@ -2900,7 +2908,7 @@ describe('DocumentDetailPage', () => {
     try {
       render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
       const reindexButton = screen.getByRole('button', {
-        name: 'knowledgeSpace.retryReindexDocument',
+        name: 'knowledgeDocuments.retryReindexDocument',
       })
       await act(async () => {
         fireEvent.click(reindexButton)
@@ -2909,15 +2917,17 @@ describe('DocumentDetailPage', () => {
       })
       await act(() => vi.advanceTimersByTimeAsync(30000))
 
-      expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.documentReindexStatus')
-      expect(reindexButton).toHaveTextContent('knowledgeSpace.cancelDocumentReindex')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'knowledgeDocuments.documentReindexStatus',
+      )
+      expect(reindexButton).toHaveTextContent('knowledgeDocuments.cancelDocumentReindex')
       expect(reindexButton).not.toHaveAttribute('data-disabled')
       expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
       expect(
         screen.queryByText('knowledgeSpace.documentReindexConfirmationDelayed'),
       ).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'knowledgeSpace.retryReindexDocument' }),
+        screen.queryByRole('button', { name: 'knowledgeDocuments.retryReindexDocument' }),
       ).not.toBeInTheDocument()
     } finally {
       vi.useRealTimers()
@@ -2929,7 +2939,7 @@ describe('DocumentDetailPage', () => {
     const rendered = render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
 
     taskSnapshotQuery.data = task({
@@ -2966,7 +2976,7 @@ describe('DocumentDetailPage', () => {
         <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
       )
       await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' }))
+        fireEvent.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
         await Promise.resolve()
         await Promise.resolve()
       })
@@ -2979,11 +2989,11 @@ describe('DocumentDetailPage', () => {
       rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
       expect(
-        screen.getByRole('button', { name: 'knowledgeSpace.cancelDocumentReindex' }),
+        screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
       ).not.toHaveAttribute('data-disabled')
       await act(() => vi.advanceTimersByTimeAsync(30000))
       expect(
-        screen.queryByRole('button', { name: 'knowledgeSpace.retryReindexDocument' }),
+        screen.queryByRole('button', { name: 'knowledgeDocuments.retryReindexDocument' }),
       ).not.toBeInTheDocument()
     } finally {
       vi.useRealTimers()
@@ -2999,9 +3009,9 @@ describe('DocumentDetailPage', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.tasksErrorDescription')
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' })).toHaveAttribute(
-      'data-disabled',
-    )
+    expect(
+      screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
+    ).toHaveAttribute('data-disabled')
     const taskOptions = taskSnapshotOptions.mock.lastCall?.[0] as unknown as {
       refetchInterval: (query: {
         state: {
@@ -3030,7 +3040,7 @@ describe('DocumentDetailPage', () => {
     taskSnapshotQuery.error = null
     taskSnapshotQuery.data = task({ state: 'running' })
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.documentReindexStatus')
+    expect(screen.getByRole('status')).toHaveTextContent('knowledgeDocuments.documentReindexStatus')
   })
 
   it('refreshes stale detail and task-list caches for a newer terminal task on revisit', async () => {
@@ -3055,7 +3065,7 @@ describe('DocumentDetailPage', () => {
     reindexMutation.mutateAsync.mockRejectedValueOnce({ status: 403 })
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    const button = screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' })
+    const button = screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' })
     await user.click(button)
 
     await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledOnce())
@@ -3074,7 +3084,7 @@ describe('DocumentDetailPage', () => {
     reindexMutation.mutateAsync.mockRejectedValueOnce({ status: 403 })
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    const button = screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' })
+    const button = screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' })
     await user.click(button)
 
     await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledOnce())
@@ -3105,9 +3115,9 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument({ status: 'deleting' })
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocument' })).toHaveAttribute(
-      'data-disabled',
-    )
+    expect(
+      screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
+    ).toHaveAttribute('data-disabled')
   })
 
   it('keeps virtual tree focus stable across Home and End and exposes sibling positions', () => {

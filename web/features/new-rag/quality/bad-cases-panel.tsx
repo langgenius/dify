@@ -37,25 +37,25 @@ function BadCaseReason({
   reason: string
   tags: string[]
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['dataset', 'knowledgeQuality', 'knowledgeSpace'])
   const normalized = reason.toLowerCase()
   if (normalized === 'low-score' || (normalized.includes('low') && normalized.includes('score')))
-    return t(($) => $['qualityPage.reasonValues.lowScore'])
+    return t(($) => $['qualityPage.reasonValues.lowScore'], { ns: 'knowledgeSpace' })
   if (normalized.includes('outdated'))
-    return t(($) => $['qualityPage.reasonValues.outdatedContent'])
+    return t(($) => $['qualityPage.reasonValues.outdatedContent'], { ns: 'knowledgeQuality' })
   if (
     (tags.includes('retrieval-test') && reason.trim() === question?.trim()) ||
     normalized.includes('retrieval') ||
     normalized.includes('miss')
   )
-    return t(($) => $['qualityPage.reasonValues.retrievalMiss'])
+    return t(($) => $['qualityPage.reasonValues.retrievalMiss'], { ns: 'knowledgeSpace' })
   if (normalized.includes('coverage') || normalized.includes('evidence'))
-    return t(($) => $['qualityPage.reasonValues.coverageGap'])
+    return t(($) => $['qualityPage.reasonValues.coverageGap'], { ns: 'knowledgeQuality' })
   return reason
 }
 
 function BadCaseStatus({ status }: { status: KnowledgeFsBadCaseResponse['status'] }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['dataset', 'knowledgeQuality'])
   const visibleStatus = status === 'dismissed' ? 'fixed' : status
   return (
     <div className="flex h-5 items-center gap-1.5 system-xs-medium text-text-primary">
@@ -71,7 +71,7 @@ function BadCaseStatus({ status }: { status: KnowledgeFsBadCaseResponse['status'
             'border-util-colors-green-green-600 bg-util-colors-green-green-400 shadow-util-colors-green-green-200',
         )}
       />
-      {t(($) => $[`qualityPage.status.${visibleStatus}`])}
+      {t(($) => $[`qualityPage.status.${visibleStatus}`], { ns: 'knowledgeQuality' })}
     </div>
   )
 }
@@ -88,7 +88,7 @@ function BadCasePromotionDialog({
   onOpenChange: (session: BadCasePromotionSession | undefined) => void
   session?: BadCasePromotionSession
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['dataset', 'knowledgeQuality'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()
@@ -175,7 +175,7 @@ function BadCasePromotionDialog({
           }),
         }),
       ])
-      toast.success(t(($) => $['qualityPage.promotedToast']))
+      toast.success(t(($) => $['qualityPage.promotedToast'], { ns: 'knowledgeQuality' }))
       close()
     } catch {
       setError(t(($) => $.unknownError, { ns: 'dataset' }))
@@ -216,7 +216,7 @@ function BadCaseRow({
   item: KnowledgeFsBadCaseResponse
   onPromote: (item: KnowledgeFsBadCaseResponse) => void
 }) {
-  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { i18n, t } = useTranslation(['dataset', 'knowledgeQuality'])
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = space.control_space_id
@@ -289,6 +289,7 @@ function BadCaseRow({
         <QualityRowMenuTrigger
           disabled={pending}
           label={t(($) => $['qualityPage.questionActions'], {
+            ns: 'knowledgeQuality',
             question: item.question ?? '',
           })}
         />
@@ -297,7 +298,7 @@ function BadCaseRow({
             (item.status === 'fixed' ? (
               <DropdownMenuItem className="gap-2 px-3" onClick={() => onPromote(item)}>
                 <span aria-hidden className="i-ri-star-line size-4" />
-                {t(($) => $['qualityPage.toGolden'])}
+                {t(($) => $['qualityPage.toGolden'], { ns: 'knowledgeQuality' })}
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem
@@ -306,7 +307,7 @@ function BadCaseRow({
                 onClick={() => void openTrace(true)}
               >
                 <span aria-hidden className="i-ri-restart-line size-4" />
-                {t(($) => $['qualityPage.replay'])}
+                {t(($) => $['qualityPage.replay'], { ns: 'knowledgeQuality' })}
               </DropdownMenuItem>
             ))}
           <DropdownMenuItem
@@ -315,7 +316,7 @@ function BadCaseRow({
             onClick={() => void openTrace(false)}
           >
             <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
-            {t(($) => $['qualityPage.openTrace'])}
+            {t(($) => $['qualityPage.openTrace'], { ns: 'knowledgeQuality' })}
           </DropdownMenuItem>
           {canEdit && item.status !== 'fixed' && (
             <DropdownMenuItem
@@ -324,7 +325,7 @@ function BadCaseRow({
               onClick={() => onPromote(item)}
             >
               <span aria-hidden className="i-ri-star-line size-4" />
-              {t(($) => $['qualityPage.toGolden'])}
+              {t(($) => $['qualityPage.toGolden'], { ns: 'knowledgeQuality' })}
             </DropdownMenuItem>
           )}
           {canEdit && <DropdownMenuSeparator />}
@@ -335,7 +336,7 @@ function BadCaseRow({
               onClick={() => void ignore()}
             >
               <span aria-hidden className="i-ri-eye-off-line size-4" />
-              {t(($) => $['qualityPage.ignore'])}
+              {t(($) => $['qualityPage.ignore'], { ns: 'knowledgeQuality' })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -345,7 +346,7 @@ function BadCaseRow({
 }
 
 export function BadCasesPanel() {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeQuality'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const [promotion, setPromotion] = useState<BadCasePromotionSession>()
@@ -397,10 +398,10 @@ export function BadCasesPanel() {
       ) : items.length ? (
         <div className="mt-2.5 w-full overflow-x-auto pt-3">
           <div className="grid min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 py-2.5 text-[11px] leading-4 font-medium text-text-tertiary">
-            <span>{t(($) => $['qualityPage.question'])}</span>
-            <span>{t(($) => $['qualityPage.statusLabel'])}</span>
-            <span>{t(($) => $['qualityPage.reason'])}</span>
-            <span>{t(($) => $['qualityPage.updated'])}</span>
+            <span>{t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}</span>
+            <span>{t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}</span>
+            <span>{t(($) => $['qualityPage.reason'], { ns: 'knowledgeQuality' })}</span>
+            <span>{t(($) => $['qualityPage.updated'], { ns: 'knowledgeQuality' })}</span>
             <span />
           </div>
           {items.map((item) => (
@@ -418,10 +419,10 @@ export function BadCasesPanel() {
         <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
           <span aria-hidden className="i-ri-check-line size-7 text-text-tertiary" />
           <h2 className="mt-3 system-md-semibold text-text-primary">
-            {t(($) => $['qualityPage.badCasesEmptyTitle'])}
+            {t(($) => $['qualityPage.badCasesEmptyTitle'], { ns: 'knowledgeQuality' })}
           </h2>
           <p className="mt-1 max-w-136 system-xs-regular text-text-tertiary">
-            {t(($) => $['qualityPage.badCasesEmptyDescription'])}
+            {t(($) => $['qualityPage.badCasesEmptyDescription'], { ns: 'knowledgeQuality' })}
           </p>
           {query.hasNextPage && (
             <Button

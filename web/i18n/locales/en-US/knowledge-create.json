@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Add & process",
+  "crawlPreview": "Crawl preview",
+  "createFailed": "We couldn't create this Agent Knowledge Base. Check your access and try again.",
+  "createTitle": "Create Agent Knowledge Base",
+  "description": "Description",
+  "descriptionHelp": "A clear description helps apps decide when to search this Agent Knowledge Base.",
+  "descriptionPlaceholder": "e.g. Refund policy, shipping FAQs, and escalation steps — use for customer support questions",
+  "illustrationHeadline": "Connect your content once — every app answers with the freshest knowledge.",
+  "namePlaceholder": "e.g. Customer Support Handbook",
+  "nameRequired": "Enter an Agent Knowledge Base name.",
+  "selectedFiles": "Selected files ({{valid}} of {{total}} valid)",
+  "startWith": "Start with",
+  "startWithHelp": "You can add more Sources or Documents anytime.",
+  "uploadCharactersUnavailable": "Characters: —",
+  "uploadDocuments": "Upload documents",
+  "uploadDropZoneTitle": "Drag and drop files, or browse",
+  "uploadingFiles": "Uploading…"
+}

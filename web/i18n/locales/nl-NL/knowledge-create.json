@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Toevoegen en verwerken",
+  "crawlPreview": "Crawlvoorbeeld",
+  "createFailed": "We konden deze Agent-kennisbank niet creëren. Controleer uw toegang en probeer het opnieuw.",
+  "createTitle": "Agent-kennisbank maken",
+  "description": "Beschrijving",
+  "descriptionHelp": "Een duidelijke beschrijving helpt apps bepalen wanneer ze deze Agent-kennisbank moeten doorzoeken.",
+  "descriptionPlaceholder": "bijv. Terugbetalingsbeleid, veelgestelde vragen over verzending en escalatiestappen - gebruik deze voor vragen over klantenondersteuning",
+  "illustrationHeadline": "Koppel je content één keer — elke app antwoordt met de meest actuele kennis.",
+  "namePlaceholder": "bijv. Handboek voor klantenondersteuning",
+  "nameRequired": "Voer een naam voor de Agent-kennisbank in.",
+  "selectedFiles": "Geselecteerde bestanden ({{valid}} van {{total}} geldig)",
+  "startWith": "Begin met",
+  "startWithHelp": "U kunt op elk gewenst moment meer bronnen of documenten toevoegen.",
+  "uploadCharactersUnavailable": "Tekens: —",
+  "uploadDocuments": "Documenten uploaden",
+  "uploadDropZoneTitle": "Sleep bestanden hierheen of blader",
+  "uploadingFiles": "Uploaden…"
+}

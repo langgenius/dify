@@ -47,7 +47,7 @@ export function DocumentMetadataPicker({
   onRetry: () => void
   onSelect: (field: DocumentMetadataField) => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['knowledgeCitation', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'create' | 'select'>('select')
@@ -143,7 +143,7 @@ export function DocumentMetadataPicker({
             {error && !loading && (
               <div className="flex h-20 flex-col items-center justify-center gap-1 px-3 text-center">
                 <span className="system-xs-regular text-text-tertiary">
-                  {t(($) => $.documentLoadErrorDescription)}
+                  {t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' })}
                 </span>
                 <Button onClick={onRetry} size="small" variant="ghost">
                   {tCommon(($) => $['operation.retry'])}

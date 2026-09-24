@@ -46,7 +46,9 @@ export function RecordTime({ value }: { value: number }) {
     return () => globalThis.clearTimeout(timeout)
   }, [showJustNow, value])
 
-  return showJustNow ? t(($) => $['retrievalTest.justNow']) : formatRecordTime(value, i18n.language)
+  return showJustNow
+    ? t(($) => $['retrievalTest.justNow'], { ns: 'knowledgeSpace' })
+    : formatRecordTime(value, i18n.language)
 }
 
 type ResearchPayloadLabels = {
@@ -337,7 +339,7 @@ export function ResearchProcess({
   plan?: KnowledgeFsResearchTaskPlanResponse
   task: KnowledgeFsResearchTaskResponse
 }) {
-  const { t, i18n } = useTranslation(['knowledgeSpace'])
+  const { t, i18n } = useTranslation(['knowledgeSpace', 'knowledgeRetrieval'])
   const active = researchTaskIsActive(task)
   const now = useClock(active)
   const firstProgressAt = events[0] ? researchProgressTime(events[0]) : undefined
@@ -361,30 +363,30 @@ export function ResearchProcess({
   }, -1)
   const summary =
     task.stage === 'completed'
-      ? t(($) => $['retrievalTest.completedIn'], { duration })
+      ? t(($) => $['retrievalTest.completedIn'], { ns: 'knowledgeRetrieval', duration })
       : task.stage === 'canceled'
-        ? t(($) => $['retrievalTest.canceled'])
+        ? t(($) => $['retrievalTest.canceled'], { ns: 'knowledgeRetrieval' })
         : task.stage === 'failed'
-          ? t(($) => $['retrievalTest.failedTitle'])
-          : t(($) => $['retrievalTest.running'])
+          ? t(($) => $['retrievalTest.failedTitle'], { ns: 'knowledgeRetrieval' })
+          : t(($) => $['retrievalTest.running'], { ns: 'knowledgeRetrieval' })
   const labels: Record<(typeof researchStageOrder)[number], string> = {
-    analyzing: t(($) => $['retrievalTest.analyzing']),
-    generating: t(($) => $['retrievalTest.generating']),
-    planning: t(($) => $['retrievalTest.planning']),
-    retrieving: t(($) => $['retrievalTest.retrieving']),
+    analyzing: t(($) => $['retrievalTest.analyzing'], { ns: 'knowledgeRetrieval' }),
+    generating: t(($) => $['retrievalTest.generating'], { ns: 'knowledgeRetrieval' }),
+    planning: t(($) => $['retrievalTest.planning'], { ns: 'knowledgeRetrieval' }),
+    retrieving: t(($) => $['retrievalTest.retrieving'], { ns: 'knowledgeRetrieval' }),
   }
   const activeLabels: Record<(typeof researchStageOrder)[number], string> = {
-    analyzing: t(($) => $['retrievalTest.analyzingActive']),
-    generating: t(($) => $['retrievalTest.generatingActive']),
-    planning: t(($) => $['retrievalTest.planningActive']),
-    retrieving: t(($) => $['retrievalTest.retrievingActive']),
+    analyzing: t(($) => $['retrievalTest.analyzingActive'], { ns: 'knowledgeRetrieval' }),
+    generating: t(($) => $['retrievalTest.generatingActive'], { ns: 'knowledgeRetrieval' }),
+    planning: t(($) => $['retrievalTest.planningActive'], { ns: 'knowledgeRetrieval' }),
+    retrieving: t(($) => $['retrievalTest.retrievingActive'], { ns: 'knowledgeRetrieval' }),
   }
   const payloadLabels: ResearchPayloadLabels = {
     chunks: t(($) => $.chunkCount),
     documents: t(($) => $.documents),
     retrievals: t(($) => $.retrievalCount),
     sources: t(($) => $.sources),
-    topK: t(($) => $['settings.topKLabel']),
+    topK: t(($) => $['settings.topKLabel'], { ns: 'knowledgeSpace' }),
   }
 
   return (
@@ -428,7 +430,7 @@ export function ResearchProcess({
         </button>
         {active && onCancel && (
           <Button size="small" variant="secondary" className="mr-3 shrink-0" onClick={onCancel}>
-            {t(($) => $['retrievalTest.cancel'])}
+            {t(($) => $['retrievalTest.cancel'], { ns: 'knowledgeRetrieval' })}
           </Button>
         )}
       </div>
@@ -504,6 +506,7 @@ export function ResearchProcess({
                     {current && stage === 'retrieving' && evidenceCount > 0 && (
                       <span className="mt-1.5 system-xs-regular text-text-tertiary">
                         {t(($) => $['retrievalTest.foundSoFar'], {
+                          ns: 'knowledgeRetrieval',
                           count: evidenceCount,
                         })}
                       </span>
@@ -539,7 +542,7 @@ export function RecordButton({
   onClick: () => void
   record: RetrievalTestRecord
 }) {
-  const { t, i18n } = useTranslation(['knowledgeSpace'])
+  const { t, i18n } = useTranslation(['knowledgeRetrieval', 'knowledgeSpace'])
   const failed = record.status === 'failed'
   const queryImageCount = record.queryImages?.length ?? 0
   const activeResearchStage =
@@ -563,11 +566,11 @@ export function RecordButton({
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1">
           <span className="line-clamp-1 min-w-0 system-sm-semibold text-text-secondary">
-            {record.query || t(($) => $['retrievalTest.queryImages'])}
+            {record.query || t(($) => $['retrievalTest.queryImages'], { ns: 'knowledgeRetrieval' })}
           </span>
           {queryImageCount > 0 && (
             <span
-              aria-label={t(($) => $['retrievalTest.queryImages'])}
+              aria-label={t(($) => $['retrievalTest.queryImages'], { ns: 'knowledgeRetrieval' })}
               className="inline-flex shrink-0 items-center gap-0.5 system-2xs-medium text-text-tertiary"
               role="img"
             >
@@ -580,7 +583,7 @@ export function RecordButton({
               className="inline-flex shrink-0 items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary"
               data-testid="retrieval-record-source"
             >
-              {t(($) => $[`retrievalTest.source.${record.source}`])}
+              {t(($) => $[`retrievalTest.source.${record.source}`], { ns: 'knowledgeRetrieval' })}
             </span>
           )}
         </span>
@@ -588,27 +591,31 @@ export function RecordButton({
           <span className={cn('min-w-0 flex-1 truncate', failed && 'text-text-destructive')}>
             {activeResearchStage ? (
               <>
-                {t(($) => $[`retrievalTest.${activeResearchStage}Active`])}
+                {t(($) => $[`retrievalTest.${activeResearchStage}Active`], {
+                  ns: 'knowledgeRetrieval',
+                })}
                 {' · '}
                 {researchStageOrder.indexOf(activeResearchStage) + 1}/{researchStageOrder.length}
               </>
             ) : failed ? (
               record.kind !== 'research' && record.durationMs !== undefined ? (
                 t(($) => $['retrievalTest.failedAfter'], {
+                  ns: 'knowledgeRetrieval',
                   duration: formatDuration(record.durationMs, i18n.language),
                 })
               ) : (
-                t(($) => $['retrievalTest.failedTitle'])
+                t(($) => $['retrievalTest.failedTitle'], { ns: 'knowledgeRetrieval' })
               )
             ) : record.kind !== 'research' &&
               record.resultCount !== undefined &&
               record.durationMs !== undefined ? (
               t(($) => $['retrievalTest.recordSummary'], {
+                ns: 'knowledgeRetrieval',
                 count: record.resultCount,
                 duration: formatRetrievalDuration(record.durationMs, i18n.language),
               })
             ) : (
-              t(($) => $[`settings.retrievalMode.${record.mode}`])
+              t(($) => $[`settings.retrievalMode.${record.mode}`], { ns: 'knowledgeSpace' })
             )}
           </span>
           <span className="shrink-0 text-[11px] leading-4 text-text-primary opacity-30">

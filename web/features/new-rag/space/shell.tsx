@@ -13,7 +13,7 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
@@ -84,7 +84,8 @@ export function KnowledgeSpaceShell({
   const { t: tCommon } = useTranslation(['common', 'navigation'])
   const { t: tApp } = useTranslation(['app'])
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
-  const [apiAccessDialogOpen, setApiAccessDialogOpen] = useState(false)
+  // Keep the dialog mounted after first use so closing transitions and its API-key handoff survive.
+  const [apiAccessDialogOpen, setApiAccessDialogOpen] = useState<boolean>()
   const pathname = usePathname()
   const knowledgeSpaceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
@@ -339,7 +340,7 @@ export function KnowledgeSpaceShell({
             </Link>
             <Link
               href={retrievalTestPath}
-              aria-label={t(($) => $['retrievalTest.title'])}
+              aria-label={t(($) => $['retrievalTest.title'], { ns: 'knowledgeSpace' })}
               aria-current={retrievalTestActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
@@ -350,7 +351,7 @@ export function KnowledgeSpaceShell({
               )}
             >
               {navIcon(retrievalTestActive ? 'i-ri-search-eye-fill' : 'i-ri-search-eye-line')}
-              {sidebarExpanded && t(($) => $['retrievalTest.title'])}
+              {sidebarExpanded && t(($) => $['retrievalTest.title'], { ns: 'knowledgeSpace' })}
             </Link>
             <Link
               href={qualityPath}
@@ -429,12 +430,16 @@ export function KnowledgeSpaceShell({
           </KnowledgeSpaceProvider>
         </section>
       </div>
-      <KnowledgeFsApiAccessDialog
-        status={apiAccessStatus}
-        knowledgeSpaceId={knowledgeSpaceId}
-        open={apiAccessDialogOpen}
-        onOpenChange={setApiAccessDialogOpen}
-      />
+      {apiAccessDialogOpen !== undefined && (
+        <Suspense fallback={null}>
+          <KnowledgeFsApiAccessDialog
+            status={apiAccessStatus}
+            knowledgeSpaceId={knowledgeSpaceId}
+            open={apiAccessDialogOpen}
+            onOpenChange={setApiAccessDialogOpen}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

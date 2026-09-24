@@ -259,7 +259,7 @@ function knowledgeFsTaskFailureReference(
  */
 export function knowledgeFsTaskFailureDetail(
   failure: KnowledgeFsPublicFailureResponse | undefined,
-  t: TFunction<['knowledgeSpace']>,
+  t: TFunction<['knowledgeErrors']>,
 ): string | undefined {
   const stageKey = knowledgeFsTaskFailureStageKey(failure)
   const reference = knowledgeFsTaskFailureReference(failure)

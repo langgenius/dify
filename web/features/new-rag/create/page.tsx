@@ -80,12 +80,12 @@ export function CreateKnowledgePage() {
 }
 
 function CreateKnowledgeSession() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
   const { t: tWorkflow } = useTranslation(['workflow'])
   const fileSizeLimitMb = useKnowledgeFileSizeLimit()
-  useDocumentTitle(t(($) => $.createTitle))
+  useDocumentTitle(t(($) => $.createTitle, { ns: 'knowledgeCreate' }))
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
@@ -127,7 +127,7 @@ function CreateKnowledgeSession() {
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading || stagingCount > 0
   const validUploads = uploads.filter(({ issue }) => !issue)
-  const createErrorMessage = t(($) => $.createFailed)
+  const createErrorMessage = t(($) => $.createFailed, { ns: 'knowledgeCreate' })
   const normalizedName = name.trim()
   const normalizedDescription = description.trim()
   const nameLengthInvalid = Array.from(normalizedName).length > NAME_MAX_LENGTH
@@ -330,7 +330,7 @@ function CreateKnowledgeSession() {
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
                 <DialogTitle id={dialogTitleId} className="title-2xl-semi-bold text-text-primary">
-                  {t(($) => $.createTitle)}
+                  {t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
                 </DialogTitle>
               </header>
 
@@ -342,7 +342,7 @@ function CreateKnowledgeSession() {
                     invalid={nameLengthInvalid}
                     validate={(value) => {
                       if (typeof value === 'string' && value.length > 0 && !value.trim())
-                        return t(($) => $.nameRequired)
+                        return t(($) => $.nameRequired, { ns: 'knowledgeCreate' })
 
                       return null
                     }}
@@ -359,7 +359,7 @@ function CreateKnowledgeSession() {
                         nameLengthInvalid ? 'knowledge-create-name-error' : undefined
                       }
                       disabled={submissionLocked}
-                      placeholder={t(($) => $.namePlaceholder)}
+                      placeholder={t(($) => $.namePlaceholder, { ns: 'knowledgeCreate' })}
                       required
                       value={name}
                       onValueChange={(value) => {
@@ -367,14 +367,16 @@ function CreateKnowledgeSession() {
                         resetUnsubmittedError()
                       }}
                     />
-                    <FieldError match="valueMissing">{t(($) => $.nameRequired)}</FieldError>
+                    <FieldError match="valueMissing">
+                      {t(($) => $.nameRequired, { ns: 'knowledgeCreate' })}
+                    </FieldError>
                     <FieldError id="knowledge-create-name-error" match={nameLengthInvalid}>
                       {tDatasetCreation(($) => $['stepOne.modal.nameLengthInvalid'])}
                     </FieldError>
                     <FieldError match="customError" />
                   </Field>
                   <Field name="description" className="gap-1.5" invalid={descriptionLengthInvalid}>
-                    <FieldLabel>{t(($) => $.description)}</FieldLabel>
+                    <FieldLabel>{t(($) => $.description, { ns: 'knowledgeCreate' })}</FieldLabel>
                     <Textarea
                       autoComplete="off"
                       aria-describedby={
@@ -383,14 +385,16 @@ function CreateKnowledgeSession() {
                       className="min-h-20"
                       disabled={submissionLocked}
                       name="description"
-                      placeholder={t(($) => $.descriptionPlaceholder)}
+                      placeholder={t(($) => $.descriptionPlaceholder, { ns: 'knowledgeCreate' })}
                       value={description}
                       onValueChange={(value) => {
                         setDescription(value)
                         resetUnsubmittedError()
                       }}
                     />
-                    <FieldDescription>{t(($) => $.descriptionHelp)}</FieldDescription>
+                    <FieldDescription>
+                      {t(($) => $.descriptionHelp, { ns: 'knowledgeCreate' })}
+                    </FieldDescription>
                     <FieldError
                       id="knowledge-create-description-error"
                       match={descriptionLengthInvalid}
@@ -419,14 +423,14 @@ function CreateKnowledgeSession() {
                 <div className="flex flex-col gap-3">
                   <Fieldset>
                     <FieldsetLegend className="py-0 system-md-semibold">
-                      {t(($) => $.startWith)}
+                      {t(($) => $.startWith, { ns: 'knowledgeCreate' })}
                     </FieldsetLegend>
                     <p className="pb-1.5 body-xs-regular text-text-tertiary">
-                      {t(($) => $.startWithHelp)}
+                      {t(($) => $.startWithHelp, { ns: 'knowledgeCreate' })}
                     </p>
                     <RadioGroup<NewKnowledgeStartMode>
                       value={startMode}
-                      aria-label={t(($) => $.startWith)}
+                      aria-label={t(($) => $.startWith, { ns: 'knowledgeCreate' })}
                       className="mt-2 flex-col items-stretch gap-2"
                       disabled={submissionLocked}
                       onValueChange={(value) => {
@@ -522,7 +526,7 @@ function CreateKnowledgeSession() {
                     loading={submissionPending}
                     disabled={uploadSubmissionBlocked || sourceSubmissionBlocked || membersInvalid}
                   >
-                    {t(($) => $.createTitle)}
+                    {t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
                   </Button>
                 </div>
               </div>
@@ -531,7 +535,9 @@ function CreateKnowledgeSession() {
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">
-            <KnowledgeIllustration title={t(($) => $.illustrationHeadline)} />
+            <KnowledgeIllustration
+              title={t(($) => $.illustrationHeadline, { ns: 'knowledgeCreate' })}
+            />
           </aside>
         </DialogPopup>
       </DialogPortal>

@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "जोड़ें और प्रोसेस करें",
+  "crawlPreview": "क्रॉल पूर्वावलोकन",
+  "createFailed": "हम यह Agent ज्ञान आधार नहीं बना सके। अपनी पहुंच जांचें और पुनः प्रयास करें।",
+  "createTitle": "Agent ज्ञान आधार बनाएँ",
+  "description": "विवरण",
+  "descriptionHelp": "स्पष्ट विवरण से ऐप्स तय कर पाते हैं कि इस Agent ज्ञान आधार में कब खोजना है।",
+  "descriptionPlaceholder": "जैसे रिफंड नीति, शिपिंग एफएक्यू और एस्केलेशन चरण - ग्राहक सहायता प्रश्नों के लिए उपयोग करें",
+  "illustrationHeadline": "अपनी सामग्री एक बार कनेक्ट करें — हर ऐप नवीनतम ज्ञान के साथ जवाब देगा।",
+  "namePlaceholder": "जैसे ग्राहक सहायता पुस्तिका",
+  "nameRequired": "Agent ज्ञान आधार नाम दर्ज करें.",
+  "selectedFiles": "चुनी गई फ़ाइलें ({{total}} में से {{valid}} मान्य)",
+  "startWith": "से शुरू करें",
+  "startWithHelp": "आप किसी भी समय अधिक स्रोत या दस्तावेज़ जोड़ सकते हैं।",
+  "uploadCharactersUnavailable": "वर्ण: —",
+  "uploadDocuments": "दस्तावेज़ अपलोड करें",
+  "uploadDropZoneTitle": "फ़ाइलें खींचकर छोड़ें या ब्राउज़ करें",
+  "uploadingFiles": "अपलोड हो रहा है…"
+}

@@ -482,10 +482,10 @@ describe('RetrievalTestPage', () => {
         name: 'knowledgeSpace.settings.retrievalModeLabel',
       }),
     ).toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.retrievalTest.emptyTitle')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeRetrieval.retrievalTest.emptyTitle')).toBeInTheDocument()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Compare the refund policies',
     )
     await user.click(
@@ -493,7 +493,7 @@ describe('RetrievalTestPage', () => {
         name: 'knowledgeSpace.settings.retrievalMode.research',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     await waitFor(() =>
       expect(apiMock.planResearch).toHaveBeenCalledWith({
@@ -519,14 +519,14 @@ describe('RetrievalTestPage', () => {
     const rendered = renderPage()
 
     await user.upload(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.addImages'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.addImages'),
       new File(['diagram'], 'diagram.png', { type: 'image/png' }),
     )
     expect(await screen.findByRole('img', { name: 'diagram.png' })).toHaveAttribute(
       'src',
       'blob:query-image',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     await waitFor(() =>
       expect(apiMock.queryAdmission).toHaveBeenCalledWith({
@@ -562,7 +562,7 @@ describe('RetrievalTestPage', () => {
       renderPage()
 
       await user.type(
-        screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+        screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
         'Blocked query',
       )
       if (mode !== 'fast')
@@ -571,7 +571,7 @@ describe('RetrievalTestPage', () => {
             name: `knowledgeSpace.settings.retrievalMode.${mode}`,
           }),
         )
-      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
       expect(apiMock.queryAdmission).not.toHaveBeenCalled()
       expect(apiMock.planResearch).not.toHaveBeenCalled()
@@ -609,11 +609,15 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?trace=trace-read-only&retest=trace-read-only' })
 
     expect(screen.getByText('knowledgeSpace.permissionRestricted')).toBeInTheDocument()
-    expect(screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder')).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' })).toBeDisabled()
+    expect(
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }),
+    ).toBeDisabled()
     expect((await screen.findAllByText('Previously run query')).length).toBeGreaterThan(0)
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.retrievalTest.retry' }),
+      screen.queryByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }),
     ).not.toBeInTheDocument()
     await waitFor(() => expect(apiMock.queryAdmission).not.toHaveBeenCalled())
     expect(apiMock.planResearch).not.toHaveBeenCalled()
@@ -630,13 +634,13 @@ describe('RetrievalTestPage', () => {
     const user = userEvent.setup()
     const rendered = renderPage()
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Research before leaving',
     )
     await user.click(
       screen.getByRole('radio', { name: 'knowledgeSpace.settings.retrievalMode.research' }),
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
     await waitFor(() => expect(apiMock.createResearch).toHaveBeenCalledOnce())
     // Keep the layout/provider alive while the old page goes away.
     rendered.rerender(<p>Another page</p>)
@@ -659,7 +663,7 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Compare the refund policies',
     )
     await user.click(
@@ -668,7 +672,7 @@ describe('RetrievalTestPage', () => {
       }),
     )
     const run = screen.getByRole('button', {
-      name: 'knowledgeSpace.retrievalTest.run',
+      name: 'knowledgeRetrieval.retrievalTest.run',
     })
     await user.click(run)
     await user.click(run)
@@ -708,12 +712,12 @@ describe('RetrievalTestPage', () => {
       renderPage()
 
       await user.type(
-        screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+        screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
         `Run one ${mode} query`,
       )
       if (mode === 'deep') await user.click(screen.getByRole('radio', { name: label }))
       const run = screen.getByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.run',
+        name: 'knowledgeRetrieval.retrievalTest.run',
       })
       act(() => {
         run.click()
@@ -756,7 +760,7 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?trace=trace-failed' })
 
     const retry = await screen.findByRole('button', {
-      name: 'knowledgeSpace.retrievalTest.retry',
+      name: 'knowledgeRetrieval.retrievalTest.retry',
     })
     act(() => {
       retry.click()
@@ -828,7 +832,7 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Anything here?',
     )
     await user.click(
@@ -836,19 +840,21 @@ describe('RetrievalTestPage', () => {
         name: 'knowledgeSpace.settings.retrievalMode.research',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     const record = await screen.findByRole('button', { name: /Anything here\?/ })
     expect(record).toHaveAttribute('aria-pressed', 'true')
-    expect(record).toHaveTextContent('knowledgeSpace.retrievalTest.failedTitle')
+    expect(record).toHaveTextContent('knowledgeRetrieval.retrievalTest.failedTitle')
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('knowledgeSpace.taskFailure.research')
+    expect(alert).toHaveTextContent('knowledgeErrors.taskFailure.research')
     expect(
       await screen.findByText('Evidence retrieved before generation failed'),
     ).toBeInTheDocument()
-    expect(screen.queryByText('knowledgeSpace.retrievalTest.noChunksTitle')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('knowledgeRetrieval.retrievalTest.noChunksTitle'),
+    ).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.retry' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }))
 
     await waitFor(() => expect(apiMock.createResearch).toHaveBeenCalledTimes(2))
     expect(apiMock.createResearch).toHaveBeenLastCalledWith({
@@ -881,7 +887,7 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?research=research-image-failed' })
 
     await user.click(
-      await screen.findByRole('button', { name: 'knowledgeSpace.retrievalTest.retry' }),
+      await screen.findByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }),
     )
 
     await waitFor(() =>
@@ -929,7 +935,7 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?research=research-retry-pending' })
 
     const retry = await screen.findByRole('button', {
-      name: 'knowledgeSpace.retrievalTest.retry',
+      name: 'knowledgeRetrieval.retrievalTest.retry',
     })
     act(() => {
       retry.click()
@@ -968,10 +974,10 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?research=research-model-configuration-failed' })
 
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('knowledgeSpace.taskFailure.modelConfiguration')
-    expect(alert).toHaveTextContent('knowledgeSpace.retrievalTest.failedTitle')
+    expect(alert).toHaveTextContent('knowledgeErrors.taskFailure.modelConfiguration')
+    expect(alert).toHaveTextContent('knowledgeRetrieval.retrievalTest.failedTitle')
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.retrievalTest.retry' }),
+      screen.queryByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'common.datasetMenus.settings' })).toHaveAttribute(
       'href',
@@ -1006,7 +1012,7 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Compare the refund policies',
     )
     await user.click(
@@ -1014,17 +1020,17 @@ describe('RetrievalTestPage', () => {
         name: 'knowledgeSpace.settings.retrievalMode.research',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     const processLog = await screen.findByRole('button', {
-      name: 'knowledgeSpace.retrievalTest.processLog',
+      name: 'knowledgeRetrieval.retrievalTest.processLog',
     })
     expect(processLog).toHaveAttribute('aria-pressed', 'true')
     const runningSummary = screen.getByRole('button', {
-      name: /knowledgeSpace\.retrievalTest\.running/,
+      name: /knowledgeRetrieval\.retrievalTest\.running/,
     })
     const cancelResearch = screen.getByRole('button', {
-      name: 'knowledgeSpace.retrievalTest.cancel',
+      name: 'knowledgeRetrieval.retrievalTest.cancel',
     })
     expect(runningSummary).toHaveAttribute('aria-expanded', 'true')
     expect(runningSummary).not.toContainElement(cancelResearch)
@@ -1051,17 +1057,17 @@ describe('RetrievalTestPage', () => {
     })
 
     const completedSummary = await screen.findByRole('button', {
-      name: /knowledgeSpace\.retrievalTest\.completedIn.*14s/,
+      name: /knowledgeRetrieval\.retrievalTest\.completedIn.*14s/,
     })
     expect(processLog).toHaveAttribute('aria-pressed', 'false')
     expect(completedSummary).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText('knowledgeSpace.retrievalTest.planning')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeRetrieval.retrievalTest.planning')).not.toBeInTheDocument()
 
     await user.click(processLog)
 
     expect(processLog).toHaveAttribute('aria-pressed', 'true')
     expect(completedSummary).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('knowledgeSpace.retrievalTest.planning')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeRetrieval.retrievalTest.planning')).toBeInTheDocument()
 
     await act(async () =>
       resolveResearchStream?.({ cursor: '2', reconnect: false, terminal: true }),
@@ -1159,11 +1165,11 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?research=research-completed' })
 
     const processLog = screen.getByRole('button', {
-      name: 'knowledgeSpace.retrievalTest.processLog',
+      name: 'knowledgeRetrieval.retrievalTest.processLog',
     })
     expect(processLog).toHaveAttribute('aria-pressed', 'false')
     expect(
-      screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.quality' }),
+      screen.getByRole('link', { name: 'knowledgeRetrieval.retrievalTest.quality' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/quality')
     await user.click(processLog)
 
@@ -1312,7 +1318,7 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?research=research-legacy' })
 
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.processLog' }),
+      screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.processLog' }),
     )
 
     expect(
@@ -1384,7 +1390,9 @@ describe('RetrievalTestPage', () => {
       'aria-pressed',
       'true',
     )
-    expect(screen.queryByText('knowledgeSpace.retrievalTest.emptyTitle')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('knowledgeRetrieval.retrievalTest.emptyTitle'),
+    ).not.toBeInTheDocument()
   })
 
   it('renders generated Research answer deltas while the task is still active', async () => {
@@ -1430,7 +1438,7 @@ describe('RetrievalTestPage', () => {
     expect(answer.closest('[aria-live="polite"]')).toBeInTheDocument()
     expect(
       screen.getByRole('heading', {
-        name: 'knowledgeSpace.retrievalTest.generatingActive',
+        name: 'knowledgeRetrieval.retrievalTest.generatingActive',
       }),
     ).toBeInTheDocument()
   })
@@ -1465,9 +1473,11 @@ describe('RetrievalTestPage', () => {
     await user.click(screen.getByRole('button', { name: /What is the warranty\?/ }))
 
     expect(await screen.findByText('The persisted warranty answer.')).toBeInTheDocument()
-    expect(screen.queryByText('knowledgeSpace.retrievalTest.noChunksTitle')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.retrievalTest.generating' }),
+      screen.queryByText('knowledgeRetrieval.retrievalTest.noChunksTitle'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'knowledgeRetrieval.retrievalTest.generating' }),
     ).toBeInTheDocument()
   })
 
@@ -1569,7 +1579,7 @@ describe('RetrievalTestPage', () => {
       'true',
     )
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.retrievalTest.researchResult' }),
+      screen.getByRole('heading', { name: 'knowledgeRetrieval.retrievalTest.researchResult' }),
     ).toBeInTheDocument()
   })
 
@@ -1590,9 +1600,9 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?research=research-older' })
 
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.retrievalTest.researchResult' }),
+      screen.getByRole('heading', { name: 'knowledgeRetrieval.retrievalTest.researchResult' }),
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder')).toHaveValue(
+    expect(screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder')).toHaveValue(
       'An older research question',
     )
   })
@@ -1603,10 +1613,12 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?research=research-older' })
 
     expect(screen.getByRole('status')).toBeInTheDocument()
-    expect(screen.queryByText('knowledgeSpace.retrievalTest.noChunksTitle')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('knowledgeRetrieval.retrievalTest.noChunksTitle'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.keepGoldenQuestion',
+        name: 'knowledgeRetrieval.retrievalTest.keepGoldenQuestion',
       }),
     ).not.toBeInTheDocument()
   })
@@ -1618,10 +1630,12 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?research=research-older' })
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'knowledgeSpace.retrievalTest.failedDescription',
+      'knowledgeRetrieval.retrievalTest.failedDescription',
     )
-    expect(screen.queryByText('knowledgeSpace.retrievalTest.noChunksTitle')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.retry' }))
+    expect(
+      screen.queryByText('knowledgeRetrieval.retrievalTest.noChunksTitle'),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }))
     expect(apiMock.refetchResearchDetail).toHaveBeenCalledOnce()
   })
 
@@ -1670,7 +1684,7 @@ describe('RetrievalTestPage', () => {
     expect(apiMock.fetchNextEvidence).not.toHaveBeenCalled()
     await user.click(
       screen.getByRole('button', {
-        name: /knowledgeSpace\.retrievalTest\.showAllChunks/,
+        name: /knowledgeRetrieval\.retrievalTest\.showAllChunks/,
       }),
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
@@ -1723,7 +1737,7 @@ describe('RetrievalTestPage', () => {
       </QueryClientProvider>,
     )
 
-    const showAllName = /knowledgeSpace\.retrievalTest\.showAllChunks/
+    const showAllName = /knowledgeRetrieval\.retrievalTest\.showAllChunks/
     await user.click(screen.getByRole('button', { name: showAllName }))
     expect(screen.queryByRole('button', { name: showAllName })).not.toBeInTheDocument()
 
@@ -1768,10 +1782,10 @@ describe('RetrievalTestPage', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.keepGoldenQuestion',
+        name: 'knowledgeRetrieval.retrievalTest.keepGoldenQuestion',
       }),
     ).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.retry' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }))
     expect(apiMock.fetchNextEvidence).toHaveBeenCalledOnce()
   })
 
@@ -1798,7 +1812,7 @@ describe('RetrievalTestPage', () => {
     expect(apiMock.fetchNextPartials).not.toHaveBeenCalled()
     await user.click(
       screen.getByRole('button', {
-        name: /knowledgeSpace\.retrievalTest\.showAllChunks/,
+        name: /knowledgeRetrieval\.retrievalTest\.showAllChunks/,
       }),
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
@@ -1836,7 +1850,7 @@ describe('RetrievalTestPage', () => {
 
     expect(screen.getByText('The first page of the research answer.')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.retry' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }))
     expect(apiMock.fetchNextPartials).toHaveBeenCalledOnce()
   })
 
@@ -1986,7 +2000,7 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Compare the refund policies',
     )
     await user.click(
@@ -1994,11 +2008,13 @@ describe('RetrievalTestPage', () => {
         name: 'knowledgeSpace.settings.retrievalMode.research',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     expect(await screen.findByText('Retrieved warranty evidence')).toBeInTheDocument()
     expect(apiMock.refetchPartials).toHaveBeenCalledOnce()
-    expect(screen.queryByText('knowledgeSpace.retrievalTest.noChunksTitle')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('knowledgeRetrieval.retrievalTest.noChunksTitle'),
+    ).not.toBeInTheDocument()
   })
 
   it('does not let the composer shortcut bypass an active research task', async () => {
@@ -2019,11 +2035,13 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     expect(
-      screen.getByText('knowledgeSpace.retrievalTest.retrievingActive · 2/4'),
+      screen.getByText('knowledgeRetrieval.retrievalTest.retrievingActive · 2/4'),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Compare the refund policies/ }))
-    const queryInput = screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder')
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' })).toBeDisabled()
+    const queryInput = screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder')
+    expect(
+      screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }),
+    ).toBeDisabled()
 
     await user.click(queryInput)
     await user.keyboard('{Control>}{Enter}{/Control}')
@@ -2050,10 +2068,10 @@ describe('RetrievalTestPage', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
     expect(
-      screen.queryByRole('link', { name: 'knowledgeSpace.retrievalTest.quality' }),
+      screen.queryByRole('link', { name: 'knowledgeRetrieval.retrievalTest.quality' }),
     ).not.toBeInTheDocument()
     const makeBadCaseButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.retrievalTest.makeBadCase',
+      name: 'knowledgeRetrieval.retrievalTest.makeBadCase',
     })
     expect(makeBadCaseButton).toHaveClass('bg-components-button-secondary-bg')
     await user.click(makeBadCaseButton)
@@ -2079,9 +2097,9 @@ describe('RetrievalTestPage', () => {
         queryKey: ['quality', 'bad-cases'],
       }),
     )
-    expect(screen.getByText('knowledgeSpace.retrievalTest.savedBadCase')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeRetrieval.retrievalTest.savedBadCase')).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.viewInQuality' }),
+      screen.getByRole('link', { name: 'knowledgeRetrieval.retrievalTest.viewInQuality' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/quality?tab=bad-cases')
   })
 
@@ -2107,12 +2125,12 @@ describe('RetrievalTestPage', () => {
     ).not.toHaveLength(0)
     expect(
       screen.queryByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.makeBadCase',
+        name: 'knowledgeRetrieval.retrievalTest.makeBadCase',
       }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.keepGoldenQuestion',
+        name: 'knowledgeRetrieval.retrievalTest.keepGoldenQuestion',
       }),
     ).not.toBeInTheDocument()
   })
@@ -2151,27 +2169,27 @@ describe('RetrievalTestPage', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.keepGoldenQuestion',
+        name: 'knowledgeRetrieval.retrievalTest.keepGoldenQuestion',
       }),
     )
 
     const dialog = await screen.findByRole('dialog', {
-      name: 'knowledgeSpace.qualityPage.promoteTitle',
+      name: 'knowledgeQuality.qualityPage.promoteTitle',
     })
     expect(apiMock.createGolden).not.toHaveBeenCalled()
     expect(
-      within(dialog).getByPlaceholderText('knowledgeSpace.qualityPage.questionPlaceholder'),
+      within(dialog).getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
     ).toHaveValue('What is useEffect?')
     await user.click(
       within(dialog).getByText('useEffect synchronizes a component with an external system.'),
     )
     await user.type(
-      within(dialog).getByPlaceholderText('knowledgeSpace.qualityPage.annotationPlaceholder'),
+      within(dialog).getByPlaceholderText('knowledgeQuality.qualityPage.annotationPlaceholder'),
       'The answer must cite the retrieved useEffect evidence.',
     )
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.promote',
+        name: 'knowledgeQuality.qualityPage.promote',
       }),
     )
 
@@ -2192,9 +2210,11 @@ describe('RetrievalTestPage', () => {
         queryKey: ['quality', 'golden'],
       }),
     )
-    expect(screen.getByText('knowledgeSpace.retrievalTest.savedGoldenQuestion')).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.viewInQuality' }),
+      screen.getByText('knowledgeRetrieval.retrievalTest.savedGoldenQuestion'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'knowledgeRetrieval.retrievalTest.viewInQuality' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/quality')
   })
 
@@ -2214,12 +2234,12 @@ describe('RetrievalTestPage', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'knowledgeSpace.retrievalTest.result',
+        name: 'knowledgeRetrieval.retrievalTest.result',
       }),
     ).toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.makeBadCase',
+        name: 'knowledgeRetrieval.retrievalTest.makeBadCase',
       }),
     )
     await user.click(
@@ -2302,14 +2322,13 @@ describe('RetrievalTestPage', () => {
 
     await user.click(screen.getByRole('button', { name: /What is the refund policy\?/ }))
 
-    expect(screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.open' })).toHaveAttribute(
-      'href',
-      '/datasets/new/space-1/documents/document-1?revision=2&chunk=chunk-1',
-    )
+    expect(
+      screen.getByRole('link', { name: 'knowledgeRetrieval.retrievalTest.open' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/documents/document-1?revision=2&chunk=chunk-1')
     expect(screen.getByText('refund-policy.txt')).toBeInTheDocument()
     expect(screen.getByText('<0.01')).toBeInTheDocument()
     expect(
-      screen.getByText('knowledgeSpace.retrievalTest.revision:{"revision":"2"}'),
+      screen.getByText('knowledgeRetrieval.retrievalTest.revision:{"revision":"2"}'),
     ).toBeInTheDocument()
   })
 
@@ -2379,9 +2398,9 @@ describe('RetrievalTestPage', () => {
       screen.getByText('knowledgeSpace.qualityPage.evaluation.evidenceUnavailable'),
     ).toBeInTheDocument()
     expect(screen.queryByText('Evidence deleted or unavailable')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'knowledgeSpace.retrievalTest.open' })).toHaveLength(
-      2,
-    )
+    expect(
+      screen.getAllByRole('link', { name: 'knowledgeRetrieval.retrievalTest.open' }),
+    ).toHaveLength(2)
   })
 
   it('shows the full chunk and opens its source when the revision is unavailable', async () => {
@@ -2423,10 +2442,9 @@ describe('RetrievalTestPage', () => {
 
     expect(screen.getByText(evidenceText)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'share.chat.expand' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.open' })).toHaveAttribute(
-      'href',
-      '/datasets/new/space-1/documents/document-1?chunk=chunk-1',
-    )
+    expect(
+      screen.getByRole('link', { name: 'knowledgeRetrieval.retrievalTest.open' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/documents/document-1?chunk=chunk-1')
   })
 
   it('resolves an asset-only evidence source before opening it', async () => {
@@ -2464,7 +2482,7 @@ describe('RetrievalTestPage', () => {
 
     renderPage()
     await user.click(screen.getByRole('button', { name: /How are issues tracked\?/ }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.open' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.open' }))
 
     await waitFor(() =>
       expect(apiMock.routerPush).toHaveBeenCalledWith(
@@ -2487,13 +2505,13 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Why did this fail?',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'knowledgeSpace.retrievalTest.failedTitle',
+      'knowledgeRetrieval.retrievalTest.failedTitle',
     )
     expect(screen.getAllByText('Why did this fail?')).toHaveLength(2)
     expect(screen.getByText('provider timed out')).toBeInTheDocument()
@@ -2521,13 +2539,13 @@ describe('RetrievalTestPage', () => {
       await screen.findByDisplayValue('Why did historical retrieval fail?'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('knowledgeSpace.retrievalTest.failedAfter:{"duration":"30s"}'),
+      screen.getByText('knowledgeRetrieval.retrievalTest.failedAfter:{"duration":"30s"}'),
     ).toBeInTheDocument()
     const alert = screen.getByRole('alert')
-    expect(alert).toHaveTextContent('knowledgeSpace.retrievalTest.failedTitle')
-    expect(alert).toHaveTextContent('knowledgeSpace.retrievalTest.failedDescription')
+    expect(alert).toHaveTextContent('knowledgeRetrieval.retrievalTest.failedTitle')
+    expect(alert).toHaveTextContent('knowledgeRetrieval.retrievalTest.failedDescription')
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.retry' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }))
 
     expect(apiMock.queryAdmission).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -2566,10 +2584,10 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'What is the retention window?',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     await waitFor(() =>
       expect(
@@ -2579,7 +2597,7 @@ describe('RetrievalTestPage', () => {
     const record = screen.getByRole('button', { name: /What is the retention window\?/ })
     expect(
       within(record).getByText(
-        'knowledgeSpace.retrievalTest.recordSummary:{"count":4,"duration":"1.3s"}',
+        'knowledgeRetrieval.retrievalTest.recordSummary:{"count":4,"duration":"1.3s"}',
       ),
     ).toBeInTheDocument()
   })
@@ -2598,10 +2616,10 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Can I search now?',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(
@@ -2609,7 +2627,7 @@ describe('RetrievalTestPage', () => {
     )
     expect(alert).not.toHaveTextContent('RETRIEVAL_DELETION_IN_PROGRESS')
     expect(
-      screen.getByText('knowledgeSpace.retrievalTest.failedAfter:{"duration":"0s"}'),
+      screen.getByText('knowledgeRetrieval.retrievalTest.failedAfter:{"duration":"0s"}'),
     ).toBeInTheDocument()
   })
 
@@ -2625,21 +2643,23 @@ describe('RetrievalTestPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    const queryInput = screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder')
+    const queryInput = screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder')
     await user.type(queryInput, 'A query that never completes')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     expect(queryInput).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' })).toBeDisabled()
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.retrievalTest.cancel' }),
+      screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('button', { name: 'knowledgeRetrieval.retrievalTest.cancel' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('status', { name: 'common.loading' })).toHaveAttribute(
       'aria-live',
       'polite',
     )
     expect(
-      screen.queryByRole('link', { name: 'knowledgeSpace.retrievalTest.quality' }),
+      screen.queryByRole('link', { name: 'knowledgeRetrieval.retrievalTest.quality' }),
     ).not.toBeInTheDocument()
   })
 
@@ -2651,19 +2671,21 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Anything here?',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     expect(
-      await screen.findByText('knowledgeSpace.retrievalTest.noChunksTitle'),
+      await screen.findByText('knowledgeRetrieval.retrievalTest.noChunksTitle'),
     ).toBeInTheDocument()
-    expect(screen.queryByText('knowledgeSpace.retrievalTest.failedTitle')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('knowledgeRetrieval.retrievalTest.failedTitle'),
+    ).not.toBeInTheDocument()
     expect(screen.getAllByText('Anything here?')).toHaveLength(2)
     expect(
       screen.queryByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.makeBadCase',
+        name: 'knowledgeRetrieval.retrievalTest.makeBadCase',
       }),
     ).not.toBeInTheDocument()
   })
@@ -2685,14 +2707,14 @@ describe('RetrievalTestPage', () => {
     renderPage()
 
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Repeated question',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     expect(
       screen.queryByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.makeBadCase',
+        name: 'knowledgeRetrieval.retrievalTest.makeBadCase',
       }),
     ).not.toBeInTheDocument()
     expect(apiMock.createBadCase).not.toHaveBeenCalled()
@@ -2739,15 +2761,15 @@ describe('RetrievalTestPage', () => {
     const rendered = renderPage()
 
     await user.upload(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.addImages'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.addImages'),
       new File(['diagram'], 'diagram.png', { type: 'image/png' }),
     )
     await screen.findByRole('img', { name: 'diagram.png' })
     await user.type(
-      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'What does this diagram show?',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /What does this diagram show\?/ })).toHaveAttribute(
         'aria-pressed',
@@ -2827,7 +2849,7 @@ describe('RetrievalTestPage', () => {
     expect(screen.getAllByRole('img', { name: 'upload-image-2' })).toHaveLength(2)
     const record = screen.getByRole('button', { name: /What does this diagram show\?/ })
     expect(
-      within(record).getByRole('img', { name: 'knowledgeSpace.retrievalTest.queryImages' }),
+      within(record).getByRole('img', { name: 'knowledgeRetrieval.retrievalTest.queryImages' }),
     ).toHaveTextContent('2')
 
     await user.click(screen.getByRole('button', { name: /text only/ }))
@@ -2839,12 +2861,12 @@ describe('RetrievalTestPage', () => {
     // Editing the composer detaches it from the record without touching the record itself.
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.retrievalTest.removeImage:{"name":"diagram.png"}',
+        name: 'knowledgeRetrieval.retrievalTest.removeImage:{"name":"diagram.png"}',
       }),
     )
     expect(screen.getAllByRole('img', { name: 'diagram.png' })).toHaveLength(1)
     expect(
-      within(record).getByRole('img', { name: 'knowledgeSpace.retrievalTest.queryImages' }),
+      within(record).getByRole('img', { name: 'knowledgeRetrieval.retrievalTest.queryImages' }),
     ).toHaveTextContent('2')
   })
 
@@ -2864,12 +2886,14 @@ describe('RetrievalTestPage', () => {
     ]
     renderPage({ searchParams: '?trace=trace-1' })
 
-    expect(await screen.findByText('knowledgeSpace.retrievalTest.savedBadCase')).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'knowledgeSpace.retrievalTest.viewInQuality' }),
+      await screen.findByText('knowledgeRetrieval.retrievalTest.savedBadCase'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'knowledgeRetrieval.retrievalTest.viewInQuality' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/quality?tab=bad-cases')
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.retrievalTest.makeBadCase' }),
+      screen.queryByRole('button', { name: 'knowledgeRetrieval.retrievalTest.makeBadCase' }),
     ).not.toBeInTheDocument()
   })
 
@@ -2891,7 +2915,7 @@ describe('RetrievalTestPage', () => {
     renderPage({ searchParams: '?trace=trace-1' })
 
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.makeBadCase' }),
+      screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.makeBadCase' }),
     )
     await user.click(
       await screen.findByRole('menuitem', {
@@ -2899,10 +2923,12 @@ describe('RetrievalTestPage', () => {
       }),
     )
 
-    expect(await screen.findByText('knowledgeSpace.retrievalTest.savedBadCase')).toBeInTheDocument()
+    expect(
+      await screen.findByText('knowledgeRetrieval.retrievalTest.savedBadCase'),
+    ).toBeInTheDocument()
     expect(apiMock.refetchTraces).toHaveBeenCalled()
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.retrievalTest.makeBadCase' }),
+      screen.queryByRole('button', { name: 'knowledgeRetrieval.retrievalTest.makeBadCase' }),
     ).not.toBeInTheDocument()
   })
 })

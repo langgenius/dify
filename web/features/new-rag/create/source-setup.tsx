@@ -118,7 +118,7 @@ function CreateSourceSetupSession({
   onDraftChange,
   shouldPreservePreviewOnUnmount,
 }: CreateSourceSetupProps) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
   const {
     datasourcePluginsQuery,
     datasourceAuthQuery,
@@ -395,7 +395,7 @@ function CreateSourceSetupSession({
             </Button>
           )}
           <section
-            aria-label={t(($) => $.crawlPreview)}
+            aria-label={t(($) => $.crawlPreview, { ns: 'knowledgeCreate' })}
             className={cn(
               crawlState === 'running'
                 ? 'flex h-60 flex-col gap-3.5 overflow-hidden rounded-xl border border-divider-deep bg-background-default-subtle p-4'

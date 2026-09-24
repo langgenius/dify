@@ -35,7 +35,7 @@ vi.mock('../../../space/context', () => ({
 }))
 const openMock = vi.hoisted(() => vi.fn())
 
-const connectFirecrawlButtonName = 'knowledgeSpace.connectProvider:{"provider":"Firecrawl"}'
+const connectFirecrawlButtonName = 'knowledgeSources.connectProvider:{"provider":"Firecrawl"}'
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
@@ -70,17 +70,17 @@ vi.mock('../connected-source-workflow', () => ({
           ))}
         </fieldset>
         <label>
-          knowledgeSpace.sourceName
+          knowledgeSources.sourceName
           <input
-            aria-label="knowledgeSpace.sourceName"
+            aria-label="knowledgeSources.sourceName"
             value={draft.sourceName}
             onChange={(event) => onDraftChange({ ...draft, sourceName: event.target.value })}
           />
         </label>
         <label>
-          knowledgeSpace.syncPolicy
+          knowledgeSources.syncPolicy
           <select
-            aria-label="knowledgeSpace.syncPolicy"
+            aria-label="knowledgeSources.syncPolicy"
             value={draft.syncPolicy}
             onChange={(event) =>
               onDraftChange({
@@ -89,13 +89,13 @@ vi.mock('../connected-source-workflow', () => ({
               })
             }
           >
-            <option value="daily">knowledgeSpace.syncPolicyDaily</option>
-            <option value="manual">knowledgeSpace.syncPolicyManual</option>
+            <option value="daily">knowledgeSources.syncPolicyDaily</option>
+            <option value="manual">knowledgeSources.syncPolicyManual</option>
           </select>
         </label>
         <p role="status">knowledgeSpace.notionNotConnected</p>
         <button type="button" onClick={onExit}>
-          knowledgeSpace.cancelAddSource
+          knowledgeSources.cancelAddSource
         </button>
         <button type="button" disabled>
           knowledgeSpace.addSource
@@ -698,9 +698,9 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText(/knowledgeSpace\.providerConnected/)).toBeInTheDocument()
+    expect(screen.getByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    expect(screen.getByRole('textbox', { name: /knowledgeSpace\.rootUrl/ })).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' })).toBeDisabled()
   })
 
@@ -709,7 +709,9 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ })).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }),
+    ).toBeEnabled()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
   })
 
@@ -732,17 +734,17 @@ describe('AddSourcePage', () => {
       />,
     )
 
-    expect(screen.getByRole('textbox', { name: /knowledgeSpace\.rootUrl/ })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai',
     )
-    expect(screen.getByRole('textbox', { name: /knowledgeSpace\.sourceName/ })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /knowledgeSources\.sourceName/ })).toHaveValue(
       'Dify docs',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.crawlOptions' }))
     expect(
-      screen.getByRole('checkbox', { name: 'knowledgeSpace.includeSubpages' }),
+      screen.getByRole('checkbox', { name: 'knowledgeSources.includeSubpages' }),
     ).not.toBeChecked()
-    expect(screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })).toHaveValue(25)
+    expect(screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })).toHaveValue(25)
   })
 
   it('falls back to an installed website provider when the requested provider is not installed', () => {
@@ -793,11 +795,11 @@ describe('AddSourcePage', () => {
     )
 
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    expect(screen.getByRole('textbox', { name: /knowledgeSpace\.rootUrl/ })).toHaveValue('')
-    expect(screen.getByRole('textbox', { name: /knowledgeSpace\.sourceName/ })).toHaveValue('')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }))
-    expect(screen.getByRole('checkbox', { name: 'knowledgeSpace.includeSubpages' })).toBeChecked()
-    expect(screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })).toHaveValue(100)
+    expect(screen.getByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue('')
+    expect(screen.getByRole('textbox', { name: /knowledgeSources\.sourceName/ })).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.crawlOptions' }))
+    expect(screen.getByRole('checkbox', { name: 'knowledgeSources.includeSubpages' })).toBeChecked()
+    expect(screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })).toHaveValue(100)
   })
 
   it('keeps crawl fields hidden until the selected website provider is configured', () => {
@@ -816,20 +818,20 @@ describe('AddSourcePage', () => {
       />,
     )
     expect(
-      screen.getByText('knowledgeSpace.providerNotConfigured:{"provider":"Firecrawl"}'),
+      screen.getByText('knowledgeSources.providerNotConfigured:{"provider":"Firecrawl"}'),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('textbox', { name: 'knowledgeSpace.rootUrl' }),
+      screen.queryByRole('textbox', { name: 'knowledgeSources.rootUrl' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' })).toBeEnabled()
 
     expect(screen.queryByRole('radio', { name: 'Jina Reader' })).not.toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('textbox', { name: 'knowledgeSpace.rootUrl' }),
+      screen.queryByRole('textbox', { name: 'knowledgeSources.rootUrl' }),
     ).not.toBeInTheDocument()
   })
 
@@ -847,11 +849,11 @@ describe('AddSourcePage', () => {
     )
 
     expect(screen.getByRole('radio', { name: 'Google Docs' })).toBeChecked()
-    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.sourceName' })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' })).toHaveValue(
       'Shared product docs',
     )
-    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' })).toHaveTextContent(
-      'knowledgeSpace.syncPolicyDaily',
+    expect(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' })).toHaveTextContent(
+      'knowledgeSources.syncPolicyDaily',
     )
     const addSource = screen.getByRole('button', { name: 'knowledgeSpace.addSource' })
     expect(addSource).toBeDisabled()
@@ -875,10 +877,10 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="draft-1" />)
 
-    expect(await screen.findByRole('textbox', { name: /knowledgeSpace\.rootUrl/ })).toHaveValue(
+    expect(await screen.findByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai',
     )
-    expect(screen.getByRole('textbox', { name: /knowledgeSpace\.sourceName/ })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /knowledgeSources\.sourceName/ })).toHaveValue(
       'Dify docs',
     )
     expect(globalThis.sessionStorage.getItem(storageKey)).not.toBeNull()
@@ -915,10 +917,10 @@ describe('AddSourcePage', () => {
       </StrictMode>,
     )
 
-    expect(await screen.findByRole('textbox', { name: /knowledgeSpace\.rootUrl/ })).toHaveValue(
+    expect(await screen.findByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai/strict',
     )
-    expect(screen.getByRole('textbox', { name: /knowledgeSpace\.sourceName/ })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /knowledgeSources\.sourceName/ })).toHaveValue(
       'Strict docs',
     )
 
@@ -929,7 +931,7 @@ describe('AddSourcePage', () => {
         <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
       </StrictMode>,
     )
-    expect(await screen.findByRole('textbox', { name: /knowledgeSpace\.rootUrl/ })).toHaveValue(
+    expect(await screen.findByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai/strict',
     )
   })
@@ -951,7 +953,9 @@ describe('AddSourcePage', () => {
     )
 
     render(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="cancel-draft" />)
-    await user.click(await screen.findByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'knowledgeSources.cancelAddSource' }),
+    )
 
     expect(globalThis.sessionStorage.getItem(storageKey)).toBeNull()
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources')
@@ -963,7 +967,7 @@ describe('AddSourcePage', () => {
     clientMock.createConnection.mockResolvedValue(connection('active'))
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ }))
+    await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
@@ -988,7 +992,7 @@ describe('AddSourcePage', () => {
     expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['source-connections'],
     })
-    expect(screen.getByText(/knowledgeSpace\.providerConnected/)).toBeInTheDocument()
+    expect(screen.getByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
     expect(screen.queryByDisplayValue('secret-value')).not.toBeInTheDocument()
   })
 
@@ -1042,7 +1046,7 @@ describe('AddSourcePage', () => {
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'knowledgeSpace.connectionFailed:{"provider":"Firecrawl"}',
+      'knowledgeSources.connectionFailed:{"provider":"Firecrawl"}',
     )
   })
 
@@ -1108,7 +1112,7 @@ describe('AddSourcePage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
-    expect(await screen.findByRole('textbox', { name: /knowledgeSpace\.rootUrl/ })).toBeEnabled()
+    expect(await screen.findByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toBeEnabled()
   })
 
   it('clears website parameters when switching between configured providers', async () => {
@@ -1151,13 +1155,15 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     const rootUrl = await screen.findByRole('textbox', {
-      name: /knowledgeSpace\.rootUrl/,
+      name: /knowledgeSources\.rootUrl/,
     })
     await user.type(rootUrl, 'https://firecrawl.example.com')
 
     await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
 
-    expect(await screen.findByRole('textbox', { name: /knowledgeSpace\.rootUrl/ })).toHaveValue('')
+    expect(await screen.findByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
+      '',
+    )
   })
 
   it('opens Data Source settings when Dify has no Firecrawl credential', async () => {
@@ -1172,7 +1178,7 @@ describe('AddSourcePage', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.configureProvider:{"provider":"Firecrawl"}',
+        name: 'knowledgeSources.configureProvider:{"provider":"Firecrawl"}',
       }),
     )
 
@@ -1223,15 +1229,15 @@ describe('AddSourcePage', () => {
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByText('knowledgeSpace.providerNotConfigured:{"provider":"Firecrawl"}'),
+      screen.getByText('knowledgeSources.providerNotConfigured:{"provider":"Firecrawl"}'),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.configureProvider:{"provider":"Firecrawl"}',
+        name: 'knowledgeSources.configureProvider:{"provider":"Firecrawl"}',
       }),
     ).toBeEnabled()
     expect(
-      screen.queryByRole('textbox', { name: 'knowledgeSpace.rootUrl' }),
+      screen.queryByRole('textbox', { name: 'knowledgeSources.rootUrl' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }),
@@ -1243,12 +1249,12 @@ describe('AddSourcePage', () => {
     clientMock.createConnection.mockResolvedValue(connection('active'))
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ }))
+    await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
-    await screen.findByText(/knowledgeSpace\.providerConnected/)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await screen.findByText(/knowledgeSources\.providerConnected/)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
 
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
@@ -1259,13 +1265,13 @@ describe('AddSourcePage', () => {
     clientMock.createConnection.mockReturnValue(createConnectionDeferred.promise)
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ }))
+    await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     const connectButton = screen.getByRole('button', { name: connectFirecrawlButtonName })
     await user.click(connectButton)
 
     const pendingButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.connectingProvider',
+      name: 'knowledgeSources.connectingProvider',
     })
     expect(pendingButton).toBe(connectButton)
     expect(pendingButton).toHaveAttribute('aria-disabled', 'true')
@@ -1274,7 +1280,7 @@ describe('AddSourcePage', () => {
     expect(clientMock.createConnection).toHaveBeenCalledOnce()
 
     await act(async () => createConnectionDeferred.resolve(connection('active')))
-    await screen.findByText(/knowledgeSpace\.providerConnected/)
+    await screen.findByText(/knowledgeSources\.providerConnected/)
   })
 
   it('discovers installed website providers and keeps the provider-management action', () => {
@@ -1303,7 +1309,7 @@ describe('AddSourcePage', () => {
       'href',
       '/integrations/data-source',
     )
-    expect(screen.queryByText('knowledgeSpace.providerUnavailable')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSources.providerUnavailable')).not.toBeInTheDocument()
   })
 
   it('keeps the handed-off website draft when the provider connection becomes active', async () => {
@@ -1320,17 +1326,17 @@ describe('AddSourcePage', () => {
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
     )
     expect(
-      screen.queryByRole('textbox', { name: 'knowledgeSpace.rootUrl' }),
+      screen.queryByRole('textbox', { name: 'knowledgeSources.rootUrl' }),
     ).not.toBeInTheDocument()
 
     queryState.connections.data = { pages: [{ items: [connection('active')] }] }
     view.rerender(
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
     )
-    expect(screen.getByRole('textbox', { name: /knowledgeSpace\.rootUrl/ })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai',
     )
-    expect(screen.getByRole('textbox', { name: /knowledgeSpace\.sourceName/ })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /knowledgeSources\.sourceName/ })).toHaveValue(
       'Dify docs',
     )
   })
@@ -1342,7 +1348,7 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('knowledgeSpace.providerUnavailable')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSources.providerUnavailable')).toBeInTheDocument()
   })
 
   it('clears sensitive input but retains non-sensitive input after a connection error', async () => {
@@ -1351,13 +1357,13 @@ describe('AddSourcePage', () => {
     queryState.connections.refetch.mockResolvedValue({ data: queryState.connections.data })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ }))
+    await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'do-not-retain')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
     expect(
-      await screen.findByText('knowledgeSpace.connectionFailed:{"provider":"Firecrawl"}'),
+      await screen.findByText('knowledgeSources.connectionFailed:{"provider":"Firecrawl"}'),
     ).toBeInTheDocument()
     expect(screen.getByLabelText(/Api Key/)).toHaveValue('')
     expect(screen.getByLabelText('Endpoint')).toHaveValue('https://crawl.example.com')
@@ -1371,14 +1377,14 @@ describe('AddSourcePage', () => {
     })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ }))
+    await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
     await waitFor(() => expect(clientMock.createConnection).toHaveBeenCalledOnce())
-    expect(await screen.findByText(/knowledgeSpace\.providerConnected/)).toBeInTheDocument()
+    expect(await screen.findByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
     expect(
-      screen.queryByText('knowledgeSpace.connectionFailed:{"provider":"Firecrawl"}'),
+      screen.queryByText('knowledgeSources.connectionFailed:{"provider":"Firecrawl"}'),
     ).not.toBeInTheDocument()
   })
 
@@ -1387,7 +1393,7 @@ describe('AddSourcePage', () => {
     clientMock.createConnection.mockResolvedValue(connection('active'))
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ }))
+    await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-return')
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.authKind.endpoint' }))
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.authKind.api-key' }))
@@ -1403,7 +1409,7 @@ describe('AddSourcePage', () => {
     })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ }))
+    await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-be-sent')
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.authKind.endpoint' }))
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
@@ -1446,7 +1452,7 @@ describe('AddSourcePage', () => {
     queryState.providers.data = { items: [booleanProvider] }
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.configureProvider/ }))
+    await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
 
     expect(screen.getByLabelText(/Api Key/)).toHaveAccessibleDescription('Firecrawl API key')
     expect(screen.getByLabelText('Stealth')).toHaveAccessibleDescription('Use stealth mode')
@@ -1459,7 +1465,7 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     expect(
-      screen.getByText('knowledgeSpace.connectionNeedsAttention:{"provider":"Firecrawl"}'),
+      screen.getByText('knowledgeSources.connectionNeedsAttention:{"provider":"Firecrawl"}'),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
@@ -1470,7 +1476,7 @@ describe('AddSourcePage', () => {
       }),
     )
     expect(queryClientMock.invalidateQueries).toHaveBeenCalled()
-    expect(screen.getByText(/knowledgeSpace\.providerConnected/)).toBeInTheDocument()
+    expect(screen.getByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
   })
 
   it('keeps the refresh action focused and explicitly named while pending', async () => {
@@ -1484,7 +1490,7 @@ describe('AddSourcePage', () => {
     await user.click(refreshButton)
 
     const pendingButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.refreshingConnection',
+      name: 'knowledgeSources.refreshingConnection',
     })
     expect(pendingButton).toBe(refreshButton)
     expect(pendingButton).toHaveAttribute('aria-disabled', 'true')
@@ -1493,7 +1499,7 @@ describe('AddSourcePage', () => {
     expect(clientMock.refreshConnection).toHaveBeenCalledOnce()
 
     await act(async () => refreshConnectionDeferred.resolve(connection('active')))
-    await screen.findByText(/knowledgeSpace\.providerConnected/)
+    await screen.findByText(/knowledgeSources\.providerConnected/)
   })
 
   it('reconciles a refresh version race and retries with the server version', async () => {
@@ -1563,7 +1569,7 @@ describe('AddSourcePage', () => {
     const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(
-      await screen.findByText('knowledgeSpace.connectionProvisioning:{"provider":"Firecrawl"}'),
+      await screen.findByText('knowledgeSources.connectionProvisioning:{"provider":"Firecrawl"}'),
     ).toBeInTheDocument()
 
     queryState.connections.data = {
@@ -1582,7 +1588,7 @@ describe('AddSourcePage', () => {
     }
     view.rerender(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText(/knowledgeSpace\.providerConnected/)).toBeInTheDocument()
+    expect(screen.getByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
   })
 
   it('reconciles a provisioning connection with the refreshed server state', async () => {
@@ -1593,9 +1599,11 @@ describe('AddSourcePage', () => {
     })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.refreshConnectionStatus' }))
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeSources.refreshConnectionStatus' }),
+    )
 
-    expect(await screen.findByText(/knowledgeSpace\.providerConnected/)).toBeInTheDocument()
+    expect(await screen.findByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
   })
 
   it('shows a retryable error when provisioning reconciliation fails', async () => {
@@ -1607,10 +1615,12 @@ describe('AddSourcePage', () => {
     })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.refreshConnectionStatus' }))
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeSources.refreshConnectionStatus' }),
+    )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'knowledgeSpace.connectionRefreshFailed',
+      'knowledgeSources.connectionRefreshFailed',
     )
   })
 
@@ -1623,14 +1633,16 @@ describe('AddSourcePage', () => {
     })
 
     const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.refreshConnectionStatus' }))
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeSources.refreshConnectionStatus' }),
+    )
     view.rerender(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'knowledgeSpace.connectionRefreshFailed',
+      'knowledgeSources.connectionRefreshFailed',
     )
     expect(
-      screen.queryByRole('button', { name: /^knowledgeSpace\.configureProvider/ }),
+      screen.queryByRole('button', { name: /^knowledgeSources\.configureProvider/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -1651,18 +1663,18 @@ describe('AddSourcePage', () => {
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
     expect(screen.getByRole('group', { name: 'knowledgeSpace.providerLabel' })).toBeVisible()
-    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.sourceName' })).toBeEnabled()
-    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' })).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' })).toBeEnabled()
     expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.notionNotConnected')
     await user.type(
-      screen.getByRole('textbox', { name: 'knowledgeSpace.sourceName' }),
+      screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' }),
       'Product docs',
     )
 
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     expect(screen.getByRole('radio', { name: 'Google Drive' })).toBeChecked()
     await user.click(onlineDocuments)
-    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.sourceName' })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' })).toHaveValue(
       'Product docs',
     )
   })
@@ -1672,7 +1684,7 @@ describe('AddSourcePage', () => {
 
     expect(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' })).toBeChecked()
     expect(screen.getByTestId('connected-source-setup')).toBeVisible()
-    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.sourceName' })).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' })).toBeEnabled()
     expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.notionNotConnected')
   })
 
@@ -1723,7 +1735,7 @@ describe('AddSourcePage', () => {
 
     expect(screen.getByText('Disabled by admin')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /^knowledgeSpace\.configureProvider/ }),
+      screen.queryByRole('button', { name: /^knowledgeSources\.configureProvider/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -1740,9 +1752,9 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('knowledgeSpace.providerUnavailable')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSources.providerUnavailable')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /^knowledgeSpace\.configureProvider/ }),
+      screen.queryByRole('button', { name: /^knowledgeSources\.configureProvider/ }),
     ).not.toBeInTheDocument()
   })
 })

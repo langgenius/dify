@@ -19,7 +19,7 @@ import { DocumentTasksSurface } from './tasks-surface'
 import { DocumentWorkflowBoundary } from './workflow-boundary'
 
 function DocumentDetailWorkspaceContent() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCitation', 'knowledgeDocuments'])
   const document = useAtomValueRawSync(documentDetailDocumentAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const documentMissing = useAtomValueRawSync(documentMissingAtom)
@@ -28,8 +28,8 @@ function DocumentDetailWorkspaceContent() {
   if (documentMissing)
     return (
       <DocumentErrorState
-        description={t(($) => $.documentNotFoundDescription)}
-        title={t(($) => $.documentNotFoundTitle)}
+        description={t(($) => $.documentNotFoundDescription, { ns: 'knowledgeCitation' })}
+        title={t(($) => $.documentNotFoundTitle, { ns: 'knowledgeDocuments' })}
       />
     )
 

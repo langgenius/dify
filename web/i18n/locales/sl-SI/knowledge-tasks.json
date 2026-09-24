@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Opravila dodajanja dokumentov, sinhronizacije virov in ponovnega indeksiranja.",
+  "dismissTask": "Skrij opravilo",
+  "interruptTask": "Prekini",
+  "noBackgroundTasks": "Ni še opravil v ozadju.",
+  "overview.operation.document_delete": "brisanje dokumenta",
+  "overview.operation.document_processing": "obdelava dokumenta",
+  "overview.operation.document_reindex": "ponovno indeksiranje dokumenta",
+  "overview.operation.document_upload": "nalaganje dokumenta",
+  "overview.operation.source_bulk": "posodobitev vira",
+  "overview.operation.source_crawl_import": "uvoz spletnega mesta",
+  "overview.operation.source_crawl_preview": "predogled spletnega mesta",
+  "overview.operation.source_online_document_import": "uvoz spletnega dokumenta",
+  "overview.operation.source_online_drive_import": "uvoz spletnega pogona",
+  "overview.operation.source_sync": "sinhronizacija vira",
+  "taskDismissed": "Opravilo skrito",
+  "taskFailedNotification": "Obdelava dokumenta ni uspela — poskusite znova v opravilih",
+  "undoTaskDismissal": "Razveljavi"
+}

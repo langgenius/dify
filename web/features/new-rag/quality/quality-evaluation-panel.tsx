@@ -66,7 +66,7 @@ function keepLatestReplay(
 }
 
 function EvaluationState({ state }: { state: ReplayState }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeQuality'])
   return (
     <span
       className={cn(
@@ -74,7 +74,7 @@ function EvaluationState({ state }: { state: ReplayState }) {
         evaluationStateClassName(state),
       )}
     >
-      {t(($) => $[`qualityPage.evaluation.state.${state}`])}
+      {t(($) => $[`qualityPage.evaluation.state.${state}`], { ns: 'knowledgeQuality' })}
     </span>
   )
 }
@@ -88,7 +88,7 @@ export function EvaluationReport({
   onRunStarted: (runId: string) => void
   runId: string
 }) {
-  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { i18n, t } = useTranslation(['knowledgeQuality', 'knowledgeSpace'])
   const { t: tWorkflow } = useTranslation(['workflow'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
@@ -119,12 +119,14 @@ export function EvaluationReport({
       <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
         <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
         <p role="alert" className="system-sm-medium text-text-primary">
-          {t(($) => $['qualityPage.evaluation.loadError'])}
+          {t(($) => $['qualityPage.evaluation.loadError'], { ns: 'knowledgeQuality' })}
         </p>
         <div className="flex gap-2">
-          <Button onClick={onBack}>{t(($) => $['qualityPage.evaluation.back'])}</Button>
+          <Button onClick={onBack}>
+            {t(($) => $['qualityPage.evaluation.back'], { ns: 'knowledgeQuality' })}
+          </Button>
           <Button variant="primary" onClick={() => void detailQuery.refetch()}>
-            {t(($) => $['qualityPage.evaluation.retryLoad'])}
+            {t(($) => $['qualityPage.evaluation.retryLoad'], { ns: 'knowledgeQuality' })}
           </Button>
         </div>
       </div>
@@ -141,7 +143,7 @@ export function EvaluationReport({
           onClick={onBack}
         >
           <span aria-hidden className="i-ri-arrow-left-line size-4" />
-          {t(($) => $['qualityPage.evaluationTab'])}
+          {t(($) => $['qualityPage.evaluationTab'], { ns: 'knowledgeQuality' })}
         </button>
       </div>
 
@@ -149,7 +151,7 @@ export function EvaluationReport({
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="system-xl-semibold text-text-primary">
-              {t(($) => $['qualityPage.evaluation.reportTitle'])}
+              {t(($) => $['qualityPage.evaluation.reportTitle'], { ns: 'knowledgeQuality' })}
             </h1>
             <EvaluationState state={run.state} />
           </div>
@@ -164,26 +166,26 @@ export function EvaluationReport({
 
       {run.error && (
         <div className="mt-4 rounded-lg border border-state-destructive-border bg-state-destructive-hover p-3 system-xs-regular text-text-destructive">
-          {t(($) => $['qualityPage.evaluation.executionFailed'])}
+          {t(($) => $['qualityPage.evaluation.executionFailed'], { ns: 'knowledgeQuality' })}
         </div>
       )}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           {
-            label: t(($) => $['qualityPage.evaluation.hitRate']),
+            label: t(($) => $['qualityPage.evaluation.hitRate'], { ns: 'knowledgeQuality' }),
             value: percent(run.summary.hit_rate, i18n.language),
           },
           {
-            label: t(($) => $['qualityPage.evaluation.passed']),
+            label: t(($) => $['qualityPage.evaluation.passed'], { ns: 'knowledgeQuality' }),
             value: new Intl.NumberFormat(i18n.language).format(run.summary.passed),
           },
           {
-            label: t(($) => $['qualityPage.evaluation.missed']),
+            label: t(($) => $['qualityPage.evaluation.missed'], { ns: 'knowledgeQuality' }),
             value: new Intl.NumberFormat(i18n.language).format(run.summary.failed),
           },
           {
-            label: t(($) => $['qualityPage.evaluation.progress']),
+            label: t(($) => $['qualityPage.evaluation.progress'], { ns: 'knowledgeQuality' }),
             value: `${new Intl.NumberFormat(i18n.language).format(run.summary.completed)} / ${new Intl.NumberFormat(i18n.language).format(run.summary.total)}`,
           },
         ].map((metric) => (
@@ -203,17 +205,19 @@ export function EvaluationReport({
             />
           </div>
           <p className="mt-2 system-xs-regular text-text-tertiary">
-            {t(($) => $['qualityPage.evaluation.runningDescription'])}
+            {t(($) => $['qualityPage.evaluation.runningDescription'], { ns: 'knowledgeQuality' })}
           </p>
         </div>
       )}
 
       <div className="mt-4 overflow-x-auto">
         <div className="grid min-w-190 grid-cols-[minmax(320px,1fr)_90px_130px_76px] gap-3 py-2.5 system-2xs-medium-uppercase text-text-tertiary">
-          <span>{t(($) => $['qualityPage.question'])}</span>
-          <span>{t(($) => $['qualityPage.statusLabel'])}</span>
-          <span>{t(($) => $['qualityPage.evaluation.evidenceHit'])}</span>
-          <span>{t(($) => $['qualityPage.evaluation.duration'])}</span>
+          <span>{t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}</span>
+          <span>{t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}</span>
+          <span>
+            {t(($) => $['qualityPage.evaluation.evidenceHit'], { ns: 'knowledgeQuality' })}
+          </span>
+          <span>{t(($) => $['qualityPage.evaluation.duration'], { ns: 'knowledgeQuality' })}</span>
         </div>
         {run.items.map((item) => {
           const diff = item.result?.evidence_diff
@@ -230,6 +234,7 @@ export function EvaluationReport({
                   size="small"
                   className="-ml-2 w-fit px-2 text-text-accent"
                   aria-label={t(($) => $['qualityPage.evaluation.openEvidenceDetails'], {
+                    ns: 'knowledgeQuality',
                     expected: diff.expected_count,
                     matched: diff.matched_count,
                     question: item.question,
@@ -286,7 +291,7 @@ function EvidenceDetailsDialog({
 }
 
 function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: string }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeQuality'])
   const { space } = useKnowledgeSpace()
   const evidenceDetailQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions({
@@ -304,12 +309,12 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
     {
       items: evidenceItems.filter((evidence) => evidence.matched),
       matched: true,
-      title: t(($) => $['qualityPage.evaluation.passed']),
+      title: t(($) => $['qualityPage.evaluation.passed'], { ns: 'knowledgeQuality' }),
     },
     {
       items: evidenceItems.filter((evidence) => !evidence.matched),
       matched: false,
-      title: t(($) => $['qualityPage.evaluation.missed']),
+      title: t(($) => $['qualityPage.evaluation.missed'], { ns: 'knowledgeQuality' }),
     },
   ]
 
@@ -317,10 +322,12 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
     <>
       <div className="relative px-6 pt-6">
         <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
-          {t(($) => $['qualityPage.evaluation.evidenceDetailsTitle'])}
+          {t(($) => $['qualityPage.evaluation.evidenceDetailsTitle'], { ns: 'knowledgeQuality' })}
         </DialogTitle>
         <DialogDescription className="mt-3 pr-10 system-sm-regular text-text-tertiary">
-          {t(($) => $['qualityPage.evaluation.evidenceDetailsDescription'])}
+          {t(($) => $['qualityPage.evaluation.evidenceDetailsDescription'], {
+            ns: 'knowledgeQuality',
+          })}
         </DialogDescription>
         <p className="mt-3 rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-medium text-text-primary">
           {item.question}
@@ -329,7 +336,7 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
           render={
             <IconButton
               size="lg"
-              aria-label={t(($) => $['qualityPage.closeDialog'])}
+              aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
               className="absolute inset-e-6 top-6 z-10"
             >
               <span aria-hidden className="i-ri-close-line size-5" />
@@ -345,10 +352,12 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
         ) : evidenceDetailQuery.isError ? (
           <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
             <p role="alert" className="system-sm-medium text-text-primary">
-              {t(($) => $['qualityPage.evaluation.evidenceDetailsLoadError'])}
+              {t(($) => $['qualityPage.evaluation.evidenceDetailsLoadError'], {
+                ns: 'knowledgeQuality',
+              })}
             </p>
             <Button onClick={() => void evidenceDetailQuery.refetch()}>
-              {t(($) => $['qualityPage.evaluation.retryLoad'])}
+              {t(($) => $['qualityPage.evaluation.retryLoad'], { ns: 'knowledgeQuality' })}
             </Button>
           </div>
         ) : (
@@ -370,7 +379,9 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
                 </div>
                 {group.items.length === 0 ? (
                   <p className="rounded-lg border border-divider-subtle px-3 py-3 system-sm-regular text-text-tertiary">
-                    {t(($) => $['qualityPage.evaluation.noEvidenceInGroup'])}
+                    {t(($) => $['qualityPage.evaluation.noEvidenceInGroup'], {
+                      ns: 'knowledgeQuality',
+                    })}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -389,12 +400,13 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
 }
 
 function EvidenceDetailCard({ evidence }: { evidence: KnowledgeFsQualityReplayEvidenceItem }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeQuality', 'knowledgeSpace'])
   const source = [
     evidence.document_name,
     evidence.section_path?.join(' / '),
     evidence.page_number
       ? t(($) => $['qualityPage.evaluation.evidencePage'], {
+          ns: 'knowledgeQuality',
           page: evidence.page_number,
         })
       : undefined,
@@ -413,19 +425,19 @@ function EvidenceDetailCard({ evidence }: { evidence: KnowledgeFsQualityReplayEv
       >
         {evidence.available && evidence.text
           ? evidence.text
-          : t(($) => $['qualityPage.evaluation.evidenceUnavailable'])}
+          : t(($) => $['qualityPage.evaluation.evidenceUnavailable'], { ns: 'knowledgeSpace' })}
       </p>
     </article>
   )
 }
 
 function RunEvaluationButton({ onClick }: { onClick: () => void }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeQuality'])
 
   return (
     <Button variant="primary" onClick={onClick}>
       <span aria-hidden className="i-ri-play-circle-line size-4" />
-      {t(($) => $['qualityPage.evaluation.run'])}
+      {t(($) => $['qualityPage.evaluation.run'], { ns: 'knowledgeQuality' })}
     </Button>
   )
 }
@@ -460,7 +472,7 @@ function RunEvaluationDialogContent({
   onClose: () => void
   onRunStarted: (runId: string) => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeQuality'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()
@@ -505,9 +517,9 @@ function RunEvaluationDialogContent({
       })
       onClose()
       onRunStarted(run.id)
-      toast.success(t(($) => $['qualityPage.evaluation.startedToast']))
+      toast.success(t(($) => $['qualityPage.evaluation.startedToast'], { ns: 'knowledgeQuality' }))
     } catch {
-      toast.error(t(($) => $['qualityPage.evaluation.startError']))
+      toast.error(t(($) => $['qualityPage.evaluation.startError'], { ns: 'knowledgeQuality' }))
     }
   }
 
@@ -521,10 +533,11 @@ function RunEvaluationDialogContent({
       >
         <div className="relative px-6 pt-6">
           <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
-            {t(($) => $['qualityPage.evaluation.dialogTitle'])}
+            {t(($) => $['qualityPage.evaluation.dialogTitle'], { ns: 'knowledgeQuality' })}
           </DialogTitle>
           <DialogDescription className="mt-2 pr-8 system-sm-regular text-text-tertiary">
             {t(($) => $['qualityPage.evaluation.dialogDescription'], {
+              ns: 'knowledgeQuality',
               count: activeGoldenQuestionCount,
             })}
           </DialogDescription>
@@ -532,7 +545,7 @@ function RunEvaluationDialogContent({
             render={
               <IconButton
                 size="lg"
-                aria-label={t(($) => $['qualityPage.closeDialog'])}
+                aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
                 className="absolute inset-e-6 top-6"
               >
                 <span aria-hidden className="i-ri-close-line size-5" />
@@ -542,10 +555,10 @@ function RunEvaluationDialogContent({
         </div>
         <div className="px-6 py-3">
           <p className="system-xs-medium text-text-secondary">
-            {t(($) => $['qualityPage.evaluation.modeLabel'])}
+            {t(($) => $['qualityPage.evaluation.modeLabel'], { ns: 'knowledgeQuality' })}
           </p>
           <RetrievalModeSegmentedControl
-            aria-label={t(($) => $['qualityPage.evaluation.modeLabel'])}
+            aria-label={t(($) => $['qualityPage.evaluation.modeLabel'], { ns: 'knowledgeQuality' })}
             appearance="composer"
             className="mt-2 w-full min-w-0"
             value={mode}
@@ -554,10 +567,10 @@ function RunEvaluationDialogContent({
         </div>
         <div className="flex justify-end gap-2 px-6 py-4">
           <Button type="button" disabled={createMutation.isPending} onClick={onClose}>
-            {t(($) => $['qualityPage.cancel'])}
+            {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}
           </Button>
           <Button type="submit" variant="primary" loading={createMutation.isPending}>
-            {t(($) => $['qualityPage.evaluation.start'])}
+            {t(($) => $['qualityPage.evaluation.start'], { ns: 'knowledgeQuality' })}
           </Button>
         </div>
       </form>
@@ -572,7 +585,7 @@ export function QualityEvaluationPanel({
   actionSlot?: HTMLElement | null
   onOpenReport: (runId: string) => void
 }) {
-  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'knowledgeQuality'])
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = space.control_space_id
@@ -628,20 +641,20 @@ export function QualityEvaluationPanel({
           <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
             <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
             <p role="alert" className="system-sm-medium text-text-primary">
-              {t(($) => $['qualityPage.evaluation.loadError'])}
+              {t(($) => $['qualityPage.evaluation.loadError'], { ns: 'knowledgeQuality' })}
             </p>
             <Button onClick={() => void listQuery.refetch()}>
-              {t(($) => $['qualityPage.evaluation.retryLoad'])}
+              {t(($) => $['qualityPage.evaluation.retryLoad'], { ns: 'knowledgeQuality' })}
             </Button>
           </div>
         ) : runs.length === 0 ? (
           <div className="flex h-140 flex-col items-center justify-center text-center">
             <span aria-hidden className="i-ri-play-circle-line size-7 text-text-tertiary" />
             <h3 className="mt-3 system-md-semibold text-text-primary">
-              {t(($) => $['qualityPage.evaluation.emptyTitle'])}
+              {t(($) => $['qualityPage.evaluation.emptyTitle'], { ns: 'knowledgeQuality' })}
             </h3>
             <p className="mt-1 max-w-136 system-xs-regular text-text-tertiary">
-              {t(($) => $['qualityPage.evaluation.emptyDescription'])}
+              {t(($) => $['qualityPage.evaluation.emptyDescription'], { ns: 'knowledgeQuality' })}
             </p>
             {canEdit && (
               <div className="mt-3">
@@ -652,11 +665,19 @@ export function QualityEvaluationPanel({
         ) : (
           <div className="mt-2.5 overflow-x-auto pt-3">
             <div className="grid min-w-185 grid-cols-[150px_110px_140px_160px_110px_1fr] gap-3 py-2.5 system-2xs-medium-uppercase text-text-tertiary">
-              <span>{t(($) => $['qualityPage.evaluation.createdAt'])}</span>
-              <span>{t(($) => $['qualityPage.statusLabel'])}</span>
-              <span>{t(($) => $['qualityPage.evaluation.modeLabel'])}</span>
-              <span>{t(($) => $['qualityPage.evaluation.hitRate'])}</span>
-              <span>{t(($) => $['qualityPage.evaluation.progress'])}</span>
+              <span>
+                {t(($) => $['qualityPage.evaluation.createdAt'], { ns: 'knowledgeQuality' })}
+              </span>
+              <span>{t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}</span>
+              <span>
+                {t(($) => $['qualityPage.evaluation.modeLabel'], { ns: 'knowledgeQuality' })}
+              </span>
+              <span>
+                {t(($) => $['qualityPage.evaluation.hitRate'], { ns: 'knowledgeQuality' })}
+              </span>
+              <span>
+                {t(($) => $['qualityPage.evaluation.progress'], { ns: 'knowledgeQuality' })}
+              </span>
               <span />
             </div>
             {runs.map((run) => (
@@ -667,13 +688,15 @@ export function QualityEvaluationPanel({
                 <span className="system-xs-regular text-text-secondary">
                   {formatQualityEvaluationCreatedAt(
                     run.created_at,
-                    t(($) => $['retrievalTest.justNow']),
+                    t(($) => $['retrievalTest.justNow'], { ns: 'knowledgeSpace' }),
                     i18n.language,
                   )}
                 </span>
                 <EvaluationState state={run.state} />
                 <span className="system-xs-regular text-text-secondary">
-                  {t(($) => $[`qualityPage.evaluation.mode.${run.mode}`])}
+                  {t(($) => $[`qualityPage.evaluation.mode.${run.mode}`], {
+                    ns: 'knowledgeQuality',
+                  })}
                 </span>
                 <span className="system-sm-medium text-text-primary">
                   {run.summary.completed > 0 ? percent(run.summary.hit_rate, i18n.language) : '—'}
@@ -688,7 +711,7 @@ export function QualityEvaluationPanel({
                   className="ml-auto"
                   onClick={() => openReport(run)}
                 >
-                  {t(($) => $['qualityPage.evaluation.viewReport'])}
+                  {t(($) => $['qualityPage.evaluation.viewReport'], { ns: 'knowledgeQuality' })}
                 </Button>
               </div>
             ))}

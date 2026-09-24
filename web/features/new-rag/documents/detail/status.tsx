@@ -19,7 +19,7 @@ function focusDocumentDetailTitle() {
 }
 
 export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const latestTask = useAtomValueRawSync(documentLatestTaskAtom)
   const reindexInProgress = useAtomValueRawSync(documentReindexInProgressAtom)
@@ -37,9 +37,11 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
             aria-hidden
             className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
           />
-          <span className="min-w-0 flex-1">{t(($) => $.documentReindexStatus)}</span>
+          <span className="min-w-0 flex-1">
+            {t(($) => $.documentReindexStatus, { ns: 'knowledgeDocuments' })}
+          </span>
           <Button size="small" variant="ghost-accent" onClick={onViewTasks}>
-            {t(($) => $.viewTask)}
+            {t(($) => $.viewTask, { ns: 'knowledgeDocuments' })}
           </Button>
         </div>
       )}
@@ -49,9 +51,11 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
           role="alert"
         >
           <span aria-hidden className="i-ri-error-warning-fill size-4 shrink-0" />
-          <span className="min-w-0 flex-1">{t(($) => $.documentReindexFailed)}</span>
+          <span className="min-w-0 flex-1">
+            {t(($) => $.documentReindexFailed, { ns: 'knowledgeDocuments' })}
+          </span>
           <Button size="small" variant="ghost" onClick={onViewTasks}>
-            {t(($) => $.viewTask)}
+            {t(($) => $.viewTask, { ns: 'knowledgeDocuments' })}
           </Button>
         </div>
       )}

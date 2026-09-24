@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "مهام إضافة المستندات ومزامنة المصادر وإعادة الفهرسة.",
+  "dismissTask": "تجاهل المهمة",
+  "interruptTask": "إيقاف",
+  "noBackgroundTasks": "لا توجد مهام خلفية حتى الآن.",
+  "overview.operation.document_delete": "حذف الوثيقة",
+  "overview.operation.document_processing": "معالجة المستندات",
+  "overview.operation.document_reindex": "إعادة فهرسة الوثيقة",
+  "overview.operation.document_upload": "تحميل الوثيقة",
+  "overview.operation.source_bulk": "تحديث المصدر",
+  "overview.operation.source_crawl_import": "استيراد الموقع",
+  "overview.operation.source_crawl_preview": "معاينة الموقع",
+  "overview.operation.source_online_document_import": "استيراد المستندات عبر الإنترنت",
+  "overview.operation.source_online_drive_import": "استيراد محرك الأقراص عبر الإنترنت",
+  "overview.operation.source_sync": "مزامنة المصدر",
+  "taskDismissed": "تم تجاهل المهمة",
+  "taskFailedNotification": "فشلت معالجة المستند — أعد المحاولة من المهام",
+  "undoTaskDismissal": "تراجع"
+}

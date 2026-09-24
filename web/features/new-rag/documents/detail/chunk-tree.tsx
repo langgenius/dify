@@ -65,7 +65,7 @@ function AutomaticChunkPageLoader({
 }
 
 export function DocumentChunkTreePanel() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const treeHeadingId = useId()
   const loadMoreLabelId = useId()
@@ -234,14 +234,14 @@ export function DocumentChunkTreePanel() {
   return (
     <aside className="flex max-h-80 min-h-52 flex-col overflow-hidden xl:max-h-none xl:min-h-0">
       <h2 id={treeHeadingId} className="shrink-0 px-2 pb-2 system-xs-regular text-text-tertiary">
-        {t(($) => $.documentContents)}
+        {t(($) => $.documentContents, { ns: 'knowledgeDocuments' })}
       </h2>
       {error && !isFetchNextPageError && chunkCount > 0 && (
         <div
           className="flex items-center justify-between gap-2 border-b border-divider-subtle bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
           role="alert"
         >
-          <span>{t(($) => $.documentChunksLoadError)}</span>
+          <span>{t(($) => $.documentChunksLoadError, { ns: 'knowledgeDocuments' })}</span>
           <Button onClick={() => void retryChunks()}>{tCommon(($) => $['operation.retry'])}</Button>
         </div>
       )}
@@ -253,7 +253,7 @@ export function DocumentChunkTreePanel() {
       ) : error && !isFetchNextPageError && !chunkCount ? (
         <div className="p-4 text-center">
           <p className="system-xs-regular text-text-destructive">
-            {t(($) => $.documentChunksLoadError)}
+            {t(($) => $.documentChunksLoadError, { ns: 'knowledgeDocuments' })}
           </p>
           <Button className="mt-3" onClick={() => void retryChunks()}>
             {tCommon(($) => $['operation.retry'])}
@@ -261,7 +261,7 @@ export function DocumentChunkTreePanel() {
         </div>
       ) : !chunkCount ? (
         <p className="p-6 text-center system-xs-regular text-text-tertiary">
-          {t(($) => $.documentChunksEmpty)}
+          {t(($) => $.documentChunksEmpty, { ns: 'knowledgeDocuments' })}
         </p>
       ) : (
         <div
@@ -296,7 +296,7 @@ export function DocumentChunkTreePanel() {
       {isFetchNextPageError ? (
         <div className="shrink-0 border-t border-divider-subtle p-3 text-center">
           <p className="mb-2 system-xs-regular text-text-destructive" role="alert">
-            {t(($) => $.documentChunksLoadMoreError)}
+            {t(($) => $.documentChunksLoadMoreError, { ns: 'knowledgeDocuments' })}
           </p>
           <Button
             loading={isFetchingNextPage}

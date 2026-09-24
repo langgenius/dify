@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}” is now an Agent Knowledge Base",
+  "upgrade.completeTitle": "Upgrade complete",
+  "upgrade.contactSupport": "Contact Support",
+  "upgrade.dialogAvailability": "After the upgrade, <strong>both the Classic and Agent Knowledge Bases remain available</strong>",
+  "upgrade.dialogDescription": "Upgrade this <legacy>Classic Knowledge Base</legacy> to an <new>Agent Knowledge Base</new>, carrying over all documents, settings, and app connections. You’ll be taken to the Agent Knowledge Base automatically.",
+  "upgrade.dialogDuration": "Takes a few minutes to a few hours, depending on size. Progress is shown on the knowledge base card",
+  "upgrade.dialogLinkedApps": "Linked apps keep retrieving during the upgrade",
+  "upgrade.dialogTitle": "Upgrade to an Agent Knowledge Base?",
+  "upgrade.failedDescription": "Upgrade failed. Nothing was changed, and your Classic Knowledge Base is still available.",
+  "upgrade.failedTitle": "Upgrade failed",
+  "upgrade.failedToastDescription": "“{{name}}” remains a Classic Knowledge Base. No data was changed",
+  "upgrade.guideDescription": "Upgrading moves this Classic Knowledge Base to an Agent Knowledge Base. Connect a source and its documents stay in sync, indexed automatically. Documents, settings, and app connections carry over, and linked apps keep working.",
+  "upgrade.guideTitle": "Upgrade from the Classic Knowledge Base to an Agent Knowledge Base",
+  "upgrade.justNow": "Just now",
+  "upgrade.menuLabel": "Upgrade to Agent Knowledge Base",
+  "upgrade.migratingDocuments": "Migrating documents…",
+  "upgrade.start": "Start upgrade",
+  "upgrade.startFailed": "The upgrade couldn't be started. Try again.",
+  "upgrade.statusFailed": "Upgrade failed",
+  "upgrade.statusUpgrading": "Upgrading",
+  "upgrade.upgradedJustNow": "Upgraded just now"
+}

@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Sənədlərin əlavə edilməsi, mənbələrin sinxronlaşdırılması və yenidən indeksləmə işləri.",
+  "dismissTask": "Dismiss task",
+  "interruptTask": "Dayandır",
+  "noBackgroundTasks": "Hələ arxa plan tapşırığı yoxdur.",
+  "overview.operation.document_delete": "document deletion",
+  "overview.operation.document_processing": "document processing",
+  "overview.operation.document_reindex": "document reindexing",
+  "overview.operation.document_upload": "document upload",
+  "overview.operation.source_bulk": "source update",
+  "overview.operation.source_crawl_import": "website import",
+  "overview.operation.source_crawl_preview": "website preview",
+  "overview.operation.source_online_document_import": "online document import",
+  "overview.operation.source_online_drive_import": "online drive import",
+  "overview.operation.source_sync": "source sync",
+  "taskDismissed": "Task dismissed",
+  "taskFailedNotification": "Sənədin emalı uğursuz oldu. «Tapşırıqlar» bölməsindən yenidən cəhd edin",
+  "undoTaskDismissal": "Undo"
+}

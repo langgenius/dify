@@ -102,6 +102,7 @@
   "metadata.batchEditMetadata.editDocumentsNum": "ກຳລັງແກ້ໄຂ {{num}} ເອກະສານ",
   "metadata.batchEditMetadata.editMetadata": "ແກ້ໄຂຂໍ້ມູນກຳກັບ",
   "metadata.batchEditMetadata.multipleValue": "ຫຼາຍຄ່າ",
+  "metadata.checkName.duplicate": "A metadata field with this name already exists",
   "metadata.checkName.empty": "ຊື່ຂໍ້ມູນກຳກັບບໍ່ສາມາດຫວ່າງໄດ້",
   "metadata.checkName.invalid": "ຊື່ຂໍ້ມູນກຳກັບສາມາດປະກອບມີພຽງແຕ່ຕົວອັກສອນພາສາອັງກິດພິມນ້ອຍ, ຕົວເລກ, ແລະ ຂີດກ້ອງ (_) ແລະ ຕ້ອງເລີ່ມຕົ້ນດ້ວຍຕົວອັກສອນພິມນ້ອຍ",
   "metadata.checkName.tooLong": "ຊື່ຂໍ້ມູນກຳກັບບໍ່ສາມາດເກີນ {{max}} ຕົວອັກສອນ",

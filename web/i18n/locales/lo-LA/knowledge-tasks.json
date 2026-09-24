@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "ການເພີ່ມເອກະສານ, ການຊິງຄ໌ແຫຼ່ງ, ແລະວຽກດັດສະນີຄືນໃໝ່.",
+  "dismissTask": "ເຊື່ອງວຽກ",
+  "interruptTask": "ຂັດຂວາງ",
+  "noBackgroundTasks": "ບໍ່ມີໜ້າວຽກໃນພື້ນຫຼັງເທື່ອ.",
+  "overview.operation.document_delete": "ການລຶບເອກະສານ",
+  "overview.operation.document_processing": "ການປະມວນຜົນເອກະສານ",
+  "overview.operation.document_reindex": "ການສ້າງດັດຊະນີເອກະສານໃໝ່",
+  "overview.operation.document_upload": "ການອັບໂຫຼດເອກະສານ",
+  "overview.operation.source_bulk": "ການອັບເດດແຫຼ່ງຂໍ້ມູນ",
+  "overview.operation.source_crawl_import": "ການນຳເຂົ້າເວັບໄຊ",
+  "overview.operation.source_crawl_preview": "ການສະແດງຕົວຢ່າງເວັບໄຊ",
+  "overview.operation.source_online_document_import": "ການນຳເຂົ້າເອກະສານອອນລາຍ",
+  "overview.operation.source_online_drive_import": "ການນຳເຂົ້າໄດຣຟ໌ອອນລາຍ",
+  "overview.operation.source_sync": "ການຊິງຄ໌ແຫຼ່ງຂໍ້ມູນ",
+  "taskDismissed": "ເຊື່ອງວຽກແລ້ວ",
+  "taskFailedNotification": "ການປະມວນຜົນເອກະສານລົ້ມເຫລວ — ລອງໃໝ່ຈາກ Tasks",
+  "undoTaskDismissal": "ຍົກເລີກ"
+}

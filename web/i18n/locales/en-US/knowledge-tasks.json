@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Document adds, source syncs, and re-index jobs.",
+  "dismissTask": "Dismiss task",
+  "interruptTask": "Interrupt",
+  "noBackgroundTasks": "No background tasks yet.",
+  "overview.operation.document_delete": "document deletion",
+  "overview.operation.document_processing": "document processing",
+  "overview.operation.document_reindex": "document reindexing",
+  "overview.operation.document_upload": "document upload",
+  "overview.operation.source_bulk": "source update",
+  "overview.operation.source_crawl_import": "website import",
+  "overview.operation.source_crawl_preview": "website preview",
+  "overview.operation.source_online_document_import": "online document import",
+  "overview.operation.source_online_drive_import": "online drive import",
+  "overview.operation.source_sync": "source sync",
+  "taskDismissed": "Task dismissed",
+  "taskFailedNotification": "Document processing failed — retry from Tasks",
+  "undoTaskDismissal": "Undo"
+}

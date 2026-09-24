@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "添加并处理",
+  "crawlPreview": "抓取预览",
+  "createFailed": "无法创建此 Agent 知识库，请检查权限后重试。",
+  "createTitle": "创建 Agent 知识库",
+  "description": "描述",
+  "descriptionHelp": "清晰的描述有助于应用判断何时搜索此 Agent 知识库。",
+  "descriptionPlaceholder": "例如：退款政策、配送常见问题和问题转交处理流程，用于回答客户支持相关问题",
+  "illustrationHeadline": "只需连接一次内容——每个应用都能用最新知识作答。",
+  "namePlaceholder": "例如：客户支持手册",
+  "nameRequired": "请输入 Agent 知识库名称。",
+  "selectedFiles": "已选文件（{{total}} 个中 {{valid}} 个有效）",
+  "startWith": "创建方式",
+  "startWithHelp": "你可以随时添加更多数据源或文档。",
+  "uploadCharactersUnavailable": "字符数：—",
+  "uploadDocuments": "上传文档",
+  "uploadDropZoneTitle": "拖放文件，或点击选择文件",
+  "uploadingFiles": "正在上传…"
+}

@@ -61,7 +61,7 @@ export function DocumentUploadFileList({
   uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   variant?: 'compact' | 'form'
 }) {
-  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
   const { t: tCommon } = useTranslation(['common'])
   const [previewFile, setPreviewFile] = useState<File>()
 
@@ -74,7 +74,7 @@ export function DocumentUploadFileList({
           const extension = fileExtension ? fileExtension.toUpperCase() : t(($) => $.documentColumn)
           const fileUploading = uploadProgress.get(item.file) === 'pending'
           const status = fileUploading
-            ? t(($) => $.uploadingFiles)
+            ? t(($) => $.uploadingFiles, { ns: 'knowledgeCreate' })
             : issue
               ? issue === 'fileSize'
                 ? t(($) => $['documentUploadExclusion.fileSize'], {

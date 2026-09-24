@@ -94,7 +94,7 @@ async function queryFailure(error: unknown) {
 }
 
 export function RetrievalRuntimeController() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeRetrieval'])
   const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const linkedSelection = useAtomValueRawSync(retrievalLinkedSelectionAtom)
@@ -449,7 +449,7 @@ export function RetrievalRuntimeController() {
         await refetchResearchTasks()
       } catch {
         if (session.signal.aborted) return
-        toast.error(t(($) => $['retrievalTest.failedDescription']))
+        toast.error(t(($) => $['retrievalTest.failedDescription'], { ns: 'knowledgeRetrieval' }))
       } finally {
         runInFlightRef.current = false
       }

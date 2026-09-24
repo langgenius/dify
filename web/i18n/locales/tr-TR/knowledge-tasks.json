@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Belge ekleme, kaynak eşitleme ve yeniden dizinleme görevleri.",
+  "dismissTask": "Görevi gizle",
+  "interruptTask": "Kesinti",
+  "noBackgroundTasks": "Henüz arka plan görevi yok.",
+  "overview.operation.document_delete": "belge silme",
+  "overview.operation.document_processing": "belge işleme",
+  "overview.operation.document_reindex": "belgeyi yeniden dizine ekleme",
+  "overview.operation.document_upload": "belge yükleme",
+  "overview.operation.source_bulk": "kaynak güncelleme",
+  "overview.operation.source_crawl_import": "web sitesi içe aktarma",
+  "overview.operation.source_crawl_preview": "web sitesi önizleme",
+  "overview.operation.source_online_document_import": "çevrimiçi belge içe aktarma",
+  "overview.operation.source_online_drive_import": "çevrimiçi sürücü içe aktarma",
+  "overview.operation.source_sync": "kaynak senkronizasyonu",
+  "taskDismissed": "Görev gizlendi",
+  "taskFailedNotification": "Belge işleme başarısız oldu — Görevler'den yeniden deneyin",
+  "undoTaskDismissal": "Geri al"
+}

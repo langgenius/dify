@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "追加して処理",
+  "crawlPreview": "クロールのプレビュー",
+  "createFailed": "この Agent ナレッジベースを作成できませんでした。アクセスを確認して再試行してください。",
+  "createTitle": "Agent ナレッジベースを作成",
+  "description": "説明",
+  "descriptionHelp": "内容をわかりやすく説明すると、アプリがこの Agent ナレッジベースを検索するタイミングを判断しやすくなります。",
+  "descriptionPlaceholder": "例:返金ポリシー、配送に関する FAQ、エスカレーション手順 - カスタマー サポートの質問に使用します",
+  "illustrationHeadline": "コンテンツを一度接続すれば、すべてのアプリが最新のナレッジで回答します。",
+  "namePlaceholder": "例:カスタマーサポートハンドブック",
+  "nameRequired": "Agent ナレッジベース名を入力してください。",
+  "selectedFiles": "選択したファイル（{{total}}件中{{valid}}件が有効）",
+  "startWith": "作成方法",
+  "startWithHelp": "いつでもソースやドキュメントを追加できます。",
+  "uploadCharactersUnavailable": "文字数：—",
+  "uploadDocuments": "ドキュメントのアップロード",
+  "uploadDropZoneTitle": "ファイルをドラッグ＆ドロップするか、参照",
+  "uploadingFiles": "アップロード中…"
+}

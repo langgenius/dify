@@ -7,7 +7,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useTranslation } from 'react-i18next'
+import { Suspense } from 'react'
+import { Translation, useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { knowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
 import { SourceProviderIcon } from './setup/fields'
@@ -51,7 +52,7 @@ export function SourceRow({
   onCheckedChange: (checked: boolean) => void
   source: Source
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeSources'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const syncWorkflow = source.syncWorkflow
   const displayStatus = sourceDisplayStatus(source)
@@ -62,7 +63,7 @@ export function SourceRow({
   const providerKind = metadataString(source.metadata, 'providerKind')
   const sourceSyncPolicy = source.syncPolicy
   const syncPolicy = sourceSyncPolicy
-    ? t(($) => $[sourceSyncPolicyTranslationKey(sourceSyncPolicy)])
+    ? t(($) => $[sourceSyncPolicyTranslationKey(sourceSyncPolicy)], { ns: 'knowledgeSources' })
     : metadataString(source.metadata, 'syncPolicy')
   const lastSyncAt = sourceLastSyncAt(source)
   const lastSyncTimestamp = lastSyncAt ? Date.parse(lastSyncAt) : Number.NaN
@@ -152,21 +153,27 @@ export function SourceRow({
           <span className="sr-only">{source.name}: </span>
           {t(($) => $[`sourceStatus.${displayStatus}`])}
           {displayStatus === 'error' && syncFailureMessageKey && (
-            <Infotip>
-              <InfotipTrigger
-                aria-label={t(($) => $[syncFailureMessageKey])}
-                iconVariant="information"
-              />
-              <InfotipContent className="max-w-80">
-                {t(($) => $[syncFailureMessageKey])}
-              </InfotipContent>
-            </Infotip>
+            <Suspense fallback={null}>
+              <Translation ns={['knowledgeErrors']}>
+                {(tError) => (
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-label={tError(($) => $[syncFailureMessageKey])}
+                      iconVariant="information"
+                    />
+                    <InfotipContent className="max-w-80">
+                      {tError(($) => $[syncFailureMessageKey])}
+                    </InfotipContent>
+                  </Infotip>
+                )}
+              </Translation>
+            </Suspense>
           )}
         </span>
       </td>
       <td className="min-w-0 @min-[768px]/knowledge-content:hidden @min-[960px]/knowledge-content:flex @min-[960px]/knowledge-content:items-center">
         <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
-          {t(($) => $.syncPolicyColumn)}
+          {t(($) => $.syncPolicyColumn, { ns: 'knowledgeSources' })}
         </p>
         <TruncatedSourceValue className="text-xs leading-4 font-normal text-text-secondary">
           {syncPolicy ?? '—'}
@@ -174,7 +181,7 @@ export function SourceRow({
       </td>
       <td className="min-w-0 text-xs leading-4 font-normal text-text-secondary @min-[768px]/knowledge-content:col-start-4 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto">
         <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
-          {t(($) => $.lastSyncColumn)}
+          {t(($) => $.lastSyncColumn, { ns: 'knowledgeSources' })}
         </p>
         {displayStatus === 'syncing' && syncWorkflow ? (
           <span className="inline-flex min-w-0 items-center gap-1.5 text-text-accent">
@@ -183,6 +190,7 @@ export function SourceRow({
               className="i-ri-loader-4-line size-3.5 animate-spin motion-reduce:animate-none"
             />
             {t(($) => $.sourceSyncProgress, {
+              ns: 'knowledgeSources',
               completed:
                 syncWorkflow.progressCompleted +
                 syncWorkflow.progressFailed +

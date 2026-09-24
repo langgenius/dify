@@ -199,11 +199,11 @@ describe('QualityEvaluationPanel', () => {
     renderPanel()
 
     expect(
-      await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle'),
+      await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle'),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.run',
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
       }),
     ).toBeEnabled()
   })
@@ -235,7 +235,7 @@ describe('QualityEvaluationPanel', () => {
     renderPanel()
     await user.click(
       await screen.findByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
       }),
     )
 
@@ -246,15 +246,15 @@ describe('QualityEvaluationPanel', () => {
     const user = userEvent.setup()
     renderPanel()
 
-    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.run',
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
       }),
     )
 
     const dialog = screen.getByRole('dialog', {
-      name: 'knowledgeSpace.qualityPage.evaluation.dialogTitle',
+      name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
     })
     expect(dialog).toHaveClass(
       'fixed',
@@ -264,7 +264,7 @@ describe('QualityEvaluationPanel', () => {
       '-translate-y-1/2',
     )
     expect(dialog).toHaveAccessibleDescription(
-      'knowledgeSpace.qualityPage.evaluation.dialogDescription:{"count":6}',
+      'knowledgeQuality.qualityPage.evaluation.dialogDescription:{"count":6}',
     )
     expect(
       screen.getByRole('radio', {
@@ -282,19 +282,19 @@ describe('QualityEvaluationPanel', () => {
     })
     renderPanel()
 
-    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.run',
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
       }),
     )
 
     expect(
       screen.getByRole('dialog', {
-        name: 'knowledgeSpace.qualityPage.evaluation.dialogTitle',
+        name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
       }),
     ).toHaveAccessibleDescription(
-      'knowledgeSpace.qualityPage.evaluation.dialogDescription:{"count":1}',
+      'knowledgeQuality.qualityPage.evaluation.dialogDescription:{"count":1}',
     )
   })
 
@@ -302,10 +302,10 @@ describe('QualityEvaluationPanel', () => {
     const user = userEvent.setup()
     renderPanel()
 
-    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.run',
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
       }),
     )
     await user.click(
@@ -313,10 +313,10 @@ describe('QualityEvaluationPanel', () => {
         name: 'knowledgeSpace.settings.retrievalMode.deep',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.cancel' }))
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.run',
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
       }),
     )
 
@@ -331,15 +331,15 @@ describe('QualityEvaluationPanel', () => {
     const user = userEvent.setup()
     renderPanel()
 
-    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.run',
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
       }),
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.start',
+        name: 'knowledgeQuality.qualityPage.evaluation.start',
       }),
     )
 
@@ -362,7 +362,7 @@ describe('QualityEvaluationPanel', () => {
     await user.click(screen.getByRole('button', { name: 'workflow.singleRun.reRun' }))
     expect(
       screen.getByRole('dialog', {
-        name: 'knowledgeSpace.qualityPage.evaluation.dialogTitle',
+        name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
       }),
     ).toBeVisible()
   })
@@ -387,25 +387,25 @@ describe('QualityEvaluationPanel', () => {
 
     renderPanel(queryClient)
 
-    await screen.findByText('knowledgeSpace.qualityPage.evaluation.emptyTitle')
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.run',
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
       }),
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.start',
+        name: 'knowledgeQuality.qualityPage.evaluation.start',
       }),
     )
 
     expect(
       await screen.findByRole('heading', {
-        name: 'knowledgeSpace.qualityPage.evaluation.reportTitle',
+        name: 'knowledgeQuality.qualityPage.evaluation.reportTitle',
       }),
     ).toBeVisible()
     expect(
-      screen.getAllByText('knowledgeSpace.qualityPage.evaluation.state.queued'),
+      screen.getAllByText('knowledgeQuality.qualityPage.evaluation.state.queued'),
     ).not.toHaveLength(0)
   })
 
@@ -430,29 +430,29 @@ describe('QualityEvaluationPanel', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
       }),
     )
-    await screen.findAllByText('knowledgeSpace.qualityPage.evaluation.state.queued')
+    await screen.findAllByText('knowledgeQuality.qualityPage.evaluation.state.queued')
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluationTab',
+        name: 'knowledgeQuality.qualityPage.evaluationTab',
       }),
     )
 
     expect(
-      await screen.findAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
+      await screen.findAllByText('knowledgeQuality.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
     expect(serviceMock.listReplays).toHaveBeenCalledTimes(2)
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
       }),
     )
 
     expect(
-      await screen.findAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
+      await screen.findAllByText('knowledgeQuality.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
     expect(screen.getByText('1 / 1')).toBeVisible()
   })
@@ -476,25 +476,25 @@ describe('QualityEvaluationPanel', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
       }),
     )
     expect(
-      await screen.findAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
+      await screen.findAllByText('knowledgeQuality.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluationTab',
+        name: 'knowledgeQuality.qualityPage.evaluationTab',
       }),
     )
     await user.click(
       await screen.findByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
       }),
     )
 
     expect(
-      screen.getAllByText('knowledgeSpace.qualityPage.evaluation.state.passed'),
+      screen.getAllByText('knowledgeQuality.qualityPage.evaluation.state.passed'),
     ).not.toHaveLength(0)
     expect(screen.getByText('1 / 1')).toBeVisible()
   })
@@ -509,27 +509,27 @@ describe('QualityEvaluationPanel', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'knowledgeSpace.qualityPage.evaluation.viewReport',
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
       }),
     )
     await screen.findByText('Who can change workspace permissions?')
     expect(screen.getByText('1 / 2')).toBeVisible()
     await user.click(
       screen.getByRole('button', {
-        name: /^knowledgeSpace\.qualityPage\.evaluation\.openEvidenceDetails/,
+        name: /^knowledgeQuality\.qualityPage\.evaluation\.openEvidenceDetails/,
       }),
     )
 
     expect(
       await screen.findByRole('dialog', {
-        name: 'knowledgeSpace.qualityPage.evaluation.evidenceDetailsTitle',
+        name: 'knowledgeQuality.qualityPage.evaluation.evidenceDetailsTitle',
       }),
     ).toBeVisible()
     const matchedSection = screen.getByRole('region', {
-      name: 'knowledgeSpace.qualityPage.evaluation.passed',
+      name: 'knowledgeQuality.qualityPage.evaluation.passed',
     })
     const missingSection = screen.getByRole('region', {
-      name: 'knowledgeSpace.qualityPage.evaluation.missed',
+      name: 'knowledgeQuality.qualityPage.evaluation.missed',
     })
     expect(
       within(matchedSection).getByText('Workspace owners can change member permissions.'),
@@ -542,10 +542,12 @@ describe('QualityEvaluationPanel', () => {
       query: { evidence_item_id: 'item-1' },
     })
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.closeDialog' }))
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.closeDialog' }),
+    )
     expect(
       screen.queryByRole('dialog', {
-        name: 'knowledgeSpace.qualityPage.evaluation.evidenceDetailsTitle',
+        name: 'knowledgeQuality.qualityPage.evaluation.evidenceDetailsTitle',
       }),
     ).not.toBeInTheDocument()
   })

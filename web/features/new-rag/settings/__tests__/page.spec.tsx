@@ -147,8 +147,8 @@ describe('KnowledgeSettingsPage', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('common.loading')
     expect(screen.queryByText('settings-form')).not.toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.settings.basicInfo')).toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.settings.dangerZone')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSettings.settings.basicInfo')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSettings.settings.dangerZone')).toBeInTheDocument()
   })
 
   it('shows the query error state and retries the failed server graph', async () => {

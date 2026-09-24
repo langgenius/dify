@@ -51,7 +51,7 @@ export function DocumentDetailTasksDrawer({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
   const currentDocument = useAtomValueRawSync(documentDetailDocumentAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
@@ -184,7 +184,7 @@ export function DocumentDetailTasksDrawer({
                   <span aria-hidden className="i-ri-close-line size-5" />
                 </DrawerCloseButton>
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
-                  {t(($) => $.backgroundTasksDescription)}
+                  {t(($) => $.backgroundTasksDescription, { ns: 'knowledgeTasks' })}
                 </DrawerDescription>
                 {readOnlyReason && (
                   <p
@@ -265,7 +265,7 @@ export function DocumentDetailTasksDrawer({
                   </ul>
                 ) : !taskQueryError && !hasMoreTasks ? (
                   <p className="py-16 text-center system-xs-regular text-text-tertiary">
-                    {t(($) => $.noBackgroundTasks)}
+                    {t(($) => $.noBackgroundTasks, { ns: 'knowledgeTasks' })}
                   </p>
                 ) : null}
                 {hasMoreTasks && (

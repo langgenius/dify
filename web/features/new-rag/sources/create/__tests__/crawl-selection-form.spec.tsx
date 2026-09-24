@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
-import knowledgeSpaceTranslations from '@/i18n/locales/en-US/knowledge-space.json'
+import knowledgeSpaceTranslations from '@/i18n/locales/en-US/knowledge-sources.json'
 import { getInitOptions } from '@/i18n/settings'
 import { render } from '@/test/console/render'
 import { CrawlSelectionForm } from '../crawl-selection-form'
@@ -223,11 +223,11 @@ async function selectSyncPolicy(
   mode: 'custom' | 'interval' | 'manual',
 ) {
   const optionNames = {
-    custom: 'knowledgeSpace.syncPolicyCustom',
-    interval: 'knowledgeSpace.syncPolicyDaily',
-    manual: 'knowledgeSpace.syncPolicyManual',
+    custom: 'knowledgeSources.syncPolicyCustom',
+    interval: 'knowledgeSources.syncPolicyDaily',
+    manual: 'knowledgeSources.syncPolicyManual',
   }
-  await user.click(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' }))
+  await user.click(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' }))
   await user.click(screen.getByRole('option', { name: optionNames[mode] }))
 }
 
@@ -245,9 +245,9 @@ describe('CrawlSelectionForm', () => {
       defaultNS: 'dataset',
       lng: 'en-US',
       ns: ['dataset'],
-      resources: { 'en-US': { knowledgeSpace: knowledgeSpaceTranslations } },
+      resources: { 'en-US': { knowledgeSources: knowledgeSpaceTranslations } },
     })
-    const tKnowledgeSpace = instance.getFixedT('en-US', 'knowledgeSpace')
+    const tKnowledgeSpace = instance.getFixedT('en-US', 'knowledgeSources')
     expect(tKnowledgeSpace(($) => $.pagesCrawled, { count: 1, host: 'example.com' })).toBe(
       '1 page crawled at example.com',
     )
@@ -274,8 +274,8 @@ describe('CrawlSelectionForm', () => {
 
   it('preserves the sync policy selected before crawl review', () => {
     renderSelectionForm({ initialSyncMode: 'manual' })
-    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' })).toHaveTextContent(
-      'knowledgeSpace.syncPolicyManual',
+    expect(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' })).toHaveTextContent(
+      'knowledgeSources.syncPolicyManual',
     )
   })
 
@@ -291,11 +291,11 @@ describe('CrawlSelectionForm', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
     expect(addSource).toBeEnabled()
-    expect(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAll' })).toHaveAttribute(
+    expect(screen.getByRole('checkbox', { name: 'knowledgeSources.selectAll' })).toHaveAttribute(
       'aria-checked',
       'mixed',
     )
-    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAll' }))
+    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSources.selectAll' }))
     expect(screen.getByRole('checkbox', { name: 'Guides' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Edit this page' })).not.toBeChecked()
   })
@@ -315,8 +315,8 @@ describe('CrawlSelectionForm', () => {
       'true',
     )
     expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reCrawl' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.reCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
     expect(onRecrawl).toHaveBeenCalledOnce()
     expect(onCancel).toHaveBeenCalledOnce()
   })
@@ -347,7 +347,7 @@ describe('CrawlSelectionForm', () => {
         />
       </QueryClientProvider>,
     )
-    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAll' }))
+    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSources.selectAll' }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
     await waitFor(() => expect(clientMock.asyncImport).toHaveBeenCalledOnce())
@@ -360,14 +360,16 @@ describe('CrawlSelectionForm', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
     await selectSyncPolicy(user, 'custom')
     const dialog = await screen.findByRole('dialog', {
-      name: 'knowledgeSpace.syncPolicyCustom',
+      name: 'knowledgeSources.syncPolicyCustom',
     })
     const interval = within(dialog).getByRole('textbox', {
-      name: 'knowledgeSpace.syncPolicyCustom knowledgeSpace.syncPolicyUnit.hours',
+      name: 'knowledgeSources.syncPolicyCustom knowledgeSpace.syncPolicyUnit.hours',
     })
     await user.clear(interval)
     await user.type(interval, '6')
-    await user.click(within(dialog).getByRole('button', { name: 'knowledgeSpace.syncPolicyApply' }))
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeSources.syncPolicyApply' }),
+    )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
     await waitFor(() =>
@@ -431,7 +433,7 @@ describe('CrawlSelectionForm', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.addSourceFailed')
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSources.addSourceFailed')
     expect(onSubmissionUncertainChange).toHaveBeenLastCalledWith(true)
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 

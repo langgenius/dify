@@ -34,7 +34,7 @@ import {
 } from './use-bulk-actions'
 
 function BulkReindexAction() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const disabled = useAtomValueRawSync(selectedDocumentResultsUnavailableAtom)
   const reindexDisabled = useAtomValueRawSync(selectionReindexDisabledAtom)
@@ -48,7 +48,7 @@ function BulkReindexAction() {
         : unavailableReason === 'loading'
           ? tCommon(($) => $.loading)
           : unavailableReason === 'partial'
-            ? t(($) => $.partialDocumentResults)
+            ? t(($) => $.partialDocumentResults, { ns: 'knowledgeDocuments' })
             : undefined
 
   return (
@@ -79,7 +79,7 @@ function BulkReindexAction() {
 }
 
 function BulkDownloadAction() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeDocuments'])
   const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
   const downloadableDocumentIds = useAtomValueRawSync(downloadableDocumentIdsAtom)
   const disabled = !canDownload || !downloadableDocumentIds.length
@@ -95,10 +95,10 @@ function BulkDownloadAction() {
         size="small"
         onClick={() => void run()}
       >
-        {t(($) => $.downloadDocuments)}
+        {t(($) => $.downloadDocuments, { ns: 'knowledgeDocuments' })}
       </Button>
       <span id="document-download-unavailable" className="sr-only">
-        {t(($) => $.documentActionsUnavailable)}
+        {t(($) => $.documentActionsUnavailable, { ns: 'knowledgeDocuments' })}
       </span>
     </>
   )
@@ -180,7 +180,7 @@ function BulkRemoveAction() {
 }
 
 export function DocumentBulkActionsToolbar() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const selectedDocumentIds = useAtomValueRawSync(validSelectedDocumentIdsAtom)
@@ -192,7 +192,7 @@ export function DocumentBulkActionsToolbar() {
   return (
     <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
       <div
-        aria-label={t(($) => $.bulkDocumentActions)}
+        aria-label={t(($) => $.bulkDocumentActions, { ns: 'knowledgeDocuments' })}
         className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
         role="group"
       >
@@ -209,7 +209,7 @@ export function DocumentBulkActionsToolbar() {
         <Button
           variant="ghost"
           size="small"
-          aria-label={t(($) => $.clearDocumentSelection)}
+          aria-label={t(($) => $.clearDocumentSelection, { ns: 'knowledgeDocuments' })}
           className="size-6.5 shrink-0 px-0"
           disabled={busy}
           onClick={() => {

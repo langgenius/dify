@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "وظایف افزودن اسناد، همگام‌سازی منابع و نمایه‌سازی مجدد.",
+  "dismissTask": "نادیده گرفتن کار",
+  "interruptTask": "توقف",
+  "noBackgroundTasks": "هنوز هیچ کار پس زمینه ای وجود ندارد.",
+  "overview.operation.document_delete": "حذف سند",
+  "overview.operation.document_processing": "پردازش سند",
+  "overview.operation.document_reindex": "فهرست مجدد اسناد",
+  "overview.operation.document_upload": "بارگذاری سند",
+  "overview.operation.source_bulk": "به روز رسانی منبع",
+  "overview.operation.source_crawl_import": "واردات وب سایت",
+  "overview.operation.source_crawl_preview": "پیش نمایش وب سایت",
+  "overview.operation.source_online_document_import": "واردات سند آنلاین",
+  "overview.operation.source_online_drive_import": "وارد کردن از درایو آنلاین",
+  "overview.operation.source_sync": "همگام سازی منبع",
+  "taskDismissed": "کار نادیده گرفته شد",
+  "taskFailedNotification": "پردازش سند ناموفق بود — از بخش وظایف دوباره امتحان کنید",
+  "undoTaskDismissal": "واگرد"
+}

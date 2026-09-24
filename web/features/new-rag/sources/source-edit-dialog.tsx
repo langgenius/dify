@@ -191,7 +191,7 @@ function ConnectedSourceEditDialogContent({
   source: Source
 }) {
   const { t: tCommon } = useTranslation(['common'])
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
   )
@@ -323,7 +323,7 @@ function ConnectedSourceEditDialogContent({
             <p role="alert" className="system-sm-regular text-text-destructive">
               {datasourcePluginsQuery.isError || connectionsError
                 ? t(($) => $.providerLoadFailed)
-                : t(($) => $.providerUnavailable)}
+                : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
             </p>
             {isFetchNextPageError && !connection && (
               <Button
@@ -370,7 +370,7 @@ function BasicSourceEditDialogContent({
   pending: boolean
   source: Source
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
   const [initialSource] = useState(source)
   const [nextName, setNextName] = useState(initialSource.name)
@@ -412,7 +412,7 @@ function BasicSourceEditDialogContent({
       <div className="mt-5">
         <Field name="sourceName" className="gap-1.5">
           <FieldLabel htmlFor={`source-name-${initialSource.id}`}>
-            {t(($) => $.sourceName)}
+            {t(($) => $.sourceName, { ns: 'knowledgeSources' })}
           </FieldLabel>
           <Input
             id={`source-name-${initialSource.id}`}
@@ -473,7 +473,7 @@ function WebsiteSourceEditDialogContent({
   pending: boolean
   source: Source
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
   const [initialSource] = useState(source)
   const providerName = sourceProviderDetails(initialSource).name ?? ''
@@ -711,7 +711,9 @@ function WebsiteSourceEditDialogContent({
 
   const sourceNameField = (
     <Field name="sourceName" className="gap-1.5">
-      <FieldLabel htmlFor={`source-name-${initialSource.id}`}>{t(($) => $.sourceName)}</FieldLabel>
+      <FieldLabel htmlFor={`source-name-${initialSource.id}`}>
+        {t(($) => $.sourceName, { ns: 'knowledgeSources' })}
+      </FieldLabel>
       <Input
         id={`source-name-${initialSource.id}`}
         autoComplete="off"
@@ -764,7 +766,7 @@ function WebsiteSourceEditDialogContent({
                   <p role="alert" className="pt-7 system-sm-regular text-text-destructive">
                     {providerLoadFailed
                       ? t(($) => $.providerLoadFailed)
-                      : t(($) => $.providerUnavailable)}
+                      : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
                   </p>
                 )}
               </div>

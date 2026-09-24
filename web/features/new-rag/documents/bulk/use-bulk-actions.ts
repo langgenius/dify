@@ -74,7 +74,7 @@ function useDocumentInvalidation() {
 }
 
 export function useBulkReindexAction() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
@@ -109,13 +109,14 @@ export function useBulkReindexAction() {
       if (!queuedCount)
         toast.error(
           failedIds.length
-            ? t(($) => $.documentsReindexFailed)
+            ? t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })
             : t(($) => $.documentsReindexPartial, {
                 missing: missingIds.length,
                 queued: 0,
               }),
         )
-      else if (failedIds.length) toast.warning(t(($) => $.documentsReindexFailed))
+      else if (failedIds.length)
+        toast.warning(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
       else if (missingIds.length)
         toast.warning(
           t(($) => $.documentsReindexPartial, {
@@ -123,11 +124,11 @@ export function useBulkReindexAction() {
             queued: queuedCount,
           }),
         )
-      else toast.success(t(($) => $.documentsReindexStarted))
+      else toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
       invalidateDocumentsAndTasks()
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsReindexFailed))
+      else toast.error(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
     } finally {
       finish()
     }

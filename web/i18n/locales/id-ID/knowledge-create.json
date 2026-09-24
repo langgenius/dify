@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Tambahkan & proses",
+  "crawlPreview": "Pratinjau perayapan",
+  "createFailed": "Kami tidak dapat membuat basis pengetahuan Agent ini. Periksa akses Anda dan coba lagi.",
+  "createTitle": "Buat basis pengetahuan Agent",
+  "description": "Deskripsi",
+  "descriptionHelp": "Deskripsi yang jelas membantu aplikasi menentukan kapan harus mencari di basis pengetahuan Agent ini.",
+  "descriptionPlaceholder": "misalnya Kebijakan pengembalian dana, FAQ pengiriman, dan langkah eskalasi — digunakan untuk pertanyaan dukungan pelanggan",
+  "illustrationHeadline": "Hubungkan konten Anda sekali — setiap aplikasi menjawab dengan pengetahuan terbaru.",
+  "namePlaceholder": "misalnya Buku Pegangan Dukungan Pelanggan",
+  "nameRequired": "Masukkan nama basis pengetahuan Agent.",
+  "selectedFiles": "File terpilih ({{valid}} dari {{total}} valid)",
+  "startWith": "Mulailah dengan",
+  "startWithHelp": "Anda dapat menambahkan lebih banyak Sumber atau Dokumen kapan saja.",
+  "uploadCharactersUnavailable": "Karakter: —",
+  "uploadDocuments": "Unggah dokumen",
+  "uploadDropZoneTitle": "Seret dan lepas file, atau pilih",
+  "uploadingFiles": "Mengunggah…"
+}

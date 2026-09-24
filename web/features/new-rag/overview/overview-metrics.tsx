@@ -90,7 +90,7 @@ export function OverviewMetrics() {
   const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
   const loading = useAtomValueRawSync(overviewStatsPendingAtom)
   const stats = useAtomValueRawSync(overviewStatsDataAtom)
-  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { i18n, t } = useTranslation(['knowledgeOverview'])
   const percentFormat = new Intl.NumberFormat(i18n.language, {
     maximumFractionDigits: 0,
     style: 'percent',
@@ -101,8 +101,8 @@ export function OverviewMetrics() {
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['overview.queries'])}
-        help={t(($) => $['overview.queriesHelp'])}
+        title={t(($) => $['overview.queries'], { ns: 'knowledgeOverview' })}
+        help={t(($) => $['overview.queriesHelp'], { ns: 'knowledgeOverview' })}
         value={stats ? compactNumber(stats.queries.value, i18n.language) : '—'}
         change={
           stats
@@ -116,8 +116,8 @@ export function OverviewMetrics() {
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['overview.answerRate'])}
-        help={t(($) => $['overview.answerRateHelp'])}
+        title={t(($) => $['overview.answerRate'], { ns: 'knowledgeOverview' })}
+        help={t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
         value={stats ? percentFormat.format(stats.answer_rate.value) : '—'}
         change={
           stats
@@ -128,20 +128,20 @@ export function OverviewMetrics() {
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['overview.documents'])}
+        title={t(($) => $['overview.documents'], { ns: 'knowledgeOverview' })}
         value={stats ? compactNumber(stats.documents, i18n.language) : '—'}
       />
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['overview.linkedApps'])}
+        title={t(($) => $['overview.linkedApps'], { ns: 'knowledgeOverview' })}
         value={stats ? compactNumber(stats.linked_apps, i18n.language) : '—'}
       />
       <MetricCard
         empty={empty}
         loading={loading}
-        title={t(($) => $['overview.freshness'])}
-        help={t(($) => $['overview.freshnessHelp'])}
+        title={t(($) => $['overview.freshness'], { ns: 'knowledgeOverview' })}
+        help={t(($) => $['overview.freshnessHelp'], { ns: 'knowledgeOverview' })}
         value={formatDuration(stats?.freshness_seconds, i18n.language)}
       />
     </div>
@@ -154,15 +154,15 @@ export function QueryOutcomesChart() {
   const error = useAtomValueRawSync(overviewOutcomesErrorAtom)
   const loading = useAtomValueRawSync(overviewOutcomesPendingAtom)
   const buckets = outcomes?.buckets
-  const { t, i18n } = useTranslation(['knowledgeSpace'])
+  const { t, i18n } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
   const chartOptions = useMemo(
     () =>
       buildQueryOutcomesChartOptions({
         buckets: buckets ?? [],
         labels: {
-          answered: t(($) => $['overview.answered']),
-          lowConfidence: t(($) => $['overview.lowConfidence']),
-          noEvidence: t(($) => $['overview.noEvidence']),
+          answered: t(($) => $['overview.answered'], { ns: 'knowledgeOverview' }),
+          lowConfidence: t(($) => $['overview.lowConfidence'], { ns: 'knowledgeOverview' }),
+          noEvidence: t(($) => $['overview.noEvidence'], { ns: 'knowledgeOverview' }),
         },
         locale: i18n.language,
       }),
@@ -174,7 +174,7 @@ export function QueryOutcomesChart() {
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <div className="flex h-6 items-center">
           <h2 className="system-xl-medium text-text-secondary">
-            {t(($) => $['overview.queryOutcomes'])}
+            {t(($) => $['overview.queryOutcomes'], { ns: 'knowledgeOverview' })}
           </h2>
         </div>
         <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
@@ -188,14 +188,14 @@ export function QueryOutcomesChart() {
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <div className="flex h-6 items-center">
           <h2 className="system-xl-medium text-text-secondary">
-            {t(($) => $['overview.queryOutcomes'])}
+            {t(($) => $['overview.queryOutcomes'], { ns: 'knowledgeOverview' })}
             <Infotip>
               <InfotipTrigger
-                aria-label={t(($) => $['overview.answerRateHelp'])}
+                aria-label={t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
                 className="ml-1 inline-flex size-4 align-middle"
               />
               <InfotipContent className="max-w-[260px]">
-                {t(($) => $['overview.answerRateHelp'])}
+                {t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
               </InfotipContent>
             </Infotip>
           </h2>
@@ -203,8 +203,10 @@ export function QueryOutcomesChart() {
         <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
           <EmptyInline
             icon="i-ri-time-line"
-            title={t(($) => $['overview.noQueryData'])}
-            description={t(($) => $['overview.noQueryDataDescription'])}
+            title={t(($) => $['overview.noQueryData'], { ns: 'knowledgeOverview' })}
+            description={t(($) => $['overview.noQueryDataDescription'], {
+              ns: 'knowledgeOverview',
+            })}
           />
         </Panel>
       </section>
@@ -214,14 +216,14 @@ export function QueryOutcomesChart() {
     <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="system-xl-medium text-text-secondary">
-          {t(($) => $['overview.queryOutcomes'])}
+          {t(($) => $['overview.queryOutcomes'], { ns: 'knowledgeOverview' })}
           <Infotip>
             <InfotipTrigger
-              aria-label={t(($) => $['overview.answerRateHelp'])}
+              aria-label={t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
               className="ml-1 inline-flex size-4 align-middle"
             />
             <InfotipContent className="max-w-[260px]">
-              {t(($) => $['overview.answerRateHelp'])}
+              {t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
             </InfotipContent>
           </Infotip>
         </h2>
@@ -242,7 +244,7 @@ export function QueryOutcomesChart() {
         ) : buckets?.length ? (
           <>
             <p className="sr-only">
-              {t(($) => $['overview.queryOutcomes'])}: {buckets.length}
+              {t(($) => $['overview.queryOutcomes'], { ns: 'knowledgeOverview' })}: {buckets.length}
             </p>
             <ReactECharts
               option={chartOptions}
@@ -253,8 +255,8 @@ export function QueryOutcomesChart() {
         ) : (
           <EmptyInline
             icon="i-ri-line-chart-line"
-            title={t(($) => $['overview.noActivity'])}
-            description={t(($) => $['overview.noActivityDescription'])}
+            title={t(($) => $['overview.noActivity'], { ns: 'knowledgeOverview' })}
+            description={t(($) => $['overview.noActivityDescription'], { ns: 'knowledgeOverview' })}
           />
         )}
       </Panel>

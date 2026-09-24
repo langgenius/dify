@@ -16,7 +16,7 @@ import { retrievalHistorySourceFilterAtom } from './state/scoped'
 const sourceFilters = ['all', 'retrieval_test', 'workflow'] as const
 
 export function RetrievalHistoryPanel() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeRetrieval'])
   const { activeRecordKey, displayRecords, hasNextPage, isFetchingNextPage, sourceFilter } =
     useAtomValueRawSync(retrievalHistoryFactsAtom)
   const selectRecord = useSetAtom(selectRetrievalRecordAtom)
@@ -27,10 +27,10 @@ export function RetrievalHistoryPanel() {
     <div className="mt-3 flex min-h-0 flex-1 flex-col pt-6">
       <div className="flex shrink-0 items-center justify-between gap-2 pr-3 pb-2 pl-3">
         <h2 className="system-xs-medium text-text-tertiary">
-          {t(($) => $['retrievalTest.records'])}
+          {t(($) => $['retrievalTest.records'], { ns: 'knowledgeRetrieval' })}
         </h2>
         <SegmentedControl<RetrievalHistorySourceFilter>
-          aria-label={t(($) => $['retrievalTest.sourceFilter.label'])}
+          aria-label={t(($) => $['retrievalTest.sourceFilter.label'], { ns: 'knowledgeRetrieval' })}
           className="shrink-0"
           value={sourceFilter}
           onValueChange={setSourceFilter}
@@ -41,7 +41,7 @@ export function RetrievalHistoryPanel() {
               value={filter}
               className="px-1.5 py-0.5 system-2xs-medium"
             >
-              {t(($) => $[`retrievalTest.sourceFilter.${filter}`])}
+              {t(($) => $[`retrievalTest.sourceFilter.${filter}`], { ns: 'knowledgeRetrieval' })}
             </SegmentedControlItem>
           ))}
         </SegmentedControl>
@@ -68,7 +68,7 @@ export function RetrievalHistoryPanel() {
           </div>
         ) : (
           <p className="px-3 py-5 body-sm-regular text-text-quaternary">
-            {t(($) => $['retrievalTest.emptyRecords'])}
+            {t(($) => $['retrievalTest.emptyRecords'], { ns: 'knowledgeRetrieval' })}
           </p>
         )}
       </div>

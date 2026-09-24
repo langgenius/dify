@@ -54,7 +54,7 @@ export function CreateUploadQueue({
   uploads: QueuedUpload[]
   onChange: (uploads: QueuedUpload[]) => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
   const inputId = useId()
   const [dragging, setDragging] = useState(false)
   const validUploadCount = uploads.filter(({ issue }) => !issue).length
@@ -113,7 +113,9 @@ export function CreateUploadQueue({
                 : 'i-ri-upload-cloud-2-line',
             )}
           />
-          {uploading ? t(($) => $.uploadingFiles) : t(($) => $.uploadDropZoneTitle)}
+          {uploading
+            ? t(($) => $.uploadingFiles, { ns: 'knowledgeCreate' })
+            : t(($) => $.uploadDropZoneTitle, { ns: 'knowledgeCreate' })}
         </span>
         <span className="system-2xs-medium text-text-tertiary">
           {t(($) => $.documentUploadFormats, { size: fileSizeLimitMb })}
@@ -124,6 +126,7 @@ export function CreateUploadQueue({
         <section aria-label={t(($) => $.uploadFiles)}>
           <h3 className="system-sm-semibold text-text-primary">
             {t(($) => $.selectedFiles, {
+              ns: 'knowledgeCreate',
               total: uploads.length,
               valid: validUploadCount,
             })}
@@ -133,7 +136,7 @@ export function CreateUploadQueue({
             className="mt-2"
             disabled={disabled}
             fileSizeLimitMb={fileSizeLimitMb}
-            idleStatus={t(($) => $.uploadCharactersUnavailable)}
+            idleStatus={t(($) => $.uploadCharactersUnavailable, { ns: 'knowledgeCreate' })}
             items={uploads}
             uploadProgress={uploadPhases}
             variant="compact"

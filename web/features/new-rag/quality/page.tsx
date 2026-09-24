@@ -18,7 +18,7 @@ const qualityTabParser = parseAsStringLiteral(['bad-cases', 'evaluations'] as co
 const qualityRunParser = parseAsString.withOptions({ history: 'push' })
 
 export function QualityPage() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeQuality'])
   const [queryTab, setQueryTab] = useQueryState('tab', qualityTabParser)
   const [queryRunId, setQueryRunId] = useQueryState('run', qualityRunParser)
   const activeTab: QualityTab =
@@ -46,9 +46,11 @@ export function QualityPage() {
   return (
     <div className="relative min-h-0 min-w-0 flex-1 overflow-y-auto px-6 pt-3 pb-20">
       <header>
-        <h1 className="system-xl-semibold text-text-primary">{t(($) => $['qualityPage.title'])}</h1>
+        <h1 className="system-xl-semibold text-text-primary">
+          {t(($) => $['qualityPage.title'], { ns: 'knowledgeQuality' })}
+        </h1>
         <p className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['qualityPage.description'])}
+          {t(($) => $['qualityPage.description'], { ns: 'knowledgeQuality' })}
         </p>
       </header>
 

@@ -26,7 +26,7 @@ export function KnowledgeCreationPermissions({
   onSelectedMemberIdsChange,
   onVisibilityChange,
 }: KnowledgeCreationPermissionsProps) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings'])
   const { t: tCommon } = useTranslation(['common'])
   const labelId = useId()
   const descriptionId = useId()
@@ -67,7 +67,7 @@ export function KnowledgeCreationPermissions({
       )}
       {membersInvalid && (
         <p id={membersErrorId} className="system-xs-regular text-text-destructive" role="alert">
-          {t(($) => $['settings.membersRequired'])}
+          {t(($) => $['settings.membersRequired'], { ns: 'knowledgeSettings' })}
         </p>
       )}
       {canConfigureAccess && membersQuery.isError && (

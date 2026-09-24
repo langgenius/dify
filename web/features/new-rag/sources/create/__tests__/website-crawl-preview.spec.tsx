@@ -95,7 +95,7 @@ vi.mock('../crawl-selection-form', () => ({
     pages: Array<{ pageId: string; title?: string }>
   }) => (
     <div>
-      <p role="status">knowledgeSpace.pagesCrawled</p>
+      <p role="status">knowledgeSources.pagesCrawled</p>
       {pages.map((page) => (
         <label key={page.pageId}>
           <input
@@ -108,10 +108,10 @@ vi.mock('../crawl-selection-form', () => ({
         </label>
       ))}
       <button type="button" aria-disabled={busy} disabled={busy} onClick={onRecrawl}>
-        knowledgeSpace.reCrawl
+        knowledgeSources.reCrawl
       </button>
       <button type="button" onClick={onCancel}>
-        knowledgeSpace.cancelAddSource
+        knowledgeSources.cancelAddSource
       </button>
       <button type="button" onClick={() => onInteractionLockChange?.(true)}>
         knowledgeSpace.addSource
@@ -210,13 +210,13 @@ function createDeferred<T>() {
 
 async function fillValidForm() {
   const user = userEvent.setup()
-  await user.type(screen.getByLabelText(/^knowledgeSpace\.rootUrl/), 'https://docs.dify.ai')
-  await user.type(screen.getByLabelText(/^knowledgeSpace\.sourceName/), 'Dify docs')
+  await user.type(screen.getByLabelText(/^knowledgeSources\.rootUrl/), 'https://docs.dify.ai')
+  await user.type(screen.getByLabelText(/^knowledgeSources\.sourceName/), 'Dify docs')
   return user
 }
 
 async function openCrawlOptions(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }))
+  await user.click(screen.getByRole('button', { name: 'knowledgeSources.crawlOptions' }))
 }
 
 function deferred<T>() {
@@ -270,19 +270,19 @@ describe('WebsiteCrawlPreview', () => {
     )
 
     expect(screen.getByRole('status')).toHaveTextContent(
-      'knowledgeSpace.providerConnected:{"provider":"Firecrawl"}',
+      'knowledgeSources.providerConnected:{"provider":"Firecrawl"}',
     )
     const start = screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' })
     expect(start).toBeDisabled()
-    await user.type(screen.getByLabelText(/^knowledgeSpace\.rootUrl/), 'ftp://docs.dify.ai')
+    await user.type(screen.getByLabelText(/^knowledgeSources\.rootUrl/), 'ftp://docs.dify.ai')
     await user.tab()
-    expect(screen.getByLabelText(/^knowledgeSpace\.rootUrl/)).toHaveAttribute(
+    expect(screen.getByLabelText(/^knowledgeSources\.rootUrl/)).toHaveAttribute(
       'aria-invalid',
       'true',
     )
-    await user.clear(screen.getByLabelText(/^knowledgeSpace\.rootUrl/))
-    await user.type(screen.getByLabelText(/^knowledgeSpace\.rootUrl/), 'https://docs.dify.ai')
-    await user.type(screen.getByLabelText(/^knowledgeSpace\.sourceName/), 'Dify docs')
+    await user.clear(screen.getByLabelText(/^knowledgeSources\.rootUrl/))
+    await user.type(screen.getByLabelText(/^knowledgeSources\.rootUrl/), 'https://docs.dify.ai')
+    await user.type(screen.getByLabelText(/^knowledgeSources\.sourceName/), 'Dify docs')
     await user.click(start)
 
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
@@ -314,8 +314,8 @@ describe('WebsiteCrawlPreview', () => {
       params: { control_space_id: 'space-1', source_id: 'source-1' },
     })
     expect(await screen.findByText('Getting started')).toBeInTheDocument()
-    expect(screen.getByText(/^knowledgeSpace\.pagesCrawled/)).toHaveAttribute('role', 'status')
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.reCrawl' })).toBeInTheDocument()
+    expect(screen.getByText(/^knowledgeSources\.pagesCrawled/)).toHaveAttribute('role', 'status')
+    expect(screen.getByRole('button', { name: 'knowledgeSources.reCrawl' })).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }),
     ).not.toBeInTheDocument()
@@ -327,7 +327,7 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByText('Getting started')
 
-    const rootUrl = screen.getByLabelText(/^knowledgeSpace\.rootUrl/)
+    const rootUrl = screen.getByLabelText(/^knowledgeSources\.rootUrl/)
     expect(rootUrl).toBeEnabled()
     await user.clear(rootUrl)
 
@@ -349,7 +349,7 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByText('Getting started')
 
-    const rootUrl = screen.getByLabelText(/^knowledgeSpace\.rootUrl/)
+    const rootUrl = screen.getByLabelText(/^knowledgeSources\.rootUrl/)
     await user.clear(rootUrl)
     await user.type(rootUrl, 'https://example.com')
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
@@ -401,7 +401,7 @@ describe('WebsiteCrawlPreview', () => {
       version: 2,
     })
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
 
     await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledTimes(2))
     expect(clientMock.deleteSource).toHaveBeenNthCalledWith(1, {
@@ -437,7 +437,7 @@ describe('WebsiteCrawlPreview', () => {
       version: 2,
     })
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
 
     await waitFor(() => expect(clientMock.getSource).toHaveBeenCalledOnce())
     expect(clientMock.deleteSource).toHaveBeenCalledOnce()
@@ -448,7 +448,7 @@ describe('WebsiteCrawlPreview', () => {
       query: { documents: 'cascade' },
     })
     expect(routerMock.push).not.toHaveBeenCalled()
-    expect(screen.getByText('knowledgeSpace.crawlFailedDescription')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSources.crawlFailedDescription')).toBeInTheDocument()
   })
 
   it('locks the surrounding setup without reporting an active crawl as pending', async () => {
@@ -499,7 +499,7 @@ describe('WebsiteCrawlPreview', () => {
     const firstIdempotencyKey =
       clientMock.startPreview.mock.calls[0]?.[0].headers['Idempotency-Key']
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.reCrawl' }))
 
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
@@ -517,7 +517,7 @@ describe('WebsiteCrawlPreview', () => {
   it('submits the crawl form with Enter and enforces the source name contract limit', async () => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
-    const name = screen.getByLabelText(/^knowledgeSpace\.sourceName/)
+    const name = screen.getByLabelText(/^knowledgeSources\.sourceName/)
     expect(name).toHaveAttribute('maxlength', '200')
     await user.clear(name)
     await user.type(name, 'x'.repeat(201))
@@ -533,13 +533,13 @@ describe('WebsiteCrawlPreview', () => {
       render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
       const user = await fillValidForm()
       await openCrawlOptions(user)
-      const pageLimit = screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })
+      const pageLimit = screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })
       await user.clear(pageLimit)
       await user.type(pageLimit, invalidLimit)
 
       expect(pageLimit).toHaveValue(Number(invalidLimit))
       expect(pageLimit).toHaveAttribute('aria-invalid', 'true')
-      expect(pageLimit).toHaveAccessibleDescription('knowledgeSpace.maxPages: 1–200')
+      expect(pageLimit).toHaveAccessibleDescription('knowledgeSources.maxPages: 1–200')
       expect(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' })).toBeDisabled()
       expect(clientMock.createSource).not.toHaveBeenCalled()
       expect(clientMock.startPreview).not.toHaveBeenCalled()
@@ -550,7 +550,7 @@ describe('WebsiteCrawlPreview', () => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
     await openCrawlOptions(user)
-    const pageLimit = screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })
+    const pageLimit = screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })
     await user.clear(pageLimit)
     await user.type(pageLimit, String(validLimit))
     expect(pageLimit).toHaveValue(validLimit)
@@ -566,7 +566,7 @@ describe('WebsiteCrawlPreview', () => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
     await openCrawlOptions(user)
-    const pageLimit = screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })
+    const pageLimit = screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })
     await user.clear(pageLimit)
     await user.type(pageLimit, '50')
     expect(pageLimit).toHaveValue(50)
@@ -580,12 +580,12 @@ describe('WebsiteCrawlPreview', () => {
     const user = userEvent.setup()
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
 
-    await user.type(screen.getByLabelText(/^knowledgeSpace\.rootUrl/), 'https://docs.dify.ai')
+    await user.type(screen.getByLabelText(/^knowledgeSources\.rootUrl/), 'https://docs.dify.ai')
     const unload = new Event('beforeunload', { cancelable: true })
     window.dispatchEvent(unload)
     expect(unload.defaultPrevented).toBe(false)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
     await waitFor(() =>
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )
@@ -600,7 +600,7 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
 
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
     expect(clientMock.cancel).toHaveBeenCalledWith({
@@ -625,11 +625,10 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }),
+    ).toHaveAttribute('aria-disabled', 'true')
 
     startRequest.resolve(run('running'))
 
@@ -649,7 +648,7 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
 
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
     expect(clientMock.startPreview.mock.calls[0]?.[0].headers).toEqual(
@@ -669,7 +668,7 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
     sourceRequest.resolve(source())
 
     await waitFor(() =>
@@ -689,11 +688,11 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
-    expect(screen.getByText('knowledgeSpace.crawlFailedDescription')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
+    expect(screen.getByText('knowledgeSources.crawlFailedDescription')).toBeInTheDocument()
     expect(routerMock.push).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
 
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledTimes(2))
     expect(clientMock.cancel.mock.calls[0]?.[0].params.run_id).toBe('run-1')
@@ -711,12 +710,12 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByText('Getting started')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.reCrawl' }))
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
     expect(clientMock.startPreview).toHaveBeenCalledOnce()
     expect(screen.getByText('Getting started')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
 
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledTimes(2))
     await waitFor(() =>
@@ -727,11 +726,11 @@ describe('WebsiteCrawlPreview', () => {
   it('leaves through clean Cancel after a dirty form is cleared', async () => {
     const user = userEvent.setup()
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
-    const rootUrl = screen.getByLabelText(/^knowledgeSpace\.rootUrl/)
+    const rootUrl = screen.getByLabelText(/^knowledgeSources\.rootUrl/)
     await user.type(rootUrl, 'x')
     await user.clear(rootUrl)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
 
     await waitFor(() =>
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
@@ -746,7 +745,7 @@ describe('WebsiteCrawlPreview', () => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
-    const reCrawl = await screen.findByRole('button', { name: 'knowledgeSpace.reCrawl' })
+    const reCrawl = await screen.findByRole('button', { name: 'knowledgeSources.reCrawl' })
     await user.click(reCrawl)
 
     expect(reCrawl).toHaveAttribute('aria-disabled', 'true')
@@ -810,7 +809,7 @@ describe('WebsiteCrawlPreview', () => {
     })
     expect(
       screen.getByRole('progressbar', {
-        name: 'knowledgeSpace.crawlProgress:{"host":"docs.dify.ai"}',
+        name: 'knowledgeSources.crawlProgress:{"host":"docs.dify.ai"}',
       }),
     ).toHaveValue(3)
     const status = screen.getByText(/^knowledgeSpace\.crawlingPages/)
@@ -857,7 +856,7 @@ describe('WebsiteCrawlPreview', () => {
     await user.dblClick(stop)
 
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
-    const stopping = screen.getByRole('button', { name: 'knowledgeSpace.stoppingCrawl' })
+    const stopping = screen.getByRole('button', { name: 'knowledgeSources.stoppingCrawl' })
     expect(stopping).toBe(stop)
     expect(stopping).not.toBeDisabled()
     expect(stopping).toHaveAttribute('aria-disabled', 'true')
@@ -935,8 +934,8 @@ describe('WebsiteCrawlPreview', () => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.crawlFailed403')
-    const retry = screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' })
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSources.crawlFailed403')
+    const retry = screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' })
     await user.dblClick(retry)
 
     await waitFor(() => expect(clientMock.retry).toHaveBeenCalledOnce())
@@ -960,7 +959,7 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
 
     expect(
       await screen.findByRole('button', { name: 'knowledgeSpace.stopCrawl' }),
@@ -996,7 +995,7 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
     await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(2))
 
     await act(async () => vi.advanceTimersByTime(1500))
@@ -1007,7 +1006,7 @@ describe('WebsiteCrawlPreview', () => {
     await act(async () => vi.advanceTimersByTime(1500))
     await screen.findByText('Getting started')
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.reCrawl' }))
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
     expect(clientMock.retry).toHaveBeenCalledOnce()
     expect(clientMock.cancel).toHaveBeenCalledOnce()
@@ -1032,10 +1031,10 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
 
     expect(
-      await screen.findByRole('button', { name: 'knowledgeSpace.reCrawl' }),
+      await screen.findByRole('button', { name: 'knowledgeSources.reCrawl' }),
     ).toBeInTheDocument()
     expect(clientMock.retry).toHaveBeenCalledOnce()
   })
@@ -1056,11 +1055,11 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
-    expect(screen.getByLabelText(/^knowledgeSpace\.rootUrl/)).toBeDisabled()
-    expect(screen.getByLabelText(/^knowledgeSpace\.sourceName/)).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
+    expect(screen.getByLabelText(/^knowledgeSources\.rootUrl/)).toBeDisabled()
+    expect(screen.getByLabelText(/^knowledgeSources\.sourceName/)).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
 
     await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(4))
     expect(clientMock.retry).toHaveBeenCalledOnce()
@@ -1079,20 +1078,20 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
 
     await waitFor(() => expect(clientMock.retry).toHaveBeenCalledTimes(2))
   })
 
   it.each([
-    ['failed', 'PROVIDER_TIMEOUT', 'knowledgeSpace.crawlFailedTimeout'],
+    ['failed', 'PROVIDER_TIMEOUT', 'knowledgeSources.crawlFailedTimeout'],
     [
       'failed',
       'PROVIDER_UNAVAILABLE',
-      'knowledgeSpace.crawlFailedProvider:{"provider":"Firecrawl"}',
+      'knowledgeSources.crawlFailedProvider:{"provider":"Firecrawl"}',
     ],
-    ['timed_out', undefined, 'knowledgeSpace.crawlFailedTimeout'],
+    ['timed_out', undefined, 'knowledgeSources.crawlFailedTimeout'],
   ])('shows a recovery message for %s / %s', async (state, lastErrorCode, message) => {
     clientMock.getRun.mockResolvedValue(run(state, { lastErrorCode }))
     clientMock.getPages.mockResolvedValue({ items: [] })
@@ -1112,9 +1111,9 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
 
-    const noPages = await screen.findByText(/^knowledgeSpace\.noPagesFound:/)
+    const noPages = await screen.findByText(/^knowledgeSources\.noPagesFound:/)
     expect(noPages.closest('[role="status"]')).toHaveAttribute('aria-live', 'polite')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.adjustAndRecrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.adjustAndRecrawl' }))
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
     expect(clientMock.retry).not.toHaveBeenCalled()
     expect(clientMock.cancel).not.toHaveBeenCalled()
@@ -1146,9 +1145,9 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'knowledgeSpace.crawlFailedDescription',
+      'knowledgeSources.crawlFailedDescription',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
 
     await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledTimes(2))
     expect(clientMock.retry).not.toHaveBeenCalled()
@@ -1164,9 +1163,9 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
-    expect(screen.getByLabelText(/^knowledgeSpace\.rootUrl/)).toBeDisabled()
-    expect(screen.getByLabelText(/^knowledgeSpace\.sourceName/)).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    expect(screen.getByLabelText(/^knowledgeSources\.rootUrl/)).toBeDisabled()
+    expect(screen.getByLabelText(/^knowledgeSources\.sourceName/)).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
 
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
     expect(clientMock.createSource).toHaveBeenCalledOnce()
@@ -1207,7 +1206,7 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
 
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
     expect(clientMock.createSource).toHaveBeenCalledOnce()
@@ -1224,10 +1223,10 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
-    expect(screen.getByLabelText(/^knowledgeSpace\.rootUrl/)).toBeDisabled()
-    expect(screen.getByLabelText(/^knowledgeSpace\.sourceName/)).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    expect(screen.getByLabelText(/^knowledgeSources\.rootUrl/)).toBeDisabled()
+    expect(screen.getByLabelText(/^knowledgeSources\.sourceName/)).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
 
     await waitFor(() => expect(clientMock.listSources).toHaveBeenCalledTimes(3))
     expect(clientMock.createSource).toHaveBeenCalledOnce()
@@ -1242,9 +1241,9 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.cancelAddSource' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
 
-    expect(screen.getByText('knowledgeSpace.crawlFailedDescription')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSources.crawlFailedDescription')).toBeInTheDocument()
     expect(routerMock.push).not.toHaveBeenCalled()
   })
 
@@ -1257,7 +1256,7 @@ describe('WebsiteCrawlPreview', () => {
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByRole('alert')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.retryCrawl' }))
 
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
     expect(clientMock.createSource).toHaveBeenCalledTimes(2)

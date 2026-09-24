@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "การเพิ่มเอกสาร การซิงค์แหล่งที่มา และงานจัดทำดัชนีใหม่",
+  "dismissTask": "ซ่อนงาน",
+  "interruptTask": "ขัดจังหวะ",
+  "noBackgroundTasks": "ยังไม่มีงานพื้นหลัง",
+  "overview.operation.document_delete": "การลบเอกสาร",
+  "overview.operation.document_processing": "การประมวลผลเอกสาร",
+  "overview.operation.document_reindex": "การจัดทำดัชนีเอกสารใหม่",
+  "overview.operation.document_upload": "การอัปโหลดเอกสาร",
+  "overview.operation.source_bulk": "การอัปเดตแหล่งข้อมูล",
+  "overview.operation.source_crawl_import": "การนำเข้าเว็บไซต์",
+  "overview.operation.source_crawl_preview": "การแสดงตัวอย่างเว็บไซต์",
+  "overview.operation.source_online_document_import": "การนำเข้าเอกสารออนไลน์",
+  "overview.operation.source_online_drive_import": "การนำเข้าไดรฟ์ออนไลน์",
+  "overview.operation.source_sync": "การซิงค์แหล่งข้อมูล",
+  "taskDismissed": "ซ่อนงานแล้ว",
+  "taskFailedNotification": "การประมวลผลเอกสารล้มเหลว — ลองอีกครั้งจากงาน",
+  "undoTaskDismissal": "เลิกทำ"
+}

@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "문서 추가, 소스 동기화 및 재색인 작업.",
+  "dismissTask": "작업 숨기기",
+  "interruptTask": "중단",
+  "noBackgroundTasks": "아직 백그라운드 작업이 없습니다.",
+  "overview.operation.document_delete": "문서 삭제",
+  "overview.operation.document_processing": "문서 처리",
+  "overview.operation.document_reindex": "문서 재인덱싱",
+  "overview.operation.document_upload": "문서 업로드",
+  "overview.operation.source_bulk": "소스 업데이트",
+  "overview.operation.source_crawl_import": "웹사이트 가져오기",
+  "overview.operation.source_crawl_preview": "웹사이트 미리보기",
+  "overview.operation.source_online_document_import": "온라인 문서 가져오기",
+  "overview.operation.source_online_drive_import": "온라인 드라이브 가져오기",
+  "overview.operation.source_sync": "소스 동기화",
+  "taskDismissed": "작업을 숨겼습니다",
+  "taskFailedNotification": "문서 처리 실패 — 작업에서 다시 시도하세요",
+  "undoTaskDismissal": "실행 취소"
+}

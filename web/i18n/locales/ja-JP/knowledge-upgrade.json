@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "「{{name}}」を Agent ナレッジベースにアップグレードしました",
+  "upgrade.completeTitle": "アップグレード完了",
+  "upgrade.contactSupport": "サポートに連絡",
+  "upgrade.dialogAvailability": "アップグレード後も、<strong>従来型ナレッジベースと Agent ナレッジベースの両方を引き続き利用できます</strong>",
+  "upgrade.dialogDescription": "すべてのドキュメント、設定、アプリ接続を引き継いで、<legacy>従来型ナレッジベース</legacy>を<new>Agent ナレッジベース</new>にアップグレードします。完了後は自動的に Agent ナレッジベースに移動します。",
+  "upgrade.dialogDuration": "サイズに応じて数分から数時間かかります。進行状況はナレッジベースのカードに表示されます",
+  "upgrade.dialogLinkedApps": "アップグレード中も連携アプリは検索を継続します",
+  "upgrade.dialogTitle": "このナレッジベースを Agent ナレッジベースにアップグレードしますか？",
+  "upgrade.failedDescription": "アップグレードに失敗しました。変更はありません。従来型ナレッジベースは引き続き利用できます。",
+  "upgrade.failedTitle": "アップグレード失敗",
+  "upgrade.failedToastDescription": "「{{name}}」は従来型ナレッジベースのままで、データは変更されていません",
+  "upgrade.guideDescription": "アップグレードすると、この従来型ナレッジベースは Agent ナレッジベースに移行します。ソースを接続すると、ドキュメントは同期され、自動的にインデックス化されます。ドキュメント、設定、アプリ接続が引き継がれ、連携アプリも引き続き動作します。",
+  "upgrade.guideTitle": "従来型ナレッジベースから Agent ナレッジベースへのアップグレード",
+  "upgrade.justNow": "たった今",
+  "upgrade.menuLabel": "Agent ナレッジベースにアップグレード",
+  "upgrade.migratingDocuments": "ドキュメントを移行中…",
+  "upgrade.start": "アップグレードを開始",
+  "upgrade.startFailed": "アップグレードを開始できませんでした。もう一度お試しください。",
+  "upgrade.statusFailed": "アップグレード失敗",
+  "upgrade.statusUpgrading": "アップグレード中",
+  "upgrade.upgradedJustNow": "たった今アップグレード"
+}

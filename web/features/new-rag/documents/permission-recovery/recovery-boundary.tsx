@@ -114,7 +114,7 @@ export function DocumentPermissionRecoveryBulkRegion({ children }: { children: R
 }
 
 export function DocumentReadPermissionRecovery() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeDocuments', 'knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
   const { canRetryRead, denialIdentity, fetching } = useAtomValueRawSync(
     documentReadRecoveryFactsAtom,
@@ -131,14 +131,14 @@ export function DocumentReadPermissionRecovery() {
     >
       <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
       <h2 className="mt-3 title-xl-semi-bold text-text-primary">
-        {t(($) => $.documentsPermissionTitle)}
+        {t(($) => $.documentsPermissionTitle, { ns: 'knowledgeDocuments' })}
       </h2>
       <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-        {t(($) => $.documentsPermissionDescription)}
+        {t(($) => $.documentsPermissionDescription, { ns: 'knowledgeSpace' })}
       </p>
       {canRetryRead && (
         <Button
-          aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsPermissionDescription)}`}
+          aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsPermissionDescription, { ns: 'knowledgeSpace' })}`}
           className="mt-4"
           loading={fetching}
           onBlur={(event) => {

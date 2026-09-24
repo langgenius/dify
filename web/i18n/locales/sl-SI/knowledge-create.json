@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Dodaj in obdelaj",
+  "crawlPreview": "Predogled iskanja",
+  "createFailed": "Te zbirke znanja Agent nismo mogli ustvariti. Preverite dostop in poskusite znova.",
+  "createTitle": "Ustvari zbirko znanja Agent",
+  "description": "Opis",
+  "descriptionHelp": "Jasen opis pomaga aplikacijam odločiti, kdaj naj iščejo po tej zbirki znanja Agent.",
+  "descriptionPlaceholder": "npr. Politika vračil, pogosta vprašanja o pošiljanju in koraki za eskalacijo — uporabite za vprašanja podpore strankam",
+  "illustrationHeadline": "Vsebino povežite enkrat — vsaka aplikacija bo odgovarjala z najnovejšim znanjem.",
+  "namePlaceholder": "npr. Priročnik za podporo strankam",
+  "nameRequired": "Vnesite ime zbirke znanja Agent.",
+  "selectedFiles": "Izbrane datoteke ({{valid}} od {{total}} veljavnih)",
+  "startWith": "Začni z",
+  "startWithHelp": "Kadar koli lahko dodate več virov ali dokumentov.",
+  "uploadCharactersUnavailable": "Znaki: —",
+  "uploadDocuments": "Nalaganje dokumentov",
+  "uploadDropZoneTitle": "Povlecite in spustite datoteke ali prebrskajte",
+  "uploadingFiles": "Nalaganje…"
+}

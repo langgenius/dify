@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}” ora è una base di conoscenza Agent",
+  "upgrade.completeTitle": "Aggiornamento completato",
+  "upgrade.contactSupport": "Contatta il supporto",
+  "upgrade.dialogAvailability": "Dopo l’aggiornamento, <strong>sia la base di conoscenza classica sia quella Agent rimangono disponibili</strong>",
+  "upgrade.dialogDescription": "Aggiorna questa <legacy>base di conoscenza classica</legacy> a una <new>base di conoscenza Agent</new>, mantenendo documenti, impostazioni e connessioni alle app. Verrai reindirizzato automaticamente alla base di conoscenza Agent.",
+  "upgrade.dialogDuration": "Richiede da alcuni minuti ad alcune ore, in base alle dimensioni. L’avanzamento è mostrato sulla scheda della base di conoscenza",
+  "upgrade.dialogLinkedApps": "Le app collegate continuano a recuperare dati durante l’aggiornamento",
+  "upgrade.dialogTitle": "Aggiornare a una base di conoscenza Agent?",
+  "upgrade.failedDescription": "Aggiornamento non riuscito: non è cambiato nulla. La base di conoscenza classica è ancora disponibile.",
+  "upgrade.failedTitle": "Aggiornamento non riuscito",
+  "upgrade.failedToastDescription": "“{{name}}” rimane una base di conoscenza classica; nessun dato è stato modificato",
+  "upgrade.guideDescription": "L’aggiornamento porta questa base di conoscenza classica a una base di conoscenza Agent. Collega una fonte e i documenti resteranno sincronizzati e verranno indicizzati automaticamente. Documenti, impostazioni e connessioni alle app vengono trasferiti e le app collegate continuano a funzionare.",
+  "upgrade.guideTitle": "Aggiornamento da una base di conoscenza classica a una base di conoscenza Agent",
+  "upgrade.justNow": "Ora",
+  "upgrade.menuLabel": "Aggiorna a una base di conoscenza Agent",
+  "upgrade.migratingDocuments": "Migrazione dei documenti…",
+  "upgrade.start": "Avvia aggiornamento",
+  "upgrade.startFailed": "Impossibile avviare l’aggiornamento. Riprova.",
+  "upgrade.statusFailed": "Aggiornamento non riuscito",
+  "upgrade.statusUpgrading": "Aggiornamento in corso",
+  "upgrade.upgradedJustNow": "Appena aggiornata"
+}

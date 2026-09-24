@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Adaugă și procesează",
+  "crawlPreview": "Previzualizarea explorării",
+  "createFailed": "Nu am putut crea această bază de cunoștințe Agent. Verificați accesul și încercați din nou.",
+  "createTitle": "Creează o bază de cunoștințe Agent",
+  "description": "Descriere",
+  "descriptionHelp": "O descriere clară ajută aplicațiile să decidă când să caute în această bază de cunoștințe Agent.",
+  "descriptionPlaceholder": "de ex. Politica de rambursare, întrebări frecvente despre expediere și pași de escaladare — utilizați pentru întrebările de asistență pentru clienți",
+  "illustrationHeadline": "Conectează conținutul o singură dată — fiecare aplicație răspunde cu cele mai noi informații.",
+  "namePlaceholder": "de ex. Manual de asistență pentru clienți",
+  "nameRequired": "Introduceți un nume de bază de cunoștințe Agent.",
+  "selectedFiles": "Fișiere selectate ({{valid}} din {{total}} valide)",
+  "startWith": "Începe cu",
+  "startWithHelp": "Puteți adăuga oricând mai multe surse sau documente.",
+  "uploadCharactersUnavailable": "Caractere: —",
+  "uploadDocuments": "Încărcați documente",
+  "uploadDropZoneTitle": "Trage și plasează fișiere sau răsfoiește",
+  "uploadingFiles": "Se încarcă…"
+}

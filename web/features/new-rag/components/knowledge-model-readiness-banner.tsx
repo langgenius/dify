@@ -63,7 +63,7 @@ export function KnowledgeModelReadinessBanner({
             className={knowledgeModelReadinessActionClassName}
             href={newKnowledgeSettingsReturnPath(knowledgeSpaceId, { capability, returnTo })}
           >
-            {t(($) => $['overview.attention.action.configureModels'])}
+            {t(($) => $['overview.attention.action.configureModels'], { ns: 'knowledgeSpace' })}
           </Link>
         )
       }

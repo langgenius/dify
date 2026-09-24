@@ -100,7 +100,7 @@ function useMetadataFieldMutation() {
 }
 
 function CreateMetadataPopover() {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'common'])
+  const { t } = useTranslation(['dataset', 'common'])
   const [open, setOpen] = useState(false)
   const metadataFieldsQuery = useMetadataFields()
   const fields = metadataFieldsQuery.data ?? []
@@ -160,7 +160,7 @@ function MetadataItem({
   field: DocumentMetadataField
   fields: DocumentMetadataField[]
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'common'])
+  const { t } = useTranslation(['dataset', 'common'])
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
   const [name, setName] = useState(field.name)
@@ -307,7 +307,7 @@ function MetadataItem({
 }
 
 export function DocumentMetadataDrawer() {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'common'])
+  const { t } = useTranslation(['dataset', 'common', 'knowledgeCitation'])
   const canRead = useAtomValueRawSync(documentCanReadAtom)
   const metadataRequest = useAtomValueRawSync(documentMetadataAtom)
   const setMetadataRequest = useSetAtom(documentMetadataAtom)
@@ -345,7 +345,7 @@ export function DocumentMetadataDrawer() {
                   <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-background-section-burn px-3 py-2">
                     <span className="min-w-0 system-xs-regular text-text-tertiary">
                       {t(($) => $.documentLoadErrorDescription, {
-                        ns: 'knowledgeSpace',
+                        ns: 'knowledgeCitation',
                       })}
                     </span>
                     <Button

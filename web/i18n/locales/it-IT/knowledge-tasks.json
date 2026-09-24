@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Aggiunte di documenti, sincronizzazioni di origini e processi di reindicizzazione.",
+  "dismissTask": "Ignora attività",
+  "interruptTask": "Interrompere",
+  "noBackgroundTasks": "Ancora nessuna attività in background.",
+  "overview.operation.document_delete": "cancellazione del documento",
+  "overview.operation.document_processing": "elaborazione dei documenti",
+  "overview.operation.document_reindex": "reindicizzazione dei documenti",
+  "overview.operation.document_upload": "caricamento del documento",
+  "overview.operation.source_bulk": "aggiornamento della fonte",
+  "overview.operation.source_crawl_import": "importazione del sito web",
+  "overview.operation.source_crawl_preview": "anteprima del sito web",
+  "overview.operation.source_online_document_import": "importazione di documenti online",
+  "overview.operation.source_online_drive_import": "importazione di unità online",
+  "overview.operation.source_sync": "sincronizzazione della sorgente",
+  "taskDismissed": "Attività ignorata",
+  "taskFailedNotification": "Elaborazione del documento non riuscita — riprova da Attività",
+  "undoTaskDismissal": "Annulla"
+}

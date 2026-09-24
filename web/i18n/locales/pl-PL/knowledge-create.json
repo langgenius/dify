@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Dodaj i przetwórz",
+  "crawlPreview": "Podgląd skanowania",
+  "createFailed": "Nie mogliśmy utworzyć tej bazy wiedzy Agent. Sprawdź swój dostęp i spróbuj ponownie.",
+  "createTitle": "Utwórz bazę wiedzy Agent",
+  "description": "Opis",
+  "descriptionHelp": "Jasny opis pomaga aplikacjom zdecydować, kiedy przeszukiwać tę bazę wiedzy Agent.",
+  "descriptionPlaceholder": "np. Polityka zwrotów, często zadawane pytania dotyczące wysyłki i etapy eskalacji — używaj w przypadku pytań do obsługi klienta",
+  "illustrationHeadline": "Połącz treści raz — każda aplikacja odpowie, korzystając z najnowszej wiedzy.",
+  "namePlaceholder": "np. Podręcznik obsługi klienta",
+  "nameRequired": "Wprowadź nazwę bazy wiedzy Agent.",
+  "selectedFiles": "Wybrane pliki ({{valid}} z {{total}} prawidłowych)",
+  "startWith": "Zacznij od",
+  "startWithHelp": "W dowolnym momencie możesz dodać więcej źródeł lub dokumentów.",
+  "uploadCharactersUnavailable": "Znaki: —",
+  "uploadDocuments": "Prześlij dokumenty",
+  "uploadDropZoneTitle": "Przeciągnij i upuść pliki lub przeglądaj",
+  "uploadingFiles": "Przesyłanie…"
+}

@@ -52,7 +52,7 @@ export function SourceActions({
   ensureModelSetupReady: () => Promise<boolean>
   source: Source
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValue(sourcesKnowledgeSpaceIdAtom)
@@ -233,7 +233,7 @@ export function SourceActions({
       )}
       <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
-          aria-label={t(($) => $.sourceActions, { name: source.name })}
+          aria-label={t(($) => $.sourceActions, { ns: 'knowledgeSources', name: source.name })}
           disabled={Boolean(pendingAction)}
           className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
         >
@@ -252,7 +252,9 @@ export function SourceActions({
               className="mb-px h-7 gap-2 px-2 system-sm-medium"
             >
               <span aria-hidden className="i-ri-refresh-line size-4" />
-              {syncAction === 'retry' ? tCommon(($) => $['operation.retry']) : t(($) => $.syncNow)}
+              {syncAction === 'retry'
+                ? tCommon(($) => $['operation.retry'])
+                : t(($) => $.syncNow, { ns: 'knowledgeSources' })}
             </DropdownMenuItem>
           )}
           {sourceUri && (
@@ -313,7 +315,7 @@ export function SourceActions({
                 className="h-7 gap-2 px-2 system-sm-medium"
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                {t(($) => $.removeSource)}
+                {t(($) => $.removeSource, { ns: 'knowledgeSources' })}
               </DropdownMenuItem>
             </>
           )}
@@ -350,7 +352,7 @@ export function SourceActions({
                 })
               }
             >
-              {t(($) => $.removeSource)}
+              {t(($) => $.removeSource, { ns: 'knowledgeSources' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

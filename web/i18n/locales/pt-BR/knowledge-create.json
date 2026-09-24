@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Adicionar e processar",
+  "crawlPreview": "Prévia do rastreamento",
+  "createFailed": "Não foi possível criar esta base de conhecimento Agent. Verifique seu acesso e tente novamente.",
+  "createTitle": "Criar base de conhecimento Agent",
+  "description": "Descrição",
+  "descriptionHelp": "Uma descrição clara ajuda os aplicativos a decidir quando pesquisar nesta base de conhecimento Agent.",
+  "descriptionPlaceholder": "por exemplo Política de reembolso, perguntas frequentes sobre envio e etapas de escalonamento — use para perguntas de suporte ao cliente",
+  "illustrationHeadline": "Conecte seu conteúdo uma vez — cada aplicativo responderá com o conhecimento mais recente.",
+  "namePlaceholder": "por exemplo Manual de Suporte ao Cliente",
+  "nameRequired": "Insira um nome para a base de conhecimento Agent.",
+  "selectedFiles": "Arquivos selecionados ({{valid}} de {{total}} válidos)",
+  "startWith": "Comece com",
+  "startWithHelp": "Você pode adicionar mais fontes ou documentos a qualquer momento.",
+  "uploadCharactersUnavailable": "Caracteres: —",
+  "uploadDocuments": "Carregar documentos",
+  "uploadDropZoneTitle": "Arraste e solte arquivos ou procure",
+  "uploadingFiles": "Enviando…"
+}

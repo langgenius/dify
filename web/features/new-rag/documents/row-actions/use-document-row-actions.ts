@@ -119,7 +119,7 @@ export function useRenameDocumentAction(document: LogicalDocument) {
         return true
       } catch (error) {
         if (responseStatus(error) === 403) onWriteDenied()
-        else toast.error(t(($) => $['settings.saveFailed']))
+        else toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
         return false
       } finally {
         finish()
@@ -315,7 +315,7 @@ export function useRetryDocumentTaskAction(
 }
 
 export function useReindexDocumentAction(document: LogicalDocument, status: DocumentDisplayStatus) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const canEdit = useDocumentCanEdit(document.id)
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
@@ -338,13 +338,13 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
       if (!item || item.status === 'not_found')
         toast.error(t(($) => $.documentsReindexPartial, { missing: 1, queued: 0 }))
       else if (item.status === 'disabled' || item.status === 'failed')
-        toast.error(t(($) => $.documentsReindexFailed))
-      else toast.success(t(($) => $.documentsReindexStarted))
+        toast.error(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
+      else toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsReindexFailed))
+      else toast.error(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
       return false
     } finally {
       finish()

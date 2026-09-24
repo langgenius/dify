@@ -591,7 +591,7 @@ describe('ConnectedSourceWorkflow', () => {
 
     renderSetup()
 
-    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' })).toBeEnabled()
   })
 
   it('shows the shared provider credential card and opens the provider package when no credential exists', async () => {
@@ -599,11 +599,11 @@ describe('ConnectedSourceWorkflow', () => {
     const view = renderSetup()
 
     expect(
-      await screen.findByText('knowledgeSpace.providerNotConfigured:{"provider":"Notion"}'),
+      await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Notion"}'),
     ).toBeInTheDocument()
     expect(
       screen.getByText(
-        'knowledgeSpace.providerCredentialRequiredDescription:{"provider":"Notion"}',
+        'knowledgeSources.providerCredentialRequiredDescription:{"provider":"Notion"}',
       ),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toBeDisabled()
@@ -612,7 +612,7 @@ describe('ConnectedSourceWorkflow', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.connectProvider:{"provider":"Notion"}',
+        name: 'knowledgeSources.connectProvider:{"provider":"Notion"}',
       }),
     )
 
@@ -632,7 +632,7 @@ describe('ConnectedSourceWorkflow', () => {
     renderSetup()
 
     expect(
-      await screen.findByText('knowledgeSpace.providerNotConfigured:{"provider":"Notion"}'),
+      await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Notion"}'),
     ).toBeInTheDocument()
     expect(clientMock.createSource).not.toHaveBeenCalled()
     expect(clientMock.getPages).not.toHaveBeenCalled()
@@ -648,7 +648,7 @@ describe('ConnectedSourceWorkflow', () => {
     expect(screen.queryByRole('radio', { name: 'Confluence' })).not.toBeInTheDocument()
     expect(await screen.findByRole('radio', { name: 'Notion' })).toBeChecked()
     expect(
-      await screen.findByText('knowledgeSpace.providerNotConfigured:{"provider":"Notion"}'),
+      await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Notion"}'),
     ).toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
     expect(clientMock.createConnection).not.toHaveBeenCalled()
@@ -709,7 +709,7 @@ describe('ConnectedSourceWorkflow', () => {
     const prompt = await screen.findByText('plugin.list.notFound')
     expect(prompt.closest('[role="status"]')).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'Notion' })).not.toBeInTheDocument()
-    expect(screen.queryByText('knowledgeSpace.providerUnavailable')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSources.providerUnavailable')).not.toBeInTheDocument()
   })
 
   it('clears a failed connection attempt when a provider refresh selects another integration', async () => {
@@ -758,7 +758,7 @@ describe('ConnectedSourceWorkflow', () => {
     const { queryClient } = renderSetup()
 
     expect(
-      await screen.findByText('knowledgeSpace.connectionFailed:{"provider":"Notion"}'),
+      await screen.findByText('knowledgeSources.connectionFailed:{"provider":"Notion"}'),
     ).toHaveAttribute('role', 'alert')
 
     clientMock.listProviders.mockResolvedValue({
@@ -774,14 +774,14 @@ describe('ConnectedSourceWorkflow', () => {
 
     expect(await screen.findByRole('radio', { name: 'Outline' })).toBeChecked()
     expect(
-      await screen.findByText('knowledgeSpace.providerNotConfigured:{"provider":"Outline"}'),
+      await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Outline"}'),
     ).toBeInTheDocument()
     expect(
-      screen.queryByText('knowledgeSpace.connectionFailed:{"provider":"Outline"}'),
+      screen.queryByText('knowledgeSources.connectionFailed:{"provider":"Outline"}'),
     ).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.connectProvider:{"provider":"Outline"}',
+        name: 'knowledgeSources.connectProvider:{"provider":"Outline"}',
       }),
     ).toBeEnabled()
   })
@@ -799,7 +799,7 @@ describe('ConnectedSourceWorkflow', () => {
       })
       renderStatefulSetup({ ...defaultDraft, sourceName })
 
-      const input = await screen.findByRole('textbox', { name: /knowledgeSpace.sourceName/ })
+      const input = await screen.findByRole('textbox', { name: /knowledgeSources.sourceName/ })
       expect(input).not.toHaveValue('')
 
       await user.clear(input)
@@ -892,7 +892,7 @@ describe('ConnectedSourceWorkflow', () => {
 
     await user.click(page)
     expect(addSource).toBeEnabled()
-    expect(screen.getByText('knowledgeSpace.pagesSelected:{"count":1}')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSources.pagesSelected:{"count":1}')).toBeInTheDocument()
     const currentAddSource = screen.getByRole('button', { name: 'knowledgeSpace.addSource' })
     await user.click(currentAddSource)
 
@@ -1074,11 +1074,11 @@ describe('ConnectedSourceWorkflow', () => {
     renderSetup({ ...defaultDraft, sourceName: 'Recovered wiki' })
 
     expect(
-      await screen.findByText('knowledgeSpace.connectionNeedsAttention:{"provider":"Notion"}'),
+      await screen.findByText('knowledgeSources.connectionNeedsAttention:{"provider":"Notion"}'),
     ).toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.connectProvider:{"provider":"Notion"}',
+        name: 'knowledgeSources.connectProvider:{"provider":"Notion"}',
       }),
     )
     expect(openMock).toHaveBeenCalledWith(
@@ -1261,8 +1261,10 @@ describe('ConnectedSourceWorkflow', () => {
 
     const view = renderSetup(googleDraft)
 
-    expect(await screen.findByText('knowledgeSpace.selectFoldersAndDocsToSync')).toBeInTheDocument()
-    expect(screen.queryByLabelText('knowledgeSpace.searchDocuments')).not.toBeInTheDocument()
+    expect(
+      await screen.findByText('knowledgeSources.selectFoldersAndDocsToSync'),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('knowledgeDocuments.searchDocuments')).not.toBeInTheDocument()
     expect(clientMock.createConnection).not.toHaveBeenCalled()
     expect(clientMock.createSource).toHaveBeenCalledWith({
       body: {
@@ -1488,7 +1490,7 @@ describe('ConnectedSourceWorkflow', () => {
 
     const bucket = await screen.findByRole('button', { name: 'product-bucket' })
     expect(screen.getByText('s3://product-bucket · us-west-2')).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAll' })).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: 'knowledgeSources.selectAll' })).toBeEnabled()
     expect(screen.queryByRole('checkbox', { name: 'product-bucket' })).not.toBeInTheDocument()
     expect(bucket).toHaveAttribute('aria-expanded', 'false')
     expect(clientMock.createConnection).not.toHaveBeenCalled()
@@ -1565,7 +1567,7 @@ describe('ConnectedSourceWorkflow', () => {
         },
       }),
     )
-    await screen.findByText('knowledgeSpace.pagesSelected:{"count":3}')
+    await screen.findByText('knowledgeSources.pagesSelected:{"count":3}')
     expect(folder).toHaveAttribute('aria-checked', 'true')
 
     await user.click(screen.getByRole('button', { name: 'Archive' }))
@@ -1759,9 +1761,9 @@ describe('ConnectedSourceWorkflow', () => {
     const folder = await screen.findByRole('checkbox', { name: 'Large folder' })
     await user.click(folder)
 
-    expect(await screen.findByText('knowledgeSpace.maxPages: 200')).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSources.maxPages: 200')).toBeInTheDocument()
     expect(
-      screen.getByText('knowledgeSpace.pagesSelected:{"count":0}', { exact: false }),
+      screen.getByText('knowledgeSources.pagesSelected:{"count":0}', { exact: false }),
     ).toBeInTheDocument()
     expect(folder).toHaveAttribute('aria-checked', 'false')
     expect(folder).toHaveAttribute('aria-describedby', 'connected-source-selection-limit')

@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "أصبحت «{{name}}» الآن قاعدة معرفة Agent",
+  "upgrade.completeTitle": "اكتملت الترقية",
+  "upgrade.contactSupport": "الاتصال بالدعم",
+  "upgrade.dialogAvailability": "بعد الترقية، <strong>تظل قاعدة المعرفة الكلاسيكية وقاعدة معرفة Agent متاحتين للاستخدام</strong>",
+  "upgrade.dialogDescription": "ترقّي هذه العملية <legacy>قاعدة المعرفة الكلاسيكية</legacy> إلى <new>قاعدة معرفة Agent</new> مع الاحتفاظ بجميع المستندات والإعدادات واتصالات التطبيقات. سيتم نقلك إلى قاعدة معرفة Agent تلقائيًا.",
+  "upgrade.dialogDuration": "تستغرق من بضع دقائق إلى بضع ساعات حسب الحجم. يظهر التقدم على بطاقة قاعدة المعرفة",
+  "upgrade.dialogLinkedApps": "تواصل التطبيقات المرتبطة الاسترجاع أثناء الترقية",
+  "upgrade.dialogTitle": "هل تريد ترقية قاعدة المعرفة هذه إلى قاعدة معرفة Agent؟",
+  "upgrade.failedDescription": "فشلت الترقية — لم يتغير شيء. ما زالت قاعدة المعرفة الكلاسيكية متاحة.",
+  "upgrade.failedTitle": "فشلت الترقية",
+  "upgrade.failedToastDescription": "تبقى «{{name}}» قاعدة معرفة كلاسيكية، ولم تتغير أي بيانات",
+  "upgrade.guideDescription": "تعمل الترقية على نقل قاعدة المعرفة الكلاسيكية إلى قاعدة معرفة Agent. اربط مصدرًا لتظل مستنداته متزامنة ومفهرسة تلقائيًا. يتم نقل كل شيء وتستمر التطبيقات المرتبطة في العمل.",
+  "upgrade.guideTitle": "الترقية من قاعدة المعرفة الكلاسيكية إلى قاعدة معرفة Agent",
+  "upgrade.justNow": "الآن",
+  "upgrade.menuLabel": "الترقية إلى قاعدة معرفة Agent",
+  "upgrade.migratingDocuments": "جارٍ نقل المستندات…",
+  "upgrade.start": "بدء الترقية",
+  "upgrade.startFailed": "تعذر بدء الترقية. حاول مرة أخرى.",
+  "upgrade.statusFailed": "فشلت الترقية",
+  "upgrade.statusUpgrading": "الترقية جارية",
+  "upgrade.upgradedJustNow": "تمت الترقية الآن"
+}

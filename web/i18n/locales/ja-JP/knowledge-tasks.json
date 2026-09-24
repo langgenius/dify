@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "ドキュメントの追加、ソースの同期、再インデックスのタスク。",
+  "dismissTask": "タスクを非表示",
+  "interruptTask": "中断",
+  "noBackgroundTasks": "バックグラウンドタスクはまだありません。",
+  "overview.operation.document_delete": "ドキュメントの削除",
+  "overview.operation.document_processing": "ドキュメント処理",
+  "overview.operation.document_reindex": "ドキュメントの再インデックス化",
+  "overview.operation.document_upload": "ドキュメントのアップロード",
+  "overview.operation.source_bulk": "ソースの更新",
+  "overview.operation.source_crawl_import": "ウェブサイトのインポート",
+  "overview.operation.source_crawl_preview": "ウェブサイトのプレビュー",
+  "overview.operation.source_online_document_import": "オンラインドキュメントのインポート",
+  "overview.operation.source_online_drive_import": "オンラインドライブインポート",
+  "overview.operation.source_sync": "ソース同期",
+  "taskDismissed": "タスクを非表示にしました",
+  "taskFailedNotification": "ドキュメントの処理に失敗しました —「タスク」から再試行してください",
+  "undoTaskDismissal": "元に戻す"
+}

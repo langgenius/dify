@@ -21,7 +21,7 @@ import {
 } from './state/workflow'
 
 export function KnowledgeSettingsForm() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings', 'knowledgeErrors'])
   const { t: tCommon } = useTranslation(['common'])
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const canSave = useAtomValue(knowledgeSettingsCanSubmitAtom)
@@ -46,12 +46,22 @@ export function KnowledgeSettingsForm() {
     const result = await save()
     if (result.status === 'saved') toast.success(tCommon(($) => $['api.actionSuccess']))
     const errorKey = result.errorKey
-    if (errorKey) toast.error(t(($) => $[errorKey]))
+    if (errorKey)
+      toast.error(
+        errorKey === 'permissionRestricted' || errorKey === 'settings.saveFailed'
+          ? t(($) => $[errorKey])
+          : t(($) => $[errorKey], { ns: 'knowledgeErrors' }),
+      )
   }
   const cancel = async () => {
     const result = await reset()
     const errorKey = result.errorKey
-    if (errorKey) toast.error(t(($) => $[errorKey]))
+    if (errorKey)
+      toast.error(
+        errorKey === 'permissionRestricted' || errorKey === 'settings.saveFailed'
+          ? t(($) => $[errorKey])
+          : t(($) => $[errorKey], { ns: 'knowledgeErrors' }),
+      )
   }
 
   return (
@@ -62,7 +72,7 @@ export function KnowledgeSettingsForm() {
           role="status"
         >
           <span aria-hidden className="i-ri-lock-2-line size-4 shrink-0" />
-          {t(($) => $['settings.viewOnly'])}
+          {t(($) => $['settings.viewOnly'], { ns: 'knowledgeSpace' })}
         </div>
       )}
 
@@ -75,11 +85,11 @@ export function KnowledgeSettingsForm() {
       >
         {(hasConflict || saveError === 'settings.revisionConflict') && !isSaving && (
           <KnowledgeModelReadinessNotice
-            title={t(($) => $['settings.serverConflict'])}
+            title={t(($) => $['settings.serverConflict'], { ns: 'knowledgeSettings' })}
             tone="warning"
             action={
               <Button type="button" onClick={() => void cancel()}>
-                {t(($) => $['settings.reloadLatest'])}
+                {t(($) => $['settings.reloadLatest'], { ns: 'knowledgeSettings' })}
               </Button>
             }
           />
@@ -90,7 +100,9 @@ export function KnowledgeSettingsForm() {
         <DeleteKnowledgeAction />
         {saveError && !isSaving && (
           <p className="system-sm-regular text-text-destructive" role="alert">
-            {t(($) => $[saveError])}
+            {saveError === 'permissionRestricted' || saveError === 'settings.saveFailed'
+              ? t(($) => $[saveError])
+              : t(($) => $[saveError], { ns: 'knowledgeErrors' })}
           </p>
         )}
         {canSaveSettings && (
@@ -108,7 +120,7 @@ export function KnowledgeSettingsForm() {
               disabled={!canSave && !isSaving}
               loading={isSaving}
             >
-              {t(($) => $['settings.saveChanges'])}
+              {t(($) => $['settings.saveChanges'], { ns: 'knowledgeSettings' })}
             </Button>
           </div>
         )}

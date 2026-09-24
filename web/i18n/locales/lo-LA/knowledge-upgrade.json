@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}” ເປັນຖານຄວາມຮູ້ Agent ແລ້ວ",
+  "upgrade.completeTitle": "ອັບເກຣດສຳເລັດ",
+  "upgrade.contactSupport": "ຕິດຕໍ່ຝ່າຍຊ່ວຍເຫຼືອ",
+  "upgrade.dialogAvailability": "ຫຼັງອັບເກຣດ <strong>ທັງຖານຄວາມຮູ້ແບບດັ້ງເດີມ ແລະຖານຄວາມຮູ້ Agent ຍັງສາມາດໃຊ້ງານໄດ້</strong>",
+  "upgrade.dialogDescription": "ການອັບເກຣດຈະຍ້າຍ <legacy>ຖານຄວາມຮູ້ແບບດັ້ງເດີມ</legacy> ໄປເປັນ <new>ຖານຄວາມຮູ້ Agent</new> ພ້ອມເອກະສານ, ການຕັ້ງຄ່າ ແລະການເຊື່ອມຕໍ່ແອັບທັງໝົດ. ຫຼັງຈາກນັ້ນຈະພາທ່ານໄປຫາຖານຄວາມຮູ້ Agent ໂດຍອັດຕະໂນມັດ.",
+  "upgrade.dialogDuration": "ໃຊ້ເວລາຕັ້ງແຕ່ສອງສາມນາທີຈົນເຖິງຫຼາຍຊົ່ວໂມງຕາມຂະໜາດ. ຄວາມຄືບໜ້າຈະສະແດງໃນບັດຖານຄວາມຮູ້",
+  "upgrade.dialogLinkedApps": "ແອັບທີ່ເຊື່ອມໂຍງຍັງຄົ້ນຄືນໄດ້ລະຫວ່າງອັບເກຣດ",
+  "upgrade.dialogTitle": "ອັບເກຣດຖານຄວາມຮູ້ນີ້ເປັນຖານຄວາມຮູ້ Agent ບໍ?",
+  "upgrade.failedDescription": "ອັບເກຣດບໍ່ສຳເລັດ — ບໍ່ມີຫຍັງປ່ຽນແປງ. ຖານຄວາມຮູ້ແບບດັ້ງເດີມຍັງໃຊ້ງານໄດ້.",
+  "upgrade.failedTitle": "ອັບເກຣດບໍ່ສຳເລັດ",
+  "upgrade.failedToastDescription": "“{{name}}” ຍັງເປັນຖານຄວາມຮູ້ແບບດັ້ງເດີມ ແລະຂໍ້ມູນບໍ່ໄດ້ປ່ຽນ",
+  "upgrade.guideDescription": "ການອັບເກຣດຈະຍ້າຍຖານຄວາມຮູ້ແບບດັ້ງເດີມນີ້ໄປເປັນຖານຄວາມຮູ້ Agent. ເຊື່ອມຕໍ່ແຫຼ່ງຂໍ້ມູນເພື່ອໃຫ້ເອກະສານຊິງຄ໌ ແລະຈັດດັດຊະນີອັດຕະໂນມັດ. ເອກະສານ, ການຕັ້ງຄ່າ ແລະການເຊື່ອມຕໍ່ແອັບຈະຖືກຍ້າຍໄປ ແລະແອັບທີ່ເຊື່ອມໂຍງຍັງໃຊ້ງານໄດ້.",
+  "upgrade.guideTitle": "ອັບເກຣດຈາກຖານຄວາມຮູ້ແບບດັ້ງເດີມເປັນຖານຄວາມຮູ້ Agent",
+  "upgrade.justNow": "ຫາກໍ",
+  "upgrade.menuLabel": "ອັບເກຣດເປັນຖານຄວາມຮູ້ Agent",
+  "upgrade.migratingDocuments": "ກຳລັງຍ້າຍເອກະສານ…",
+  "upgrade.start": "ເລີ່ມອັບເກຣດ",
+  "upgrade.startFailed": "ເລີ່ມອັບເກຣດບໍ່ໄດ້. ລອງອີກຄັ້ງ.",
+  "upgrade.statusFailed": "ອັບເກຣດບໍ່ສຳເລັດ",
+  "upgrade.statusUpgrading": "ກຳລັງອັບເກຣດ",
+  "upgrade.upgradedJustNow": "ຫາກໍອັບເກຣດ"
+}

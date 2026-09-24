@@ -104,7 +104,7 @@ function GoldenQuestionDialogSession({
   onSubmit,
   pending = false,
 }: Omit<GoldenQuestionDialogProps, 'open' | 'sessionKey'>) {
-  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { i18n, t } = useTranslation(['dataset', 'knowledgeQuality', 'knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
   const [question, setQuestion] = useState(initialValue.question)
   const [annotation, setAnnotation] = useState(initialValue.annotation)
@@ -133,12 +133,14 @@ function GoldenQuestionDialogSession({
   )
   const title =
     mode === 'create'
-      ? t(($) => $['qualityPage.createTitle'])
+      ? t(($) => $['qualityPage.createTitle'], { ns: 'knowledgeQuality' })
       : mode === 'edit'
-        ? t(($) => $['qualityPage.editTitle'])
-        : t(($) => $['qualityPage.promoteTitle'])
+        ? t(($) => $['qualityPage.editTitle'], { ns: 'knowledgeQuality' })
+        : t(($) => $['qualityPage.promoteTitle'], { ns: 'knowledgeQuality' })
   const submitLabel =
-    mode === 'promote' ? t(($) => $['qualityPage.promote']) : t(($) => $['qualityPage.save'])
+    mode === 'promote'
+      ? t(($) => $['qualityPage.promote'], { ns: 'knowledgeQuality' })
+      : t(($) => $['qualityPage.save'], { ns: 'knowledgeQuality' })
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -187,7 +189,7 @@ function GoldenQuestionDialogSession({
           render={
             <IconButton
               size="lg"
-              aria-label={t(($) => $['qualityPage.closeDialog'])}
+              aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
               className="static"
             >
               <span aria-hidden className="i-ri-close-line size-5" />
@@ -201,13 +203,13 @@ function GoldenQuestionDialogSession({
       >
         <Field name="question" invalid={questionInvalid}>
           <FieldLabel>
-            {t(($) => $['qualityPage.question'])}
+            {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
             <span className="ml-0.5 text-text-destructive">*</span>
           </FieldLabel>
           <Textarea
             aria-invalid={questionInvalid}
             className="h-22 resize-y"
-            placeholder={t(($) => $['qualityPage.questionPlaceholder'])}
+            placeholder={t(($) => $['qualityPage.questionPlaceholder'], { ns: 'knowledgeQuality' })}
             value={question}
             onValueChange={(value) => {
               setQuestion(value)
@@ -216,16 +218,20 @@ function GoldenQuestionDialogSession({
           />
           {questionInvalid && (
             <FieldError match className="py-0.5 body-xs-regular text-text-destructive">
-              {t(($) => $['qualityPage.questionRequired'])}
+              {t(($) => $['qualityPage.questionRequired'], { ns: 'knowledgeQuality' })}
             </FieldError>
           )}
         </Field>
         <Field name="annotation" invalid={Boolean(error)}>
-          <FieldLabel>{t(($) => $['qualityPage.annotation'])}</FieldLabel>
+          <FieldLabel>
+            {t(($) => $['qualityPage.annotation'], { ns: 'knowledgeQuality' })}
+          </FieldLabel>
           <Textarea
             aria-invalid={Boolean(error)}
             className={mode === 'edit' ? 'h-22 min-h-22 resize-y' : 'h-16 min-h-16 resize-y'}
-            placeholder={t(($) => $['qualityPage.annotationPlaceholder'])}
+            placeholder={t(($) => $['qualityPage.annotationPlaceholder'], {
+              ns: 'knowledgeQuality',
+            })}
             value={annotation}
             onValueChange={setAnnotation}
           />
@@ -234,7 +240,9 @@ function GoldenQuestionDialogSession({
         <div className="grid min-w-0 gap-4">
           <Field name="expectedEvidenceIds">
             <div className="flex items-center justify-between gap-3">
-              <FieldLabel>{t(($) => $['qualityPage.evidence'])}</FieldLabel>
+              <FieldLabel>
+                {t(($) => $['qualityPage.evidence'], { ns: 'knowledgeSpace' })}
+              </FieldLabel>
               {expectedEvidenceIds.length > 0 && (
                 <Button
                   type="button"
@@ -242,16 +250,17 @@ function GoldenQuestionDialogSession({
                   disabled={pending}
                   onClick={() => setExpectedEvidenceIds([])}
                 >
-                  {t(($) => $['qualityPage.clearEvidence'])}
+                  {t(($) => $['qualityPage.clearEvidence'], { ns: 'knowledgeQuality' })}
                 </Button>
               )}
             </div>
             <p className="body-xs-regular text-text-tertiary">
               {expectedEvidenceIds.length > 0
                 ? t(($) => $['qualityPage.evidenceSelected'], {
+                    ns: 'knowledgeQuality',
                     count: expectedEvidenceIds.length,
                   })
-                : t(($) => $['qualityPage.noEvidenceSelected'])}
+                : t(($) => $['qualityPage.noEvidenceSelected'], { ns: 'knowledgeQuality' })}
             </p>
             {expectedEvidenceIds.length > 0 && (
               <div className="mt-2 flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2">
@@ -268,7 +277,9 @@ function GoldenQuestionDialogSession({
                         </p>
                         <p className="mt-1 system-2xs-medium-uppercase text-text-tertiary">
                           {evidence?.section_path.join(' / ') ||
-                            t(($) => $['qualityPage.goldenStatus.stale'])}
+                            t(($) => $['qualityPage.goldenStatus.stale'], {
+                              ns: 'knowledgeQuality',
+                            })}
                         </p>
                       </div>
                       <IconButton
@@ -291,14 +302,18 @@ function GoldenQuestionDialogSession({
             )}
           </Field>
           <Field name="evidenceSearch">
-            <FieldLabel>{t(($) => $['qualityPage.findEvidence'])}</FieldLabel>
+            <FieldLabel>
+              {t(($) => $['qualityPage.findEvidence'], { ns: 'knowledgeQuality' })}
+            </FieldLabel>
             <div className="flex items-center gap-2">
               <SearchInput
                 name="evidence-search"
-                aria-label={t(($) => $['qualityPage.findEvidence'])}
+                aria-label={t(($) => $['qualityPage.findEvidence'], { ns: 'knowledgeQuality' })}
                 className="min-w-0 flex-1"
                 disabled={pending || matchMutation.isPending}
-                placeholder={t(($) => $['qualityPage.evidencePlaceholder'])}
+                placeholder={t(($) => $['qualityPage.evidencePlaceholder'], {
+                  ns: 'knowledgeQuality',
+                })}
                 value={evidenceQuery}
                 onKeyDown={handleEvidenceSearchKeyDown}
                 onValueChange={(value) => {
@@ -313,19 +328,19 @@ function GoldenQuestionDialogSession({
                 disabled={!evidenceQuery.trim() || pending}
                 onClick={() => void findEvidence()}
               >
-                {t(($) => $['qualityPage.findEvidence'])}
+                {t(($) => $['qualityPage.findEvidence'], { ns: 'knowledgeQuality' })}
               </Button>
             </div>
             {matchError && (
               <FieldError match>
                 {matchError === 'unavailable'
-                  ? t(($) => $['qualityPage.noEvidenceMatch'])
+                  ? t(($) => $['qualityPage.noEvidenceMatch'], { ns: 'knowledgeQuality' })
                   : t(($) => $.unknownError, { ns: 'dataset' })}
               </FieldError>
             )}
             {matchMutation.isSuccess && searchCandidates.length === 0 && (
               <p className="mt-2 body-xs-regular text-text-tertiary">
-                {t(($) => $['qualityPage.noEvidenceMatch'])}
+                {t(($) => $['qualityPage.noEvidenceMatch'], { ns: 'knowledgeQuality' })}
               </p>
             )}
           </Field>
@@ -341,7 +356,7 @@ function GoldenQuestionDialogSession({
                 }
               >
                 <FieldsetLegend className="sr-only">
-                  {t(($) => $['qualityPage.findEvidence'])}
+                  {t(($) => $['qualityPage.findEvidence'], { ns: 'knowledgeQuality' })}
                 </FieldsetLegend>
                 {searchCandidates.map((candidate) => (
                   <FieldItem key={candidate.node_id}>
@@ -353,7 +368,7 @@ function GoldenQuestionDialogSession({
                         </span>
                         <span className="mt-1 block system-2xs-medium-uppercase text-text-tertiary">
                           {candidate.section_path.join(' / ') ||
-                            t(($) => $['qualityPage.evidence'])}
+                            t(($) => $['qualityPage.evidence'], { ns: 'knowledgeSpace' })}
                           {candidate.score !== undefined && candidate.score !== null && (
                             <>
                               {' · '}
@@ -385,7 +400,7 @@ function GoldenQuestionDialogSession({
               }
             >
               <FieldsetLegend className="mb-0 w-fit">
-                {t(($) => $['qualityPage.matchPolicyLabel'])}
+                {t(($) => $['qualityPage.matchPolicyLabel'], { ns: 'knowledgeQuality' })}
               </FieldsetLegend>
               <div className="flex gap-2">
                 {(['all', 'any'] as const).map((policy) => (
@@ -400,7 +415,7 @@ function GoldenQuestionDialogSession({
                       />
                     }
                   >
-                    {t(($) => $[`qualityPage.matchPolicy.${policy}`])}
+                    {t(($) => $[`qualityPage.matchPolicy.${policy}`], { ns: 'knowledgeQuality' })}
                   </RadioItem>
                 ))}
               </div>
@@ -408,16 +423,16 @@ function GoldenQuestionDialogSession({
           </Field>
         )}
         <Field name="tags">
-          <FieldLabel>{t(($) => $['qualityPage.tags'])}</FieldLabel>
+          <FieldLabel>{t(($) => $['qualityPage.tags'], { ns: 'knowledgeQuality' })}</FieldLabel>
           <Input
-            placeholder={t(($) => $['qualityPage.tagsPlaceholder'])}
+            placeholder={t(($) => $['qualityPage.tagsPlaceholder'], { ns: 'knowledgeQuality' })}
             value={tags}
             onValueChange={setTags}
           />
         </Field>
         <div className="flex justify-end gap-2">
           <Button type="button" disabled={pending} onClick={() => onOpenChange(false)}>
-            {t(($) => $['qualityPage.cancel'])}
+            {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}
           </Button>
           <Button type="submit" variant="primary" disabled={pending}>
             {submitLabel}

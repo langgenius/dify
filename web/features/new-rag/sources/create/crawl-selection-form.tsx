@@ -86,7 +86,7 @@ function ReadyCrawlSelectionForm({
   syncPolicyValue?: SyncPolicyValue
   workflowUncertain: boolean
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const {
@@ -288,12 +288,12 @@ function ReadyCrawlSelectionForm({
 
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
-          {t(($) => $.addSourceFailed)}
+          {t(($) => $.addSourceFailed, { ns: 'knowledgeSources' })}
         </p>
       )}
       <div className="mt-1 flex justify-end gap-3 border-t border-divider-subtle pt-5">
         <Button type="button" onClick={onCancel}>
-          {t(($) => $.cancelAddSource)}
+          {t(($) => $.cancelAddSource, { ns: 'knowledgeSources' })}
         </Button>
         <Button
           type="submit"
@@ -306,7 +306,7 @@ function ReadyCrawlSelectionForm({
         </Button>
         {!selectedPageIds.size && (
           <span id="add-source-selection-requirement" className="sr-only">
-            {t(($) => $.addSourceRequiresSelection)}
+            {t(($) => $.addSourceRequiresSelection, { ns: 'knowledgeSources' })}
           </span>
         )}
       </div>

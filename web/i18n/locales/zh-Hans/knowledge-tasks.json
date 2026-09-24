@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "文档添加、数据源同步和重新索引任务。",
+  "dismissTask": "忽略任务",
+  "interruptTask": "中断",
+  "noBackgroundTasks": "暂无后台任务。",
+  "overview.operation.document_delete": "文档删除",
+  "overview.operation.document_processing": "文档处理",
+  "overview.operation.document_reindex": "文档重新索引",
+  "overview.operation.document_upload": "文档上传",
+  "overview.operation.source_bulk": "数据源更新",
+  "overview.operation.source_crawl_import": "网站导入",
+  "overview.operation.source_crawl_preview": "网站预览",
+  "overview.operation.source_online_document_import": "在线文档导入",
+  "overview.operation.source_online_drive_import": "在线云盘导入",
+  "overview.operation.source_sync": "数据源同步",
+  "taskDismissed": "已忽略任务",
+  "taskFailedNotification": "文档处理失败，请在“任务”中重试",
+  "undoTaskDismissal": "撤销"
+}

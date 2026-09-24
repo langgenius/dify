@@ -26,13 +26,13 @@ const NAME_ERROR_ID = 'knowledge-name-error'
 const DESCRIPTION_ERROR_ID = 'knowledge-description-error'
 
 function BasicInformationSkeleton() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSettings'])
   const { t: tSettings } = useTranslation(['datasetSettings'])
 
   return (
     <div className="flex flex-col gap-4 pt-2">
       <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
-        {t(($) => $['settings.basicInfo'])}
+        {t(($) => $['settings.basicInfo'], { ns: 'knowledgeSettings' })}
       </h2>
       {[
         tSettings(($) => $['form.nameAndIcon']),
@@ -48,7 +48,7 @@ function BasicInformationSkeleton() {
 }
 
 export function BasicInformationSection() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSettings'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tSettings } = useTranslation(['datasetSettings'])
   const { t: tWorkflow } = useTranslation(['workflow'])
@@ -93,7 +93,7 @@ export function BasicInformationSection() {
     <>
       <section className="flex flex-col gap-4 overflow-hidden pt-2">
         <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
-          {t(($) => $['settings.basicInfo'])}
+          {t(($) => $['settings.basicInfo'], { ns: 'knowledgeSettings' })}
         </h2>
 
         <SettingsFieldRow label={tSettings(($) => $['form.nameAndIcon'])}>
@@ -135,7 +135,7 @@ export function BasicInformationSection() {
                   className="mt-1 system-xs-regular text-text-destructive"
                   role="alert"
                 >
-                  {t(($) => $['settings.nameRequired'])}
+                  {t(($) => $['settings.nameRequired'], { ns: 'knowledgeSettings' })}
                 </p>
               )}
               {current.name.length >= KNOWLEDGE_NAME_MAX_LENGTH * 0.9 && (
@@ -157,7 +157,9 @@ export function BasicInformationSection() {
               name="knowledge-description"
               value={current.description}
               disabled={fieldsDisabled}
-              placeholder={t(($) => $['settings.descriptionPlaceholder'])}
+              placeholder={t(($) => $['settings.descriptionPlaceholder'], {
+                ns: 'knowledgeSettings',
+              })}
               className={cn(
                 'min-h-20 resize-none',
                 descriptionInvalid && 'ring-1 ring-text-destructive',

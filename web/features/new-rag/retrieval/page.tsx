@@ -13,7 +13,7 @@ import { retrievalComposerModeAtom } from './state/graph'
 import { retrievalCanQueryAtom, retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 
 function RetrievalTestSurface() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeRetrieval'])
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
   const mode = useAtomValueRawSync(retrievalComposerModeAtom)
@@ -22,10 +22,10 @@ function RetrievalTestSurface() {
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg px-6 pt-3 pb-5">
       <header className="shrink-0">
         <h1 className="title-xl-semi-bold leading-6 text-text-primary">
-          {t(($) => $['retrievalTest.title'])}
+          {t(($) => $['retrievalTest.title'], { ns: 'knowledgeSpace' })}
         </h1>
         <p className="mt-1 w-full system-xs-regular text-text-tertiary">
-          {t(($) => $['retrievalTest.description'])}
+          {t(($) => $['retrievalTest.description'], { ns: 'knowledgeRetrieval' })}
         </p>
       </header>
       {canQuery && (

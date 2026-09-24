@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "إضافة ومعالجة",
+  "crawlPreview": "معاينة الزحف",
+  "createFailed": "لم نتمكن من إنشاء قاعدة معرفة Agent هذه. تحقق من وصولك وحاول مرة أخرى.",
+  "createTitle": "إنشاء قاعدة معرفة Agent",
+  "description": "الوصف",
+  "descriptionHelp": "يساعد الوصف الواضح التطبيقات على تحديد متى تبحث في قاعدة معرفة Agent هذه.",
+  "descriptionPlaceholder": "مثال: سياسة استرداد الأموال، والأسئلة الشائعة حول الشحن، وخطوات تصعيد المشكلة إلى فريق مختص — للإجابة عن أسئلة دعم العملاء",
+  "illustrationHeadline": "اربط محتواك مرة واحدة — ليجيب كل تطبيق بأحدث معرفة.",
+  "namePlaceholder": "على سبيل المثال دليل دعم العملاء",
+  "nameRequired": "أدخل اسم قاعدة معرفة Agent.",
+  "selectedFiles": "الملفات المحددة ({{valid}} من {{total}} صالحة)",
+  "startWith": "ابدأ ب",
+  "startWithHelp": "يمكنك إضافة المزيد من المصادر أو المستندات في أي وقت.",
+  "uploadCharactersUnavailable": "الأحرف: —",
+  "uploadDocuments": "تحميل المستندات",
+  "uploadDropZoneTitle": "اسحب الملفات وأفلتها، أو تصفّح",
+  "uploadingFiles": "جارٍ الرفع…"
+}

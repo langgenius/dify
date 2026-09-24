@@ -30,7 +30,7 @@ export function CrawlPreviewPageSelection({
   sourceLabel?: string
   selectedPageIds: Set<string>
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSources'])
   const pageDescriptionPrefixId = useId()
   const pageSkipReasons = useMemo(
     () => new Map(pages.map((page) => [page.pageId, crawlPreviewPageSkipReason(page, rootUrl)])),
@@ -82,16 +82,17 @@ export function CrawlPreviewPageSelection({
           className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
         >
           {t(($) => $.pagesCrawled, {
+            ns: 'knowledgeSources',
             count: pages.length,
             host: sourceLabel ?? (rootUrl ? new URL(rootUrl).host : ''),
           })}
         </h3>
         <span className="system-xs-regular text-text-tertiary">
-          {t(($) => $.pagesSelected, { count: selectedPageIds.size })}
+          {t(($) => $.pagesSelected, { ns: 'knowledgeSources', count: selectedPageIds.size })}
         </span>
         {progressFailed > 0 && (
           <span className="system-xs-regular text-text-destructive">
-            {progressFailed} {t(($) => $.skippedFailed)}
+            {progressFailed} {t(($) => $.skippedFailed, { ns: 'knowledgeSources' })}
           </span>
         )}
         {onRecrawl && (
@@ -104,7 +105,7 @@ export function CrawlPreviewPageSelection({
             className="px-0"
             onClick={onRecrawl}
           >
-            {t(($) => $.reCrawl)}
+            {t(($) => $.reCrawl, { ns: 'knowledgeSources' })}
           </Button>
         )}
       </div>
@@ -116,7 +117,7 @@ export function CrawlPreviewPageSelection({
             onCheckedChange={toggleAll}
             disabled={!selectablePages.length || selectionLocked}
           />
-          {t(($) => $.selectAll)}
+          {t(($) => $.selectAll, { ns: 'knowledgeSources' })}
         </label>
         <ul className="min-h-0 flex-1 overflow-y-auto">
           {pages.map((page, index) => {
@@ -154,10 +155,10 @@ export function CrawlPreviewPageSelection({
                   {(!selectable || selectionLimitReached) && (
                     <span id={reasonId} className="shrink-0 system-xs-medium text-text-tertiary">
                       {selectionLimitReached
-                        ? `${t(($) => $.maxPages)}: ${MAX_SELECTED_PAGES}`
+                        ? `${t(($) => $.maxPages, { ns: 'knowledgeSources' })}: ${MAX_SELECTED_PAGES}`
                         : skipReason === 'off-domain'
-                          ? t(($) => $.skippedOffDomain)
-                          : t(($) => $.skippedFailed)}
+                          ? t(($) => $.skippedOffDomain, { ns: 'knowledgeSources' })
+                          : t(($) => $.skippedFailed, { ns: 'knowledgeSources' })}
                     </span>
                   )}
                 </label>

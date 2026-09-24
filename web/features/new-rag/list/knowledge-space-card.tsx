@@ -23,7 +23,7 @@ export function KnowledgeSpaceCard({
   onOpenTagManagement: () => void
   highlighted?: boolean
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const linkedAppsDescriptionId = useId()
   const summary = knowledgeSpace.technical_summary
@@ -79,7 +79,7 @@ export function KnowledgeSpaceCard({
           <span aria-hidden className="i-ri-robot-2-line size-3.5" />
           <span aria-hidden>{linkedApps}</span>
           <span id={linkedAppsDescriptionId} className="sr-only">
-            {t(($) => $['overview.linkedApps'])}: {linkedApps}
+            {t(($) => $['overview.linkedApps'], { ns: 'knowledgeOverview' })}: {linkedApps}
           </span>
         </span>
         <span className="ml-auto min-w-0 truncate text-right">

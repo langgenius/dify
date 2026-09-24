@@ -27,23 +27,29 @@ const ATTENTION_PAGE_SIZE = 4
 
 function attentionPresentation(
   issue: KnowledgeFsOverviewAttentionResponse,
-  t: ReturnType<typeof useTranslation<'knowledgeSpace'>>['t'],
+  t: ReturnType<typeof useTranslation<['knowledgeSpace', 'knowledgeOverview']>>['t'],
 ): { description?: string; title: string } {
   const evidenceCodes = new Set(issue.evidence.map(({ code }) => code))
   if (issue.rule_id === 'stale-source')
     return {
-      description: t(($) => $['overview.attention.staleSource.description']),
-      title: t(($) => $['overview.attention.staleSource.title']),
+      description: t(($) => $['overview.attention.staleSource.description'], {
+        ns: 'knowledgeOverview',
+      }),
+      title: t(($) => $['overview.attention.staleSource.title'], { ns: 'knowledgeOverview' }),
     }
   if (issue.rule_id === 'failed-document')
     return {
-      description: t(($) => $['overview.attention.failedDocument.description']),
-      title: t(($) => $['overview.attention.failedDocument.title']),
+      description: t(($) => $['overview.attention.failedDocument.description'], {
+        ns: 'knowledgeOverview',
+      }),
+      title: t(($) => $['overview.attention.failedDocument.title'], { ns: 'knowledgeOverview' }),
     }
   if (issue.rule_id === 'low-quality-query')
     return {
-      description: t(($) => $['overview.attention.lowQualityQuery.description']),
-      title: t(($) => $['overview.attention.lowQualityQuery.title']),
+      description: t(($) => $['overview.attention.lowQualityQuery.description'], {
+        ns: 'knowledgeOverview',
+      }),
+      title: t(($) => $['overview.attention.lowQualityQuery.title'], { ns: 'knowledgeOverview' }),
     }
   if (issue.rule_id === 'model-readiness') {
     const reasons: string[] = []
@@ -65,7 +71,7 @@ function attentionPresentation(
 }
 
 export function AttentionPanel() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
   const { t: tCommon } = useTranslation(['common'])
   const attention = useAtomValueRawSync(overviewAttentionDataAtom)
   const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
@@ -93,21 +99,23 @@ export function AttentionPanel() {
     if (issue.action.kind === 'review-models')
       return {
         href: newKnowledgeSettingsPath(knowledgeSpaceId),
-        label: t(($) => $['overview.attention.action.configureModels']),
+        label: t(($) => $['overview.attention.action.configureModels'], {
+          ns: 'knowledgeSpace',
+        }),
       }
     if (issue.action.resource_type === 'failed-query' || issue.rule_id === 'low-quality-query')
       return {
         href: newKnowledgeRetrievalTestPath(knowledgeSpaceId),
-        label: t(($) => $['overview.reviewConflict']),
+        label: t(($) => $['overview.reviewConflict'], { ns: 'knowledgeOverview' }),
       }
     if (issue.action.resource_type === 'source')
       return {
         href: newKnowledgeDetailPath(knowledgeSpaceId),
-        label: t(($) => $['overview.fixSource']),
+        label: t(($) => $['overview.fixSource'], { ns: 'knowledgeOverview' }),
       }
     return {
       href: newKnowledgeDocumentsPath(knowledgeSpaceId),
-      label: t(($) => $['overview.viewDocuments']),
+      label: t(($) => $['overview.viewDocuments'], { ns: 'knowledgeOverview' }),
     }
   }
 
@@ -115,7 +123,7 @@ export function AttentionPanel() {
     return (
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <h2 className="system-xl-medium text-text-secondary">
-          {t(($) => $['overview.needsAttention'])}
+          {t(($) => $['overview.needsAttention'], { ns: 'knowledgeOverview' })}
         </h2>
         <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
           <OverviewErrorInline />
@@ -127,14 +135,14 @@ export function AttentionPanel() {
     return (
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <h2 className="system-xl-medium text-text-secondary">
-          {t(($) => $['overview.needsAttention'])}
+          {t(($) => $['overview.needsAttention'], { ns: 'knowledgeOverview' })}
         </h2>
         <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
           <EmptyInline
             positive
             icon="i-ri-thumb-up-line"
-            title={t(($) => $['overview.noIssues'])}
-            description={t(($) => $['overview.noIssuesDescription'])}
+            title={t(($) => $['overview.noIssues'], { ns: 'knowledgeOverview' })}
+            description={t(($) => $['overview.noIssuesDescription'], { ns: 'knowledgeOverview' })}
           />
         </Panel>
       </section>
@@ -144,7 +152,7 @@ export function AttentionPanel() {
     <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
         <h2 className="system-xl-medium text-text-secondary">
-          {t(($) => $['overview.needsAttention'])}
+          {t(($) => $['overview.needsAttention'], { ns: 'knowledgeOverview' })}
         </h2>
       </div>
       <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle px-4 pt-3 pb-1 shadow-none">
@@ -180,10 +188,10 @@ export function AttentionPanel() {
                       )}
                     >
                       {issue.severity === 'critical'
-                        ? t(($) => $['overview.blocker'])
+                        ? t(($) => $['overview.blocker'], { ns: 'knowledgeOverview' })
                         : issue.severity === 'warning'
-                          ? t(($) => $['overview.serious'])
-                          : t(($) => $['overview.review'])}
+                          ? t(($) => $['overview.serious'], { ns: 'knowledgeOverview' })
+                          : t(($) => $['overview.review'], { ns: 'knowledgeOverview' })}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate system-sm-medium text-text-primary">
@@ -241,10 +249,12 @@ export function AttentionPanel() {
         ) : failedUpload ? (
           <div className="flex flex-1 flex-col items-start justify-center gap-3 p-4">
             <p className="system-sm-medium text-text-destructive">
-              {t(($) => $['overview.attention.failedDocument.title'])}
+              {t(($) => $['overview.attention.failedDocument.title'], { ns: 'knowledgeOverview' })}
             </p>
             <p className="body-xs-regular text-text-tertiary">
-              {t(($) => $['overview.attention.failedDocument.description'])}
+              {t(($) => $['overview.attention.failedDocument.description'], {
+                ns: 'knowledgeOverview',
+              })}
             </p>
             <Button
               render={<Link href={newKnowledgeDocumentsPath(knowledgeSpaceId)} />}
@@ -252,14 +262,14 @@ export function AttentionPanel() {
               size="small"
               variant="secondary"
             >
-              {t(($) => $['overview.viewDocuments'])}
+              {t(($) => $['overview.viewDocuments'], { ns: 'knowledgeOverview' })}
             </Button>
           </div>
         ) : (
           <EmptyInline
             icon="i-ri-checkbox-circle-line"
-            title={t(($) => $['overview.noIssues'])}
-            description={t(($) => $['overview.noIssuesDescription'])}
+            title={t(($) => $['overview.noIssues'], { ns: 'knowledgeOverview' })}
+            description={t(($) => $['overview.noIssuesDescription'], { ns: 'knowledgeOverview' })}
           />
         )}
       </Panel>

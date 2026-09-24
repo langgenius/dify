@@ -1,6 +1,6 @@
 'use client'
 
-import type { AnchorHTMLAttributes, ComponentProps, PropsWithChildren } from 'react'
+import type { AnchorHTMLAttributes, ComponentProps, PropsWithChildren, ReactNode } from 'react'
 import type { RetrievalEvidence } from './model'
 import type { MarkdownProps } from '@/app/components/base/markdown'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -28,7 +28,7 @@ export type QualityDecision = 'bad-case' | 'golden'
 export type BadCaseReason = 'low-score' | 'retrieval-miss'
 
 function ScorePill({ score }: { score: number }) {
-  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { i18n, t } = useTranslation(['dataset', 'knowledgeRetrieval'])
   const normalized = Math.max(0, Math.min(1, score))
   const numberFormat = new Intl.NumberFormat(i18n.language, {
     maximumFractionDigits: 2,
@@ -44,14 +44,16 @@ function ScorePill({ score }: { score: number }) {
         className="absolute inset-y-0 left-0 border-r-[1.5px] border-components-progress-bar-progress-highlight bg-util-colors-blue-brand-blue-brand-100"
         style={{ width: `${normalized * 100}%` }}
       />
-      <span className="relative system-2xs-medium">{t(($) => $['retrievalTest.score'])}</span>
+      <span className="relative system-2xs-medium">
+        {t(($) => $['retrievalTest.score'], { ns: 'knowledgeRetrieval' })}
+      </span>
       <span className="relative system-xs-semibold">{displayedScore}</span>
     </span>
   )
 }
 
 function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['knowledgeCitation', 'dataset', 'knowledgeRetrieval'])
   const router = useRouter()
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const [isResolving, setIsResolving] = useState(false)
@@ -68,7 +70,7 @@ function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
   if (openHref) {
     return (
       <Link href={openHref} className={actionClassName}>
-        {t(($) => $['retrievalTest.open'])}
+        {t(($) => $['retrievalTest.open'], { ns: 'knowledgeRetrieval' })}
         <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
       </Link>
     )
@@ -86,7 +88,7 @@ function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
         knowledgeSpaceId,
       })
       if (!citation) {
-        toast.error(t(($) => $.documentNotFoundDescription))
+        toast.error(t(($) => $.documentNotFoundDescription, { ns: 'knowledgeCitation' }))
         return
       }
       router.push(
@@ -96,7 +98,7 @@ function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
         }),
       )
     } catch {
-      toast.error(t(($) => $.documentLoadErrorDescription))
+      toast.error(t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }))
     } finally {
       setIsResolving(false)
     }
@@ -110,7 +112,7 @@ function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
       aria-busy={isResolving}
       onClick={handleOpen}
     >
-      {t(($) => $['retrievalTest.open'])}
+      {t(($) => $['retrievalTest.open'], { ns: 'knowledgeRetrieval' })}
       <span
         aria-hidden
         className={cn(
@@ -133,7 +135,7 @@ export function EvidenceCard({
   evidence: RetrievalEvidence
   index: number
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['dataset', 'knowledgeRetrieval', 'knowledgeSpace'])
   const unavailable = evidence.availability === 'unavailable'
 
   return (
@@ -151,7 +153,7 @@ export function EvidenceCard({
             <span aria-hidden className="i-custom-public-knowledge-selection-mod size-3 shrink-0" />
             <span className="truncate">
               {unavailable
-                ? `${t(($) => $['qualityPage.evidence'])} ${index + 1} · ${t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })}`
+                ? `${t(($) => $['qualityPage.evidence'], { ns: 'knowledgeSpace' })} ${index + 1} · ${t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })}`
                 : evidence.title || `Chunk ${index + 1}`}
             </span>
           </h3>
@@ -161,7 +163,9 @@ export function EvidenceCard({
           <div className="flex items-start gap-2 rounded-lg bg-state-base-hover px-3 py-2 text-text-tertiary">
             <span aria-hidden className="mt-0.5 i-ri-error-warning-line size-4 shrink-0" />
             <p className="body-sm-regular">
-              {t(($) => $['qualityPage.evaluation.evidenceUnavailable'])}
+              {t(($) => $['qualityPage.evaluation.evidenceUnavailable'], {
+                ns: 'knowledgeSpace',
+              })}
             </p>
           </div>
         ) : (
@@ -201,13 +205,14 @@ export function EvidenceCard({
           {evidence.revision && (
             <span className="shrink-0 rounded-xs bg-divider-subtle px-1.25 py-px system-xs-regular text-text-tertiary">
               {t(($) => $['retrievalTest.revision'], {
+                ns: 'knowledgeRetrieval',
                 revision: evidence.revision,
               })}
             </span>
           )}
           {evidence.page !== undefined && (
             <span className="shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $['retrievalTest.page'], { page: evidence.page })}
+              {t(($) => $['retrievalTest.page'], { ns: 'knowledgeRetrieval', page: evidence.page })}
             </span>
           )}
           <span className="min-w-0 flex-1" />
@@ -284,12 +289,12 @@ export function FailedResult({
   pending = false,
   recovery,
 }: {
-  description: string
+  description: ReactNode
   onRetry?: () => void
   pending?: boolean
   recovery?: { href: string; label: string }
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['dataset', 'knowledgeRetrieval'])
   return (
     <div
       role="alert"
@@ -300,7 +305,7 @@ export function FailedResult({
         className="mt-0.75 i-ri-alert-fill size-3.5 shrink-0 text-text-destructive"
       />
       <p className="min-w-0 flex-1 system-sm-regular wrap-break-word text-text-secondary">
-        {t(($) => $['retrievalTest.failedTitle'])}
+        {t(($) => $['retrievalTest.failedTitle'], { ns: 'knowledgeRetrieval' })}
         {' — '}
         <span>{description}</span>
       </p>
@@ -319,7 +324,7 @@ export function FailedResult({
           loading={pending}
           onClick={onRetry}
         >
-          {t(($) => $['retrievalTest.retry'])}
+          {t(($) => $['retrievalTest.retry'], { ns: 'knowledgeRetrieval' })}
         </Button>
       ) : null}
     </div>
@@ -402,7 +407,7 @@ export function ResearchAnswer({
   researchTaskId: string
   streaming: boolean
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['dataset', 'knowledgeRetrieval'])
   const linkedAnswer = useMemo(
     () => linkResearchCitations(answer, citationCount),
     [answer, citationCount],
@@ -419,8 +424,10 @@ export function ResearchAnswer({
       <header className="mb-3 flex items-center gap-2">
         <span aria-hidden className="i-ri-sparkling-2-fill size-4 text-text-accent" />
         <h3 className="system-sm-semibold text-text-primary">
-          {t(($) =>
-            streaming ? $['retrievalTest.generatingActive'] : $['retrievalTest.generating'],
+          {t(
+            ($) =>
+              streaming ? $['retrievalTest.generatingActive'] : $['retrievalTest.generating'],
+            { ns: 'knowledgeRetrieval' },
           )}
         </h3>
         {streaming && (
@@ -462,7 +469,7 @@ export function QualityActions({
   pending?: boolean
   qualityHref: string
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['dataset', 'knowledgeRetrieval', 'knowledgeSpace'])
   if (decision) {
     return (
       <div
@@ -471,17 +478,19 @@ export function QualityActions({
       >
         <span className="flex items-center gap-2 system-sm-medium text-text-success">
           <span aria-hidden className="i-ri-checkbox-circle-fill size-4" />
-          {t(($) =>
-            decision === 'golden'
-              ? $['retrievalTest.savedGoldenQuestion']
-              : $['retrievalTest.savedBadCase'],
+          {t(
+            ($) =>
+              decision === 'golden'
+                ? $['retrievalTest.savedGoldenQuestion']
+                : $['retrievalTest.savedBadCase'],
+            { ns: 'knowledgeRetrieval' },
           )}
         </span>
         <Link
           href={qualityHref}
           className="rounded-md px-1 py-0.5 system-sm-semibold text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
-          {t(($) => $['retrievalTest.viewInQuality'])}
+          {t(($) => $['retrievalTest.viewInQuality'], { ns: 'knowledgeRetrieval' })}
         </Link>
       </div>
     )
@@ -496,14 +505,14 @@ export function QualityActions({
             render={<Button loading={pending} variant={noResults ? 'secondary' : 'ghost'} />}
           >
             <span aria-hidden className="i-ri-thumb-down-line size-4" />
-            {t(($) => $['retrievalTest.makeBadCase'])}
+            {t(($) => $['retrievalTest.makeBadCase'], { ns: 'knowledgeRetrieval' })}
           </DropdownMenuTrigger>
           <DropdownMenuContent placement="top-end" sideOffset={4} className="w-44">
             <DropdownMenuItem onClick={() => void onBadCase('low-score')}>
-              {t(($) => $['qualityPage.reasonValues.lowScore'])}
+              {t(($) => $['qualityPage.reasonValues.lowScore'], { ns: 'knowledgeSpace' })}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => void onBadCase('retrieval-miss')}>
-              {t(($) => $['qualityPage.reasonValues.retrievalMiss'])}
+              {t(($) => $['qualityPage.reasonValues.retrievalMiss'], { ns: 'knowledgeSpace' })}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -511,7 +520,7 @@ export function QualityActions({
       {!noResults && (
         <Button loading={pending} variant="secondary" onClick={() => void onGolden()}>
           <span aria-hidden className="i-ri-thumb-up-line size-4" />
-          {t(($) => $['retrievalTest.keepGoldenQuestion'])}
+          {t(($) => $['retrievalTest.keepGoldenQuestion'], { ns: 'knowledgeRetrieval' })}
         </Button>
       )}
     </div>

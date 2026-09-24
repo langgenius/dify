@@ -689,7 +689,7 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
     '  Product handbook  ',
   )
   await user.type(
-    screen.getByRole('textbox', { name: /knowledgeSpace\.description/ }),
+    screen.getByRole('textbox', { name: /knowledgeCreate\.description/ }),
     '  Internal answers  ',
   )
 }
@@ -873,12 +873,12 @@ describe('CreateKnowledgePage', () => {
     renderPage()
 
     const createButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.createTitle',
+      name: 'knowledgeCreate.createTitle',
     })
     expect(createButton).toBeEnabled()
     await user.click(createButton)
 
-    expect(screen.getByText('knowledgeSpace.nameRequired')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeCreate.nameRequired')).toBeInTheDocument()
     expect(serviceMock.create).not.toHaveBeenCalled()
 
     await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), 'Handbook')
@@ -891,7 +891,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
 
     await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), boundaryName)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -911,7 +911,7 @@ describe('CreateKnowledgePage', () => {
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
     expect(nameInput).toHaveAccessibleDescription('datasetCreation.stepOne.modal.nameLengthInvalid')
     const createButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.createTitle',
+      name: 'knowledgeCreate.createTitle',
     })
     expect(createButton).toBeEnabled()
     await user.click(createButton)
@@ -926,7 +926,7 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
     await choosePermission(user, 'datasetSettings.form.permissionsOnlyMe')
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => {
       expect(serviceMock.create).toHaveBeenCalledWith({
@@ -978,7 +978,7 @@ describe('CreateKnowledgePage', () => {
       'datasetSettings.form.permissionsAllMember',
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => {
       expect(serviceMock.create).toHaveBeenCalledWith({
@@ -994,8 +994,8 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
     await choosePermission(user, 'datasetSettings.form.permissionsInvitedMembers')
 
-    expect(screen.getByText('knowledgeSpace.settings.membersRequired')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    expect(screen.getByText('knowledgeSettings.settings.membersRequired')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
     expect(serviceMock.create).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: /Alice alice@example.com/ }))
@@ -1003,11 +1003,11 @@ describe('CreateKnowledgePage', () => {
       'aria-pressed',
       'true',
     )
-    expect(screen.queryByText('knowledgeSpace.settings.membersRequired')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSettings.settings.membersRequired')).not.toBeInTheDocument()
     await user.keyboard('{Escape}')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeCreate.createFailed')
     expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toBeDisabled()
     expect(serviceMock.create).toHaveBeenCalledWith({
       body: expect.objectContaining({
@@ -1015,7 +1015,7 @@ describe('CreateKnowledgePage', () => {
         members: [{ account_id: 'account-2', role: 'viewer' }],
       }),
     })
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
     expect(serviceMock.create.mock.calls[1]?.[0]).toEqual(serviceMock.create.mock.calls[0]?.[0])
     expect(routerMock.replace).toHaveBeenCalled()
@@ -1030,7 +1030,7 @@ describe('CreateKnowledgePage', () => {
     await user.click(
       screen.getByRole('radio', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create.mock.calls[0]?.[0].body.visibility).toBe('only_me')
@@ -1064,7 +1064,7 @@ describe('CreateKnowledgePage', () => {
     expect(screen.queryByText('knowledgeSpace.permissionRestricted')).not.toBeInTheDocument()
 
     await choosePermission(user, 'datasetSettings.form.permissionsAllMember')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1085,7 +1085,7 @@ describe('CreateKnowledgePage', () => {
     expect(permission).toHaveTextContent('datasetSettings.form.permissionsOnlyMe')
     expect(permission).toHaveAccessibleDescription('knowledgeSpace.permissionRestricted')
     expect(screen.getByText('knowledgeSpace.permissionRestricted')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1105,7 +1105,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     const createButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.createTitle',
+      name: 'knowledgeCreate.createTitle',
     })
 
     await user.dblClick(createButton)
@@ -1121,10 +1121,10 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeCreate.createFailed')
     expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
     expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
@@ -1156,7 +1156,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1180,7 +1180,7 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1208,7 +1208,7 @@ describe('CreateKnowledgePage', () => {
       new File(['content'], 'guide.txt', { type: 'text/plain' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     expect(
       await screen.findByRole('dialog', {
@@ -1237,13 +1237,13 @@ describe('CreateKnowledgePage', () => {
       renderPage()
       await fillRequiredFields(user)
 
-      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
-      expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
+      await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeCreate.createFailed')
       const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
       expect(nameInput).toBeEnabled()
       await user.clear(nameInput)
       await user.type(nameInput, 'Updated handbook')
-      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
       await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
       expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
@@ -1264,11 +1264,11 @@ describe('CreateKnowledgePage', () => {
       renderPage()
       await fillRequiredFields(user)
 
-      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
-      expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
+      await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeCreate.createFailed')
       expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeDisabled()
       expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toBeDisabled()
-      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
       await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
       expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
@@ -1298,7 +1298,7 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.create).not.toHaveBeenCalled()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'knowledgeSpace.documentUploadFailed',
     )
@@ -1309,7 +1309,7 @@ describe('CreateKnowledgePage', () => {
     expect(nameInput).toBeDisabled()
     expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toBeDisabled()
     await user.type(nameInput, ' changed')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledTimes(2))
     expect(serviceMock.create).toHaveBeenCalledOnce()
@@ -1324,9 +1324,9 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeCreate.createFailed')
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledTimes(2)
@@ -1371,8 +1371,8 @@ describe('CreateKnowledgePage', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' })).toBeDisabled()
     expect(screen.getByText('knowledgeSpace.pagesAppearTitle')).toBeInTheDocument()
-    const rootUrl = screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder')
-    const sourceName = screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder')
+    const rootUrl = screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder')
+    const sourceName = screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder')
     expect(rootUrl).toBeEnabled()
     expect(sourceName).toBeEnabled()
     await user.type(rootUrl, 'https://docs.dify.ai')
@@ -1386,10 +1386,10 @@ describe('CreateKnowledgePage', () => {
     expect(routerMock.replace).not.toHaveBeenCalled()
     expect(await screen.findByText('Getting started')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByText(/^knowledgeSpace\.pagesCrawled/)).toBeInTheDocument()
-    expect(screen.getByText(/^knowledgeSpace\.pagesSelected/)).toBeInTheDocument()
+    expect(screen.getByText(/^knowledgeSources\.pagesCrawled/)).toBeInTheDocument()
+    expect(screen.getByText(/^knowledgeSources\.pagesSelected/)).toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
-    expect(screen.getByText(/^knowledgeSpace\.pagesSelected/)).toHaveTextContent('1')
+    expect(screen.getByText(/^knowledgeSources\.pagesSelected/)).toHaveTextContent('1')
     await user.click(uploadFiles)
     expect(uploadFiles).toBeChecked()
     const uploadInput = screen.getByLabelText('knowledgeSpace.uploadFiles', {
@@ -1400,7 +1400,7 @@ describe('CreateKnowledgePage', () => {
     expect(uploadInput.nextElementSibling).toHaveClass('peer-focus-visible:ring-2')
     uploadInput.focus()
     expect(uploadInput).toHaveFocus()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
   })
 
   it('prompts for provider installation when source setup has no installed integration', async () => {
@@ -1426,17 +1426,17 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.connectSource' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Dify docs',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled(),
+      expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeEnabled(),
     )
 
     datasourceQueryMock.plugins.data = [jinaDatasourcePlugin]
@@ -1446,7 +1446,7 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeChecked()
     expect(screen.queryByText('Getting started')).not.toBeInTheDocument()
     expect(screen.getByText('knowledgeSpace.pagesAppearTitle')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
   })
 
   it('disables upload before creating a space when direct upload is unavailable', () => {
@@ -1478,7 +1478,7 @@ describe('CreateKnowledgePage', () => {
     )
     await fillRequiredFields(user)
     await choosePermission(user, 'datasetSettings.form.permissionsOnlyMe')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
@@ -1523,21 +1523,21 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Dify docs',
     )
-    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' })).toHaveTextContent(
-      'knowledgeSpace.syncPolicyDaily',
+    expect(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' })).toHaveTextContent(
+      'knowledgeSources.syncPolicyDaily',
     )
     await user.keyboard('{Enter}')
     expect(serviceMock.create).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }))
-    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.includeSubpages' }))
-    const maxPages = screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })
+    await user.click(screen.getByRole('button', { name: 'knowledgeSources.crawlOptions' }))
+    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSources.includeSubpages' }))
+    const maxPages = screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })
     await user.clear(maxPages)
     await user.type(maxPages, '25')
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
@@ -1558,16 +1558,18 @@ describe('CreateKnowledgePage', () => {
     expect(
       screen.queryByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAll' })).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: 'knowledgeSources.selectAll' })).toBeEnabled()
     expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.reCrawl' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeSources.reCrawl' })).toBeEnabled()
     const syncPolicy = screen.getByRole('combobox', {
-      name: 'knowledgeSpace.syncPolicy',
+      name: 'knowledgeSources.syncPolicy',
     })
-    expect(syncPolicy).toHaveTextContent('knowledgeSpace.syncPolicyDaily')
+    expect(syncPolicy).toHaveTextContent('knowledgeSources.syncPolicyDaily')
     await user.click(syncPolicy)
-    await user.click(await screen.findByRole('option', { name: 'knowledgeSpace.syncPolicyManual' }))
-    expect(syncPolicy).toHaveTextContent('knowledgeSpace.syncPolicyManual')
+    await user.click(
+      await screen.findByRole('option', { name: 'knowledgeSources.syncPolicyManual' }),
+    )
+    expect(syncPolicy).toHaveTextContent('knowledgeSources.syncPolicyManual')
     expect(screen.getByText('Getting started')).toBeInTheDocument()
   })
 
@@ -1576,10 +1578,10 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'source'
     renderPage()
     await fillRequiredFields(user)
-    const rootUrl = screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder')
+    const rootUrl = screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder')
     await user.type(rootUrl, 'https://docs.dify.ai')
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Dify docs',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
@@ -1615,18 +1617,18 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
       'https://docs.dify.ai/introduction',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Dify introduction',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
 
     await user.click(await screen.findByRole('checkbox', { name: 'Dify introduction' }))
     expect(serviceMock.getCrawlStatus).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1670,7 +1672,7 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('radio', { name: 'Tavily' }))
     await user.type(screen.getByRole('textbox', { name: /Search query/ }), 'agentic RAG')
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Tavily research',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
@@ -1687,7 +1689,7 @@ describe('CreateKnowledgePage', () => {
       },
     })
     await user.click(await screen.findByRole('checkbox', { name: 'Tavily result' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create.mock.calls[0]?.[0].body.initial_source).toEqual(
@@ -1714,11 +1716,11 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Dify docs',
     )
 
@@ -1756,11 +1758,11 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Dify docs',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
@@ -1786,20 +1788,20 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Dify docs',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
     await waitFor(() =>
-      expect(screen.getByText(/^knowledgeSpace\.pagesSelected/)).toHaveTextContent('1'),
+      expect(screen.getByText(/^knowledgeSources\.pagesSelected/)).toHaveTextContent('1'),
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
@@ -1851,16 +1853,16 @@ describe('CreateKnowledgePage', () => {
     const view = renderPage()
     await fillRequiredFields(user)
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Dify docs',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())
 
     view.unmount()
@@ -1873,11 +1875,11 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'source'
     const view = renderPage()
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
       'https://docs.dify.ai',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Dify docs',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
@@ -1899,11 +1901,11 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
 
     expect(
-      screen.getByText('knowledgeSpace.providerNotConfigured:{"provider":"Notion"}'),
+      screen.getByText('knowledgeSources.providerNotConfigured:{"provider":"Notion"}'),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.connectProvider:{"provider":"Notion"}',
+        name: 'knowledgeSources.connectProvider:{"provider":"Notion"}',
       }),
     ).toBeEnabled()
     expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
@@ -1934,20 +1936,20 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
-    const sourceName = screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder')
+    const sourceName = screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder')
     await user.type(sourceName, 'Notion handbook')
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Product handbook' }))
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled(),
+      expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeEnabled(),
     )
     await user.clear(sourceName)
     await user.type(sourceName, 'Renamed handbook')
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled(),
+      expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeEnabled(),
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -1999,7 +2001,7 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     await user.click(screen.getByRole('radio', { name: 'Outline' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Outline handbook',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
@@ -2045,7 +2047,7 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     await user.type(screen.getByRole('textbox', { name: 'Workspace' }), 'Product')
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Notion handbook',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
@@ -2085,16 +2087,16 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Drive runbook',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Runbook.pdf' }))
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled(),
+      expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeEnabled(),
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -2154,7 +2156,7 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Team docs',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
@@ -2165,7 +2167,7 @@ describe('CreateKnowledgePage', () => {
       }),
     )
     await user.click(await screen.findByRole('checkbox', { name: 'Launch plan' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
@@ -2296,7 +2298,7 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Drive archive',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
@@ -2309,9 +2311,9 @@ describe('CreateKnowledgePage', () => {
 
     await screen.findByRole('checkbox', { name: 'First.pdf' })
     expect(screen.queryByRole('checkbox', { name: 'Second.pdf' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
     await user.click(screen.getByRole('checkbox', { name: 'First.pdf' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create.mock.calls[0]?.[0].body.initial_source.selection).toEqual([
       expect.objectContaining({ id: 'file-1' }),
@@ -2359,20 +2361,20 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
       'Drive archive',
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
     await user.click(await screen.findByRole('button', { name: 'knowledgeSpace.loadMore' }))
     await screen.findByRole('checkbox', { name: 'File 201.pdf' })
-    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAll' }))
+    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSources.selectAll' }))
 
     expect(screen.getByRole('checkbox', { name: 'File 201.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByText(/^knowledgeSpace\.pagesSelected/)).toHaveTextContent('200')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    expect(screen.getByText(/^knowledgeSources\.pagesSelected/)).toHaveTextContent('200')
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create.mock.calls[0]?.[0].body.initial_source.selection).toHaveLength(200)
@@ -2383,20 +2385,20 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'source'
     renderPage()
     await fillRequiredFields(user)
-    const rootUrl = screen.getByPlaceholderText('knowledgeSpace.rootUrlPlaceholder')
-    const sourceName = screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder')
+    const rootUrl = screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder')
+    const sourceName = screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder')
     expect(rootUrl).toHaveAttribute('maxlength', '2048')
     expect(sourceName).toHaveAttribute('maxlength', '200')
 
     await user.type(rootUrl, 'https://user:secret@docs.dify.ai')
     await user.type(sourceName, 'Dify docs')
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
     expect(serviceMock.create).not.toHaveBeenCalled()
 
     await user.clear(rootUrl)
     await user.type(rootUrl, 'https://docs.dify.ai')
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
 
     const crawlAndPreview = screen.getByRole('button', {
       name: 'knowledgeSpace.crawlAndPreview',
@@ -2405,7 +2407,7 @@ describe('CreateKnowledgePage', () => {
     await user.click(crawlAndPreview)
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
 
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeEnabled()
   })
 
   it('keeps an invalid upload visible and prevents creating the knowledge space', async () => {
@@ -2426,7 +2428,7 @@ describe('CreateKnowledgePage', () => {
     expect(
       screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'knowledgeSpace.preview' })).toBeNull()
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
@@ -2474,7 +2476,7 @@ describe('CreateKnowledgePage', () => {
 
     expect(screen.getByText('empty.txt')).toBeInTheDocument()
     expect(screen.getByText('knowledgeSpace.documentUploadExclusion.fileEmpty')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
     expect(serviceMock.stageUpload).not.toHaveBeenCalled()
     expect(serviceMock.upload).not.toHaveBeenCalled()
     expect(serviceMock.create).not.toHaveBeenCalled()
@@ -2499,7 +2501,7 @@ describe('CreateKnowledgePage', () => {
     )
 
     expect(screen.getByText('empty.txt')).toBeInTheDocument()
-    expect(screen.getByText(/knowledgeSpace\.selectedFiles:.*"total":2.*"valid":1/)).toBeVisible()
+    expect(screen.getByText(/knowledgeCreate\.selectedFiles:.*"total":2.*"valid":1/)).toBeVisible()
     expect(screen.getByText('knowledgeSpace.documentUploadExclusion.fileEmpty')).toBeVisible()
     await waitFor(() =>
       expect(serviceMock.stageUpload).toHaveBeenCalledWith({
@@ -2508,7 +2510,7 @@ describe('CreateKnowledgePage', () => {
     )
     expect(serviceMock.stageUpload).toHaveBeenCalledTimes(1)
     const createButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.createTitle',
+      name: 'knowledgeCreate.createTitle',
     })
     await waitFor(() => expect(createButton).not.toHaveAttribute('data-disabled'))
     await user.click(createButton)
@@ -2557,10 +2559,10 @@ describe('CreateKnowledgePage', () => {
     )
     expect(screen.queryByText('knowledgeSpace.previewUnavailable')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     expect(
-      await within(handbookRow as HTMLElement).findByText('knowledgeSpace.uploadingFiles'),
+      await within(handbookRow as HTMLElement).findByText('knowledgeCreate.uploadingFiles'),
     ).toBeVisible()
     expect(
       within(handbookRow as HTMLElement).queryByRole('button', {
@@ -2568,7 +2570,7 @@ describe('CreateKnowledgePage', () => {
       }),
     ).toBeNull()
     expect(
-      within(policyRow as HTMLElement).getByText('knowledgeSpace.uploadCharactersUnavailable'),
+      within(policyRow as HTMLElement).getByText('knowledgeCreate.uploadCharactersUnavailable'),
     ).toBeVisible()
     expect(
       within(policyRow as HTMLElement).getByRole('button', {
@@ -2597,7 +2599,7 @@ describe('CreateKnowledgePage', () => {
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(serviceMock.getSpace).toHaveBeenCalledOnce())
     expect(serviceMock.upload).not.toHaveBeenCalled()
@@ -2657,11 +2659,11 @@ describe('CreateKnowledgePage', () => {
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'knowledgeSpace.documentUploadFailed',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())
     expect(serviceMock.create).toHaveBeenCalledOnce()
@@ -2673,20 +2675,22 @@ describe('CreateKnowledgePage', () => {
     renderPage()
 
     const dialog = screen.getByRole('dialog', {
-      name: 'knowledgeSpace.createTitle',
+      name: 'knowledgeCreate.createTitle',
     })
     expect(
-      within(dialog).getByRole('heading', { name: 'knowledgeSpace.createTitle' }),
+      within(dialog).getByRole('heading', { name: 'knowledgeCreate.createTitle' }),
     ).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('knowledgeSpace.namePlaceholder')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('knowledgeSpace.descriptionPlaceholder')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('knowledgeCreate.namePlaceholder')).toBeInTheDocument()
     expect(
-      screen.getByRole('textbox', { name: /^knowledgeSpace\.description$/ }),
+      screen.getByPlaceholderText('knowledgeCreate.descriptionPlaceholder'),
     ).toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.descriptionHelp')).toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.startWithHelp')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.illustrationHeadline')).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /^knowledgeCreate\.description$/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('knowledgeCreate.descriptionHelp')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeCreate.startWithHelp')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeInTheDocument()
+    expect(screen.getByText('knowledgeCreate.illustrationHeadline')).toBeInTheDocument()
     expect(document.querySelector('.bg-background-overlay-backdrop')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
@@ -2736,7 +2740,7 @@ describe('CreateKnowledgePage', () => {
     )
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
     expect(await screen.findByText('knowledgeSpace.documentUploadFailed')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))

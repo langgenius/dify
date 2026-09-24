@@ -89,7 +89,7 @@ function DocumentSectionHeading({ children, level }: { children: React.ReactNode
 }
 
 function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeDocuments'])
   const [expanded, setExpanded] = useState(true)
 
   return (
@@ -104,7 +104,9 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
         onClick={() => setExpanded((current) => !current)}
       >
         <span aria-hidden className="i-ri-file-list-3-line size-4 shrink-0" />
-        <span className="min-w-0 flex-1">{t(($) => $.documentSummary)}</span>
+        <span className="min-w-0 flex-1">
+          {t(($) => $.documentSummary, { ns: 'knowledgeDocuments' })}
+        </span>
         <span
           aria-hidden
           className={cn(
@@ -123,7 +125,7 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
 }
 
 export function DocumentReadingPane() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const contentBlocks = useAtomValueRawSync(documentDetailContentBlocksAtom)
   const isLoadingMore = useAtomValueRawSync(documentChunksQueryIsFetchingNextPageAtom)
@@ -202,6 +204,7 @@ export function DocumentReadingPane() {
                         <DocumentSectionHeading level={block.heading.level}>
                           {block.heading.text ||
                             t(($) => $.chunkHeading, {
+                              ns: 'knowledgeDocuments',
                               position: chunk.ordinal + 1,
                             })}
                         </DocumentSectionHeading>
@@ -240,7 +243,7 @@ export function DocumentReadingPane() {
                     )}
                     {!chunk.text && (
                       <p className="mt-3 text-[13px] leading-5.5 text-text-tertiary">
-                        {t(($) => $.emptyChunk)}
+                        {t(($) => $.emptyChunk, { ns: 'knowledgeDocuments' })}
                       </p>
                     )}
                   </section>
@@ -249,7 +252,7 @@ export function DocumentReadingPane() {
               {multimodalPlacement.unplaced.length > 0 && (
                 <section className="space-y-3 rounded-lg px-3 pt-2 first:pt-3 xl:px-0">
                   <h3 className="system-sm-semibold text-text-primary">
-                    {t(($) => $.documentImages)}
+                    {t(($) => $.documentImages, { ns: 'knowledgeDocuments' })}
                   </h3>
                   <div className="flex flex-wrap gap-1 py-1">
                     {multimodalPlacement.unplaced.map((item) => (
@@ -266,7 +269,7 @@ export function DocumentReadingPane() {
         </ScrollArea>
       ) : (
         <div className="flex min-h-72 items-center justify-center px-6 text-center body-sm-regular text-text-tertiary">
-          {t(($) => $.selectChunk)}
+          {t(($) => $.selectChunk, { ns: 'knowledgeDocuments' })}
         </div>
       )}
     </article>
@@ -274,7 +277,7 @@ export function DocumentReadingPane() {
 }
 
 export function DocumentFactsSidebar() {
-  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const chunksComplete = useAtomValueRawSync(documentDetailChunksCompleteAtom)
   const document = useAtomValueRawSync(documentDetailDocumentAtom)
@@ -313,7 +316,7 @@ export function DocumentFactsSidebar() {
               {sourceName ??
                 (document.sourceId
                   ? t(($) => $['sourceType.connector'])
-                  : t(($) => $.manualUpload))}
+                  : t(($) => $.manualUpload, { ns: 'knowledgeDocuments' }))}
             </dd>
           </div>
           <div className="flex gap-3">
@@ -334,7 +337,7 @@ export function DocumentFactsSidebar() {
           </div>
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $.lastIndexed)}
+              {t(($) => $.lastIndexed, { ns: 'knowledgeDocuments' })}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
               {formatDate(revision?.activatedAt ?? revision?.createdAt, locale)}
@@ -342,7 +345,7 @@ export function DocumentFactsSidebar() {
           </div>
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $.documentRevision)}
+              {t(($) => $.documentRevision, { ns: 'knowledgeDocuments' })}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
               {revision?.revision ?? document.activeRevision ?? '—'}
@@ -351,7 +354,9 @@ export function DocumentFactsSidebar() {
         </dl>
       </section>
       <section>
-        <h2 className="system-xs-medium text-text-tertiary">{t(($) => $.indexInformation)}</h2>
+        <h2 className="system-xs-medium text-text-tertiary">
+          {t(($) => $.indexInformation, { ns: 'knowledgeDocuments' })}
+        </h2>
         <dl className="mt-3 space-y-3">
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
@@ -361,6 +366,7 @@ export function DocumentFactsSidebar() {
               {chunksComplete
                 ? childChunkCount
                   ? t(($) => $.parentChildChunkCount, {
+                      ns: 'knowledgeDocuments',
                       childCount: new Intl.NumberFormat(locale).format(childChunkCount),
                       parentCount: new Intl.NumberFormat(locale).format(parentChunkCount),
                     })
@@ -370,11 +376,12 @@ export function DocumentFactsSidebar() {
           </div>
           <div className="flex gap-3">
             <dt className="w-30 shrink-0 system-xs-regular text-text-tertiary">
-              {t(($) => $.averageChunkLength)}
+              {t(($) => $.averageChunkLength, { ns: 'knowledgeDocuments' })}
             </dt>
             <dd className="min-w-0 flex-1 system-xs-regular text-text-primary">
               {chunksComplete
                 ? t(($) => $.averageChunkLengthValue, {
+                    ns: 'knowledgeDocuments',
                     value: new Intl.NumberFormat(locale).format(averageChunkLength),
                   })
                 : '—'}
@@ -388,6 +395,7 @@ export function DocumentFactsSidebar() {
               {retrievalCount === undefined
                 ? '—'
                 : t(($) => $.retrievalCountValue, {
+                    ns: 'knowledgeDocuments',
                     value: new Intl.NumberFormat(locale).format(retrievalCount),
                   })}
             </dd>

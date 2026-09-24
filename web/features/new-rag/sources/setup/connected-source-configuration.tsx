@@ -137,7 +137,7 @@ function ConnectedSourceConfigurationFields({
   selection?: ConnectedSourceSelection
   onSelectionChange?: (selection: ConnectedSourceSelection) => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const { credentialId, datasource, pluginId, provider } = previewBinding
   const [resources, setResources] = useState<PreviewResource[]>([])
   const [localSelection, setLocalSelection] = useState<ConnectedSourceSelection>([])
@@ -389,7 +389,7 @@ function ConnectedSourceConfigurationFields({
           <section className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default">
             <div className="flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
               <Checkbox
-                aria-label={t(($) => $.selectAll)}
+                aria-label={t(($) => $.selectAll, { ns: 'knowledgeSources' })}
                 aria-describedby={selectionAtLimit ? SELECTION_LIMIT_ID : undefined}
                 checked={
                   selectableResources.length > 0 &&
@@ -409,14 +409,14 @@ function ConnectedSourceConfigurationFields({
               />
               <span className="system-xs-medium text-text-secondary">
                 {draft.sourceType === 'onlineDocuments'
-                  ? t(($) => $.selectPagesToSync)
-                  : t(($) => $.selectFilesAndFolders)}
+                  ? t(($) => $.selectPagesToSync, { ns: 'knowledgeSources' })
+                  : t(($) => $.selectFilesAndFolders, { ns: 'knowledgeSources' })}
               </span>
               <span role="status" className="ml-auto system-xs-regular text-text-tertiary">
-                {t(($) => $.pagesSelected, { count: selected.size })}
+                {t(($) => $.pagesSelected, { ns: 'knowledgeSources', count: selected.size })}
                 {selectionAtLimit && (
                   <span id={SELECTION_LIMIT_ID} className="ml-2 text-text-destructive">
-                    {t(($) => $.maxPages)}: {MAX_SELECTION}
+                    {t(($) => $.maxPages, { ns: 'knowledgeSources' })}: {MAX_SELECTION}
                   </span>
                 )}
               </span>

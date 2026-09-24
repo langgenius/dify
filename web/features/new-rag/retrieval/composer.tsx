@@ -26,7 +26,7 @@ const queryImagesMaxBytes = 32 * 1024 * 1024
 const queryImageTypes = new Set(['image/gif', 'image/jpeg', 'image/png', 'image/webp'])
 
 export function RetrievalComposer() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeRetrieval', 'knowledgeSpace'])
   const { disabled, images, mode, query, runnable } = useAtomValueRawSync(
     retrievalComposerFactsAtom,
   )
@@ -41,7 +41,8 @@ export function RetrievalComposer() {
     if (!files?.length || disabled || upload.isPending) return
     const available = Math.max(0, 4 - images.length)
     const candidates = [...files].slice(0, available)
-    if (candidates.length < files.length) toast.error(t(($) => $['retrievalTest.imageLimit']))
+    if (candidates.length < files.length)
+      toast.error(t(($) => $['retrievalTest.imageLimit'], { ns: 'knowledgeRetrieval' }))
     let aggregateBytes = images.reduce((total, image) => total + image.sizeBytes, 0)
     const accepted = candidates.filter((file) => {
       const valid =
@@ -53,7 +54,7 @@ export function RetrievalComposer() {
       return valid
     })
     if (accepted.length !== candidates.length)
-      toast.error(t(($) => $['retrievalTest.imageInvalid']))
+      toast.error(t(($) => $['retrievalTest.imageInvalid'], { ns: 'knowledgeRetrieval' }))
     const next = [...images]
     try {
       for (const file of accepted) {
@@ -70,7 +71,7 @@ export function RetrievalComposer() {
       for (const image of next.slice(images.length)) {
         if (image.previewUrl) URL.revokeObjectURL(image.previewUrl)
       }
-      toast.error(t(($) => $['retrievalTest.imageUploadFailed']))
+      toast.error(t(($) => $['retrievalTest.imageUploadFailed'], { ns: 'knowledgeRetrieval' }))
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
@@ -84,14 +85,14 @@ export function RetrievalComposer() {
     <div className="shrink-0">
       <div className="overflow-hidden rounded-xl bg-components-panel-bg shadow-xs inset-ring-2 inset-ring-components-input-border-active-prompt-2">
         <label className="sr-only" htmlFor="retrieval-test-query">
-          {t(($) => $['retrievalTest.queryPlaceholder'])}
+          {t(($) => $['retrievalTest.queryPlaceholder'], { ns: 'knowledgeRetrieval' })}
         </label>
         <textarea
           id="retrieval-test-query"
           value={query}
           maxLength={2000}
           disabled={disabled}
-          placeholder={t(($) => $['retrievalTest.queryPlaceholder'])}
+          placeholder={t(($) => $['retrievalTest.queryPlaceholder'], { ns: 'knowledgeRetrieval' })}
           className="block h-36 w-full resize-none bg-transparent p-3.5 body-md-regular text-text-primary outline-hidden placeholder:text-text-quaternary"
           onChange={(event) => updateQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -103,7 +104,7 @@ export function RetrievalComposer() {
         />
         {images.length > 0 && (
           <ul
-            aria-label={t(($) => $['retrievalTest.queryImages'])}
+            aria-label={t(($) => $['retrievalTest.queryImages'], { ns: 'knowledgeRetrieval' })}
             className="flex gap-2 overflow-x-auto px-3.5 pb-2"
           >
             {images.map((image) => (
@@ -113,6 +114,7 @@ export function RetrievalComposer() {
                   type="button"
                   size="sm"
                   aria-label={t(($) => $['retrievalTest.removeImage'], {
+                    ns: 'knowledgeRetrieval',
                     name: image.name,
                   })}
                   className="absolute -top-1 -right-1 shadow-xs"
@@ -127,7 +129,7 @@ export function RetrievalComposer() {
         )}
         <div className="flex min-h-13 items-center justify-between gap-3 p-2.5">
           <RetrievalModeSegmentedControl
-            aria-label={t(($) => $['settings.retrievalModeLabel'])}
+            aria-label={t(($) => $['settings.retrievalModeLabel'], { ns: 'knowledgeSpace' })}
             appearance="composer"
             disabled={disabled}
             value={mode}
@@ -136,7 +138,7 @@ export function RetrievalComposer() {
           <div className="flex items-center gap-2">
             <input
               ref={fileInputRef}
-              aria-label={t(($) => $['retrievalTest.addImages'])}
+              aria-label={t(($) => $['retrievalTest.addImages'], { ns: 'knowledgeRetrieval' })}
               accept="image/gif,image/jpeg,image/png,image/webp"
               className="sr-only"
               disabled={disabled || upload.isPending || images.length >= 4}
@@ -150,7 +152,7 @@ export function RetrievalComposer() {
               onClick={() => fileInputRef.current?.click()}
             >
               <span aria-hidden className="i-ri-image-add-line size-4" />
-              {t(($) => $['retrievalTest.addImages'])}
+              {t(($) => $['retrievalTest.addImages'], { ns: 'knowledgeRetrieval' })}
             </Button>
             <Button
               variant="primary"
@@ -159,7 +161,7 @@ export function RetrievalComposer() {
               onClick={run}
             >
               <span aria-hidden className="i-ri-play-circle-line size-4" />
-              {t(($) => $['retrievalTest.run'])}
+              {t(($) => $['retrievalTest.run'], { ns: 'knowledgeRetrieval' })}
             </Button>
           </div>
         </div>

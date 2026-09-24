@@ -51,20 +51,27 @@ const ACTIVITY_PAGE_SIZE = 20
 
 function activityOperationLabel(
   activity: KnowledgeFsOverviewActivityResponse,
-  t: ReturnType<typeof useTranslation<'knowledgeSpace'>>['t'],
+  t: ReturnType<
+    typeof useTranslation<['knowledgeSpace', 'knowledgeOverview', 'knowledgeTasks']>
+  >['t'],
 ) {
-  if (activity.action.startsWith('source.')) return t(($) => $['overview.operation.source_sync'])
+  if (activity.action.startsWith('source.'))
+    return t(($) => $['overview.operation.source_sync'], { ns: 'knowledgeTasks' })
   if (activity.action.startsWith('document.'))
-    return t(($) => $['overview.operation.document_processing'])
-  if (activity.action.startsWith('query.')) return t(($) => $['overview.queryOutcomes'])
+    return t(($) => $['overview.operation.document_processing'], { ns: 'knowledgeTasks' })
+  if (activity.action.startsWith('query.'))
+    return t(($) => $['overview.queryOutcomes'], { ns: 'knowledgeOverview' })
   if (activity.action === 'permission.updated') return t(($) => $.permission)
-  if (activity.action === 'settings.updated') return t(($) => $['overview.updateEvidence'])
+  if (activity.action === 'settings.updated')
+    return t(($) => $['overview.updateEvidence'], { ns: 'knowledgeOverview' })
   return t(($) => $.backgroundTasks)
 }
 
 function activityLabel(
   activity: KnowledgeFsOverviewActivityResponse,
-  t: ReturnType<typeof useTranslation<'knowledgeSpace'>>['t'],
+  t: ReturnType<
+    typeof useTranslation<['knowledgeSpace', 'knowledgeOverview', 'knowledgeTasks']>
+  >['t'],
 ) {
   if (activity.action === 'query.requested') {
     const question = activity.details.question
@@ -79,12 +86,12 @@ function activityLabel(
   const operation = activityOperationLabel(activity, t)
   let label: string
   if (activity.result === 'success')
-    label = t(($) => $['overview.activityCompleted'], { operation })
+    label = t(($) => $['overview.activityCompleted'], { ns: 'knowledgeOverview', operation })
   else if (activity.result === 'failure')
-    label = t(($) => $['overview.activityFailed'], { operation })
+    label = t(($) => $['overview.activityFailed'], { ns: 'knowledgeOverview', operation })
   else if (activity.result === 'canceled')
-    label = t(($) => $['overview.activityCanceled'], { operation })
-  else label = t(($) => $['overview.activityRunning'], { operation })
+    label = t(($) => $['overview.activityCanceled'], { ns: 'knowledgeOverview', operation })
+  else label = t(($) => $['overview.activityRunning'], { ns: 'knowledgeOverview', operation })
 
   const detail = [
     activity.details.reasonCode,
@@ -136,11 +143,11 @@ function ActivityActor({
   showName?: boolean
   size?: 'xxs' | 'xs'
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeOverview'])
   const actor = activityActor(
     activity,
     members,
-    t(($) => $['overview.system']),
+    t(($) => $['overview.system'], { ns: 'knowledgeOverview' }),
   )
 
   return (
@@ -158,7 +165,7 @@ function ActivityActor({
 }
 
 function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
-  const { t, i18n } = useTranslation(['knowledgeSpace'])
+  const { t, i18n } = useTranslation(['knowledgeSpace', 'knowledgeOverview', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
   const activities = useAtomValueRawSync(overviewActivityPreviewDataAtom)
   const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
@@ -186,7 +193,7 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
     return (
       <section className="flex min-w-0 flex-col gap-2 pt-6">
         <h2 className="system-md-medium text-text-secondary">
-          {t(($) => $['overview.recentActivity'])}
+          {t(($) => $['overview.recentActivity'], { ns: 'knowledgeOverview' })}
         </h2>
         <Panel className="flex h-50 border border-components-panel-border p-4 shadow-none">
           <div
@@ -215,7 +222,7 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
     return (
       <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-67.75' : 'h-63')}>
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
-          {t(($) => $['overview.recentActivity'])}
+          {t(($) => $['overview.recentActivity'], { ns: 'knowledgeOverview' })}
         </h2>
         <Panel
           className={cn(
@@ -226,12 +233,14 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
           <EmptyInline
             icon="i-ri-time-line"
             title={
-              indexing ? t(($) => $['overview.syncInProgress']) : t(($) => $['overview.noActivity'])
+              indexing
+                ? t(($) => $['overview.syncInProgress'], { ns: 'knowledgeOverview' })
+                : t(($) => $['overview.noActivity'], { ns: 'knowledgeOverview' })
             }
             description={
               indexing
-                ? t(($) => $['overview.syncInProgressDescription'])
-                : t(($) => $['overview.noActivityDescription'])
+                ? t(($) => $['overview.syncInProgressDescription'], { ns: 'knowledgeOverview' })
+                : t(($) => $['overview.noActivityDescription'], { ns: 'knowledgeOverview' })
             }
           />
         </Panel>
@@ -242,17 +251,17 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
     <section className="flex min-w-0 flex-col gap-2 pt-6">
       <header className="flex h-6 items-center justify-between">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
-          {t(($) => $['overview.recentActivity'])}
+          {t(($) => $['overview.recentActivity'], { ns: 'knowledgeOverview' })}
         </h2>
         <Button size="small" variant="ghost-accent" onClick={onOpenAll}>
-          {t(($) => $['overview.allActivity'])}
+          {t(($) => $['overview.allActivity'], { ns: 'knowledgeOverview' })}
         </Button>
       </header>
       <Panel className="flex max-h-76.25 flex-col overflow-hidden border border-divider-subtle px-4 pt-4 pb-3 shadow-none">
         {loading || activities.length ? (
           <div
             role="table"
-            aria-label={t(($) => $['overview.recentActivity'])}
+            aria-label={t(($) => $['overview.recentActivity'], { ns: 'knowledgeOverview' })}
             className="min-h-0 min-w-151 overflow-x-hidden overflow-y-auto overscroll-contain"
           >
             <div
@@ -260,10 +269,16 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
               className="grid grid-cols-[100px_minmax(280px,1fr)_200px] items-center gap-3 pb-2 system-2xs-medium-uppercase text-text-tertiary"
             >
               <span role="columnheader" className="relative">
-                <span className="sr-only">{t(($) => $['overview.when'])}</span>
+                <span className="sr-only">
+                  {t(($) => $['overview.when'], { ns: 'knowledgeOverview' })}
+                </span>
               </span>
-              <span role="columnheader">{t(($) => $['overview.activity'])}</span>
-              <span role="columnheader">{t(($) => $['overview.operator'])}</span>
+              <span role="columnheader">
+                {t(($) => $['overview.activity'], { ns: 'knowledgeOverview' })}
+              </span>
+              <span role="columnheader">
+                {t(($) => $['overview.operator'], { ns: 'knowledgeOverview' })}
+              </span>
             </div>
             <div className="h-px bg-divider-subtle" />
             {loading
@@ -299,8 +314,8 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
         ) : (
           <EmptyInline
             icon="i-ri-history-line"
-            title={t(($) => $['overview.noActivity'])}
-            description={t(($) => $['overview.noActivityDescription'])}
+            title={t(($) => $['overview.noActivity'], { ns: 'knowledgeOverview' })}
+            description={t(($) => $['overview.noActivityDescription'], { ns: 'knowledgeOverview' })}
           />
         )}
       </Panel>
@@ -328,7 +343,7 @@ function ActivityDateRangePicker({
   dates: ActivityDateRange
   onChange: (dates: ActivityDateRange) => void
 }) {
-  const { t, i18n } = useTranslation(['knowledgeSpace'])
+  const { t, i18n } = useTranslation(['knowledgeOverview'])
   const today = dayjs()
   const formatter = useMemo(
     () => new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }),
@@ -341,7 +356,7 @@ function ActivityDateRangePicker({
         {...props}
         role="button"
         tabIndex={0}
-        aria-label={`${t(($) => $['overview.timeRange'])} ${edge}`}
+        aria-label={`${t(($) => $['overview.timeRange'], { ns: 'knowledgeOverview' })} ${edge}`}
         className={cn(
           'min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left system-xs-regular text-components-input-text-filled outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active',
           props.className,
@@ -362,7 +377,7 @@ function ActivityDateRangePicker({
   return (
     <div
       role="group"
-      aria-label={t(($) => $['overview.timeRange'])}
+      aria-label={t(($) => $['overview.timeRange'], { ns: 'knowledgeOverview' })}
       className="flex h-6 w-35 shrink-0 items-center rounded-lg bg-background-section px-1"
     >
       <DatePicker
@@ -399,7 +414,7 @@ function ActivityDrawer({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t, i18n } = useTranslation(['knowledgeSpace'])
+  const { t, i18n } = useTranslation(['knowledgeSpace', 'knowledgeOverview', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tActivityLog } = useTranslation(['appLog'])
   const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
@@ -472,8 +487,9 @@ function ActivityDrawer({
   )
   const groupLabel = (key: string) => {
     const date = dayjs(key)
-    if (date.isSame(now, 'day')) return t(($) => $['overview.today'])
-    if (date.isSame(now.subtract(1, 'day'), 'day')) return t(($) => $['overview.yesterday'])
+    if (date.isSame(now, 'day')) return t(($) => $['overview.today'], { ns: 'knowledgeOverview' })
+    if (date.isSame(now.subtract(1, 'day'), 'day'))
+      return t(($) => $['overview.yesterday'], { ns: 'knowledgeOverview' })
     return dateFormatter.format(date.toDate())
   }
   const activityTime = (occurredAt: string) => {
@@ -484,24 +500,24 @@ function ActivityDrawer({
     return relativeTimeFormatter.format(-Math.floor(elapsedMinutes / 60), 'hour')
   }
   const rangeLabel: Record<ActivityRange, string> = {
-    '30d': t(($) => $['overview.last30Days']),
-    '7d': t(($) => $['overview.last7Days']),
-    '90d': t(($) => $['overview.last90Days']),
-    all: t(($) => $['overview.allTime']),
+    '30d': t(($) => $['overview.last30Days'], { ns: 'knowledgeOverview' }),
+    '7d': t(($) => $['overview.last7Days'], { ns: 'knowledgeOverview' }),
+    '90d': t(($) => $['overview.last90Days'], { ns: 'knowledgeOverview' }),
+    all: t(($) => $['overview.allTime'], { ns: 'knowledgeOverview' }),
     custom: tActivityLog(($) => $['filter.period.custom']),
-    today: t(($) => $['overview.today']),
+    today: t(($) => $['overview.today'], { ns: 'knowledgeOverview' }),
   }
   const rangeTriggerLabel: Record<ActivityRange, string> = {
     ...rangeLabel,
-    '30d': t(($) => $['overview.thirtyDays']),
-    '7d': t(($) => $['overview.sevenDays']),
-    '90d': t(($) => $['overview.ninetyDays']),
+    '30d': t(($) => $['overview.thirtyDays'], { ns: 'knowledgeOverview' }),
+    '7d': t(($) => $['overview.sevenDays'], { ns: 'knowledgeOverview' }),
+    '90d': t(($) => $['overview.ninetyDays'], { ns: 'knowledgeOverview' }),
   }
   const operatorLabel =
     operator === 'all'
       ? tActivityLog(($) => $['filter.annotation.all'])
       : operator === 'system'
-        ? t(($) => $['overview.system'])
+        ? t(($) => $['overview.system'], { ns: 'knowledgeOverview' })
         : members.find((member) => `member:${member.id}` === operator)?.name || operator.slice(7)
   const clearFilters = () => {
     restoreFilterFocusRef.current = true
@@ -536,7 +552,7 @@ function ActivityDrawer({
               <header className="flex h-16 shrink-0 items-center px-5">
                 <div className="flex w-full items-center justify-between gap-3">
                   <DrawerTitle className="system-lg-semibold text-text-primary">
-                    {t(($) => $['overview.allActivity'])}
+                    {t(($) => $['overview.allActivity'], { ns: 'knowledgeOverview' })}
                   </DrawerTitle>
                   <DrawerCloseButton>
                     <span aria-hidden className="i-ri-close-line size-5" />
@@ -550,7 +566,7 @@ function ActivityDrawer({
                 >
                   <SelectTrigger
                     ref={rangeTriggerRef}
-                    aria-label={t(($) => $['overview.timeRange'])}
+                    aria-label={t(($) => $['overview.timeRange'], { ns: 'knowledgeOverview' })}
                     className="h-6 w-20 min-w-0 shrink-0 border-0 bg-background-section shadow-none"
                   >
                     <span className="truncate">{rangeTriggerLabel[range]}</span>
@@ -576,7 +592,7 @@ function ActivityDrawer({
                   onValueChange={(value) => setOperator(value as ActivityOperator)}
                 >
                   <SelectTrigger
-                    aria-label={t(($) => $['overview.operator'])}
+                    aria-label={t(($) => $['overview.operator'], { ns: 'knowledgeOverview' })}
                     className="h-6 w-50 min-w-0 shrink-0 border-0 bg-background-section shadow-none"
                   >
                     <span className="truncate">{operatorLabel}</span>
@@ -589,7 +605,9 @@ function ActivityDrawer({
                       <SelectItemIndicator />
                     </SelectItem>
                     <SelectItem value="system">
-                      <SelectItemText>{t(($) => $['overview.system'])}</SelectItemText>
+                      <SelectItemText>
+                        {t(($) => $['overview.system'], { ns: 'knowledgeOverview' })}
+                      </SelectItemText>
                       <SelectItemIndicator />
                     </SelectItem>
                     {members.map((member) => (
@@ -648,7 +666,7 @@ function ActivityDrawer({
                                     activityActor(
                                       activity,
                                       members,
-                                      t(($) => $['overview.system']),
+                                      t(($) => $['overview.system'], { ns: 'knowledgeOverview' }),
                                     ).name
                                   }
                                 </p>
@@ -672,7 +690,7 @@ function ActivityDrawer({
                           variant="secondary"
                           onClick={() => void activityQuery.fetchNextPage()}
                         >
-                          {t(($) => $['overview.loadMore'])}
+                          {t(($) => $['overview.loadMore'], { ns: 'knowledgeOverview' })}
                           <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4" />
                         </Button>
                       )}
@@ -684,10 +702,12 @@ function ActivityDrawer({
                       <span aria-hidden className="i-ri-search-line size-5" />
                     </span>
                     <p className="mt-4 system-md-medium text-text-primary">
-                      {t(($) => $['overview.noMatchingActivity'])}
+                      {t(($) => $['overview.noMatchingActivity'], { ns: 'knowledgeOverview' })}
                     </p>
                     <p className="mt-1 body-xs-regular text-text-tertiary">
-                      {t(($) => $['overview.noMatchingActivityDescription'])}
+                      {t(($) => $['overview.noMatchingActivityDescription'], {
+                        ns: 'knowledgeOverview',
+                      })}
                     </p>
                     <button
                       type="button"

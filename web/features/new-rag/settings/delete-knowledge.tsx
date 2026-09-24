@@ -23,7 +23,7 @@ import { knowledgeSettingsSpaceAtom } from './state/queries'
 import { knowledgeSettingsHasPendingSaveAtom } from './state/workflow'
 
 export function DeleteKnowledgeAction() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSettings'])
   const { t: tCommon } = useTranslation(['common'])
   const router = useRouter()
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
@@ -58,15 +58,15 @@ export function DeleteKnowledgeAction() {
       <div className="h-px bg-divider-subtle" />
       <div className="flex min-w-0 flex-col gap-4 pt-7 sm:flex-row sm:gap-1">
         <h2 className="flex h-8 w-full shrink-0 items-center system-sm-semibold text-text-destructive sm:w-45">
-          {t(($) => $['settings.dangerZone'])}
+          {t(($) => $['settings.dangerZone'], { ns: 'knowledgeSettings' })}
         </h2>
         <div className="flex min-w-0 flex-1 items-center justify-between gap-4 rounded-xl border border-components-button-destructive-secondary-border px-4 py-3">
           <div className="min-w-0">
             <p className="system-sm-medium text-text-secondary">
-              {t(($) => $['settings.deleteTitle'])}
+              {t(($) => $['settings.deleteTitle'], { ns: 'knowledgeSettings' })}
             </p>
             <p className="mt-0.5 body-xs-regular text-text-tertiary">
-              {t(($) => $['settings.deleteDescription'])}
+              {t(($) => $['settings.deleteDescription'], { ns: 'knowledgeSettings' })}
             </p>
           </div>
           <Button
@@ -90,16 +90,16 @@ export function DeleteKnowledgeAction() {
         <AlertDialogContent initialFocus={cancelRef}>
           <div className="px-6 pt-6">
             <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
-              {t(($) => $['settings.deleteDialogTitle'], { name })}
+              {t(($) => $['settings.deleteDialogTitle'], { ns: 'knowledgeSettings', name })}
             </AlertDialogTitle>
             <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
-              {t(($) => $['settings.deleteDialogDescription'])}
+              {t(($) => $['settings.deleteDialogDescription'], { ns: 'knowledgeSettings' })}
             </AlertDialogDescription>
             <label
               htmlFor="knowledge-delete-confirmation"
               className="mt-5 block system-sm-medium text-text-secondary"
             >
-              {t(($) => $['settings.deleteConfirmPrompt'], { name })}
+              {t(($) => $['settings.deleteConfirmPrompt'], { ns: 'knowledgeSettings', name })}
             </label>
             <Input
               id="knowledge-delete-confirmation"

@@ -92,7 +92,7 @@ function EmptyAction({
   recommended?: boolean
   title: string
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['dataset'])
   const unavailable = t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })
   const recommendedLabel = t(($) => $['firstEmpty.recommended'], { ns: 'dataset' })
   const descriptionId = useId()

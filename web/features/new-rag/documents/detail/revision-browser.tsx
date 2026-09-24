@@ -56,7 +56,7 @@ function RevisionErrorState({
 }
 
 export function DocumentRevisionBrowser() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeCitation', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const requestedRevision = useAtomValueRawSync(documentDetailRequestedRevisionAtom)
   const revision = useAtomValueRawSync(documentDetailRevisionAtom)
@@ -99,17 +99,17 @@ export function DocumentRevisionBrowser() {
   if (requestedRevision !== null && !revision && error)
     return (
       <RevisionErrorState
-        description={t(($) => $.documentRevisionsLoadError)}
+        description={t(($) => $.documentRevisionsLoadError, { ns: 'knowledgeDocuments' })}
         onRetry={() => void retryRevisions()}
-        title={t(($) => $.documentLoadErrorTitle)}
+        title={t(($) => $.documentLoadErrorTitle, { ns: 'knowledgeDocuments' })}
       />
     )
 
   if (requestedRevision !== null && !revision)
     return (
       <RevisionErrorState
-        description={t(($) => $.documentNotFoundDescription)}
-        title={t(($) => $.documentNotFoundTitle)}
+        description={t(($) => $.documentNotFoundDescription, { ns: 'knowledgeCitation' })}
+        title={t(($) => $.documentNotFoundTitle, { ns: 'knowledgeDocuments' })}
       />
     )
 
@@ -118,9 +118,9 @@ export function DocumentRevisionBrowser() {
   if (effectiveRevision === undefined && error)
     return (
       <RevisionErrorState
-        description={t(($) => $.documentLoadErrorDescription)}
+        description={t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' })}
         onRetry={() => void retryRevisions()}
-        title={t(($) => $.documentLoadErrorTitle)}
+        title={t(($) => $.documentLoadErrorTitle, { ns: 'knowledgeDocuments' })}
       />
     )
 
@@ -129,10 +129,10 @@ export function DocumentRevisionBrowser() {
       <div className="flex min-h-80 flex-col items-center justify-center text-center">
         <span aria-hidden className="i-ri-file-warning-line size-8 text-text-tertiary" />
         <h2 className="mt-3 title-xl-semi-bold text-text-primary">
-          {t(($) => $.documentRevisionMissingTitle)}
+          {t(($) => $.documentRevisionMissingTitle, { ns: 'knowledgeDocuments' })}
         </h2>
         <p className="mt-2 max-w-lg body-sm-regular text-text-tertiary">
-          {t(($) => $.documentRevisionMissingDescription)}
+          {t(($) => $.documentRevisionMissingDescription, { ns: 'knowledgeDocuments' })}
         </p>
       </div>
     )
@@ -144,7 +144,7 @@ export function DocumentRevisionBrowser() {
           className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
           role="alert"
         >
-          <span>{t(($) => $.documentRevisionsLoadError)}</span>
+          <span>{t(($) => $.documentRevisionsLoadError, { ns: 'knowledgeDocuments' })}</span>
           <Button onClick={() => void retryRevisions()}>
             {tCommon(($) => $['operation.retry'])}
           </Button>

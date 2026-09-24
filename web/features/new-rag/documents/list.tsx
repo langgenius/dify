@@ -22,8 +22,8 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Translation, useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
@@ -133,12 +133,12 @@ function DocumentStatus({
 }
 
 function TaskTrigger() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeDocuments'])
   const setTasksOpen = useSetAtom(documentTasksOpenAtom)
   const { activeTaskCount, attentionTaskCount, hasTaskError, historyIncomplete } =
     useAtomValueRawSync(taskTriggerFactsAtom)
   const incompleteTaskHistoryHint = historyIncomplete
-    ? ` · ${t(($) => $.taskHistoryIncomplete)}`
+    ? ` · ${t(($) => $.taskHistoryIncomplete, { ns: 'knowledgeDocuments' })}`
     : ''
   const attentionTaskBadge =
     attentionTaskCount || historyIncomplete
@@ -146,15 +146,15 @@ function TaskTrigger() {
       : undefined
   const tasksButtonLabel = `${
     attentionTaskCount || historyIncomplete
-      ? t(($) => $.tasksWithAttention, { count: attentionTaskCount })
-      : t(($) => $.tasks)
+      ? t(($) => $.tasksWithAttention, { ns: 'knowledgeDocuments', count: attentionTaskCount })
+      : t(($) => $.tasks, { ns: 'knowledgeDocuments' })
   }${incompleteTaskHistoryHint}`
   const tasksLiveStatus = `${
     hasTaskError
-      ? t(($) => $.taskAttentionErrorCount, { count: attentionTaskCount })
+      ? t(($) => $.taskAttentionErrorCount, { ns: 'knowledgeDocuments', count: attentionTaskCount })
       : attentionTaskCount || historyIncomplete
-        ? t(($) => $.taskAttentionCount, { count: attentionTaskCount })
-        : t(($) => $.taskAttentionClear)
+        ? t(($) => $.taskAttentionCount, { ns: 'knowledgeDocuments', count: attentionTaskCount })
+        : t(($) => $.taskAttentionClear, { ns: 'knowledgeDocuments' })
   }${incompleteTaskHistoryHint}`
 
   return (
@@ -173,7 +173,7 @@ function TaskTrigger() {
             activeTaskCount && 'motion-reduce:animate-none',
           )}
         />
-        {t(($) => $.tasks)}
+        {t(($) => $.tasks, { ns: 'knowledgeDocuments' })}
         {attentionTaskBadge && (
           <span
             aria-hidden
@@ -254,7 +254,7 @@ function DocumentTitleCell({ document }: { document: LogicalDocument }) {
 }
 
 function DocumentSourceCell({ documentId }: { documentId: string }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const sourceFactsAtom = useMemo(() => createDocumentRowSourceFactsAtom(documentId), [documentId])
   const { pending, source } = useAtomValueRawSync(sourceFactsAtom)
@@ -270,18 +270,18 @@ function DocumentSourceCell({ documentId }: { documentId: string }) {
           <span className="sr-only">{tCommon(($) => $.loading)}</span>
         </span>
       ) : (
-        <span className="block truncate">{source ?? t(($) => $.manualUpload)}</span>
+        <span className="block truncate">
+          {source ?? t(($) => $.manualUpload, { ns: 'knowledgeDocuments' })}
+        </span>
       )}
     </td>
   )
 }
 
 function DocumentStatusCell({ documentId }: { documentId: string }) {
-  const { t } = useTranslation(['knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
   const statusFactsAtom = useMemo(() => createDocumentRowStatusFactsAtom(documentId), [documentId])
   const { failureMessageKey, status, statusPending } = useAtomValueRawSync(statusFactsAtom)
-  const failureReason = failureMessageKey ? t(($) => $[failureMessageKey]) : undefined
 
   return (
     <td className="w-24 pr-2 align-middle sm:w-66 sm:pr-6">
@@ -293,8 +293,16 @@ function DocumentStatusCell({ documentId }: { documentId: string }) {
           />
           <span className="sr-only">{tCommon(($) => $.loading)}</span>
         </span>
+      ) : failureMessageKey ? (
+        <Suspense fallback={<DocumentStatus status={status} />}>
+          <Translation ns={['knowledgeErrors']}>
+            {(tError) => (
+              <DocumentStatus failureReason={tError(($) => $[failureMessageKey])} status={status} />
+            )}
+          </Translation>
+        </Suspense>
       ) : (
-        <DocumentStatus failureReason={failureReason} status={status} />
+        <DocumentStatus status={status} />
       )}
     </td>
   )
@@ -324,7 +332,7 @@ const DocumentRow = memo(({ document }: { document: LogicalDocument }) => (
 ))
 
 export function DocumentsEmpty() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const setMetadataRequest = useSetAtom(documentMetadataAtom)
   const setUploadRequest = useSetAtom(documentUploadAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
@@ -364,14 +372,16 @@ export function DocumentsEmpty() {
         </Button>
       </div>
       {canUpload && (
-        <p className="system-xs-regular text-text-quaternary">{t(($) => $.documentsDropHint)}</p>
+        <p className="system-xs-regular text-text-quaternary">
+          {t(($) => $.documentsDropHint, { ns: 'knowledgeDocuments' })}
+        </p>
       )}
     </div>
   )
 }
 
 function DocumentsToolbar() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const filter = useAtomValueRawSync(documentFilterAtom)
   const setFilter = useSetAtom(documentFilterAtom)
   const search = useAtomValueRawSync(documentSearchAtom)
@@ -396,15 +406,19 @@ function DocumentsToolbar() {
           if (value) void setFilter(value)
         }}
       >
-        <SelectLabel className="sr-only">{t(($) => $.documentFilterLabel)}</SelectLabel>
+        <SelectLabel className="sr-only">
+          {t(($) => $.documentFilterLabel, { ns: 'knowledgeDocuments' })}
+        </SelectLabel>
         <SelectTrigger className="@min-[768px]/knowledge-content:w-35">
           {filter === 'all'
-            ? t(($) => $.allDocumentStatuses)
+            ? t(($) => $.allDocumentStatuses, { ns: 'knowledgeDocuments' })
             : t(($) => $[`documentStatus.${filter}`])}
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">
-            <SelectItemText>{t(($) => $.allDocumentStatuses)}</SelectItemText>
+            <SelectItemText>
+              {t(($) => $.allDocumentStatuses, { ns: 'knowledgeDocuments' })}
+            </SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
           {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
@@ -416,11 +430,11 @@ function DocumentsToolbar() {
         </SelectContent>
       </Select>
       <SearchInput
-        aria-label={t(($) => $.searchDocuments)}
+        aria-label={t(($) => $.searchDocuments, { ns: 'knowledgeDocuments' })}
         className="@min-[768px]/knowledge-content:w-60"
         value={search}
         onValueChange={(value) => void setSearch(value)}
-        placeholder={t(($) => $.searchDocuments)}
+        placeholder={t(($) => $.searchDocuments, { ns: 'knowledgeDocuments' })}
       />
       <span className="min-w-0 flex-1" />
       {showTasks && <TaskTrigger />}
@@ -444,7 +458,7 @@ function DocumentsToolbar() {
 }
 
 function DocumentsTableHeader() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const {
     allSelected,
     canSelect,
@@ -472,7 +486,7 @@ function DocumentsTableHeader() {
                   ? PARTIAL_RESULTS_DESCRIPTION_ID
                   : undefined
             }
-            aria-label={t(($) => $.selectAllDocuments)}
+            aria-label={t(($) => $.selectAllDocuments, { ns: 'knowledgeDocuments' })}
             onCheckedChange={() => {
               if (!selectionDisabled) toggleAllFilteredDocuments()
             }}
@@ -484,7 +498,7 @@ function DocumentsTableHeader() {
         </th>
         <th className="w-24 py-2 pr-2 font-normal sm:w-66 sm:pr-6">{t(($) => $.statusColumn)}</th>
         <th className="hidden w-43.5 py-2 pr-6 font-normal lg:table-cell">
-          {t(($) => $.updatedColumn)}
+          {t(($) => $.updatedColumn, { ns: 'knowledgeDocuments' })}
         </th>
         <th className="w-10 py-2 font-normal" aria-label={t(($) => $.actionsColumn)} />
       </tr>
@@ -493,7 +507,7 @@ function DocumentsTableHeader() {
 }
 
 function DocumentsTable() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const { documents, resultsIncomplete, sourcesPending, documentSnapshotPending } =
     useAtomValueRawSync(documentTableContentFactsAtom)
@@ -568,7 +582,7 @@ function DocumentsTable() {
             className="py-16 text-center body-sm-regular text-text-tertiary"
             role="status"
           >
-            {t(($) => $.noMatchingDocuments)}
+            {t(($) => $.noMatchingDocuments, { ns: 'knowledgeDocuments' })}
           </p>
         )}
         {resultsIncomplete && (
@@ -585,7 +599,7 @@ function DocumentsTable() {
             )}
             role="status"
           >
-            {t(($) => $.partialDocumentResults)}
+            {t(($) => $.partialDocumentResults, { ns: 'knowledgeDocuments' })}
           </p>
         )}
         {completingResults && (
@@ -654,7 +668,7 @@ function DocumentsTable() {
 }
 
 export function DocumentsList() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeDocuments'])
 
   return (
     <>
@@ -664,7 +678,7 @@ export function DocumentsList() {
       </div>
       <p className="flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">
         <span aria-hidden className="i-ri-information-2-line size-3.5" />
-        {t(($) => $.lastReadyRevisionHint)}
+        {t(($) => $.lastReadyRevisionHint, { ns: 'knowledgeDocuments' })}
       </p>
       <DocumentPermissionRecoveryBulkRegion>
         <DocumentBulkActionsToolbar />
@@ -674,7 +688,7 @@ export function DocumentsList() {
 }
 
 export function DocumentDropOverlay({ fileSizeLimitMb }: { fileSizeLimitMb: number }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
 
   return (
     <div
@@ -687,7 +701,9 @@ export function DocumentDropOverlay({ fileSizeLimitMb }: { fileSizeLimitMb: numb
         <span aria-hidden className="i-ri-file-excel-fill size-6 text-text-success" />
         <span aria-hidden className="i-ri-file-text-fill size-6 text-text-tertiary" />
       </div>
-      <p className="mt-4 system-md-semibold text-text-primary">{t(($) => $.dropFilesHere)}</p>
+      <p className="mt-4 system-md-semibold text-text-primary">
+        {t(($) => $.dropFilesHere, { ns: 'knowledgeDocuments' })}
+      </p>
       <p className="mt-1 system-xs-regular text-text-tertiary">
         {t(($) => $.documentUploadFormats, { size: fileSizeLimitMb })}
       </p>

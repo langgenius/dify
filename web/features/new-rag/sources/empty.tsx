@@ -44,7 +44,7 @@ export function SourcesEmpty({
   canAddSource: boolean
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
 
   return (
     <div className="mt-2.5 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
@@ -94,9 +94,11 @@ export function SourcesEmpty({
         )}
       </div>
       <div className="flex flex-col items-center gap-1.5 pt-1.5">
-        <h2 className="title-xl-semi-bold text-text-primary">{t(($) => $.sourcesEmptyTitle)}</h2>
+        <h2 className="title-xl-semi-bold text-text-primary">
+          {t(($) => $.sourcesEmptyTitle, { ns: 'knowledgeSources' })}
+        </h2>
         <p className="w-full max-w-110 body-sm-regular text-text-tertiary">
-          {t(($) => $.sourcesEmptyDescription)}
+          {t(($) => $.sourcesEmptyDescription, { ns: 'knowledgeSources' })}
         </p>
       </div>
       {canAddSource && (

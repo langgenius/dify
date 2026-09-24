@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Zadania dodawania dokumentów, synchronizacji źródeł i ponownego indeksowania.",
+  "dismissTask": "Ukryj zadanie",
+  "interruptTask": "Przerwij",
+  "noBackgroundTasks": "Nie ma jeszcze żadnych zadań w tle.",
+  "overview.operation.document_delete": "usunięcie dokumentu",
+  "overview.operation.document_processing": "przetwarzanie dokumentów",
+  "overview.operation.document_reindex": "reindeksowanie dokumentów",
+  "overview.operation.document_upload": "przesłanie dokumentu",
+  "overview.operation.source_bulk": "aktualizacja źródła",
+  "overview.operation.source_crawl_import": "import strony internetowej",
+  "overview.operation.source_crawl_preview": "podgląd strony internetowej",
+  "overview.operation.source_online_document_import": "import dokumentów online",
+  "overview.operation.source_online_drive_import": "import dysku online",
+  "overview.operation.source_sync": "synchronizacja źródła",
+  "taskDismissed": "Zadanie ukryte",
+  "taskFailedNotification": "Przetwarzanie dokumentu nie powiodło się — spróbuj ponownie w Zadaniach",
+  "undoTaskDismissal": "Cofnij"
+}

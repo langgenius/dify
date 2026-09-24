@@ -24,7 +24,7 @@ const sourceActionClassName =
   'hidden h-4.5 items-center rounded-none bg-transparent p-0 text-xs text-text-accent group-hover:flex hover:bg-transparent'
 
 function LegacyKnowledgeFSOpenAction({ source }: { source: Resources['sources'][number] }) {
-  const { t } = useTranslation(['knowledgeSpace', 'common'])
+  const { t } = useTranslation(['knowledgeCitation', 'common'])
   const router = useRouter()
   const [isResolving, setIsResolving] = useState(false)
 
@@ -38,7 +38,7 @@ function LegacyKnowledgeFSOpenAction({ source }: { source: Resources['sources'][
         knowledgeSpaceId: source.dataset_id,
       })
       if (!citation) {
-        toast.error(t(($) => $.documentNotFoundDescription, { ns: 'knowledgeSpace' }))
+        toast.error(t(($) => $.documentNotFoundDescription, { ns: 'knowledgeCitation' }))
         return
       }
       router.push(
@@ -48,7 +48,7 @@ function LegacyKnowledgeFSOpenAction({ source }: { source: Resources['sources'][
         }),
       )
     } catch {
-      toast.error(t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeSpace' }))
+      toast.error(t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }))
     } finally {
       setIsResolving(false)
     }
@@ -71,7 +71,7 @@ function LegacyKnowledgeFSOpenAction({ source }: { source: Resources['sources'][
 }
 
 function SourceOpenAction({ source }: { source: Resources['sources'][number] }) {
-  const { t } = useTranslation(['knowledgeSpace', 'common'])
+  const { t } = useTranslation(['common'])
   const label = t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })
 
   if (source.data_source_type !== 'knowledge_fs') {

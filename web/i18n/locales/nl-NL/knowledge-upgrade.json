@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "‘{{name}}’ is nu een Agent-kennisbank",
+  "upgrade.completeTitle": "Upgrade voltooid",
+  "upgrade.contactSupport": "Contact opnemen met support",
+  "upgrade.dialogAvailability": "Na de upgrade <strong>blijven zowel de klassieke kennisbank als de Agent-kennisbank beschikbaar</strong>",
+  "upgrade.dialogDescription": "Upgrade deze <legacy>klassieke kennisbank</legacy> naar een <new>Agent-kennisbank</new>, met behoud van alle documenten, instellingen en app-koppelingen. Je wordt automatisch naar de Agent-kennisbank gebracht.",
+  "upgrade.dialogDuration": "Duurt enkele minuten tot enkele uren, afhankelijk van de grootte. De voortgang staat op de kennisbankkaart",
+  "upgrade.dialogLinkedApps": "Gekoppelde apps blijven tijdens de upgrade gegevens ophalen",
+  "upgrade.dialogTitle": "Upgraden naar een Agent-kennisbank?",
+  "upgrade.failedDescription": "Upgrade mislukt — er is niets gewijzigd. Je klassieke kennisbank blijft beschikbaar.",
+  "upgrade.failedTitle": "Upgrade mislukt",
+  "upgrade.failedToastDescription": "‘{{name}}’ blijft een klassieke kennisbank; er zijn geen gegevens gewijzigd",
+  "upgrade.guideDescription": "De upgrade zet deze klassieke kennisbank over naar een Agent-kennisbank. Koppel een bron en de documenten blijven gesynchroniseerd en worden automatisch geïndexeerd. Documenten, instellingen en app-koppelingen worden overgenomen en gekoppelde apps blijven werken.",
+  "upgrade.guideTitle": "Upgraden van een klassieke kennisbank naar een Agent-kennisbank",
+  "upgrade.justNow": "Zojuist",
+  "upgrade.menuLabel": "Upgraden naar Agent-kennisbank",
+  "upgrade.migratingDocuments": "Documenten migreren…",
+  "upgrade.start": "Upgrade starten",
+  "upgrade.startFailed": "De upgrade kon niet worden gestart. Probeer het opnieuw.",
+  "upgrade.statusFailed": "Upgrade mislukt",
+  "upgrade.statusUpgrading": "Bezig met upgraden",
+  "upgrade.upgradedJustNow": "Zojuist geüpgraded"
+}

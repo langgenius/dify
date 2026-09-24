@@ -92,12 +92,12 @@ function initialEditorValue(seconds: number) {
 }
 
 function syncPolicyValueLabel(
-  t: TFunction<['knowledgeSpace']>,
+  t: TFunction<['knowledgeSpace', 'knowledgeSources']>,
   language: string,
   value: SyncPolicyValue,
 ) {
-  if (value.mode === 'manual') return t(($) => $.syncPolicyManual)
-  if (value.mode === 'interval') return t(($) => $.syncPolicyDaily)
+  if (value.mode === 'manual') return t(($) => $.syncPolicyManual, { ns: 'knowledgeSources' })
+  if (value.mode === 'interval') return t(($) => $.syncPolicyDaily, { ns: 'knowledgeSources' })
 
   const seconds = clampedIntervalSeconds(
     value.customIntervalSeconds ?? DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS,
@@ -120,7 +120,7 @@ function syncPolicyValueLabel(
       return part.value
     })
     .join('')
-  return t(($) => $.syncPolicyEveryValue, { interval })
+  return t(($) => $.syncPolicyEveryValue, { ns: 'knowledgeSources', interval })
 }
 
 function CustomIntervalPopover({
@@ -138,7 +138,7 @@ function CustomIntervalPopover({
   onApply: (seconds: number) => void
   onOpenChange: (open: boolean) => void
 }) {
-  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const tCommon = useTranslation(['common']).t
   const initial = initialEditorValue(initialSeconds)
   const [unit, setUnit] = useState<IntervalUnit>(initial.unit)
@@ -158,11 +158,11 @@ function CustomIntervalPopover({
         <PopoverPositioner anchor={anchorRef} placement="bottom-start" sideOffset={4}>
           <PopoverPopup className="w-75 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-3.5 shadow-lg">
             <PopoverTitle className="system-sm-medium text-text-primary">
-              {t(($) => $.syncPolicyCustom)}
+              {t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })}
             </PopoverTitle>
             <div className="mt-3 flex items-center gap-2">
               <span className="shrink-0 system-sm-regular text-text-secondary">
-                {t(($) => $.syncPolicyEvery)}
+                {t(($) => $.syncPolicyEvery, { ns: 'knowledgeSources' })}
               </span>
               <NumberField
                 disabled={disabled}
@@ -174,7 +174,7 @@ function CustomIntervalPopover({
               >
                 <NumberFieldGroup className="w-18">
                   <NumberFieldInput
-                    aria-label={`${t(($) => $.syncPolicyCustom)} ${t(($) => $[`syncPolicyUnit.${unit}`])}`}
+                    aria-label={`${t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })} ${t(($) => $[`syncPolicyUnit.${unit}`])}`}
                     onBlur={() => setAmount(normalizedAmount)}
                   />
                   <NumberFieldControls>
@@ -192,7 +192,9 @@ function CustomIntervalPopover({
                   setAmount(Math.min(nextUnit === 'days' ? 30 : 720, normalizedAmount))
                 }}
               >
-                <SelectLabel className="sr-only">{t(($) => $.syncPolicyCustom)}</SelectLabel>
+                <SelectLabel className="sr-only">
+                  {t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })}
+                </SelectLabel>
                 <SelectTrigger>{t(($) => $[`syncPolicyUnit.${unit}`])}</SelectTrigger>
                 <SelectContent>
                   {(['hours', 'days'] as const).map((option) => (
@@ -205,7 +207,10 @@ function CustomIntervalPopover({
               </Select>
             </div>
             <p className="mt-3 system-xs-regular leading-3.75 text-text-tertiary">
-              {t(($) => $.syncPolicyCustomHelp, { interval: intervalLabel })}
+              {t(($) => $.syncPolicyCustomHelp, {
+                ns: 'knowledgeSources',
+                interval: intervalLabel,
+              })}
             </p>
             <div className="mt-3 flex justify-end gap-2">
               <Button size="small" disabled={disabled} onClick={() => onOpenChange(false)}>
@@ -217,7 +222,7 @@ function CustomIntervalPopover({
                 disabled={disabled}
                 onClick={() => onApply(intervalSeconds)}
               >
-                {t(($) => $.syncPolicyApply)}
+                {t(($) => $.syncPolicyApply, { ns: 'knowledgeSources' })}
               </Button>
             </div>
           </PopoverPopup>
@@ -244,7 +249,7 @@ export function SyncPolicyField({
   value: SyncPolicyValue
   onChange: (value: SyncPolicyValue) => void
 }) {
-  const { i18n, t } = useTranslation(['knowledgeSpace'])
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const anchorRef = useRef<HTMLButtonElement>(null)
   const [customOpen, setCustomOpen] = useState(false)
   const selectedChoice = choiceForValue(value)
@@ -280,13 +285,15 @@ export function SyncPolicyField({
         value={selectedChoice}
         onValueChange={applyChoice}
       >
-        {label && <SelectLabel>{t(($) => $.syncPolicy)}</SelectLabel>}
+        {label && <SelectLabel>{t(($) => $.syncPolicy, { ns: 'knowledgeSources' })}</SelectLabel>}
         <SelectTrigger ref={anchorRef} className={triggerClassName} size={size}>
           {syncPolicyValueLabel(t, i18n.resolvedLanguage ?? i18n.language, value)}
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="manual">
-            <SelectItemText>{t(($) => $.syncPolicyManual)}</SelectItemText>
+            <SelectItemText>
+              {t(($) => $.syncPolicyManual, { ns: 'knowledgeSources' })}
+            </SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
           {presetIntervals.map((option) => (
@@ -305,6 +312,7 @@ export function SyncPolicyField({
             <SelectItem value="custom">
               <SelectItemText>
                 {t(($) => $.syncPolicyCustomValue, {
+                  ns: 'knowledgeSources',
                   interval: syncPolicyValueLabel(
                     t,
                     i18n.resolvedLanguage ?? i18n.language,
@@ -316,12 +324,16 @@ export function SyncPolicyField({
             </SelectItem>
           ) : (
             <SelectItem value="custom">
-              <SelectItemText>{t(($) => $.syncPolicyCustom)}</SelectItemText>
+              <SelectItemText>
+                {t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })}
+              </SelectItemText>
             </SelectItem>
           )}
           {customIntervalSelected && (
             <SelectItem value="custom-edit">
-              <SelectItemText>{t(($) => $.syncPolicyEditCustom)}</SelectItemText>
+              <SelectItemText>
+                {t(($) => $.syncPolicyEditCustom, { ns: 'knowledgeSources' })}
+              </SelectItemText>
             </SelectItem>
           )}
         </SelectContent>
@@ -342,6 +354,7 @@ export function SyncPolicyField({
       {customIntervalSelected && (
         <p className="system-xs-regular text-text-tertiary">
           {t(($) => $.syncPolicyCustomDescription, {
+            ns: 'knowledgeSources',
             interval: syncPolicyValueLabel(
               t,
               i18n.resolvedLanguage ?? i18n.language,

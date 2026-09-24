@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "«{{name}}» اکنون یک پایگاه دانش Agent است",
+  "upgrade.completeTitle": "ارتقا کامل شد",
+  "upgrade.contactSupport": "تماس با پشتیبانی",
+  "upgrade.dialogAvailability": "پس از ارتقا، <strong>هر دو پایگاه دانش کلاسیک و Agent همچنان قابل استفاده هستند</strong>",
+  "upgrade.dialogDescription": "این کار <legacy>پایگاه دانش کلاسیک</legacy> را به <new>پایگاه دانش Agent</new> ارتقا می‌دهد و همهٔ اسناد، تنظیمات و اتصال‌های برنامه را حفظ می‌کند. سپس به‌طور خودکار به پایگاه دانش Agent هدایت می‌شوید.",
+  "upgrade.dialogDuration": "بسته به اندازه، از چند دقیقه تا چند ساعت طول می‌کشد. پیشرفت روی کارت پایگاه دانش نمایش داده می‌شود",
+  "upgrade.dialogLinkedApps": "برنامه‌های متصل هنگام ارتقا به بازیابی ادامه می‌دهند",
+  "upgrade.dialogTitle": "این پایگاه دانش به پایگاه دانش Agent ارتقا یابد؟",
+  "upgrade.failedDescription": "ارتقا ناموفق بود — چیزی تغییر نکرد. پایگاه دانش کلاسیک شما همچنان در دسترس است.",
+  "upgrade.failedTitle": "ارتقا ناموفق بود",
+  "upgrade.failedToastDescription": "«{{name}}» به‌صورت پایگاه دانش کلاسیک باقی می‌ماند و هیچ داده‌ای تغییر نکرد",
+  "upgrade.guideDescription": "ارتقا، این پایگاه دانش کلاسیک را به پایگاه دانش Agent منتقل می‌کند. با اتصال منبع، اسناد آن همگام می‌مانند و خودکار نمایه‌سازی می‌شوند. همه‌چیز منتقل می‌شود و برنامه‌های متصل به کار ادامه می‌دهند.",
+  "upgrade.guideTitle": "ارتقا از پایگاه دانش کلاسیک به پایگاه دانش Agent",
+  "upgrade.justNow": "همین حالا",
+  "upgrade.menuLabel": "ارتقا به پایگاه دانش Agent",
+  "upgrade.migratingDocuments": "در حال انتقال اسناد…",
+  "upgrade.start": "شروع ارتقا",
+  "upgrade.startFailed": "ارتقا شروع نشد. دوباره تلاش کنید.",
+  "upgrade.statusFailed": "ارتقا ناموفق بود",
+  "upgrade.statusUpgrading": "در حال ارتقا",
+  "upgrade.upgradedJustNow": "همین حالا ارتقا یافت"
+}

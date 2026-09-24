@@ -40,7 +40,7 @@ export function DocumentUploadForm({
   uploading,
   ref,
 }: DocumentUploadFormProps) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
   const { t: tCommon } = useTranslation(['common'])
   const inputRef = useRef<HTMLInputElement>(null)
   const initialFilesAnnouncedRef = useRef(false)
@@ -124,7 +124,7 @@ export function DocumentUploadForm({
         multiple
         hidden
         accept={DOCUMENT_UPLOAD_ACCEPT}
-        aria-label={t(($) => $.uploadDocuments)}
+        aria-label={t(($) => $.uploadDocuments, { ns: 'knowledgeCreate' })}
         tabIndex={-1}
         type="file"
         onChange={(event) => {
@@ -150,7 +150,7 @@ export function DocumentUploadForm({
           <span aria-hidden className="i-ri-file-text-fill size-5.5 text-text-accent" />
         </span>
         <span className="text-[14px] leading-4.25 font-medium text-text-primary">
-          {t(($) => $.uploadDropZoneTitle)}
+          {t(($) => $.uploadDropZoneTitle, { ns: 'knowledgeCreate' })}
         </span>
         <span className="text-[12px] leading-3.75 font-normal text-text-placeholder">
           {t(($) => $.documentUploadFormats, { size: fileSizeLimitMb })}
@@ -158,9 +158,13 @@ export function DocumentUploadForm({
       </button>
 
       {files.length > 0 && (
-        <section className="mt-4" aria-label={t(($) => $.uploadDocuments)}>
+        <section
+          className="mt-4"
+          aria-label={t(($) => $.uploadDocuments, { ns: 'knowledgeCreate' })}
+        >
           <h3 className="system-sm-semibold text-text-primary">
             {t(($) => $.selectedFiles, {
+              ns: 'knowledgeCreate',
               total: files.length,
               valid: validFiles.length,
             })}
@@ -199,7 +203,7 @@ export function DocumentUploadForm({
           type="submit"
           variant="primary"
         >
-          {t(($) => $.addAndProcess)}
+          {t(($) => $.addAndProcess, { ns: 'knowledgeCreate' })}
         </Button>
       </div>
     </form>

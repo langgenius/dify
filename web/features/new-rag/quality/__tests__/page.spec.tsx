@@ -231,13 +231,13 @@ describe('QualityPage', () => {
 
     await screen.findByText('What is the refund policy?')
     expect(
-      screen.getByRole('tab', { name: 'knowledgeSpace.qualityPage.goldenTab' }),
+      screen.getByRole('tab', { name: 'knowledgeQuality.qualityPage.goldenTab' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('tab', { name: 'knowledgeSpace.qualityPage.badCasesTab' }),
+      screen.getByRole('tab', { name: 'knowledgeQuality.qualityPage.badCasesTab' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('tab', { name: 'knowledgeSpace.qualityPage.evaluationTab' }),
+      screen.getByRole('tab', { name: 'knowledgeQuality.qualityPage.evaluationTab' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('tabpanel')).toBeInTheDocument()
   })
@@ -259,14 +259,14 @@ describe('QualityPage', () => {
 
     await screen.findByText('What is the refund policy?')
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.qualityPage.addGolden' }),
+      screen.queryByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.qualityPage.importCsv' }),
+      screen.queryByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', {
-        name: /knowledgeSpace\.qualityPage\.questionActions/,
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
       }),
     ).not.toBeInTheDocument()
 
@@ -276,19 +276,19 @@ describe('QualityPage', () => {
     await screen.findByText('Refund after activation')
     await user.click(
       screen.getByRole('button', {
-        name: /knowledgeSpace\.qualityPage\.questionActions/,
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
       }),
     )
     expect(
       await screen.findByRole('menuitem', {
-        name: 'knowledgeSpace.qualityPage.openTrace',
+        name: 'knowledgeQuality.qualityPage.openTrace',
       }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: 'knowledgeSpace.qualityPage.replay' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeQuality.qualityPage.replay' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: 'knowledgeSpace.qualityPage.ignore' }),
+      screen.queryByRole('menuitem', { name: 'knowledgeQuality.qualityPage.ignore' }),
     ).not.toBeInTheDocument()
   })
 
@@ -297,10 +297,10 @@ describe('QualityPage', () => {
     const { onUrlUpdate } = renderPage()
 
     const goldenTab = await screen.findByRole('tab', {
-      name: 'knowledgeSpace.qualityPage.goldenTab',
+      name: 'knowledgeQuality.qualityPage.goldenTab',
     })
     const badCasesTab = screen.getByRole('tab', {
-      name: 'knowledgeSpace.qualityPage.badCasesTab',
+      name: 'knowledgeQuality.qualityPage.badCasesTab',
     })
     expect(goldenTab).toHaveAttribute('aria-controls')
     expect(badCasesTab).toHaveAttribute('tabindex', '-1')
@@ -366,12 +366,12 @@ describe('QualityPage', () => {
     renderPage()
 
     expect(await screen.findByText('What is the refund policy?')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.addGolden' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.questionPlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
       'New question',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.save' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
 
     await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalled())
     expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
@@ -391,23 +391,23 @@ describe('QualityPage', () => {
     renderPage()
 
     await screen.findByText('What is the refund policy?')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.addGolden' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.questionPlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
       'New question',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.annotationPlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.annotationPlaceholder'),
       'Expected answer',
     )
     const dialog = screen.getByRole('dialog')
     const tagsInput = within(dialog).getByPlaceholderText(
-      'knowledgeSpace.qualityPage.tagsPlaceholder',
+      'knowledgeQuality.qualityPage.tagsPlaceholder',
     )
     await user.type(tagsInput, 'billing, sso')
 
     expect(tagsInput).toHaveValue('billing, sso')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.save' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
 
     await waitFor(() =>
       expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
@@ -442,24 +442,24 @@ describe('QualityPage', () => {
     renderPage()
 
     await screen.findByText('What is the refund policy?')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.addGolden' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.questionPlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
       'When can I request a refund?',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.annotationPlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.annotationPlaceholder'),
       'The answer must cite the refund window.',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.evidencePlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.evidencePlaceholder'),
       'refund within 30 days',
     )
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.findEvidence' }),
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
     )
     await user.click(await screen.findByText('Customers can request a refund within 30 days.'))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.save' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
 
     expect(serviceMock.matchEvidence.mock.calls[0]?.[0]).toEqual({
       body: { evidence: 'refund within 30 days' },
@@ -506,21 +506,21 @@ describe('QualityPage', () => {
     renderPage()
 
     await screen.findByText('What is the refund policy?')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.addGolden' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.questionPlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
       'When can I request a refund?',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.annotationPlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.annotationPlaceholder'),
       'The answer must cite both policies.',
     )
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.evidencePlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.evidencePlaceholder'),
       'refund and cancellation policy',
     )
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.findEvidence' }),
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
     )
     await user.click(
       await screen.findByRole('checkbox', {
@@ -534,14 +534,14 @@ describe('QualityPage', () => {
     )
 
     const matchPolicy = screen.getByRole('radiogroup', {
-      name: 'knowledgeSpace.qualityPage.matchPolicyLabel',
+      name: 'knowledgeQuality.qualityPage.matchPolicyLabel',
     })
     expect(matchPolicy).toBeRequired()
     const all = within(matchPolicy).getByRole('radio', {
-      name: 'knowledgeSpace.qualityPage.matchPolicy.all',
+      name: 'knowledgeQuality.qualityPage.matchPolicy.all',
     })
     const any = within(matchPolicy).getByRole('radio', {
-      name: 'knowledgeSpace.qualityPage.matchPolicy.any',
+      name: 'knowledgeQuality.qualityPage.matchPolicy.any',
     })
     expect(all).toHaveAttribute('type', 'button')
     expect(any).toHaveAttribute('type', 'button')
@@ -555,7 +555,7 @@ describe('QualityPage', () => {
     expect(any).toBeChecked()
     expect(serviceMock.createGolden).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.save' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
 
     await waitFor(() =>
       expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
@@ -577,7 +577,7 @@ describe('QualityPage', () => {
     renderPage()
 
     await screen.findByText('What is the refund policy?')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.importCsv' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
     const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')
     expect(fileInput).not.toBeNull()
     await user.upload(
@@ -593,7 +593,7 @@ describe('QualityPage', () => {
 
     expect(await screen.findByText('What is the refund window?')).toBeInTheDocument()
     const importButtons = screen.getAllByRole('button', {
-      name: 'knowledgeSpace.qualityPage.importCsv',
+      name: 'knowledgeQuality.qualityPage.importCsv',
     })
     await user.click(importButtons.at(-1)!)
 
@@ -623,23 +623,23 @@ describe('QualityPage', () => {
     renderPage()
 
     await screen.findByText('What is the refund policy?')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.addGolden' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.save' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
 
-    expect(screen.getByText('knowledgeSpace.qualityPage.questionRequired')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeQuality.qualityPage.questionRequired')).toBeInTheDocument()
     expect(
-      screen.queryByText('knowledgeSpace.qualityPage.annotationRequired'),
+      screen.queryByText('knowledgeQuality.qualityPage.annotationRequired'),
     ).not.toBeInTheDocument()
     expect(serviceMock.createGolden).not.toHaveBeenCalled()
 
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.questionPlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
       'New question',
     )
     expect(
-      screen.queryByText('knowledgeSpace.qualityPage.questionRequired'),
+      screen.queryByText('knowledgeQuality.qualityPage.questionRequired'),
     ).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.save' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
 
     await waitFor(() =>
       expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
@@ -661,17 +661,17 @@ describe('QualityPage', () => {
     renderPage()
 
     await screen.findByText('What is the refund policy?')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.addGolden' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
     await user.type(
-      screen.getByPlaceholderText('knowledgeSpace.qualityPage.evidencePlaceholder'),
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.evidencePlaceholder'),
       'refund within 30 days',
     )
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.findEvidence' }),
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
     )
 
     expect(
-      await screen.findByText('knowledgeSpace.qualityPage.noEvidenceMatch'),
+      await screen.findByText('knowledgeQuality.qualityPage.noEvidenceMatch'),
     ).toBeInTheDocument()
     expect(screen.queryByText('dataset.unknownError')).not.toBeInTheDocument()
   })
@@ -688,16 +688,16 @@ describe('QualityPage', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: /knowledgeSpace\.qualityPage\.questionActions/,
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
       }),
     )
     await user.click(
-      await screen.findByRole('menuitem', { name: 'knowledgeSpace.qualityPage.edit' }),
+      await screen.findByRole('menuitem', { name: 'knowledgeQuality.qualityPage.edit' }),
     )
     const annotationInput = screen.getByPlaceholderText(
-      'knowledgeSpace.qualityPage.annotationPlaceholder',
+      'knowledgeQuality.qualityPage.annotationPlaceholder',
     )
-    const tagsInput = screen.getByPlaceholderText('knowledgeSpace.qualityPage.tagsPlaceholder')
+    const tagsInput = screen.getByPlaceholderText('knowledgeQuality.qualityPage.tagsPlaceholder')
     expect(tagsInput).toHaveValue('billing')
     await user.click(tagsInput)
     expect(tagsInput).toHaveFocus()
@@ -705,7 +705,7 @@ describe('QualityPage', () => {
     await user.type(tagsInput, 'billing, sso')
     await user.clear(annotationInput)
     await user.type(annotationInput, 'Updated expected answer')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.save' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
 
     await waitFor(() =>
       expect(serviceMock.updateGolden).toHaveBeenCalledWith(
@@ -723,7 +723,7 @@ describe('QualityPage', () => {
       ),
     )
     expect(
-      screen.queryByRole('dialog', { name: 'knowledgeSpace.qualityPage.editTitle' }),
+      screen.queryByRole('dialog', { name: 'knowledgeQuality.qualityPage.editTitle' }),
     ).not.toBeInTheDocument()
   })
 
@@ -777,11 +777,11 @@ describe('QualityPage', () => {
     await screen.findByText('Who can change permissions?')
     await user.click(
       screen.getByRole('button', {
-        name: /knowledgeSpace\.qualityPage\.questionActions/,
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
       }),
     )
     await user.click(
-      await screen.findByRole('menuitem', { name: 'knowledgeSpace.qualityPage.edit' }),
+      await screen.findByRole('menuitem', { name: 'knowledgeQuality.qualityPage.edit' }),
     )
 
     expect(await screen.findByText('Workspace owners can change member permissions.')).toBeVisible()
@@ -792,18 +792,18 @@ describe('QualityPage', () => {
     })
 
     const search = screen.getByRole('searchbox', {
-      name: 'knowledgeSpace.qualityPage.findEvidence',
+      name: 'knowledgeQuality.qualityPage.findEvidence',
     })
     expect(search).toHaveValue('')
     await user.type(search, '权限')
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.findEvidence' }),
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
     )
     await waitFor(() => expect(search).toHaveValue(''))
     expect(screen.getByText('Workspace owners can change member permissions.')).toBeVisible()
     expect(screen.getByText('Administrators can assign application roles.')).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.save' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
     await waitFor(() =>
       expect(serviceMock.updateGolden).toHaveBeenCalledWith(
         {
@@ -829,12 +829,12 @@ describe('QualityPage', () => {
     await screen.findByText('Refund after activation')
     await user.click(
       await screen.findByRole('button', {
-        name: /knowledgeSpace\.qualityPage\.questionActions/,
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
       }),
     )
     await user.click(
       await screen.findByRole('menuitem', {
-        name: 'knowledgeSpace.qualityPage.openTrace',
+        name: 'knowledgeQuality.qualityPage.openTrace',
       }),
     )
 
@@ -956,7 +956,7 @@ describe('QualityPage', () => {
     renderPage()
 
     expect(
-      await screen.findByText('knowledgeSpace.qualityPage.badCasesEmptyTitle'),
+      await screen.findByText('knowledgeQuality.qualityPage.badCasesEmptyTitle'),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
 
@@ -974,20 +974,22 @@ describe('QualityPage', () => {
     await screen.findByText('What is the refund policy?')
     await user.click(
       screen.getByRole('checkbox', {
-        name: /knowledgeSpace\.qualityPage\.selectQuestion/,
+        name: /knowledgeQuality\.qualityPage\.selectQuestion/,
       }),
     )
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.deleteEllipsis' }),
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.deleteEllipsis' }),
     )
 
     expect(serviceMock.deleteGolden).not.toHaveBeenCalled()
     expect(screen.getByText('common.operation.deleteConfirmTitle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    await user.click(screen.getByRole('tab', { name: /knowledgeSpace\.qualityPage\.badCasesTab/ }))
+    await user.click(
+      screen.getByRole('tab', { name: /knowledgeQuality\.qualityPage\.badCasesTab/ }),
+    )
 
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.qualityPage.deleteEllipsis' }),
+      screen.queryByRole('button', { name: 'knowledgeQuality.qualityPage.deleteEllipsis' }),
     ).not.toBeInTheDocument()
   })
 
@@ -999,12 +1001,12 @@ describe('QualityPage', () => {
     await screen.findByText('Refund after activation')
     await user.click(
       screen.getByRole('button', {
-        name: /knowledgeSpace\.qualityPage\.questionActions/,
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
       }),
     )
     await user.click(
       await screen.findByRole('menuitem', {
-        name: 'knowledgeSpace.qualityPage.replay',
+        name: 'knowledgeQuality.qualityPage.replay',
       }),
     )
 
@@ -1049,12 +1051,12 @@ describe('QualityPage', () => {
     await screen.findByText('Refund after activation')
     await user.click(
       screen.getByRole('button', {
-        name: /knowledgeSpace\.qualityPage\.questionActions/,
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
       }),
     )
     await user.click(
       await screen.findByRole('menuitem', {
-        name: 'knowledgeSpace.qualityPage.ignore',
+        name: 'knowledgeQuality.qualityPage.ignore',
       }),
     )
 
@@ -1107,15 +1109,15 @@ describe('QualityPage', () => {
     await screen.findByText('Refund after activation')
     await user.click(
       screen.getByRole('button', {
-        name: /knowledgeSpace\.qualityPage\.questionActions/,
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
       }),
     )
     await user.click(
       await screen.findByRole('menuitem', {
-        name: 'knowledgeSpace.qualityPage.toGolden',
+        name: 'knowledgeQuality.qualityPage.toGolden',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.promote' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.promote' }))
 
     await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalledTimes(1))
     expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
@@ -1151,16 +1153,16 @@ describe('QualityPage', () => {
     await screen.findByText('Refund after activation')
     await user.click(
       screen.getByRole('button', {
-        name: /knowledgeSpace\.qualityPage\.questionActions/,
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
       }),
     )
     await user.click(
       await screen.findByRole('menuitem', {
-        name: 'knowledgeSpace.qualityPage.toGolden',
+        name: 'knowledgeQuality.qualityPage.toGolden',
       }),
     )
     const promote = screen.getByRole('button', {
-      name: 'knowledgeSpace.qualityPage.promote',
+      name: 'knowledgeQuality.qualityPage.promote',
     })
 
     await user.click(promote)
@@ -1203,9 +1205,11 @@ describe('QualityPage', () => {
     renderPage()
 
     await screen.findByText('First question')
-    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.qualityPage.selectAll' }))
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.deleteEllipsis' }),
+      screen.getByRole('checkbox', { name: 'knowledgeQuality.qualityPage.selectAll' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.deleteEllipsis' }),
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
@@ -1213,13 +1217,13 @@ describe('QualityPage', () => {
     expect(
       screen.getByRole('checkbox', {
         hidden: true,
-        name: /knowledgeSpace\.qualityPage\.selectQuestion.*First question/,
+        name: /knowledgeQuality\.qualityPage\.selectQuestion.*First question/,
       }),
     ).not.toBeChecked()
     expect(
       screen.getByRole('checkbox', {
         hidden: true,
-        name: /knowledgeSpace\.qualityPage\.selectQuestion.*Second question/,
+        name: /knowledgeQuality\.qualityPage\.selectQuestion.*Second question/,
       }),
     ).toBeChecked()
 

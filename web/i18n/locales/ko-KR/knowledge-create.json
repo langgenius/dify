@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "추가 및 처리",
+  "crawlPreview": "크롤링 미리보기",
+  "createFailed": "이 Agent 지식 베이스를 만들 수 없습니다. 액세스 권한을 확인하고 다시 시도하세요.",
+  "createTitle": "Agent 지식 베이스 만들기",
+  "description": "설명",
+  "descriptionHelp": "설명을 명확하게 작성하면 앱이 이 Agent 지식 베이스를 언제 검색할지 판단하는 데 도움이 됩니다.",
+  "descriptionPlaceholder": "예를 들어 환불 정책, 배송 FAQ, 에스컬레이션 단계 - 고객 지원 질문에 사용",
+  "illustrationHeadline": "콘텐츠를 한 번 연결하면 모든 앱이 최신 지식으로 답변합니다.",
+  "namePlaceholder": "예를 들어 고객 지원 핸드북",
+  "nameRequired": "Agent 지식 베이스 이름을 입력하세요.",
+  "selectedFiles": "선택한 파일 ({{total}}개 중 {{valid}}개 유효)",
+  "startWith": "다음으로 시작",
+  "startWithHelp": "언제든지 더 많은 소스나 문서를 추가할 수 있습니다.",
+  "uploadCharactersUnavailable": "문자 수: —",
+  "uploadDocuments": "문서 업로드",
+  "uploadDropZoneTitle": "파일을 끌어다 놓거나 찾아보기",
+  "uploadingFiles": "업로드 중…"
+}

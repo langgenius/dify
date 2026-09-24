@@ -6,11 +6,11 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-task-failure'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient } from '@/service/console'
 import {
-  knowledgeFsTaskFailureDetail,
   knowledgeFsTaskFailureMessageKey,
   knowledgeFsTaskRecoveryPath,
 } from '../../../knowledge-fs-task-error'
@@ -55,7 +55,7 @@ export function DocumentTaskRow({
   retryActionCount: number
   task: BackgroundTask
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
@@ -109,7 +109,9 @@ export function DocumentTaskRow({
     (task.documentId
       ? (documentTitle ?? (documentsPending ? t(($) => $.documentColumn) : task.documentId))
       : undefined)
-  const operationTitle = t(($) => $[`overview.operation.${task.operation}`])
+  const operationTitle = t(($) => $[`overview.operation.${task.operation}`], {
+    ns: 'knowledgeTasks',
+  })
   const progress = taskProgress(task)
   const title =
     task.operation === 'document_processing' && resolvedDocumentTitle
@@ -149,8 +151,6 @@ export function DocumentTaskRow({
     task.failure,
     task.errorCode ?? (task.errorMessage ? 'LEGACY_TASK_FAILURE' : undefined),
   )
-  const taskError = taskFailureMessageKey ? t(($) => $[taskFailureMessageKey]) : undefined
-  const taskErrorDetail = knowledgeFsTaskFailureDetail(task.failure, t)
   const recoveryPath = knowledgeFsTaskRecoveryPath(task.failure, knowledgeSpaceId)
   const recoveryLabel =
     task.failure?.action === 'configure_model'
@@ -206,15 +206,8 @@ export function DocumentTaskRow({
         <p className="mt-0.75 truncate system-xs-regular text-text-tertiary" title={status}>
           {status}
         </p>
-        {taskError && (
-          <p className="mt-1 system-2xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
-            {taskError}
-          </p>
-        )}
-        {taskError && taskErrorDetail && (
-          <p className="mt-0.5 system-2xs-regular wrap-break-word text-text-quaternary">
-            {taskErrorDetail}
-          </p>
+        {taskFailureMessageKey && (
+          <KnowledgeTaskFailure messageKey={taskFailureMessageKey} failure={task.failure} />
         )}
         {failedLifecycle === currentLifecycle && (
           <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
@@ -226,13 +219,15 @@ export function DocumentTaskRow({
         <Button
           ref={actionButtonRef}
           aria-label={
-            cancelActionCount > 1 ? `${t(($) => $.interruptTask)} · ${actionTarget}` : undefined
+            cancelActionCount > 1
+              ? `${t(($) => $.interruptTask, { ns: 'knowledgeTasks' })} · ${actionTarget}`
+              : undefined
           }
           size="small"
           loading={pending}
           onClick={() => void performAction('cancel')}
         >
-          {t(($) => $.interruptTask)}
+          {t(($) => $.interruptTask, { ns: 'knowledgeTasks' })}
         </Button>
       ) : canEdit && taskCanRetry(task) ? (
         <Button

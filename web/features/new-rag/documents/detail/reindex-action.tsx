@@ -23,7 +23,7 @@ import {
 import { useRefreshDocumentWritePermission } from './write-permission'
 
 export function DocumentReindexAction() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const canCancel = useAtomValueRawSync(documentCanCancelReindexAtom)
   const cancelBusy = useAtomValueRawSync(documentReindexCancelBusyAtom)
@@ -50,9 +50,12 @@ export function DocumentReindexAction() {
       return readiness.status === 'ready' ? reindexDocument(refreshWritePermission) : undefined
     },
     onSuccess: (result) => {
-      if (result === 'started') toast.success(t(($) => $.documentsReindexStarted))
-      else if (result === 'document-missing') toast.error(t(($) => $.documentNotFoundTitle))
-      else if (result === 'failed') toast.error(t(($) => $.documentsReindexFailed))
+      if (result === 'started')
+        toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
+      else if (result === 'document-missing')
+        toast.error(t(($) => $.documentNotFoundTitle, { ns: 'knowledgeDocuments' }))
+      else if (result === 'failed')
+        toast.error(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
     },
   })
   const guardBusy = startReindexMutation.isPending
@@ -72,12 +75,14 @@ export function DocumentReindexAction() {
         onClick={() => void (inProgress ? stopReindex() : startReindexMutation.mutate())}
       >
         {!inProgress && <span aria-hidden className="i-ri-refresh-line size-4" />}
-        {t(($) =>
-          inProgress
-            ? $.cancelDocumentReindex
-            : failed
-              ? $.retryReindexDocument
-              : $.reindexDocument,
+        {t(
+          ($) =>
+            inProgress
+              ? $.cancelDocumentReindex
+              : failed
+                ? $.retryReindexDocument
+                : $.reindexDocument,
+          { ns: 'knowledgeDocuments' },
         )}
       </Button>
       <KnowledgeModelSetupDialog

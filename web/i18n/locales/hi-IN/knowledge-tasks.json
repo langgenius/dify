@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "दस्तावेज़ जोड़ने, स्रोत सिंक करने और फिर से अनुक्रमित करने के कार्य।",
+  "dismissTask": "कार्य छिपाएँ",
+  "interruptTask": "रोकें",
+  "noBackgroundTasks": "अभी तक कोई पृष्ठभूमि कार्य नहीं.",
+  "overview.operation.document_delete": "दस्तावेज़ हटाना",
+  "overview.operation.document_processing": "दस्तावेज़ प्रसंस्करण",
+  "overview.operation.document_reindex": "दस्तावेज़ पुन: अनुक्रमणिका",
+  "overview.operation.document_upload": "दस्तावेज़ अपलोड",
+  "overview.operation.source_bulk": "स्रोत अद्यतन",
+  "overview.operation.source_crawl_import": "वेबसाइट आयात",
+  "overview.operation.source_crawl_preview": "वेबसाइट पूर्वावलोकन",
+  "overview.operation.source_online_document_import": "ऑनलाइन दस्तावेज़ आयात",
+  "overview.operation.source_online_drive_import": "ऑनलाइन ड्राइव आयात",
+  "overview.operation.source_sync": "स्रोत समन्वयन",
+  "taskDismissed": "कार्य छिपा दिया गया",
+  "taskFailedNotification": "दस्तावेज़ प्रोसेसिंग विफल — कार्य से दोबारा कोशिश करें",
+  "undoTaskDismissal": "पूर्ववत करें"
+}

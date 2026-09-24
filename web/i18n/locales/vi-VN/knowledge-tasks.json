@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Các tác vụ thêm tài liệu, đồng bộ nguồn và lập chỉ mục lại.",
+  "dismissTask": "Ẩn tác vụ",
+  "interruptTask": "Ngắt",
+  "noBackgroundTasks": "Chưa có tác vụ nền nào.",
+  "overview.operation.document_delete": "xóa tài liệu",
+  "overview.operation.document_processing": "xử lý tài liệu",
+  "overview.operation.document_reindex": "lập lại chỉ mục tài liệu",
+  "overview.operation.document_upload": "tải tài liệu lên",
+  "overview.operation.source_bulk": "cập nhật nguồn",
+  "overview.operation.source_crawl_import": "nhập trang web",
+  "overview.operation.source_crawl_preview": "xem trước trang web",
+  "overview.operation.source_online_document_import": "nhập tài liệu trực tuyến",
+  "overview.operation.source_online_drive_import": "nhập ổ đĩa trực tuyến",
+  "overview.operation.source_sync": "đồng bộ nguồn",
+  "taskDismissed": "Đã ẩn tác vụ",
+  "taskFailedNotification": "Xử lý tài liệu không thành công — thử lại trong Tác vụ",
+  "undoTaskDismissal": "Hoàn tác"
+}

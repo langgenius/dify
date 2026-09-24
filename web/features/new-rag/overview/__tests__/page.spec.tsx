@@ -419,7 +419,7 @@ describe('KnowledgeOverviewPage', () => {
     )
 
     const sevenDayRadio = screen.getByRole('radio', {
-      name: 'knowledgeSpace.overview.sevenDays',
+      name: 'knowledgeOverview.overview.sevenDays',
     })
     await user.click(sevenDayRadio)
 
@@ -451,7 +451,7 @@ describe('KnowledgeOverviewPage', () => {
     })
 
     expect(
-      screen.getByRole('radio', { name: 'knowledgeSpace.overview.thirtyDays' }),
+      screen.getByRole('radio', { name: 'knowledgeOverview.overview.thirtyDays' }),
     ).toHaveAttribute('aria-checked', 'true')
     expect(queryOptionsMocks.stats).toHaveBeenLastCalledWith({
       input: {
@@ -498,7 +498,7 @@ describe('KnowledgeOverviewPage', () => {
 
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-    const inventoryBar = screen.getByLabelText('knowledgeSpace.overview.sources')
+    const inventoryBar = screen.getByLabelText('knowledgeOverview.overview.sources')
     expect(inventoryBar.children).toHaveLength(1)
     expect(inventoryBar.firstElementChild).toHaveStyle({ width: '100%' })
   })
@@ -548,7 +548,7 @@ describe('KnowledgeOverviewPage', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('Ada')).toBeInTheDocument()
-    expect(screen.queryByText('knowledgeSpace.overview.system')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeOverview.overview.system')).not.toBeInTheDocument()
   })
 
   it('keeps activities beyond the seventh row available in the recent activity list', () => {
@@ -563,7 +563,7 @@ describe('KnowledgeOverviewPage', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const recentActivity = screen.getByRole('table', {
-      name: 'knowledgeSpace.overview.recentActivity',
+      name: 'knowledgeOverview.overview.recentActivity',
     })
     const activityOptions = queryOptionsMocks.activity.mock.lastCall?.[0] as {
       input: { query: { limit: number } }
@@ -582,13 +582,13 @@ describe('KnowledgeOverviewPage', () => {
     )
 
     expect(
-      screen.getByRole('radiogroup', { name: 'knowledgeSpace.overview.timeRange' }),
+      screen.getByRole('radiogroup', { name: 'knowledgeOverview.overview.timeRange' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('heading', { name: 'knowledgeSpace.overview.noSources' }),
+      screen.queryByRole('heading', { name: 'knowledgeOverview.overview.noSources' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.overview.needsAttention' }),
+      screen.getByRole('heading', { name: 'knowledgeOverview.overview.needsAttention' }),
     ).toBeInTheDocument()
     expect(screen.queryByText('84%')).not.toBeInTheDocument()
 
@@ -596,10 +596,10 @@ describe('KnowledgeOverviewPage', () => {
     rerender(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('radiogroup', { name: 'knowledgeSpace.overview.timeRange' }),
+      screen.getByRole('radiogroup', { name: 'knowledgeOverview.overview.timeRange' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('heading', { name: 'knowledgeSpace.overview.noSources' }),
+      screen.queryByRole('heading', { name: 'knowledgeOverview.overview.noSources' }),
     ).not.toBeInTheDocument()
     expect(screen.getByText('84%')).toBeInTheDocument()
 
@@ -607,10 +607,10 @@ describe('KnowledgeOverviewPage', () => {
     rerender(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.overview.noSources' }),
+      screen.getByRole('heading', { name: 'knowledgeOverview.overview.noSources' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('radiogroup', { name: 'knowledgeSpace.overview.timeRange' }),
+      screen.queryByRole('radiogroup', { name: 'knowledgeOverview.overview.timeRange' }),
     ).not.toBeInTheDocument()
   })
 
@@ -622,14 +622,14 @@ describe('KnowledgeOverviewPage', () => {
 
     expect(screen.getByText('knowledgeSpace.tasksErrorDescription')).toBeInTheDocument()
     const activitySection = screen
-      .getByRole('heading', { name: 'knowledgeSpace.overview.recentActivity' })
+      .getByRole('heading', { name: 'knowledgeOverview.overview.recentActivity' })
       .closest('section')
     expect(activitySection).not.toBeNull()
     await user.click(
       within(activitySection!).getByRole('button', { name: 'common.operation.retry' }),
     )
     expect(
-      within(activitySection!).queryByText('knowledgeSpace.overview.noActivity'),
+      within(activitySection!).queryByText('knowledgeOverview.overview.noActivity'),
     ).not.toBeInTheDocument()
   })
 
@@ -654,11 +654,11 @@ describe('KnowledgeOverviewPage', () => {
     }))
     const rendered = renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getAllByText('knowledgeSpace.overview.attention.staleSource.title')).toHaveLength(
-      4,
-    )
+    expect(
+      screen.getAllByText('knowledgeOverview.overview.attention.staleSource.title'),
+    ).toHaveLength(4)
     expect(screen.queryByText('Source 0 has not synced in 7 days')).not.toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.overview.blocker')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeOverview.overview.blocker')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
     expect(screen.getByText('2 / 2')).toBeInTheDocument()
 
@@ -730,24 +730,24 @@ describe('KnowledgeOverviewPage', () => {
     const user = userEvent.setup()
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
     const whenHeader = screen.getByRole('columnheader', {
-      name: 'knowledgeSpace.overview.when',
+      name: 'knowledgeOverview.overview.when',
     })
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.overview.allActivity' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeOverview.overview.allActivity' }))
 
     expect(
       await screen.findByRole('dialog', {
-        name: 'knowledgeSpace.overview.allActivity',
+        name: 'knowledgeOverview.overview.allActivity',
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('combobox', { name: 'knowledgeSpace.overview.timeRange' }),
-    ).toHaveTextContent('knowledgeSpace.overview.today')
+      screen.getByRole('combobox', { name: 'knowledgeOverview.overview.timeRange' }),
+    ).toHaveTextContent('knowledgeOverview.overview.today')
     expect(
-      screen.getByRole('combobox', { name: 'knowledgeSpace.overview.operator' }),
+      screen.getByRole('combobox', { name: 'knowledgeOverview.overview.operator' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('group', { name: 'knowledgeSpace.overview.timeRange' }),
+      screen.getByRole('group', { name: 'knowledgeOverview.overview.timeRange' }),
     ).toBeInTheDocument()
     expect(document.querySelector('.bg-transparent')).toBeInTheDocument()
     expect(whenHeader).not.toHaveClass('opacity-0')
@@ -759,7 +759,7 @@ describe('KnowledgeOverviewPage', () => {
 
     expect(infiniteOptionsMocks.activity.mock.lastCall?.[0]).toMatchObject({ enabled: false })
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.overview.allActivity' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeOverview.overview.allActivity' }))
 
     expect(infiniteOptionsMocks.activity.mock.lastCall?.[0]).toMatchObject({ enabled: true })
   })
@@ -767,10 +767,10 @@ describe('KnowledgeOverviewPage', () => {
   it('restarts activity pagination when the date or operator filter changes', async () => {
     const user = userEvent.setup()
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.overview.allActivity' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeOverview.overview.allActivity' }))
 
     const operator = screen.getByRole('combobox', {
-      name: 'knowledgeSpace.overview.operator',
+      name: 'knowledgeOverview.overview.operator',
     })
     await user.click(operator)
     await user.click(await screen.findByRole('option', { name: 'Ada' }))
@@ -796,10 +796,12 @@ describe('KnowledgeOverviewPage', () => {
     expect(memberOptions.input('older').query.cursor).toBe('older')
 
     const timeRange = screen.getByRole('combobox', {
-      name: 'knowledgeSpace.overview.timeRange',
+      name: 'knowledgeOverview.overview.timeRange',
     })
     await user.click(timeRange)
-    await user.click(await screen.findByRole('option', { name: 'knowledgeSpace.overview.today' }))
+    await user.click(
+      await screen.findByRole('option', { name: 'knowledgeOverview.overview.today' }),
+    )
 
     const todayOptions = infiniteOptionsMocks.activity.mock.lastCall?.[0] as {
       input: (cursor: string | null) => {
@@ -830,13 +832,13 @@ describe('KnowledgeOverviewPage', () => {
     queryData.activity.data[0]!.result = 'failure'
 
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.overview.allActivity' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeOverview.overview.allActivity' }))
 
     const dialog = screen.getByRole('dialog', {
-      name: 'knowledgeSpace.overview.allActivity',
+      name: 'knowledgeOverview.overview.allActivity',
     })
     expect(dialog).toHaveTextContent('Credentials expired')
-    expect(dialog).toHaveTextContent('knowledgeSpace.overview.activityFailed')
+    expect(dialog).toHaveTextContent('knowledgeOverview.overview.activityFailed')
     expect(within(dialog).getByText(/2h ago|2 hr\. ago|2 hours ago/)).toBeInTheDocument()
     vi.useRealTimers()
   })
@@ -855,7 +857,7 @@ describe('KnowledgeOverviewPage', () => {
     const label = 'knowledgeSpace.qualityPage.question: How do permissions work? — research'
     expect(within(screen.getByRole('table')).getByText(label)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.overview.allActivity' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeOverview.overview.allActivity' }))
     expect(within(screen.getByRole('dialog')).getByText(label)).toBeInTheDocument()
     expect(screen.queryByText('knowledgeSpace.overview.activityQueued')).not.toBeInTheDocument()
   })
@@ -889,25 +891,25 @@ describe('KnowledgeOverviewPage', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.overview.noSources' }),
+      screen.getByRole('heading', { name: 'knowledgeOverview.overview.noSources' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'knowledgeSpace.overview.connectSource' }),
+      screen.getByRole('link', { name: 'knowledgeOverview.overview.connectSource' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/sources/new')
     expect(
-      screen.getByRole('link', { name: 'knowledgeSpace.overview.uploadFiles' }),
+      screen.getByRole('link', { name: 'knowledgeOverview.overview.uploadFiles' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/documents?upload=1')
     expect(screen.getAllByText('—')).toHaveLength(5)
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.overview.needsAttention' }),
+      screen.getByRole('heading', { name: 'knowledgeOverview.overview.needsAttention' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.overview.noQueryData')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeOverview.overview.noQueryData')).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.overview.recentActivity' }),
+      screen.getByRole('heading', { name: 'knowledgeOverview.overview.recentActivity' }),
     ).toBeInTheDocument()
     expect(screen.getByText('knowledgeSpace.documentsEmptyTitle')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.overview.allActivity' }),
+      screen.queryByRole('button', { name: 'knowledgeOverview.overview.allActivity' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
@@ -921,10 +923,10 @@ describe('KnowledgeOverviewPage', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const connectSource = screen.getByRole('link', {
-      name: 'knowledgeSpace.overview.connectSource',
+      name: 'knowledgeOverview.overview.connectSource',
     })
     const uploadFiles = screen.getByRole('link', {
-      name: 'knowledgeSpace.overview.uploadFiles',
+      name: 'knowledgeOverview.overview.uploadFiles',
     })
     await user.click(connectSource)
 
@@ -947,11 +949,11 @@ describe('KnowledgeOverviewPage', () => {
       screen.queryByRole('button', { name: 'knowledgeSpace.retryTask' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByText('knowledgeSpace.overview.attention.failedDocument.title'),
+      screen.getByText('knowledgeOverview.overview.attention.failedDocument.title'),
     ).toBeInTheDocument()
-    expect(screen.queryByText('knowledgeSpace.overview.noIssues')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeOverview.overview.noIssues')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.overview.viewDocuments' }),
+      screen.getByRole('button', { name: 'knowledgeOverview.overview.viewDocuments' }),
     ).toBeInTheDocument()
   })
 
@@ -986,12 +988,12 @@ describe('KnowledgeOverviewPage', () => {
       renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-      expect(screen.queryByText('knowledgeSpace.overview.noIssues')).not.toBeInTheDocument()
+      expect(screen.queryByText('knowledgeOverview.overview.noIssues')).not.toBeInTheDocument()
       expect(
-        screen.getByText('knowledgeSpace.overview.attention.failedDocument.title'),
+        screen.getByText('knowledgeOverview.overview.attention.failedDocument.title'),
       ).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'knowledgeSpace.overview.viewDocuments' }),
+        screen.getByRole('button', { name: 'knowledgeOverview.overview.viewDocuments' }),
       ).toBeInTheDocument()
     },
   )
@@ -1006,12 +1008,12 @@ describe('KnowledgeOverviewPage', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.queryByRole('link', { name: 'knowledgeSpace.overview.connectSource' }),
+      screen.queryByRole('link', { name: 'knowledgeOverview.overview.connectSource' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: 'knowledgeSpace.overview.uploadFiles' }),
+      screen.queryByRole('link', { name: 'knowledgeOverview.overview.uploadFiles' }),
     ).not.toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.overview.readOnlyDescription')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeOverview.overview.readOnlyDescription')).toBeInTheDocument()
   })
 
   it('uses the current space document-write permission for both onboarding actions', () => {
@@ -1023,10 +1025,10 @@ describe('KnowledgeOverviewPage', () => {
     const rendered = renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('link', { name: 'knowledgeSpace.overview.connectSource' }),
+      screen.getByRole('link', { name: 'knowledgeOverview.overview.connectSource' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'knowledgeSpace.overview.uploadFiles' }),
+      screen.getByRole('link', { name: 'knowledgeOverview.overview.uploadFiles' }),
     ).toBeInTheDocument()
 
     permissionState.datasetKeys = ['dataset.acl.edit']
@@ -1035,10 +1037,10 @@ describe('KnowledgeOverviewPage', () => {
     rendered.rerender(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.queryByRole('link', { name: 'knowledgeSpace.overview.connectSource' }),
+      screen.queryByRole('link', { name: 'knowledgeOverview.overview.connectSource' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: 'knowledgeSpace.overview.uploadFiles' }),
+      screen.queryByRole('link', { name: 'knowledgeOverview.overview.uploadFiles' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1049,10 +1051,10 @@ describe('KnowledgeOverviewPage', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const healthSection = screen
-      .getByRole('heading', { name: 'knowledgeSpace.overview.needsAttention' })
+      .getByRole('heading', { name: 'knowledgeOverview.overview.needsAttention' })
       .closest('section')
     const inventorySection = screen
-      .getByRole('heading', { name: 'knowledgeSpace.overview.inventory' })
+      .getByRole('heading', { name: 'knowledgeOverview.overview.inventory' })
       .closest('section')
     expect(healthSection).not.toBeNull()
     expect(inventorySection).not.toBeNull()
@@ -1060,7 +1062,7 @@ describe('KnowledgeOverviewPage', () => {
       within(healthSection!).getByText('knowledgeSpace.detailErrorDescription'),
     ).toBeInTheDocument()
     expect(
-      within(healthSection!).queryByText('knowledgeSpace.overview.noIssues'),
+      within(healthSection!).queryByText('knowledgeOverview.overview.noIssues'),
     ).not.toBeInTheDocument()
     expect(
       within(inventorySection!).getByText('knowledgeSpace.detailErrorDescription'),
@@ -1074,17 +1076,17 @@ describe('KnowledgeOverviewPage', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.overview.recentActivity' }),
+      screen.getByRole('heading', { name: 'knowledgeOverview.overview.recentActivity' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: 'knowledgeSpace.overview.connectSource' }),
+      screen.queryByRole('link', { name: 'knowledgeOverview.overview.connectSource' }),
     ).not.toBeInTheDocument()
   })
 
   it('omits graph metrics from the knowledge inventory', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('knowledgeSpace.overview.webCrawl')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeOverview.overview.webCrawl')).toBeInTheDocument()
     expect(screen.queryByText('knowledgeSpace.overview.graphEntities')).not.toBeInTheDocument()
     expect(screen.queryByText('knowledgeSpace.overview.graphRelations')).not.toBeInTheDocument()
     expect(screen.queryByText('knowledgeSpace.overview.indexCoverage')).not.toBeInTheDocument()
@@ -1105,17 +1107,17 @@ describe('KnowledgeOverviewPage', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'knowledgeSpace.overview.indexingSource:{"source":"Notion — Support SOP"}',
+        name: 'knowledgeOverview.overview.indexingSource:{"source":"Notion — Support SOP"}',
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('knowledgeSpace.overview.indexedDocuments:{"indexed":1,"total":2}'),
+      screen.getByText('knowledgeOverview.overview.indexedDocuments:{"indexed":1,"total":2}'),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('progressbar', { name: 'knowledgeSpace.overview.indexing' }),
+      screen.getByRole('progressbar', { name: 'knowledgeOverview.overview.indexing' }),
     ).toHaveAttribute('aria-valuenow', '1')
     expect(
-      screen.queryByRole('heading', { name: 'knowledgeSpace.overview.noSources' }),
+      screen.queryByRole('heading', { name: 'knowledgeOverview.overview.noSources' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1132,7 +1134,7 @@ describe('KnowledgeOverviewPage', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     const progressbar = screen.getByRole('progressbar', {
-      name: 'knowledgeSpace.overview.indexing',
+      name: 'knowledgeOverview.overview.indexing',
     })
     expect(progressbar).not.toHaveAttribute('aria-valuemax')
     expect(progressbar).not.toHaveAttribute('aria-valuenow')
@@ -1149,7 +1151,7 @@ describe('KnowledgeOverviewPage', () => {
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('heading', { name: 'knowledgeSpace.overview.indexing' }),
+      screen.getByRole('heading', { name: 'knowledgeOverview.overview.indexing' }),
     ).toBeInTheDocument()
   })
 

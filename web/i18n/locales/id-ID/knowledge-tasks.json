@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Tugas penambahan dokumen, sinkronisasi sumber, dan pengindeksan ulang.",
+  "dismissTask": "Sembunyikan tugas",
+  "interruptTask": "Hentikan",
+  "noBackgroundTasks": "Belum ada tugas latar belakang.",
+  "overview.operation.document_delete": "penghapusan dokumen",
+  "overview.operation.document_processing": "pemrosesan dokumen",
+  "overview.operation.document_reindex": "pengindeksan ulang dokumen",
+  "overview.operation.document_upload": "pengunggahan dokumen",
+  "overview.operation.source_bulk": "pembaruan sumber",
+  "overview.operation.source_crawl_import": "impor situs web",
+  "overview.operation.source_crawl_preview": "pratinjau situs web",
+  "overview.operation.source_online_document_import": "impor dokumen online",
+  "overview.operation.source_online_drive_import": "impor drive online",
+  "overview.operation.source_sync": "sinkronisasi sumber",
+  "taskDismissed": "Tugas disembunyikan",
+  "taskFailedNotification": "Pemrosesan dokumen gagal — coba lagi dari Tugas",
+  "undoTaskDismissal": "Urungkan"
+}

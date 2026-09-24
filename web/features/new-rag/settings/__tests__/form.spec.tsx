@@ -414,7 +414,7 @@ function expectNoWrites() {
 }
 
 async function saveChanges(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }))
+  await user.click(screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }))
 }
 
 const teamMember = {
@@ -448,12 +448,12 @@ async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
   await user.click(within(picker).getByRole('button', { name: /Team Member/ }))
   await user.keyboard('{Escape}')
   expectNoWrites()
-  for (const name of ['knowledgeSpace.apiAgentAccess', 'knowledgeSpace.workflowAccess']) {
+  for (const name of ['knowledgeSpace.apiAgentAccess', 'knowledgeSettings.workflowAccess']) {
     await user.click(screen.getByRole('switch', { name }))
     expectNoWrites()
   }
   for (const name of [
-    'knowledgeSpace.settings.systemReasoningModelLabel',
+    'knowledgeSettings.settings.systemReasoningModelLabel',
     'modelProvider.modelProvider.rerankModel.key',
   ]) {
     await user.click(screen.getByRole('button', { name }))
@@ -554,12 +554,12 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.tab()
 
     const nameError = screen.getByRole('alert')
-    expect(nameError).toHaveTextContent('knowledgeSpace.settings.nameRequired')
+    expect(nameError).toHaveTextContent('knowledgeSettings.settings.nameRequired')
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
     expect(nameInput).toHaveAttribute('aria-describedby', nameError.id)
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.saveChanges',
+        name: 'knowledgeSettings.settings.saveChanges',
       }),
     ).toBeDisabled()
   })
@@ -572,7 +572,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.clear(nameInput)
     await user.type(nameInput, 'Updated camera specs')
     const saveButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.saveChanges',
+      name: 'knowledgeSettings.settings.saveChanges',
     })
     await user.click(saveButton)
 
@@ -663,7 +663,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.type(descriptionInput, 'Updated product documentation')
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.saveChanges',
+        name: 'knowledgeSettings.settings.saveChanges',
       }),
     )
 
@@ -694,7 +694,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.saveChanges',
+        name: 'knowledgeSettings.settings.saveChanges',
       }),
     )
 
@@ -737,7 +737,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'datasetSettings.form.desc',
     })
     const saveButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.saveChanges',
+      name: 'knowledgeSettings.settings.saveChanges',
     })
     const invalidDescription = '知'.repeat(2001)
     fireEvent.change(descriptionInput, { target: { value: invalidDescription } })
@@ -796,7 +796,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.saveChanges',
+        name: 'knowledgeSettings.settings.saveChanges',
       }),
     ).toBeDisabled()
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
@@ -827,12 +827,12 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'knowledgeSpace.apiAgentAccess',
     })
     const workflowAccessSwitch = screen.getByRole('switch', {
-      name: 'knowledgeSpace.workflowAccess',
+      name: 'knowledgeSettings.workflowAccess',
     })
     expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
     expect(workflowAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
     expect(apiAccessSwitch).toHaveAccessibleDescription(
-      'knowledgeSpace.settings.apiAccessDescription',
+      'knowledgeSettings.settings.apiAccessDescription',
     )
 
     await user.click(apiAccessSwitch)
@@ -871,11 +871,11 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     const workflowAccessSwitch = screen.getByRole('switch', {
-      name: 'knowledgeSpace.workflowAccess',
+      name: 'knowledgeSettings.workflowAccess',
     })
     expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'false')
     expect(workflowAccessSwitch).toHaveAccessibleDescription(
-      'knowledgeSpace.settings.workflowAccessDescription',
+      'knowledgeSettings.settings.workflowAccessDescription',
     )
     await user.click(workflowAccessSwitch)
     expectNoWrites()
@@ -909,7 +909,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     const workflowAccessSwitch = screen.getByRole('switch', {
-      name: 'knowledgeSpace.workflowAccess',
+      name: 'knowledgeSettings.workflowAccess',
     })
     await user.click(workflowAccessSwitch)
     expectNoWrites()
@@ -964,7 +964,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'common.operation.delete',
     })
     const confirmationInput = within(dialog).getByRole('textbox', {
-      name: /^knowledgeSpace\.settings\.deleteConfirmPrompt/,
+      name: /^knowledgeSettings\.settings\.deleteConfirmPrompt/,
     })
 
     expect(confirmationInput).toHaveAttribute('placeholder', 'Camera Technical Spec')
@@ -995,7 +995,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.clear(nameInput)
     await user.type(nameInput, 'Camera specs draft')
     const saveButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.saveChanges',
+      name: 'knowledgeSettings.settings.saveChanges',
     })
     await user.click(saveButton)
 
@@ -1017,7 +1017,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     )
 
@@ -1047,14 +1047,16 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
     renderForm()
     const selector = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
     await user.click(selector)
     expectNoWrites()
     await saveChanges(user)
 
     await waitFor(() =>
-      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.compilationInProgress'),
+      expect(toastMock.error).toHaveBeenCalledWith(
+        'knowledgeErrors.settings.compilationInProgress',
+      ),
     )
     expect(selector).toHaveTextContent('openrouter/auto')
     expect(selector).toBeEnabled()
@@ -1079,13 +1081,13 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
     renderForm()
     const selector = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
     await user.click(selector)
     expectNoWrites()
     await saveChanges(user)
     const reload = await screen.findByRole('button', {
-      name: 'knowledgeSpace.settings.reloadLatest',
+      name: 'knowledgeSettings.settings.reloadLatest',
     })
     expect(selector).toBeDisabled()
     expect(selector).toHaveTextContent('openrouter/auto')
@@ -1176,11 +1178,11 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     const error = screen.getByRole('alert')
     const trigger = screen.getByRole('button', { name: /Workspace owner/ })
-    expect(error).toHaveTextContent('knowledgeSpace.settings.membersRequired')
+    expect(error).toHaveTextContent('knowledgeSettings.settings.membersRequired')
     expect(trigger).toHaveAttribute('aria-invalid', 'true')
     expect(trigger).toHaveAttribute('aria-describedby', error.id)
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeDisabled()
   })
 
@@ -1205,8 +1207,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.tab()
 
     expect(topKInput).toHaveValue('10')
-    expect(screen.getByText('knowledgeSpace.settings.topKMinimum')).toBeInTheDocument()
-    expect(screen.getByText('knowledgeSpace.settings.scoreRange')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSettings.settings.topKMinimum')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSettings.settings.scoreRange')).toBeInTheDocument()
     expectNoWrites()
     await saveChanges(user)
 
@@ -1272,7 +1274,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.embeddingModelLabel',
+        name: 'knowledgeSettings.settings.embeddingModelLabel',
       }),
     )
     const dialog = await screen.findByRole('alertdialog')
@@ -1299,7 +1301,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.saveChanges',
+        name: 'knowledgeSettings.settings.saveChanges',
       }),
     ).toBeDisabled()
   })
@@ -1400,7 +1402,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'modelProvider.modelProvider.rerankModel.key',
     })
     expect(rerankSelector).toHaveAccessibleDescription(
-      'knowledgeSpace.settings.rerankModelRequired',
+      'knowledgeSettings.settings.rerankModelRequired',
     )
     await user.click(rerankSelector)
     expectNoWrites()
@@ -1433,7 +1435,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       },
       expect.anything(),
     )
-    expect(screen.queryByText('knowledgeSpace.settings.rerankModelRequired')).toBeNull()
+    expect(screen.queryByText('knowledgeSettings.settings.rerankModelRequired')).toBeNull()
     await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
   })
@@ -1453,11 +1455,11 @@ describe('KnowledgeSettingsPage workflows', () => {
     act(() => queryClient.setQueryData(queryKeys.space, knowledgeQueryMock.space))
     expect(nameInput).toHaveValue('Version B')
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'knowledgeSpace.settings.serverConflict',
+      'knowledgeSettings.settings.serverConflict',
     )
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.saveChanges',
+        name: 'knowledgeSettings.settings.saveChanges',
       }),
     ).toBeDisabled()
 
@@ -1507,47 +1509,47 @@ describe('KnowledgeSettingsPage workflows', () => {
       'datasetSettings.form.embeddingModel · modelProvider.modelProvider.systemReasoningModel.key · modelProvider.modelProvider.rerankModel.key',
     )
     const reasoningSelector = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
     expect(reasoningSelector).toHaveAccessibleDescription(
-      'knowledgeSpace.settings.systemReasoningModelRequired',
+      'knowledgeSettings.settings.systemReasoningModelRequired',
     )
     const embeddingSelector = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.embeddingModelLabel',
+      name: 'knowledgeSettings.settings.embeddingModelLabel',
     })
     expect(embeddingSelector).toHaveAccessibleDescription(
-      'knowledgeSpace.settings.embeddingModelRequired',
+      'knowledgeSettings.settings.embeddingModelRequired',
     )
     const rerankSelector = screen.getByRole('button', {
       name: 'modelProvider.modelProvider.rerankModel.key',
     })
     expect(rerankSelector).toHaveAccessibleDescription(
-      'knowledgeSpace.settings.rerankModelRequired',
+      'knowledgeSettings.settings.rerankModelRequired',
     )
     expect(
       screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
     expect(
-      screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' }),
+      screen.getByRole('switch', { name: 'knowledgeSettings.workflowAccess' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     )
     expect(
-      screen.queryByText('knowledgeSpace.settings.systemReasoningModelRequired'),
+      screen.queryByText('knowledgeSettings.settings.systemReasoningModelRequired'),
     ).not.toBeInTheDocument()
     expect(embeddingSelector).toBeEnabled()
     await user.click(embeddingSelector)
     expect(
-      screen.queryByText('knowledgeSpace.settings.embeddingModelRequired'),
+      screen.queryByText('knowledgeSettings.settings.embeddingModelRequired'),
     ).not.toBeInTheDocument()
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
     await user.click(rerankSelector)
     expect(
-      screen.queryByText('knowledgeSpace.settings.rerankModelRequired'),
+      screen.queryByText('knowledgeSettings.settings.rerankModelRequired'),
     ).not.toBeInTheDocument()
 
     expectNoWrites()
@@ -1581,7 +1583,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
     expect(
-      screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' }),
+      screen.getByRole('switch', { name: 'knowledgeSettings.workflowAccess' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
   })
 
@@ -1599,7 +1601,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
     expect(apiAccessSwitch).toHaveAccessibleDescription(
-      'knowledgeSpace.settings.apiAccessDescription',
+      'knowledgeSettings.settings.apiAccessDescription',
     )
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
@@ -1648,7 +1650,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     ).toBeInTheDocument()
   })
@@ -1659,7 +1661,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     )
 
@@ -1716,7 +1718,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     )
 
@@ -1769,7 +1771,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     )
 
@@ -1786,12 +1788,12 @@ describe('KnowledgeSettingsPage workflows', () => {
     const user = userEvent.setup()
     renderForm({ accountProfile: { id: 'owner-1' }, members: [teamMember] })
     const { name, description, topK, threshold } = await editAllSettings(user)
-    const save = screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' })
+    const save = screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' })
     const cancel = screen.getByRole('button', { name: 'common.operation.cancel' })
 
     for (const content of [
-      screen.getByRole('heading', { name: 'knowledgeSpace.settings.basicInfo' }),
-      screen.getByRole('heading', { name: 'knowledgeSpace.settings.retrievalTitle' }),
+      screen.getByRole('heading', { name: 'knowledgeSettings.settings.basicInfo' }),
+      screen.getByRole('heading', { name: 'knowledgeSettings.settings.retrievalTitle' }),
       screen.getByRole('button', { name: 'common.operation.delete' }),
       threshold,
     ]) {
@@ -1799,7 +1801,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       expect(content.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
     }
     expect(
-      screen.getAllByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getAllByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toHaveLength(1)
     expectNoWrites()
     await user.click(save)
@@ -1876,7 +1878,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     renderForm({ accountProfile: { id: 'owner-1' }, members: [teamMember] })
     const { name, description, topK, threshold } = await editAllSettings(user)
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.embeddingModelLabel' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.embeddingModelLabel' }),
     )
     const confirmation = await screen.findByRole('alertdialog')
     await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
@@ -1893,10 +1895,10 @@ describe('KnowledgeSettingsPage workflows', () => {
       screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.systemReasoningModelLabel' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.systemReasoningModelLabel' }),
     ).toHaveTextContent('gpt-4o')
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.embeddingModelLabel' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.embeddingModelLabel' }),
     ).toHaveTextContent('text-embedding-3-large')
     expect(
       screen.getByRole('button', { name: 'modelProvider.modelProvider.rerankModel.key' }),
@@ -1905,10 +1907,9 @@ describe('KnowledgeSettingsPage workflows', () => {
       'aria-checked',
       'true',
     )
-    expect(screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
+    expect(
+      screen.getByRole('switch', { name: 'knowledgeSettings.workflowAccess' }),
+    ).toHaveAttribute('aria-checked', 'true')
     expect(
       screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }),
     ).toHaveAttribute('aria-checked', 'false')
@@ -1916,7 +1917,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       screen.getByRole('button', { name: 'datasetSettings.form.nameAndIcon' }),
     ).toHaveTextContent('📷')
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeDisabled()
     expectNoWrites()
   })
@@ -1949,8 +1950,8 @@ describe('KnowledgeSettingsPage workflows', () => {
       expect(screen.getByRole('textbox', { name: label })).toBeDisabled()
     for (const label of [
       'datasetSettings.form.nameAndIcon',
-      'knowledgeSpace.settings.systemReasoningModelLabel',
-      'knowledgeSpace.settings.embeddingModelLabel',
+      'knowledgeSettings.settings.systemReasoningModelLabel',
+      'knowledgeSettings.settings.embeddingModelLabel',
       'modelProvider.modelProvider.rerankModel.key',
       'common.operation.cancel',
       'common.operation.delete',
@@ -1961,13 +1962,13 @@ describe('KnowledgeSettingsPage workflows', () => {
     ).toBeDisabled()
     for (const label of [
       'knowledgeSpace.apiAgentAccess',
-      'knowledgeSpace.workflowAccess',
+      'knowledgeSettings.workflowAccess',
       'appDebug.datasetConfig.score_threshold',
     ])
       expect(screen.getByRole('switch', { name: label })).toHaveAttribute('aria-disabled', 'true')
     await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }))
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.systemReasoningModelLabel' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.systemReasoningModelLabel' }),
     )
     const openIconChoice = screen.queryByRole('button', { name: 'Select camera style' })
     if (openIconChoice) await user.click(openIconChoice)
@@ -1989,7 +1990,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     const { queryClient } = renderForm()
     const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
-    const workflow = screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' })
+    const workflow = screen.getByRole('switch', { name: 'knowledgeSettings.workflowAccess' })
     await user.clear(name)
     await user.type(name, 'Local name')
     await user.click(workflow)
@@ -2004,13 +2005,13 @@ describe('KnowledgeSettingsPage workflows', () => {
     act(() => queryClient.setQueryData(queryKeys.settings, knowledgeQueryMock.settings))
 
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'knowledgeSpace.settings.serverConflict',
+      'knowledgeSettings.settings.serverConflict',
     )
     expect(name).toHaveValue('Local name')
     expect(workflow).toHaveAttribute('aria-checked', 'false')
     expect(topK).toHaveValue('8')
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeDisabled()
     expectNoWrites()
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -2050,13 +2051,13 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     renderForm()
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.embeddingModelLabel' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.embeddingModelLabel' }),
     )
     const confirmation = await screen.findByRole('alertdialog')
     await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
     expectNoWrites()
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.systemReasoningModelLabel' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.systemReasoningModelLabel' }),
     )
     const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
     await user.clear(topK)
@@ -2107,7 +2108,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(topK).toHaveValue('8')
     expect(topK).toBeEnabled()
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeDisabled()
   })
 
@@ -2143,7 +2144,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
     expect(api).toHaveAttribute('aria-checked', 'false')
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeEnabled()
     await saveChanges(user)
 
@@ -2172,7 +2173,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => expect(name).toHaveValue('Camera Technical Spec'))
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeDisabled()
     expectNoWrites()
   })
@@ -2181,7 +2182,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     const user = userEvent.setup()
     const { queryClient } = renderForm()
     const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
-    const workflow = screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' })
+    const workflow = screen.getByRole('switch', { name: 'knowledgeSettings.workflowAccess' })
     const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
     await user.clear(name)
     await user.type(name, 'Temporary title')
@@ -2211,9 +2212,9 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     await waitFor(() => expect(name).toHaveValue('Latest server name'))
     expect(topK).toHaveValue('7')
-    expect(screen.queryByText('knowledgeSpace.settings.serverConflict')).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSettings.settings.serverConflict')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeDisabled()
     expectNoWrites()
   })
@@ -2236,7 +2237,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       .mockResolvedValueOnce({ ...migration, checkpoint: 'activated', run_state: 'succeeded' })
     renderForm()
     const reasoning = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
     await user.click(reasoning)
     expectNoWrites()
@@ -2246,7 +2247,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(reasoning).toHaveTextContent('openrouter/auto')
     expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeEnabled()
     await saveChanges(user)
 
@@ -2258,7 +2259,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     expect(reasoning).toHaveTextContent('openrouter/auto')
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeDisabled()
   })
 
@@ -2279,13 +2280,12 @@ describe('KnowledgeSettingsPage workflows', () => {
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(
+      screen.getByRole('switch', { name: 'knowledgeSettings.workflowAccess' }),
+    ).toHaveAttribute('aria-disabled', 'true')
     expect(
       screen.queryByRole('button', {
-        name: 'knowledgeSpace.settings.saveChanges',
+        name: 'knowledgeSettings.settings.saveChanges',
       }),
     ).not.toBeInTheDocument()
     expect(
@@ -2327,7 +2327,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       }),
     ).toBeDisabled()
     await user.click(within(picker).getByRole('button', { name: /Team Member/ }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }))
 
     await waitFor(() =>
       expect(serviceMock.replaceMembers).toHaveBeenCalledWith(

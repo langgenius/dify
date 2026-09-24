@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Завдання додавання документів, синхронізації джерел і повторного індексування.",
+  "dismissTask": "Приховати завдання",
+  "interruptTask": "Переривати",
+  "noBackgroundTasks": "Фонових завдань ще немає.",
+  "overview.operation.document_delete": "видалення документа",
+  "overview.operation.document_processing": "обробка документа",
+  "overview.operation.document_reindex": "повторне індексування документа",
+  "overview.operation.document_upload": "завантаження документа",
+  "overview.operation.source_bulk": "оновлення джерела",
+  "overview.operation.source_crawl_import": "імпорт вебсайту",
+  "overview.operation.source_crawl_preview": "попередній перегляд вебсайту",
+  "overview.operation.source_online_document_import": "імпорт онлайн-документа",
+  "overview.operation.source_online_drive_import": "імпорт онлайн-диска",
+  "overview.operation.source_sync": "синхронізація джерела",
+  "taskDismissed": "Завдання приховано",
+  "taskFailedNotification": "Не вдалося обробити документ — повторіть спробу в розділі «Завдання»",
+  "undoTaskDismissal": "Скасувати"
+}

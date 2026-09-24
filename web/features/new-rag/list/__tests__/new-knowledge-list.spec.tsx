@@ -979,10 +979,10 @@ describe('NewKnowledgeList', () => {
     expect(within(list).getAllByText('knowledgeSpace.tags')).toHaveLength(2)
     expect(within(list).getByText('Customer support, Public docs')).toBeInTheDocument()
     expect(within(supportCardItem!).getByText('12')).toBeInTheDocument()
-    expect(supportCard).toHaveAccessibleDescription('knowledgeSpace.overview.linkedApps: 0')
+    expect(supportCard).toHaveAccessibleDescription('knowledgeOverview.overview.linkedApps: 0')
     expect(
       within(list).getByRole('link', { name: 'Engineering handbook' }),
-    ).toHaveAccessibleDescription('knowledgeSpace.overview.linkedApps: 0')
+    ).toHaveAccessibleDescription('knowledgeOverview.overview.linkedApps: 0')
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })
 
@@ -1012,10 +1012,10 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('link', { name: 'Support knowledge' })).toHaveAccessibleDescription(
-      'knowledgeSpace.overview.linkedApps: 3',
+      'knowledgeOverview.overview.linkedApps: 3',
     )
     expect(screen.getByRole('link', { name: 'Engineering handbook' })).toHaveAccessibleDescription(
-      'knowledgeSpace.overview.linkedApps: 0',
+      'knowledgeOverview.overview.linkedApps: 0',
     )
   })
 
@@ -1068,7 +1068,7 @@ describe('NewKnowledgeList', () => {
 
     const dialog = await screen.findByRole('alertdialog')
     const confirmationInput = within(dialog).getByRole('textbox', {
-      name: /^knowledgeSpace\.settings\.deleteConfirmPrompt/,
+      name: /^knowledgeSettings\.settings\.deleteConfirmPrompt/,
     })
     const deleteButton = within(dialog).getByRole('button', {
       name: 'common.operation.delete',

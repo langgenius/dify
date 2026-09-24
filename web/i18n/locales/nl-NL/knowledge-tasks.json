@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Taken voor het toevoegen van documenten, synchroniseren van bronnen en opnieuw indexeren.",
+  "dismissTask": "Taak verbergen",
+  "interruptTask": "Onderbreken",
+  "noBackgroundTasks": "Nog geen achtergrondtaken.",
+  "overview.operation.document_delete": "documentverwijdering",
+  "overview.operation.document_processing": "documentverwerking",
+  "overview.operation.document_reindex": "herindexering van documenten",
+  "overview.operation.document_upload": "document uploaden",
+  "overview.operation.source_bulk": "bron-update",
+  "overview.operation.source_crawl_import": "website importeren",
+  "overview.operation.source_crawl_preview": "websitevoorbeeld",
+  "overview.operation.source_online_document_import": "online documentimport",
+  "overview.operation.source_online_drive_import": "online schijfimport",
+  "overview.operation.source_sync": "bronsynchronisatie",
+  "taskDismissed": "Taak verborgen",
+  "taskFailedNotification": "Documentverwerking mislukt — probeer opnieuw via Taken",
+  "undoTaskDismissal": "Ongedaan maken"
+}

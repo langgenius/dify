@@ -20,11 +20,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
+import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-task-failure'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
 import {
-  knowledgeFsTaskFailureDetail,
   knowledgeFsTaskFailureMessageKey,
   knowledgeFsTaskRecoveryPath,
 } from '../../knowledge-fs-task-error'
@@ -73,7 +73,7 @@ function responseStatus(error: unknown): number | undefined {
 }
 
 function DocumentsTaskDrawerHeader() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
 
@@ -90,7 +90,7 @@ function DocumentsTaskDrawerHeader() {
         <span aria-hidden className="i-ri-close-line size-5" />
       </DrawerCloseButton>
       <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $.backgroundTasksDescription)}
+        {t(($) => $.backgroundTasksDescription, { ns: 'knowledgeTasks' })}
       </DrawerDescription>
       {!canWrite && (
         <p
@@ -186,7 +186,7 @@ function DocumentsTaskQueryRecovery() {
 }
 
 function useDocumentsTaskRowTitle(task: BackgroundTask) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const rowLabelsAtom = useMemo(() => createTaskDrawerRowLabelsAtom(task), [task])
   const {
     documentTitle: resolvedDocumentTitle,
@@ -200,7 +200,9 @@ function useDocumentsTaskRowTitle(task: BackgroundTask) {
         ? t(($) => $.documentColumn)
         : task.documentId
       : undefined)
-  const operationTitle = t(($) => $[`overview.operation.${task.operation}`])
+  const operationTitle = t(($) => $[`overview.operation.${task.operation}`], {
+    ns: 'knowledgeTasks',
+  })
   const progress = taskProgress(task)
 
   return task.operation === 'document_processing' && documentTitle
@@ -251,8 +253,6 @@ function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
     task.failure,
     task.errorCode ?? (task.errorMessage ? 'LEGACY_TASK_FAILURE' : undefined),
   )
-  const taskError = failureMessageKey ? t(($) => $[failureMessageKey]) : undefined
-  const taskErrorDetail = knowledgeFsTaskFailureDetail(task.failure, t)
 
   return (
     <>
@@ -279,15 +279,8 @@ function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
         <p className="mt-0.75 truncate system-xs-regular text-text-tertiary" title={status}>
           {status}
         </p>
-        {taskError && (
-          <p className="mt-1 system-2xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
-            {taskError}
-          </p>
-        )}
-        {taskError && taskErrorDetail && (
-          <p className="mt-0.5 system-2xs-regular wrap-break-word text-text-quaternary">
-            {taskErrorDetail}
-          </p>
+        {failureMessageKey && (
+          <KnowledgeTaskFailure messageKey={failureMessageKey} failure={task.failure} />
         )}
       </div>
     </>
@@ -295,7 +288,7 @@ function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
 }
 
 function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const title = useDocumentsTaskRowTitle(task)
@@ -422,7 +415,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   const showRecovery = Boolean(canWrite && recoveryPath && recoveryLabel)
   if (!action && !showRecovery && !canDismiss) return null
 
-  const dismissLabel = t(($) => $.dismissTask)
+  const dismissLabel = t(($) => $.dismissTask, { ns: 'knowledgeTasks' })
 
   return (
     <div className="flex shrink-0 flex-col items-end">
@@ -438,7 +431,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
             aria-label={
               action === 'cancel'
                 ? includeCancelTarget
-                  ? `${t(($) => $.interruptTask)} · ${actionTarget}`
+                  ? `${t(($) => $.interruptTask, { ns: 'knowledgeTasks' })} · ${actionTarget}`
                   : undefined
                 : includeRetryTarget
                   ? `${t(($) => $.retryTask)} · ${actionTarget}`
@@ -448,7 +441,9 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
             loading={pending}
             onClick={() => void performAction(action)}
           >
-            {action === 'cancel' ? t(($) => $.interruptTask) : t(($) => $.retryTask)}
+            {action === 'cancel'
+              ? t(($) => $.interruptTask, { ns: 'knowledgeTasks' })
+              : t(($) => $.retryTask)}
           </Button>
         )}
         {!action && showRecovery && recoveryPath && recoveryLabel && (
@@ -468,10 +463,10 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
             onClick={() => {
               dismissTask(task.id)
               toast.info(
-                t(($) => $.taskDismissed),
+                t(($) => $.taskDismissed, { ns: 'knowledgeTasks' }),
                 {
                   actionProps: {
-                    children: t(($) => $.undoTaskDismissal),
+                    children: t(($) => $.undoTaskDismissal, { ns: 'knowledgeTasks' }),
                     onClick: () => restoreTask(task.id),
                   },
                 },
@@ -511,7 +506,7 @@ function DocumentsTaskRow({ task: baseTask }: { task: BackgroundTask }) {
 }
 
 function DocumentsTaskRows() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeTasks'])
   const open = useAtomValueRawSync(taskDrawerOpenAtom)
   const orderedTasks = useAtomValueRawSync(taskDrawerOrderedBaseTasksAtom)
   const rowsState = useAtomValueRawSync(taskDrawerRowsStateAtom)
@@ -535,7 +530,7 @@ function DocumentsTaskRows() {
   if (!orderedTasks.length)
     return rowsState.showEmpty ? (
       <p className="py-16 text-center system-xs-regular text-text-tertiary">
-        {t(($) => $.noBackgroundTasks)}
+        {t(($) => $.noBackgroundTasks, { ns: 'knowledgeTasks' })}
       </p>
     ) : null
 

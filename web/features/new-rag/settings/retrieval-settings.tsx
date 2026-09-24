@@ -53,7 +53,7 @@ const RERANK_MODEL_LABEL_ID = 'knowledge-rerank-model-label'
 const RERANK_MODEL_ERROR_ID = 'knowledge-rerank-model-error'
 
 export function RetrievalSettingsSection() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings'])
   const { t: tCommon } = useTranslation(['common', 'modelProvider'])
   const { t: tSettings } = useTranslation(['datasetSettings'])
   const { t: tAppDebug } = useTranslation(['appDebug'])
@@ -127,10 +127,10 @@ export function RetrievalSettingsSection() {
       <section className="flex min-w-0 flex-col gap-4 sm:flex-row sm:gap-1">
         <div className="w-full shrink-0 sm:w-45">
           <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
-            {t(($) => $['settings.retrievalTitle'])}
+            {t(($) => $['settings.retrievalTitle'], { ns: 'knowledgeSettings' })}
           </h2>
           <p className="body-xs-regular text-text-tertiary">
-            {t(($) => $['settings.retrievalDescription'])}
+            {t(($) => $['settings.retrievalDescription'], { ns: 'knowledgeSettings' })}
           </p>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
@@ -139,7 +139,7 @@ export function RetrievalSettingsSection() {
               id={REASONING_MODEL_LABEL_ID}
               className="flex h-7 items-center system-sm-medium text-text-secondary"
             >
-              {t(($) => $['settings.systemReasoningModelLabel'])}
+              {t(($) => $['settings.systemReasoningModelLabel'], { ns: 'knowledgeSettings' })}
               <span aria-hidden className="ml-0.5 text-text-destructive">
                 *
               </span>
@@ -160,7 +160,7 @@ export function RetrievalSettingsSection() {
                 id={REASONING_MODEL_ERROR_ID}
                 className="mt-1 system-xs-regular text-text-destructive"
               >
-                {t(($) => $['settings.systemReasoningModelRequired'])}
+                {t(($) => $['settings.systemReasoningModelRequired'], { ns: 'knowledgeSettings' })}
               </p>
             )}
           </div>
@@ -170,7 +170,7 @@ export function RetrievalSettingsSection() {
               id={EMBEDDING_MODEL_LABEL_ID}
               className="flex h-7 items-center system-sm-medium text-text-secondary"
             >
-              {t(($) => $['settings.embeddingModelLabel'])}
+              {t(($) => $['settings.embeddingModelLabel'], { ns: 'knowledgeSettings' })}
               <span aria-hidden className="ml-0.5 text-text-destructive">
                 *
               </span>
@@ -200,13 +200,13 @@ export function RetrievalSettingsSection() {
                 id={EMBEDDING_MODEL_ERROR_ID}
                 className="mt-1 system-xs-regular text-text-destructive"
               >
-                {t(($) => $['settings.embeddingModelRequired'])}
+                {t(($) => $['settings.embeddingModelRequired'], { ns: 'knowledgeSettings' })}
               </p>
             )}
             {embeddingDirty && (space.technical_summary?.document_count ?? 0) > 0 && (
               <p className="mt-1 flex items-start gap-1 system-xs-regular text-text-warning-secondary">
                 <span aria-hidden className="mt-0.5 i-ri-alert-fill size-3.5 shrink-0" />
-                {t(($) => $['settings.embeddingChangeWarning'])}
+                {t(($) => $['settings.embeddingChangeWarning'], { ns: 'knowledgeSettings' })}
               </p>
             )}
           </div>
@@ -237,7 +237,7 @@ export function RetrievalSettingsSection() {
                 id={RERANK_MODEL_ERROR_ID}
                 className="mt-1 system-xs-regular text-text-destructive"
               >
-                {t(($) => $['settings.rerankModelRequired'])}
+                {t(($) => $['settings.rerankModelRequired'], { ns: 'knowledgeSettings' })}
               </p>
             )}
           </div>
@@ -247,7 +247,7 @@ export function RetrievalSettingsSection() {
               id="knowledge-retrieval-depth-label"
               className="flex h-7 items-center system-sm-medium text-text-secondary"
             >
-              {t(($) => $['settings.retrievalDepth'])}
+              {t(($) => $['settings.retrievalDepth'], { ns: 'knowledgeSettings' })}
             </div>
             <RetrievalModeSegmentedControl
               aria-labelledby="knowledge-retrieval-depth-label"
@@ -263,7 +263,7 @@ export function RetrievalSettingsSection() {
                 htmlFor="knowledge-top-k"
                 className="flex h-7 items-center system-sm-medium text-text-secondary"
               >
-                {t(($) => $['settings.topKLabel'])}
+                {t(($) => $['settings.topKLabel'], { ns: 'knowledgeSpace' })}
               </label>
               <div className="flex items-center gap-3">
                 <NumberField
@@ -277,7 +277,7 @@ export function RetrievalSettingsSection() {
                 >
                   <NumberFieldGroup className="w-18 shrink-0">
                     <NumberFieldInput
-                      aria-label={t(($) => $['settings.topKLabel'])}
+                      aria-label={t(($) => $['settings.topKLabel'], { ns: 'knowledgeSpace' })}
                       autoComplete="off"
                     />
                     <NumberFieldControls>
@@ -287,7 +287,7 @@ export function RetrievalSettingsSection() {
                   </NumberFieldGroup>
                 </NumberField>
                 <Slider
-                  aria-label={t(($) => $['settings.topKLabel'])}
+                  aria-label={t(($) => $['settings.topKLabel'], { ns: 'knowledgeSpace' })}
                   min={TOP_K_MIN}
                   max={TOP_K_MAX}
                   value={current.topK}
@@ -296,7 +296,7 @@ export function RetrievalSettingsSection() {
                 />
               </div>
               <p className="mt-1 system-xs-regular text-text-tertiary">
-                {t(($) => $['settings.topKMinimum'])}
+                {t(($) => $['settings.topKMinimum'], { ns: 'knowledgeSettings' })}
               </p>
             </div>
 
@@ -354,7 +354,7 @@ export function RetrievalSettingsSection() {
                 />
               </div>
               <p className="mt-1 system-xs-regular text-text-tertiary">
-                {t(($) => $['settings.scoreRange'])}
+                {t(($) => $['settings.scoreRange'], { ns: 'knowledgeSettings' })}
               </p>
             </div>
           </div>
@@ -374,7 +374,7 @@ export function RetrievalSettingsSection() {
               {tSettings(($) => $['form.embeddingModel'])}
             </AlertDialogTitle>
             <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
-              {t(($) => $['settings.embeddingChangeWarning'])}
+              {t(($) => $['settings.embeddingChangeWarning'], { ns: 'knowledgeSettings' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>

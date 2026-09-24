@@ -67,7 +67,7 @@ function KnowledgeOverviewContent() {
 }
 
 function OverviewHeader() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
   const empty = useAtomValueRawSync(overviewEmptyAtom)
   const showIndexing = useAtomValueRawSync(overviewShowIndexingAtom)
   const window = useAtomValueRawSync(overviewWindowAtom)
@@ -78,7 +78,7 @@ function OverviewHeader() {
       <h1 className="title-3xl-bold text-text-primary">{t(($) => $.overviewTitle)}</h1>
       {!empty && !showIndexing && (
         <SegmentedControl<(typeof OVERVIEW_WINDOWS)[number]>
-          aria-label={t(($) => $['overview.timeRange'])}
+          aria-label={t(($) => $['overview.timeRange'], { ns: 'knowledgeOverview' })}
           value={window}
           onValueChange={(value) => {
             void setWindow(value)
@@ -91,10 +91,10 @@ function OverviewHeader() {
               value={value}
             >
               {value === '24h'
-                ? t(($) => $['overview.twentyFourHours'])
+                ? t(($) => $['overview.twentyFourHours'], { ns: 'knowledgeOverview' })
                 : value === '7d'
-                  ? t(($) => $['overview.sevenDays'])
-                  : t(($) => $['overview.thirtyDays'])}
+                  ? t(($) => $['overview.sevenDays'], { ns: 'knowledgeOverview' })
+                  : t(($) => $['overview.thirtyDays'], { ns: 'knowledgeOverview' })}
             </SegmentedControlItem>
           ))}
         </SegmentedControl>

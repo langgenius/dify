@@ -4,6 +4,17 @@ import { kebabCase } from 'string-ts'
 export const defaultNS = 'app' as const
 
 export const namespaces = [
+  'knowledgeUpgrade',
+  'knowledgeErrors',
+  'knowledgeSettings',
+  'knowledgeRetrieval',
+  'knowledgeQuality',
+  'knowledgeOverview',
+  'knowledgeTasks',
+  'knowledgeDocuments',
+  'knowledgeSources',
+  'knowledgeCitation',
+  'knowledgeCreate',
   'fileUpload',
   'appGeneration',
   'agentRoster',

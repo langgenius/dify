@@ -64,16 +64,16 @@ describe('GoldenQuestionDialog browser interactions', () => {
 
     await openButton.click()
     await expect
-      .element(screen.getByRole('dialog', { name: 'knowledgeSpace.qualityPage.editTitle' }))
+      .element(screen.getByRole('dialog', { name: 'knowledgeQuality.qualityPage.editTitle' }))
       .toBeVisible()
-    await screen.getByRole('button', { name: 'knowledgeSpace.qualityPage.closeDialog' }).click()
+    await screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.closeDialog' }).click()
     await expect
-      .element(screen.getByRole('dialog', { name: 'knowledgeSpace.qualityPage.editTitle' }))
+      .element(screen.getByRole('dialog', { name: 'knowledgeQuality.qualityPage.editTitle' }))
       .not.toBeInTheDocument()
 
     await openButton.click()
     await expect
-      .element(screen.getByRole('dialog', { name: 'knowledgeSpace.qualityPage.editTitle' }))
+      .element(screen.getByRole('dialog', { name: 'knowledgeQuality.qualityPage.editTitle' }))
       .toBeVisible()
   })
 })

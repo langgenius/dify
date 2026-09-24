@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Задачи добавления документов, синхронизации источников и переиндексации.",
+  "dismissTask": "Скрыть задачу",
+  "interruptTask": "Прерывание",
+  "noBackgroundTasks": "Фоновых задач пока нет.",
+  "overview.operation.document_delete": "удаление документа",
+  "overview.operation.document_processing": "обработка документа",
+  "overview.operation.document_reindex": "переиндексирование документа",
+  "overview.operation.document_upload": "загрузка документа",
+  "overview.operation.source_bulk": "обновление источника",
+  "overview.operation.source_crawl_import": "импорт веб-сайта",
+  "overview.operation.source_crawl_preview": "предпросмотр веб-сайта",
+  "overview.operation.source_online_document_import": "импорт онлайн-документа",
+  "overview.operation.source_online_drive_import": "импорт онлайн-диска",
+  "overview.operation.source_sync": "синхронизация источника",
+  "taskDismissed": "Задача скрыта",
+  "taskFailedNotification": "Не удалось обработать документ — повторите попытку в разделе «Задачи».",
+  "undoTaskDismissal": "Отменить"
+}

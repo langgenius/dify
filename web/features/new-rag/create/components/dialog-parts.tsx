@@ -26,7 +26,7 @@ export function StartMode({
   title: string
   value: NewKnowledgeStartMode
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['dataset'])
   const titleId = useId()
   const descriptionId = useId()
   const unavailableId = useId()

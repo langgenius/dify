@@ -28,7 +28,7 @@ export function KnowledgeUpgradeCard({
   onSucceeded?: (controlSpaceId: string) => void
   onSettled?: (upgrade: KnowledgeUpgrade) => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeUpgrade'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const { canRetry, dataset } = upgrade
@@ -76,9 +76,10 @@ export function KnowledgeUpgradeCard({
     if (job.status === 'succeeded') {
       if (job.new_control_space_id) onSucceeded?.(job.new_control_space_id)
       toast.success(
-        t(($) => $['upgrade.completeTitle']),
+        t(($) => $['upgrade.completeTitle'], { ns: 'knowledgeUpgrade' }),
         {
           description: t(($) => $['upgrade.completeDescription'], {
+            ns: 'knowledgeUpgrade',
             name: dataset.name,
           }),
         },
@@ -90,9 +91,10 @@ export function KnowledgeUpgradeCard({
     }
 
     toast.error(
-      t(($) => $['upgrade.failedTitle']),
+      t(($) => $['upgrade.failedTitle'], { ns: 'knowledgeUpgrade' }),
       {
         description: t(($) => $['upgrade.failedToastDescription'], {
+          ns: 'knowledgeUpgrade',
           name: dataset.name,
         }),
       },
@@ -117,7 +119,9 @@ export function KnowledgeUpgradeCard({
           contentOpacity,
         )}
       >
-        {failed ? failureMessage || t(($) => $['upgrade.failedDescription']) : dataset.description}
+        {failed
+          ? failureMessage || t(($) => $['upgrade.failedDescription'], { ns: 'knowledgeUpgrade' })
+          : dataset.description}
       </p>
       <div className={cn('flex h-6 min-w-0 gap-1 overflow-hidden px-4 py-1', contentOpacity)}>
         {dataset.tags.slice(0, 3).map((tag) => (
@@ -154,10 +158,10 @@ export function KnowledgeUpgradeCard({
         </span>
         <span className="min-w-0 truncate">
           {active
-            ? t(($) => $['upgrade.migratingDocuments'])
+            ? t(($) => $['upgrade.migratingDocuments'], { ns: 'knowledgeUpgrade' })
             : failed
-              ? t(($) => $['upgrade.justNow'])
-              : t(($) => $['upgrade.upgradedJustNow'])}
+              ? t(($) => $['upgrade.justNow'], { ns: 'knowledgeUpgrade' })
+              : t(($) => $['upgrade.upgradedJustNow'], { ns: 'knowledgeUpgrade' })}
         </span>
       </div>
       {(active || failed) && (
@@ -175,7 +179,9 @@ export function KnowledgeUpgradeCard({
               className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
             />
           )}
-          {active ? t(($) => $['upgrade.statusUpgrading']) : t(($) => $['upgrade.statusFailed'])}
+          {active
+            ? t(($) => $['upgrade.statusUpgrading'], { ns: 'knowledgeUpgrade' })
+            : t(($) => $['upgrade.statusFailed'], { ns: 'knowledgeUpgrade' })}
         </div>
       )}
       {failed && (
@@ -193,7 +199,7 @@ export function KnowledgeUpgradeCard({
             href="mailto:support@dify.ai"
             className={buttonVariants({ variant: 'secondary-accent', size: 'small' })}
           >
-            {t(($) => $['upgrade.contactSupport'])}
+            {t(($) => $['upgrade.contactSupport'], { ns: 'knowledgeUpgrade' })}
           </a>
         </div>
       )}

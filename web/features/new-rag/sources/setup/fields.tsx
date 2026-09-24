@@ -36,14 +36,14 @@ export function SourceTypeSelector({
   value: NewKnowledgeSourceType
   onChange: (value: NewKnowledgeSourceType) => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
 
   return (
     <Fieldset disabled={disabled}>
       <FieldsetLegend
         className={cn('py-0 system-sm-medium', appearance === 'embedded' ? 'mb-1.25' : 'mb-1.5')}
       >
-        {t(($) => $.sourceTypeLabel)}
+        {t(($) => $.sourceTypeLabel, { ns: 'knowledgeSources' })}
       </FieldsetLegend>
       <RadioGroup<NewKnowledgeSourceType>
         value={value}
@@ -288,12 +288,12 @@ export function SourceNameField({
   preventSubmitOnEnter?: boolean
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSources'])
 
   return (
     <Field name={name} className={cn('gap-1.5', className)}>
       <FieldLabel className={labelClassName}>
-        {t(($) => $.sourceName)}
+        {t(($) => $.sourceName, { ns: 'knowledgeSources' })}
         <span aria-hidden className="ml-0.5 text-text-destructive">
           *
         </span>
@@ -304,7 +304,7 @@ export function SourceNameField({
         disabled={disabled}
         maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
         value={draft.sourceName}
-        placeholder={t(($) => $.sourceNamePlaceholder)}
+        placeholder={t(($) => $.sourceNamePlaceholder, { ns: 'knowledgeSources' })}
         onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
         onKeyDown={(event) => {
           if (preventSubmitOnEnter && event.key === 'Enter') event.preventDefault()
@@ -401,17 +401,18 @@ export function SourceProviderCredentialRequiredCard({
   provider: string
   onConnect: () => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSources'])
 
   return (
     <SourceConnectionRequiredCard
-      actionLabel={t(($) => $.connectProvider, { provider })}
+      actionLabel={t(($) => $.connectProvider, { ns: 'knowledgeSources', provider })}
       description={t(($) => $.providerCredentialRequiredDescription, {
+        ns: 'knowledgeSources',
         provider,
       })}
       disabled={disabled}
       icon={icon}
-      title={t(($) => $.providerNotConfigured, { provider })}
+      title={t(($) => $.providerNotConfigured, { ns: 'knowledgeSources', provider })}
       onConnect={onConnect}
     />
   )

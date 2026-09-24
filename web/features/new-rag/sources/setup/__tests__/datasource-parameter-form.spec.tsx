@@ -145,29 +145,29 @@ describe('DatasourceParameterForm', () => {
     const user = userEvent.setup()
     render(<GroupedWebsiteParameterForm />)
 
-    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.rootUrl' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'knowledgeSources.rootUrl' })).toBeVisible()
     const crawlOptions = screen.getByRole('button', {
-      name: 'knowledgeSpace.crawlOptions',
+      name: 'knowledgeSources.crawlOptions',
     })
     expect(crawlOptions).toHaveAttribute('aria-expanded', 'false')
-    expect(crawlOptions).toHaveTextContent('knowledgeSpace.usingDefaults')
+    expect(crawlOptions).toHaveTextContent('knowledgeSources.usingDefaults')
     expect(
-      screen.queryByRole('checkbox', { name: 'knowledgeSpace.includeSubpages' }),
+      screen.queryByRole('checkbox', { name: 'knowledgeSources.includeSubpages' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'knowledgeSpace.resetToDefaults' }),
+      screen.queryByRole('button', { name: 'knowledgeSources.resetToDefaults' }),
     ).not.toBeInTheDocument()
 
     await user.click(crawlOptions)
     const includeSubpages = screen.getByRole('checkbox', {
-      name: 'knowledgeSpace.includeSubpages',
+      name: 'knowledgeSources.includeSubpages',
     })
     const resetButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.resetToDefaults',
+      name: 'knowledgeSources.resetToDefaults',
     })
     expect(includeSubpages).toBeChecked()
     expect(resetButton).toBeEnabled()
-    expect(screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })).toBeVisible()
+    expect(screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })).toBeVisible()
 
     await user.click(includeSubpages)
     expect(includeSubpages).not.toBeChecked()
@@ -181,8 +181,8 @@ describe('DatasourceParameterForm', () => {
     render(<CustomizedGroupedWebsiteParameterForm />)
 
     expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }),
-    ).not.toHaveTextContent('knowledgeSpace.usingDefaults')
+      screen.getByRole('button', { name: 'knowledgeSources.crawlOptions' }),
+    ).not.toHaveTextContent('knowledgeSources.usingDefaults')
   })
 
   it('allows decimal input using the declaration precision', async () => {
@@ -201,11 +201,11 @@ describe('DatasourceParameterForm', () => {
   it('resolves translation keys for legacy website parameter labels', () => {
     render(<LegacyWebsiteParameterForm />)
 
-    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.rootUrl' })).toHaveAttribute(
+    expect(screen.getByRole('textbox', { name: 'knowledgeSources.rootUrl' })).toHaveAttribute(
       'placeholder',
-      'knowledgeSpace.rootUrlPlaceholder',
+      'knowledgeSources.rootUrlPlaceholder',
     )
-    expect(screen.getByRole('switch', { name: 'knowledgeSpace.includeSubpages' })).toBeChecked()
-    expect(screen.getByRole('spinbutton', { name: 'knowledgeSpace.maxPages' })).toHaveValue(100)
+    expect(screen.getByRole('switch', { name: 'knowledgeSources.includeSubpages' })).toBeChecked()
+    expect(screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })).toHaveValue(100)
   })
 })

@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Aufgaben zum Hinzufügen von Dokumenten, Synchronisieren von Quellen und Neuindizieren.",
+  "dismissTask": "Aufgabe ausblenden",
+  "interruptTask": "Unterbrechen",
+  "noBackgroundTasks": "Noch keine Hintergrundaufgaben.",
+  "overview.operation.document_delete": "Dokumentlöschung",
+  "overview.operation.document_processing": "Dokumentenverarbeitung",
+  "overview.operation.document_reindex": "Neuindizierung von Dokumenten",
+  "overview.operation.document_upload": "Dokument hochladen",
+  "overview.operation.source_bulk": "Quellaktualisierung",
+  "overview.operation.source_crawl_import": "Website-Import",
+  "overview.operation.source_crawl_preview": "Website-Vorschau",
+  "overview.operation.source_online_document_import": "Online-Dokumentimport",
+  "overview.operation.source_online_drive_import": "Online-Laufwerkimport",
+  "overview.operation.source_sync": "Quellsynchronisierung",
+  "taskDismissed": "Aufgabe ausgeblendet",
+  "taskFailedNotification": "Die Dokumentverarbeitung ist fehlgeschlagen. Versuchen Sie es erneut über „Aufgaben“.",
+  "undoTaskDismissal": "Rückgängig"
+}

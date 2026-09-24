@@ -175,7 +175,7 @@ function ProviderFieldControl({
   setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
   values: Record<string, string>
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSources'])
   const generatedId = useId()
   const descriptionId = field.description ? `${generatedId}-description` : undefined
   const label = humanizeFieldName(field.name)
@@ -198,9 +198,9 @@ function ProviderFieldControl({
           </SelectLabel>
           <SelectTrigger aria-describedby={descriptionId} size="large">
             {value === 'true'
-              ? t(($) => $.booleanTrue)
+              ? t(($) => $.booleanTrue, { ns: 'knowledgeSources' })
               : value === 'false'
-                ? t(($) => $.booleanFalse)
+                ? t(($) => $.booleanFalse, { ns: 'knowledgeSources' })
                 : '—'}
           </SelectTrigger>
           <SelectContent>
@@ -209,11 +209,13 @@ function ProviderFieldControl({
               <SelectItemIndicator />
             </SelectItem>
             <SelectItem value="true">
-              <SelectItemText>{t(($) => $.booleanTrue)}</SelectItemText>
+              <SelectItemText>{t(($) => $.booleanTrue, { ns: 'knowledgeSources' })}</SelectItemText>
               <SelectItemIndicator />
             </SelectItem>
             <SelectItem value="false">
-              <SelectItemText>{t(($) => $.booleanFalse)}</SelectItemText>
+              <SelectItemText>
+                {t(($) => $.booleanFalse, { ns: 'knowledgeSources' })}
+              </SelectItemText>
               <SelectItemIndicator />
             </SelectItem>
           </SelectContent>
@@ -267,7 +269,7 @@ function ConnectionForm({
   providerName: string
   credentialId?: string
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const connectButtonLabelId = useId()
   const supportedAuthKinds = getSupportedAuthKinds(provider, credentialId)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
@@ -355,7 +357,7 @@ function ConnectionForm({
       {supportedAuthKinds.length > 1 && (
         <Fieldset className="mb-4">
           <FieldsetLegend className="mb-1.5 py-0 system-xs-medium">
-            {t(($) => $.authenticationMethod)}
+            {t(($) => $.authenticationMethod, { ns: 'knowledgeSources' })}
           </FieldsetLegend>
           <RadioGroup<ConnectionAuthKind>
             name="auth-kind"
@@ -386,7 +388,7 @@ function ConnectionForm({
       </div>
       {error && (
         <p role="alert" className="mt-3 system-xs-regular text-text-destructive">
-          {t(($) => $.connectionFailed, { provider: providerName })}
+          {t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName })}
         </p>
       )}
       <Button
@@ -398,10 +400,8 @@ function ConnectionForm({
       >
         <span id={connectButtonLabelId}>
           {pending
-            ? t(($) => $.connectingProvider)
-            : t(($) => $.connectProvider, {
-                provider: providerName,
-              })}
+            ? t(($) => $.connectingProvider, { ns: 'knowledgeSources' })
+            : t(($) => $.connectProvider, { ns: 'knowledgeSources', provider: providerName })}
         </span>
       </Button>
     </Form>
@@ -425,7 +425,7 @@ function ManagedProviderConnection({
   provider: Provider
   providerName: string
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
   const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState(false)
@@ -495,7 +495,7 @@ function ManagedProviderConnection({
         <>
           <span aria-hidden className="i-ri-error-warning-line size-5 text-text-destructive" />
           <p role="alert" className="mt-2 system-sm-semibold text-text-primary">
-            {t(($) => $.connectionFailed, { provider: providerName })}
+            {t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName })}
           </p>
           <Button
             className="mt-3"
@@ -512,7 +512,7 @@ function ManagedProviderConnection({
         <>
           <LoadingPlaceholder />
           <p role="status" className="mt-3 system-xs-medium text-text-secondary">
-            {t(($) => $.connectingProvider)}
+            {t(($) => $.connectingProvider, { ns: 'knowledgeSources' })}
           </p>
         </>
       )}
@@ -541,7 +541,7 @@ function UnconfiguredProvider({
   providerName: string
   credentialId?: string
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSources'])
   const [configuring, setConfiguring] = useState(false)
   const difyManaged = isDifyManagedProvider(provider)
 
@@ -582,12 +582,11 @@ function UnconfiguredProvider({
         />
       </span>
       <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $.providerNotConfigured, {
-          provider: providerName,
-        })}
+        {t(($) => $.providerNotConfigured, { ns: 'knowledgeSources', provider: providerName })}
       </h3>
       <p className="system-xs-regular text-text-tertiary">
         {t(($) => $.providerNotConfiguredDescription, {
+          ns: 'knowledgeSources',
           provider: providerName,
         })}
       </p>
@@ -596,9 +595,7 @@ function UnconfiguredProvider({
         variant="primary"
         onClick={() => (difyManaged ? onConfigureManagedProvider() : setConfiguring(true))}
       >
-        {t(($) => $.configureProvider, {
-          provider: providerName,
-        })}
+        {t(($) => $.configureProvider, { ns: 'knowledgeSources', provider: providerName })}
       </Button>
     </div>
   )
@@ -617,7 +614,7 @@ function ConnectionProblem({
   onReconcile: () => Promise<Connection | undefined>
   providerName: string
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
   const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
@@ -656,14 +653,14 @@ function ConnectionProblem({
   return (
     <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
       <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $.connectionNeedsAttention, { provider: providerName })}
+        {t(($) => $.connectionNeedsAttention, { ns: 'knowledgeSources', provider: providerName })}
       </h3>
       <p className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $.connectionNeedsAttentionDescription)}
+        {t(($) => $.connectionNeedsAttentionDescription, { ns: 'knowledgeSources' })}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {t(($) => $.connectionRefreshFailed)}
+          {t(($) => $.connectionRefreshFailed, { ns: 'knowledgeSources' })}
         </p>
       )}
       <Button
@@ -673,7 +670,9 @@ function ConnectionProblem({
         aria-labelledby={refreshButtonLabelId}
       >
         <span id={refreshButtonLabelId}>
-          {pending ? t(($) => $.refreshingConnection) : tCommon(($) => $['operation.retry'])}
+          {pending
+            ? t(($) => $.refreshingConnection, { ns: 'knowledgeSources' })
+            : tCommon(($) => $['operation.retry'])}
         </span>
       </Button>
     </div>
@@ -687,7 +686,7 @@ function ProvisioningConnection({
   onReconcile: () => Promise<Connection | undefined>
   providerName: string
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSources'])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
 
@@ -708,15 +707,15 @@ function ProvisioningConnection({
   return (
     <div className="rounded-xl bg-background-section p-4">
       <p className="system-sm-semibold text-text-primary">
-        {t(($) => $.connectionProvisioning, { provider: providerName })}
+        {t(($) => $.connectionProvisioning, { ns: 'knowledgeSources', provider: providerName })}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {t(($) => $.connectionRefreshFailed)}
+          {t(($) => $.connectionRefreshFailed, { ns: 'knowledgeSources' })}
         </p>
       )}
       <Button className="mt-3" loading={pending} onClick={() => void refresh()}>
-        {t(($) => $.refreshConnectionStatus)}
+        {t(($) => $.refreshConnectionStatus, { ns: 'knowledgeSources' })}
       </Button>
     </div>
   )
@@ -756,7 +755,7 @@ function AddSourcePageContent({
   knowledgeSpaceId,
   sourceDraftKey,
 }: AddSourcePageProps) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const initialDraftRef = useRefWithInit<NewKnowledgeSourceDraft>(
@@ -1052,7 +1051,7 @@ function AddSourcePageContent({
         <header>
           <h2 className="system-xl-semibold text-text-primary">{t(($) => $.addSource)}</h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $.addSourceDescription)}
+            {t(($) => $.addSourceDescription, { ns: 'knowledgeSources' })}
           </p>
         </header>
         <div className="mt-4.5 flex w-full max-w-160 flex-col gap-4">
@@ -1103,13 +1102,14 @@ function AddSourcePageContent({
                 </div>
               ) : websiteProviderOptions.length === 0 ? null : !datasourceProvider || !provider ? (
                 <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
-                  {t(($) => $.providerUnavailable)}
+                  {t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
                 </div>
               ) : !provider.available || !supportsDirectConnection ? (
                 <div className="rounded-xl bg-background-section p-4">
                   <p className="system-sm-semibold text-text-primary">{websiteProviderName}</p>
                   <p className="mt-1 system-xs-regular text-text-tertiary">
-                    {provider.unavailableReason ?? t(($) => $.providerUnavailable)}
+                    {provider.unavailableReason ??
+                      t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
                   </p>
                 </div>
               ) : activeConnection && websitePreviewReady ? (
@@ -1195,10 +1195,10 @@ function AddSourcePageContent({
           {sourceType === 'websiteCrawl' && !websiteReady && (
             <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
               <Button type="button" onClick={requestExit}>
-                {t(($) => $.cancelAddSource)}
+                {t(($) => $.cancelAddSource, { ns: 'knowledgeSources' })}
               </Button>
               <span id="add-source-selection-requirement" className="sr-only">
-                {t(($) => $.addSourceRequiresSelection)}
+                {t(($) => $.addSourceRequiresSelection, { ns: 'knowledgeSources' })}
               </span>
               <Button
                 variant="primary"

@@ -33,7 +33,7 @@ export function KnowledgeSpaceActions({
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings'])
   const { t: tCommon } = useTranslation(['common'])
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -129,16 +129,16 @@ export function KnowledgeSpaceActions({
         <AlertDialogContent initialFocus={deleteCancelRef}>
           <div className="px-6 pt-6">
             <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
-              {t(($) => $['settings.deleteDialogTitle'], { name })}
+              {t(($) => $['settings.deleteDialogTitle'], { ns: 'knowledgeSettings', name })}
             </AlertDialogTitle>
             <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
-              {t(($) => $['settings.deleteDialogDescription'])}
+              {t(($) => $['settings.deleteDialogDescription'], { ns: 'knowledgeSettings' })}
             </AlertDialogDescription>
             <label
               htmlFor={`knowledge-delete-confirmation-${knowledgeSpace.control_space_id}`}
               className="mt-5 block system-sm-medium text-text-secondary"
             >
-              {t(($) => $['settings.deleteConfirmPrompt'], { name })}
+              {t(($) => $['settings.deleteConfirmPrompt'], { ns: 'knowledgeSettings', name })}
             </label>
             <Input
               id={`knowledge-delete-confirmation-${knowledgeSpace.control_space_id}`}

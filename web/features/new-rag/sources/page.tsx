@@ -86,7 +86,7 @@ function SourcesPageContent({
   onSearchChange: (value: string) => void
   onSortChange: (value: SourceSort) => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
   const knowledgeSpaceId = useAtomValue(sourcesKnowledgeSpaceIdAtom)
   const {
@@ -126,13 +126,13 @@ function SourcesPageContent({
         <div>
           <h2 className="title-xl-semi-bold leading-6 text-text-primary">{t(($) => $.sources)}</h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $.sourcesDescription)}
+            {t(($) => $.sourcesDescription, { ns: 'knowledgeSources' })}
           </p>
         </div>
         {pollingPhase === 'timed-out' && (
           <Button onClick={() => void refreshSources()}>
             <span aria-hidden className="i-ri-refresh-line size-4" />
-            {t(($) => $.refreshSources)}
+            {t(($) => $.refreshSources, { ns: 'knowledgeSources' })}
           </Button>
         )}
       </header>
@@ -150,7 +150,7 @@ function SourcesPageContent({
             aria-hidden
             className="i-ri-loader-4-line size-3.5 animate-spin motion-reduce:animate-none"
           />
-          {t(($) => $.awaitingInitialSource)}
+          {t(($) => $.awaitingInitialSource, { ns: 'knowledgeSources' })}
         </div>
       )}
       {sourcesQueryPending ? (
@@ -161,7 +161,7 @@ function SourcesPageContent({
         <div className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center">
           <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
           <h2 className="mt-3 title-xl-semi-bold text-text-primary">
-            {t(($) => $.sourcesErrorTitle)}
+            {t(($) => $.sourcesErrorTitle, { ns: 'knowledgeSources' })}
           </h2>
           <p className="mt-2 body-sm-regular text-text-tertiary">
             {t(($) => $.sourcesErrorDescription)}
@@ -173,7 +173,9 @@ function SourcesPageContent({
       ) : waitingForInitialSource && !sources?.length ? (
         <div className="flex min-h-64 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
           <LoadingPlaceholder />
-          <p className="body-sm-regular text-text-tertiary">{t(($) => $.awaitingInitialSource)}</p>
+          <p className="body-sm-regular text-text-tertiary">
+            {t(($) => $.awaitingInitialSource, { ns: 'knowledgeSources' })}
+          </p>
         </div>
       ) : !sources?.length && !sourcesQueryHasNextPage ? (
         <SourcesEmpty canAddSource={canManageSources} knowledgeSpaceId={knowledgeSpaceId} />
@@ -186,13 +188,19 @@ function SourcesPageContent({
                 if (value) onFilterChange(value)
               }}
             >
-              <SelectLabel className="sr-only">{t(($) => $.sourceFilterLabel)}</SelectLabel>
+              <SelectLabel className="sr-only">
+                {t(($) => $.sourceFilterLabel, { ns: 'knowledgeSources' })}
+              </SelectLabel>
               <SelectTrigger className="@min-[768px]/knowledge-content:w-35">
-                {filter === 'all' ? t(($) => $.allSources) : t(($) => $[`sourceStatus.${filter}`])}
+                {filter === 'all'
+                  ? t(($) => $.allSources, { ns: 'knowledgeSources' })
+                  : t(($) => $[`sourceStatus.${filter}`])}
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
-                  <SelectItemText>{t(($) => $.allSources)}</SelectItemText>
+                  <SelectItemText>
+                    {t(($) => $.allSources, { ns: 'knowledgeSources' })}
+                  </SelectItemText>
                   <SelectItemIndicator />
                 </SelectItem>
                 {(['active', 'initializing', 'syncing', 'disabled', 'error'] as const).map(
@@ -206,11 +214,11 @@ function SourcesPageContent({
               </SelectContent>
             </Select>
             <SearchInput
-              aria-label={t(($) => $.searchSources)}
+              aria-label={t(($) => $.searchSources, { ns: 'knowledgeSources' })}
               className="@min-[768px]/knowledge-content:w-60"
               value={search}
               onValueChange={onSearchChange}
-              placeholder={t(($) => $.searchSources)}
+              placeholder={t(($) => $.searchSources, { ns: 'knowledgeSources' })}
             />
             {canManageSources && (
               <Link
@@ -282,7 +290,7 @@ function SourcesTable({
   onSortChange: (value: SourceSort) => void
   sort: SourceSort
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set())
   const allFilteredSourcesSelected =
@@ -345,10 +353,10 @@ function SourcesTable({
               {t(($) => $.statusColumn)}
             </th>
             <th className="hidden min-w-0 @min-[960px]/knowledge-content:block">
-              {t(($) => $.syncPolicyColumn)}
+              {t(($) => $.syncPolicyColumn, { ns: 'knowledgeSources' })}
             </th>
             <th className="min-w-0 @min-[768px]/knowledge-content:col-start-4 @min-[960px]/knowledge-content:col-start-auto">
-              {t(($) => $.lastSyncColumn)}
+              {t(($) => $.lastSyncColumn, { ns: 'knowledgeSources' })}
             </th>
             <th
               className="@min-[768px]/knowledge-content:col-start-5 @min-[960px]/knowledge-content:col-start-auto"
@@ -380,7 +388,7 @@ function SourcesTable({
         !completingFilteredResults &&
         !isFetchNextPageError && (
           <p className="py-16 text-center body-sm-regular text-text-tertiary">
-            {t(($) => $.noMatchingSources)}
+            {t(($) => $.noMatchingSources, { ns: 'knowledgeSources' })}
           </p>
         )}
       {!filteredSources.length && completingFilteredResults && (

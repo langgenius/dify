@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Tarefas de adição de documentos, sincronização de fontes e reindexação.",
+  "dismissTask": "Dispensar tarefa",
+  "interruptTask": "Interromper",
+  "noBackgroundTasks": "Nenhuma tarefa em segundo plano ainda.",
+  "overview.operation.document_delete": "exclusão de documento",
+  "overview.operation.document_processing": "processamento de documentos",
+  "overview.operation.document_reindex": "reindexação de documentos",
+  "overview.operation.document_upload": "upload de documento",
+  "overview.operation.source_bulk": "atualização de origem",
+  "overview.operation.source_crawl_import": "importação de site",
+  "overview.operation.source_crawl_preview": "visualização do site",
+  "overview.operation.source_online_document_import": "importação de documentos on-line",
+  "overview.operation.source_online_drive_import": "importação de unidade on-line",
+  "overview.operation.source_sync": "sincronização de origem",
+  "taskDismissed": "Tarefa dispensada",
+  "taskFailedNotification": "Falha no processamento do documento — tente novamente em Tarefas",
+  "undoTaskDismissal": "Desfazer"
+}

@@ -3,8 +3,8 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Translation, useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { knowledgeFsTaskRecoveryPath } from '../knowledge-fs-task-error'
 import { newKnowledgeQualityPath } from '../routes'
@@ -24,7 +24,7 @@ import { cancelRetrievalResearchAtom, retryRetrievalAtom } from './state/runtime
 type ResearchExpansionState = Partial<Record<'active' | 'terminal', boolean>>
 
 function RetrievalResultSession() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeRetrieval'])
   const { t: tCommon } = useTranslation(['common'])
   const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
@@ -126,11 +126,13 @@ function RetrievalResultSession() {
       <div className="flex h-5 shrink-0 items-center gap-2 overflow-hidden pl-3">
         <h2 className="shrink-0 system-sm-semibold leading-5 text-text-primary">
           {selected?.kind === 'research'
-            ? t(($) => $['retrievalTest.researchResult'])
-            : t(($) => $['retrievalTest.result'])}
+            ? t(($) => $['retrievalTest.researchResult'], { ns: 'knowledgeRetrieval' })
+            : t(($) => $['retrievalTest.result'], { ns: 'knowledgeRetrieval' })}
         </h2>
         <span className="shrink-0 rounded-md bg-divider-regular px-1.5 py-0.5 text-[11px] leading-4 font-medium text-text-tertiary capitalize">
-          {selectedMode ? t(($) => $[`settings.retrievalMode.${selectedMode}`]) : ''}
+          {selectedMode
+            ? t(($) => $[`settings.retrievalMode.${selectedMode}`], { ns: 'knowledgeSpace' })
+            : ''}
         </span>
         {!selectedIsLoading && selectedCreatedAt !== undefined && (
           <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
@@ -146,7 +148,7 @@ function RetrievalResultSession() {
             onClick={toggleSelectedResearchProcess}
           >
             <span aria-hidden className="i-ri-search-eye-line size-3.5" />
-            {t(($) => $['retrievalTest.processLog'])}
+            {t(($) => $['retrievalTest.processLog'], { ns: 'knowledgeRetrieval' })}
           </button>
         )}
         {selectedResearchTask?.stage === 'completed' && (
@@ -155,14 +157,14 @@ function RetrievalResultSession() {
             className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
-            {t(($) => $['retrievalTest.quality'])}
+            {t(($) => $['retrievalTest.quality'], { ns: 'knowledgeRetrieval' })}
           </Link>
         )}
       </div>
 
       {selectedQueryImages.length > 0 && (
         <ul
-          aria-label={t(($) => $['retrievalTest.queryImages'])}
+          aria-label={t(($) => $['retrievalTest.queryImages'], { ns: 'knowledgeRetrieval' })}
           className="flex shrink-0 gap-2 overflow-x-auto pl-3"
         >
           {selectedQueryImages.map((image) => (
@@ -207,9 +209,15 @@ function RetrievalResultSession() {
           <FailedResult
             description={
               localError ||
-              (selectedFailureMessageKey
-                ? t(($) => $[selectedFailureMessageKey])
-                : t(($) => $['retrievalTest.failedDescription']))
+              (selectedFailureMessageKey ? (
+                <Suspense fallback={null}>
+                  <Translation ns={['knowledgeErrors']}>
+                    {(tError) => tError(($) => $[selectedFailureMessageKey])}
+                  </Translation>
+                </Suspense>
+              ) : (
+                t(($) => $['retrievalTest.failedDescription'], { ns: 'knowledgeRetrieval' })
+              ))
             }
             onRetry={
               canQuery &&
@@ -231,7 +239,9 @@ function RetrievalResultSession() {
 
         {selectedDataError && (
           <FailedResult
-            description={t(($) => $['retrievalTest.failedDescription'])}
+            description={t(($) => $['retrievalTest.failedDescription'], {
+              ns: 'knowledgeRetrieval',
+            })}
             onRetry={retrySelectedData}
           />
         )}
@@ -244,8 +254,10 @@ function RetrievalResultSession() {
           (selectedHasNoResults || currentEvidence.length === 0) && (
             <EmptyState
               kind="no-results"
-              title={t(($) => $['retrievalTest.noChunksTitle'])}
-              description={t(($) => $['retrievalTest.noChunksDescription'])}
+              title={t(($) => $['retrievalTest.noChunksTitle'], { ns: 'knowledgeRetrieval' })}
+              description={t(($) => $['retrievalTest.noChunksDescription'], {
+                ns: 'knowledgeRetrieval',
+              })}
             />
           )}
 
@@ -254,6 +266,7 @@ function RetrievalResultSession() {
             {selectedResearchActive && (
               <h3 className="flex h-6 items-start pb-2 pl-3 system-xs-medium text-text-tertiary">
                 {t(($) => $['retrievalTest.foundSoFar'], {
+                  ns: 'knowledgeRetrieval',
                   count: currentEvidence.length,
                 })}
               </h3>
@@ -292,6 +305,7 @@ function RetrievalResultSession() {
             onClick={() => setShowAll(true)}
           >
             {t(($) => $['retrievalTest.showAllChunks'], {
+              ns: 'knowledgeRetrieval',
               count: currentEvidence.length,
             })}
             <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
@@ -314,15 +328,15 @@ function RetrievalResultSession() {
 }
 
 export function RetrievalResultPanel() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeRetrieval'])
   const { resultKey, selected } = useAtomValueRawSync(retrievalResultFactsAtom)
 
   return (
     <section className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-background-body p-5">
       {!selected && (
         <EmptyState
-          title={t(($) => $['retrievalTest.emptyTitle'])}
-          description={t(($) => $['retrievalTest.emptyDescription'])}
+          title={t(($) => $['retrievalTest.emptyTitle'], { ns: 'knowledgeRetrieval' })}
+          description={t(($) => $['retrievalTest.emptyDescription'], { ns: 'knowledgeRetrieval' })}
         />
       )}
       {selected && resultKey && (

@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Aggiungi ed elabora",
+  "crawlPreview": "Anteprima scansione",
+  "createFailed": "Non è stato possibile creare questa base di conoscenza Agent. Controlla il tuo accesso e riprova.",
+  "createTitle": "Crea una base di conoscenza Agent",
+  "description": "Descrizione",
+  "descriptionHelp": "Una descrizione chiara aiuta le app a decidere quando cercare in questa base di conoscenza Agent.",
+  "descriptionPlaceholder": "Ad es. politiche di rimborso, FAQ sulle spedizioni e procedure di inoltro al team specializzato — per rispondere alle domande di assistenza clienti",
+  "illustrationHeadline": "Collega i tuoi contenuti una sola volta: ogni app risponderà con le conoscenze più aggiornate.",
+  "namePlaceholder": "ad es. Manuale dell'assistenza clienti",
+  "nameRequired": "Inserisci un nome per la base di conoscenza Agent.",
+  "selectedFiles": "File selezionati ({{valid}} di {{total}} validi)",
+  "startWith": "Inizia con",
+  "startWithHelp": "Puoi aggiungere più fonti o documenti in qualsiasi momento.",
+  "uploadCharactersUnavailable": "Caratteri: —",
+  "uploadDocuments": "Carica documenti",
+  "uploadDropZoneTitle": "Trascina e rilascia i file oppure sfoglia",
+  "uploadingFiles": "Caricamento…"
+}

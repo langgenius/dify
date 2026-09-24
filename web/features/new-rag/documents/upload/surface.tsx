@@ -65,7 +65,7 @@ function DocumentUploadHeader() {
 }
 
 export function DocumentUploadSurface({ children }: { children: ReactNode }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeDocuments'])
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
@@ -134,6 +134,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       if (exclusions.length > detailItems.length)
         detailItems.push(
           t(($) => $['documentUploadExclusion.more'], {
+            ns: 'knowledgeDocuments',
             count: exclusions.length - detailItems.length,
           }),
         )
@@ -158,6 +159,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       if (!uploadableFiles.length) {
         toast.error(
           t(($) => $.documentUploadRejected, {
+            ns: 'knowledgeDocuments',
             details: formatExclusionDetails(localExclusions),
           }),
         )
@@ -177,12 +179,13 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         if (localExclusions.length)
           toast.warning(
             t(($) => $.documentUploadPartial, {
+              ns: 'knowledgeDocuments',
               accepted: uploadableFiles.length,
               details: exclusionDetails,
               excluded: localExclusions.length,
             }),
           )
-        else toast.success(t(($) => $.documentUploadStarted))
+        else toast.success(t(($) => $.documentUploadStarted, { ns: 'knowledgeDocuments' }))
         void Promise.allSettled([
           queryClient.invalidateQueries({
             predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),

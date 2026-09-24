@@ -69,7 +69,7 @@ function metadataDisplayValue(value: unknown, locale: string) {
 }
 
 function DocumentMetadataCardContent() {
-  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { i18n, t } = useTranslation(['dataset', 'knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -162,7 +162,7 @@ function DocumentMetadataCardContent() {
     },
     onError: (_error, { name }) => {
       markCreateRetryable(name)
-      toast.error(t(($) => $['settings.saveFailed']))
+      toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
     },
     onSuccess: async (createdField) => {
       recordCreatedField(createdField)
@@ -187,7 +187,7 @@ function DocumentMetadataCardContent() {
         },
       }),
     onError: () => {
-      toast.error(t(($) => $['settings.saveFailed']))
+      toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
     },
     onSuccess: async () => {
       await invalidateMetadataQueries()

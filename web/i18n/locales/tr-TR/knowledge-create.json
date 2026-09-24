@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Ekle ve işle",
+  "crawlPreview": "Tarama önizlemesi",
+  "createFailed": "Bu Agent bilgi tabanını oluşturamadık. Erişiminizi kontrol edip tekrar deneyin.",
+  "createTitle": "Agent bilgi tabanı oluştur",
+  "description": "Açıklama",
+  "descriptionHelp": "Açık bir açıklama, uygulamaların bu Agent bilgi tabanında ne zaman arama yapacağına karar vermesine yardımcı olur.",
+  "descriptionPlaceholder": "Örn. geri ödeme politikası, kargo hakkında sık sorulan sorular ve uzman ekibe yönlendirme adımları — müşteri desteği soruları için kullanın",
+  "illustrationHeadline": "İçeriğinizi bir kez bağlayın — her uygulama en güncel bilgilerle yanıt versin.",
+  "namePlaceholder": "örneğin Müşteri Desteği El Kitabı",
+  "nameRequired": "Bir Agent bilgi tabanı adı girin.",
+  "selectedFiles": "Seçilen dosyalar ({{total}} dosyadan {{valid}} tanesi geçerli)",
+  "startWith": "Şununla başla:",
+  "startWithHelp": "İstediğiniz zaman daha fazla Kaynak veya Belge ekleyebilirsiniz.",
+  "uploadCharactersUnavailable": "Karakterler: —",
+  "uploadDocuments": "Belgeleri yükleyin",
+  "uploadDropZoneTitle": "Dosyaları sürükleyip bırakın veya göz atın",
+  "uploadingFiles": "Yükleniyor…"
+}

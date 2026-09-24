@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Tareas de incorporación de documentos, sincronización de fuentes y reindexación.",
+  "dismissTask": "Ocultar tarea",
+  "interruptTask": "Interrumpir",
+  "noBackgroundTasks": "Aún no hay tareas en segundo plano.",
+  "overview.operation.document_delete": "eliminación de documentos",
+  "overview.operation.document_processing": "procesamiento de documentos",
+  "overview.operation.document_reindex": "reindexación de documentos",
+  "overview.operation.document_upload": "carga de documentos",
+  "overview.operation.source_bulk": "actualización de fuente",
+  "overview.operation.source_crawl_import": "importación de sitios web",
+  "overview.operation.source_crawl_preview": "vista previa del sitio web",
+  "overview.operation.source_online_document_import": "importación de documentos en línea",
+  "overview.operation.source_online_drive_import": "importación de unidades en línea",
+  "overview.operation.source_sync": "sincronización de fuente",
+  "taskDismissed": "Tarea oculta",
+  "taskFailedNotification": "Error al procesar el documento: vuelve a intentarlo desde Tareas",
+  "undoTaskDismissal": "Deshacer"
+}

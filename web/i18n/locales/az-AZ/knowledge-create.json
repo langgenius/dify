@@ -1,0 +1,19 @@
+{
+  "addAndProcess": "Add & process",
+  "crawlPreview": "Skan önbaxışı",
+  "createFailed": "Bu bilik bazasını yarada bilmədik. Giriş icazənizi yoxlayın və yenidən cəhd edin.",
+  "createTitle": "Bilik bazası yarat",
+  "description": "Təsvir",
+  "descriptionHelp": "Aydın təsvir tətbiqlərə bu bilik bazasında nə vaxt axtarış aparmalı olduqlarını müəyyənləşdirməyə kömək edir.",
+  "descriptionPlaceholder": "Məsələn, geri ödəniş siyasəti, çatdırılma ilə bağlı tez-tez verilən suallar və yuxarı səviyyəyə yönləndirmə addımları. Müştəri dəstəyi ilə bağlı suallar üçün istifadə edin",
+  "illustrationHeadline": "Məzmununuzu bir dəfə qoşun, hər tətbiq ən yeni biliklərlə cavab versin.",
+  "namePlaceholder": "Məsələn, müştəri dəstəyi təlimatı",
+  "nameRequired": "Bilik bazasının adını daxil edin.",
+  "selectedFiles": "Selected files ({{valid}} of {{total}} valid)",
+  "startWith": "Başlanğıc seçimi",
+  "startWithHelp": "İstənilən vaxt daha çox mənbə və ya sənəd əlavə edə bilərsiniz.",
+  "uploadCharactersUnavailable": "Simvol sayı: məlum deyil",
+  "uploadDocuments": "Sənədləri yüklə",
+  "uploadDropZoneTitle": "Drag and drop files, or browse",
+  "uploadingFiles": "Yüklənir…"
+}

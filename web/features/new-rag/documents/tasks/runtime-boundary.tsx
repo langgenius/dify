@@ -16,7 +16,7 @@ import { queryKeyMatchesKnowledgeSpace } from './recovery'
 import { useTaskRuntimeController } from './use-task-runtime'
 
 export function DocumentTaskRuntimeController() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const tasksOpen = useAtomValueRawSync(documentTasksOpenAtom)
@@ -38,7 +38,10 @@ export function DocumentTaskRuntimeController() {
       queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
     })
   }, [knowledgeSpaceId, queryClient])
-  const notifyTaskFailed = useCallback(() => toast.error(t(($) => $.taskFailedNotification)), [t])
+  const notifyTaskFailed = useCallback(
+    () => toast.error(t(($) => $.taskFailedNotification, { ns: 'knowledgeTasks' })),
+    [t],
+  )
   const { acceptTaskSnapshot, observers, resetFailedPollBlocks } = useTaskRuntimeController({
     auxiliaryTaskReadGuard,
     denyAuxiliaryTaskRead,

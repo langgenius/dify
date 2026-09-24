@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "Sarcini de adăugare a documentelor, sincronizare a surselor și reindexare.",
+  "dismissTask": "Ascunde activitatea",
+  "interruptTask": "Întrerupe",
+  "noBackgroundTasks": "Nu există încă sarcini de fundal.",
+  "overview.operation.document_delete": "ștergerea documentului",
+  "overview.operation.document_processing": "procesarea documentului",
+  "overview.operation.document_reindex": "reindexarea documentului",
+  "overview.operation.document_upload": "încărcarea documentului",
+  "overview.operation.source_bulk": "actualizarea sursei",
+  "overview.operation.source_crawl_import": "importul site-ului web",
+  "overview.operation.source_crawl_preview": "previzualizarea site-ului web",
+  "overview.operation.source_online_document_import": "importul documentelor online",
+  "overview.operation.source_online_drive_import": "importul unității online",
+  "overview.operation.source_sync": "sincronizarea sursei",
+  "taskDismissed": "Activitate ascunsă",
+  "taskFailedNotification": "Procesarea documentului a eșuat — reîncercați din Sarcini",
+  "undoTaskDismissal": "Anulează"
+}

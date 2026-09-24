@@ -213,7 +213,7 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
 }
 
 function DocumentCollectionState() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const canRead = useAtomValueRawSync(documentCanReadAtom)
   const documents = useAtomValueRawSync(documentsAtom)
@@ -247,7 +247,7 @@ function DocumentCollectionState() {
       >
         <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
         <h2 className="mt-3 title-xl-semi-bold text-text-primary">
-          {t(($) => $.documentsErrorTitle)}
+          {t(($) => $.documentsErrorTitle, { ns: 'knowledgeDocuments' })}
         </h2>
         <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
           {t(($) => $.documentsErrorDescription)}

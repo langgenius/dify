@@ -1,0 +1,19 @@
+{
+  "backgroundTasksDescription": "文件新增、資料來源同步和重新索引任務。",
+  "dismissTask": "忽略任務",
+  "interruptTask": "中斷",
+  "noBackgroundTasks": "暫無背景任務。",
+  "overview.operation.document_delete": "文件刪除",
+  "overview.operation.document_processing": "文件處理",
+  "overview.operation.document_reindex": "文件重新索引",
+  "overview.operation.document_upload": "文件上傳",
+  "overview.operation.source_bulk": "資料來源更新",
+  "overview.operation.source_crawl_import": "網站匯入",
+  "overview.operation.source_crawl_preview": "網站預覽",
+  "overview.operation.source_online_document_import": "線上文件匯入",
+  "overview.operation.source_online_drive_import": "線上雲端硬碟匯入",
+  "overview.operation.source_sync": "資料來源同步",
+  "taskDismissed": "已忽略任務",
+  "taskFailedNotification": "文件處理失敗，請在「任務」中重試",
+  "undoTaskDismissal": "復原"
+}

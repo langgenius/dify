@@ -29,7 +29,7 @@ export function KnowledgeUpgradeDialog({
   onCancel: () => void
   onStarted: (dataset: DatasetCardItem, job: KnowledgeFsUpgradeJobResponse) => void
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeUpgrade'])
   const { t: tCommon } = useTranslation(['common'])
   const cancelRef = useRef<HTMLButtonElement>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
@@ -82,13 +82,13 @@ export function KnowledgeUpgradeDialog({
       >
         <div className="flex flex-col gap-4 p-6 pb-4">
           <AlertDialogTitle className="body-xl-medium text-text-primary">
-            {t(($) => $['upgrade.dialogTitle'])}
+            {t(($) => $['upgrade.dialogTitle'], { ns: 'knowledgeUpgrade' })}
           </AlertDialogTitle>
           <AlertDialogDescription render={<div />} className="body-md-regular text-text-primary">
             <p>
               <Trans
                 i18nKey={($) => $['upgrade.dialogDescription']}
-                ns="knowledgeSpace"
+                ns="knowledgeUpgrade"
                 components={{
                   legacy: <span className="text-text-accent" />,
                   new: <span className="text-text-accent" />,
@@ -96,19 +96,19 @@ export function KnowledgeUpgradeDialog({
               />
             </p>
             <ul className="mt-0 list-disc pl-5">
-              <li>{t(($) => $['upgrade.dialogDuration'])}</li>
-              <li>{t(($) => $['upgrade.dialogLinkedApps'])}</li>
+              <li>{t(($) => $['upgrade.dialogDuration'], { ns: 'knowledgeUpgrade' })}</li>
+              <li>{t(($) => $['upgrade.dialogLinkedApps'], { ns: 'knowledgeUpgrade' })}</li>
               <li>
                 <Trans
                   i18nKey={($) => $['upgrade.dialogAvailability']}
-                  ns="knowledgeSpace"
+                  ns="knowledgeUpgrade"
                   components={{ strong: <strong className="font-medium" /> }}
                 />
               </li>
             </ul>
             {(discoveryQuery.isError || startMutation.isError) && (
               <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
-                {t(($) => $['upgrade.startFailed'])}
+                {t(($) => $['upgrade.startFailed'], { ns: 'knowledgeUpgrade' })}
               </p>
             )}
           </AlertDialogDescription>
@@ -123,7 +123,7 @@ export function KnowledgeUpgradeDialog({
             disabled={discoveryQuery.data?.can_upgrade !== true}
             onClick={startUpgrade}
           >
-            {t(($) => $['upgrade.start'])}
+            {t(($) => $['upgrade.start'], { ns: 'knowledgeUpgrade' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

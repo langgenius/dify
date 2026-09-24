@@ -27,7 +27,7 @@ export function OverviewOnboarding() {
 }
 
 function IndexingProgress() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeOverview'])
   const indexingTask = useAtomValueRawSync(overviewIndexingTaskAtom)
   const indexingSourceName = useAtomValueRawSync(overviewIndexingSourceNameAtom)
   if (!indexingTask) return null
@@ -37,16 +37,19 @@ function IndexingProgress() {
     <section className="flex h-29.75 flex-col rounded-xl bg-background-section p-4">
       <h2 className="text-[18px] leading-[1.2] font-semibold text-text-primary">
         {indexingSourceName
-          ? t(($) => $['overview.indexingSource'], { source: indexingSourceName })
-          : t(($) => $['overview.indexing'])}
+          ? t(($) => $['overview.indexingSource'], {
+              ns: 'knowledgeOverview',
+              source: indexingSourceName,
+            })
+          : t(($) => $['overview.indexing'], { ns: 'knowledgeOverview' })}
       </h2>
       <p className="mt-1 text-[13px] leading-4 font-normal text-text-primary">
-        {t(($) => $['overview.indexingConnectedDescription'])}
+        {t(($) => $['overview.indexingConnectedDescription'], { ns: 'knowledgeOverview' })}
       </p>
       <div className="mt-3">
         <div
           role="progressbar"
-          aria-label={t(($) => $['overview.indexing'])}
+          aria-label={t(($) => $['overview.indexing'], { ns: 'knowledgeOverview' })}
           aria-valuemin={0}
           aria-valuemax={progressKnown ? indexingTask.progress_total : undefined}
           aria-valuenow={progressKnown ? indexingTask.progress_completed : undefined}
@@ -59,6 +62,7 @@ function IndexingProgress() {
         </div>
         <p className="mt-2.5 system-xs-regular text-text-tertiary">
           {t(($) => $['overview.indexedDocuments'], {
+            ns: 'knowledgeOverview',
             indexed: indexingTask.progress_completed,
             total: indexingTask.progress_total,
           })}
@@ -69,7 +73,7 @@ function IndexingProgress() {
 }
 
 function EmptyKnowledgeOnboarding() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
   const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
   const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
   const canManageDocuments = useKnowledgeSpacePermission('knowledge_space_document_write')
@@ -79,11 +83,11 @@ function EmptyKnowledgeOnboarding() {
   const actionCount = Number(canConnectSource) + Number(canUpload)
   const description = canConnectSource
     ? canUpload
-      ? t(($) => $['overview.noSourcesDescription'])
+      ? t(($) => $['overview.noSourcesDescription'], { ns: 'knowledgeOverview' })
       : t(($) => $.connectSourceDescription)
     : canUpload
       ? t(($) => $.uploadFilesDescription)
-      : t(($) => $['overview.readOnlyDescription'])
+      : t(($) => $['overview.readOnlyDescription'], { ns: 'knowledgeOverview' })
 
   const beginNavigation = (action: 'source' | 'upload', event: MouseEvent<HTMLAnchorElement>) => {
     if (
@@ -119,7 +123,7 @@ function EmptyKnowledgeOnboarding() {
       </div>
       <div className="mt-3 h-10.5">
         <h2 className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['overview.noSources'])}
+          {t(($) => $['overview.noSources'], { ns: 'knowledgeOverview' })}
         </h2>
         <p className="mt-1 body-xs-regular text-text-tertiary">{description}</p>
       </div>
@@ -129,7 +133,7 @@ function EmptyKnowledgeOnboarding() {
         >
           {canConnectSource && (
             <Link
-              aria-label={t(($) => $['overview.connectSource'])}
+              aria-label={t(($) => $['overview.connectSource'], { ns: 'knowledgeOverview' })}
               aria-busy={pendingAction === 'source' || undefined}
               aria-disabled={pendingAction !== undefined}
               className={cn(
@@ -150,7 +154,7 @@ function EmptyKnowledgeOnboarding() {
                 )}
               />
               <span className="mt-2 system-md-semibold text-text-primary">
-                {t(($) => $['overview.connectSource'])}
+                {t(($) => $['overview.connectSource'], { ns: 'knowledgeOverview' })}
               </span>
               <span className="mt-0.5 system-sm-regular text-text-tertiary">
                 {t(($) => $.connectSourceDescription)}
@@ -159,7 +163,7 @@ function EmptyKnowledgeOnboarding() {
           )}
           {canUpload && (
             <Link
-              aria-label={t(($) => $['overview.uploadFiles'])}
+              aria-label={t(($) => $['overview.uploadFiles'], { ns: 'knowledgeOverview' })}
               aria-busy={pendingAction === 'upload' || undefined}
               aria-disabled={pendingAction !== undefined}
               className={cn(
@@ -180,7 +184,7 @@ function EmptyKnowledgeOnboarding() {
                 )}
               />
               <span className="mt-2 system-md-semibold text-text-primary">
-                {t(($) => $['overview.uploadFiles'])}
+                {t(($) => $['overview.uploadFiles'], { ns: 'knowledgeOverview' })}
               </span>
               <span className="mt-0.5 system-sm-regular text-text-tertiary">
                 {t(($) => $.uploadFilesDescription)}

@@ -375,7 +375,7 @@ function ResourceList({
   selectionScope: SelectableResource[]
   selected: ReadonlyMap<string, SelectableResource>
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const selectableResources = selectionScope.filter(isSelectableResource)
   const driveContainers = selectionScope.filter(isDriveContainer)
   const allDriveContainersLoaded = driveContainers.every(
@@ -394,7 +394,7 @@ function ResourceList({
     <div className="flex h-78 flex-col overflow-hidden rounded-xl border border-divider-regular">
       <div className="flex h-7.5 shrink-0 items-center gap-2 border-b border-divider-subtle px-3">
         <Checkbox
-          aria-label={t(($) => $.selectAll)}
+          aria-label={t(($) => $.selectAll, { ns: 'knowledgeSources' })}
           aria-describedby={selectionLimitVisible && !allSelected ? selectionLimitId : undefined}
           checked={allSelected}
           disabled={
@@ -403,7 +403,9 @@ function ResourceList({
           indeterminate={!allSelected && someSelected}
           onCheckedChange={onToggleAll}
         />
-        <span className="system-xs-medium text-text-primary">{t(($) => $.selectAll)}</span>
+        <span className="system-xs-medium text-text-primary">
+          {t(($) => $.selectAll, { ns: 'knowledgeSources' })}
+        </span>
         <span className="ml-auto truncate system-xs-regular text-text-tertiary">
           {connectionLabel(connection, resources, providerRegion)}
         </span>
@@ -536,7 +538,7 @@ function ResourceConfiguration({
   provider: SourceProvider
   providerRegion?: string
 }) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
   const previewRequestIdRef = useRef(createRequestId())
   const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
@@ -1346,16 +1348,16 @@ function ResourceConfiguration({
                 className="min-w-0 flex-1 system-xs-semibold text-text-primary"
               >
                 {driveTransport && draft.provider !== 'Google Docs'
-                  ? t(($) => $.selectFilesAndFolders)
+                  ? t(($) => $.selectFilesAndFolders, { ns: 'knowledgeSources' })
                   : draft.provider === 'Google Docs'
-                    ? t(($) => $.selectFoldersAndDocsToSync)
-                    : t(($) => $.selectPagesToSync)}
+                    ? t(($) => $.selectFoldersAndDocsToSync, { ns: 'knowledgeSources' })
+                    : t(($) => $.selectPagesToSync, { ns: 'knowledgeSources' })}
               </h3>
               <span role="status" className="system-xs-regular text-text-tertiary">
-                {t(($) => $.pagesSelected, { count: selected.size })}
+                {t(($) => $.pagesSelected, { ns: 'knowledgeSources', count: selected.size })}
                 {selectionLimitVisible && (
                   <span id={selectionLimitId} className="ml-2 text-text-destructive">
-                    {t(($) => $.maxPages)}: {MAX_SELECTION}
+                    {t(($) => $.maxPages, { ns: 'knowledgeSources' })}: {MAX_SELECTION}
                   </span>
                 )}
               </span>
@@ -1409,12 +1411,12 @@ function ResourceConfiguration({
       <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
-          {t(($) => $.addSourceFailed)}
+          {t(($) => $.addSourceFailed, { ns: 'knowledgeSources' })}
         </p>
       )}
       <div className="mt-1 flex justify-end gap-2 border-t border-divider-subtle pt-4.75">
         <Button type="button" onClick={onExit}>
-          {t(($) => $.cancelAddSource)}
+          {t(($) => $.cancelAddSource, { ns: 'knowledgeSources' })}
         </Button>
         <Button
           variant="primary"
@@ -1568,7 +1570,7 @@ function ConnectedSourceWorkflowSession({
   onDraftChange,
   onExit,
 }: ConnectedSourceWorkflowProps) {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
@@ -1812,20 +1814,21 @@ function ConnectedSourceWorkflowSession({
         </div>
       ) : providerOptions.length === 0 ? null : !installedProviderOption ? (
         <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
-          {t(($) => $.providerUnavailable)}
+          {t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
         </div>
       ) : !provider ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">{installedProviderOption.label}</p>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $.providerUnavailable)}
+            {t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
           </p>
         </div>
       ) : !provider.available ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">{provider.displayName}</p>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {provider.unavailableReason ?? t(($) => $.providerUnavailable)}
+            {provider.unavailableReason ??
+              t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
           </p>
         </div>
       ) : connection?.status === 'active' ? (
@@ -1849,22 +1852,25 @@ function ConnectedSourceWorkflowSession({
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">
             {t(($) => $.connectionProvisioning, {
+              ns: 'knowledgeSources',
               provider: provider.displayName,
             })}
           </p>
           <Button className="mt-3" onClick={() => void connectionsQuery.refetch()}>
-            {t(($) => $.refreshConnectionStatus)}
+            {t(($) => $.refreshConnectionStatus, { ns: 'knowledgeSources' })}
           </Button>
         </div>
       ) : connection ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">
             {t(($) => $.connectionNeedsAttention, {
+              ns: 'knowledgeSources',
               provider: provider.displayName,
             })}
           </p>
           <p className="mt-1 system-xs-regular text-text-tertiary">
             {t(($) => $.providerCredentialRequiredDescription, {
+              ns: 'knowledgeSources',
               provider: providerDraft.provider,
             })}
           </p>
@@ -1879,7 +1885,10 @@ function ConnectedSourceWorkflowSession({
                 )
               }
             >
-              {t(($) => $.connectProvider, { provider: providerDraft.provider })}
+              {t(($) => $.connectProvider, {
+                ns: 'knowledgeSources',
+                provider: providerDraft.provider,
+              })}
             </Button>
             <Button loading={provisioningConnection} onClick={() => void provisionConnection(true)}>
               {t(($) => $.retryProviderLoad)}
@@ -1891,14 +1900,17 @@ function ConnectedSourceWorkflowSession({
           <div className="text-center">
             <LoadingPlaceholder />
             <p className="mt-2 system-xs-regular text-text-tertiary">
-              {t(($) => $.connectingProvider)}
+              {t(($) => $.connectingProvider, { ns: 'knowledgeSources' })}
             </p>
           </div>
         </div>
       ) : provisionError ? (
         <div className="rounded-xl bg-background-section p-4">
           <p role="alert" className="system-sm-semibold text-text-primary">
-            {t(($) => $.connectionFailed, { provider: providerDraft.provider })}
+            {t(($) => $.connectionFailed, {
+              ns: 'knowledgeSources',
+              provider: providerDraft.provider,
+            })}
           </p>
           <Button
             className="mt-3"
@@ -1937,7 +1949,7 @@ function ConnectedSourceWorkflowSession({
       {!connection && (
         <div className="mt-1 flex justify-between gap-2 border-t border-divider-subtle pt-4.75">
           <Button type="button" onClick={onExit}>
-            {t(($) => $.cancelAddSource)}
+            {t(($) => $.cancelAddSource, { ns: 'knowledgeSources' })}
           </Button>
           <Button variant="primary" disabled>
             {t(($) => $.addSource)}

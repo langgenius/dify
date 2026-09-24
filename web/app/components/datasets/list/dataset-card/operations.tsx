@@ -37,7 +37,13 @@ const Operations = ({
   onUpgrade,
   onClose,
 }: OperationsProps) => {
-  const { t } = useTranslation(['common', 'datasetPipeline', 'knowledgeSpace', 'navigation'])
+  const { t } = useTranslation([
+    'common',
+    'datasetPipeline',
+    'knowledgeSpace',
+    'navigation',
+    'knowledgeUpgrade',
+  ])
 
   const handleRename = () => {
     onClose?.()
@@ -75,12 +81,12 @@ const Operations = ({
             >
               <span aria-hidden className="mr-1 i-ri-arrow-up-circle-line size-4" />
               <span className="min-w-0 flex-1">
-                {t(($) => $['upgrade.menuLabel'], { ns: 'knowledgeSpace' })}
+                {t(($) => $['upgrade.menuLabel'], { ns: 'knowledgeUpgrade' })}
               </span>
             </DropdownMenuItem>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
-                aria-label={t(($) => $['upgrade.guideTitle'], { ns: 'knowledgeSpace' })}
+                aria-label={t(($) => $['upgrade.guideTitle'], { ns: 'knowledgeUpgrade' })}
                 className="ml-0 w-8 shrink-0 rounded-l-none px-2 text-text-quaternary [&>span:last-child]:hidden"
               >
                 <span aria-hidden className="i-ri-question-line size-4" />
@@ -93,10 +99,10 @@ const Operations = ({
                 <DropdownMenuArrow />
                 <div role="presentation" className="px-4 pt-3.5">
                   <div className="system-md-medium text-text-primary">
-                    {t(($) => $['upgrade.guideTitle'], { ns: 'knowledgeSpace' })}
+                    {t(($) => $['upgrade.guideTitle'], { ns: 'knowledgeUpgrade' })}
                   </div>
                   <p className="mt-2 system-sm-regular text-text-secondary">
-                    {t(($) => $['upgrade.guideDescription'], { ns: 'knowledgeSpace' })}
+                    {t(($) => $['upgrade.guideDescription'], { ns: 'knowledgeUpgrade' })}
                   </p>
                 </div>
                 <DropdownMenuLinkItem

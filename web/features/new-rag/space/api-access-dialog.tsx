@@ -98,7 +98,7 @@ export function KnowledgeFsApiAccessDialog({
               </div>
             ) : !canManageApiKey ? (
               <div className="rounded-lg bg-background-section px-3 py-2 body-xs-regular text-text-tertiary">
-                {t(($) => $['settings.viewOnly'])}
+                {t(($) => $['settings.viewOnly'], { ns: 'knowledgeSpace' })}
               </div>
             ) : (
               <div className="flex justify-end">

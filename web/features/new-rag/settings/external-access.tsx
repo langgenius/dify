@@ -15,7 +15,7 @@ const API_ACCESS_DESCRIPTION_ID = 'knowledge-api-access-description'
 const WORKFLOW_ACCESS_DESCRIPTION_ID = 'knowledge-workflow-access-description'
 
 export function ExternalAccessSection() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings'])
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const current = useAtomValue(knowledgeSettingsExternalDraftAtom)
   const updateDraft = useSetAtom(updateKnowledgeSettingsExternalDraftAtom)
@@ -28,7 +28,7 @@ export function ExternalAccessSection() {
   return (
     <div className="flex flex-col gap-4">
       <div className="h-px bg-divider-subtle" />
-      <SettingsFieldRow label={t(($) => $['settings.apiAccessLabel'])}>
+      <SettingsFieldRow label={t(($) => $['settings.apiAccessLabel'], { ns: 'knowledgeSettings' })}>
         <div className="flex min-h-7 items-center gap-2">
           <Switch
             aria-label={t(($) => $.apiAgentAccess)}
@@ -41,15 +41,17 @@ export function ExternalAccessSection() {
             id={API_ACCESS_DESCRIPTION_ID}
             className="min-w-0 flex-1 system-xs-regular text-text-tertiary"
           >
-            {t(($) => $['settings.apiAccessDescription'])}
+            {t(($) => $['settings.apiAccessDescription'], { ns: 'knowledgeSettings' })}
           </p>
         </div>
       </SettingsFieldRow>
 
-      <SettingsFieldRow label={t(($) => $['settings.workflowAccessLabel'])}>
+      <SettingsFieldRow
+        label={t(($) => $['settings.workflowAccessLabel'], { ns: 'knowledgeSettings' })}
+      >
         <div className="flex min-h-7 items-center gap-2">
           <Switch
-            aria-label={t(($) => $.workflowAccess)}
+            aria-label={t(($) => $.workflowAccess, { ns: 'knowledgeSettings' })}
             aria-describedby={WORKFLOW_ACCESS_DESCRIPTION_ID}
             checked={current.workflowEnabled}
             disabled={disabled}
@@ -59,7 +61,7 @@ export function ExternalAccessSection() {
             id={WORKFLOW_ACCESS_DESCRIPTION_ID}
             className="min-w-0 flex-1 system-xs-regular text-text-tertiary"
           >
-            {t(($) => $['settings.workflowAccessDescription'])}
+            {t(($) => $['settings.workflowAccessDescription'], { ns: 'knowledgeSettings' })}
           </p>
         </div>
       </SettingsFieldRow>

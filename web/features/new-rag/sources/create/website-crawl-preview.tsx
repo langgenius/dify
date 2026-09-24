@@ -437,7 +437,7 @@ export function WebsiteCrawlPreview({
   providerName?: string
   syncPolicyField?: ReactNode
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeSources'])
   const router = useRouter()
   const primaryActionLabelId = useId()
   const stopButtonLabelId = useId()
@@ -1098,9 +1098,9 @@ export function WebsiteCrawlPreview({
       ? t(($) => $.crawling)
       : (requestError && requestError !== 'CANCEL_FAILED') ||
           (run && (isFailed(run.state) || isCanceled(run.state)))
-        ? t(($) => $.retryCrawl)
+        ? t(($) => $.retryCrawl, { ns: 'knowledgeSources' })
         : run && isSuccessful(run.state) && pagesLoaded && pages.length === 0
-          ? t(($) => $.adjustAndRecrawl)
+          ? t(($) => $.adjustAndRecrawl, { ns: 'knowledgeSources' })
           : t(($) => $.crawlAndPreview)
   const canReconcileUncertainOperation =
     uncertainOperation && (requestError === 'START_FAILED' || requestError === 'RETRY_FAILED')
@@ -1184,7 +1184,7 @@ export function WebsiteCrawlPreview({
   return (
     <section aria-label={t(($) => $.crawlAndPreview)}>
       <p role="status" className="sr-only">
-        {t(($) => $.providerConnected, { provider: providerName })}
+        {t(($) => $.providerConnected, { ns: 'knowledgeSources', provider: providerName })}
       </p>
       <Form onFormSubmit={handleSubmit}>
         <Fieldset disabled={locked} className="space-y-4">
@@ -1192,7 +1192,7 @@ export function WebsiteCrawlPreview({
             additionalPrimaryField={
               <Field name="sourceName" className="gap-1.5">
                 <FieldLabel>
-                  {t(($) => $.sourceName)}
+                  {t(($) => $.sourceName, { ns: 'knowledgeSources' })}
                   <span className="ml-0.5 text-text-destructive">*</span>
                 </FieldLabel>
                 <Input
@@ -1202,7 +1202,7 @@ export function WebsiteCrawlPreview({
                   required
                   maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                   value={sourceName}
-                  placeholder={t(($) => $.sourceNamePlaceholder)}
+                  placeholder={t(($) => $.sourceNamePlaceholder, { ns: 'knowledgeSources' })}
                   onValueChange={setSourceName}
                 />
               </Field>
@@ -1260,20 +1260,22 @@ export function WebsiteCrawlPreview({
                 onClick={() => void stop()}
               >
                 <span id={stopButtonLabelId}>
-                  {stopping ? t(($) => $.stoppingCrawl) : t(($) => $.stopCrawl)}
+                  {stopping
+                    ? t(($) => $.stoppingCrawl, { ns: 'knowledgeSources' })
+                    : t(($) => $.stopCrawl)}
                 </span>
               </Button>
             </div>
             {requestError === 'CANCEL_FAILED' && (
               <p role="alert" className="px-4 pb-3 system-xs-regular text-text-destructive">
-                {t(($) => $.crawlFailedDescription)}
+                {t(($) => $.crawlFailedDescription, { ns: 'knowledgeSources' })}
               </p>
             )}
             {run.progressTotal !== undefined && run.progressTotal > 0 && (
               <progress
                 max={run.progressTotal}
                 value={Math.min(completedCount, run.progressTotal)}
-                aria-label={t(($) => $.crawlProgress, { host })}
+                aria-label={t(($) => $.crawlProgress, { ns: 'knowledgeSources', host })}
                 className="sr-only"
               />
             )}
@@ -1337,20 +1339,21 @@ export function WebsiteCrawlPreview({
           >
             <span aria-hidden className="i-ri-error-warning-fill size-6 text-text-destructive" />
             <p className="system-sm-semibold text-text-primary">
-              {t(($) => $.crawlFailed, { host })}
+              {t(($) => $.crawlFailed, { ns: 'knowledgeSources', host })}
             </p>
             <p className="max-w-lg system-xs-regular text-text-tertiary">
               {is403
-                ? t(($) => $.crawlFailed403)
+                ? t(($) => $.crawlFailed403, { ns: 'knowledgeSources' })
                 : isTimeout
-                  ? t(($) => $.crawlFailedTimeout)
+                  ? t(($) => $.crawlFailedTimeout, { ns: 'knowledgeSources' })
                   : isProviderError
                     ? t(($) => $.crawlFailedProvider, {
+                        ns: 'knowledgeSources',
                         provider: providerName,
                       })
                     : requestError === 'START_FAILED'
                       ? t(($) => $.crawlStartFailed)
-                      : t(($) => $.crawlFailedDescription)}
+                      : t(($) => $.crawlFailedDescription, { ns: 'knowledgeSources' })}
             </p>
           </div>
         )}
@@ -1364,10 +1367,10 @@ export function WebsiteCrawlPreview({
               <span aria-hidden className="i-ri-global-line size-5.5 text-text-tertiary" />
             </span>
             <p className="system-sm-semibold text-text-primary">
-              {t(($) => $.noPagesFound, { host })}
+              {t(($) => $.noPagesFound, { ns: 'knowledgeSources', host })}
             </p>
             <p className="max-w-lg system-xs-regular text-text-tertiary">
-              {t(($) => $.noPagesFoundDescription)}
+              {t(($) => $.noPagesFoundDescription, { ns: 'knowledgeSources' })}
             </p>
           </div>
         )}
@@ -1376,10 +1379,10 @@ export function WebsiteCrawlPreview({
       {!showSuccess && (
         <div className="mt-5 flex justify-end gap-3 border-t border-divider-subtle pt-4.75">
           <Button type="button" loading={discarding} onClick={cancel}>
-            {t(($) => $.cancelAddSource)}
+            {t(($) => $.cancelAddSource, { ns: 'knowledgeSources' })}
           </Button>
           <span id="add-source-selection-requirement" className="sr-only">
-            {t(($) => $.addSourceRequiresSelection)}
+            {t(($) => $.addSourceRequiresSelection, { ns: 'knowledgeSources' })}
           </span>
           <Button variant="primary" disabled aria-describedby="add-source-selection-requirement">
             {t(($) => $.addSource)}
@@ -1388,7 +1391,7 @@ export function WebsiteCrawlPreview({
       )}
       {discardError && requestError !== 'CANCEL_FAILED' && (
         <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
-          {t(($) => $.crawlFailedDescription)}
+          {t(($) => $.crawlFailedDescription, { ns: 'knowledgeSources' })}
         </p>
       )}
     </section>
