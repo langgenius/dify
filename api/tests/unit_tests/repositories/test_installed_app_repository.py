@@ -29,7 +29,7 @@ def _installation(*, app_id: str) -> InstalledApp:
 
 
 @pytest.mark.parametrize("app_mode", list(AppMode))
-def test_resolve_returns_pure_reference_to_cross_workspace_app(
+def test_resolve_returns_actual_owner_despite_stale_cross_workspace_installation(
     sqlite_session_factory: sessionmaker[Session],
     app_mode: AppMode,
 ) -> None:
@@ -46,6 +46,7 @@ def test_resolve_returns_pure_reference_to_cross_workspace_app(
         session.add(app)
         session.flush()
         installed_app = _installation(app_id=app.id)
+        installed_app.app_owner_tenant_id = _VIEWER_TENANT_ID
         session.add(installed_app)
         session.flush()
         installed_app_id = installed_app.id
@@ -63,9 +64,13 @@ def test_resolve_returns_pure_reference_to_cross_workspace_app(
     result = repository.resolve(installed_app_id=installed_app_id, tenant_id=_VIEWER_TENANT_ID)
 
     assert result == InstalledAppRef(
-        id=installed_app_id, app_id=app_id, tenant_id=_VIEWER_TENANT_ID, app_mode=app_mode.value
+        id=installed_app_id,
+        app_id=app_id,
+        tenant_id=_VIEWER_TENANT_ID,
+        app_owner_tenant_id=_OWNER_TENANT_ID,
+        app_mode=app_mode.value,
     )
-    # The app existence read also supplies its mode; no separate mode query.
+    # Ownership and mode come from App, not the installation snapshot.
     assert select_count == 2
     assert inspect(result, raiseerr=False) is None
     with sqlite_session_factory() as session:
@@ -141,7 +146,11 @@ def installed_app(sqlite_session_factory: sessionmaker[Session]) -> InstalledApp
 
 def _reference(installation: InstalledApp) -> InstalledAppRef:
     return InstalledAppRef(
-        id=installation.id, app_id=installation.app_id, tenant_id=installation.tenant_id, app_mode="completion"
+        id=installation.id,
+        app_id=installation.app_id,
+        tenant_id=installation.tenant_id,
+        app_owner_tenant_id=installation.app_owner_tenant_id,
+        app_mode="completion",
     )
 
 
