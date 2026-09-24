@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from services.knowledge_fs.vector_store import (
+    TIDB_POINT_ID_FIELD,
     VectorRequest,
     VectorScope,
     VectorStoreUnavailableError,
@@ -365,3 +366,163 @@ def test_uncertain_native_delete_is_retryable(client):
             execute_vector_request(client, request("delete", ids=[A]))
     execute_vector_request(client, request("delete", ids=[A]))
     assert execute_vector_request(client, request("get", ids=[A]))["points"] == []
+
+
+@pytest.fixture
+def tidb_client(client, config_overrides):
+    config_overrides(VECTOR_STORE="tidb_on_qdrant")
+    native = MagicMock()
+    scope = VectorScope.model_validate(SCOPE)
+    info = client.get_collection(scope.collection_name)
+
+    def get_collection(name):
+        if name != scope.collection_name:
+            raise UnexpectedResponse(404, "missing", b"{}", {})
+        return info
+
+    native.get_collection.side_effect = get_collection
+    return native, info
+
+
+def test_tidb_new_collection_indexes_and_stores_point_ids(tidb_client):
+    client, info = tidb_client
+    execute_vector_request(
+        client,
+        request("upsert", points=[{"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [1, 0]}]),
+    )
+    client.create_payload_index.assert_called_once_with(
+        collection_name=VectorScope.model_validate(SCOPE).collection_name,
+        field_name=TIDB_POINT_ID_FIELD,
+        field_schema=models.PayloadSchemaType.KEYWORD,
+        wait=True,
+    )
+    assert client.upsert.call_args.kwargs["points"][0].payload == {
+        "generation_id": GENERATION,
+        "content_hash": "a" * 64,
+        TIDB_POINT_ID_FIELD: A,
+    }
+
+
+@pytest.mark.parametrize("compatible", [False, True])
+def test_tidb_payload_index_creation_race_requires_compatible_index(tidb_client, compatible):
+    client, info = tidb_client
+
+    def create_index(**_kwargs):
+        if compatible:
+            info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=0)
+        raise RuntimeError("index creation raced or failed")
+
+    client.create_payload_index.side_effect = create_index
+    payload = request(
+        "upsert", points=[{"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [1, 0]}]
+    )
+    if compatible:
+        execute_vector_request(client, payload)
+        client.upsert.assert_called_once()
+    else:
+        with pytest.raises(RuntimeError, match="creation"):
+            execute_vector_request(client, payload)
+        client.upsert.assert_not_called()
+
+
+def test_tidb_nonempty_old_collection_is_not_marked_indexed(tidb_client):
+    client, info = tidb_client
+    info.points_count = 1
+    execute_vector_request(
+        client,
+        request("upsert", points=[{"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [1, 0]}]),
+    )
+    client.create_payload_index.assert_not_called()
+    client.upsert.assert_called_once()
+
+
+@pytest.mark.parametrize("operation", ["search", "upsert"])
+def test_tidb_wrong_id_index_type_fails_closed(tidb_client, operation):
+    client, info = tidb_client
+    info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="integer", points=0)
+    payload = (
+        request("search", ids=[A], query_vector=[1, 0])
+        if operation == "search"
+        else request(
+            "upsert", points=[{"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [1, 0]}]
+        )
+    )
+    with pytest.raises(VectorStoreUnavailableError, match="ID index"):
+        execute_vector_request(client, payload)
+    client.upsert.assert_not_called()
+    client.search.assert_not_called()
+
+
+def test_tidb_indexed_search_uses_supported_filter_and_payload_selection(tidb_client):
+    client, info = tidb_client
+    info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=1)
+    client.search.return_value = [SimpleNamespace(id=A, score=0.6)]
+    result = execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0], limit=1))
+    assert result["matches"] == [{"id": A, "score": 0.6}]
+    query = client.search.call_args.kwargs
+    assert query["with_payload"] is True
+    assert query["with_vectors"] is False
+    assert query["query_filter"] == models.Filter(
+        must=[models.FieldCondition(key=TIDB_POINT_ID_FIELD, match=models.MatchAny(any=[A]))]
+    )
+    client.retrieve.assert_not_called()
+    client.search.return_value = [SimpleNamespace(id=B, score=1.0)]
+    with pytest.raises(VectorStoreUnavailableError, match="unauthorized"):
+        execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0]))
+
+
+def test_tidb_unindexed_legacy_search_reads_only_authorized_ids(client, config_overrides):
+    scope = VectorScope.model_validate(SCOPE)
+    client.create_collection(
+        scope.legacy_collection_name, vectors_config=models.VectorParams(size=2, distance="Cosine")
+    )
+    client.upsert(
+        scope.legacy_collection_name,
+        points=[
+            models.PointStruct(id=A, vector=[3, 4]),
+            models.PointStruct(id=B, vector=[1, 0]),
+        ],
+    )
+    config_overrides(VECTOR_STORE="tidb_on_qdrant")
+    with patch.object(client, "search", side_effect=AssertionError("Legacy search must not query unfiltered")):
+        result = execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0], limit=1))
+        assert [match["id"] for match in result["matches"]] == [A]
+        assert result["matches"][0]["score"] == pytest.approx(0.6)
+        result = execute_vector_request(client, request("search", ids=[A, B], query_vector=[1, 0], limit=1))
+        assert result["matches"] == [{"id": B, "score": 1.0}]
+
+
+def test_tidb_unindexed_search_bounds_reads_and_propagates_failures(tidb_client):
+    client, info = tidb_client
+    info.points_count = 130
+    ids = [f"00000000-0000-4000-8000-{n:012d}" for n in range(130)]
+
+    def retrieve(**kwargs):
+        assert kwargs["with_payload"] is False
+        assert kwargs["with_vectors"] is True
+        assert len(kwargs["ids"]) <= 64
+        return [SimpleNamespace(id=point_id, vector=[1, 0]) for point_id in kwargs["ids"]]
+
+    client.retrieve.side_effect = retrieve
+    result = execute_vector_request(client, request("search", ids=ids, query_vector=[1, 0], limit=3))
+    assert result["matches"] == [{"id": point_id, "score": 1.0} for point_id in ids[:3]]
+    assert client.retrieve.call_count == 3
+    client.search.assert_not_called()
+    client.retrieve.side_effect = RuntimeError("read failed")
+    with pytest.raises(RuntimeError, match="read failed"):
+        execute_vector_request(client, request("search", ids=ids, query_vector=[1, 0]))
+
+
+@pytest.mark.parametrize("vector", [None, [1], [0, 0], [float("nan"), 0], [1e20, 0]])
+def test_tidb_unindexed_search_rejects_unscorable_vectors(tidb_client, vector):
+    client, _ = tidb_client
+    client.retrieve.return_value = [SimpleNamespace(id=A, vector=vector)]
+    with pytest.raises(VectorStoreUnavailableError, match="dimensions|scored"):
+        execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0]))
+
+
+def test_tidb_unindexed_search_rejects_unrequested_points(tidb_client):
+    client, _ = tidb_client
+    client.retrieve.return_value = [SimpleNamespace(id=B, vector=[1, 0])]
+    with pytest.raises(VectorStoreUnavailableError, match="unauthorized"):
+        execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0]))

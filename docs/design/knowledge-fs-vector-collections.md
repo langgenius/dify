@@ -34,3 +34,21 @@ Deployment does not rename, copy, or delete existing collections. Existing
 documents continue to work without re-embedding or re-uploading. Empty legacy
 collections can be retired separately after verifying no live SQL receipts
 reference their points. The TiDB-on-Qdrant database name remains unchanged.
+
+## TiDB-on-Qdrant filtering
+
+This gateway rejects Qdrant's `HasIdCondition`. New, empty collections receive a
+keyword index on `knowledgefs_point_id`; writes copy the immutable point ID into
+that payload field. Search uses a `FieldCondition` with `MatchAny` and requests
+payloads because the gateway's filtered SQL fails when payload selection is
+disabled. Only IDs and scores are returned by the bridge. Unexpected IDs fail
+the entire request.
+
+Collections without that index remain readable. Their search path retrieves
+only the SQL-authorized IDs and computes exact cosine scores. Each request is
+bounded to 2048 IDs, 64 points per read, and four concurrent reads. This legacy
+path transfers vectors and is slower than indexed search, but requires no
+re-embedding or mutation during a read. An index is initialized automatically
+only while a collection is empty, so adding it cannot hide older points that
+lack the ID payload. Nonempty collections require a separate complete backfill
+before enabling the indexed path.

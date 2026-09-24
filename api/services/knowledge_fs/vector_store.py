@@ -6,6 +6,8 @@ point IDs for each search. Neither document text nor permission data is copied.
 
 import hashlib
 import json
+import math
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Annotated, Any, Literal, TypedDict
 
@@ -15,6 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from qdrant_client import QdrantClient
+    from qdrant_client.http.models import Record
 
     from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
     from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
@@ -24,6 +27,8 @@ Identifier = Annotated[
     Field(pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"),
     AfterValidator(str.lower),
 ]
+
+TIDB_POINT_ID_FIELD = "knowledgefs_point_id"
 
 
 class VectorScope(BaseModel):
@@ -235,8 +240,11 @@ def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, c
     from qdrant_client.http import models
     from qdrant_client.http.exceptions import UnexpectedResponse
 
+    from configs import dify_config
+
     scope = payload.scope
     point_ids: list[int | str] = list(payload.ids)
+    tidb = dify_config.VECTOR_STORE == "tidb_on_qdrant"
     try:
         info = client.get_collection(collection)
     except UnexpectedResponse as error:
@@ -263,7 +271,31 @@ def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, c
     ):
         raise VectorStoreUnavailableError("KnowledgeFS vector collection has incompatible dimensions or distance")
 
+    id_index = info.payload_schema.get(TIDB_POINT_ID_FIELD)
+    if (
+        tidb
+        and payload.operation in {"upsert", "search"}
+        and id_index is not None
+        and id_index.data_type != models.PayloadSchemaType.KEYWORD
+    ):
+        raise VectorStoreUnavailableError("KnowledgeFS vector ID index has incompatible schema")
+
     if payload.operation == "upsert":
+        if tidb and TIDB_POINT_ID_FIELD not in info.payload_schema and info.points_count == 0:
+            # An index on an empty collection proves every subsequent point is
+            # written with our ID payload. Do not mark old, unbackfilled data ready.
+            try:
+                client.create_payload_index(
+                    collection_name=collection,
+                    field_name=TIDB_POINT_ID_FIELD,
+                    field_schema=models.PayloadSchemaType.KEYWORD,
+                    wait=True,
+                )
+            except Exception:
+                # Concurrent first writers can also race on the payload index.
+                index = client.get_collection(collection).payload_schema.get(TIDB_POINT_ID_FIELD)
+                if index is None or index.data_type != models.PayloadSchemaType.KEYWORD:
+                    raise
         client.upsert(
             collection_name=collection,
             wait=True,
@@ -271,7 +303,11 @@ def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, c
                 models.PointStruct(
                     id=point.id,
                     vector=point.vector,
-                    payload={"generation_id": point.generation_id, "content_hash": point.content_hash},
+                    payload={
+                        "generation_id": point.generation_id,
+                        "content_hash": point.content_hash,
+                        **({TIDB_POINT_ID_FIELD: point.id} if tidb else {}),
+                    },
                 )
                 for point in payload.points
             ],
@@ -293,14 +329,24 @@ def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, c
             "matches": [],
         }
     elif payload.operation == "search":
+        if tidb and TIDB_POINT_ID_FIELD not in info.payload_schema:
+            return _search_unindexed_tidb_points(client, payload, collection)
+        condition: models.HasIdCondition | models.FieldCondition = models.HasIdCondition(has_id=point_ids)
+        if tidb:
+            # TiDB-on-Qdrant accepts field conditions but rejects HasIdCondition.
+            condition = models.FieldCondition(key=TIDB_POINT_ID_FIELD, match=models.MatchAny(any=payload.ids))
         matches = client.search(
             collection_name=collection,
             query_vector=payload.query_vector,
-            query_filter=models.Filter(must=[models.HasIdCondition(has_id=point_ids)]),
+            query_filter=models.Filter(must=[condition]),
             limit=payload.limit,
-            with_payload=False,
+            # Its filtered SQL also requires payload selection, even though the
+            # bridge never returns that payload to the caller.
+            with_payload=tidb,
             with_vectors=False,
         )
+        if any(str(point.id) not in payload.ids for point in matches):
+            raise VectorStoreUnavailableError("KnowledgeFS vector search returned an unauthorized point")
         return {"points": [], "matches": [{"id": str(point.id), "score": point.score} for point in matches]}
     else:
         client.delete(collection_name=collection, points_selector=models.PointIdsList(points=point_ids), wait=True)
@@ -308,3 +354,38 @@ def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, c
         if client.retrieve(collection_name=collection, ids=point_ids, with_payload=False, with_vectors=False):
             raise VectorStoreUnavailableError("KnowledgeFS vector deletion is not yet visible")
     return {"points": [], "matches": []}
+
+
+def _search_unindexed_tidb_points(client: "QdrantClient", payload: VectorRequest, collection: str) -> VectorResult:
+    """Keep pre-index collections usable without mutating them during a read.
+
+    Read only SQL-authorized IDs (at most 2048), in batches of 64 and at most four
+    concurrent requests, then rank exactly. New collections use indexed backend
+    search; never fall back to an unfiltered nearest-neighbor query.
+    """
+
+    def read_batch(ids: list[int | str]) -> "list[Record]":
+        return client.retrieve(collection_name=collection, ids=ids, with_payload=False, with_vectors=True)
+
+    batches: list[list[int | str]] = [
+        list(payload.ids[offset : offset + 64]) for offset in range(0, len(payload.ids), 64)
+    ]
+    allowed = set(payload.ids)
+    query_norm = math.hypot(*payload.query_vector)
+    matches: list[VectorMatch] = []
+    with ThreadPoolExecutor(max_workers=min(4, len(batches))) as pool:
+        for points in pool.map(read_batch, batches):
+            for point in points:
+                vector = point.vector
+                if str(point.id) not in allowed:
+                    raise VectorStoreUnavailableError("KnowledgeFS vector read returned an unauthorized point")
+                if not isinstance(vector, list) or len(vector) != payload.scope.dimension:
+                    raise VectorStoreUnavailableError("KnowledgeFS vector has incompatible dimensions")
+                if any(not math.isfinite(value) or abs(value) > 1e10 for value in vector):
+                    raise VectorStoreUnavailableError("KnowledgeFS vector cannot be scored")
+                norm = math.hypot(*vector)
+                if not norm or not math.isfinite(norm):
+                    raise VectorStoreUnavailableError("KnowledgeFS vector cannot be scored")
+                score = math.fsum(a * b for a, b in zip(payload.query_vector, vector, strict=True)) / query_norm / norm
+                matches.append({"id": str(point.id), "score": max(-1.0, min(1.0, score))})
+    return {"points": [], "matches": sorted(matches, key=lambda match: (-match["score"], match["id"]))[: payload.limit]}
