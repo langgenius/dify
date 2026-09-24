@@ -5,14 +5,17 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { ReactFlowProvider } from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   createNodeTracing,
   createWorkflowRunningData,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent as renderWithWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 import { toast } from '@/app/notifications'
 import { submitHumanInputForm } from '@/service/workflow'
+import { AppModeEnum } from '@/types/app'
 import WorkflowPreview from '../workflow-preview'
 
 const renderWorkflowComponent = (
@@ -175,10 +178,62 @@ const createHumanInputFilledFormData = (
 describe('WorkflowPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useAppStore.getState().setAppDetail(undefined)
+    useWorkflowGeneratorStore.setState({ isOpen: false })
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
       value: 1200,
     })
+  })
+
+  it('opens refine with the failed node diagnostic from a test run', async () => {
+    const user = userEvent.setup()
+    useAppStore.getState().setAppDetail({ id: 'app-1', mode: AppModeEnum.WORKFLOW } as never)
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: createWorkflowRunningData({
+          result: createWorkflowResult({
+            status: WorkflowRunningStatus.Failed,
+            error: 'Run failed',
+          }),
+          tracing: [
+            createNodeTracing({
+              title: 'Summarize',
+              status: 'failed',
+              error: 'Variable summary not found',
+            }),
+          ],
+        }),
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: /workflowGenerator\.refineTitle/i }))
+
+    expect(useWorkflowGeneratorStore.getState()).toMatchObject({
+      isOpen: true,
+      intent: 'refine',
+      currentAppId: 'app-1',
+      initialInstruction: expect.stringContaining('Variable summary not found'),
+    })
+  })
+
+  it('does not offer workflow refinement for a provider failure', () => {
+    useAppStore.getState().setAppDetail({ id: 'app-1', mode: AppModeEnum.WORKFLOW } as never)
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: createWorkflowRunningData({
+          result: createWorkflowResult({
+            status: WorkflowRunningStatus.Failed,
+            error: 'Run failed',
+          }),
+          tracing: [createNodeTracing({ status: 'failed', error: 'Provider quota exceeded' })],
+        }),
+      },
+    })
+
+    expect(
+      screen.queryByRole('button', { name: /workflowGenerator\.refineTitle/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('resizes the run panel with the keyboard within the available canvas width', async () => {
