@@ -27,7 +27,7 @@ export const DifyBuilderStatusBar = ({
   phase?: Phase
   runStatus?: RunStatus
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   if (!phase || !runStatus) return null
 
   const terminal = runStatus === 'complete' || runStatus === 'failed'

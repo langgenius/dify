@@ -72,7 +72,9 @@ const isSameTurn = (left: DifyBuilderStreamingTurn, right: DifyBuilderStreamingT
   left.atVersion === right.atVersion
 
 const utf8ByteLength = (text: string) => new TextEncoder().encode(text).byteLength
-const STREAM_CHARACTERS_PER_FRAME = 24
+const STREAM_FIRST_FRAME_CHARACTERS = 24
+const STREAM_CHARACTERS_PER_UPDATE = 120
+const STREAM_UPDATE_INTERVAL_MS = 80
 const STREAM_MAX_PENDING_CHARACTERS = 2048
 
 type FinishWaiter = {
@@ -82,7 +84,7 @@ type FinishWaiter = {
 
 /**
  * Keeps token-frequency updates out of SessionView. Server deltas accumulate
- * in refs, while one small atom reveals a bounded slice per animation frame.
+ * in refs, while one small atom reveals bounded slices at a limited rate.
  * The final marker resolves only after the visible queue has painted, which
  * keeps later conversation items from appearing alongside an unstreamed reply.
  */
@@ -99,15 +101,22 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
   const finishedTurnRef = useRef<DifyBuilderStreamingTurn | null>(null)
   const finishWaiterRef = useRef<FinishWaiter | null>(null)
   const scheduledFrameRef = useRef<ScheduledFrame | null>(null)
+  const cooldownTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
 
   const cancelPendingFrame = useCallback(() => {
-    if (!scheduledFrameRef.current) return
-    cancelFrame(scheduledFrameRef.current)
-    scheduledFrameRef.current = null
+    if (scheduledFrameRef.current) {
+      cancelFrame(scheduledFrameRef.current)
+      scheduledFrameRef.current = null
+    }
+    if (cooldownTimeoutRef.current !== null) {
+      globalThis.clearTimeout(cooldownTimeoutRef.current)
+      cooldownTimeoutRef.current = null
+    }
   }, [])
 
   const completeTurn = useCallback(
     (turn: DifyBuilderStreamingTurn) => {
+      cancelPendingFrame()
       accumulatedTurnRef.current = null
       visibleTurnRef.current = null
       textChunksRef.current = []
@@ -121,7 +130,7 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
       finishWaiterRef.current = null
       if (waiter && isSameTurn(waiter.turn, turn)) waiter.resolve(turn)
     },
-    [setStreamingTurn],
+    [cancelPendingFrame, setStreamingTurn],
   )
 
   const discardTurn = useCallback(
@@ -144,37 +153,49 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
     [cancelPendingFrame, setStreamingTurn],
   )
 
-  const accumulate = useCallback((message: DifyBuilderAgentMessageEventData) => {
-    const next = toStreamingTurn(message)
-    const finished = finishedTurnRef.current
-    if (finished && isSameTurn(finished, next) && finished.revision >= next.revision) return null
+  const accumulate = useCallback(
+    (message: DifyBuilderAgentMessageEventData) => {
+      const next = toStreamingTurn(message)
+      const finished = finishedTurnRef.current
+      if (finished && isSameTurn(finished, next) && finished.revision >= next.revision) return null
 
-    const current = accumulatedTurnRef.current
-    if (current && isSameTurn(current, next) && current.revision >= next.revision) return null
-    if (current && !isSameTurn(current, next) && current.atVersion > next.atVersion) return null
-    if (current && !isSameTurn(current, next)) {
-      finishWaiterRef.current?.resolve(null)
-      finishWaiterRef.current = null
-      visibleTurnRef.current = null
-      textChunksRef.current = []
-      pendingChunksRef.current = []
-      pendingChunkIndexRef.current = 0
-      pendingChunkOffsetRef.current = 0
-      pendingLengthRef.current = 0
-    }
-    textChunksRef.current.push(next.replyText)
-    pendingChunksRef.current.push(next.replyText)
-    pendingLengthRef.current += next.replyText.length
-    const accumulated = { ...next, replyText: '' }
-    accumulatedTurnRef.current = accumulated
-    return accumulated
-  }, [])
+      const current = accumulatedTurnRef.current
+      if (current && isSameTurn(current, next) && current.revision >= next.revision) return null
+      if (current && !isSameTurn(current, next) && current.atVersion > next.atVersion) return null
+      if (current && !isSameTurn(current, next)) {
+        cancelPendingFrame()
+        finishWaiterRef.current?.resolve(null)
+        finishWaiterRef.current = null
+        visibleTurnRef.current = null
+        textChunksRef.current = []
+        pendingChunksRef.current = []
+        pendingChunkIndexRef.current = 0
+        pendingChunkOffsetRef.current = 0
+        pendingLengthRef.current = 0
+      }
+      textChunksRef.current.push(next.replyText)
+      pendingChunksRef.current.push(next.replyText)
+      pendingLengthRef.current += next.replyText.length
+      const accumulated = { ...next, replyText: '' }
+      accumulatedTurnRef.current = accumulated
+      return accumulated
+    },
+    [cancelPendingFrame],
+  )
 
   const flush = useCallback(
     function flushPendingText() {
       scheduledFrameRef.current = null
       const accumulated = accumulatedTurnRef.current
       if (!accumulated) return
+
+      const scheduleCooldown = () => {
+        cooldownTimeoutRef.current = globalThis.setTimeout(() => {
+          cooldownTimeoutRef.current = null
+          if (pendingLengthRef.current && !scheduledFrameRef.current)
+            scheduledFrameRef.current = scheduleFrame(flushPendingText)
+        }, STREAM_UPDATE_INTERVAL_MS)
+      }
 
       const view = store.get(difyBuilderSessionViewAtom)
       const activeCommand = store.get(difyBuilderActiveCommandAtom)
@@ -206,7 +227,12 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
           pendingLengthRef.current = 0
         } else {
           const characters: string[] = []
-          while (characters.length < STREAM_CHARACTERS_PER_FRAME && pendingLengthRef.current > 0) {
+          const visible = visibleTurnRef.current
+          const characterLimit =
+            visible && isSameTurn(visible, accumulated)
+              ? STREAM_CHARACTERS_PER_UPDATE
+              : STREAM_FIRST_FRAME_CHARACTERS
+          while (characters.length < characterLimit && pendingLengthRef.current > 0) {
             const chunk = pendingChunksRef.current[pendingChunkIndexRef.current]!
             const character = String.fromCodePoint(
               chunk.codePointAt(pendingChunkOffsetRef.current)!,
@@ -238,7 +264,7 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
       }
 
       if (pendingLengthRef.current) {
-        scheduledFrameRef.current = scheduleFrame(flushPendingText)
+        scheduleCooldown()
         return
       }
       const waiter = finishWaiterRef.current
@@ -250,7 +276,9 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
           return
         }
         completeTurn(waiter.turn)
+        return
       }
+      if (revealedText) scheduleCooldown()
     },
     [completeTurn, discardTurn, setStreamingTurn, store],
   )
@@ -292,7 +320,16 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
 
       if (!accumulate(message)) return
 
-      if (!scheduledFrameRef.current) scheduledFrameRef.current = scheduleFrame(flush)
+      if (
+        cooldownTimeoutRef.current !== null &&
+        (pendingLengthRef.current > STREAM_MAX_PENDING_CHARACTERS ||
+          (typeof document !== 'undefined' && document.visibilityState === 'hidden'))
+      ) {
+        globalThis.clearTimeout(cooldownTimeoutRef.current)
+        cooldownTimeoutRef.current = null
+      }
+      if (!scheduledFrameRef.current && cooldownTimeoutRef.current === null)
+        scheduledFrameRef.current = scheduleFrame(flush)
     },
     [accumulate, flush, store],
   )
@@ -328,6 +365,10 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
         if (!pendingLengthRef.current) {
           completeTurn(completedTurn)
           return
+        }
+        if (cooldownTimeoutRef.current !== null) {
+          globalThis.clearTimeout(cooldownTimeoutRef.current)
+          cooldownTimeoutRef.current = null
         }
         if (!scheduledFrameRef.current) scheduledFrameRef.current = scheduleFrame(flush)
       })

@@ -3,7 +3,7 @@ import type {
   ExecutionProgress as ExecutionProgressData,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 
 const ActivityIcon = ({ state }: { state: ExecutionActivity['state'] }) => (
   <span
@@ -32,11 +32,7 @@ const ActivityRow = ({ activity }: { activity: ExecutionActivity }) => (
   </div>
 )
 
-export const ExecutionProgress = ({ execution }: { execution?: ExecutionProgressData | null }) => {
-  const [open, setOpen] = useState(false)
-  const activities = execution?.activities ?? []
-  if (!execution || activities.length === 0) return null
-
+const ActivityList = ({ activities }: { activities: ExecutionActivity[] }) => {
   const activityIds = new Set(activities.map((activity) => activity.id))
   const childrenByParent = new Map<string, ExecutionActivity[]>()
   for (const activity of activities) {
@@ -49,55 +45,68 @@ export const ExecutionProgress = ({ execution }: { execution?: ExecutionProgress
     (activity) => !activity.parent_id || !activityIds.has(activity.parent_id),
   )
 
-  let summaryActivity = activities.at(-1)
-  for (const activity of activities) {
-    if (activity.state === 'active') summaryActivity = activity
-  }
-  if (!activities.some((activity) => activity.state === 'active')) {
-    summaryActivity = activities.find((activity) => activity.state === 'failed') ?? summaryActivity
-  }
-
   return (
-    <details
-      aria-label={summaryActivity?.label}
-      className="group min-h-8"
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary className="flex h-8 cursor-pointer list-none items-center gap-2 text-[13px] leading-4 font-medium text-text-tertiary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid">
-        <ActivityIcon state={summaryActivity?.state ?? 'stopped'} />
-        <span
-          role={execution.status === 'running' ? 'status' : undefined}
-          aria-live={execution.status === 'running' ? 'polite' : undefined}
-          aria-atomic={execution.status === 'running' ? 'true' : undefined}
-        >
-          {summaryActivity?.label}
-        </span>
-        <span className="grow" />
-        <span
-          aria-hidden
-          className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-open:rotate-90"
-        />
-      </summary>
-      <ol className="ml-[7px] space-y-1 border-l border-divider-subtle py-1 pl-[19px]">
-        {roots.map((activity) => {
-          const children = childrenByParent.get(activity.id) ?? []
-          return (
-            <li key={activity.id}>
-              <ActivityRow activity={activity} />
-              {children.length > 0 && (
-                <ol className="mt-1 ml-[7px] space-y-1 border-l border-divider-subtle pl-[19px]">
-                  {children.map((child) => (
-                    <li key={child.id}>
-                      <ActivityRow activity={child} />
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </li>
-          )
-        })}
-      </ol>
-    </details>
+    <ol className="ml-[7px] space-y-1 border-l border-divider-subtle py-1 pl-[19px]">
+      {roots.map((activity) => {
+        const children = childrenByParent.get(activity.id) ?? []
+        return (
+          <li key={activity.id}>
+            <ActivityRow activity={activity} />
+            {children.length > 0 && (
+              <ol className="mt-1 ml-[7px] space-y-1 border-l border-divider-subtle pl-[19px]">
+                {children.map((child) => (
+                  <li key={child.id}>
+                    <ActivityRow activity={child} />
+                  </li>
+                ))}
+              </ol>
+            )}
+          </li>
+        )
+      })}
+    </ol>
   )
 }
+
+export const ExecutionProgress = memo(
+  ({ execution }: { execution?: ExecutionProgressData | null }) => {
+    const [open, setOpen] = useState(false)
+    const activities = execution?.activities ?? []
+    if (!execution || activities.length === 0) return null
+
+    let summaryActivity = activities.at(-1)
+    for (const activity of activities) {
+      if (activity.state === 'active') summaryActivity = activity
+    }
+    if (!activities.some((activity) => activity.state === 'active')) {
+      summaryActivity =
+        activities.find((activity) => activity.state === 'failed') ?? summaryActivity
+    }
+
+    return (
+      <details
+        aria-label={summaryActivity?.label}
+        className="group min-h-8"
+        open={open}
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+      >
+        <summary className="flex h-8 cursor-pointer list-none items-center gap-2 text-[13px] leading-4 font-medium text-text-tertiary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid">
+          <ActivityIcon state={summaryActivity?.state ?? 'stopped'} />
+          <span
+            role={execution.status === 'running' ? 'status' : undefined}
+            aria-live={execution.status === 'running' ? 'polite' : undefined}
+            aria-atomic={execution.status === 'running' ? 'true' : undefined}
+          >
+            {summaryActivity?.label}
+          </span>
+          <span className="grow" />
+          <span
+            aria-hidden
+            className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-open:rotate-90"
+          />
+        </summary>
+        {open && <ActivityList activities={activities} />}
+      </details>
+    )
+  },
+)

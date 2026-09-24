@@ -400,8 +400,72 @@ describe('DifyBuilderConversation test data form', () => {
 
     expect(input).toHaveValue('AI agents')
     expect(screen.getByRole('status')).toHaveTextContent('Check test inputs')
+    const thinking = screen.getByRole('group', { name: /thinking/i })
+    expect(screen.queryByText('Inspecting the supplied test data.')).not.toBeInTheDocument()
+    await user.click(within(thinking).getByText(/thinking/i))
     expect(screen.getByText('Inspecting the supplied test data.')).toBeInTheDocument()
     expect(screen.getByText('Checking the workflow')).toBeInTheDocument()
+    expect(input).toHaveValue('AI agents')
+  })
+
+  it('renders live reasoning only after expansion and scrolls only for visible changes', async () => {
+    const user = userEvent.setup()
+    const store = createStore()
+    const onStreamingContentChange = vi.fn()
+    render(
+      <Provider store={store}>
+        <DifyBuilderConversation
+          busy
+          interrupted={false}
+          items={[]}
+          onStreamingContentChange={onStreamingContentChange}
+        />
+      </Provider>,
+    )
+
+    act(() => {
+      store.set(difyBuilderReasoningAtom, {
+        sessionId: 'session-1',
+        operationId: 'operation-1',
+        atVersion: 2,
+        revision: 1,
+        text: 'Inspecting ',
+      })
+    })
+    expect(onStreamingContentChange).toHaveBeenCalledTimes(1)
+    expect(mocks.markdown).not.toHaveBeenCalled()
+
+    act(() => {
+      store.set(difyBuilderReasoningAtom, {
+        sessionId: 'session-1',
+        operationId: 'operation-1',
+        atVersion: 2,
+        revision: 2,
+        text: 'Inspecting the workflow.',
+      })
+    })
+    expect(onStreamingContentChange).toHaveBeenCalledTimes(1)
+    expect(mocks.markdown).not.toHaveBeenCalled()
+
+    const thinking = screen.getByRole('group', { name: /thinking/i })
+    await user.click(within(thinking).getByText(/thinking/i))
+    expect(screen.getByText('Inspecting the workflow.')).toBeInTheDocument()
+    expect(mocks.markdown).toHaveBeenCalledWith(
+      expect.objectContaining({ content: 'Inspecting the workflow.' }),
+    )
+    expect(onStreamingContentChange).toHaveBeenCalledTimes(2)
+
+    act(() => {
+      store.set(difyBuilderReasoningAtom, {
+        sessionId: 'session-1',
+        operationId: 'operation-1',
+        atVersion: 2,
+        revision: 3,
+        text: 'Inspecting the workflow and its nodes.',
+      })
+    })
+    expect(screen.getByText('Inspecting the workflow and its nodes.')).toBeInTheDocument()
+    expect(onStreamingContentChange).toHaveBeenCalledTimes(3)
   })
 
   it('renders assistant reply text through the shared Markdown renderer', () => {
@@ -755,7 +819,8 @@ describe('DifyBuilderConversation test data form', () => {
     ).toBeTruthy()
   })
 
-  it('keeps completed execution and reasoning available with the committed reply', () => {
+  it('keeps completed execution and reasoning available with the committed reply', async () => {
+    const user = userEvent.setup()
     render(
       <DifyBuilderConversation
         busy={false}
@@ -786,7 +851,14 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
+    expect(screen.getAllByText('Draft the workflow plan')).toHaveLength(1)
+    await user.click(screen.getByText('Draft the workflow plan'))
     expect(screen.getAllByText('Draft the workflow plan')).toHaveLength(2)
+    expect(
+      screen.queryByText('The workflow needs one input and one answer node.'),
+    ).not.toBeInTheDocument()
+    const thinking = screen.getByRole('group', { name: /thought/i })
+    await user.click(within(thinking).getByText(/thought/i))
     expect(
       screen.getByText('The workflow needs one input and one answer node.'),
     ).toBeInTheDocument()
@@ -920,9 +992,11 @@ describe('DifyBuilderConversation test data form', () => {
     const progressToggle = progressDetails.querySelector('summary')
     expect(progressToggle).not.toBeNull()
     expect(progressDetails).not.toHaveAttribute('open')
+    expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('Run the workflow')
     await user.click(progressToggle!)
     expect(progressDetails).toHaveAttribute('open')
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
 
     act(() => {
       store.set(difyBuilderExecutionProgressAtom, {
@@ -951,6 +1025,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     expect(screen.getByRole('group', { name: 'Generate answer' })).toBe(progressDetails)
     expect(progressDetails).toHaveAttribute('open')
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
   })
 
   it('renders a plan title and steps without version metadata', () => {

@@ -308,6 +308,69 @@ describe('useDifyBuilderSessionController streaming', () => {
     )
   })
 
+  it('limits incremental reply publications while preserving Unicode characters', async () => {
+    const waiting = createSessionView({
+      conversation_last_seq: -1,
+      version: 2,
+      run_status: 'waiting_input',
+    })
+    const stream = createControlledEventStream()
+    clientMocks.message.mockResolvedValue(stream.iterable)
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    })
+
+    let messagePromise!: Promise<boolean>
+    act(() => {
+      messagePromise = result.current.sendMessage('Continue')
+    })
+    await waitFor(() => expect(store.get(difyBuilderSessionBusyAtom)).toBe(true))
+    act(() => stream.push(commandStartedEvent(waiting)))
+    await waitFor(() => expect(store.get(difyBuilderActiveCommandAtom)).not.toBeNull())
+
+    const reply = '🧠'.repeat(400)
+    const listener = vi.fn()
+    const unsubscribe = store.sub(difyBuilderStreamingTurnAtom, listener)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      await act(async () => {
+        stream.push(
+          agentMessageEvent(reply, 1, {
+            text_bytes: new TextEncoder().encode(reply).byteLength,
+          }),
+        )
+      })
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledOnce()
+
+      act(flushAnimationFrames)
+      expect(Array.from(store.get(difyBuilderStreamingTurnAtom)?.replyText ?? '')).toHaveLength(24)
+      expect(listener).toHaveBeenCalledOnce()
+
+      act(() => vi.advanceTimersByTime(79))
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledOnce()
+      expect(listener).toHaveBeenCalledOnce()
+
+      act(() => vi.advanceTimersByTime(1))
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledTimes(2)
+      act(flushAnimationFrames)
+      expect(Array.from(store.get(difyBuilderStreamingTurnAtom)?.replyText ?? '')).toHaveLength(144)
+      expect(listener).toHaveBeenCalledTimes(2)
+
+      act(() => result.current.reset())
+      act(() => vi.advanceTimersByTime(80))
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledTimes(2)
+    } finally {
+      unsubscribe()
+      vi.useRealTimers()
+      stream.close()
+    }
+    await act(async () => {
+      expect(await messagePromise).toBe(false)
+    })
+  })
+
   it('promotes a long streamed reply within two frames after its final marker', async () => {
     const reply = '🧠'.repeat(4000)
     const replyBytes = new TextEncoder().encode(reply).byteLength

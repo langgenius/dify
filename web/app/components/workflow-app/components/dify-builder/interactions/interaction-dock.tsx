@@ -53,7 +53,7 @@ const ChoiceInteraction = ({
   recheckReady: boolean
   submitInteraction: SubmitInteraction
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const formId = useId()
   const options = decision.options ?? []
   const [selectedId, setSelectedId] = useState(decision.default_option_id || options[0]?.id || '')
@@ -170,7 +170,7 @@ const FormInteraction = ({
   busy: boolean
   submitInteraction: SubmitInteraction
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const formId = useId()
   const actionId = activeInteraction.action_id
   const [payload, setPayload] = useState<Record<string, unknown>>(() =>
@@ -237,7 +237,7 @@ const ResourceInteraction = ({
   busy: boolean
   submitInteraction: SubmitInteraction
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const formId = useId()
   const actionId = activeInteraction.action_id
   const [payload, setPayload] = useState<Record<string, unknown>>(() =>
@@ -312,7 +312,7 @@ export const DifyBuilderInteractionDock = ({
   recheckReady: boolean
   submitInteraction: SubmitInteraction
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   if (activeInteraction?.card.kind === 'form') {
     return (

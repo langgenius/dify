@@ -5,7 +5,7 @@ import { DifyBuilderCard } from '../cards/card-shell'
 
 export const PreflightContextCard = memo(
   ({ payload, invalidated }: { payload: PreflightContextCardData; invalidated: boolean }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
 
     return (
       <DifyBuilderCard
