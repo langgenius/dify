@@ -467,12 +467,11 @@ class AppDslService:
 
     @staticmethod
     def cache_import_dependencies(*, app_id: str, dependencies: list[PluginDependency]) -> None:
-        if dependencies:
-            redis_client.setex(
-                f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}",
-                IMPORT_INFO_REDIS_EXPIRY,
-                CheckDependenciesPendingData(app_id=app_id, dependencies=dependencies).model_dump_json(),
-            )
+        redis_client.setex(
+            f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}",
+            IMPORT_INFO_REDIS_EXPIRY,
+            CheckDependenciesPendingData(app_id=app_id, dependencies=dependencies).model_dump_json(),
+        )
 
     def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
         if account.current_tenant_id is None:
