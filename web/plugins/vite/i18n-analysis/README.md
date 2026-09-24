@@ -3,6 +3,8 @@
 `i18nAnalysisPlugin()` prints a compact summary during production Vite builds,
 before the existing unused-key check. With Vinext it reports once, after combining
 the completed client, SSR and RSC graphs. Development does not run the analysis.
+Reference scans explicitly marked by the RSC plugin API are skipped; ordinary
+`build.write: false` builds still receive the full analysis.
 
 The console shows route and diagnostic counts, namespaces protected by dynamic
 keys, and the report path. Diagnostic counts include separate environment records.
@@ -158,14 +160,33 @@ An empty unresolved-import list does not imply complete dependency coverage.
 A dynamic key can protect an entire namespace; these records explain which calls
 prevent an unused-key conclusion.
 
-`metrics` records shared setup, per-environment resolution, Program/checker setup,
+`metrics` records combined environment setup, per-environment resolution, Program/checker setup,
 semantic analysis and route traversal durations, plus module and resolver-call
 counts. `totalMs` sums work for the final environment graphs and final analysis;
 it excludes superseded scan graphs, output serialization and the rest of the build,
 and is not wall-clock build duration when environments run concurrently.
 
+Call-signature resolution is limited to overloaded or generic calls whose
+parameters can expose a `SelectorParam` type. Ordinary object/function parameter
+shapes do not require argument inference; deferred types (including type parameters,
+conditional, indexed-access, union/intersection and mapped types) retain resolution.
+Calls without arguments skip translation-function inference while explicit namespace
+loading and traversal of their children remain unchanged.
+
+Each environment's semantic analysis runs in a separate Node worker. Environments
+run sequentially, and analysis waits for the worker to exit before starting the next
+one, releasing its TypeScript Program and type state. Only plain analysis results
+return to the build process; errors still fail the build. Worker startup and message
+transfer are included in `totalMs`. This uses the repository's Node 24 TypeScript
+support, so the worker's local imports have explicit `.ts` extensions.
+
 Catalog, exact-key/plural indexes, wildcard matches and compiler options are shared
-within one analysis. Runtime template prefixes are retained even when an assertion
+within each environment analysis. Import binding syntax is cached by complete source text within
+one build, including across environments. Only plain binding data is cached, not
+TypeScript ASTs, resolved targets or type state. Environment resolution stays independent,
+and the syntax cache is discarded before semantic analysis, when the build ends,
+or when a watch rebuild starts.
+Runtime template prefixes are retained even when an assertion
 widens the key to every property of a JSON catalog. Identical multi-format builds in the same open bundle reuse
 analysis; changes to source, transformed code or graph edges invalidate that reuse.
 Closing the bundle or starting a watch rebuild clears it. Programs and type state

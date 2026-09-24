@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -358,6 +359,52 @@ describe('IntegrationsPage', () => {
         include_plugins: [],
       },
     })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('closes compact navigation after switching sections in settings', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(width < 48rem)',
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    )
+    const SettingsIntegrations = () => {
+      const [section, setSection] =
+        useState<React.ComponentProps<typeof IntegrationsPage>['section']>('provider')
+
+      return <IntegrationsPage section={section} onSectionChange={setSection} />
+    }
+    renderWithNuqs(<SettingsIntegrations />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'navigation.mainNav.integrations: navigation.settings.provider',
+      }),
+    )
+    const navigationDrawer = await screen.findByRole('dialog', {
+      name: 'navigation.mainNav.integrations',
+    })
+    await user.click(
+      within(navigationDrawer).getByRole('button', {
+        name: 'navigation.settings.dataSource',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'navigation.mainNav.integrations',
+        }),
+      ).not.toBeInTheDocument()
+    })
+    expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
   })
 
   it('defaults to the model provider section when no query is provided', () => {
@@ -849,6 +896,9 @@ describe('IntegrationsPage', () => {
   it('aligns model provider headers to the unified content frame', () => {
     renderIntegrationsPage({ section: 'provider' })
 
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'navigation.settings.provider' }),
+    ).toBeInTheDocument()
     const description = screen.getByText('modelProvider.modelProvider.pageDesc')
     expect(description.closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6')
     expect(

@@ -89,7 +89,6 @@ type SettingsAppIconSelection =
 export type SettingsAppInfo = {
   id: string
   mode: AppModeEnum
-  enable_sso?: boolean
   site: SettingsSiteInfo
 }
 
@@ -109,7 +108,6 @@ export type ConfigParams = {
   icon_background?: string
   show_workflow_steps: boolean
   use_icon_as_answer_icon: boolean
-  enable_sso?: boolean
 }
 
 const INPUT_PLACEHOLDER_MAX_LENGTH = 64
@@ -153,7 +151,6 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
     inputPlaceholder: input_placeholder ?? '',
     show_workflow_steps,
     use_icon_as_answer_icon,
-    enable_sso: appInfo.enable_sso,
   }
 }
 
@@ -170,7 +167,6 @@ const createAppIcon = (appInfo: ISettingsModalProps['appInfo']): SettingsAppIcon
 const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
   JSON.stringify([
     appInfo.id,
-    appInfo.enable_sso,
     appInfo.site.title,
     appInfo.site.description,
     appInfo.site.chat_color_theme,
@@ -348,7 +344,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       show_workflow_steps: inputInfo.show_workflow_steps,
       use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
-      enable_sso: inputInfo.enable_sso,
     }
     await onSave?.(params)
     setSaveLoading(false)

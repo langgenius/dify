@@ -91,7 +91,7 @@ const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   created_at: Date.now(),
   updated_at: Date.now(),
   tags: [],
-  access_mode: 'public_access',
+  access_mode: 'public',
   ...overrides,
 })
 

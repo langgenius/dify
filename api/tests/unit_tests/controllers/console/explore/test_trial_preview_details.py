@@ -48,7 +48,7 @@ from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.trial_app_repository import TrialAppRepository
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_query_service import AppPreviewQueryService
-from services.app_service import AppResponseView, AppService
+from services.app_service import AppResponseView
 from services.recommended_app_query_service import (
     RecommendedAppCatalogPage,
     RecommendedAppDetailRecord,
@@ -204,9 +204,8 @@ class _Harness:
         with self.app.test_request_context(f"/trial-apps/{self.target.id}"), self.factory() as session:
             app = session.get(App, self.target.id)
             assert app is not None
-            app = AppService().get_app(app, session=session)
             return trial_module.TrialAppDetailResponse.model_validate(
-                AppResponseView(app, session=session), from_attributes=True
+                AppResponseView(app, session=session, account=self.viewer), from_attributes=True
             ).model_dump(mode="json")
 
 
