@@ -116,6 +116,19 @@ describe('InstallFromMarketplace Component', () => {
   })
 
   describe('Rendering', () => {
+    it('announces the number of recommended integrations after a search finishes', () => {
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: mockPlugins,
+        isLoading: false,
+      })
+
+      render(<InstallFromMarketplace providers={mockProviders} searchText="plugin" />)
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'modelProvider.modelProvider.installDataSource: plugin.marketplace.pluginsResult:{"num":1}',
+      )
+    })
+
     it('should render correctly when not loading and not collapsed', () => {
       // Arrange
       vi.mocked(useMarketplaceAllPlugins).mockReturnValue({

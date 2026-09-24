@@ -81,6 +81,16 @@ const InstallFromMarketplace = ({
           )}
         </div>
       </div>
+      {!!searchText.trim() && !isAllPluginsLoading && !collapse && (
+        <div role="status" className="sr-only">
+          {t(($) => $['modelProvider.installDataSource'], { ns: 'modelProvider' })}
+          {': '}
+          {t(($) => $['marketplace.pluginsResult'], {
+            ns: 'plugin',
+            num: allPlugins.filter((plugin) => plugin.type !== 'bundle').length,
+          })}
+        </div>
+      )}
       {!collapse && isAllPluginsLoading && <LoadingPlaceholder />}
       {!isAllPluginsLoading && !collapse && (
         <List
