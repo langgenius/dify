@@ -600,6 +600,8 @@ class AppService:
         assert current_user.current_tenant_id is not None
         # get original app model config
         if app.mode == AppMode.AGENT_CHAT or app.is_agent_with_session(session=session):
+            if sa.inspect(app).persistent:
+                session.refresh(app)
             model_config = app.app_model_config_with_session(session=session)
             if not model_config:
                 return app

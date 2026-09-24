@@ -547,7 +547,24 @@ def test_app_detail_schema_requires_present_fields_and_valid_shapes(
     for invalid_config in (
         {"speech_to_text": {"enabled": "not-a-boolean"}},
         {"agent_mode": {"enabled": True, "strategy": "react", "tools": [{"provider_id": "only-id"}], "prompt": None}},
+        {"agent_mode": {"enabled": True, "strategy": "unknown", "tools": []}},
+        {
+            "agent_mode": {
+                "enabled": True,
+                "strategy": "react",
+                "tools": [
+                    {
+                        "provider_type": "unknown",
+                        "provider_id": "search",
+                        "tool_name": "lookup",
+                        "tool_parameters": {},
+                    }
+                ],
+            }
+        },
         {"dataset_configs": {"retrieval_model": "unknown"}},
+        {"dataset_configs": {"retrieval_model": "multiple", "reranking_mode": "unknown"}},
+        {"dataset_configs": {"retrieval_model": "multiple", "metadata_filtering_mode": "unknown"}},
         {"model": {"provider": "openai", "name": "gpt-4o", "mode": "unknown"}},
         {"file_upload": {"image": {"enabled": True, "transfer_methods": ["unknown"]}}},
         {
@@ -604,6 +621,17 @@ def test_app_detail_schema_requires_present_fields_and_valid_shapes(
     assert supported_config["model_config"]["agent_mode"]["tools"][1]["dataset"]["id"] == "dataset-id"
     assert supported_config["model_config"]["agent_mode"]["prompt"]["first_prompt"] == "Find the answer"
     assert supported_config["model_config"]["agent_mode"]["max_iteration"] == 5
+
+    for strategy in ("router", "react_router", "function_call"):
+        app_models.AppDetailWithSite.model_validate(
+            {
+                **detail,
+                "model_config": {
+                    **model_config,
+                    "agent_mode": {"enabled": True, "strategy": strategy, "tools": []},
+                },
+            }
+        )
 
     nullable_detail = app_models.AppDetailWithSite.model_validate({**detail, "site": None, "model_config": None})
     assert nullable_detail.site is None

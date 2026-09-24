@@ -2809,6 +2809,11 @@ export const zAppAgentPromptResponse = z.object({
 })
 
 /**
+ * PlanningStrategy
+ */
+export const zPlanningStrategy = z.enum(['function_call', 'react', 'react_router', 'router'])
+
+/**
  * AppEmbeddingModelResponse
  */
 export const zAppEmbeddingModelResponse = z.object({
@@ -2863,6 +2868,11 @@ export const zAppCompletionPromptConfigResponse = z.object({
   conversation_histories_role: zAppConversationHistoriesRoleResponse.optional(),
   prompt: zAppCompletionPromptTextResponse.optional(),
 })
+
+/**
+ * RerankMode
+ */
+export const zRerankMode = z.enum(['reranking_model', 'weighted_score'])
 
 /**
  * AppRerankingModelResponse
@@ -2993,23 +3003,6 @@ export const zHumanInputFormSubmissionData = z.object({
   node_title: z.string(),
   rendered_content: z.string(),
   submitted_data: z.record(z.string(), zJsonValue2).nullish(),
-})
-
-/**
- * AppProviderAgentToolResponse
- */
-export const zAppProviderAgentToolResponse = z.object({
-  credential_id: z.string().nullish(),
-  enabled: z.boolean().optional(),
-  isDeleted: z.boolean().optional(),
-  notAuthor: z.boolean().optional(),
-  plugin_unique_identifier: z.string().nullish(),
-  provider_id: z.string(),
-  provider_name: z.string().optional(),
-  provider_type: z.string(),
-  tool_label: z.string().optional(),
-  tool_name: z.string(),
-  tool_parameters: z.record(z.string(), zJsonValue2),
 })
 
 /**
@@ -3570,6 +3563,38 @@ export const zAgentComposerCandidatesResponse = z.object({
 })
 
 /**
+ * ToolProviderType
+ *
+ * Enum class for tool provider
+ */
+export const zToolProviderType = z.enum([
+  'api',
+  'app',
+  'builtin',
+  'dataset-retrieval',
+  'mcp',
+  'plugin',
+  'workflow',
+])
+
+/**
+ * AppProviderAgentToolResponse
+ */
+export const zAppProviderAgentToolResponse = z.object({
+  credential_id: z.string().nullish(),
+  enabled: z.boolean().optional(),
+  isDeleted: z.boolean().optional(),
+  notAuthor: z.boolean().optional(),
+  plugin_unique_identifier: z.string().nullish(),
+  provider_id: z.string(),
+  provider_name: z.string().optional(),
+  provider_type: zToolProviderType,
+  tool_label: z.string().optional(),
+  tool_name: z.string(),
+  tool_parameters: z.record(z.string(), zJsonValue2),
+})
+
+/**
  * AppDatasetReferenceResponse
  */
 export const zAppDatasetReferenceResponse = z.object({
@@ -3607,7 +3632,7 @@ export const zAppAgentModeResponse = z.object({
   enabled: z.boolean(),
   max_iteration: z.int().optional(),
   prompt: z.union([zAppAgentPromptResponse, z.string()]).nullish(),
-  strategy: z.string().nullable(),
+  strategy: zPlanningStrategy.nullable(),
   tools: z.array(
     z.union([
       zAppProviderAgentToolResponse,
@@ -3703,10 +3728,10 @@ export const zAppWeightsResponse = z.object({
 export const zAppDatasetConfigsResponse = z.object({
   datasets: zAppDatasetListResponse.optional(),
   metadata_filtering_conditions: zAppMetadataFilteringConditionsResponse.nullish(),
-  metadata_filtering_mode: z.string().optional(),
+  metadata_filtering_mode: z.enum(['automatic', 'disabled', 'manual']).optional(),
   metadata_model_config: zAppModelSelectionResponse.nullish(),
   reranking_enabled: z.boolean().optional(),
-  reranking_mode: z.string().optional(),
+  reranking_mode: zRerankMode.optional(),
   reranking_model: zAppRerankingModelResponse.nullish(),
   retrieval_model: z.enum(['multiple', 'single']),
   score_threshold: z.number().nullish(),
@@ -4037,21 +4062,6 @@ export const zAgentSoulDifyToolCredentialRef = z.object({
   provider: z.string().max(255).nullish(),
   type: z.enum(['provider', 'tool']).optional().default('tool'),
 })
-
-/**
- * ToolProviderType
- *
- * Enum class for tool provider
- */
-export const zToolProviderType = z.enum([
-  'api',
-  'app',
-  'builtin',
-  'dataset-retrieval',
-  'mcp',
-  'plugin',
-  'workflow',
-])
 
 /**
  * AgentSoulDifyToolConfig

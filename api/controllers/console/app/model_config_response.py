@@ -3,7 +3,10 @@ from typing import Literal, NotRequired, TypedDict
 
 from pydantic import AliasChoices, Field, JsonValue, field_validator
 
+from core.entities.agent_entities import PlanningStrategy
 from core.rag.entities.metadata_entities import SupportedComparisonOperator
+from core.rag.rerank.rerank_type import RerankMode
+from core.tools.entities.tool_entities import ToolProviderType
 from fields.base import ResponseModel
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMMode
@@ -153,7 +156,7 @@ class AppLegacySensitiveWordToolResponse(TypedDict):
 
 
 class AppProviderAgentToolResponse(TypedDict):
-    provider_type: str
+    provider_type: ToolProviderType
     provider_id: str
     tool_name: str
     tool_parameters: dict[str, JsonValue]
@@ -210,7 +213,7 @@ class AppAgentPromptResponse(TypedDict, total=False):
 
 class AppAgentModeResponse(TypedDict):
     enabled: bool
-    strategy: str | None
+    strategy: PlanningStrategy | None
     tools: list[AppAgentToolResponse]
     prompt: NotRequired[AppAgentPromptResponse | str | None]
     max_iteration: NotRequired[int]
@@ -289,8 +292,8 @@ class AppDatasetConfigsResponse(TypedDict):
     reranking_model: NotRequired[AppRerankingModelResponse | None]
     weights: NotRequired[AppWeightsResponse | None]
     reranking_enabled: NotRequired[bool]
-    reranking_mode: NotRequired[str]
-    metadata_filtering_mode: NotRequired[str]
+    reranking_mode: NotRequired[RerankMode]
+    metadata_filtering_mode: NotRequired[Literal["disabled", "automatic", "manual"]]
     metadata_model_config: NotRequired[AppModelSelectionResponse | None]
     metadata_filtering_conditions: NotRequired[AppMetadataFilteringConditionsResponse | None]
 

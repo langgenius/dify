@@ -2122,7 +2122,7 @@ export type AppAgentModeResponse = {
   enabled: boolean
   max_iteration?: number
   prompt?: AppAgentPromptResponse | string | null
-  strategy: string | null
+  strategy: PlanningStrategy | null
   tools: Array<
     | AppProviderAgentToolResponse
     | AppLegacyDatasetToolResponse
@@ -2157,10 +2157,10 @@ export type AppCompletionPromptConfigResponse = {
 export type AppDatasetConfigsResponse = {
   datasets?: AppDatasetListResponse
   metadata_filtering_conditions?: AppMetadataFilteringConditionsResponse | null
-  metadata_filtering_mode?: string
+  metadata_filtering_mode?: 'automatic' | 'disabled' | 'manual'
   metadata_model_config?: AppModelSelectionResponse | null
   reranking_enabled?: boolean
-  reranking_mode?: string
+  reranking_mode?: RerankMode
   reranking_model?: AppRerankingModelResponse | null
   retrieval_model: 'multiple' | 'single'
   score_threshold?: number | null
@@ -2671,6 +2671,8 @@ export type AppAgentPromptResponse = {
   next_iteration?: string
 }
 
+export type PlanningStrategy = 'function_call' | 'react' | 'react_router' | 'router'
+
 export type AppProviderAgentToolResponse = {
   credential_id?: string | null
   enabled?: boolean
@@ -2679,7 +2681,7 @@ export type AppProviderAgentToolResponse = {
   plugin_unique_identifier?: string | null
   provider_id: string
   provider_name?: string
-  provider_type: string
+  provider_type: ToolProviderType
   tool_label?: string
   tool_name: string
   tool_parameters: {
@@ -2747,6 +2749,8 @@ export type AppMetadataFilteringConditionsResponse = {
   conditions?: Array<AppMetadataConditionResponse> | null
   logical_operator?: 'and' | 'or' | null
 }
+
+export type RerankMode = 'reranking_model' | 'weighted_score'
 
 export type AppRerankingModelResponse = {
   reranking_model_name?: string
@@ -3053,6 +3057,15 @@ export type AgentComposerKnowledgeDatasetCandidateResponse = {
   name?: string | null
 }
 
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
 export type AppDatasetReferenceResponse = {
   enabled?: boolean
   id?: string
@@ -3194,15 +3207,6 @@ export type AgentSoulDifyToolCredentialRef = {
   provider?: string | null
   type?: 'provider' | 'tool'
 }
-
-export type ToolProviderType =
-  | 'api'
-  | 'app'
-  | 'builtin'
-  | 'dataset-retrieval'
-  | 'mcp'
-  | 'plugin'
-  | 'workflow'
 
 export type StringSource = {
   selector?: Array<string>

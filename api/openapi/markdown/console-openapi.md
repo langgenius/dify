@@ -15749,7 +15749,7 @@ This class is used to store the schema information of an api based tool.
 | enabled | boolean |  | Yes |
 | max_iteration | integer |  | No |
 | prompt | [AppAgentPromptResponse](#appagentpromptresponse)<br>string |  | No |
-| strategy | string |  | Yes |
+| strategy | [PlanningStrategy](#planningstrategy) |  | Yes |
 | tools | [ [AppProviderAgentToolResponse](#appprovideragenttoolresponse)<br>[AppLegacyDatasetToolResponse](#applegacydatasettoolresponse)<br>[AppLegacyGoogleSearchToolResponse](#applegacygooglesearchtoolresponse)<br>[AppLegacyWebReaderToolResponse](#applegacywebreadertoolresponse)<br>[AppLegacyWikipediaToolResponse](#applegacywikipediatoolresponse)<br>[AppLegacyCurrentDatetimeToolResponse](#applegacycurrentdatetimetoolresponse)<br>[AppLegacySensitiveWordToolResponseItem](#applegacysensitivewordtoolresponseitem) ] |  | Yes |
 
 #### AppAgentPromptResponse
@@ -15825,10 +15825,10 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | datasets | [AppDatasetListResponse](#appdatasetlistresponse) |  | No |
 | metadata_filtering_conditions | [AppMetadataFilteringConditionsResponse](#appmetadatafilteringconditionsresponse) |  | No |
-| metadata_filtering_mode | string |  | No |
+| metadata_filtering_mode | string, <br>**Available values:** "automatic", "disabled", "manual" | *Enum:* `"automatic"`, `"disabled"`, `"manual"` | No |
 | metadata_model_config | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
 | reranking_enabled | boolean |  | No |
-| reranking_mode | string |  | No |
+| reranking_mode | [RerankMode](#rerankmode) |  | No |
 | reranking_model | [AppRerankingModelResponse](#apprerankingmodelresponse) |  | No |
 | retrieval_model | string, <br>**Available values:** "multiple", "single" | *Enum:* `"multiple"`, `"single"` | Yes |
 | score_threshold | number |  | No |
@@ -16294,7 +16294,7 @@ AppMCPServer Status Enum
 | plugin_unique_identifier | string |  | No |
 | provider_id | string |  | Yes |
 | provider_name | string |  | No |
-| provider_type | string |  | Yes |
+| provider_type | [ToolProviderType](#toolprovidertype) |  | Yes |
 | tool_label | string |  | No |
 | tool_name | string |  | Yes |
 | tool_parameters | object |  | Yes |
@@ -21133,6 +21133,12 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | unit | string |  | No |
 | variable | string |  | Yes |
 
+#### PlanningStrategy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PlanningStrategy | string |  |  |
+
 #### PluginAutoUpgradeChangeResponse
 
 | Name | Type | Description | Required |
@@ -22140,6 +22146,12 @@ Resource types understood by access policies.
 | id | string | The id of the request log | Yes |
 | request | object | The request of the request log | Yes |
 | response | object | The response of the request log | Yes |
+
+#### RerankMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RerankMode | string |  |  |
 
 #### RerankingModel
 
