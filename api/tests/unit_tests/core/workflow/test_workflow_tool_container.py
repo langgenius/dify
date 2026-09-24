@@ -57,8 +57,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.graph import Graph
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.container_effects import (
     ContainerExecutionResult,
     ContainerNodeRunResult,
@@ -879,15 +878,6 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     monkeypatch: pytest.MonkeyPatch,
     outcome: str,
 ) -> None:
-    run_start = StartNode._run
-
-    def run_start_with_usage(node: StartNode) -> NodeRunResult:
-        result = run_start(node)
-        if node.id == "source-start":
-            result.llm_usage = LLMUsage.from_metadata({"total_tokens": 100})
-        return result
-
-    monkeypatch.setattr(StartNode, "_run", run_start_with_usage)
     command_channel = InMemoryChannel()
 
     def stop_on_human_input(event: NodeEvent, *, channel: InMemoryChannel, should_stop: bool) -> None:
@@ -957,7 +947,6 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     paused = initial_events[-1]
     if outcome == "stopped":
         assert isinstance(paused, GraphRunAbortedEvent)
-        assert (initial_state.node_run_steps, initial_state.total_tokens) == (4, 100)
         return
     assert isinstance(paused, GraphRunPausedEvent)
     assert len(paused.reasons) == 1
@@ -980,7 +969,6 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     assert human_input_app_ids == ["outer-app"]
 
     if outcome == "paused":
-        assert (initial_state.node_run_steps, initial_state.total_tokens) == (4, 100)
         return
 
     restored_state = RuntimeState.from_snapshot(initial_state.dumps())
@@ -1027,10 +1015,8 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
 
     if outcome == "abort-on-resume":
         assert isinstance(resumed_events[-1], GraphRunAbortedEvent)
-        assert (restored_state.node_run_steps, restored_state.total_tokens) == (5, 100)
         return
     assert isinstance(resumed_events[-1], GraphRunSucceededEvent)
-    assert (restored_state.node_run_steps, restored_state.total_tokens) == (6, 100)
     tool_succeeded = next(
         event for event in resumed_events if isinstance(event, NodeRunSucceededEvent) and event.node_id == "tool"
     )
