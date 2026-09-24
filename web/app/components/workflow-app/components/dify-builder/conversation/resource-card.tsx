@@ -1,30 +1,20 @@
 import type { ConversationItem, DifyBuilderActionPayloadChange } from '../types'
 import { memo, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DifyBuilderCard } from '../cards/card-shell'
-
 export const ResourceCard = memo(
   ({
     item,
     busy,
-    interactive,
-    invalidated,
-    embedded = false,
     onActionPayloadChange,
   }: {
     item: Extract<ConversationItem, { kind: 'resource_select' }>
     busy: boolean
-    interactive: boolean
-    invalidated: boolean
-    embedded?: boolean
     onActionPayloadChange: DifyBuilderActionPayloadChange
   }) => {
     const { t } = useTranslation(['workflow'])
     const resources = item.payload.recommended ?? []
     const resourceListId = useId()
     const [selected, setSelected] = useState(() => resources.map((resource) => resource.id))
-    const frozen = busy || !interactive || invalidated
-
     const emitPayload = (resourceIds: string[]) => {
       onActionPayloadChange('confirm_resources', {
         resource_ids: resourceIds,
@@ -46,7 +36,7 @@ export const ResourceCard = memo(
                 aria-labelledby={labelId}
                 aria-describedby={descriptionId}
                 checked={selected.includes(resource.id)}
-                disabled={frozen}
+                disabled={busy}
                 onChange={(event) => {
                   const next = event.target.checked
                     ? [...selected, resource.id]
@@ -76,14 +66,6 @@ export const ResourceCard = memo(
       </div>
     )
 
-    if (embedded) return resourceList
-    return (
-      <DifyBuilderCard
-        category={t(($) => $['difyBuilder.cardCategory.resources'], { ns: 'workflow' })}
-        invalidated={invalidated}
-      >
-        {resourceList}
-      </DifyBuilderCard>
-    )
+    return resourceList
   },
 )

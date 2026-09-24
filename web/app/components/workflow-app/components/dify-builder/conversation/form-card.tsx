@@ -26,7 +26,6 @@ import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { MAX_FILE_UPLOAD_LIMIT } from '@/app/components/base/file-uploader/constants'
 import { useStore } from '@/app/components/workflow/store'
-import { DifyBuilderCard } from '../cards/card-shell'
 import {
   DEFAULT_ALLOWED_FILE_EXTENSIONS,
   DEFAULT_ALLOWED_FILE_TYPES,
@@ -45,9 +44,6 @@ export const FormCard = memo(
   ({
     item,
     busy,
-    interactive,
-    invalidated,
-    embedded = false,
     formId,
     onActionPayloadChange,
     onActionValidityChange,
@@ -55,9 +51,6 @@ export const FormCard = memo(
   }: {
     item: Extract<ConversationItem, { kind: 'form' }>
     busy: boolean
-    interactive: boolean
-    invalidated: boolean
-    embedded?: boolean
     formId?: string
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
@@ -76,7 +69,7 @@ export const FormCard = memo(
         : item.payload.variant === 'edit_rules'
           ? 'submit_edit_rules'
           : 'provide_testdata'
-    const frozen = busy || !interactive || invalidated || item.payload.frozen === true
+    const frozen = busy || item.payload.frozen === true
     const category = t(($) => $['difyBuilder.cardCategory.form'], { ns: 'workflow' })
     const prepared = useMemo(() => prepareFormValues(fields, values), [fields, values])
     const actionPayloadChangeRef = useRef(onActionPayloadChange)
@@ -91,7 +84,7 @@ export const FormCard = memo(
     }, [onActionValidityChange])
 
     useEffect(() => {
-      if (!interactive || invalidated || item.payload.frozen === true) return
+      if (item.payload.frozen === true) return
 
       const payload = { ...prepared.preparedValues }
       if (actionId !== 'provide_testdata') {
@@ -105,7 +98,7 @@ export const FormCard = memo(
         actionId === 'provide_testdata' ? { mode: 'provide', inputs: payload } : payload,
       )
       actionValidityChangeRef.current?.(actionId, prepared.valid)
-    }, [actionId, fields, interactive, invalidated, item.payload.frozen, prepared])
+    }, [actionId, fields, item.payload.frozen, prepared])
 
     const updateValues = (key: string, value: unknown) => {
       setValues((current) => ({ ...current, [key]: value }))
@@ -369,11 +362,6 @@ export const FormCard = memo(
       </form>
     )
 
-    if (embedded) return form
-    return (
-      <DifyBuilderCard category={category} invalidated={invalidated}>
-        {form}
-      </DifyBuilderCard>
-    )
+    return form
   },
 )

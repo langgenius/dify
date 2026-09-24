@@ -210,10 +210,7 @@ const FormInteraction = ({
       <FormCard
         item={card}
         busy={busy || pending}
-        embedded
         formId={formId}
-        interactive
-        invalidated={false}
         onActionPayloadChange={(changedActionId, nextPayload) => {
           if (changedActionId === actionId) setPayload(nextPayload)
         }}
@@ -285,9 +282,6 @@ const ResourceInteraction = ({
         <ResourceCard
           item={card}
           busy={busy || pending}
-          embedded
-          interactive
-          invalidated={false}
           onActionPayloadChange={(changedActionId, nextPayload) => {
             if (changedActionId === actionId) setPayload(nextPayload)
           }}

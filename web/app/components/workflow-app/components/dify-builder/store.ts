@@ -1,5 +1,4 @@
 import type {
-  Action,
   ChecklistErrorPayload,
   DifyBuilderActiveInteraction,
   DifyBuilderLocalInteractionResponse,
@@ -30,8 +29,6 @@ export type DifyBuilderRuntime = {
   session: DifyBuilderSessionController
   setShowPanel: (show: boolean) => void
 }
-
-const EMPTY_ACTIONS: Action[] = []
 
 const isTerminalStatus = (status?: string) => status === 'complete' || status === 'failed'
 const isActiveStatus = (status?: string) => status === 'processing'
@@ -111,9 +108,6 @@ export const difyBuilderActiveInteractionAtom = atom((get) => {
 })
 export const difyBuilderDecisionAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.decision ?? null,
-)
-export const difyBuilderActionsAtom = atom(
-  (get) => get(difyBuilderSessionViewAtom)?.actions ?? EMPTY_ACTIONS,
 )
 export const difyBuilderInterruptedAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.interrupted ?? false,

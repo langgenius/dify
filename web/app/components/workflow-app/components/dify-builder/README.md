@@ -5,8 +5,7 @@ In-editor App Builder UI and session logic for the Build, Edit, and Fix APIs.
 ## Internal Modules
 
 - `panel.tsx`: panel composition, conversation scrolling, and shared interaction
-  coordination. `panel/` owns the header, background, empty state, action bar,
-  and footer.
+  coordination. `panel/` owns the header, background, empty state, and footer.
 - `session/`: scoped session atoms, pure projection helpers, the SSE lifecycle
   controller, an animation-frame buffer for assistant text deltas, and a
   low-frequency live-progress projection.
@@ -82,7 +81,8 @@ first workflow callback runs.
 Only `SessionView.active_interaction` is editable. It contains an action id,
 version, and `card_seq`; the UI resolves that reference against conversation
 items instead of receiving a duplicate card payload in session state.
-Historical form and resource cards are restored as read-only content.
+Historical form and resource cards are omitted from the transcript; submitted
+responses remain visible there.
 Unsubmitted field drafts remain local component state and are intentionally not
 persisted.
 

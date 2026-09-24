@@ -93,9 +93,6 @@ const renderForm = (
     <FormCard
       item={card}
       busy={false}
-      embedded
-      interactive
-      invalidated={false}
       onActionPayloadChange={onActionPayloadChange}
       onActionValidityChange={onActionValidityChange}
     />,
@@ -349,9 +346,6 @@ describe('DifyBuilderConversation test data form', () => {
         <FormCard
           item={card}
           busy={false}
-          embedded
-          interactive
-          invalidated={false}
           onActionPayloadChange={vi.fn()}
           onActionValidityChange={vi.fn()}
         />
@@ -669,9 +663,6 @@ describe('DifyBuilderConversation test data form', () => {
         <ResourceCard
           item={resourceCard}
           busy={false}
-          embedded
-          interactive
-          invalidated={false}
           onActionPayloadChange={onActionPayloadChange}
         />,
       )
