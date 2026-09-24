@@ -49,7 +49,8 @@ class SiteDsl(BaseModel):
             "show_workflow_steps",
             "use_icon_as_answer_icon",
         }
-        if any(getattr(self, name) is None for name in required & self.model_fields_set):
+        values = self.model_dump(exclude_unset=True)
+        if any(values[name] is None for name in required & values.keys()):
             raise ValueError("Required Site settings cannot be null")
         return self
 
