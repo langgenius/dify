@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { gzipSync } from 'node:zlib'
 
@@ -169,7 +169,34 @@ export function parseSnapshot(text: string): Snapshot {
   return v as Snapshot
 }
 const kib = (n: number) => `${(n / 1024).toFixed(2)} KiB`
-const delta = (a: number, b: number) => `${b > a ? '+' : b < a ? '−' : ''}${kib(Math.abs(b - a))}`
+export function shouldComment(a: Snapshot, b: Snapshot): boolean {
+  return (
+    Math.abs(b.totals.js.gzip - a.totals.js.gzip) >= 5 * 1024 ||
+    Math.abs(b.totals.css.gzip - a.totals.css.gzip) >= 1024 ||
+    Object.keys(a.entries).some(
+      (key) => b.entries[key] && Math.abs(b.entries[key].gzip - a.entries[key]!.gzip) >= 2 * 1024,
+    )
+  )
+}
+const delta = (a: number, b: number) => {
+  if (a === b) return '⚪ No change'
+  const change = b - a
+  const sign = change > 0 ? '+' : '−'
+  const magnitude = Math.abs(change)
+  const amount = magnitude < 1024 ? `${magnitude} B` : kib(magnitude)
+  const ratio = a === 0 ? null : (magnitude / a) * 100
+  const percent =
+    ratio === null ? 'from zero' : `${sign}${ratio < 0.01 ? '<0.01' : ratio.toFixed(2)}%`
+  return `${change > 0 ? '🟠' : '🟢'} **${sign}${amount} (${percent})**`
+}
+const details = (summary: string, rows: string[]) => [
+  '<details>',
+  `<summary>${summary}</summary>`,
+  '',
+  ...rows,
+  '',
+  '</details>',
+]
 const label = (s: string) =>
   `<code>${s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('|', '&#124;').replaceAll('\n', ' ')}</code>`
 export function compare(a: Snapshot, b: Snapshot): string {
@@ -177,15 +204,14 @@ export function compare(a: Snapshot, b: Snapshot): string {
     '<!-- dify-vinext-bundle-size -->',
     '## Vinext bundle analysis',
     '',
-    `Base: \`${a.commit}\` · Merge: \`${b.commit}\``,
-    `Vinext: ${a.vinext} → ${b.vinext}; Rolldown: ${a.rolldown} → ${b.rolldown}`,
+    `**JS gzip:** ${delta(a.totals.js.gzip, b.totals.js.gzip)} · **CSS gzip:** ${delta(a.totals.css.gzip, b.totals.css.gzip)}`,
     '',
-    '| All client output | Base gzip | Merge gzip | Gzip Δ | Raw Δ |',
-    '| --- | ---: | ---: | ---: | ---: |',
+    '| All client output | Base gzip → Merge gzip | Gzip change |',
+    '| --- | ---: | ---: |',
   ]
   for (const kind of ['js', 'css'] as const)
     lines.push(
-      `| ${kind.toUpperCase()} | ${kib(a.totals[kind].gzip)} | ${kib(b.totals[kind].gzip)} | ${delta(a.totals[kind].gzip, b.totals[kind].gzip)} | ${delta(a.totals[kind].raw, b.totals[kind].raw)} |`,
+      `| ${kind.toUpperCase()} | ${kib(a.totals[kind].gzip)} → ${kib(b.totals[kind].gzip)} | ${delta(a.totals[kind].gzip, b.totals[kind].gzip)} |`,
     )
   const changed = [...new Set([...Object.keys(a.entries), ...Object.keys(b.entries)])]
     .filter(
@@ -199,37 +225,56 @@ export function compare(a: Snapshot, b: Snapshot): string {
         Math.abs((b.entries[y]?.gzip ?? 0) - (a.entries[y]?.gzip ?? 0)) -
           Math.abs((b.entries[x]?.gzip ?? 0) - (a.entries[x]?.gzip ?? 0)) || x.localeCompare(y),
     )
+  const increased = changed.filter((k) => b.entries[k]!.gzip > a.entries[k]!.gzip).length
+  const decreased = changed.filter((k) => b.entries[k]!.gzip < a.entries[k]!.gzip).length
+  const rawOnly = changed.length - increased - decreased
   lines.push(
     '',
-    '### Entry static dependencies',
+    `**Entry changes:** 🟠 ${increased} increased · 🟢 ${decreased} decreased${rawOnly ? ` · ⚪ ${rawOnly} raw-only changes` : ''} (gzip).`,
     '',
-    `Showing ${Math.min(20, changed.length)} of ${changed.length} changed entries, ordered by absolute gzip delta.`,
+    '### Largest entry changes',
     '',
-    '| Source entry | Base gzip | Merge gzip | Gzip Δ |',
-    '| --- | ---: | ---: | ---: |',
+    `Top ${Math.min(5, changed.length)} by absolute gzip delta. Static dependencies overlap; do not sum entries.`,
+    '',
   )
-  if (!changed.length) lines.push('| No entry size changes | — | — | — |')
-  for (const k of changed.slice(0, 20))
+  const entryTable = (keys: string[], full = false) => [
+    `| Source entry | Base gzip → Merge gzip | Gzip change |${full ? ' Raw change |' : ''}`,
+    `| --- | ---: | ---: |${full ? ' ---: |' : ''}`,
+    ...keys.map(
+      (k) =>
+        `| ${label(full ? k : k.replace(/^(?:static|dynamic)-entry: /, ''))} | ${kib(a.entries[k]!.gzip)} → ${kib(b.entries[k]!.gzip)} | ${delta(a.entries[k]!.gzip, b.entries[k]!.gzip)} |${full ? ` ${delta(a.entries[k]!.raw, b.entries[k]!.raw)} |` : ''}`,
+    ),
+  ]
+  if (changed.length) {
+    lines.push(...entryTable(changed.slice(0, 5)), '')
     lines.push(
-      `| ${label(k)} | ${a.entries[k] ? kib(a.entries[k].gzip) : 'New'} | ${b.entries[k] ? kib(b.entries[k].gzip) : 'Removed'} | ${delta(a.entries[k]?.gzip ?? 0, b.entries[k]?.gzip ?? 0)} |`,
+      ...details(
+        `Top ${Math.min(20, changed.length)} of ${changed.length} changed entries (full paths and raw sizes)`,
+        entryTable(changed.slice(0, 20), true),
+      ),
     )
+  } else {
+    lines.push('No entry size changes.')
+  }
   const topology = [...new Set([...Object.keys(a.entries), ...Object.keys(b.entries)])]
     .filter((k) => !a.entries[k] || !b.entries[k])
     .sort()
   if (topology.length) {
     lines.push(
       '',
-      '### Added or removed entries',
+      '<details>',
+      `<summary>🆕 / ➖ ${topology.length} added or removed entries</summary>`,
       '',
-      `Showing ${Math.min(20, topology.length)} of ${topology.length} entry-boundary changes. These are not size deltas from zero.`,
+      `Showing ${Math.min(20, topology.length)} of ${topology.length}. Entry-boundary changes are not size deltas from zero.`,
       '',
       '| Source entry | Change | Static dependencies (gzip) |',
       '| --- | --- | ---: |',
     )
     for (const k of topology.slice(0, 20))
       lines.push(
-        `| ${label(k)} | ${b.entries[k] ? 'New entry' : 'Removed entry'} | ${kib((b.entries[k] ?? a.entries[k])!.gzip)} |`,
+        `| ${label(k)} | ${b.entries[k] ? '🆕 New entry' : '➖ Removed entry'} | ${kib((b.entries[k] ?? a.entries[k])!.gzip)} |`,
       )
+    lines.push('', '</details>')
   }
   const packages = [...new Set([...Object.keys(a.packages), ...Object.keys(b.packages)])]
     .filter((k) => a.packages[k] !== b.packages[k])
@@ -240,7 +285,10 @@ export function compare(a: Snapshot, b: Snapshot): string {
     )
   lines.push(
     '',
-    '### Package module attribution',
+    '<details>',
+    `<summary>📦 ${packages.length} package attribution changes (uncompressed modules)</summary>`,
+    '',
+    `Showing ${Math.min(15, packages.length)} of ${packages.length}, ordered by absolute module-size delta.`,
     '',
     '| Package | Base | Merge | Δ |',
     '| --- | ---: | ---: | ---: |',
@@ -252,12 +300,25 @@ export function compare(a: Snapshot, b: Snapshot): string {
     )
   lines.push(
     '',
+    '</details>',
+    '',
+    '<details>',
+    '<summary>Measurement details and build revisions</summary>',
+    '',
+    `Base: \`${a.commit}\` · Merge: \`${b.commit}\``,
+    `Vinext: ${a.vinext} → ${b.vinext}; Rolldown: ${a.rolldown} → ${b.rolldown}`,
+    '',
+    `Raw JS change: ${delta(a.totals.js.raw, b.totals.js.raw)} · Raw CSS change: ${delta(a.totals.css.raw, b.totals.css.raw)}`,
+    '',
+    '🟠 Increase · 🟢 Decrease · ⚪ Unchanged. Colors indicate direction, not a performance budget verdict. Percentages use the base size.',
+    '',
     'Entries follow only static edges in the official Rolldown chunk graph, deduplicating shared files. Dynamic entries are measured when loaded; they are not page first-load metrics. Entry totals overlap and must not be summed.',
     'Package attribution sums module sizes reported by Rolldown, not compressed emitted bytes. Gzip totals are measured per emitted file. This is Vinext output, not Next.js/Turbopack output.',
     'Report only: increases do not fail this check. Missing or incompatible analysis data does.',
   )
   if (a.vinext !== b.vinext || a.rolldown !== b.rolldown)
     lines.push('', 'Compiler versions differ; changes may include compiler effects.')
+  lines.push('', '</details>')
   return `${lines.join('\n')}\n`
 }
 
@@ -286,16 +347,18 @@ async function main() {
     throw new Error(
       'Usage: instrument <web> | collect <web> <sha> <json> | compare <base.json> <merge.json> <report.md>',
     )
-  const result =
-    command === 'collect'
-      ? `${JSON.stringify(await collect(first, second), null, 2)}\n`
-      : command === 'compare'
-        ? compare(
-            parseSnapshot(await readFile(first, 'utf8')),
-            parseSnapshot(await readFile(second, 'utf8')),
-          )
-        : null
-  if (result === null) throw new Error('Unknown command.')
+  let result: string
+  if (command === 'collect') {
+    result = `${JSON.stringify(await collect(first, second), null, 2)}\n`
+  } else if (command === 'compare') {
+    const base = parseSnapshot(await readFile(first, 'utf8'))
+    const merged = parseSnapshot(await readFile(second, 'utf8'))
+    result = compare(base, merged)
+    if (process.env.GITHUB_OUTPUT)
+      await appendFile(process.env.GITHUB_OUTPUT, `should-comment=${shouldComment(base, merged)}\n`)
+  } else {
+    throw new Error('Unknown command.')
+  }
   await mkdir(dirname(resolve(output)), { recursive: true })
   await writeFile(output, result)
 }
