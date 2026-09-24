@@ -145,8 +145,8 @@ visited earlier in the session. Previously loaded bundles remain cached. There i
 no route policy that resets `i18n.options.ns` on navigation.
 
 Server metadata requests still use the request-scoped server instance and load
-exactly their requested namespace. Existing server consumers without a namespace
-retain their full-catalog behavior.
+exactly their requested namespace. Server translation consumers must declare their namespaces explicitly. Locale-only
+consumers subscribe to language changes without requesting a dictionary.
 
 The build analyzer continues to report route usage and check unused keys. Its
 route report is diagnostic and is not a runtime resource manifest or an allowlist.
