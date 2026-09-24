@@ -542,7 +542,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         prompt_tokens = self.model_instance.get_llm_num_tokens(prompt_messages, tools=tools)
         if prompt_tokens < 0:
             return
-        required_output_tokens = 16
+        required_output_tokens = 0
         for rule in self.model_config.model_schema.parameter_rules:
             if rule.name == "max_tokens" or rule.use_template == "max_tokens":
                 required_output_tokens = max(
@@ -552,6 +552,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     or rule.default
                     or 0,
                 )
+        required_output_tokens = required_output_tokens or 16
         if context_size - prompt_tokens < required_output_tokens:
             raise InvokeBadRequestError(
                 "Agent context window exhausted: the prompt and output token budget do not fit. "

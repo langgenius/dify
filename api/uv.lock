@@ -1707,7 +1707,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.200.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=2.1.3,<3.0.0" },
-    { name = "graphon", git = "https://github.com/langgenius/graphon.git?rev=f8feaf33600ba2d827f01c0c3a340e0068e8fa49" },
+    { name = "graphon", git = "https://github.com/langgenius/graphon.git?rev=bba10c5e25ff51762151d909f418bb96523baf2a" },
     { name = "gunicorn", specifier = ">=26.2.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -3066,7 +3066,7 @@ httpx = [
 [[package]]
 name = "graphon"
 version = "0.7.0"
-source = { git = "https://github.com/langgenius/graphon.git?rev=f8feaf33600ba2d827f01c0c3a340e0068e8fa49#f8feaf33600ba2d827f01c0c3a340e0068e8fa49" }
+source = { git = "https://github.com/langgenius/graphon.git?rev=bba10c5e25ff51762151d909f418bb96523baf2a#bba10c5e25ff51762151d909f418bb96523baf2a" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "httpx" },

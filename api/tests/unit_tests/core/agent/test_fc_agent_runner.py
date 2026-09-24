@@ -494,29 +494,31 @@ class TestRunMethod:
         assert runner.model_instance.get_llm_num_tokens.call_args.kwargs == {"tools": []}
 
     @pytest.mark.parametrize(
-        ("parameter_name", "parameters"),
+        ("parameter_name", "parameters", "output_budget"),
         [
-            ("max_tokens", {"thinking": True, "thinking_budget": 1024, "max_tokens": 64000}),
-            ("max_output_tokens", {"max_tokens": 64000}),
-            ("max_output_tokens", {}),
+            ("max_tokens", {"thinking": True, "thinking_budget": 1024, "max_tokens": 64000}, 64000),
+            ("max_output_tokens", {"max_tokens": 64000}, 64000),
+            ("max_output_tokens", {}, 64000),
+            ("max_tokens", {"max_tokens": 1}, 1),
+            ("max_output_tokens", {}, 1),
         ],
     )
     def test_context_check_preserves_configured_and_default_output_budget(
-        self, runner: FunctionCallAgentRunner, parameter_name: str, parameters: dict
+        self, runner: FunctionCallAgentRunner, parameter_name: str, parameters: dict, output_budget: int
     ):
         runner.model_config.model_schema.model_properties = {"context_size": 200000}
         runner.model_config.model_schema.parameter_rules = [
-            SimpleNamespace(name=parameter_name, use_template="max_tokens", default=64000)
+            SimpleNamespace(name=parameter_name, use_template="max_tokens", default=output_budget)
         ]
         runner.model_config.parameters = parameters.copy()
-        runner.model_instance.get_llm_num_tokens.return_value = 199000
+        runner.model_instance.get_llm_num_tokens.return_value = 200000 - output_budget + 1
 
         with pytest.raises(InvokeBadRequestError, match="prompt and output token budget do not fit"):
             runner._check_context_budget([UserPromptMessage(content="query")], [])
 
         assert runner.model_config.parameters == parameters
 
-        for token_count in (-1, 136000):
+        for token_count in (-1, 200000 - output_budget):
             runner.model_instance.get_llm_num_tokens.return_value = token_count
             runner._check_context_budget([UserPromptMessage(content="query")], [])
         assert runner.model_config.parameters == parameters
