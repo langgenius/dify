@@ -169,6 +169,7 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
+  const [isNavigationOpen, setIsNavigationOpen] = useState(false)
   const showInstallAction = canInstallPlugin
   const reserveInstallActionSlot = showInstallAction || isReferenceSettingLoading
   const showUtilityActions = canDebugger || showPermissionQuickPanel
@@ -247,6 +248,7 @@ export default function IntegrationsPage({
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
+      setIsNavigationOpen(false)
       onSectionChange(nextSection)
       return
     }
@@ -318,7 +320,7 @@ export default function IntegrationsPage({
         >
           <IntegrationSidebarNavItem
             item={providerItem}
-            onSelect={onSectionChange}
+            onSelect={onSectionChange ? handleSelectSection : undefined}
             section={section}
           />
           <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
@@ -335,7 +337,7 @@ export default function IntegrationsPage({
                 <IntegrationSidebarNavItem
                   key={item.label}
                   item={item}
-                  onSelect={onSectionChange}
+                  onSelect={onSectionChange ? handleSelectSection : undefined}
                   section={section}
                 />
               ))}
@@ -343,20 +345,20 @@ export default function IntegrationsPage({
           </Collapsible>
           <IntegrationSidebarNavItem
             item={dataSourceItem}
-            onSelect={onSectionChange}
+            onSelect={onSectionChange ? handleSelectSection : undefined}
             section={section}
           />
           {secondaryItems.map((item) => (
             <IntegrationSidebarNavItem
               key={item.label}
               item={item}
-              onSelect={onSectionChange}
+              onSelect={onSectionChange ? handleSelectSection : undefined}
               section={section}
             />
           ))}
           <IntegrationSidebarNavItem
             item={customEndpointItem}
-            onSelect={onSectionChange}
+            onSelect={onSectionChange ? handleSelectSection : undefined}
             section={section}
           />
         </nav>
@@ -382,7 +384,7 @@ export default function IntegrationsPage({
       )}
       {isCompact ? (
         <div className="shrink-0 border-b border-divider-burn px-2 pb-2">
-          <Drawer swipeDirection="left">
+          <Drawer swipeDirection="left" open={isNavigationOpen} onOpenChange={setIsNavigationOpen}>
             <DrawerTrigger render={<Button variant="secondary" className="max-w-full" />}>
               <span aria-hidden="true" className="i-ri-menu-line size-4 shrink-0" />
               <span className="truncate">
