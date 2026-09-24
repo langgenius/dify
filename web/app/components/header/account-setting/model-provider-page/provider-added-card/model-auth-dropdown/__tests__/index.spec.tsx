@@ -277,6 +277,7 @@ describe('ModelAuthDropdown', () => {
       await waitFor(() => {
         expect(screen.getByText('Key 1')).toBeInTheDocument()
       })
+      expect(screen.getByRole('dialog', { name: /config/i })).toBeInTheDocument()
     })
 
     it('should load provider detail on first click and reuse it on reopen', async () => {

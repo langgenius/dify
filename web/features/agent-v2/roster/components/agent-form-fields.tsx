@@ -21,7 +21,7 @@ export function AgentFormFields({
   onIconClick,
   ref,
 }: AgentFormFieldsProps) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
 
   return (
@@ -49,28 +49,30 @@ export function AgentFormFields({
             className="min-w-0 flex-1"
             validate={(value) => {
               if (typeof value === 'string' && value.length > 0 && !value.trim())
-                return t(($) => $['roster.createForm.nameRequired'])
+                return t(($) => $['roster.createForm.nameRequired'], { ns: 'agentRoster' })
 
               return null
             }}
           >
-            <FieldLabel>{t(($) => $['roster.createForm.nameLabel'])}</FieldLabel>
+            <FieldLabel>
+              {t(($) => $['roster.createForm.nameLabel'], { ns: 'agentRoster' })}
+            </FieldLabel>
             <Input
               ref={ref}
               autoComplete="off"
               defaultValue={defaultValues.name}
               maxLength={255}
-              placeholder={t(($) => $['roster.createForm.namePlaceholder'])}
+              placeholder={t(($) => $['roster.createForm.namePlaceholder'], { ns: 'agentRoster' })}
               required
             />
             <FieldError match="valueMissing">
-              {t(($) => $['roster.createForm.nameRequired'])}
+              {t(($) => $['roster.createForm.nameRequired'], { ns: 'agentRoster' })}
             </FieldError>
             <FieldError match="customError" />
           </Field>
           <Field name="role" className="min-w-0 flex-1">
             <FieldLabel>
-              {t(($) => $['roster.createForm.roleLabel'])}
+              {t(($) => $['roster.createForm.roleLabel'], { ns: 'agentRoster' })}
               <span className="ml-1 system-xs-regular text-text-tertiary">
                 {tCommon(($) => $['label.optional'])}
               </span>
@@ -79,14 +81,14 @@ export function AgentFormFields({
               autoComplete="off"
               defaultValue={defaultValues.role}
               maxLength={255}
-              placeholder={t(($) => $['roster.createForm.rolePlaceholder'])}
+              placeholder={t(($) => $['roster.createForm.rolePlaceholder'], { ns: 'agentRoster' })}
             />
           </Field>
         </div>
       </div>
       <Field name="description">
         <FieldLabel>
-          {t(($) => $['roster.createForm.descriptionLabel'])}
+          {t(($) => $['roster.createForm.descriptionLabel'], { ns: 'agentRoster' })}
           <span className="ml-1 system-xs-regular text-text-tertiary">
             {tCommon(($) => $['label.optional'])}
           </span>
@@ -96,7 +98,9 @@ export function AgentFormFields({
           className="h-20 resize-none"
           defaultValue={defaultValues.description}
           maxLength={400}
-          placeholder={t(($) => $['roster.createForm.descriptionPlaceholder'])}
+          placeholder={t(($) => $['roster.createForm.descriptionPlaceholder'], {
+            ns: 'agentRoster',
+          })}
         />
       </Field>
     </div>

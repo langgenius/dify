@@ -118,7 +118,7 @@ function FloatingOutputEditor({
 }
 
 export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
-  const { t } = useTranslation(['agentV2', 'workflowAgent'])
+  const { t } = useTranslation(['workflowAgent', 'agentRoster'])
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const inputsRef = useRef(inputs)
   const promptOutputNamesRef = useRefWithInit(extractAgentOutputNames, inputs.agent_task || '')
@@ -659,7 +659,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           canOpenPanel={!isInlineAgentWaitingForCreation}
           errorMessage={
             isInlineAgentLoadError
-              ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentV2' })
+              ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' })
               : undefined
           }
           isInlineSetup={isInlineAgentReady || isInlineAgentPending}

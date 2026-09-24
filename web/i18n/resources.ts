@@ -70,6 +70,9 @@ export type Resources = GeneratedResources & PluralBaseResources
 export const defaultNS = 'app' as const
 
 export const namespaces = [
+  'fileUpload',
+  'appGeneration',
+  'agentRoster',
   'workflowGenerator',
   'workflowModels',
   'workflowHumanInput',

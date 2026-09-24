@@ -582,48 +582,6 @@ class OpsTraceManager:
 
         return app_model_config
 
-    @classmethod
-    def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str | None):
-        """
-        Update app tracing config
-        :param app_id: app id
-        :param enabled: enabled
-        :param tracing_provider: tracing provider (None when disabling)
-        :return:
-        """
-        # auth check
-        if tracing_provider is not None:
-            if tracing_provider not in TracingProviderEnum:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
-            if enabled:
-                provider_config_map[tracing_provider]
-
-        app_config: App | None = db.session.get(App, app_id)
-        if not app_config:
-            raise ValueError("App not found")
-        app_config.tracing = json.dumps(
-            {
-                "enabled": enabled,
-                "tracing_provider": tracing_provider,
-            }
-        )
-        db.session.commit()
-
-    @classmethod
-    def get_app_tracing_config(cls, app_id: str, session: Session):
-        """
-        Get app tracing config
-        :param app_id: app id
-        :return:
-        """
-        app: App | None = session.get(App, app_id)
-        if not app:
-            raise ValueError("App not found")
-        if not app.tracing:
-            return {"enabled": False, "tracing_provider": None}
-        app_trace_config = _app_tracing_config_adapter.validate_json(app.tracing)
-        return app_trace_config
-
     @staticmethod
     def check_trace_config_is_effective(tracing_config: dict[str, Any], tracing_provider: str):
         """
