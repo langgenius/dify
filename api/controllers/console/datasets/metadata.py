@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from configs import dify_config
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
