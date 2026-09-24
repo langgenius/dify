@@ -34,6 +34,7 @@
   "sidebar.action.rename": "ตั้งชื่อใหม่",
   "sidebar.action.unpin": "ปลดหมุด",
   "sidebar.webApps": "แอปเว็บ",
+  "tryApp.agentConfiguration": "การกำหนดค่าเอเจนต์",
   "tryApp.agentSetupHint": "คุณสามารถตั้งค่าได้หลังจากสร้างแอป",
   "tryApp.category": "หมวดหมู่",
   "tryApp.createFromSampleApp": "สร้างจากแอปตัวอย่างนี้",

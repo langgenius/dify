@@ -52,11 +52,31 @@ const composer = {
   save_options: [],
 } satisfies AgentAppComposerResponse
 
+const builtInTools = [
+  {
+    id: 'langgenius/web_search/web_search',
+    name: 'langgenius/web_search/web_search',
+    label: { en_US: 'Web Search' },
+    icon: 'https://example.com/web-search.svg',
+    tools: [],
+  },
+]
+
 describe('AgentAppPreview', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('shows published Agent configuration and chat introduction without editing actions', () => {
+  it('shows published Agent configuration and chat introduction without editing actions', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const requests: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: Request | string) => {
+        const url = input instanceof Request ? input.url : input
+        requests.push(url)
+        if (url.endsWith('/workspaces/current/tools/builtin')) return Response.json(builtInTools)
+        throw new Error(`Unexpected request: ${url}`)
+      }),
+    )
     render(
       <QueryClientProvider client={client}>
         <AgentAppPreview appDetail={appDetail} composer={composer} />
@@ -71,7 +91,8 @@ describe('AgentAppPreview', () => {
     expect(screen.getByText('How can I help?')).toBeInTheDocument()
     expect(screen.getByText('Summarize the requirements')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /copy|edit|auth/i })).not.toBeInTheDocument()
-    expect(client.isFetching()).toBe(0)
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    expect(requests).toEqual(['http://localhost:5001/console/api/workspaces/current/tools/builtin'])
   })
 
   it('opens the existing resource dialogs through trial app endpoints', async () => {
@@ -83,6 +104,7 @@ describe('AgentAppPreview', () => {
       vi.fn(async (input: Request | string) => {
         const url = input instanceof Request ? input.url : input
         requests.push(url)
+        if (url.endsWith('/workspaces/current/tools/builtin')) return Response.json(builtInTools)
         if (url.endsWith('/agent/config/skills/Tender%20Analyzer/inspect')) {
           return Response.json({
             id: 'skill-id',

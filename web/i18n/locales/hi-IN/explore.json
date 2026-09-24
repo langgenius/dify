@@ -34,6 +34,7 @@
   "sidebar.action.rename": "नाम बदलें",
   "sidebar.action.unpin": "पिन हटाएँ",
   "sidebar.webApps": "वेब ऐप्स",
+  "tryApp.agentConfiguration": "एजेंट कॉन्फ़िगरेशन",
   "tryApp.agentSetupHint": "ऐप बनाने के बाद आप इन्हें सेट अप कर सकते हैं।",
   "tryApp.category": "श्रेणी",
   "tryApp.createFromSampleApp": "इस नमूना ऐप से बनाएं",

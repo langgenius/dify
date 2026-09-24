@@ -34,6 +34,7 @@
   "sidebar.action.rename": "Adını dəyiş",
   "sidebar.action.unpin": "Sancaqdan çıxar",
   "sidebar.webApps": "Veb tətbiqləri",
+  "tryApp.agentConfiguration": "Agent konfiqurasiyası",
   "tryApp.agentSetupHint": "Bunları tətbiqi yaratdıqdan sonra qura bilərsiniz.",
   "tryApp.category": "Kateqoriya",
   "tryApp.createFromSampleApp": "Bu nümunə tətbiqdən yarat",

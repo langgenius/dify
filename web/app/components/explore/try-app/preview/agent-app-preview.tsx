@@ -4,9 +4,11 @@ import type {
   AgentAppComposerResponse,
   TrialAppDetailResponse,
 } from '@dify/contracts/api/console/trial-apps/types.gen'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentTemplateOrchestration } from '@/features/agent-v2/template-preview'
+import { AgentTemplateGridBackground } from '@/features/agent-v2/template-preview/grid-background'
 
 type Props = Readonly<{
   appDetail: TrialAppDetailResponse
@@ -15,10 +17,11 @@ type Props = Readonly<{
 
 export default function AgentAppPreview({ appDetail, composer }: Props) {
   const { t } = useTranslation(['agentV2'])
+  const previewHeadingId = useId()
   const features = composer.agent_soul.app_features
 
   return (
-    <div className="flex size-full min-h-0 overflow-hidden rounded-xl bg-background-default">
+    <div className="flex size-full min-h-0 overflow-hidden bg-background-default">
       <AgentTemplateOrchestration
         key={composer.active_config_snapshot?.id ?? composer.agent.id}
         agentId={composer.agent.id}
@@ -26,33 +29,40 @@ export default function AgentAppPreview({ appDetail, composer }: Props) {
         versionId={composer.active_config_snapshot?.id}
         config={composer.agent_soul}
       />
-      <div className="flex min-w-0 flex-1 items-center justify-center bg-background-body p-5">
-        <section className="w-full max-w-115 rounded-xl border border-divider-subtle bg-background-default p-5 shadow-sm">
-          <div className="mb-3 flex items-center gap-3">
+      <div className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden rounded-md bg-background-body px-6 py-5">
+        <AgentTemplateGridBackground />
+        <section
+          aria-labelledby={previewHeadingId}
+          className="relative z-1 max-h-full w-full max-w-120 overflow-auto rounded-2xl bg-workflow-block-bg p-6 break-words"
+        >
+          <div className="py-3">
             <AppIcon
               decorative
-              size="large"
+              size="medium"
+              rounded
               iconType={appDetail.site.icon_type}
               icon={appDetail.site.icon ?? undefined}
               background={appDetail.site.icon_background ?? undefined}
               imageUrl={appDetail.site.icon_url ?? undefined}
             />
-            <h2 className="system-md-semibold text-text-primary">{appDetail.name}</h2>
+            <h2 id={previewHeadingId} className="mt-3 system-md-semibold text-text-secondary">
+              {appDetail.name}
+            </h2>
+            {appDetail.description && (
+              <p className="mt-1 body-sm-regular text-text-tertiary">{appDetail.description}</p>
+            )}
           </div>
-          {appDetail.description && (
-            <p className="mb-4 system-sm-regular text-text-tertiary">{appDetail.description}</p>
-          )}
           {features?.opening_statement && (
-            <p className="mb-3 system-sm-regular whitespace-pre-wrap text-text-secondary">
+            <p className="mb-3 body-sm-regular whitespace-pre-wrap text-text-secondary">
               {features.opening_statement}
             </p>
           )}
           {!!features?.suggested_questions?.length && (
-            <ul className="space-y-1">
+            <ul className="mt-3 flex flex-col items-start gap-1">
               {features.suggested_questions.map((question) => (
                 <li
                   key={question}
-                  className="rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-secondary"
+                  className="max-w-full rounded-xl bg-workflow-canvas-workflow-bg px-2.5 py-2 system-xs-regular text-text-tertiary"
                 >
                   {question}
                 </li>
@@ -61,17 +71,17 @@ export default function AgentAppPreview({ appDetail, composer }: Props) {
           )}
           <div
             aria-hidden="true"
-            className="border-components-input-border-normal mt-3 rounded-lg border bg-components-input-bg-normal p-2"
+            className="mt-3 flex min-h-12 items-center gap-2 rounded-xl border border-components-panel-border-subtle bg-components-panel-bg-alt p-2"
           >
-            <div className="system-xs-regular text-text-quaternary">
+            <div className="min-w-0 flex-1 truncate px-1 body-md-regular text-text-disabled">
               {t(($) => $['agentDetail.configure.preview.inputPlaceholder'], {
                 name: appDetail.name,
               })}
             </div>
-            <div className="mt-3 flex items-center justify-end gap-2 text-text-quaternary">
-              <span className="i-ri-attachment-2 size-4" />
-              <span className="i-ri-mic-line size-4" />
-              <span className="flex size-6 items-center justify-center rounded-md bg-components-button-primary-bg text-components-button-primary-text">
+            <div className="flex shrink-0 items-center gap-3 text-text-disabled">
+              <span className="i-ri-attachment-2 size-4.5" />
+              <span className="i-ri-mic-line size-4.5" />
+              <span className="flex size-8 items-center justify-center rounded-lg bg-components-button-primary-bg-disabled text-components-button-primary-text-disabled">
                 <span className="i-ri-send-plane-2-fill size-4" />
               </span>
             </div>

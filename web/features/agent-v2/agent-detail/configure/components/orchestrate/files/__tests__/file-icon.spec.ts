@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { getDriveFileIconType, getFileIconType } from '../file-icon'
+import { getDriveFileIconType, getFileIconType } from '@/features/agent-v2/file-icon'
 
 describe('agent file icon helpers', () => {
   it('should infer supported icons for uploaded drive file pointer kinds', () => {

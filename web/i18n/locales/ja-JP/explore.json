@@ -34,6 +34,7 @@
   "sidebar.action.rename": "名前変更",
   "sidebar.action.unpin": "ピン留め解除",
   "sidebar.webApps": "Webアプリ",
+  "tryApp.agentConfiguration": "エージェント設定",
   "tryApp.agentSetupHint": "アプリの作成後に設定できます。",
   "tryApp.category": "カテゴリー",
   "tryApp.createFromSampleApp": "テンプレートから作成",

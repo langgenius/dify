@@ -18,9 +18,9 @@ import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-qu
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
-import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
 import {
   AGENT_SAVED_FILES_ROOT_PATH,

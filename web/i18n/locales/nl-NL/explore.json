@@ -34,6 +34,7 @@
   "sidebar.action.rename": "Rename",
   "sidebar.action.unpin": "Unpin",
   "sidebar.webApps": "Web apps",
+  "tryApp.agentConfiguration": "Agentconfiguratie",
   "tryApp.agentSetupHint": "Je kunt deze instellen nadat je de app hebt gemaakt.",
   "tryApp.category": "Category",
   "tryApp.createFromSampleApp": "Create from this sample app",

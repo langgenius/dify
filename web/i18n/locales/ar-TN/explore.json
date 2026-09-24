@@ -34,6 +34,7 @@
   "sidebar.action.rename": "إعادة تسمية",
   "sidebar.action.unpin": "إلغاء التثبيت",
   "sidebar.webApps": "تطبيقات الويب",
+  "tryApp.agentConfiguration": "إعدادات الوكيل",
   "tryApp.agentSetupHint": "يمكنك إعدادها بعد إنشاء التطبيق.",
   "tryApp.category": "الفئة",
   "tryApp.createFromSampleApp": "إنشاء من هذا التطبيق النموذجي",
