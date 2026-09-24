@@ -17,13 +17,11 @@ const mockGetLeaderId = vi.hoisted(() => vi.fn(() => 'leader-1'))
 let onStateChangeCallback:
   | ((state: { isConnected?: boolean; disconnectReason?: string; error?: string }) => void)
   | null = null
-let onCursorCallback: ((cursors: Record<string, CursorPosition>) => void) | null = null
 let onUsersCallback: ((users: OnlineUser[]) => void) | null = null
 let onPresenceCallback: ((presence: NodePanelPresenceMap) => void) | null = null
 let onLeaderCallback: ((isLeader: boolean) => void) | null = null
 
 const unsubscribeState = vi.hoisted(() => vi.fn())
-const unsubscribeCursor = vi.hoisted(() => vi.fn())
 const unsubscribeUsers = vi.hoisted(() => vi.fn())
 const unsubscribePresence = vi.hoisted(() => vi.fn())
 const unsubscribeLeader = vi.hoisted(() => vi.fn())
@@ -53,10 +51,6 @@ vi.mock('../../core/collaboration-manager', () => ({
     ) => {
       onStateChangeCallback = callback
       return unsubscribeState
-    },
-    onCursorUpdate: (callback: (cursors: Record<string, CursorPosition>) => void) => {
-      onCursorCallback = callback
-      return unsubscribeCursor
     },
     onOnlineUsersUpdate: (callback: (users: OnlineUser[]) => void) => {
       onUsersCallback = callback
@@ -90,7 +84,6 @@ describe('useCollaboration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     onStateChangeCallback = null
-    onCursorCallback = null
     onUsersCallback = null
     onPresenceCallback = null
     onLeaderCallback = null
@@ -117,7 +110,6 @@ describe('useCollaboration', () => {
 
     onStateChangeCallback?.({ isConnected: true })
     onUsersCallback?.([{ user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' } as OnlineUser])
-    onCursorCallback?.({ u1: { x: 10, y: 20, userId: 'u1', timestamp: 1 } })
     onPresenceCallback?.({
       nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } },
     })
@@ -126,7 +118,6 @@ describe('useCollaboration', () => {
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
       expect(result.current.onlineUsers).toHaveLength(1)
-      expect(result.current.cursors.u1?.x).toBe(10)
       expect(result.current.nodePanelPresence.nodeA).toBeDefined()
       expect(result.current.isLeader).toBe(true)
       expect(result.current.leaderId).toBe('leader-1')
@@ -148,7 +139,6 @@ describe('useCollaboration', () => {
 
     unmount()
     expect(unsubscribeState).toHaveBeenCalled()
-    expect(unsubscribeCursor).toHaveBeenCalled()
     expect(unsubscribeUsers).toHaveBeenCalled()
     expect(unsubscribePresence).toHaveBeenCalled()
     expect(unsubscribeLeader).toHaveBeenCalled()

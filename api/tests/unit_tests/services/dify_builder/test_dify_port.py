@@ -397,12 +397,23 @@ def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: Ma
     intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "x"})]
     events: list[dict] = []
 
-    with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
+    def on_canvas(event: dict) -> None:
+        assert mock_session.__exit__.call_count == 2
+        events.append(event)
+
+    def preflight_before_lock(*_args) -> list[str]:
+        mock_session.refresh.assert_not_called()
+        return []
+
+    with (
+        patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls,
+        patch("services.dify_builder.dify_port.new_preflight_problems", side_effect=preflight_before_lock),
+    ):
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
         WorkflowServiceDifyPort().apply_repair(
-            "app-1", _actor(), intents, on_canvas=events.append, expected_revision=execution_revision(workflow)
+            "app-1", _actor(), intents, on_canvas=on_canvas, expected_revision=execution_revision(workflow)
         )
 
     assert events == [{"event": "apply_error_fix", "node_id": "node-1"}]
@@ -553,7 +564,7 @@ def test_apply_repair_survives_delete_and_recreate_of_same_id_in_one_batch(mock_
     assert ("start", "llm_1") in synced_edges
 
 
-@pytest.mark.parametrize("operation", ["apply", "restore"])
+@pytest.mark.parametrize("operation", ["apply", "noop", "restore"])
 def test_mutations_recheck_execution_revision_after_locking(mock_session: MagicMock, operation: str):
     account = SimpleNamespace(id="acc-1")
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
@@ -583,6 +594,9 @@ def test_mutations_recheck_execution_revision_after_locking(mock_session: MagicM
                     on_canvas=events.append,
                     expected_revision=expected,
                 )
+        elif operation == "noop":
+            with pytest.raises(HashMismatchError, match="execution configuration changed"):
+                port.apply_repair("app-1", _actor(), [], on_canvas=events.append, expected_revision=expected)
         else:
             with pytest.raises(HashMismatchError, match="execution configuration changed"):
                 port.restore_graph("app-1", _actor(), {"nodes": [], "edges": []}, expected_revision=expected)
@@ -619,7 +633,10 @@ def test_repair_preserves_layout_committed_while_builder_was_planning(mock_sessi
         workflow.graph = json.dumps(graph)
 
     mock_session.refresh.side_effect = move_node
-    with patch("services.dify_builder.dify_port.WorkflowService") as service:
+    with (
+        patch("services.dify_builder.dify_port.WorkflowService") as service,
+        patch("services.dify_builder.dify_port.notify_workflow_draft_changed") as notify,
+    ):
         service.return_value.get_draft_workflow.return_value = workflow
 
         def sync_graph(**kwargs):
@@ -634,6 +651,7 @@ def test_repair_preserves_layout_committed_while_builder_was_planning(mock_sessi
             [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "AI edit"})],
             expected_revision=expected,
         )
+        assert notify.call_args.kwargs["previous_graph"]["nodes"][0]["position"] == {"x": 900, "y": 500}
 
     assert workflow.graph_dict["nodes"][0]["position"] == {"x": 900, "y": 500}
     assert workflow.graph_dict["nodes"][0]["data"]["code"] == "AI edit"

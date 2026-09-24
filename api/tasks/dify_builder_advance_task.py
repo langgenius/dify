@@ -100,12 +100,20 @@ def _persist_failed_state(
     return repo.compare_and_advance(session.id, session.version, PcState.FAILED, context, [item])
 
 
-@shared_task(queue="dify_builder", soft_time_limit=dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS)
+@shared_task(
+    queue="dify_builder",
+    soft_time_limit=dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS,
+    time_limit=session_lock.active_advance_time_limit(),
+)
 def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token: str) -> None:
     """Run one ``Runner.advance`` for ``session_id``, then release the
     advance lock held under ``token``. Always releases the lock, even on a
     lost CAS race or an unexpected engine failure -- a stuck lock would wedge
     the session for its full TTL (``DIFY_BUILDER_MAX_ADVANCE_SECONDS``)."""
+    if not session_lock.activate(session_id, token):
+        logger.warning("dify_builder stale queued advance ignored for session %s", session_id)
+        return
+
     terminal_error: dict | None = None
     completed: tuple[SqlDifyBuilderRepository, WorkflowServiceDifyPort, Actor] | None = None
     repo: SqlDifyBuilderRepository | None = None

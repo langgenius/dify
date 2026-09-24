@@ -73,6 +73,7 @@ const isSameTurn = (left: DifyBuilderStreamingTurn, right: DifyBuilderStreamingT
 
 const utf8ByteLength = (text: string) => new TextEncoder().encode(text).byteLength
 const STREAM_CHARACTERS_PER_FRAME = 24
+const STREAM_MAX_PENDING_CHARACTERS = 2048
 
 type FinishWaiter = {
   turn: DifyBuilderStreamingTurn
@@ -90,7 +91,11 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
   const setStreamingTurn = useSetAtom(difyBuilderStreamingTurnAtom)
   const accumulatedTurnRef = useRef<DifyBuilderStreamingTurn | null>(null)
   const visibleTurnRef = useRef<DifyBuilderStreamingTurn | null>(null)
-  const pendingTextRef = useRef('')
+  const textChunksRef = useRef<string[]>([])
+  const pendingChunksRef = useRef<string[]>([])
+  const pendingChunkIndexRef = useRef(0)
+  const pendingChunkOffsetRef = useRef(0)
+  const pendingLengthRef = useRef(0)
   const finishedTurnRef = useRef<DifyBuilderStreamingTurn | null>(null)
   const finishWaiterRef = useRef<FinishWaiter | null>(null)
   const scheduledFrameRef = useRef<ScheduledFrame | null>(null)
@@ -105,7 +110,11 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
     (turn: DifyBuilderStreamingTurn) => {
       accumulatedTurnRef.current = null
       visibleTurnRef.current = null
-      pendingTextRef.current = ''
+      textChunksRef.current = []
+      pendingChunksRef.current = []
+      pendingChunkIndexRef.current = 0
+      pendingChunkOffsetRef.current = 0
+      pendingLengthRef.current = 0
       finishedTurnRef.current = turn
       setStreamingTurn((current) => (current && isSameTurn(current, turn) ? null : current))
       const waiter = finishWaiterRef.current
@@ -120,7 +129,11 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
       cancelPendingFrame()
       accumulatedTurnRef.current = null
       visibleTurnRef.current = null
-      pendingTextRef.current = ''
+      textChunksRef.current = []
+      pendingChunksRef.current = []
+      pendingChunkIndexRef.current = 0
+      pendingChunkOffsetRef.current = 0
+      pendingLengthRef.current = 0
       const waiter = finishWaiterRef.current
       finishWaiterRef.current = null
       waiter?.resolve(null)
@@ -143,14 +156,17 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
       finishWaiterRef.current?.resolve(null)
       finishWaiterRef.current = null
       visibleTurnRef.current = null
-      pendingTextRef.current = ''
+      textChunksRef.current = []
+      pendingChunksRef.current = []
+      pendingChunkIndexRef.current = 0
+      pendingChunkOffsetRef.current = 0
+      pendingLengthRef.current = 0
     }
-    const accumulated =
-      current && isSameTurn(current, next)
-        ? { ...next, replyText: `${current.replyText}${next.replyText}` }
-        : next
+    textChunksRef.current.push(next.replyText)
+    pendingChunksRef.current.push(next.replyText)
+    pendingLengthRef.current += next.replyText.length
+    const accumulated = { ...next, replyText: '' }
     accumulatedTurnRef.current = accumulated
-    pendingTextRef.current += next.replyText
     return accumulated
   }, [])
 
@@ -172,17 +188,43 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
         return
       }
 
-      const pending = pendingTextRef.current
-      const revealedText = Boolean(pending)
-      if (pending) {
-        const codePoints = Array.from(pending)
+      const revealedText = pendingLengthRef.current > 0
+      if (revealedText) {
         const revealImmediately =
-          typeof document !== 'undefined' && document.visibilityState === 'hidden'
-        const size = revealImmediately
-          ? codePoints.length
-          : Math.min(STREAM_CHARACTERS_PER_FRAME, codePoints.length)
-        const delta = codePoints.slice(0, size).join('')
-        pendingTextRef.current = pending.slice(delta.length)
+          finishWaiterRef.current !== null ||
+          pendingLengthRef.current > STREAM_MAX_PENDING_CHARACTERS ||
+          (typeof document !== 'undefined' && document.visibilityState === 'hidden')
+        let delta = ''
+        if (revealImmediately) {
+          const pending = pendingChunksRef.current
+          delta = pending[pendingChunkIndexRef.current]!.slice(pendingChunkOffsetRef.current)
+          if (pendingChunkIndexRef.current + 1 < pending.length)
+            delta += pending.slice(pendingChunkIndexRef.current + 1).join('')
+          pendingChunksRef.current = []
+          pendingChunkIndexRef.current = 0
+          pendingChunkOffsetRef.current = 0
+          pendingLengthRef.current = 0
+        } else {
+          const characters: string[] = []
+          while (characters.length < STREAM_CHARACTERS_PER_FRAME && pendingLengthRef.current > 0) {
+            const chunk = pendingChunksRef.current[pendingChunkIndexRef.current]!
+            const character = String.fromCodePoint(
+              chunk.codePointAt(pendingChunkOffsetRef.current)!,
+            )
+            characters.push(character)
+            pendingChunkOffsetRef.current += character.length
+            pendingLengthRef.current -= character.length
+            if (pendingChunkOffsetRef.current === chunk.length) {
+              pendingChunkIndexRef.current++
+              pendingChunkOffsetRef.current = 0
+            }
+          }
+          delta = characters.join('')
+          if (pendingChunkIndexRef.current >= 256) {
+            pendingChunksRef.current = pendingChunksRef.current.slice(pendingChunkIndexRef.current)
+            pendingChunkIndexRef.current = 0
+          }
+        }
         const visible = visibleTurnRef.current
         const nextVisible = {
           ...accumulated,
@@ -195,7 +237,7 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
         })
       }
 
-      if (pendingTextRef.current) {
+      if (pendingLengthRef.current) {
         scheduledFrameRef.current = scheduleFrame(flushPendingText)
         return
       }
@@ -207,7 +249,7 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
           scheduledFrameRef.current = scheduleFrame(flushPendingText)
           return
         }
-        completeTurn(accumulated)
+        completeTurn(waiter.turn)
       }
     },
     [completeTurn, discardTurn, setStreamingTurn, store],
@@ -270,20 +312,21 @@ export const useDifyBuilderStreamingTurnBuffer = () => {
 
       const accumulated = accumulate(message)
       if (!accumulated) return Promise.resolve(null)
-      if (utf8ByteLength(accumulated.replyText) !== message.text_bytes) {
+      const completedTurn = { ...accumulated, replyText: textChunksRef.current.join('') }
+      if (utf8ByteLength(completedTurn.replyText) !== message.text_bytes) {
         discardTurn(accumulated)
         return Promise.resolve(null)
       }
 
       return new Promise((resolve) => {
-        finishWaiterRef.current = { turn: accumulated, resolve }
+        finishWaiterRef.current = { turn: completedTurn, resolve }
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
           cancelPendingFrame()
-          completeTurn(accumulated)
+          completeTurn(completedTurn)
           return
         }
-        if (!pendingTextRef.current) {
-          completeTurn(accumulated)
+        if (!pendingLengthRef.current) {
+          completeTurn(completedTurn)
           return
         }
         if (!scheduledFrameRef.current) scheduledFrameRef.current = scheduleFrame(flush)

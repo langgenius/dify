@@ -276,10 +276,7 @@ describe('useDifyBuilderSessionController streaming', () => {
     await waitFor(() => expect(globalThis.requestAnimationFrame).toHaveBeenCalledTimes(2))
     expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem])
 
-    act(() => {
-      flushAnimationFrames()
-      flushAnimationFrames()
-    })
+    act(flushAnimationFrames)
     expect(store.get(difyBuilderStreamingTurnAtom)?.replyText).toBe(reply)
     expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem])
     act(flushAnimationFrames)
@@ -309,6 +306,72 @@ describe('useDifyBuilderSessionController streaming', () => {
       },
       { signal: expect.any(AbortSignal) },
     )
+  })
+
+  it('promotes a long streamed reply within two frames after its final marker', async () => {
+    const reply = '🧠'.repeat(4000)
+    const replyBytes = new TextEncoder().encode(reply).byteLength
+    const initialItem: ConversationItem = {
+      seq: 0,
+      at_version: 1,
+      kind: 'user',
+      payload: { text: 'Continue', turn_id: 'turn-user-1' },
+    }
+    const waiting = createSessionView({
+      conversation_last_seq: 0,
+      version: 2,
+      run_status: 'waiting_input',
+    })
+    const terminal = createSessionView({ ...waiting, conversation_last_seq: 1, version: 4 })
+    const turn: ConversationItem = {
+      seq: 1,
+      at_version: 4,
+      kind: 'assistant_turn',
+      payload: {
+        turn_id: 'turn-1',
+        execution: { status: 'completed' },
+        reply_text: reply,
+        cards: [],
+      },
+    }
+    const stream = createControlledEventStream()
+    clientMocks.message.mockResolvedValue(stream.iterable)
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+      store.set(difyBuilderConversationAtom, [initialItem])
+    })
+
+    let messagePromise!: Promise<boolean>
+    act(() => {
+      messagePromise = result.current.sendMessage('Continue')
+    })
+    await waitFor(() => expect(store.get(difyBuilderSessionBusyAtom)).toBe(true))
+    act(() => stream.push(commandStartedEvent(waiting)))
+    await waitFor(() => expect(store.get(difyBuilderActiveCommandAtom)).not.toBeNull())
+    act(() => {
+      stream.push(agentMessageEvent(reply, 1, { text_bytes: replyBytes }))
+      stream.push(
+        agentMessageEvent('', 2, {
+          done: true,
+          execution: { status: 'completed' },
+          text_bytes: replyBytes,
+        }),
+      )
+    })
+    await waitFor(() => expect(globalThis.requestAnimationFrame).toHaveBeenCalledOnce())
+
+    act(flushAnimationFrames)
+    expect(store.get(difyBuilderStreamingTurnAtom)?.replyText).toBe(reply)
+    expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem])
+    act(flushAnimationFrames)
+    await waitFor(() => expect(store.get(difyBuilderConversationAtom)).toEqual([initialItem, turn]))
+
+    await act(async () => {
+      stream.push(stateEvent(terminal))
+      expect(await messagePromise).toBe(true)
+    })
   })
 
   it('recovers the persisted reply when the final byte count exposes a missing delta', async () => {

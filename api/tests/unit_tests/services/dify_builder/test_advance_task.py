@@ -77,6 +77,11 @@ def repo(engine: Engine) -> SqlDifyBuilderRepository:
     return SqlDifyBuilderRepository(factory)
 
 
+@pytest.fixture(autouse=True)
+def active_worker_lock(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, _token: True)
+
+
 @pytest.fixture
 def wired(monkeypatch, repo: SqlDifyBuilderRepository):
     """Patch the task's outbound seams: the SQLite repo, ``FakeDifyPort`` in
@@ -172,6 +177,23 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
 
     assert (s.id, "tok-2") in released
     assert (s.id, "tok-3") in released
+
+
+def test_expired_queued_task_does_not_run_or_release_newer_lock(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+    wired,
+) -> None:
+    events, released = wired
+    session = _seed_fix_session(repo)
+    monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, _token: False)
+
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "expired-token")
+
+    stored, _context = repo.get_session(session.id)
+    assert stored.version == 1
+    assert events == []
+    assert released == []
 
 
 def test_advance_session_conflict_error_publishes_conflict_and_releases_lock(
