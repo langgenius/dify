@@ -289,10 +289,15 @@ export function useDifyBuilderSessionController(
       controller: AbortController,
       initialSessionId?: string,
     ): Promise<SessionStreamOutcome> => {
+      const currentView = store.get(difyBuilderSessionViewAtom)
       const outcome: SessionStreamOutcome = {
         sessionId: initialSessionId,
         sawCommandStarted: false,
         terminalEvent: null,
+        conversationStartSeq:
+          initialSessionId && currentView?.session_id === initialSessionId
+            ? (store.get(difyBuilderConversationAtom).at(-1)?.seq ?? -1)
+            : -1,
       }
       const handleEvent = async (event: DifyBuilderStreamEventResponse): Promise<boolean> => {
         // payload is captured shallow-by-reference here; it is only

@@ -507,6 +507,50 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
   })
 
+  it('fetches only new conversation items when a reconnect stream finishes without command_started', async () => {
+    const history: ConversationItem[] = Array.from({ length: 103 }, (_, seq) => ({
+      seq,
+      at_version: 1,
+      kind: 'notice',
+      payload: { text: `History item ${seq}` },
+    }))
+    const executing = createSessionView({ conversation_last_seq: 100, version: 3 })
+    const terminal = createSessionView({
+      ...executing,
+      conversation_last_seq: 102,
+      run_status: 'waiting_input',
+      version: 4,
+    })
+    clientMocks.get.mockResolvedValue(executing)
+    clientMocks.stream.mockResolvedValue(streamOf(stateEvent(terminal)))
+    clientMocks.conversation.mockImplementation(
+      ({ query }: { query: { after_seq?: number; before_seq?: number; limit: number } }) => {
+        const end = query.before_seq ?? history.length
+        const start =
+          query.after_seq === undefined ? Math.max(0, end - query.limit) : query.after_seq + 1
+        const page = history.slice(start, Math.min(end, start + query.limit))
+        return Promise.resolve(conversationPage(page, query.before_seq !== undefined && start > 0))
+      },
+    )
+    const { result, store } = renderSessionHook()
+
+    await act(async () => {
+      expect(await result.current.restore('session-1')).toBe(true)
+    })
+
+    expect(clientMocks.conversation).toHaveBeenCalledTimes(2)
+    expect(clientMocks.conversation).toHaveBeenNthCalledWith(
+      2,
+      {
+        params: { session_id: 'session-1' },
+        query: { after_seq: 100, limit: 100 },
+      },
+      { context: { silent: true }, signal: expect.any(AbortSignal) },
+    )
+    expect(store.get(difyBuilderConversationAtom)).toEqual(history.slice(81))
+    expect(store.get(difyBuilderConversationHasMoreAtom)).toBe(true)
+  })
+
   it('keeps a thinking restore stream open until the authoritative state arrives', async () => {
     const thinking = createSessionView({
       session_id: 'session-restored',
