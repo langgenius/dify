@@ -899,6 +899,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
         created_by="account-1",
         updated_by="account-1",
     )
+    assert agent.app_id is not None
     site = Site(
         app_id=agent.app_id,
         title="Agent Site",
