@@ -144,27 +144,8 @@ describe('useAppInfoActions', () => {
 
   describe('Initial state', () => {
     it('should return initial state correctly', () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
       expect(result.current.appDetail).toEqual(mockAppDetail)
-      expect(result.current.activeModal).toBeNull()
-      expect(result.current.secretEnvList).toEqual([])
-    })
-  })
-
-  describe('App-scoped state', () => {
-    it('should reset app-scoped state when resetKey changes', () => {
-      const { result, rerender } = renderHook(({ resetKey }) => useAppInfoActions({ resetKey }), {
-        initialProps: { resetKey: 'app-1' },
-      })
-
-      act(() => {
-        result.current.openModal('delete')
-      })
-
-      expect(result.current.activeModal).toBe('delete')
-
-      rerender({ resetKey: 'app-2' })
-
       expect(result.current.activeModal).toBeNull()
       expect(result.current.secretEnvList).toEqual([])
     })
@@ -172,7 +153,7 @@ describe('useAppInfoActions', () => {
 
   describe('Modal management', () => {
     it('should open modal', () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       act(() => {
         result.current.openModal('edit')
@@ -182,7 +163,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should close modal', () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       act(() => {
         result.current.openModal('delete')
@@ -201,7 +182,7 @@ describe('useAppInfoActions', () => {
       const updatedApp = { ...mockAppDetail, name: 'Updated', max_active_requests: null }
       mockUpdateAppInfo.mockResolvedValue(updatedApp)
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onEdit({
@@ -244,7 +225,7 @@ describe('useAppInfoActions', () => {
       mockUpdateAppInfo.mockResolvedValue(updatedApp)
       mockGetSocket.mockReturnValue(socket)
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onEdit({
@@ -270,7 +251,7 @@ describe('useAppInfoActions', () => {
     it('should notify error on edit failure', async () => {
       mockUpdateAppInfo.mockRejectedValue(new Error('fail'))
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onEdit({
@@ -289,7 +270,7 @@ describe('useAppInfoActions', () => {
     it('should not call updateAppInfo when appDetail is undefined', async () => {
       mockAppDetail = undefined
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onEdit({
@@ -321,7 +302,7 @@ describe('useAppInfoActions', () => {
               },
         )
 
-        const { result } = renderHook(() => useAppInfoActions({}))
+        const { result } = renderHook(() => useAppInfoActions())
 
         await act(async () => {
           await result.current.onCopy({
@@ -355,7 +336,7 @@ describe('useAppInfoActions', () => {
     it('should notify error on copy failure', async () => {
       mockCopyApp.mockRejectedValue(new Error('fail'))
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onCopy({
@@ -377,7 +358,7 @@ describe('useAppInfoActions', () => {
     it('should not call copyApp when appDetail is undefined', async () => {
       mockAppDetail = undefined
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onCopy({
@@ -394,7 +375,7 @@ describe('useAppInfoActions', () => {
 
   describe('onExport', () => {
     it('should export the app DSL', async () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onExport(false)
@@ -410,7 +391,7 @@ describe('useAppInfoActions', () => {
 
   it('preserves the export failure result for the confirmation dialog', async () => {
     mockExportAppDsl.mockResolvedValue({ status: 'failed' })
-    const { result } = renderHook(() => useAppInfoActions({}))
+    const { result } = renderHook(() => useAppInfoActions())
     await act(async () => {
       await expect(result.current.onExport(true)).resolves.toBe(false)
     })
@@ -420,7 +401,7 @@ describe('useAppInfoActions', () => {
     it('should not export when appDetail is undefined', async () => {
       mockAppDetail = undefined
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onExport()
@@ -432,7 +413,7 @@ describe('useAppInfoActions', () => {
 
   describe('exportCheck', () => {
     it('should call onExport directly for non-workflow modes', async () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.exportCheck()
@@ -444,7 +425,7 @@ describe('useAppInfoActions', () => {
     it('should open export warning modal for workflow mode', async () => {
       mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.exportCheck()
@@ -456,7 +437,7 @@ describe('useAppInfoActions', () => {
     it('should open export warning modal for advanced_chat mode', async () => {
       mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.ADVANCED_CHAT }
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.exportCheck()
@@ -470,7 +451,7 @@ describe('useAppInfoActions', () => {
     it('should not do anything when appDetail is undefined', async () => {
       mockAppDetail = undefined
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.exportCheck()
@@ -486,7 +467,7 @@ describe('useAppInfoActions', () => {
       mockExportWorkflowAppDsl
         .mockResolvedValueOnce({ status: 'failed' })
         .mockResolvedValueOnce({ status: 'downloaded' })
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
       await act(async () => {
         await result.current.exportCheck()
       })
@@ -502,7 +483,7 @@ describe('useAppInfoActions', () => {
 
     it('should export directly when no secret env variables', async () => {
       mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.handleConfirmExport()
@@ -522,7 +503,7 @@ describe('useAppInfoActions', () => {
         secretEnvList: secretVars,
       })
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.handleConfirmExport()
@@ -536,7 +517,7 @@ describe('useAppInfoActions', () => {
     it('should not do anything when appDetail is undefined', async () => {
       mockAppDetail = undefined
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.handleConfirmExport()
@@ -550,7 +531,7 @@ describe('useAppInfoActions', () => {
     it('should delete app and redirect on success', async () => {
       mockDeleteApp.mockResolvedValue({})
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onConfirmDelete()
@@ -568,7 +549,7 @@ describe('useAppInfoActions', () => {
     it('should not delete when appDetail is undefined', async () => {
       mockAppDetail = undefined
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onConfirmDelete()
@@ -580,7 +561,7 @@ describe('useAppInfoActions', () => {
     it('should notify error on delete failure', async () => {
       mockDeleteApp.mockRejectedValue({ message: 'cannot delete' })
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderHook(() => useAppInfoActions())
 
       await act(async () => {
         await result.current.onConfirmDelete()
@@ -608,7 +589,7 @@ describe('useAppInfoActions', () => {
       })
       mockFetchAppDetail.mockResolvedValue(updated)
 
-      const { unmount } = renderHook(() => useAppInfoActions({}))
+      const { unmount } = renderHook(() => useAppInfoActions())
       await new Promise((resolve) => setTimeout(resolve, 0))
 
       await act(async () => {
