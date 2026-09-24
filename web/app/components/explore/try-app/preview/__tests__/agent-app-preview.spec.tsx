@@ -2,11 +2,11 @@ import type {
   AgentAppComposerResponse,
   TrialAppDetailResponse,
 } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { CurrentWorkspaceSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { consoleQuery } from '@/service/console'
+import { afterAll, describe, expect, it, vi } from 'vite-plus/test'
 import AgentAppPreview from '../agent-app-preview'
 
 const appDetail = {
@@ -63,28 +63,25 @@ const builtInTools = [
   },
 ]
 
-function createQueryClient() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  client.setQueryData(consoleQuery.workspaces.current.summary.get.queryKey(), {
-    id: 'workspace-id',
-    name: 'Test workspace',
-    plan: null,
-    credits: null,
-    role: 'normal',
-  })
-  return client
-}
+const workspaceSummary = {
+  id: 'workspace-id',
+  name: 'Test workspace',
+  plan: null,
+  credits: null,
+  role: 'normal',
+} satisfies CurrentWorkspaceSummaryResponse
 
 describe('AgentAppPreview', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterAll(() => vi.unstubAllGlobals())
 
   it('shows a read-only Agent configuration alongside the template introduction', async () => {
-    const client = createQueryClient()
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: Request | string) => {
         const url = input instanceof Request ? input.url : input
         if (url.endsWith('/workspaces/current/tools/builtin')) return Response.json(builtInTools)
+        if (url.endsWith('/workspaces/current/summary')) return Response.json(workspaceSummary)
         throw new Error(`Unexpected request: ${url}`)
       }),
     )
@@ -119,7 +116,7 @@ describe('AgentAppPreview', () => {
   })
 
   it('opens the existing resource dialogs through trial app endpoints', async () => {
-    const client = createQueryClient()
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const user = userEvent.setup()
     const requests: string[] = []
     vi.stubGlobal(
@@ -128,6 +125,7 @@ describe('AgentAppPreview', () => {
         const url = input instanceof Request ? input.url : input
         requests.push(url)
         if (url.endsWith('/workspaces/current/tools/builtin')) return Response.json(builtInTools)
+        if (url.endsWith('/workspaces/current/summary')) return Response.json(workspaceSummary)
         if (url.endsWith('/agent/config/skills/Tender%20Analyzer/inspect')) {
           return Response.json({
             id: 'skill-id',
