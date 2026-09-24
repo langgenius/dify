@@ -107,13 +107,13 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
       className={
         stickyToolbar
           ? layout
-            ? 'flex w-full items-center justify-between gap-3'
-            : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
-          : 'mb-2 flex items-center justify-between gap-3'
+            ? 'flex w-full flex-wrap items-center justify-between gap-3'
+            : 'sticky top-0 z-10 -mx-6 mb-2 flex flex-wrap items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
+          : 'mb-2 flex flex-wrap items-center justify-between gap-3'
       }
     >
       <SearchInput
-        className="w-50"
+        className="w-full min-w-0 sm:w-50"
         placeholder={t(($) => $['operation.search'], { ns: 'common' })}
         value={searchText}
         onValueChange={setSearchText}
