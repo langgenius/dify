@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, NotRequired, TypedDict
 
-from pydantic import AliasChoices, Field, JsonValue, field_validator
+from pydantic import AliasChoices, ConfigDict, Field, JsonValue, field_validator, with_config
 
 from core.entities.agent_entities import PlanningStrategy
 from core.rag.entities.metadata_entities import SupportedComparisonOperator
@@ -18,6 +18,7 @@ class AppEnabledConfigResponse(TypedDict):
     enabled: bool
 
 
+@with_config(ConfigDict(extra="allow"))
 class AppModelSelectionResponse(TypedDict, total=False):
     provider: str
     name: str
@@ -54,12 +55,15 @@ class AppAnnotationReplyEnabledResponse(TypedDict):
     embedding_model: AppEmbeddingModelResponse
 
 
+@with_config(ConfigDict(extra="allow"))
 class AppSensitiveWordAvoidanceResponse(TypedDict):
     enabled: bool
     type: NotRequired[str]
     config: NotRequired[dict[str, JsonValue]]
+    configs: NotRequired[list[JsonValue]]
 
 
+@with_config(ConfigDict(extra="allow"))
 class AppEnabledExternalDataToolResponse(TypedDict):
     enabled: Literal[True]
     variable: str
@@ -70,6 +74,7 @@ class AppEnabledExternalDataToolResponse(TypedDict):
     icon_background: NotRequired[str]
 
 
+@with_config(ConfigDict(extra="allow"))
 class AppDisabledExternalDataToolResponse(TypedDict):
     enabled: Literal[False]
     variable: NotRequired[str]
@@ -80,6 +85,7 @@ class AppDisabledExternalDataToolResponse(TypedDict):
     icon_background: NotRequired[str]
 
 
+@with_config(ConfigDict(extra="allow"))
 class AppUserInputFormConfigResponse(TypedDict):
     variable: str
     label: str
@@ -95,6 +101,9 @@ class AppUserInputFormConfigResponse(TypedDict):
     allowed_file_upload_methods: NotRequired[list[FileTransferMethod]]
     json_schema: NotRequired[str | dict[str, JsonValue] | None]
     config: NotRequired[dict[str, JsonValue]]
+    enabled: NotRequired[bool]
+    icon: NotRequired[str | None]
+    icon_background: NotRequired[str | None]
 
 
 AppTextInputFormResponse = TypedDict("AppTextInputFormResponse", {"text-input": AppUserInputFormConfigResponse})
@@ -155,6 +164,7 @@ class AppLegacySensitiveWordToolResponse(TypedDict):
     canned_response: str
 
 
+@with_config(ConfigDict(extra="allow"))
 class AppProviderAgentToolResponse(TypedDict):
     provider_type: ToolProviderType
     provider_id: str
@@ -211,9 +221,10 @@ class AppAgentPromptResponse(TypedDict, total=False):
     next_iteration: str
 
 
+@with_config(ConfigDict(extra="allow"))
 class AppAgentModeResponse(TypedDict):
     enabled: bool
-    strategy: PlanningStrategy | None
+    strategy: NotRequired[PlanningStrategy | Literal["cot", "function-calling"] | None]
     tools: list[AppAgentToolResponse]
     prompt: NotRequired[AppAgentPromptResponse | str | None]
     max_iteration: NotRequired[int]
@@ -272,7 +283,10 @@ class AppWeightsResponse(TypedDict):
     weight_type: NotRequired[Literal["semantic_first", "keyword_first", "customized"]]
 
 
+@with_config(ConfigDict(extra="allow"))
 class AppMetadataConditionResponse(TypedDict):
+    id: NotRequired[str]
+    metadata_id: NotRequired[str]
     name: str
     comparison_operator: SupportedComparisonOperator
     value: NotRequired[str | list[str] | int | float | None]
@@ -283,6 +297,7 @@ class AppMetadataFilteringConditionsResponse(TypedDict, total=False):
     conditions: list[AppMetadataConditionResponse] | None
 
 
+@with_config(ConfigDict(extra="allow"))
 class AppDatasetConfigsResponse(TypedDict):
     retrieval_model: Literal["single", "multiple"]
     datasets: NotRequired[AppDatasetListResponse]
@@ -292,6 +307,7 @@ class AppDatasetConfigsResponse(TypedDict):
     reranking_model: NotRequired[AppRerankingModelResponse | None]
     weights: NotRequired[AppWeightsResponse | None]
     reranking_enabled: NotRequired[bool]
+    reranking_enable: NotRequired[bool]
     reranking_mode: NotRequired[RerankMode]
     metadata_filtering_mode: NotRequired[Literal["disabled", "automatic", "manual"]]
     metadata_model_config: NotRequired[AppModelSelectionResponse | None]

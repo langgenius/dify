@@ -15749,7 +15749,7 @@ This class is used to store the schema information of an api based tool.
 | enabled | boolean |  | Yes |
 | max_iteration | integer |  | No |
 | prompt | [AppAgentPromptResponse](#appagentpromptresponse)<br>string |  | No |
-| strategy | [PlanningStrategy](#planningstrategy) |  | Yes |
+| strategy | [PlanningStrategy](#planningstrategy)<br>string, <br>**Available values:** "cot", "function-calling" |  | No |
 | tools | [ [AppProviderAgentToolResponse](#appprovideragenttoolresponse)<br>[AppLegacyDatasetToolResponse](#applegacydatasettoolresponse)<br>[AppLegacyGoogleSearchToolResponse](#applegacygooglesearchtoolresponse)<br>[AppLegacyWebReaderToolResponse](#applegacywebreadertoolresponse)<br>[AppLegacyWikipediaToolResponse](#applegacywikipediatoolresponse)<br>[AppLegacyCurrentDatetimeToolResponse](#applegacycurrentdatetimetoolresponse)<br>[AppLegacySensitiveWordToolResponseItem](#applegacysensitivewordtoolresponseitem) ] |  | Yes |
 
 #### AppAgentPromptResponse
@@ -15827,6 +15827,7 @@ This class is used to store the schema information of an api based tool.
 | metadata_filtering_conditions | [AppMetadataFilteringConditionsResponse](#appmetadatafilteringconditionsresponse) |  | No |
 | metadata_filtering_mode | string, <br>**Available values:** "automatic", "disabled", "manual" | *Enum:* `"automatic"`, `"disabled"`, `"manual"` | No |
 | metadata_model_config | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
+| reranking_enable | boolean |  | No |
 | reranking_enabled | boolean |  | No |
 | reranking_mode | [RerankMode](#rerankmode) |  | No |
 | reranking_model | [AppRerankingModelResponse](#apprerankingmodelresponse) |  | No |
@@ -16170,6 +16171,8 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| id | string |  | No |
+| metadata_id | string |  | No |
 | name | string |  | Yes |
 | value | string<br>[ string ]<br>integer<br>number |  | No |
 
@@ -16323,6 +16326,7 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | config | object |  | No |
+| configs | [ [JsonValue](#jsonvalue) ] |  | No |
 | enabled | boolean |  | Yes |
 | type | string |  | No |
 
@@ -16422,7 +16426,10 @@ AppMCPServer Status Enum
 | config | object |  | No |
 | default | [JsonValue](#jsonvalue) |  | No |
 | description | string |  | No |
+| enabled | boolean |  | No |
 | hide | boolean |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
 | json_schema | string<br>object |  | No |
 | label | string |  | Yes |
 | max_length | integer |  | No |

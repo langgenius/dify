@@ -2980,6 +2980,7 @@ export const zAppPagination = z.object({
  */
 export const zAppSensitiveWordAvoidanceResponse = z.object({
   config: z.record(z.string(), zJsonValue2).optional(),
+  configs: z.array(zJsonValue2).optional(),
   enabled: z.boolean(),
   type: z.string().optional(),
 })
@@ -3080,7 +3081,10 @@ export const zAppUserInputFormConfigResponse = z.object({
   config: z.record(z.string(), zJsonValue2).optional(),
   default: zJsonValue2.optional(),
   description: z.string().optional(),
+  enabled: z.boolean().optional(),
   hide: z.boolean().optional(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
   json_schema: z.union([z.string(), z.record(z.string(), zJsonValue2)]).nullish(),
   label: z.string(),
   max_length: z.int().nullish(),
@@ -3632,7 +3636,7 @@ export const zAppAgentModeResponse = z.object({
   enabled: z.boolean(),
   max_iteration: z.int().optional(),
   prompt: z.union([zAppAgentPromptResponse, z.string()]).nullish(),
-  strategy: zPlanningStrategy.nullable(),
+  strategy: z.union([zPlanningStrategy, z.enum(['cot', 'function-calling'])]).nullish(),
   tools: z.array(
     z.union([
       zAppProviderAgentToolResponse,
@@ -3685,6 +3689,8 @@ export const zAppMetadataConditionResponse = z.object({
     '≤',
     '≥',
   ]),
+  id: z.string().optional(),
+  metadata_id: z.string().optional(),
   name: z.string(),
   value: z.union([z.string(), z.array(z.string()), z.int(), z.number()]).nullish(),
 })
@@ -3730,6 +3736,7 @@ export const zAppDatasetConfigsResponse = z.object({
   metadata_filtering_conditions: zAppMetadataFilteringConditionsResponse.nullish(),
   metadata_filtering_mode: z.enum(['automatic', 'disabled', 'manual']).optional(),
   metadata_model_config: zAppModelSelectionResponse.nullish(),
+  reranking_enable: z.boolean().optional(),
   reranking_enabled: z.boolean().optional(),
   reranking_mode: zRerankMode.optional(),
   reranking_model: zAppRerankingModelResponse.nullish(),

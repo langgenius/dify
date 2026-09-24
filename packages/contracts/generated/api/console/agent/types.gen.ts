@@ -1031,7 +1031,7 @@ export type AppAgentModeResponse = {
   enabled: boolean
   max_iteration?: number
   prompt?: AppAgentPromptResponse | string | null
-  strategy: PlanningStrategy | null
+  strategy?: PlanningStrategy | 'cot' | 'function-calling' | null
   tools: Array<
     | AppProviderAgentToolResponse
     | AppLegacyDatasetToolResponse
@@ -1041,6 +1041,7 @@ export type AppAgentModeResponse = {
     | AppLegacyCurrentDatetimeToolResponse
     | AppLegacySensitiveWordToolResponseItem
   >
+  [key: string]: unknown
 }
 
 export type AppAnnotationReplyEnabledResponse = {
@@ -1068,6 +1069,7 @@ export type AppDatasetConfigsResponse = {
   metadata_filtering_conditions?: AppMetadataFilteringConditionsResponse | null
   metadata_filtering_mode?: 'automatic' | 'disabled' | 'manual'
   metadata_model_config?: AppModelSelectionResponse | null
+  reranking_enable?: boolean
   reranking_enabled?: boolean
   reranking_mode?: RerankMode
   reranking_model?: AppRerankingModelResponse | null
@@ -1076,6 +1078,7 @@ export type AppDatasetConfigsResponse = {
   score_threshold_enabled?: boolean
   top_k?: number
   weights?: AppWeightsResponse | null
+  [key: string]: unknown
 }
 
 export type AppEnabledExternalDataToolResponse = {
@@ -1088,6 +1091,7 @@ export type AppEnabledExternalDataToolResponse = {
   label?: string
   type: string
   variable: string
+  [key: string]: unknown
 }
 
 export type AppDisabledExternalDataToolResponse = {
@@ -1100,6 +1104,7 @@ export type AppDisabledExternalDataToolResponse = {
   label?: string
   type?: string
   variable?: string
+  [key: string]: unknown
 }
 
 export type AppFileUploadResponse = {
@@ -1118,6 +1123,7 @@ export type AppModelSelectionResponse = {
   mode?: LlmMode | ''
   name?: string
   provider?: string
+  [key: string]: unknown
 }
 
 export type AppEnabledConfigResponse = {
@@ -1130,8 +1136,10 @@ export type AppSensitiveWordAvoidanceResponse = {
   config?: {
     [key: string]: JsonValue2
   }
+  configs?: Array<JsonValue2>
   enabled: boolean
   type?: string
+  [key: string]: unknown
 }
 
 export type AppSuggestedQuestionsAfterAnswerResponse = {
@@ -1526,6 +1534,7 @@ export type AgentConfigRevisionOperation =
 export type AppAgentPromptResponse = {
   first_prompt?: string
   next_iteration?: string
+  [key: string]: unknown
 }
 
 export type PlanningStrategy = 'function_call' | 'react' | 'react_router' | 'router'
@@ -1544,38 +1553,45 @@ export type AppProviderAgentToolResponse = {
   tool_parameters: {
     [key: string]: JsonValue2
   }
+  [key: string]: unknown
 }
 
 export type AppLegacyDatasetToolResponse = {
   dataset: AppDatasetReferenceResponse
+  [key: string]: unknown
 }
 
 export type AppLegacyGoogleSearchToolResponse = {
   google_search: {
     [key: string]: JsonValue2
   }
+  [key: string]: unknown
 }
 
 export type AppLegacyWebReaderToolResponse = {
   web_reader: {
     [key: string]: JsonValue2
   }
+  [key: string]: unknown
 }
 
 export type AppLegacyWikipediaToolResponse = {
   wikipedia: {
     [key: string]: JsonValue2
   }
+  [key: string]: unknown
 }
 
 export type AppLegacyCurrentDatetimeToolResponse = {
   current_datetime: {
     [key: string]: JsonValue2
   }
+  [key: string]: unknown
 }
 
 export type AppLegacySensitiveWordToolResponseItem = {
   'sensitive-word-avoidance': AppLegacySensitiveWordToolResponse
+  [key: string]: unknown
 }
 
 export type AppEmbeddingModelResponse = {
@@ -1600,11 +1616,13 @@ export type AppCompletionPromptTextResponse = {
 export type AppDatasetListResponse = {
   datasets: Array<AppDatasetItemResponse>
   strategy?: string
+  [key: string]: unknown
 }
 
 export type AppMetadataFilteringConditionsResponse = {
   conditions?: Array<AppMetadataConditionResponse> | null
   logical_operator?: 'and' | 'or' | null
+  [key: string]: unknown
 }
 
 export type RerankMode = 'reranking_model' | 'weighted_score'
@@ -1612,12 +1630,14 @@ export type RerankMode = 'reranking_model' | 'weighted_score'
 export type AppRerankingModelResponse = {
   reranking_model_name?: string
   reranking_provider_name?: string
+  [key: string]: unknown
 }
 
 export type AppWeightsResponse = {
   keyword_setting: AppKeywordSettingResponse
   vector_setting: AppVectorSettingResponse
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first'
+  [key: string]: unknown
 }
 
 export type JsonValue2 = unknown
@@ -1644,7 +1664,10 @@ export type AppUserInputFormConfigResponse = {
   }
   default?: JsonValue2
   description?: string
+  enabled?: boolean
   hide?: boolean
+  icon?: string | null
+  icon_background?: string | null
   json_schema?:
     | string
     | {
@@ -1657,6 +1680,7 @@ export type AppUserInputFormConfigResponse = {
   required?: boolean
   type?: string
   variable: string
+  [key: string]: unknown
 }
 
 export type AgentFileUploadFeatureConfig = {
@@ -1922,16 +1946,19 @@ export type ToolProviderType =
 export type AppDatasetReferenceResponse = {
   enabled?: boolean
   id?: string
+  [key: string]: unknown
 }
 
 export type AppLegacySensitiveWordToolResponse = {
   canned_response: string
   enabled: boolean
   words: Array<string>
+  [key: string]: unknown
 }
 
 export type AppDatasetItemResponse = {
   dataset: AppDatasetReferenceResponse
+  [key: string]: unknown
 }
 
 export type AppMetadataConditionResponse = {
@@ -1954,18 +1981,23 @@ export type AppMetadataConditionResponse = {
     | '≠'
     | '≤'
     | '≥'
+  id?: string
+  metadata_id?: string
   name: string
   value?: string | Array<string> | number | number | null
+  [key: string]: unknown
 }
 
 export type AppKeywordSettingResponse = {
   keyword_weight: number
+  [key: string]: unknown
 }
 
 export type AppVectorSettingResponse = {
   embedding_model_name: string
   embedding_provider_name: string
   vector_weight: number
+  [key: string]: unknown
 }
 
 export type AgentFileUploadImageFeatureConfig = {
