@@ -27,7 +27,7 @@ type PasswordFormValues = {
 }
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const isTokenMissing = !token

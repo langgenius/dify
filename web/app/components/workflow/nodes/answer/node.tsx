@@ -7,7 +7,7 @@ import InfoPanel from '../_base/components/info-panel'
 import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
 
 const Node: FC<NodeProps<AnswerNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="mb-1 px-3 py-1">

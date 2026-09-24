@@ -93,10 +93,6 @@ vi.mock('@remixicon/react', () => ({
   RiPlayLargeLine: () => <span data-testid="play-icon" />,
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/line/mediaAndDevices', () => ({
-  StopCircle: () => <span data-testid="stop-icon" />,
-}))
-
 describe('RunMode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -170,7 +166,9 @@ describe('RunMode', () => {
     it('should show stop button', () => {
       render(<RunMode />)
 
-      expect(screen.getByTestId('stop-icon')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      ).toBeInTheDocument()
     })
 
     it('should disable run button', () => {

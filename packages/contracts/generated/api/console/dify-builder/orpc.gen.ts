@@ -19,7 +19,7 @@ import {
   zPostDifyBuilderSessionsBySessionIdMessagesPath,
   zPostDifyBuilderSessionsBySessionIdMessagesResponse,
   zPostDifyBuilderSessionsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const post = oc
   .route({

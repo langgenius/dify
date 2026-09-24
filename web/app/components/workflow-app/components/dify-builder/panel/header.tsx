@@ -1,7 +1,7 @@
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import DebugLogExport from '../debug-log-export'
 
 type DifyBuilderPanelHeaderProps = {
@@ -15,7 +15,7 @@ export const DifyBuilderPanelHeader = ({
   onReset,
   onClose,
 }: DifyBuilderPanelHeaderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
 
   return (
     <header className="relative z-10 flex h-11 shrink-0 items-center gap-2 bg-linear-to-b from-background-section to-transparent pr-3 pl-4.5">
@@ -24,20 +24,20 @@ export const DifyBuilderPanelHeader = ({
       </h2>
       <div className="relative flex shrink-0 items-center gap-2">
         <DebugLogExport />
-        <Infotip
-          aria-label={t(($) => $['difyBuilder.helpTitle'], { ns: 'workflow' })}
-          iconSize="large"
-          placement="bottom-end"
-          sideOffset={8}
-          className="size-7 rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-accent-active data-popup-open:text-text-accent"
-          popupClassName="flex w-58 flex-col gap-1 rounded-xl bg-components-tooltip-bg px-4 py-3.5 backdrop-blur-[5px]"
-        >
-          <PopoverTitle className="system-xs-semibold text-text-primary">
-            {t(($) => $['difyBuilder.helpTitle'], { ns: 'workflow' })}
-          </PopoverTitle>
-          <PopoverDescription className="system-xs-regular text-text-secondary">
-            {t(($) => $['difyBuilder.helpDescription'], { ns: 'workflow' })}
-          </PopoverDescription>
+        <Infotip>
+          <InfotipTrigger
+            aria-label={t(($) => $['difyBuilder.helpTitle'], { ns: 'workflow' })}
+            iconSize="large"
+            className="size-7 rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-accent-active data-popup-open:text-text-accent"
+          />
+          <InfotipContent placement="bottom-end" sideOffset={8} className="w-58">
+            <PopoverTitle className="system-xs-semibold text-text-primary">
+              {t(($) => $['difyBuilder.helpTitle'], { ns: 'workflow' })}
+            </PopoverTitle>
+            <PopoverDescription className="system-xs-regular text-text-secondary">
+              {t(($) => $['difyBuilder.helpDescription'], { ns: 'workflow' })}
+            </PopoverDescription>
+          </InfotipContent>
         </Infotip>
         <IconButton
           size="md"

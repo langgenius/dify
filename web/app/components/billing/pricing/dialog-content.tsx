@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { PricingContent } from './content'
 
 export function PricingDialogContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <>

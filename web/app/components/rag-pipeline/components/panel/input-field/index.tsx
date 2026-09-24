@@ -3,12 +3,12 @@ import type { Node } from '@/app/components/workflow/types'
 import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiEyeLine } from '@remixicon/react'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import { Infotip } from '@/app/components/base/infotip'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
@@ -20,7 +20,9 @@ import Datasource from './label-right-content/datasource'
 import GlobalInputs from './label-right-content/global-inputs'
 
 const InputFieldPanel = () => {
-  const { t } = useTranslation()
+  const uniqueInputsLabelId = useId()
+
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const nodes = useNodes<DataSourceNodeType>()
   const { closeAllInputFieldPanels, toggleInputFieldPreviewPanel, isPreviewing, isEditing } =
     useInputFieldPanel()
@@ -130,16 +132,17 @@ const InputFieldPanel = () => {
       <div className="flex grow flex-col overflow-y-auto">
         {/* Unique Inputs for Each Entrance */}
         <div className="flex h-6 items-center gap-x-0.5 px-4 pt-2">
-          <span className="system-sm-semibold-uppercase text-text-secondary">
+          <span
+            id={uniqueInputsLabelId}
+            className="system-sm-semibold-uppercase text-text-secondary"
+          >
             {t(($) => $['inputFieldPanel.uniqueInputs.title'], { ns: 'datasetPipeline' })}
           </span>
-          <Infotip
-            aria-label={t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], {
-              ns: 'datasetPipeline',
-            })}
-            popupClassName="max-w-[240px]"
-          >
-            {t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
+          <Infotip>
+            <InfotipTrigger aria-labelledby={uniqueInputsLabelId} />
+            <InfotipContent aria-labelledby={uniqueInputsLabelId} className="max-w-60">
+              {t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
+            </InfotipContent>
           </Infotip>
         </div>
         <div className="flex flex-col gap-y-1 py-1">

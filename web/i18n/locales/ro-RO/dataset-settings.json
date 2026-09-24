@@ -1,5 +1,6 @@
 {
   "desc": "Aici puteți modifica proprietățile și metodele de lucru ale cunoștințelor.",
+  "form.changeIcon": "Schimbă pictograma cunoștințelor",
   "form.chunkStructure.description": "despre Chunk Structure.",
   "form.chunkStructure.learnMore": "Află mai multe",
   "form.chunkStructure.title": "Structura bucății",

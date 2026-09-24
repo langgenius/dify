@@ -35,7 +35,7 @@ export const DifyBuilderConversation = memo(
     onActiveFormSubmit?: () => void
     onStreamingContentChange?: () => void
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const groups = useMemo(() => groupConversationItems(items), [items])
     const activeCard = activeInteraction?.card
     const interactionIsCurrent = activeInteraction?.valid_at_version === viewVersion

@@ -3,7 +3,7 @@
 import type { ChangeEvent, FC } from 'react'
 import type { Area, CropperProps } from 'react-easy-crop'
 import { cn } from '@langgenius/dify-ui/cn'
-import { createRef, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { useTranslation } from 'react-i18next'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
@@ -22,7 +22,7 @@ type UploaderProps = {
 }
 
 const ImageInput: FC<UploaderProps> = ({ className, cropShape, onImageInput }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
   const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
   useEffect(() => {
@@ -54,7 +54,7 @@ const ImageInput: FC<UploaderProps> = ({ className, cropShape, onImageInput }) =
   const { isDragActive, handleDragEnter, handleDragOver, handleDragLeave, handleDrop } =
     useDraggableUploader((file: File) => setInputImage({ file, url: URL.createObjectURL(file) }))
 
-  const inputRef = createRef<HTMLInputElement>()
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleShowImage = () => {
     if (isAnimatedImage) {

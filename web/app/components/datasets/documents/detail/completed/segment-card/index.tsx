@@ -66,7 +66,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   embeddingAvailable,
   focused,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const {
     id,
     position,
@@ -207,7 +207,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                             </IconButton>
                           }
                         />
-                        <TooltipContent className="system-xs-medium text-text-secondary">
+                        <TooltipContent>
                           {t(($) => $['operation.edit'], { ns: 'common' })}
                         </TooltipContent>
                       </Tooltip>
@@ -227,7 +227,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                             </IconButton>
                           }
                         />
-                        <TooltipContent className="system-xs-medium text-text-secondary">
+                        <TooltipContent>
                           {t(($) => $['operation.delete'], { ns: 'common' })}
                         </TooltipContent>
                       </Tooltip>

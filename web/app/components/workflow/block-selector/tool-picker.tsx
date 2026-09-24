@@ -60,7 +60,7 @@ export function ToolPickerContent({
   selectedTools,
   panelClassName,
 }: ToolPickerContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const canManageTools = useCanManageTools()
@@ -209,7 +209,7 @@ function ToolPicker({
   onShowChange,
   ...contentProps
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen && disabled) return
     onShowChange(nextOpen)

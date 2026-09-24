@@ -29,7 +29,7 @@ import MemberRow from './member-row'
 import TransferOwnershipModal from './transfer-ownership-modal'
 
 const MembersPage = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common'])
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 

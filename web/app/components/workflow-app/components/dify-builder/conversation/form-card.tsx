@@ -61,7 +61,7 @@ export const FormCard = memo(
     onActionValidityChange?: DifyBuilderActionValidityChange
     onSubmit?: () => void
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow', 'common'])
     const fileUploadConfig = useStore((state) => state.fileUploadConfig)
     const errorId = useId()
     const fields = item.payload.fields ?? EMPTY_FORM_FIELDS

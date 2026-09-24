@@ -11,7 +11,7 @@ import {
   zPostWorkflowGenerateStreamResponse,
   zPostWorkflowGenerateSuggestionsBody,
   zPostWorkflowGenerateSuggestionsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Expand a workflow-generator instruction with the details it leaves unstated

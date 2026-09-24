@@ -39,7 +39,7 @@ const useSingleRunFormParams = ({
   setRunInputData,
   toVarInputs,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { inputs } = useNodeCrud<LLMNodeType>(id, payload)
   const getVarInputs = getInputVars
   const isChatMode = useIsChatMode()
@@ -87,7 +87,7 @@ const useSingleRunFormParams = ({
   })()
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    return [
+    const supportedVariableTypes: readonly VarType[] = [
       VarType.arrayObject,
       VarType.array,
       VarType.number,
@@ -97,7 +97,9 @@ const useSingleRunFormParams = ({
       VarType.arrayNumber,
       VarType.file,
       VarType.arrayFile,
-    ].includes(varPayload.type)
+    ]
+
+    return supportedVariableTypes.includes(varPayload.type)
   }, [])
 
   const { availableVars } = useAvailableVarList(id, {

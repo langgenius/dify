@@ -1,8 +1,11 @@
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import Literal
 from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -29,10 +32,12 @@ from controllers.console.wraps import (
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, UploadConfig
 from libs.helper import dump_response
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
 from models import Account, UploadFile
+from models.enums import CreatorUserRole
 from services.feature_service import FeatureService
+from services.file_service import FileUploadActor, FileUploadResult
 
 register_response_schema_models(
     console_ns,
@@ -61,8 +66,8 @@ FILE_UPLOAD_PARAMS = {
 }
 
 
-def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> UploadFile:
-    """Validate the multipart request and persist the file under the requested resource tenant."""
+def _parse_file_upload() -> tuple[FileStorage, str, Literal["datasets"] | None]:
+    """Validate multipart shape before checking source-specific permissions."""
     source_str = request.args.get("source") or request.form.get("source")
     source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
@@ -75,11 +80,27 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
 
     if not file.filename:
         raise FilenameNotExistsError()
+
+    return file, file.filename, source
+
+
+@contextmanager
+def _file_upload_errors() -> Generator[None, None, None]:
+    try:
+        yield
+    except services.errors.file.FileTooLargeError as file_too_large_error:
+        raise FileTooLargeError(file_too_large_error.description or "File size exceeded.") from file_too_large_error
+    except services.errors.file.UnsupportedFileTypeError as unsupported_file_type_error:
+        raise UnsupportedFileTypeError() from unsupported_file_type_error
+    except services.errors.file.BlockedFileExtensionError as blocked_extension_error:
+        raise BlockedFileExtensionError(blocked_extension_error.description) from blocked_extension_error
+
+
+def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> UploadFile:
+    """Validate the multipart request and persist the file under the requested resource tenant."""
+    file, filename, source = _parse_file_upload()
     if source == "datasets" and not current_user.is_dataset_editor:
         raise Forbidden()
-
-    if source not in ("datasets", None):
-        source = None
 
     default_file_size_limit = (
         FeatureService.get_knowledge_file_size_limit(resource_tenant_id or current_user.current_tenant_id)
@@ -87,9 +108,9 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
         else None
     )
 
-    try:
+    with _file_upload_errors():
         return application_services().files.upload_file(
-            filename=file.filename,
+            filename=filename,
             content=file.stream.read(),
             mimetype=file.mimetype,
             user=current_user,
@@ -97,12 +118,28 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
             source=source,
             default_file_size_limit=default_file_size_limit,
         )
-    except services.errors.file.FileTooLargeError as file_too_large_error:
-        raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
-    except services.errors.file.UnsupportedFileTypeError as unsupported_file_type_error:
-        raise UnsupportedFileTypeError() from unsupported_file_type_error
-    except services.errors.file.BlockedFileExtensionError as blocked_extension_error:
-        raise BlockedFileExtensionError(blocked_extension_error.description) from blocked_extension_error
+
+
+def upload_file_from_request_context(*, request_context: RequestContext, resource_tenant_id: str) -> FileUploadResult:
+    """Admit a Console upload and pass only its creator and resource owner to storage."""
+    file, filename, source = _parse_file_upload()
+    if source == "datasets" and not current_account_with_tenant().account.is_dataset_editor:
+        raise Forbidden()
+
+    default_file_size_limit = (
+        FeatureService.get_knowledge_file_size_limit(resource_tenant_id) if source == "datasets" else None
+    )
+    actor = FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT)
+    with _file_upload_errors():
+        return application_services().files.upload_file_for_actor(
+            actor=actor,
+            resource_tenant_id=resource_tenant_id,
+            filename=filename,
+            content=file.stream.read(),
+            mimetype=file.mimetype,
+            source=source,
+            default_file_size_limit=default_file_size_limit,
+        )
 
 
 @console_ns.route("/files/upload")

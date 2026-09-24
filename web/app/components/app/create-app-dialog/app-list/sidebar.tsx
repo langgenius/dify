@@ -4,9 +4,11 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { RiStickyNoteAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 
-export enum AppCategories {
-  RECOMMENDED = 'Recommended',
-}
+export const AppCategories = {
+  RECOMMENDED: 'Recommended',
+} as const
+
+export type AppCategories = (typeof AppCategories)[keyof typeof AppCategories]
 
 type SidebarProps = {
   current: AppCategories | string
@@ -16,7 +18,7 @@ type SidebarProps = {
 }
 
 export default function Sidebar({ current, categories, onClick, onCreateFromBlank }: SidebarProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   return (
     <div className="flex size-full flex-col">
       <ul className="pt-0.5">
@@ -89,7 +91,7 @@ type AppCategoryLabelProps = {
   className?: string
 }
 export function AppCategoryLabel({ category, className }: AppCategoryLabelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   return (
     <span className={className}>
       {category === AppCategories.RECOMMENDED

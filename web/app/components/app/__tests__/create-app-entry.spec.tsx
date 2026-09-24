@@ -377,14 +377,14 @@ describe('Create app entry', () => {
     expect(mocks.createApp).not.toHaveBeenCalled()
   })
 
-  it('preserves template and DSL entry points', async () => {
+  it('preserves template and app import entry points', async () => {
     const user = userEvent.setup()
     renderEntry()
     await openMenu(user)
     await user.click(screen.getByRole('menuitem', { name: 'app.newApp.menu.startFromTemplate' }))
     expect(mocks.template).toHaveBeenCalledOnce()
     await openMenu(user)
-    await user.click(screen.getByRole('menuitem', { name: /app.importDSL/ }))
+    await user.click(screen.getByRole('menuitem', { name: /app.importApp/ }))
     expect(mocks.importDSL).toHaveBeenCalledOnce()
     expect(mocks.createApp).not.toHaveBeenCalled()
   })

@@ -40,7 +40,7 @@ type CreateAppProps = {
 const CREATE_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow'])
   const { push } = useRouter()
   const titleId = useId()
 
@@ -297,7 +297,7 @@ const CreateAppModal = ({
   onCreateFromTemplate,
   defaultAppMode,
 }: CreateAppDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <CreateAppDialogShell

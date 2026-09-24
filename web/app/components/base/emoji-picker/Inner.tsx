@@ -54,7 +54,7 @@ const listComponents: NonNullable<React.ComponentProps<typeof EmojiPicker.List>[
 }
 
 function EmojiPickerInner({ emoji, background, onSelect, className }: IEmojiPickerInnerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const [search, setSearch] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const recentEmojis = useRecentEmojisValue()

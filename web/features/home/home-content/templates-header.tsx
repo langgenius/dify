@@ -19,7 +19,7 @@ export function HomeTemplatesHeader({
   onCategoryChange: (category: string) => void
   onKeywordsChange: (keywords: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
 
   return (
     <div className="sticky top-0 z-10 bg-background-body">

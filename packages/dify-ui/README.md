@@ -44,7 +44,7 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 | Layout           | `./scroll-area`, `./separator`                                                                                                                                                       |
 | Media            | `./avatar`                                                                                                                                                                           |
 | Navigation       | `./breadcrumb`, `./file-tree`, `./pagination`, `./tabs`                                                                                                                              |
-| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                            |
+| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./infotip`, `./popover`, `./preview-card`, `./tooltip`                                               |
 | Search and pick  | `./autocomplete`, `./combobox`, `./select`                                                                                                                                           |
 
 Utilities:
@@ -64,6 +64,7 @@ Upstream behavior remains owned by the [Base UI documentation].
 | ------------- | ------------------------------------------------------------------------------------------- |
 | [Button]      | Action semantics, submit and link choices, loading versus disabled, and content spacing.    |
 | [Icon Button] | Accessible names, decorative glyphs, appearance ownership, and primitive composition.       |
+| [Infotip]     | Explanation triggers, concise dialog names, and hint surface ownership.                     |
 | [Input Group] | Compound input anatomy, shared-surface ownership, DOM order, focus, and interactive addons. |
 
 ### Cross-component guides
@@ -89,6 +90,7 @@ For a known contract, go directly to its guide above.
 [Button]: ./src/button/README.md
 [Forms]: ./docs/forms.md
 [Icon Button]: ./src/icon-button/README.md
+[Infotip]: ./src/infotip/README.md
 [Input Group]: ./src/input-group/README.md
 [Overlays]: ./docs/overlays.md
 [Public API authoring]: ./docs/authoring.md

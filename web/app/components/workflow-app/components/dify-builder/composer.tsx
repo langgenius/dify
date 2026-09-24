@@ -15,7 +15,7 @@ import { useDifyBuilderModel } from './use-dify-builder-model'
 const COMPOSITION_END_DELAY = 50
 
 const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
   const canCompose = useAtomValue(difyBuilderCanComposeAtom)
   const isComposingRef = useRef(false)
@@ -62,7 +62,7 @@ const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) =
 }
 
 const DifyBuilderSendButton = ({ hasModel }: { hasModel: boolean }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const canSend = useAtomValue(difyBuilderCanSendDraftAtom) && hasModel
 
   return (
@@ -78,7 +78,7 @@ const DifyBuilderSendButton = ({ hasModel }: { hasModel: boolean }) => {
 }
 
 const DifyBuilderComposer = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const sendDraft = useSetAtom(difyBuilderSendDraftAtom)
   const modelState = useDifyBuilderModel()
   const { model } = modelState

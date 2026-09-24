@@ -9,7 +9,7 @@ export const ChangeSetCard = ({
   payload: ChangeSet
   invalidated: boolean
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const nodes = payload.nodes ?? []
   return (
     <DifyBuilderCard

@@ -47,7 +47,7 @@ export function OperationDropdown({
   showCheckVersion = true,
   showRemove = true,
 }: OperationDropdownProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_marketplace,

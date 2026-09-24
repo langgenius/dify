@@ -28,7 +28,7 @@ const ChatInputStarter = dynamic(() => import('./chat-input-starter'), { ssr: fa
 export function CreateAppEntry(
   props: Omit<CreateAppTypeDropdownProps, 'onSelectType' | 'disabled' | 'loading'>,
 ) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'billing', 'common'])
   const { push } = useRouter()
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 
 const DifyBuilderButton = ({ disabled }: { disabled: boolean }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const setShowDifyBuilderPanel = useStore((s) => s.setShowDifyBuilderPanel)
   const label = t(($) => $['difyBuilder.buttonTooltip'], { ns: 'workflow' })

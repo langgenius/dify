@@ -29,7 +29,7 @@ const AppInfoTrigger = ({
   isExporting,
   exportCheck,
 }: AppInfoTriggerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -68,7 +68,7 @@ const AppInfoTrigger = ({
       ? [
           {
             id: 'export',
-            title: t(($) => $.export, { ns: 'app' }),
+            title: t(($) => $.exportApp, { ns: 'app' }),
             icon: 'i-ri-file-download-line',
             onClick: exportCheck,
             loading: isExporting,
@@ -80,7 +80,7 @@ const AppInfoTrigger = ({
       ? [
           {
             id: 'import',
-            title: t(($) => $['common.importDSL'], { ns: 'workflow' }),
+            title: t(($) => $.importApp, { ns: 'app' }),
             icon: 'i-ri-file-upload-line',
             onClick: () => openModal('importDSL'),
           },

@@ -9,7 +9,7 @@ export const useImproveBuilderPrompt = (
   mode: WorkflowInstructionImprovePayload['mode'],
   onPromptChange: Dispatch<SetStateAction<string>>,
 ) => {
-  const { t, i18n } = useTranslation()
+  const { t, i18n } = useTranslation(['app'])
   const defaultModelQuery = useQuery(
     consoleQuery.workspaces.current.defaultModel.get.queryOptions({
       input: { query: { model_type: 'llm' } },

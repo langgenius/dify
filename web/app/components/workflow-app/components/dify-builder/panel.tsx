@@ -40,7 +40,7 @@ const EMPTY_ACTION_INTERACTION_STATE = {
 }
 
 const DifyBuilderPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const actions = useAtomValue(difyBuilderActionsAtom)
   const activeInteraction = useAtomValue(difyBuilderActiveInteractionAtom)

@@ -34,7 +34,7 @@ export function AppPreview({ mode }: { mode: AppModeEnum }) {
 }
 
 function AppPreviewInfo({ mode }: { mode: AppModeEnum }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const previewInfo = (() => {
     switch (mode) {
       case AppModeEnum.CHAT:

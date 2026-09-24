@@ -59,7 +59,7 @@ export function PublisherSummarySection({
   upgradeHighlightStyle,
   versionInfo,
 }: PublisherSummarySectionProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const hasPublishedVersion = Boolean(publishedAt)
   const publishedTimestamp =
     publishedAt || (versionInfo?.created_at ? versionInfo.created_at * 1000 : undefined)

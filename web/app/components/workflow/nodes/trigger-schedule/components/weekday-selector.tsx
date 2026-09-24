@@ -8,7 +8,7 @@ type WeekdaySelectorProps = {
 }
 
 const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const weekdays = [
     { key: 'sun', label: 'Sun' },

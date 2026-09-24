@@ -92,7 +92,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   siteInfo,
   inSidePanel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'share'])
   const params = useParams()
   const isTop = depth === 1
   const [completionRes, setCompletionRes] = useState('')

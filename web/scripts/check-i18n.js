@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import data from '../i18n/languages'
-import { findValueIssues, formatValueIssue } from './check-i18n-values'
+import data from '../i18n/languages.ts'
+import { findValueIssues, formatValueIssue } from './check-i18n-values.ts'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

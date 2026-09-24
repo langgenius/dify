@@ -63,7 +63,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
       },
     )
   }
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   // Guard against null/undefined uniqueIdentifier to prevent app crash
   if (!uniqueIdentifier || !pluginId || !canUpdatePlugin) return null

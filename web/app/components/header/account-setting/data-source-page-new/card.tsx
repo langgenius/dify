@@ -34,7 +34,7 @@ type CardProps = {
   onPluginUpdate?: (isDelete?: boolean) => void
 }
 const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments', 'plugin'])
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const renderI18nObject = useRenderI18nObject()
   const { icon, label, credentials_list, credential_schema } = item

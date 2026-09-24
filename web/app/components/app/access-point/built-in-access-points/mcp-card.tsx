@@ -46,7 +46,7 @@ export function MCPAccessPointCard({
   workflow,
   workflowLoading,
 }: MCPAccessPointCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'common', 'deployments', 'tools'])
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
   const workflowApp = appInfo.mode === AppModeEnum.WORKFLOW

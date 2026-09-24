@@ -50,7 +50,7 @@ const EMPTY_COLLECTIONS: Collection[] = []
 const ProviderList = ({ category, contentInset = 'default', layout }: ProviderListProps) => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const { getTagLabel } = useTags()
   const { canDeletePlugin, canSetPluginPreferences, canUpdatePlugin } = usePluginSettingsAccess()
   const canManageTools = useCanManageTools()

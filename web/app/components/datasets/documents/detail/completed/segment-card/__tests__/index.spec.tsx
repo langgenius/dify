@@ -14,7 +14,7 @@ import SegmentCard from '../index'
 
 // Context Mocks - need to control test scenarios
 
-const mockDocForm = { current: ChunkingMode.text }
+const mockDocForm: { current: ChunkingMode } = { current: ChunkingMode.text }
 const mockParentMode = { current: 'paragraph' as ParentMode }
 const mockCanEdit = { current: true }
 

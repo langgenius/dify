@@ -29,7 +29,7 @@ type ModelGuideState = Pick<
 >
 
 function ModelGuideContent({ modelStatus, isCheckingModel, retryModelCheck }: ModelGuideState) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow', 'common'])
   const permissions = useAtomValue(workspacePermissionKeysAtom)
   const isLoadingPermissions = useAtomValue(workspacePermissionKeysLoadingAtom)
   const canConfigure =

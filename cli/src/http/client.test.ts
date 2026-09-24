@@ -44,8 +44,8 @@ describe('http client', () => {
 
   it('GET returns parsed JSON when bearer is valid', async () => {
     const client = createHttpClient({ baseURL: base(mock.url), bearer: 'dfoa_test' })
-    const body = await client.get<{ workspaces: unknown[] }>('workspaces')
-    expect(body.workspaces).toHaveLength(2)
+    const body = await client.get<{ data: unknown[] }>('workspaces')
+    expect(body.data).toHaveLength(2)
   })
 
   it('omits Authorization header when bearer is undefined', async () => {
@@ -189,8 +189,8 @@ describe('http client', () => {
 
   it('respects insecure URL trim (trailing slash on baseURL is normalized)', async () => {
     const client = createHttpClient({ baseURL: openAPIBase(`${mock.url}/`), bearer: 'dfoa_test' })
-    const body = await client.get<{ workspaces: unknown[] }>('workspaces')
-    expect(body.workspaces).toHaveLength(2)
+    const body = await client.get<{ data: unknown[] }>('workspaces')
+    expect(body.data).toHaveLength(2)
   })
 
   it('preserves error envelope hint when server returns one', async () => {
@@ -652,8 +652,8 @@ describe('extend()', () => {
       timeoutMs: 1,
     })
     // 1ms client default would always fail the mock GET; per-call override of 5s lets it succeed.
-    const body = await parent.get<{ workspaces: unknown[] }>('workspaces', { timeoutMs: 5_000 })
-    expect(body.workspaces.length).toBeGreaterThan(0)
+    const body = await parent.get<{ data: unknown[] }>('workspaces', { timeoutMs: 5_000 })
+    expect(body.data.length).toBeGreaterThan(0)
   })
 })
 
@@ -868,8 +868,8 @@ describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
       })
       const res = await client.request(new Request(`${base(mock.url)}workspaces`))
       expect(res.status).toBe(200)
-      const body = (await res.json()) as { workspaces: unknown[] }
-      expect(body.workspaces).toHaveLength(2)
+      const body = (await res.json()) as { data: unknown[] }
+      expect(body.data).toHaveLength(2)
     } finally {
       await mock.stop()
     }

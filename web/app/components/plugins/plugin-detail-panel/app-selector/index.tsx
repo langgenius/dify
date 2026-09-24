@@ -28,7 +28,7 @@ type AppSelectorProps = {
 }
 
 export function AppSelector({ value, disabled, offset = 4, onSelect }: AppSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
   const [searchText, setSearchText] = useState('')
 

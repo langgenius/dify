@@ -87,7 +87,7 @@ const Authorized = ({
   disableDeleteButShowAction,
   disableDeleteTip,
 }: AuthorizedProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen

@@ -1,5 +1,6 @@
 {
   "desc": "Aquí puedes modificar las propiedades y los métodos de trabajo del conjunto de datos.",
+  "form.changeIcon": "Cambiar el icono de conocimiento",
   "form.chunkStructure.description": "sobre la estructura de fragmentos.",
   "form.chunkStructure.learnMore": "Aprende más",
   "form.chunkStructure.title": "Estructura de fragmentos",

@@ -12,7 +12,7 @@ import { buildTraceExport, serializeTraceExport } from './session/trace-export'
 import { difyBuilderRuntimeAtom } from './store'
 
 const DebugLogExport = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const runtime = useAtomValue(difyBuilderRuntimeAtom)
   const view = useAtomValue(difyBuilderSessionViewAtom)
 
