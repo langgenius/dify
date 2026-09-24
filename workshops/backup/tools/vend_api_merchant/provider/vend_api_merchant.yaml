@@ -1,0 +1,31 @@
+identity:
+  author: PANDeveloper001
+  name: vend_api_merchant
+  label:
+    en_US: Vend API Merchant
+  description:
+    en_US: Pay-per-call web intel and search settled in Nano (XNO) via x402. No API key, no signup — the wallet is the account.
+    zh_Hans: 按次付费的网页情报与搜索，通过 x402 用 Nano (XNO) 结算。无需 API 密钥、无需注册。
+  icon: icon.svg
+credentials_for_provider:
+  vend_base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Vend base URL
+    placeholder:
+      en_US: https://extract.paypercall.dev
+    default: https://extract.paypercall.dev
+  payment_header:
+    type: secret-input
+    required: false
+    label:
+      en_US: X-PAYMENT block hash (optional, per-call)
+    placeholder:
+      en_US: 64-char Nano block hash from a settled payment
+tools:
+  - tools/vend_extract.yaml
+  - tools/vend_web_search.yaml
+extra:
+  python:
+    source: provider/vend_api_merchant.py

@@ -1,0 +1,21 @@
+identity:
+  name: vend_web_search
+  author: PANDeveloper001
+  label:
+    en_US: Web Search
+    zh_Hans: 网络搜索
+    ja_JP: Web検索
+    pt_BR: Pesquisa na web
+description:
+  en_US: Search the web via DuckDuckGo — returns titles, URLs and snippets. Pay 0.0001 XNO per call. No API key needed.
+  zh_Hans: 通过 DuckDuckGo 搜索网络，返回标题、URL 和摘要。每次调用支付 0.0001 XNO。
+parameters:
+  - name: q
+    type: string
+    required: true
+    label:
+      en_US: Query
+    placeholder:
+      en_US: nano cryptocurrency news
+    description:
+      en_US: The search query.

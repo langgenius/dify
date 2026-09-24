@@ -1,0 +1,21 @@
+identity:
+  name: vend_extract
+  author: PANDeveloper001
+  label:
+    en_US: Extract Web Page
+    zh_Hans: 提取网页内容
+    ja_JP: Webページを抽出
+    pt_BR: Extrair página web
+description:
+  en_US: Fetch and clean any web page — returns readable text/markdown suitable for LLM consumption. Pay 0.0001 XNO per call. No API key needed.
+  zh_Hans: 获取并清洗任意网页内容，返回适合大语言模型阅读的文本/Markdown。每次调用支付 0.0001 XNO。
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL
+    placeholder:
+      en_US: https://example.com/article
+    description:
+      en_US: The URL of the web page to extract clean text from.

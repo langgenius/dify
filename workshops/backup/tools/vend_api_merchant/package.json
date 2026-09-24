@@ -1,0 +1,11 @@
+{
+  "name": "vend_api_merchant",
+  "version": "0.0.1",
+  "description": "Pay-per-call web intel and search settled in Nano (XNO) via x402",
+  "author": "PANDeveloper001",
+  "author_email": "vend@paypercall.dev",
+  "license": "MIT",
+  "python": {
+    "requirements": "requirements.txt"
+  }
+}

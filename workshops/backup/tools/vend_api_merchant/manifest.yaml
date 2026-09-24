@@ -1,0 +1,41 @@
+version: 0.0.1
+type: plugin
+author: "PANDeveloper001"
+name: vend_api_merchant
+repo: "https://github.com/PANDeveloper001/vend"
+contact: "vend@paypercall.dev"
+label:
+  en_US: Vend API Merchant
+description:
+  en_US: Pay-per-call web intel and search, settled in Nano (XNO) via x402. No API key, no signup — call a Vend endpoint, pay 0.0001 XNO, get clean data.
+  zh_Hans: 按次付费的网页情报与搜索，通过 x402 用 Nano (XNO) 结算。无需 API 密钥、无需注册。
+icon: icon.svg
+created_at: "2026-09-20T00:00:00.000000Z"
+privacy: "./privacy.md"
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+    network:
+      enabled: true
+network:
+  domains:
+    - extract.paypercall.dev
+    - search.paypercall.dev
+plugins:
+  tools:
+    - "provider/vend_api_merchant.yaml"
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  minimum_dify_version: 0.6.14
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+extra:
+  python:
+    source: provider/vend_api_merchant.py

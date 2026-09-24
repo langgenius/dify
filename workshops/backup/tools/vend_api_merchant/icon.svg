@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1a1a2e"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#22d3ee" stroke-width="22"/>
+  <circle cx="256" cy="256" r="82" fill="none" stroke="#ffffff" stroke-width="14"/>
+  <circle cx="256" cy="256" r="26" fill="#22d3ee"/>
+  <text x="256" y="470" font-family="monospace" font-size="28" fill="#8a8aa0" text-anchor="middle">Vend · Nano x402</text>
+</svg>
