@@ -250,6 +250,7 @@
   "customWebhook": "Fərdi Webhook",
   "difyBuilder.resourceNeedsAuthorization": "İcazə tələb olunur",
   "difyBuilder.resourceReady": "Hazırdır",
+  "difyBuilder.runTest": "Testi işə sal",
   "difyTeam": "Dify komandası",
   "entryNodeStatus.enabled": "Başlanğıc",
   "env.envDescription": "Mühit dəyişənləri məxfi məlumatları və giriş məlumatlarını saxlamaq üçün istifadə edilə bilər. Onların dəyərləri yalnız oxumaq üçündür və ixrac zamanı DSL faylından ayrıla bilər.",

@@ -6351,6 +6351,7 @@ export default interface Resources {
     'difyBuilder.reset': 'Start a new conversation'
     'difyBuilder.resourceNeedsAuthorization': 'Authorization required'
     'difyBuilder.resourceReady': 'Ready'
+    'difyBuilder.runTest': 'Run the test'
     'difyBuilder.useActions': 'Use the options above to continue'
     difyTeam: 'Dify Team'
     'entryNodeStatus.enabled': 'START'
