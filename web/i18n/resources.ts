@@ -4,6 +4,9 @@ import { kebabCase } from 'string-ts'
 export const defaultNS = 'app' as const
 
 export const namespaces = [
+  'fileUpload',
+  'appGeneration',
+  'agentRoster',
   'workflowGenerator',
   'workflowModels',
   'workflowHumanInput',

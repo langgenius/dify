@@ -459,7 +459,7 @@ function AgentVersionRestoreBar({
   onExitVersions?: () => void
   onRestoreVersion?: (versionId: string) => void
 }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const versionLabel =
     version.version_note ||
@@ -469,7 +469,7 @@ function AgentVersionRestoreBar({
       ? null
       : formatTime(
           version.created_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
 
   return (

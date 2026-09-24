@@ -79,7 +79,7 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
 
 export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps) {
   const { t: tApp } = useTranslation(['app'])
-  const { t: tCommon } = useTranslation(['agentV2', 'navigation'])
+  const { t: tCommon } = useTranslation(['navigation', 'agentRoster'])
 
   if (!expand) {
     return (
@@ -100,7 +100,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
       <Breadcrumb
-        aria-label={tCommon(($) => $['roster.title'], { ns: 'agentV2' })}
+        aria-label={tCommon(($) => $['roster.title'], { ns: 'agentRoster' })}
         className="flex-1"
       >
         <BreadcrumbList className="gap-px">
