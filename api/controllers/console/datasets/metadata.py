@@ -99,11 +99,10 @@ class DatasetMetadataCreateApi(Resource):
         dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        if not dify_config.RBAC_ENABLED:
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
         metadata = MetadataService.get_dataset_metadatas(dataset, session)
         return dump_response(DatasetMetadataListResponse, metadata), 200
 

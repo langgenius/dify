@@ -1379,6 +1379,8 @@ class DatasetService:
     @staticmethod
     def check_dataset_permission(dataset, user, session: Session):
         """Validate dataset access for a user, using the injected session for partial-member lookups."""
+        if dify_config.RBAC_ENABLED:
+            return
         if dataset.tenant_id != user.current_tenant_id:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
