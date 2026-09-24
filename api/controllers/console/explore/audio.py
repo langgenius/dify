@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
+from http import HTTPStatus
 
 from flask import Response, request
 from flask_restx import Resource
@@ -97,7 +98,7 @@ def _audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     endpoint="installed_app_audio",
 )
 class ChatAudioApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @_audio_errors
@@ -121,7 +122,7 @@ class ChatAudioApi(Resource):
 )
 class ChatTextApi(Resource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(TextToAudioPayload)
