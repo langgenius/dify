@@ -12,8 +12,9 @@ import type {
 import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
@@ -68,6 +69,7 @@ const AgentToolItem = memo(
     onEditCliTool,
     onCredentialChange,
     onPluginInstalled,
+    defaultExpanded = false,
   }: {
     tool: DisplayAgentTool
     onConfigureAction: (target: ToolSettingTarget) => void
@@ -81,8 +83,9 @@ const AgentToolItem = memo(
       credentialType?: AgentProviderTool['credentialType'],
     ) => void
     onPluginInstalled: () => void
+    defaultExpanded?: boolean
   }) => {
-    const [isExpanded, setIsExpanded] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
     const handleRemoveProvider = useCallback(() => {
       onDeleteProviderTool(tool.id)
@@ -579,5 +582,43 @@ export function AgentTools() {
         />
       )}
     </>
+  )
+}
+
+export function AgentTemplateTools() {
+  const { t } = useTranslation(['agentV2'])
+  const labelId = useId()
+  const tools = useAtomValue(agentComposerToolsAtom)
+  const visibleTools = ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')
+
+  return (
+    <ConfigureSection
+      label={t(($) => $['agentDetail.configure.tools.label'])}
+      labelId={labelId}
+      rootClassName="border-b border-divider-subtle pt-4"
+      panelContentClassName="flex flex-col gap-1 pb-4"
+    >
+      {visibleTools.length === 0 ? (
+        <ConfigureSectionEmpty
+          title={t(($) => $['agentDetail.configure.tools.empty.title'])}
+          description={t(($) => $['agentDetail.configure.tools.empty.description'])}
+        />
+      ) : (
+        visibleTools.map((tool) => (
+          <AgentToolItem
+            key={tool.id}
+            tool={tool.kind === 'provider' ? { ...tool, isInstalled: true } : tool}
+            defaultExpanded
+            onConfigureAction={noop}
+            onDeleteCliTool={noop}
+            onDeleteProviderTool={noop}
+            onDeleteProviderToolAction={noop}
+            onEditCliTool={noop}
+            onCredentialChange={noop}
+            onPluginInstalled={noop}
+          />
+        ))
+      )}
+    </ConfigureSection>
   )
 }

@@ -196,7 +196,7 @@ export function useAgentSkillDetail({
         },
       },
     }),
-    enabled: isOpen && !apiContext.workflow,
+    enabled: isOpen && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowSkillInspectQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.skills.byName.inspect.get.queryOptions({
@@ -214,7 +214,24 @@ export function useAgentSkillDetail({
     }),
     enabled: isOpen && !!apiContext.workflow,
   })
-  const inspectQuery = apiContext.workflow ? workflowSkillInspectQuery : agentSkillInspectQuery
+  const trialSkillInspectQuery = useQuery(
+    apiContext.trialAppId
+      ? {
+          ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.inspect.get.queryOptions({
+            input: {
+              params: { app_id: apiContext.trialAppId, name: skill.name },
+              query: { version_id: apiContext.versionId },
+            },
+          }),
+          enabled: isOpen,
+        }
+      : { queryKey: ['agent-v2', 'trial-skill-inspect-disabled'], queryFn: skipToken },
+  )
+  const inspectQuery = apiContext.trialAppId
+    ? trialSkillInspectQuery
+    : apiContext.workflow
+      ? workflowSkillInspectQuery
+      : agentSkillInspectQuery
   const detailFiles = useMemo(
     () => toSkillFileTree(inspectQuery.data?.files ?? []),
     [inspectQuery.data?.files],
@@ -245,7 +262,7 @@ export function useAgentSkillDetail({
         },
       },
     }),
-    enabled: isOpen && !!selectedPreviewPath && !apiContext.workflow,
+    enabled: isOpen && !!selectedPreviewPath && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowPreviewQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions({
@@ -264,7 +281,26 @@ export function useAgentSkillDetail({
     }),
     enabled: isOpen && !!selectedPreviewPath && !!apiContext.workflow,
   })
-  const previewQuery = apiContext.workflow ? workflowPreviewQuery : agentPreviewQuery
+  const trialPreviewQuery = useQuery(
+    apiContext.trialAppId
+      ? {
+          ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions(
+            {
+              input: {
+                params: { app_id: apiContext.trialAppId, name: skill.name },
+                query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
+              },
+            },
+          ),
+          enabled: isOpen && !!selectedPreviewPath,
+        }
+      : { queryKey: ['agent-v2', 'trial-skill-preview-disabled'], queryFn: skipToken },
+  )
+  const previewQuery = apiContext.trialAppId
+    ? trialPreviewQuery
+    : apiContext.workflow
+      ? workflowPreviewQuery
+      : agentPreviewQuery
   const isImagePreviewFile = selectedFile?.icon === 'image'
   const shouldLoadImagePreview = isOpen && !!selectedPreviewPath && isImagePreviewFile
   const agentDownloadQuery = useQuery({
@@ -282,7 +318,7 @@ export function useAgentSkillDetail({
       },
     }),
     staleTime: 0,
-    enabled: shouldLoadImagePreview && !apiContext.workflow,
+    enabled: shouldLoadImagePreview && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowDownloadQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
@@ -302,7 +338,27 @@ export function useAgentSkillDetail({
     staleTime: 0,
     enabled: shouldLoadImagePreview && !!apiContext.workflow,
   })
-  const downloadQuery = apiContext.workflow ? workflowDownloadQuery : agentDownloadQuery
+  const trialDownloadQuery = useQuery(
+    apiContext.trialAppId
+      ? {
+          ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
+            {
+              input: {
+                params: { app_id: apiContext.trialAppId, name: skill.name },
+                query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
+              },
+            },
+          ),
+          staleTime: 0,
+          enabled: shouldLoadImagePreview,
+        }
+      : { queryKey: ['agent-v2', 'trial-skill-download-disabled'], queryFn: skipToken },
+  )
+  const downloadQuery = apiContext.trialAppId
+    ? trialDownloadQuery
+    : apiContext.workflow
+      ? workflowDownloadQuery
+      : agentDownloadQuery
   const skillFileContentUrl = downloadQuery.data?.url
   const imageContentQuery = useQuery(
     skillFileContentUrl
@@ -335,6 +391,22 @@ export function useAgentSkillDetail({
 
       setDownloadActionLoadingTarget(action)
       try {
+        if (apiContext.trialAppId) {
+          const result = await queryClient.query({
+            ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
+              {
+                input: {
+                  params: { app_id: apiContext.trialAppId, name: skill.name },
+                  query: { path, version_id: apiContext.versionId },
+                },
+              },
+            ),
+            staleTime: 0,
+          })
+          const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
+          downloadBlob({ data, fileName: file.name })
+          return
+        }
         if (apiContext.workflow) {
           const result = await queryClient.query({
             ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(

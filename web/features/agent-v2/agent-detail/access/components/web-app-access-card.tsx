@@ -117,8 +117,8 @@ export function WebAppAccessCard({
               ...agentDetail,
               site: {
                 ...agentDetail.site,
-                ...site,
-                access_token: site.code,
+                code: site.code ?? agentDetail.site.code,
+                access_token: site.code ?? agentDetail.site.access_token,
               },
             }
           },
@@ -191,39 +191,12 @@ export function WebAppAccessCard({
     const sitePayload = body satisfies AppSiteUpdatePayload
 
     try {
-      const updatedSite = await updateSiteMutation.mutateAsync({
+      await updateSiteMutation.mutateAsync({
         params: {
           app_id: appId,
         },
         body: sitePayload,
       })
-
-      queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-        agentDetailQueryKey,
-        (agentDetail) =>
-          agentDetail
-            ? {
-                ...agentDetail,
-                site: {
-                  ...agentDetail.site,
-                  ...updatedSite,
-                  ...sitePayload,
-                  access_token:
-                    updatedSite.code ??
-                    agentDetail.site?.access_token ??
-                    agentDetail.site?.code ??
-                    null,
-                  code:
-                    updatedSite.code ??
-                    agentDetail.site?.code ??
-                    agentDetail.site?.access_token ??
-                    null,
-                  app_base_url: agentDetail.site?.app_base_url ?? site?.app_base_url ?? null,
-                  icon_url: null,
-                },
-              }
-            : agentDetail,
-      )
       await queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
       toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
     } catch {

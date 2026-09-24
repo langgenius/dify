@@ -681,6 +681,52 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     assert sqlite_session.in_transaction()
 
 
+@pytest.mark.parametrize(
+    ("feature", "field", "value"),
+    [
+        ("suggested_questions_after_answer", "prompt", None),
+        ("suggested_questions_after_answer", "prompt", 123),
+        ("text_to_speech", "voice", None),
+        ("text_to_speech", "language", 123),
+        ("text_to_speech", "autoPlay", "auto"),
+    ],
+)
+def test_chat_dsl_import_rejects_invalid_feature_fields(
+    sqlite_session: Session, feature: str, field: str, value: object
+) -> None:
+    app = _app()
+
+    with pytest.raises(ValueError, match=field):
+        AppDslService(session=sqlite_session)._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.CHAT}, "model_config": {feature: {"enabled": True, field: value}}},
+            account=_account(),
+        )
+
+    assert app.app_model_config_id is None
+    assert list(sqlite_session.scalars(select(AppModelConfig))) == []
+
+
+def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session) -> None:
+    app = _app()
+    model_config = {
+        "suggested_questions_after_answer": {"enabled": True, "prompt": "Follow up"},
+        "text_to_speech": {"enabled": True, "voice": "alloy", "language": "en", "autoPlay": "disabled"},
+    }
+
+    AppDslService(session=sqlite_session)._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.CHAT}, "model_config": model_config},
+        account=_account(),
+    )
+
+    assert app.app_model_config_id is not None
+    persisted = sqlite_session.get(AppModelConfig, app.app_model_config_id)
+    assert persisted is not None
+    assert persisted.suggested_questions_after_answer_dict == model_config["suggested_questions_after_answer"]
+    assert persisted.text_to_speech_dict == model_config["text_to_speech"]
+
+
 def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
     session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
     service = AppDslService(session=session)

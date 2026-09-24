@@ -25,8 +25,9 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -48,7 +49,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentConfigApiContext } from '../config-context'
+import { useAgentConfigApiContext, useAgentConfigSkills } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
@@ -813,5 +814,40 @@ export function AgentSkills() {
         onUploaded={handleUploaded}
       />
     </>
+  )
+}
+
+export function AgentTemplateSkills() {
+  const { t } = useTranslation(['agentV2'])
+  const labelId = useId()
+  const { apiContext, skills } = useAgentConfigSkills()
+
+  return (
+    <ConfigureSection
+      label={t(($) => $['agentDetail.configure.skills.label'])}
+      labelId={labelId}
+      rootClassName="border-b border-divider-subtle pt-4"
+      panelContentClassName="pb-4"
+    >
+      {skills.length === 0 ? (
+        <ConfigureSectionEmpty
+          title={t(($) => $['agentDetail.configure.skills.empty.title'])}
+          description={t(($) => $['agentDetail.configure.skills.empty.description'])}
+        />
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {skills.map((skill) => (
+            <li key={skill.id}>
+              <AgentSkillItem
+                apiContext={apiContext}
+                canRemove={false}
+                skill={skill}
+                onRemove={noop}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </ConfigureSection>
   )
 }

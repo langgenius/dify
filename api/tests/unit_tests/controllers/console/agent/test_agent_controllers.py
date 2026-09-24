@@ -216,9 +216,9 @@ def _app_detail_obj(**overrides) -> App:
         "tracing": None,
         "use_icon_as_answer_icon": False,
         "created_by": "account-1",
-        "created_at": None,
+        "created_at": datetime(2025, 1, 1),
         "updated_by": "account-1",
-        "updated_at": None,
+        "updated_at": datetime(2025, 1, 1),
         "max_active_requests": 0,
     }
     overrides.pop("bound_agent_id", None)
@@ -369,9 +369,6 @@ def test_agent_app_list_and_create_use_agent_route(
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
 
     class FakeAppService:
-        def get_app(self, app_obj: object, *, session: object) -> object:
-            return app_obj
-
         def get_paginate_apps(self, user_id: str, tenant_id: str, params, session) -> object:
             captured["list"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
             return SimpleNamespace(
@@ -649,10 +646,6 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     )
 
     class FakeAppService:
-        def get_app(self, app_obj: object, *, session: object) -> object:
-            captured["get_app"] = {"app": app_obj, "session": session}
-            return app_obj
-
         def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
             return _app_detail_obj(id=app_id, tenant_id=tenant_id, name=args["name"], bound_agent_id=agent_id)
@@ -674,7 +667,6 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert detail["access_ready"] is False
     assert "active_config_is_published" not in detail
     assert "bound_agent_id" not in detail
-    assert captured["get_app"] == {"app": app_model, "session": session}
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
         json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
@@ -1043,9 +1035,6 @@ def test_agent_app_update_allows_empty_role(
     )
 
     class FakeAppService:
-        def get_app(self, app_obj: object, *, session: object) -> object:
-            return app_obj
-
         def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
             return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)

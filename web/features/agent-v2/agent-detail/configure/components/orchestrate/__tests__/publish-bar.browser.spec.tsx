@@ -9,6 +9,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createAgentFixture } from '@/test/fixtures/agent'
+import { createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
@@ -49,11 +50,10 @@ async function setup() {
     createAgentFixture({
       access_ready: true,
       enable_site: true,
-      site: {
+      site: createAppSiteFixture({
         access_token: 'published-token',
         app_base_url: 'https://apps.example.test',
-        icon_url: null,
-      },
+      }),
     }),
   )
   queryClient.setQueryData(
