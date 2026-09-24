@@ -22,6 +22,7 @@ from core.model_context import get_credit_usage_metadata, use_credit_usage_metad
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
+from extensions.application_services.app import AppServices
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
@@ -85,6 +86,7 @@ from services.account_oauth_adapters import (
     RedisOAuthAccountClaimLock,
 )
 from services.app.api_key_service import AppApiKeyService
+from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.app_generate_service import AppGenerateService
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
@@ -198,6 +200,11 @@ def test_init_app_registers_services_for_the_current_app(
         assert services.app_scoped_end_users.commands._app_scoped_end_users is repository
         assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
+        assert isinstance(services.apps, AppServices)
+        assert services.apps.console._apps is services.apps.queries._apps
+        creators = services.apps.console._creators
+        assert isinstance(creators, CreatorsPlatformGateway)
+        assert creators._oauth is services.oauth_server
 
 
 def test_build_application_services_preserves_composed_boundaries(

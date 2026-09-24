@@ -863,18 +863,32 @@ class TestAppDslService:
 
     # ── Export ─────────────────────────────────────────────────────────
 
-    def test_export_dsl_delegates_by_mode(self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session):
+    def test_export_dsl_delegates_by_mode(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+    ):
         workflow_calls: list[bool] = []
         model_calls: list[bool] = []
+
+        def append_workflow(**_kwargs: Any) -> list[str]:
+            workflow_calls.append(True)
+            return []
+
+        def append_model(*_args: Any, **_kwargs: Any) -> list[str]:
+            model_calls.append(True)
+            return []
+
         monkeypatch.setattr(
             AppDslService,
             "_append_workflow_export_data",
-            lambda **_kwargs: workflow_calls.append(True),
+            append_workflow,
         )
         monkeypatch.setattr(
             AppDslService,
             "_append_model_config_export_data",
-            lambda *_args, **_kwargs: model_calls.append(True),
+            append_model,
         )
 
         workflow_app = _app_stub(
@@ -893,12 +907,15 @@ class TestAppDslService:
         assert model_calls == [True]
 
     def test_export_dsl_preserves_icon_and_icon_type(
-        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
     ):
         monkeypatch.setattr(
             AppDslService,
             "_append_workflow_export_data",
-            lambda **_kwargs: None,
+            lambda **_kwargs: [],
         )
 
         emoji_app = _app_stub(
@@ -1393,22 +1410,8 @@ class TestAppDslService:
             "_extract_dependencies_from_workflow",
             lambda *_args, **_kwargs: ["dep-1"],
         )
-        monkeypatch.setattr(
-            app_dsl_service.DependenciesAnalysisService,
-            "generate_dependencies",
-            lambda *, tenant_id, dependencies: [
-                SimpleNamespace(
-                    model_dump=lambda: {
-                        "tenant": tenant_id,
-                        "dep": dependencies[0],
-                    }
-                )
-            ],
-        )
-        monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
-
         export_data: dict = {}
-        AppDslService._append_workflow_export_data(
+        dependencies = AppDslService._append_workflow_export_data(
             export_data=export_data,
             app_model=_app_stub(),
             include_secret=False,
@@ -1427,7 +1430,7 @@ class TestAppDslService:
         assert nodes[4]["data"]["webhook_url"] == ""
         assert nodes[4]["data"]["webhook_debug_url"] == ""
         assert nodes[5]["data"]["subscription_id"] == ""
-        assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
+        assert dependencies == ["dep-1"]
 
     def test_append_workflow_export_data_missing_workflow_raises(
         self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
@@ -1453,20 +1456,6 @@ class TestAppDslService:
             "_extract_dependencies_from_model_config",
             lambda *_args, **_kwargs: ["dep-1"],
         )
-        monkeypatch.setattr(
-            app_dsl_service.DependenciesAnalysisService,
-            "generate_dependencies",
-            lambda *, tenant_id, dependencies: [
-                SimpleNamespace(
-                    model_dump=lambda: {
-                        "tenant": tenant_id,
-                        "dep": dependencies[0],
-                    }
-                )
-            ],
-        )
-        monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
-
         app_model_config = MagicMock(app_id="app-1")
         app_model_config.to_dict.return_value = {"agent_mode": {"tools": [{"credential_id": "secret"}]}}
         app_model = _app_stub(id="app-1", app_model_config_id="config-1")
@@ -1476,9 +1465,9 @@ class TestAppDslService:
         monkeypatch.setattr(app_dsl_service, "load_annotation_reply_config", lambda *_args: annotation_reply)
         export_data: dict = {}
 
-        AppDslService._append_model_config_export_data(export_data, app_model, session=session)
+        dependencies = AppDslService._append_model_config_export_data(export_data, app_model, session=session)
         assert export_data["model_config"]["agent_mode"]["tools"] == [{}]
-        assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
+        assert dependencies == ["dep-1"]
         session.get.assert_called_once_with(AppModelConfig, "config-1")
         app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 

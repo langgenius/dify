@@ -38,6 +38,9 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         if tracing_provider not in TracingProviderEnum:
             raise AppTracingConfigInvalidProviderError(tracing_provider)
 
+    def require_provider_available(self, tracing_provider: str) -> None:
+        self._provider_config(tracing_provider)
+
     @override
     def prepare_new_config(
         self,
