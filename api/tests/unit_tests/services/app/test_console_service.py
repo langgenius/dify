@@ -183,6 +183,14 @@ class Transfers:
         del context, source
         pytest.fail("Unexpected Agent package import")
 
+    def import_agent_template(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        del context, params
+        pytest.fail("Unexpected Agent template import")
+
+    def import_agent_package_url(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        del context, params
+        pytest.fail("Unexpected Agent package URL import")
+
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
         del context, app_id
         pytest.fail("Unexpected dependency check")

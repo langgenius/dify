@@ -458,7 +458,7 @@ def test_template_import_checks_permissions_before_accessing_source(
     assert isinstance(transfers, AppTransferGateway)
     importer = Mock()
     monkeypatch.setattr(transfers, "_agent_importer", importer)
-    payload = (
+    payload: dict[str, object] = (
         {
             "mode": "template",
             "template_id": "11111111-1111-4111-8111-111111111111",
