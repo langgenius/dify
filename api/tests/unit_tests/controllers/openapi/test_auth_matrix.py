@@ -249,9 +249,9 @@ ADMIT_NO_MOUNT = Expect(
 _RUN_TRAITS = frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE})
 
 ROUTES: tuple[Route, ...] = (
-    Route("get.account", "GET", "/account", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("describe.account", "GET", "/account", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("account.sessions.revoke_self", "DELETE", "/account/sessions/self", frozenset({Trait.ACCOUNT_PRIMARY})),
-    Route("list.account.session", "GET", "/account/sessions", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("get.account.session", "GET", "/account/sessions", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "account.sessions.revoke_one",
         "DELETE",
@@ -497,7 +497,7 @@ SCENARIOS: dict[Case, Scenario] = {
 }
 
 
-ROUTER_CASE_ROUTE = "get.account"
+ROUTER_CASE_ROUTE = "describe.account"
 ROUTER_CASES: dict[Case, Expect] = {
     Case.NO_BEARER: DENY_NO_BEARER,
     Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
@@ -570,7 +570,7 @@ _DUAL_SUBJECT_RUN: dict[Case, Expect] = {
 
 
 MATRIX: dict[str, dict[Case, Expect]] = {
-    "get.account": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
+    "describe.account": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "workspaces.list": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "apps.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
     "workspaces.switch": dict(_ACCOUNT_MEMBER_NO_ROLE),
@@ -741,9 +741,9 @@ _REQ_EXTERNAL_DESCRIBE = (
 )
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
-    "get.account": _REQ_ACCOUNT_FULL,
+    "describe.account": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_self": _REQ_ACCOUNT_FULL,
-    "list.account.session": _REQ_ACCOUNT_FULL,
+    "get.account.session": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
     "apps.describe": _REQ_APP_DESCRIBE,
     "apps.list": _REQ_ACCOUNT_APPS_READ_MEMBER,

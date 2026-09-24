@@ -92,7 +92,7 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
-        op="get.run.form",
+        op="describe.run.form",
         kind=Kind.OBJECT,
         summary="Read a human-input form",
         examples=(

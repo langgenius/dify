@@ -382,7 +382,7 @@ def test_members_list_next_page_hint_reaches_the_wire(admitted_bearer: AdmittedW
     assert body["hints"] == [
         {
             "summary": "Next page",
-            "op": "list.workspace.member",
+            "op": "get.workspace.member",
             "input": {"workspace_id": admitted_bearer.workspace_id, "page": 2, "limit": 2},
             "form": None,
         }

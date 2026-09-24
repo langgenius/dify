@@ -93,7 +93,7 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
             assert meta.kind is Kind.SSE, meta.op
     assert set(ops) <= set(seen)
     per_mode = {f"run.console_app.{mode}" for mode in ("workflow", "chat", "advanced_chat", "completion")}
-    assert streaming == per_mode | {"stream.run.event"}
+    assert streaming == per_mode | {"get.run.event"}
 
 
 def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -> None:
@@ -114,8 +114,8 @@ def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -
     }
     assert chat["deprecated"] is False
     assert ops["upload.console_app.file"]["bind"]["file"] == "file"
-    assert ops["list.console_app"]["bind"]["page"] == "query"
-    assert ops["stream.run.event"]["bind"]["continue_on_pause"] == "query"
+    assert ops["get.console_app"]["bind"]["page"] == "query"
+    assert ops["get.run.event"]["bind"]["continue_on_pause"] == "query"
     assert ops["switch.workspace"]["internal"] is True
 
 
