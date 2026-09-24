@@ -441,8 +441,14 @@ export function useAgentConfigureSync({
         toolPublishIssue.tool.name
       toast.error(
         toolPublishIssue.type === 'uninstalled'
-          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], { tool: toolName })
-          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], { tool: toolName }),
+          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            })
+          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            }),
       )
       return false
     }

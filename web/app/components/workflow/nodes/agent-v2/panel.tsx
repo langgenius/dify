@@ -118,7 +118,7 @@ function FloatingOutputEditor({
 }
 
 export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
-  const { t } = useTranslation(['agentV2', 'workflow'])
+  const { t } = useTranslation(['agentV2', 'workflowAgent'])
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const inputsRef = useRef(inputs)
   const promptOutputNamesRef = useRefWithInit(extractAgentOutputNames, inputs.agent_task || '')
@@ -204,9 +204,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           id: inlineAgentId ?? id,
           name:
             inlineAgent?.name ||
-            t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflow' }),
+            t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflowAgent' }),
           description: inlineAgent?.description,
-          role: t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflow' }),
+          role: t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflowAgent' }),
         }
       : undefined)
 

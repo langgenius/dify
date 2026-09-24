@@ -152,7 +152,7 @@ describe('Blocks', () => {
     expect(llmButton).toBeInTheDocument()
     expect(llmButton).toHaveAccessibleDescription('LLM description')
     expect(screen.getByText('Exit Loop')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.loop.loopNode')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.loop.loopNode')).toBeInTheDocument()
     expect(screen.queryByText('Knowledge Retrieval')).not.toBeInTheDocument()
 
     await user.click(llmButton)

@@ -164,6 +164,14 @@ model providers, and the step-by-step tour own `accountSettings`,
 `workspaceMembers`, `modelProvider`, and `onboarding` respectively. Model selection
 copy is shared with model configuration, not owned by dataset settings.
 
+The workflow editor keeps canvas labels, shared validation, and editor-wide hook
+messages in `workflow`. Optional surfaces own `workflowGenerator`,
+`workflowDebug`, `workflowHistory`, and `workflowComments`. Node configuration
+families own `workflowModels`, `workflowAgent`, `workflowHumanInput`,
+`workflowIntegrations`, and `workflowLogic`. Keep globally executed validation
+and accessible edge labels in the core even when their keys have a node prefix;
+a key prefix alone does not define a loading boundary.
+
 Declare resources at the component that renders them. A hidden feature should not
 request its dictionary just because its controller is mounted. The tour keeps its
 session controller mounted and renders its translation consumer only when the

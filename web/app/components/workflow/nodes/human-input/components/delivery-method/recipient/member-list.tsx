@@ -29,7 +29,7 @@ const MemberList: FC<Props> = ({
   email,
   hideSearch,
 }) => {
-  const { t } = useTranslation(['common', 'workflow', 'workspaceMembers'])
+  const { t } = useTranslation(['common', 'workspaceMembers', 'workflowHumanInput'])
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
 
   const filteredList = useMemo(() => {
@@ -111,7 +111,7 @@ const MemberList: FC<Props> = ({
                 {!isSelected && (
                   <div className="hidden system-xs-medium text-text-accent group-hover:block">
                     {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.add`], {
-                      ns: 'workflow',
+                      ns: 'workflowHumanInput',
                     })}
                   </div>
                 )}
@@ -119,7 +119,7 @@ const MemberList: FC<Props> = ({
                   <div className="system-xs-regular text-text-tertiary">
                     {t(
                       ($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.added`],
-                      { ns: 'workflow' },
+                      { ns: 'workflowHumanInput' },
                     )}
                   </div>
                 )}

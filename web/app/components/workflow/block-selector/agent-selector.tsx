@@ -39,7 +39,7 @@ export function AgentSelectorContent({
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch?: () => void
 }) {
-  const { t } = useTranslation(['agentV2', 'common', 'workflow'])
+  const { t } = useTranslation(['workflow', 'agentV2', 'common'])
   const appId = useHooksStore((s) => s.configsMap?.flowId)
   const [searchText, setSearchText] = useState('')
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
@@ -235,7 +235,7 @@ export function AgentBlockItem({
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch: () => void
 }) {
-  const { t } = useTranslation(['agentV2', 'navigation'])
+  const { t } = useTranslation(['workflow', 'agentV2', 'navigation'])
   const [open, setOpen] = useState(false)
   const handleSelect = (agent: AgentRosterNodeData) => {
     setOpen(false)

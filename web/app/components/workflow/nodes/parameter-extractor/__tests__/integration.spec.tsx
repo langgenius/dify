@@ -17,8 +17,8 @@ import { ParamType, ReasoningModeType } from '../types'
 import useConfig from '../use-config'
 
 const reasoningModeFunctionToolCallingLabel =
-  'workflow.nodes.parameterExtractor.reasoningModeFunctionToolCalling'
-const reasoningModePromptLabel = 'workflow.nodes.parameterExtractor.reasoningModePrompt'
+  'workflowModels.nodes.parameterExtractor.reasoningModeFunctionToolCalling'
+const reasoningModePromptLabel = 'workflowModels.nodes.parameterExtractor.reasoningModePrompt'
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -232,7 +232,7 @@ vi.mock('../components/extract-parameter/import-from-tool', () => ({
         ])
       }
     >
-      workflow.nodes.parameterExtractor.importFromTool
+      workflowModels.nodes.parameterExtractor.importFromTool
     </button>
   ),
 }))
@@ -326,7 +326,7 @@ describe('parameter-extractor path', () => {
       render(<ExtractParameter readonly={false} list={[]} onChange={vi.fn()} />)
 
       expect(
-        screen.getByText('workflow.nodes.parameterExtractor.extractParametersNotSet'),
+        screen.getByText('workflowModels.nodes.parameterExtractor.extractParametersNotSet'),
       ).toBeInTheDocument()
     })
 
@@ -399,7 +399,7 @@ describe('parameter-extractor path', () => {
 
       expect(
         screen.getByRole('button', {
-          name: 'workflow.nodes.parameterExtractor.addExtractParameter',
+          name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
         }),
       ).toBeInTheDocument()
     })
@@ -412,7 +412,7 @@ describe('parameter-extractor path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: 'workflow.nodes.parameterExtractor.addExtractParameter',
+          name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
         }),
       )
 
@@ -436,7 +436,7 @@ describe('parameter-extractor path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: 'workflow.nodes.parameterExtractor.addExtractParameter',
+          name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
         }),
       )
       expect(
@@ -616,7 +616,9 @@ describe('parameter-extractor path', () => {
       await user.click(screen.getByRole('button', { name: 'set-params' }))
       await user.click(screen.getByRole('button', { name: 'pick-var' }))
       await user.click(
-        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
+        screen.getByRole('button', {
+          name: /workflowModels.nodes.parameterExtractor.importFromTool/i,
+        }),
       )
       await user.click(screen.getByRole('button', { name: 'vision-toggle' }))
       await user.click(screen.getByRole('button', { name: 'vision-config' }))

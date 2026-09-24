@@ -63,7 +63,7 @@ describe('human-input/delivery-method/recipient/member-list', () => {
     expect(screen.getByText('Owner')).toBeInTheDocument()
     expect(
       screen.queryByText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add',
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add',
       ),
     ).not.toBeInTheDocument()
 
@@ -93,7 +93,7 @@ describe('human-input/delivery-method/recipient/member-list', () => {
     expect(screen.getByText('workspaceMembers.members.you')).toBeInTheDocument()
     expect(
       screen.getByText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added',
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added',
       ),
     ).toBeInTheDocument()
 

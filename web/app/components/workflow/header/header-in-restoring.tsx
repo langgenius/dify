@@ -29,7 +29,7 @@ export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
 }
 const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
-  const { t } = useTranslation(['billing', 'workflow'])
+  const { t } = useTranslation(['billing', 'workflow', 'workflowHistory'])
   const { theme } = useTheme()
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
@@ -85,7 +85,7 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
         versionId: currentVersion.id,
         versionName: getWorkflowVersionName(
           currentVersion,
-          t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+          t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
         ),
         initiatorUserId: userProfile.id,
         initiatorName: userProfile.name,
@@ -138,13 +138,13 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       workflowStore.setState({ isRestoring: false })
       workflowStore.setState({ backupDraft: undefined })
       handleRefreshWorkflowDraft()
-      toast.success(t(($) => $['versionHistory.action.restoreSuccess'], { ns: 'workflow' }))
+      toast.success(t(($) => $['versionHistory.action.restoreSuccess'], { ns: 'workflowHistory' }))
       deleteAllInspectVars()
       invalidAllLastRun()
       await emitRestoreComplete(true)
       await emitWorkflowUpdate()
     } catch {
-      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflow' }))
+      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
       await emitRestoreComplete(false, 'restore failed')
     } finally {
       resetWorkflowVersionHistory()

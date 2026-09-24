@@ -74,7 +74,7 @@ it('selects the generated strategy output and metadata through the real provider
     systemFeatures: { enable_marketplace: false },
   })
 
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   await user.click(await screen.findByRole('button', { name: 'Agent provider' }))
   await user.click(await screen.findByRole('button', { name: 'ReAct' }))
   expect(onChange).toHaveBeenCalledWith({
@@ -97,7 +97,7 @@ it('preserves a nullable output schema when selecting a strategy', async () => {
   render(<AgentStrategySelector onChange={onChange} />, {
     systemFeatures: { enable_marketplace: false },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   await user.click(await screen.findByRole('button', { name: 'Agent provider' }))
   await user.click(await screen.findByRole('button', { name: 'ReAct' }))
   expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ agent_output_schema: null }))
@@ -116,7 +116,7 @@ it('preserves letter ordering and author groups across flat and tree views', asy
   render(<AgentStrategySelector onChange={vi.fn()} />, {
     systemFeatures: { enable_marketplace: false },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   await screen.findByRole('button', { name: 'Apple' })
   const providerNames = () =>
     screen
@@ -145,9 +145,9 @@ it('filters by provider identity without changing the saved selection or opening
   render(<AgentStrategySelector onChange={onChange} />, {
     systemFeatures: { enable_marketplace: false },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   await screen.findByRole('button', { name: 'Display name' })
-  const search = screen.getByPlaceholderText('workflow.nodes.agent.strategy.searchPlaceholder')
+  const search = screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder')
   await user.type(search, 'TARGET')
   expect(screen.getByRole('button', { name: 'Display name' })).toHaveAttribute(
     'aria-expanded',
@@ -172,7 +172,7 @@ it('keeps letter navigation for long catalogs and removes it in tree view', asyn
   render(<AgentStrategySelector onChange={vi.fn()} />, {
     systemFeatures: { enable_marketplace: false },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   const letter = await screen.findByRole('button', { name: 'K' })
   await user.click(letter)
   expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({ behavior: 'smooth' })
@@ -193,11 +193,11 @@ it('keeps marketplace search and its category link alongside the installed catal
   render(<AgentStrategySelector onChange={vi.fn()} />, {
     systemFeatures: { enable_marketplace: true },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   const link = screen.getByRole('link', { name: 'plugin.findMoreInMarketplace' })
   expect(link.getAttribute('href')).toContain('/plugins/agent-strategy')
   await user.type(
-    screen.getByPlaceholderText('workflow.nodes.agent.strategy.searchPlaceholder'),
+    screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
     'react',
   )
   expect(searchMarketplace).toHaveBeenLastCalledWith({
@@ -268,11 +268,13 @@ it('keeps the install action for a saved marketplace strategy that is no longer 
     { systemFeatures: { enable_marketplace: true } },
   )
   await user.click(
-    await screen.findByRole('button', { name: 'workflow.nodes.agent.pluginInstaller.install' }),
+    await screen.findByRole('button', {
+      name: 'workflowAgent.nodes.agent.pluginInstaller.install',
+    }),
   )
   expect(install).toHaveBeenCalledWith('langgenius/agent:1.0.0@hash', expect.any(Object))
   expect(
-    screen.queryByPlaceholderText('workflow.nodes.agent.strategy.searchPlaceholder'),
+    screen.queryByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
   ).not.toBeInTheDocument()
   expect(screen.getByText('Saved label')).toBeInTheDocument()
 })

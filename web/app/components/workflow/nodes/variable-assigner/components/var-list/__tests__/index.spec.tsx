@@ -73,7 +73,7 @@ describe('variable-assigner/var-list', () => {
   it('renders the empty placeholder when no variables are configured', () => {
     renderVarList()
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
   })
 
   it('opens the picker and removes an assigned variable', () => {

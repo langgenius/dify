@@ -55,11 +55,11 @@ describe('useActionMenu', () => {
       },
       {
         key: VersionHistoryContextMenuOptions.edit,
-        name: 'workflow.versionHistory.nameThisVersion',
+        name: 'workflowHistory.versionHistory.nameThisVersion',
       },
       {
         key: VersionHistoryContextMenuOptions.copyId,
-        name: 'workflow.versionHistory.copyId',
+        name: 'workflowHistory.versionHistory.copyId',
         description: 'version-1',
       },
     ])
