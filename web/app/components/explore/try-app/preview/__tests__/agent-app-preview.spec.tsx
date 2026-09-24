@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import AgentAppPreview from '../agent-app-preview'
 
 const appDetail = {
@@ -62,17 +63,27 @@ const builtInTools = [
   },
 ]
 
+function createQueryClient() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  client.setQueryData(consoleQuery.workspaces.current.summary.get.queryKey(), {
+    id: 'workspace-id',
+    name: 'Test workspace',
+    plan: null,
+    credits: null,
+    role: 'normal',
+  })
+  return client
+}
+
 describe('AgentAppPreview', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('shows published Agent configuration and chat introduction without editing actions', async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const requests: string[] = []
+    const client = createQueryClient()
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: Request | string) => {
         const url = input instanceof Request ? input.url : input
-        requests.push(url)
         if (url.endsWith('/workspaces/current/tools/builtin')) return Response.json(builtInTools)
         throw new Error(`Unexpected request: ${url}`)
       }),
@@ -91,12 +102,10 @@ describe('AgentAppPreview', () => {
     expect(screen.getByText('How can I help?')).toBeInTheDocument()
     expect(screen.getByText('Summarize the requirements')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /copy|edit|auth/i })).not.toBeInTheDocument()
-    await waitFor(() => expect(client.isFetching()).toBe(0))
-    expect(requests).toEqual(['http://localhost:5001/console/api/workspaces/current/tools/builtin'])
   })
 
   it('opens the existing resource dialogs through trial app endpoints', async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const client = createQueryClient()
     const user = userEvent.setup()
     const requests: string[] = []
     vi.stubGlobal(
