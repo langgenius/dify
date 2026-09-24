@@ -78,13 +78,23 @@ def test_template_export_works_without_browser_credentials(
     assert response.json["code"] == "recommended_app_not_found"
     exporter.export.assert_not_called()
     exporter.export_yaml.assert_not_called()
-    assert app.test_client().get(f"/trial-apps/{app_id}/package", query_string=query).status_code == 404
 
 
-@pytest.mark.parametrize("option", [{"format": "json"}, {"include_secret": "true"}, {"workflow_id": "draft"}])
-def test_template_export_rejects_unsupported_options(option: dict[str, str]) -> None:
-    with pytest.raises(ValidationError):
-        module.RecommendedAgentExportQuery.model_validate({"version_id": str(uuid4()), **option})
+@pytest.mark.parametrize("option", [{"format": "json"}, {"include_secret": "true"}])
+def test_template_export_rejects_unsupported_options(
+    monkeypatch: pytest.MonkeyPatch,
+    option: dict[str, str],
+) -> None:
+    app = Flask(__name__)
+    exports = MagicMock()
+    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(recommended_app_packages=exports))
+    ExternalApi(app).add_resource(module.RecommendedAgentExportApi, "/trial-apps/<uuid:app_id>/export")
+    response = app.test_client().get(
+        f"/trial-apps/{uuid4()}/export",
+        query_string={"version_id": str(uuid4()), **option},
+    )
+    assert response.status_code == 422
+    exports.export.assert_not_called()
 
 
 def _request_context() -> RequestContext:

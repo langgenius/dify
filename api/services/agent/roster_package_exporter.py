@@ -90,7 +90,6 @@ class RosterAgentPackageExporter:
                 Agent.scope == AgentScope.ROSTER,
                 Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.status == AgentStatus.ACTIVE,
-                Agent.app_id.is_not(None),
                 or_(Agent.backing_app_id == Agent.app_id, Agent.backing_app_id.is_(None)),
                 App.mode == AppMode.AGENT,
                 App.status == AppStatus.NORMAL,
