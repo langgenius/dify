@@ -1,5 +1,7 @@
-import type { AgentAppComposerResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
-import type { TryAppInfo } from '@/service/try-app'
+import type {
+  AgentAppComposerResponse,
+  TrialAppDetailResponse,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -14,7 +16,7 @@ const appDetail = {
   enable_api: false,
   enable_site: false,
   site: { title: 'Tender Analyst', default_language: 'en-US', icon_type: 'emoji', icon: '🤖' },
-} satisfies TryAppInfo
+} satisfies TrialAppDetailResponse
 
 const composer = {
   variant: 'agent_app',
