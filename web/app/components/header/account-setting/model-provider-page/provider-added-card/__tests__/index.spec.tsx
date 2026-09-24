@@ -310,7 +310,9 @@ describe('ProviderAddedCard', () => {
     await waitFor(() => expect(screen.queryByTestId('model-list')).not.toBeInTheDocument())
 
     // Explicitly re-find and click to re-open
-    fireEvent.click(screen.getByRole('button', { name: /modelProvider\.showModels/i }))
+    const modelsCountButton = screen.getByRole('button', { name: /modelProvider\.modelsNum/i })
+    expect(modelsCountButton).not.toHaveAttribute('aria-label')
+    fireEvent.click(modelsCountButton)
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
     expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(2) // Re-open fetches again with default stale/gc behavior
 

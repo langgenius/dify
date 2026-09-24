@@ -194,7 +194,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <button
               type="button"
               className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               onClick={handleOpenModelList}
             >
               <span className="truncate">
@@ -281,7 +280,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <button
               type="button"
               className="flex h-6 items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 text-left outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               onClick={handleOpenModelList}
             >
               {hasModelList
