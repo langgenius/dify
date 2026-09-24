@@ -646,6 +646,19 @@ class TestBuildPromptMessageWithFiles:
 # ===========================================================================
 
 
+def test_split_prompt_messages_keeps_complete_turns_and_leading_assistant() -> None:
+    leading = AssistantPromptMessage(content="leading")
+    first_user = UserPromptMessage(content="first")
+    first_answer = AssistantPromptMessage(content="answer")
+    followup = AssistantPromptMessage(content="followup")
+    second_user = UserPromptMessage(content="second")
+
+    assert memory_module._split_prompt_messages_into_turns([]) == []
+    assert memory_module._split_prompt_messages_into_turns(
+        [leading, first_user, first_answer, followup, second_user]
+    ) == [[leading], [first_user, first_answer, followup], [second_user]]
+
+
 class TestGetHistoryPromptMessages:
     """Tests for persisted history retrieval, file batching, and pruning."""
 
