@@ -23,6 +23,7 @@ from extensions.ext_database import db  # noqa: F401
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
+from libs.emoji_normalization import normalize_icon_for_storage
 from libs.login import current_user
 from libs.pagination import PaginatedResult, paginate_query
 from models import Account, AppStar
@@ -654,7 +655,7 @@ class AppService:
         app.description = params.description or ""
         app.mode = app_mode
         app.icon_type = IconType(params.icon_type) if params.icon_type else IconType.EMOJI
-        app.icon = params.icon
+        app.icon = normalize_icon_for_storage(app.icon_type, params.icon)
         app.icon_background = params.icon_background
         app.tenant_id = tenant_id
         app.api_rph = params.api_rph
@@ -906,7 +907,7 @@ class AppService:
             resolved_icon_type = IconType(icon_type)
 
         app.icon_type = resolved_icon_type
-        app.icon = args["icon"]
+        app.icon = normalize_icon_for_storage(resolved_icon_type, args["icon"])
         app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.max_active_requests = args.get("max_active_requests")
@@ -974,10 +975,10 @@ class AppService:
         :return: App instance
         """
         assert current_user is not None
-        app.icon = icon
-        app.icon_background = icon_background
         if icon_type is not None:
             app.icon_type = icon_type if isinstance(icon_type, IconType) else IconType(icon_type)
+        app.icon = normalize_icon_for_storage(app.icon_type, icon)
+        app.icon_background = icon_background
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         self._sync_backing_agent_identity(

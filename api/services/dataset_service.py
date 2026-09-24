@@ -816,7 +816,9 @@ class DatasetService:
             filtered_data["summary_index_setting"] = data.get("summary_index_setting")
         # update icon info
         if data.get("icon_info"):
-            filtered_data["icon_info"] = data.get("icon_info")
+            from libs.emoji_normalization import normalize_icon_info_dict
+
+            filtered_data["icon_info"] = normalize_icon_info_dict(data.get("icon_info"))
 
         # Update dataset in database. Use flush() rather than commit() so the
         # caller-managed transaction (opened with `with Session(...) as session`)

@@ -1,6 +1,6 @@
 from typing import Any, Self
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -10,6 +10,7 @@ from controllers.web.wraps import WebApiResource
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.emoji_normalization import ensure_model_emoji_icon_normalized
 from libs.helper import build_icon_url, dump_response
 from models.account import Tenant
 from models.model import App, AppMode, EndUser, Site
@@ -34,6 +35,10 @@ class WebSiteResponse(ResponseModel):
     show_workflow_steps: bool | None = None
     use_icon_as_answer_icon: bool | None = None
     icon_url: str | None = None
+
+    @model_validator(mode="after")
+    def _normalize_persisted_emoji_icon(self) -> Self:
+        return ensure_model_emoji_icon_normalized(self)
 
 
 class WebModelConfigResponse(ResponseModel):
