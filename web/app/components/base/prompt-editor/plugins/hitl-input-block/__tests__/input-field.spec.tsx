@@ -192,7 +192,7 @@ describe('InputField', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     ).toBeDisabled()
     await user.keyboard('{Control>}{Enter}{/Control}')
@@ -255,7 +255,7 @@ describe('InputField', () => {
     await user.type(nameInput!, 'generated_name')
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -325,11 +325,11 @@ describe('InputField', () => {
     )
 
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -358,11 +358,13 @@ describe('InputField', () => {
     )
 
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useConstantInstead/i),
+      screen.getByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.useConstantInstead/i,
+      ),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -393,7 +395,7 @@ describe('InputField', () => {
     await user.click(screen.getByText('pick-variable'))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -425,11 +427,11 @@ describe('InputField', () => {
 
     await user.keyboard('{Tab}')
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -465,7 +467,7 @@ describe('InputField', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -480,7 +482,9 @@ describe('InputField', () => {
       },
     })
     expect(
-      screen.queryByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i),
+      screen.queryByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.prePopulateField/i,
+      ),
     ).not.toBeInTheDocument()
   })
 
@@ -510,7 +514,9 @@ describe('InputField', () => {
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.single-file\b/ }),
     )
     expect(
-      screen.queryByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i),
+      screen.queryByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.prePopulateField/i,
+      ),
     ).not.toBeInTheDocument()
 
     await user.click(
@@ -551,7 +557,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'config-select' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -591,15 +597,17 @@ describe('InputField', () => {
     )
     await user.click(screen.getByRole('button', { name: 'config-select' }))
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
     await user.click(screen.getByText('pick-variable'))
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useConstantInstead/i),
+      screen.getByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.useConstantInstead/i,
+      ),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -637,7 +645,7 @@ describe('InputField', () => {
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.select\b/ }),
     )
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
 
     expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.arrayString })).toBe(true)
@@ -675,7 +683,7 @@ describe('InputField', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -708,7 +716,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -752,7 +760,7 @@ describe('InputField', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -785,7 +793,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -826,7 +834,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -869,7 +877,7 @@ describe('InputField', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
