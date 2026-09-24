@@ -2,7 +2,6 @@ import type {
   AppDetailWithSite,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { Dispatch, SetStateAction } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/types/app'
@@ -33,18 +32,6 @@ export type AppInfoModalType =
   | 'exportWarning'
   | null
 
-type UseAppInfoActionsParams = {
-  resetKey?: string
-}
-
-type AppInfoUiState = {
-  resetKey?: string
-  activeModal: AppInfoModalType
-  secretEnvList: EnvironmentVariableItemResponse[]
-}
-
-const emptySecretEnvList: EnvironmentVariableItemResponse[] = []
-
 type AppMetadata = Pick<
   App,
   | 'description'
@@ -68,28 +55,17 @@ const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: 
     icon_background: app.icon_background,
     icon_type: app.icon_type,
     icon_url: app.icon_url,
-    max_active_requests: app.max_active_requests,
+    max_active_requests:
+      app.max_active_requests === undefined
+        ? cachedApp.max_active_requests
+        : app.max_active_requests,
     name: app.name,
     updated_at: app.updated_at,
     use_icon_as_answer_icon: app.use_icon_as_answer_icon,
   }
 }
 
-const createInitialUiState = (resetKey?: string): AppInfoUiState => ({
-  resetKey,
-  activeModal: null,
-  secretEnvList: [],
-})
-
-const resolveStateAction = <T>(value: SetStateAction<T>, previous: T) => {
-  return typeof value === 'function' ? (value as (previous: T) => T)(previous) : value
-}
-
-const getCurrentUiState = (state: AppInfoUiState, resetKey?: string) => {
-  return state.resetKey === resetKey ? state : createInitialUiState(resetKey)
-}
-
-export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
+export function useAppInfoActions() {
   const { t } = useTranslation(['app'])
   const { replace } = useRouter()
   const queryClient = useQueryClient()
@@ -105,36 +81,8 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
-  const [uiState, setUiState] = useState(() => createInitialUiState(resetKey))
-  const uiStateMatchesResetKey = uiState.resetKey === resetKey
-  const activeModal = uiStateMatchesResetKey ? uiState.activeModal : null
-  const secretEnvList = uiStateMatchesResetKey ? uiState.secretEnvList : emptySecretEnvList
-
-  const setActiveModal = useCallback<Dispatch<SetStateAction<AppInfoModalType>>>(
-    (value) => {
-      setUiState((state) => {
-        const current = getCurrentUiState(state, resetKey)
-        return {
-          ...current,
-          activeModal: resolveStateAction(value, current.activeModal),
-        }
-      })
-    },
-    [resetKey],
-  )
-
-  const setSecretEnvList = useCallback<Dispatch<SetStateAction<EnvironmentVariableItemResponse[]>>>(
-    (value) => {
-      setUiState((state) => {
-        const current = getCurrentUiState(state, resetKey)
-        return {
-          ...current,
-          secretEnvList: resolveStateAction(value, current.secretEnvList),
-        }
-      })
-    },
-    [resetKey],
-  )
+  const [activeModal, setActiveModal] = useState<AppInfoModalType>(null)
+  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
 
   const openModal = useCallback(
     (modal: Exclude<AppInfoModalType, null>) => {
@@ -350,5 +298,3 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
     onConfirmDelete,
   }
 }
-
-export type AppInfoActions = ReturnType<typeof useAppInfoActions>

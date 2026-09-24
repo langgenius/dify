@@ -86,7 +86,7 @@ class Import(BaseModel):
     id: str
     status: ImportStatus
     app_id: str | None = None
-    app_mode: str | None = None
+    app_mode: AppMode | None = None
     permission_keys: list[str] = Field(default_factory=list)
     current_dsl_version: str = CURRENT_APP_DSL_VERSION
     imported_dsl_version: str = ""

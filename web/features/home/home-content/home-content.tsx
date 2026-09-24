@@ -12,6 +12,7 @@ import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { getTemplateImportSource } from '@/app/components/explore/template-import'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import {
   getStepByStepTourPermissionVariant,
@@ -27,10 +28,11 @@ import {
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/tasks'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useCanImportAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
-import { DSLImportMode } from '@/models/app'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
@@ -72,6 +74,11 @@ export function HomeContent() {
   const continueWorkApps = recentAppsQuery.data.data
   const allCategoriesEn = t(($) => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  const canImportAgents = useCanImportAgents()
+  const canCreateTemplate = useCallback(
+    (mode?: string | null) => (mode === 'agent' ? canImportAgents : canCreateApp),
+    [canCreateApp, canImportAgents],
+  )
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
   const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
   const completedStepByStepTourTaskIds = useAtomValue(completedStepByStepTourTaskIdsAtom)
@@ -298,6 +305,7 @@ export function HomeContent() {
     ],
   )
   const handleShowFromTryApp = useCallback(() => {
+    if (!canCreateTemplate(currentTryApp?.app?.mode)) return
     setCurrApp(currentTryApp || null)
     currentCreateAppTrackingRef.current = {
       source: 'explore_template_preview',
@@ -312,6 +320,7 @@ export function HomeContent() {
   }, [
     activeStepByStepTourGuideIndex,
     activeStepByStepTourTaskId,
+    canCreateTemplate,
     completedStepByStepTourTaskIds,
     currentTryApp,
   ])
@@ -319,14 +328,18 @@ export function HomeContent() {
     setCurrApp(app)
     setIsShowCreateModal(true)
   }, [])
-  const handleCreateFromTemplate = useCallback((app: RecommendedAppResponse) => {
-    currentCreateAppTrackingRef.current = {
-      source: 'explore_template_list',
-      templateId: app.app_id,
-    }
-    setCurrApp(app)
-    setIsShowCreateModal(true)
-  }, [])
+  const handleCreateFromTemplate = useCallback(
+    (app: RecommendedAppResponse) => {
+      if (!canCreateTemplate(app.app?.mode)) return
+      currentCreateAppTrackingRef.current = {
+        source: 'explore_template_list',
+        templateId: app.app_id,
+      }
+      setCurrApp(app)
+      setIsShowCreateModal(true)
+    },
+    [canCreateTemplate],
+  )
   const trackCurrentCreateApp = useCallback((appMode?: string | null) => {
     const currentCreateAppTracking = currentCreateAppTrackingRef.current
     const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
@@ -347,24 +360,34 @@ export function HomeContent() {
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(
     async ({ name, icon_type, icon, icon_background, description }) => {
+      const appId = currApp?.app_id
+      if (!appId || !canCreateTemplate(currApp.app?.mode)) return
       isSubmittingHomeTourCreateRef.current = shouldCompleteHomeTourOnCreateRef.current
       hideTryAppPanel()
 
-      const appId = currApp?.app_id
-      if (!appId) return
+      let appMode: string
+      let importSource: ReturnType<typeof getTemplateImportSource>
+      try {
+        const appDetail = await queryClient.query({
+          ...consoleQuery.explore.apps.byAppId.get.queryOptions({
+            input: { params: { app_id: appId } },
+          }),
+          staleTime: 0,
+        })
+        if (!canCreateTemplate(appDetail.mode))
+          throw new Error('Template creation is not permitted')
+        appMode = appDetail.mode
+        importSource = getTemplateImportSource(appDetail)
+      } catch {
+        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+        isSubmittingHomeTourCreateRef.current = false
+        abandonHomeTourCreate()
+        return
+      }
 
-      const appDetail = await queryClient.query({
-        ...consoleQuery.explore.apps.byAppId.get.queryOptions({
-          input: { params: { app_id: appId } },
-        }),
-        staleTime: 'static',
-      })
-
-      const { export_data, mode } = appDetail
-      currentCreateAppModeRef.current = mode
+      currentCreateAppModeRef.current = appMode
       const payload = {
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: export_data,
+        ...importSource,
         name,
         icon_type,
         icon,
@@ -393,10 +416,13 @@ export function HomeContent() {
     [
       abandonHomeTourCreate,
       completeHomeTourAfterCreate,
+      canCreateTemplate,
+      currApp?.app?.mode,
       currApp?.app_id,
       handleImportDSL,
       hideTryAppPanel,
       queryClient,
+      t,
       trackCurrentCreateApp,
     ],
   )
@@ -448,7 +474,7 @@ export function HomeContent() {
               <TemplateCard
                 key={app.app_id}
                 app={app}
-                canCreate={canCreateApp}
+                canCreate={canCreateTemplate(app.app?.mode)}
                 onCreate={() => handleCreateFromTemplate(app)}
                 onTry={handleTryApp}
               />
@@ -484,7 +510,7 @@ export function HomeContent() {
           appDescription={currApp?.description || ''}
           show={isShowCreateModal}
           onConfirm={onCreate}
-          confirmDisabled={isFetching}
+          confirmLoading={isFetching}
           onHide={handleCreateModalHide}
         />
       )}
@@ -493,7 +519,7 @@ export function HomeContent() {
           versions={versions}
           onCancel={handleCancelDSLConfirm}
           onConfirm={onConfirmDSL}
-          confirmDisabled={isFetching}
+          confirmLoading={isFetching}
         />
       )}
 
@@ -503,7 +529,8 @@ export function HomeContent() {
           canTrial={currentTryApp.can_trial}
           categories={currentTryApp.categories}
           templateName={currentTryApp.app?.name}
-          canCreate={canCreateApp}
+          templateMode={currentTryApp.app?.mode}
+          canCreate={canCreateTemplate(currentTryApp.app?.mode)}
           createButtonStepByStepTourTarget={
             canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal
               ? STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate

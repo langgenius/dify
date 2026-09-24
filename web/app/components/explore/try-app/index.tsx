@@ -4,10 +4,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { Suspense, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { consoleQuery } from '@/service/console'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import AppInfo from './app-info'
 import Preview from './preview'
@@ -20,6 +22,7 @@ type Props = Readonly<{
   canTrial: RecommendedAppResponse['can_trial']
   categories?: RecommendedAppResponse['categories']
   templateName?: NonNullable<RecommendedAppResponse['app']>['name']
+  templateMode?: NonNullable<RecommendedAppResponse['app']>['mode']
   canCreate?: boolean
   createButtonStepByStepTourTarget?: string
   onClose: () => void
@@ -31,6 +34,7 @@ function TryApp({
   canTrial,
   categories,
   templateName,
+  templateMode,
   canCreate = true,
   createButtonStepByStepTourTarget,
   onClose,
@@ -38,13 +42,32 @@ function TryApp({
 }: Props) {
   const { t } = useTranslation(['common', 'explore'])
   const { data: appDetail, isLoading, isFetching, refetch } = useGetTryAppInfo(appId)
-  const hasLoadError = !isLoading && !appDetail
+  const isAgent = templateMode === 'agent' || appDetail?.mode === 'agent'
+  const composerQuery = useQuery(
+    consoleQuery.trialApps.byAppId.agentComposer.get.queryOptions({
+      input: { params: { app_id: appId } },
+      enabled: isAgent,
+    }),
+  )
+  const agentLoading = isAgent && composerQuery.isLoading
+  const hasLoadError =
+    !isLoading && !agentLoading && (!appDetail || (isAgent && !composerQuery.data))
+  const isRetrying = isFetching || composerQuery.isFetching
   const retryLabelId = useId()
   const detailTabRef = useRef<HTMLButtonElement>(null)
 
   const handleRetry = async () => {
-    const { data } = await refetch()
-    if (data) detailTabRef.current?.focus()
+    const results = await Promise.all([
+      appDetail ? Promise.resolve(appDetail) : refetch().then((result) => result.data),
+      ...(isAgent
+        ? [
+            composerQuery.data
+              ? Promise.resolve(composerQuery.data)
+              : composerQuery.refetch().then((result) => result.data),
+          ]
+        : []),
+    ])
+    if (results.every((result) => result !== undefined)) detailTabRef.current?.focus()
   }
 
   return (
@@ -76,7 +99,7 @@ function TryApp({
               {canTrial && (
                 <TabsTab
                   value={TypeEnum.TRY}
-                  disabled={!appDetail}
+                  disabled={!appDetail || hasLoadError || agentLoading}
                   className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
                 >
                   <span className="system-md-semibold-uppercase">
@@ -96,7 +119,7 @@ function TryApp({
           </div>
           <div className="mt-2 flex h-0 grow justify-between space-x-2">
             <TabsPanel value={TypeEnum.DETAIL} className="min-w-0 flex-1">
-              {isLoading ? (
+              {isLoading || agentLoading ? (
                 <div className="flex h-full items-center justify-center">
                   <LoadingPlaceholder />
                 </div>
@@ -115,13 +138,13 @@ function TryApp({
                   </div>
                   <Button
                     variant="secondary-accent"
-                    disabled={isFetching}
-                    focusableWhenDisabled={isFetching}
+                    disabled={isRetrying}
+                    focusableWhenDisabled={isRetrying}
                     aria-labelledby={retryLabelId}
                     onClick={handleRetry}
                   >
                     <span id={retryLabelId}>
-                      {isFetching
+                      {isRetrying
                         ? t(($) => $['tryApp.retrying'], { ns: 'explore' })
                         : t(($) => $['operation.retry'], { ns: 'common' })}
                     </span>
@@ -135,13 +158,13 @@ function TryApp({
                     </div>
                   }
                 >
-                  <Preview appId={appId} appDetail={appDetail} />
+                  <Preview appId={appId} appDetail={appDetail} agentComposer={composerQuery.data} />
                 </Suspense>
               ) : null}
             </TabsPanel>
             {canTrial && (
               <TabsPanel value={TypeEnum.TRY} className="min-w-0 flex-1">
-                {appDetail && (
+                {appDetail && !hasLoadError && !agentLoading && (
                   <Suspense
                     fallback={
                       <div className="flex h-full items-center justify-center">
@@ -154,7 +177,7 @@ function TryApp({
                 )}
               </TabsPanel>
             )}
-            {appDetail && (
+            {appDetail && !hasLoadError && !agentLoading && (
               <Suspense fallback={<div className="w-90 shrink-0" />}>
                 <AppInfo
                   className="w-90 shrink-0"
@@ -164,6 +187,7 @@ function TryApp({
                   categories={categories ?? []}
                   createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
                   onCreate={onCreate}
+                  agentComposer={composerQuery.data}
                 />
               </Suspense>
             )}

@@ -1,9 +1,10 @@
 import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NotRequired, TypedDict, cast, override
+from typing import Any, NotRequired, TypedDict, cast
 
 import sqlalchemy as sa
 from pydantic import JsonValue
@@ -120,9 +121,13 @@ class AppModelConfigResponseView:
 class AppResponseView:
     """Expose App response properties through one caller-owned database session."""
 
-    def __init__(self, app: App, *, session: Session) -> None:
+    def __init__(
+        self, app: App, *, session: Session, account: Account | None = None, access_mode: str | None = None
+    ) -> None:
         self._app = app
         self._session = session
+        self._account = account
+        self._access_mode = access_mode
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._app, name)  # guard-ignore: no-new-getattr -- delegates model fields
@@ -140,6 +145,19 @@ class AppResponseView:
         app_model_config = self._app.app_model_config_with_session(session=self._session)
         if app_model_config is None:
             return None
+        if self._account is not None and (
+            self._app.mode == AppMode.AGENT_CHAT or self._app.is_agent_with_session(session=self._session)
+        ):
+            tenant_id = self._account.current_tenant_id
+            assert tenant_id is not None
+            masked_agent_mode = mask_agent_tool_parameters(
+                agent_mode=cast(Mapping[str, JsonValue], app_model_config.agent_mode_dict),
+                app_id=self._app.id,
+                tenant_id=tenant_id,
+                user_id=self._account.id,
+            )
+            app_model_config = deepcopy(app_model_config)
+            app_model_config.agent_mode = json.dumps(masked_agent_mode)
         return AppModelConfigResponseView(app_model_config, session=self._session)
 
     @property
@@ -153,6 +171,18 @@ class AppResponseView:
     @property
     def mode_compatible_with_agent(self) -> str:
         return self._app.mode_compatible_with_agent_with_session(session=self._session)
+
+    @property
+    def access_mode(self) -> str | None:
+        return self._access_mode
+
+    @property
+    def permission_keys(self) -> list[str]:
+        return []
+
+    @property
+    def app_id(self) -> str | None:
+        return None
 
     @property
     def deleted_tools(self) -> list[Any]:
@@ -579,48 +609,6 @@ class AppService:
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(app.tenant_id)
-
-    def get_app(self, app: App, *, session: Session) -> App:
-        """
-        Get App
-        """
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        # get original app model config
-        if app.mode == AppMode.AGENT_CHAT or app.is_agent_with_session(session=session):
-            model_config = app.app_model_config_with_session(session=session)
-            if not model_config:
-                return app
-            agent_mode = mask_agent_tool_parameters(
-                agent_mode=cast(Mapping[str, JsonValue], model_config.agent_mode_dict),
-                app_id=app.id,
-                tenant_id=current_user.current_tenant_id,
-                user_id=current_user.id,
-            )
-
-            # override agent mode
-            if model_config:
-                model_config.agent_mode = json.dumps(agent_mode)
-
-            class ModifiedApp(App):
-                """
-                Modified App class
-                """
-
-                def __init__(self, app):
-                    self.__dict__.update(app.__dict__)
-
-                @override
-                def app_model_config_with_session(self, *, session: Session) -> AppModelConfig | None:
-                    # Hand back the in-memory config the masking pass above produced, and
-                    # deliberately ignore `session`: re-reading the row here would undo the
-                    # masking. Response paths resolve the config through this accessor
-                    # (`AppResponseView.app_model_config`), so the override has to sit here.
-                    return model_config
-
-            app = ModifiedApp(app)
-
-        return app
 
     class ArgsDict(TypedDict):
         name: str

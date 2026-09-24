@@ -15,6 +15,8 @@ import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
+import { createAgentFixture } from '@/test/fixtures/agent'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -230,7 +232,7 @@ vi.mock('@/service/console', () => ({
 }))
 
 function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
-  return {
+  return createAgentFixture({
     permission_keys: Object.values(AgentPermission),
     access_ready: true,
     enable_api: true,
@@ -243,32 +245,23 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
     backing_app_id: 'app-1',
     api_base_url: 'https://api.example.test/v1',
     access_mode: 'sso_verified',
-    site: {
-      access_token: 'site-token',
+    site: createAppSiteFixture({
       app_base_url: 'https://chat.example.test',
-      chat_color_theme_inverted: false,
-      default_language: 'en-US',
-      icon_url: null,
-      show_workflow_steps: false,
       title: 'Support Agent',
-      use_icon_as_answer_icon: false,
-    } as NonNullable<AgentAppDetailWithSite['site']> & {
-      access_token: string
-      app_base_url: string
-    },
+    }),
     ...overrides,
-  }
+  })
 }
 
 function createAppDetailResponse(overrides: Partial<AppDetail> = {}): AppDetail {
-  return {
+  return createAppDetailFixture({
     enable_api: true,
     enable_site: true,
     id: 'app-1',
     mode: 'agent',
     name: 'Support Agent',
     ...overrides,
-  }
+  })
 }
 
 function createAgentApiAccessResponse(
@@ -624,6 +617,35 @@ describe('Agent access surface cards', () => {
       expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
     })
 
+    it('should replace the Web App URL token without discarding the cached site settings', async () => {
+      const user = userEvent.setup()
+      const agent = createAgent()
+      const queryClient = renderWithQueryClient(
+        <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
+      )
+      queryClient.setQueryData(['agent-detail', 'agent-1'], agent)
+      mocks.siteAccessTokenResetMutation.mockResolvedValueOnce(
+        createAppSiteFixture({ code: 'new-site-token' }),
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.refreshUrl' }),
+      )
+
+      expect(mocks.siteAccessTokenResetMutation.mock.calls[0]?.[0]).toEqual({
+        params: { app_id: 'app-1' },
+      })
+      await waitFor(() => {
+        expect(
+          queryClient.getQueryData<AgentAppDetailWithSite>(['agent-detail', 'agent-1'])?.site,
+        ).toMatchObject({
+          code: 'new-site-token',
+          access_token: 'new-site-token',
+          title: 'Support Agent',
+        })
+      })
+    })
+
     it('should open the customize dialog with the backing app id and API base URL', async () => {
       const user = userEvent.setup()
 
@@ -707,7 +729,7 @@ describe('Agent access surface cards', () => {
       })
     })
 
-    it('should save settings through the backing app id and update the agent detail cache', async () => {
+    it('should save settings through the backing app id and invalidate agent detail', async () => {
       const user = userEvent.setup()
       mocks.getUserCanAccess.mockResolvedValue({ result: false })
       const agent = createAgent({
@@ -781,18 +803,9 @@ describe('Agent access surface cards', () => {
         })
       })
       expect(mocks.siteMutation.mock.calls[0]?.[0].body).not.toHaveProperty('enable_sso')
-      expect(
-        queryClient.getQueryData<AgentAppDetailWithSite>(['agent-detail', 'agent-1']),
-      ).toMatchObject({
-        site: {
-          access_token: 'new-site-token',
-          chat_color_theme: '#123456',
-          description: 'Updated web description.',
-          icon_url: null,
-          title: 'Support Portal',
-        },
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-detail', 'agent-1'] })
       })
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-detail', 'agent-1'] })
     })
 
     it('should fall back to the Agent icon tuple when WebApp site icon data is missing', async () => {
@@ -918,10 +931,10 @@ describe('Agent access surface cards', () => {
       ).toBeDisabled()
     })
 
-    it('should keep customize disabled until the generated contract provides the required fields', () => {
+    it('should keep customize disabled when the app base URL is empty', () => {
       renderWithQueryClient(
         <WebAppAccessCard
-          agent={createAgent({ api_base_url: null })}
+          agent={createAgent({ api_base_url: '' })}
           agentId="agent-1"
           isLoading={false}
         />,
@@ -1246,22 +1259,19 @@ describe('Agent access surface cards', () => {
       expect(screen.getByRole('button', { name: organizationAccessLabel })).toBeDisabled()
     })
 
-    it.each([null, 'future-access-mode'])(
-      'should hide the access mode entry when the access mode is %s',
-      (accessMode) => {
-        renderWithQueryClient(
-          <WebAppAccessCard
-            agent={createAgent({ access_mode: accessMode })}
-            agentId="agent-1"
-            isLoading={false}
-          />,
-        )
+    it('should hide the access mode entry when the access mode is unavailable', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: null })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
 
-        expect(
-          screen.queryByRole('button', { name: organizationAccessLabel }),
-        ).not.toBeInTheDocument()
-      },
-    )
+      expect(
+        screen.queryByRole('button', { name: organizationAccessLabel }),
+      ).not.toBeInTheDocument()
+    })
 
     it('should open the shared App access control dialog for the backing app', async () => {
       const user = userEvent.setup()
