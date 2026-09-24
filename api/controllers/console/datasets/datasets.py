@@ -76,11 +76,10 @@ def _get_accessible_dataset(dataset_id: UUID, tenant_id: str, current_user: Acco
     dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), tenant_id, session=session)
     if dataset is None:
         raise NotFound("Dataset not found.")
-    if not dify_config.RBAC_ENABLED:
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+    try:
+        DatasetService.check_dataset_permission(dataset, current_user, session)
+    except services.errors.account.NoPermissionError as e:
+        raise Forbidden(str(e))
     return dataset
 
 
@@ -668,11 +667,10 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        if not dify_config.RBAC_ENABLED:
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             current_tenant_id,
             current_user.id,

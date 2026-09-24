@@ -302,11 +302,10 @@ class DocumentResource(Resource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        if not dify_config.RBAC_ENABLED:
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
 
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
@@ -612,11 +611,10 @@ class DatasetDocumentListApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        if not dify_config.RBAC_ENABLED:
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
 
         check_knowledge_rate_limit()
         try:
@@ -1505,11 +1503,10 @@ class DocumentRetryApi(DocumentResource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        if not dify_config.RBAC_ENABLED:
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
 
         documents = DocumentService.get_documents_by_ids(
             DatasetRefService.create_dataset_ref(dataset), req_data.document_ids, session
