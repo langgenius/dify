@@ -1,7 +1,8 @@
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
   Select,
   SelectContent,
@@ -13,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
@@ -21,7 +22,8 @@ import {
   formatDateForOutput,
   toDayjs,
 } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import Input from '@/app/components/base/input'
+import { MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS, MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH } from '@/config'
+import { getMarkdownButtonAppearance } from './button-appearance'
 
 const DATA_FORMAT = {
   TEXT: 'text',
@@ -52,36 +54,29 @@ type SupportedType = (typeof SUPPORTED_TYPES)[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
-const SAFE_NAME_RE = (() => {
-  try {
-    return new RegExp('^\\p{L}[\\p{L}\\p{M}\\p{N}_()!*&（）！＊＆－-]*$', 'u')
-  } catch {
-    // Fallback for browsers without Unicode property escape support.
-    return /^[a-z][\w-]*$/i
-  }
-})()
+const SAFE_NAME_RE = /^\p{L}[\p{L}\p{M}\p{N}_-]*$/u
+// Treat operator-provided characters literally instead of interpolating them into a regular expression.
+const EXTRA_SAFE_NAME_CHARS = new Set(MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS)
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isSafeName(name: unknown): name is string {
+  if (
+    typeof name !== 'string' ||
+    name.length === 0 ||
+    name.length > MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
+  )
+    return false
+
+  const [firstChar, ...remainingChars] = Array.from(name)
   return (
-    typeof name === 'string' &&
-    name.length > 0 &&
-    name.length <= 128 &&
-    SAFE_NAME_RE.test(name) &&
+    firstChar !== undefined &&
+    SAFE_NAME_RE.test(firstChar) &&
+    remainingChars.every(
+      (char) => SAFE_NAME_RE.test(`A${char}`) || EXTRA_SAFE_NAME_CHARS.has(char),
+    ) &&
     !PROTOTYPE_POISON_KEYS.has(name)
   )
 }
-
-const VALID_BUTTON_VARIANTS = new Set<string>([
-  'primary',
-  'warning',
-  'secondary',
-  'secondary-accent',
-  'ghost',
-  'ghost-accent',
-  'tertiary',
-])
-const VALID_BUTTON_SIZES = new Set<string>(['small', 'medium', 'large'])
 
 type HastText = {
   type: 'text'
@@ -95,7 +90,7 @@ type HastElement = {
   children: Array<HastElement | HastText>
 }
 
-type FormValue = string | boolean | Dayjs | undefined
+type FormValue = string | number | boolean | Dayjs | undefined
 type FormValues = Record<string, FormValue>
 type EditState = {
   source: HastElement[]
@@ -137,7 +132,8 @@ function computeInitialFormValues(children: HastElement[]): FormValues {
       init[name] = raw != null ? toDayjs(String(raw)) : undefined
     } else if (type === SUPPORTED_TYPES.CHECKBOX) {
       const { checked, value } = child.properties
-      init[name] = !!checked || value === true || value === 'true'
+      const hasInitialValue = checked != null || value != null
+      init[name] = hasInitialValue ? !!checked || value === true || value === 'true' : undefined
     } else {
       init[name] = child.properties.value != null ? str(child.properties.value) : undefined
     }
@@ -159,6 +155,7 @@ function getElementKey(child: HastElement, index: number): string {
 }
 
 const MarkdownForm = ({ node }: { node: HastElement }) => {
+  const formId = useId()
   const typedNode = node
   const { onSend } = useChatContext()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -213,15 +210,17 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         const includeTime = child.properties.type === SUPPORTED_TYPES.DATETIME
         value = formatDateForOutput(value as Dayjs, includeTime)
       }
+      if (value === undefined) continue
       if (typeof value === 'boolean') out[name] = value
-      else out[name] = value != null ? String(value) : undefined
+      else out[name] = String(value)
     }
     return out
   }, [elementChildren, formValues])
 
   const onSubmit = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
+      e.stopPropagation()
       if (isSubmitting) return
       setIsSubmitting(true)
       try {
@@ -243,24 +242,15 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
   )
 
   return (
-    <form
-      autoComplete="off"
-      className="flex flex-col self-stretch"
-      data-testid="markdown-form"
-      onSubmit={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-      }}
-    >
+    <form autoComplete="off" className="flex flex-col self-stretch" onSubmit={onSubmit}>
       {elementChildren.map((child, index) => {
         const key = getElementKey(child, index)
         if (child.tagName === SUPPORTED_TAGS.LABEL) {
           return (
             <label
               key={key}
-              htmlFor={getLabelTarget(child)}
+              htmlFor={`${formId}-${getLabelTarget(child)}`}
               className="my-2 system-md-semibold text-text-secondary"
-              data-testid="label-field"
             >
               {getTextContent(child)}
             </label>
@@ -275,6 +265,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           if (!isSafeName(name)) return null
 
           const type = str(child.properties.type) as SupportedType
+          const controlId = `${formId}-${str(child.properties.id) || name}`
+          const hasExternalLabel = elementChildren.some(
+            (node) =>
+              node.tagName === SUPPORTED_TAGS.LABEL &&
+              getLabelTarget(node) === (str(child.properties.id) || name),
+          )
 
           if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME) {
             return (
@@ -299,14 +295,11 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {
             const label = str(child.properties.dataTip || child.properties['data-tip'])
-            const hasExternalLabel = elementChildren.some(
-              (node) => node.tagName === SUPPORTED_TAGS.LABEL && getLabelTarget(node) === name,
-            )
             const checkboxAriaLabel = label || (hasExternalLabel ? undefined : name)
             return (
               <div className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
-                  id={name}
+                  id={controlId}
                   checked={!!formValues[name]}
                   aria-label={checkboxAriaLabel}
                   onCheckedChange={(checked) => updateValue(name, checked)}
@@ -339,7 +332,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                   if (val != null) updateValue(name, val)
                 }}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id={controlId} aria-label={hasExternalLabel ? undefined : name}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -365,14 +358,37 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             )
           }
 
+          if (type === SUPPORTED_TYPES.NUMBER) {
+            const value = formValues[name]
+            return (
+              <NumberField
+                key={key}
+                name={name}
+                step="any"
+                value={value == null || value === '' ? null : Number(value)}
+                onValueChange={(value) => updateValue(name, value ?? '')}
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput
+                    id={controlId}
+                    aria-label={hasExternalLabel ? undefined : name}
+                    placeholder={str(child.properties.placeholder)}
+                  />
+                </NumberFieldGroup>
+              </NumberField>
+            )
+          }
+
           return (
             <Input
               key={key}
+              id={controlId}
+              aria-label={hasExternalLabel ? undefined : name}
               type={type}
               name={name}
               placeholder={str(child.properties.placeholder)}
               value={str(formValues[name])}
-              onChange={(e) => updateValue(name, e.target.value)}
+              onValueChange={(value) => updateValue(name, value)}
             />
           )
         }
@@ -380,9 +396,16 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         if (child.tagName === SUPPORTED_TAGS.TEXTAREA) {
           const name = str(child.properties.name)
           if (!isSafeName(name)) return null
+          const controlId = `${formId}-${str(child.properties.id) || name}`
+          const hasExternalLabel = elementChildren.some(
+            (node) =>
+              node.tagName === SUPPORTED_TAGS.LABEL &&
+              getLabelTarget(node) === (str(child.properties.id) || name),
+          )
           return (
             <Textarea
-              aria-label={name}
+              id={controlId}
+              aria-label={hasExternalLabel ? undefined : name}
               key={key}
               name={name}
               placeholder={str(child.properties.placeholder)}
@@ -393,23 +416,18 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         }
 
         if (child.tagName === SUPPORTED_TAGS.BUTTON) {
-          const rawVariant = str(child.properties.dataVariant)
-          const rawSize = str(child.properties.dataSize)
-          const variant = VALID_BUTTON_VARIANTS.has(rawVariant)
-            ? (rawVariant as ButtonProps['variant'])
-            : undefined
-          const size = VALID_BUTTON_SIZES.has(rawSize)
-            ? (rawSize as ButtonProps['size'])
-            : undefined
+          const appearance = getMarkdownButtonAppearance(
+            child.properties.dataVariant,
+            child.properties.dataSize,
+          )
 
           return (
             <Button
-              variant={variant}
-              size={size}
-              className="mt-4"
               key={key}
+              {...appearance}
+              className="mt-4"
               disabled={isSubmitting}
-              onClick={onSubmit}
+              type="submit"
             >
               <span className="text-[13px]">{getTextContent(child)}</span>
             </Button>

@@ -351,6 +351,33 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
     provider_model.raise_for_status.assert_called_once()
 
 
+@pytest.mark.parametrize(
+    ("provider", "model_name"),
+    [
+        ("", "gpt-3.5-turbo"),
+        ("openai", ""),
+    ],
+)
+def test_fetch_model_config_rejects_unconfigured_model(provider: str, model_name: str):
+    credentials_provider = mock.MagicMock(spec=CredentialsProvider)
+    model_factory = mock.MagicMock(spec=DifyModelFactory)
+
+    with pytest.raises(ValueError, match="LLM provider and model are required"):
+        fetch_model_config(
+            node_data_model=ModelConfig(
+                provider=provider,
+                name=model_name,
+                mode="chat",
+                completion_params={},
+            ),
+            credentials_provider=credentials_provider,
+            model_factory=model_factory,
+        )
+
+    credentials_provider.fetch.assert_not_called()
+    model_factory.init_model_instance.assert_not_called()
+
+
 def test_fetch_model_config_reuses_validated_provider_model_from_dify_credentials_provider(
     model_config: ModelConfigWithCredentialsEntity,
 ):

@@ -4,7 +4,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 type ConfirmModalProps = {
   show: boolean
@@ -13,14 +12,11 @@ type ConfirmModalProps = {
 }
 
 const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
 
   return (
     <Dialog open={show} disablePointerDismissal>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className={cn('w-[600px]! max-w-[600px]! p-8!')}
-      >
+      <DialogContent backdropProps={{ forceRender: true }} className={cn('w-150! max-w-150! p-8!')}>
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -30,9 +26,12 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
           <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
         </button>
         <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-section p-3 shadow-xl">
-          <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-alertsAndFeedback-alert-triangle h-6 w-6 text-[rgb(247,144,9)]"
+          />
         </div>
-        <DialogTitle className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">
+        <DialogTitle className="relative mt-3 text-xl leading-7.5 font-semibold text-text-primary">
           {t(($) => $['createTool.confirmTitle'], { ns: 'tools' })}
         </DialogTitle>
         <div className="my-1 text-sm/5 text-text-tertiary">

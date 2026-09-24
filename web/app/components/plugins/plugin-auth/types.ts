@@ -1,27 +1,31 @@
-import type { CollectionType } from '../../tools/types'
+import type { CollectionProviderType } from '../../tools/types'
 import type { PluginDetail } from '../types'
 
 export type { AddApiKeyButtonProps } from './authorize/add-api-key-button'
 export type { AddOAuthButtonProps } from './authorize/add-oauth-button'
 
-export enum AuthCategory {
-  tool = 'tool',
-  datasource = 'datasource',
-  model = 'model',
-  trigger = 'trigger',
-}
+export const AuthCategory = {
+  tool: 'tool',
+  datasource: 'datasource',
+  model: 'model',
+  trigger: 'trigger',
+} as const
+
+export type AuthCategory = (typeof AuthCategory)[keyof typeof AuthCategory]
 
 export type PluginPayload = {
   category: AuthCategory
   provider: string
-  providerType?: CollectionType | string
+  providerType?: CollectionProviderType
   detail?: PluginDetail
 }
 
-export enum CredentialTypeEnum {
-  OAUTH2 = 'oauth2',
-  API_KEY = 'api-key',
-}
+export const CredentialTypeEnum = {
+  OAUTH2: 'oauth2',
+  API_KEY: 'api-key',
+} as const
+
+export type CredentialTypeEnum = (typeof CredentialTypeEnum)[keyof typeof CredentialTypeEnum]
 
 export type Credential = {
   id: string

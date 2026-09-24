@@ -5,24 +5,20 @@ import type {
   ModelLoadBalancingConfig,
   ModelProvider,
 } from '../../declarations'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ModelLoadBalancingConfigs from '../model-load-balancing-configs'
 
 let mockModelLoadBalancingEnabled = true
-
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false,
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { modelLoadBalancingEnabled: boolean }) => boolean,
-  ) => selector({ modelLoadBalancingEnabled: mockModelLoadBalancingEnabled }),
-}))
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { model_load_balancing_enabled: mockModelLoadBalancingEnabled },
+  })
 
 vi.mock('../cooldown-timer', () => ({
   default: ({

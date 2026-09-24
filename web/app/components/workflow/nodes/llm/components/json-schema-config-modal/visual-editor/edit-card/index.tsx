@@ -3,17 +3,17 @@ import type { SchemaEnumType } from '../../../../types'
 import type { AdvancedOptionsType } from './advanced-options'
 import type { TypeItem } from './type-selector'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useUnmount } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { ArrayType, Type } from '../../../../types'
 import { useMittContext } from '../context'
 import { useVisualEditorStore } from '../store'
 import Actions from './actions'
-import AdvancedActions from './advanced-actions'
+import { AdvancedActions } from './advanced-actions'
 import AdvancedOptions from './advanced-options'
 import AutoWidthInput from './auto-width-input'
 import RequiredSwitch from './required-switch'
@@ -58,7 +58,7 @@ const MAXIMUM_DEPTH_TYPE_OPTIONS = [
 ]
 
 const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [currentFields, setCurrentFields] = useState(fields)
   const [backupFields, setBackupFields] = useState<EditData | null>(null)
   const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
@@ -252,7 +252,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
           )}
         </div>
         <RequiredSwitch defaultValue={currentFields.required} toggleRequired={toggleRequired} />
-        <Divider type="vertical" className="h-3" />
+        <Separator decorative orientation="vertical" className="mx-2 h-3" />
         {isAdvancedEditing ? (
           <AdvancedActions
             isConfirmDisabled={currentFields.name === ''}

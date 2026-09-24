@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react'
 import { $createParagraphNode, $getRoot } from 'lexical'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
-import { createLexicalTestEditor, expectInlineWrapperDom } from '../../test-helpers'
+import { createLexicalTestEditor, expectInlineWrapperDom } from '../../__tests__/test-helpers'
 import CurrentBlockComponent from '../component'
 import { $createCurrentBlockNode, CurrentBlockNode } from '../node'
 

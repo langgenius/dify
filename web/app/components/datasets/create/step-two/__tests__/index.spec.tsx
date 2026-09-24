@@ -1,23 +1,39 @@
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  GetWorkspacesCurrentModelsModelTypesByModelTypeData,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type {
   CrawlOptions,
   CrawlResultItem,
   CustomFile,
+  DataSet,
   FileIndexingEstimateResponse,
   FullDocumentDetail,
   PreProcessingRule,
   Rules,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { PreviewPanel } from '../components/preview-panel'
 import { StepTwoFooter } from '../components/step-two-footer'
@@ -37,7 +53,20 @@ import escape from '../hooks/escape'
 import unescape from '../hooks/unescape'
 import StepTwo from '../index'
 
-const mockDataset = {
+vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
+  return { ...actual, default: vi.fn(() => actual.MediaType.pc) }
+})
+
+const mockDataset: Pick<
+  DataSet,
+  | 'id'
+  | 'doc_form'
+  | 'data_source_type'
+  | 'embedding_model'
+  | 'embedding_model_provider'
+  | 'retrieval_model_dict'
+> = {
   id: 'test-dataset-id',
   doc_form: ChunkingMode.text,
   data_source_type: DataSourceType.FILE,
@@ -74,8 +103,9 @@ const mockDefaultEmbeddingModel = {
   model: 'text-embedding-ada-002',
 }
 // Model[] type structure for rerank model list (simplified mock)
-const mockRerankModelList: Model[] = [
+const mockRerankModelList: ProviderWithModelsResponse[] = [
   {
+    tenant_id: 'test-workspace',
     provider: 'cohere',
     icon_small: { en_US: 'cohere-icon', zh_Hans: 'cohere-icon' },
     label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
@@ -103,11 +133,12 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     defaultModel: mockRerankDefaultModel,
     currentModel: mockIsRerankDefaultModelValid,
   }),
-  useModelList: () => ({ data: mockEmbeddingModelList }),
+
   useDefaultModel: () => ({ data: mockDefaultEmbeddingModel }),
 }))
 
 const mockFetchDefaultProcessRuleMutate = vi.fn()
+const mockResetFileEstimate = vi.fn()
 vi.mock('@/service/knowledge/use-create-dataset', () => ({
   useFetchDefaultProcessRule: ({
     onSuccess,
@@ -139,7 +170,7 @@ vi.mock('@/service/knowledge/use-create-dataset', () => ({
     data: undefined,
     isIdle: true,
     isPending: false,
-    reset: vi.fn(),
+    reset: mockResetFileEstimate,
   }),
   useFetchFileIndexingEstimateForNotion: () => ({
     mutate: vi.fn(),
@@ -196,12 +227,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-// Enable IS_CE_EDITION to show QA checkbox in tests
-vi.mock('@/config', async () => {
-  const actual = await vi.importActual('@/config')
-  return { ...actual, IS_CE_EDITION: true }
-})
-
 // Mock PreviewDocumentPicker to allow testing handlePickerChange
 vi.mock('@/app/components/datasets/common/document-picker/preview-document-picker', () => ({
   /* oxlint-disable typescript/no-explicit-any */
@@ -232,15 +257,17 @@ vi.mock('@/app/components/datasets/settings/utils', () => ({
 
 // Mock complex child components to avoid deep dependency chains when rendering StepTwo
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    onSelect,
-    readonly,
+  ModelSelector: ({
+    onValueChange,
+    disabled,
   }: {
-    onSelect?: (val: Record<string, string>) => void
-    readonly?: boolean
+    onValueChange?: (val: Record<string, string>) => void
+    disabled?: boolean
   }) => (
-    <div data-testid="model-selector" data-readonly={readonly}>
-      <button onClick={() => onSelect?.({ provider: 'openai', model: 'text-embedding-3-small' })}>
+    <div data-testid="model-selector" data-disabled={disabled}>
+      <button
+        onClick={() => onValueChange?.({ provider: 'openai', model: 'text-embedding-3-small' })}
+      >
         Select Model
       </button>
     </div>
@@ -1650,18 +1677,6 @@ describe('useIndexingEstimate', () => {
 
   // Tests for fetchEstimate
   describe('fetchEstimate', () => {
-    it('should have fetchEstimate function', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-
-      expect(typeof result.current.fetchEstimate).toBe('function')
-    })
-
-    it('should have reset function', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-
-      expect(typeof result.current.reset).toBe('function')
-    })
-
     it('should call fetchEstimate for FILE data source', () => {
       const { result } = renderHook(() =>
         useIndexingEstimate({
@@ -1775,15 +1790,6 @@ describe('StepTwoFooter', () => {
 
   // Tests for rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<StepTwoFooter {...defaultProps} />)
-
-      // Should render Previous and Next buttons with correct text
-      // Should render Previous and Next buttons with correct text
-      expect(screen.getByText(/previousStep/i))!.toBeInTheDocument()
-      expect(screen.getByText(/nextStep/i))!.toBeInTheDocument()
-    })
-
     it('should render Previous and Next buttons when not in setting mode', () => {
       render(<StepTwoFooter {...defaultProps} />)
 
@@ -1856,6 +1862,8 @@ describe('PreviewPanel', () => {
 
   const defaultProps = {
     isMobile: false,
+    isOpen: false,
+    onClose: vi.fn(),
     dataSourceType: DataSourceType.FILE,
     currentDocForm: ChunkingMode.text,
     estimate: undefined as FileIndexingEstimateResponse | undefined,
@@ -1870,14 +1878,6 @@ describe('PreviewPanel', () => {
 
   // Tests for rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<PreviewPanel {...defaultProps} />)
-
-      // Check for the preview header title text
-      // Check for the preview header title text
-      expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
-    })
-
     it('should render idle state when isIdle is true', () => {
       render(<PreviewPanel {...defaultProps} isIdle={true} />)
 
@@ -1965,7 +1965,7 @@ describe('PreviewPanel', () => {
         />,
       )
 
-      expect(screen.getByText(/25/))!.toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('25')
     })
 
     it('should render parent-child preview when docForm is parentChild', () => {
@@ -2350,10 +2350,52 @@ describe('StepTwo Component', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
+    it('switches chunking modes as one radio group without nesting parameter controls in a radio', async () => {
+      const user = userEvent.setup()
       render(<StepTwo {...defaultStepTwoProps} />)
-      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
+      const group = screen.getByRole('radiogroup', { name: 'datasetCreation.stepTwo.segmentation' })
+      const general = within(group).getByRole('radio', { name: 'datasetCreation.stepTwo.general' })
+      const parentChild = within(group).getByRole('radio', {
+        name: 'datasetCreation.stepTwo.parentChild',
+      })
+      expect(general).toBeChecked()
+      expect(general).not.toContainElement(
+        screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' }),
+      )
+      general.focus()
+      await user.keyboard('{ArrowDown}')
+      expect(parentChild).toBeChecked()
+      expect(general).not.toBeChecked()
+      expect(parentChild).not.toContainElement(
+        screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' }),
+      )
+      await user.keyboard(' ')
+      expect(parentChild).toBeChecked()
+      await user.keyboard('{ArrowUp}')
+      expect(general).toBeChecked()
+      expect(parentChild).not.toBeChecked()
     })
+
+    it.each(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'])(
+      'keeps General selected and its preview intact when editing the delimiter with %s',
+      async (key) => {
+        const user = userEvent.setup()
+        render(<StepTwo {...defaultStepTwoProps} />)
+        const input = screen.getByRole('textbox', { name: 'datasetCreation.stepTwo.separator' })
+        await user.click(input)
+        await user.keyboard(key === 'ArrowLeft' ? '{Home}' : '{End}')
+        mockResetFileEstimate.mockClear()
+        await user.keyboard(`{${key}}`)
+
+        expect(screen.getByRole('radio', { name: 'datasetCreation.stepTwo.general' })).toBeChecked()
+        expect(
+          screen.getByRole('radio', { name: 'datasetCreation.stepTwo.parentChild' }),
+        ).not.toBeChecked()
+        expect(input).toBeInTheDocument()
+        expect(input).toHaveFocus()
+        expect(mockResetFileEstimate).not.toHaveBeenCalled()
+      },
+    )
 
     it('should show general chunking options when not in upload', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
@@ -2407,6 +2449,27 @@ describe('StepTwo Component', () => {
       // handleCreate validates, builds params, and calls executeCreation
       // which calls onStepChange(1) on success
       expect(onStepChange).toHaveBeenCalledWith(1)
+    })
+
+    it('opens the mobile preview on request and restores focus to its button after closing', async () => {
+      vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
+      try {
+        const user = userEvent.setup()
+        render(<StepTwo {...defaultStepTwoProps} />)
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        const trigger = screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' })
+        await user.click(trigger)
+        const drawer = await screen.findByRole('dialog', {
+          name: 'datasetCreation.stepTwo.preview',
+        })
+        await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
+        await waitFor(() => {
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+          expect(trigger).toHaveFocus()
+        })
+      } finally {
+        vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
+      }
     })
 
     it('should trigger updatePreview when preview button is clicked', () => {
@@ -2565,7 +2628,7 @@ describe('StepTwo Component', () => {
       render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       // isModelAndRetrievalConfigDisabled should be true
       const modelSelector = screen.getByTestId('model-selector')
-      expect(modelSelector)!.toHaveAttribute('data-readonly', 'true')
+      expect(modelSelector)!.toHaveAttribute('data-disabled', 'true')
     })
   })
 
@@ -2656,4 +2719,20 @@ describe('StepTwo Component', () => {
       document.body.removeAttribute('data-public-indexing-max-segmentation-tokens-length')
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: mockEmbeddingModelList }
+    },
+  }
 })

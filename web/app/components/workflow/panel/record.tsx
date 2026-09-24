@@ -1,7 +1,7 @@
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { memo, useCallback } from 'react'
-import { useWorkflowUpdate } from '../hooks'
 import { useHooksStore } from '../hooks-store'
+import { useWorkflowUpdate } from '../hooks/use-workflow-update'
 import Run from '../run'
 import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'
@@ -24,7 +24,7 @@ const Record = () => {
   )
 
   return (
-    <div className="flex h-full w-[400px] flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
+    <div className="flex h-full w-100 flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
       <div className="flex items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
         {`Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
       </div>

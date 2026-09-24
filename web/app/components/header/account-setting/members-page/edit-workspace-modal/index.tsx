@@ -1,12 +1,13 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { updateWorkspaceInfo } from '@/service/common'
 
@@ -14,17 +15,18 @@ type IEditWorkspaceModalProps = {
   onCancel: () => void
 }
 const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [name, setName] = useState<string>(currentWorkspace.name)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const inputId = useId()
   const errorId = useId()
+  const saveButtonLabelId = useId()
   const normalizedName = name.trim()
   const hasChanges = normalizedName !== currentWorkspace.name
   const hasError = normalizedName.length === 0
-  const isSaveDisabled = !isCurrentWorkspaceOwner || !hasChanges || hasError || isSubmitting
+  const isSaveUnavailable = !isCurrentWorkspaceOwner || !hasChanges || hasError
   const nameErrorMessage = useMemo(() => {
     if (!hasError) return ''
     return t(($) => $['errorMsg.fieldRequired'], {
@@ -33,7 +35,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
     })
   }, [hasError, t])
   const changeWorkspaceInfo = async () => {
-    if (isSaveDisabled) return
+    if (isSubmitting || isSaveUnavailable) return
     setIsSubmitting(true)
     try {
       await updateWorkspaceInfo({
@@ -58,7 +60,17 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
       }}
     >
       <DialogContent backdropProps={{ forceRender: true }}>
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
 
         <form
           className="flex flex-col"
@@ -68,10 +80,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           }}
         >
           <div className="mb-4 pr-8">
-            <DialogTitle
-              className="text-xl font-semibold text-text-primary"
-              data-testid="edit-workspace-title"
-            >
+            <DialogTitle className="text-xl font-semibold text-text-primary">
               {t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
             </DialogTitle>
           </div>
@@ -96,12 +105,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
             />
             <div className="min-h-6">
               {hasError && (
-                <p
-                  id={errorId}
-                  data-testid="edit-workspace-error"
-                  className="system-xs-regular text-text-destructive"
-                  role="alert"
-                >
+                <p id={errorId} className="system-xs-regular text-text-destructive" role="alert">
                   {nameErrorMessage}
                 </p>
               )}
@@ -116,10 +120,15 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
               size="large"
               type="submit"
               variant="primary"
-              disabled={isSaveDisabled}
+              disabled={isSaveUnavailable}
               loading={isSubmitting}
+              aria-labelledby={saveButtonLabelId}
             >
-              {t(($) => $[isSubmitting ? 'operation.saving' : 'operation.save'], { ns: 'common' })}
+              <span id={saveButtonLabelId}>
+                {t(($) => $[isSubmitting ? 'operation.saving' : 'operation.save'], {
+                  ns: 'common',
+                })}
+              </span>
             </Button>
           </div>
         </form>

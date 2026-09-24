@@ -14,7 +14,11 @@
 //   channels               -> one channel name per line
 //   prerelease <channel>   -> "true" | "false"
 //   github-env             -> key=value lines (all fields CI needs) for $GITHUB_ENV
-//   validate               -> exit 1 if difyctl.release, version, or channel is malformed
+//   edge-version <sha>     -> <package version core>-edge.<sha>
+//   validate               -> exit 1 if difyctl.release, version, channel, or
+//                             difyctl.compat is malformed
+//   validate-version <version> <channel>
+//                          -> exit 1 unless version matches the channel's form
 //   compat-check <difyVer> -> exit 1 if difyVer outside compat.minDify..maxDify
 
 import { readFileSync, realpathSync } from 'node:fs'
@@ -22,6 +26,8 @@ import { fileURLToPath } from 'node:url'
 
 const BUN_TARGET_RE = /^bun-(linux|darwin|windows)-(x64|arm64)$/
 const SEMVER_CORE_LEN = 3
+const SEMVER_CORE_RE = /^\d+\.\d+\.\d+$/
+const COMPAT_BOUNDS = ['minDify', 'maxDify']
 
 // Add channels here: { name, prerelease, versionForm }.
 const CHANNELS = [
@@ -51,7 +57,7 @@ function edgeVersion(sha) {
     die('edge-version requires a git short sha (7-40 hex chars)')
   const { version } = loadPkg()
   const core = versionCore(version)
-  if (!/^\d+\.\d+\.\d+$/.test(core)) die(`cannot derive edge base from version: ${version}`)
+  if (!SEMVER_CORE_RE.test(core)) die(`cannot derive edge base from version: ${version}`)
   return `${core}-edge.${sha}`
 }
 
@@ -114,9 +120,15 @@ function die(msg) {
   process.exit(1)
 }
 
+// Tests point this at a fixture manifest so their assertions stay fixed while
+// the real version and compat window move with every release. The name is
+// mirrored in test/fixtures/pkg-manifest.ts rather than imported from here,
+// because this file's shebang breaks the Windows test runner.
+const PKG_PATH_ENV = 'DIFYCTL_PKG_PATH'
+
 function loadPkg() {
-  const pkgUrl = new URL('../package.json', import.meta.url)
-  const pkg = JSON.parse(readFileSync(pkgUrl, 'utf8'))
+  const pkgPath = process.env[PKG_PATH_ENV] || new URL('../package.json', import.meta.url)
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
   if (!pkg.difyctl?.release) die('cli/package.json missing difyctl.release')
   return {
     version: pkg.version,
@@ -185,6 +197,15 @@ function validateVersionChannel(version, channel) {
   return problem ? [problem] : []
 }
 
+function validateCompat(compat) {
+  const problems = COMPAT_BOUNDS.filter((b) => !SEMVER_CORE_RE.test(compat[b] ?? '')).map(
+    (b) => `difyctl.compat.${b} must be a plain X.Y.Z version, found ${compat[b] ?? '(missing)'}`,
+  )
+  if (problems.length === 0 && comparePrecedence(compat.minDify, compat.maxDify) > 0)
+    problems.push(`difyctl.compat.minDify (${compat.minDify}) is above maxDify (${compat.maxDify})`)
+  return problems
+}
+
 function main(argv) {
   const [cmd, ...rest] = argv
   switch (cmd) {
@@ -230,11 +251,15 @@ function main(argv) {
       return String(ch.prerelease)
     }
     case 'validate': {
-      const { version, channel, release } = loadPkg()
-      const problems = [...validateRelease(release), ...validateVersionChannel(version, channel)]
+      const { version, channel, compat, release } = loadPkg()
+      const problems = [
+        ...validateRelease(release),
+        ...validateCompat(compat),
+        ...validateVersionChannel(version, channel),
+      ]
       if (problems.length > 0)
         die(`invalid difyctl release config:\n  - ${problems.join('\n  - ')}`)
-      return `difyctl release valid: version=${version} channel=${channel} targets=${release.targets.length}`
+      return `difyctl release valid: version=${version} channel=${channel} compat=${compat.minDify}..${compat.maxDify} targets=${release.targets.length}`
     }
     case 'edge-version':
       return edgeVersion(rest[0])

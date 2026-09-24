@@ -140,6 +140,9 @@ dmypy.json
 pyrightconfig.json
 !api/pyrightconfig.json
 
+# import-linter
+.import_linter_cache/
+
 # Pyre type checker
 .pyre/
 .idea/'
@@ -182,6 +185,7 @@ docker/volumes/minio/*
 docker/volumes/milvus/*
 docker/volumes/chroma/*
 docker/volumes/opensearch/data/*
+docker/volumes/openshell-mtls/*
 docker/volumes/myscale/data/*
 docker/volumes/myscale/log/*
 docker/volumes/unstructured/*
@@ -260,4 +264,9 @@ scripts/stress-test/reports/
 .qoder/*
 .context/
 # Vitest local reports
+web/.vitest-browser/
 web/.vitest-reports/
+
+# dify-agent-runtime
+dify-agent-runtime/bin/
+dify-agent-runtime/.integration-state

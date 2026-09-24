@@ -9,12 +9,12 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
@@ -37,7 +37,7 @@ type TemplateCardProps = {
 }
 
 const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCardProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
@@ -92,10 +92,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     type,
   ])
 
-  const handleShowTemplateDetails = useCallback(() => {
-    setShowDetailModal(true)
-  }, [])
-
   const openEditModal = useCallback(() => {
     setShowEditModal(true)
   }, [])
@@ -145,21 +141,30 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   }, [pipeline.id, deletePipeline, invalidCustomizedTemplateList])
 
   return (
-    <div className="group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
+    <div className="group relative flex h-33 cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <Content
         name={pipeline.name}
         description={pipeline.description}
         iconInfo={pipeline.icon}
         chunkStructure={pipeline.chunk_structure}
       />
-      <Actions
-        onApplyTemplate={handleUseTemplate}
-        handleShowTemplateDetails={handleShowTemplateDetails}
-        showMoreOperations={showMoreOperations}
-        openEditModal={openEditModal}
-        handleExportDSL={handleExportDSL}
-        handleDelete={handleDelete}
-      />
+      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+        <Actions
+          onApplyTemplate={handleUseTemplate}
+          showMoreOperations={showMoreOperations}
+          openEditModal={openEditModal}
+          handleExportDSL={handleExportDSL}
+          handleDelete={handleDelete}
+        />
+        <DialogContent className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[calc(100vw-2rem)] max-w-[1680px]! overflow-hidden! rounded-3xl border-none p-0 text-left align-middle">
+          <Details
+            id={pipeline.id}
+            type={type}
+            onClose={closeDetailsModal}
+            onApplyTemplate={handleUseTemplate}
+          />
+        </DialogContent>
+      </Dialog>
       {showEditModal && (
         <Dialog
           open={showEditModal}
@@ -167,7 +172,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
             if (!open) closeEditModal()
           }}
         >
-          <DialogContent className="w-[calc(100vw-2rem)] max-w-[520px]! overflow-hidden! border-none p-0 text-left align-middle">
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-130! overflow-hidden! border-none p-0 text-left align-middle">
             <EditPipelineInfo pipeline={pipeline} onClose={closeEditModal} />
           </DialogContent>
         </Dialog>
@@ -192,23 +197,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      {showDetailModal && (
-        <Dialog
-          open={showDetailModal}
-          onOpenChange={(open) => {
-            if (!open) closeDetailsModal()
-          }}
-        >
-          <DialogContent className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[calc(100vw-2rem)] max-w-[1680px]! overflow-hidden! rounded-3xl border-none p-0 text-left align-middle">
-            <Details
-              id={pipeline.id}
-              type={type}
-              onClose={closeDetailsModal}
-              onApplyTemplate={handleUseTemplate}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   )
 }

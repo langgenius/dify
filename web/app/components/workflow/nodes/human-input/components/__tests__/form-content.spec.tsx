@@ -27,9 +27,14 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowVariableType: () => mockUseWorkflowVariableType(),
-}))
+vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariableType: () => mockUseWorkflowVariableType(),
+  }
+})
 
 vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()

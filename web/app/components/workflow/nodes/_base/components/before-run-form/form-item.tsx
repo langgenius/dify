@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
   Select,
   SelectContent,
@@ -10,6 +12,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine } from '@remixicon/react'
@@ -18,11 +21,7 @@ import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { Line3 } from '@/app/components/base/icons/src/public/common'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import Input from '@/app/components/base/input'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -50,7 +49,13 @@ const FormItem: FC<Props> = ({
   autoFocus,
   inStepRun = false,
 }) => {
-  const { t } = useTranslation()
+  const collectionInputTypes: readonly InputVarType[] = [
+    InputVarType.contexts,
+    InputVarType.iterator,
+  ]
+
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
+  const labelId = React.useId()
   const { type } = payload
   const fileSettings = useHooksStore((s) => s.configsMap?.fileSettings)
   const jsonSchemaPlaceholder = React.useMemo(() => {
@@ -93,20 +98,30 @@ const FormItem: FC<Props> = ({
                 <VarBlockIcon type={nodeType || BlockEnum.Start} />
               </div>
               <div
-                className="mx-0.5 max-w-[150px] truncate text-xs font-medium text-text-secondary"
+                className="mx-0.5 max-w-37.5 truncate text-xs font-medium text-text-secondary"
                 title={nodeName}
               >
                 {nodeName}
               </div>
-              <Line3 className="mr-0.5"></Line3>
+              <span aria-hidden className="mr-0.5 i-custom-public-common-line-3 h-3 w-1.25" />
             </div>
           )}
           <div className="flex items-center text-primary-600">
-            {!isChatVar && <Variable02 className="size-3.5" />}
-            {isChatVar && <BubbleX className="size-3.5 text-util-colors-teal-teal-700" />}
+            {!isChatVar && (
+              <span
+                aria-hidden
+                className="i-custom-vender-solid-development-variable-02 size-3.5"
+              />
+            )}
+            {isChatVar && (
+              <span
+                aria-hidden
+                className="i-custom-vender-line-others-bubble-x size-3.5 text-util-colors-teal-teal-700"
+              />
+            )}
             <div
               className={cn(
-                'ml-0.5 max-w-[150px] truncate text-xs font-medium',
+                'ml-0.5 max-w-37.5 truncate text-xs font-medium',
                 isChatVar && 'text-text-secondary',
               )}
               title={variable}
@@ -121,7 +136,7 @@ const FormItem: FC<Props> = ({
   })()
 
   const isBooleanType = type === InputVarType.checkbox
-  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
+  const isArrayLikeType = collectionInputTypes.includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
   const isIteratorItemFile = isIterator && payload.isFileItem
@@ -143,7 +158,7 @@ const FormItem: FC<Props> = ({
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
         <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
-          <div className="truncate">
+          <div id={labelId} className="truncate">
             {typeof payload.label === 'object' ? nodeKey : payload.label}
           </div>
           {payload.hide === true ? (
@@ -162,26 +177,37 @@ const FormItem: FC<Props> = ({
       <div className="grow">
         {type === InputVarType.textInput && (
           <Input
+            name={payload.variable}
+            aria-labelledby={labelId}
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onValueChange={(value) => onChange(value)}
             placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
             autoFocus={autoFocus}
           />
         )}
 
         {type === InputVarType.number && (
-          <Input
-            type="number"
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
-            autoFocus={autoFocus}
-          />
+          <NumberField
+            step="any"
+            name={payload.variable}
+            value={value == null || value === '' ? null : Number(value)}
+            onValueChange={(value) => onChange(value)}
+          >
+            <NumberFieldGroup>
+              <NumberFieldInput
+                aria-labelledby={labelId}
+                placeholder={
+                  typeof payload.label === 'object' ? payload.label.variable : payload.label
+                }
+                autoFocus={autoFocus}
+              />
+            </NumberFieldGroup>
+          </NumberField>
         )}
 
         {type === InputVarType.paragraph && (
           <Textarea
-            aria-label={typeof payload.label === 'object' ? payload.label.variable : payload.label}
+            aria-labelledby={labelId}
             value={value || ''}
             onValueChange={(value) => onChange(value)}
             placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
@@ -190,7 +216,7 @@ const FormItem: FC<Props> = ({
         )}
 
         {type === InputVarType.select && (
-          <Select
+          <Select<string>
             value={value || payload.default || null}
             onValueChange={(nextValue) => {
               if (!nextValue) return
@@ -198,9 +224,7 @@ const FormItem: FC<Props> = ({
             }}
           >
             <SelectTrigger className="w-full">
-              {String(
-                value || payload.default || t(($) => $['placeholder.select'], { ns: 'common' }),
-              )}
+              <SelectValue placeholder={t(($) => $['placeholder.select'], { ns: 'common' })} />
             </SelectTrigger>
             <SelectContent>
               {(payload.options || []).map((option) => (
@@ -236,7 +260,7 @@ const FormItem: FC<Props> = ({
             language={CodeLanguage.json}
             onChange={onChange}
             noWrapper
-            className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+            className="bg h-20 overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
             placeholder={<div className="whitespace-pre">{jsonSchemaPlaceholder}</div>}
           />
         )}

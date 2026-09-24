@@ -47,13 +47,6 @@ describe('FileUploaderInAttachmentWrapper', () => {
     vi.clearAllMocks()
   })
 
-  it('should render without crashing', () => {
-    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
-
-    // FileContextProvider wraps children with a Zustand context — verify children render
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-  })
-
   it('should render upload buttons when not disabled', () => {
     render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
 
@@ -195,7 +188,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
   it('should call handleReUploadFile when reupload button is clicked', () => {
     const files = [createFile({ id: 'f1', name: 'a.txt', progress: -1 })]
 
-    const { container } = render(
+    render(
       <FileUploaderInAttachmentWrapper
         value={files}
         onChange={vi.fn()}
@@ -203,10 +196,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    // ReplayLine is inside ActionButton (a <button>) with data-icon attribute
-    const replayIcon = container.querySelector('svg[data-icon="ReplayLine"]')
-    const replayBtn = replayIcon!.closest('button')
-    fireEvent.click(replayBtn!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry a.txt' }))
 
     expect(mockHandleReUploadFile).toHaveBeenCalledWith('f1')
   })

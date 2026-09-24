@@ -1,5 +1,5 @@
 import type { OffsetOptions } from '@floating-ui/react'
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { Credential, PluginPayload } from '../types'
 import {
   AlertDialog,
@@ -13,9 +13,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Authorize from '../authorize'
 import ApiKeyModal from '../authorize/api-key-modal'
@@ -27,7 +27,7 @@ import {
 import { CredentialTypeEnum } from '../types'
 import Item from './item'
 
-type AuthorizedProps = {
+type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
   pluginPayload: PluginPayload
   credentials: Credential[]
   canOAuth?: boolean
@@ -36,7 +36,6 @@ type AuthorizedProps = {
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   offset?: number | OffsetOptions
-  placement?: Placement
   triggerPopupSameWidth?: boolean
   popupClassName?: string
   disableSetDefault?: boolean
@@ -67,7 +66,7 @@ const Authorized = ({
   onUpdate,
   notAllowCustomCredential,
 }: AuthorizedProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments', 'plugin'])
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
@@ -199,29 +198,23 @@ const Authorized = ({
     typeof offset === 'number'
       ? 0
       : (resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0)
-  const popupProps = triggerPopupSameWidth
-    ? { style: { width: 'var(--anchor-width, auto)' } }
-    : undefined
 
   return (
     <>
       <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
         <PopoverTrigger
-          render={
-            <div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>
+          render={(props, state) => (
+            <div
+              {...props}
+              className={cn(triggerPopupSameWidth ? 'w-full' : 'inline-block', props.className)}
+            >
               {renderTrigger ? (
-                renderTrigger(mergedIsOpen)
+                renderTrigger(state.open)
               ) : (
                 <Button
-                  className={cn(
-                    'w-full',
-                    mergedIsOpen && 'bg-components-button-secondary-bg-hover',
-                  )}
+                  className={cn('w-full', state.open && 'bg-components-button-secondary-bg-hover')}
                 >
-                  <StatusDot
-                    className="mr-2"
-                    status={unavailableCredential ? 'disabled' : 'success'}
-                  />
+                  <StatusDot status={unavailableCredential ? 'disabled' : 'success'} />
                   {credentials.length}
                   &nbsp;
                   {credentials.length > 1
@@ -229,22 +222,24 @@ const Authorized = ({
                     : t(($) => $['auth.authorization'], { ns: 'plugin' })}
                   {!!unavailableCredentials.length &&
                     ` (${unavailableCredentials.length} ${t(($) => $['auth.unavailable'], { ns: 'plugin' })})`}
-                  <span className="ml-0.5 i-ri-arrow-down-s-line size-4" />
+                  <span className="i-ri-arrow-down-s-line size-4" />
                 </Button>
               )}
             </div>
-          }
+          )}
         />
         <PopoverContent
           placement={placement}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
-          popupProps={popupProps}
-          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+          className={cn(
+            'border-0 bg-transparent p-0 shadow-none backdrop-blur-none',
+            triggerPopupSameWidth && 'w-(--anchor-width)',
+          )}
         >
           <div
             className={cn(
-              'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+              'max-h-90 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
               popupClassName,
             )}
           >

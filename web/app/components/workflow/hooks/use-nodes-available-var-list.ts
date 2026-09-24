@@ -2,7 +2,6 @@ import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/w
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
-import { useIsChatMode, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import {
   appendSnippetInputFieldVars,
@@ -11,6 +10,8 @@ import {
 } from '@/app/components/workflow/nodes/_base/hooks/snippet-input-field-vars'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
+import { useIsChatMode, useWorkflow } from './use-workflow'
+import { useWorkflowVariables } from './use-workflow-variables'
 
 type Params = {
   onlyLeafNodeVar?: boolean
@@ -49,7 +50,7 @@ const useNodesAvailableVarList = (
     filterVar: () => true,
   },
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['snippet'])
   const snippetInputFields = useSnippetDraftStore((s) => s.inputFields)
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
@@ -100,7 +101,7 @@ const useNodesAvailableVarList = (
 }
 
 export const useGetNodesAvailableVarList = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['snippet'])
   const snippetInputFields = useSnippetDraftStore((s) => s.inputFields)
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()

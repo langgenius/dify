@@ -1,5 +1,6 @@
 import type { DataSourceAuth } from '../types'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { AddOAuthButtonProps } from '@/app/components/plugins/plugin-auth/types'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
@@ -12,7 +13,7 @@ import {
   useInvalidDataSourceListAuth,
   useInvalidDefaultDataSourceListAuth,
 } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
+import { render } from '@/test/console/render'
 import Card from '../card'
 import { useDataSourceAuthUpdate } from '../hooks'
 
@@ -22,41 +23,11 @@ let mockWorkspacePermissionKeys: string[] = [
   'credential.manage',
 ]
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
@@ -97,11 +68,27 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
       Add API Key
     </button>
   ),
-  AddOAuthButton: ({ onUpdate, disabled }: { onUpdate: () => void; disabled?: boolean }) => (
-    <button disabled={disabled} onClick={onUpdate}>
-      Add OAuth
-    </button>
-  ),
+  AddOAuthButton: ({ onUpdate, disabled, renderTrigger }: AddOAuthButtonProps) => {
+    const handleClick = () => onUpdate?.()
+    const trigger = (
+      <button disabled={disabled} onClick={handleClick}>
+        Add OAuth
+      </button>
+    )
+
+    return (
+      <>
+        {renderTrigger
+          ? renderTrigger({
+              disabled,
+              isConfigured: false,
+              onClick: handleClick,
+              trigger,
+            })
+          : trigger}
+      </>
+    )
+  },
 }))
 
 vi.mock('@/hooks/use-i18n', () => ({
@@ -123,10 +110,6 @@ vi.mock('../hooks', () => ({
   useDataSourceAuthUpdate: vi.fn(),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: vi.fn(() => vi.fn()),
-}))
-
 type UsePluginAuthActionReturn = ReturnType<typeof usePluginAuthAction>
 type UseGetDataSourceOAuthUrlReturn = ReturnType<typeof useGetDataSourceOAuthUrl>
 type UseRenderI18nObjectReturn = ReturnType<typeof useRenderI18nObject>
@@ -136,12 +119,10 @@ describe('Card Component', () => {
   const mockRenderI18nObjectResult = vi.fn((obj: Record<string, string>) => obj.en_US)
   const mockInvalidateDataSourceListAuth = vi.fn()
   const mockInvalidDefaultDataSourceListAuth = vi.fn()
-  const mockInvalidateDataSourceList = vi.fn()
   const mockInvalidateDataSourceAuth = vi.fn()
   const mockHandleAuthUpdate = vi.fn(() => {
     mockInvalidateDataSourceListAuth()
     mockInvalidDefaultDataSourceListAuth()
-    mockInvalidateDataSourceList()
     mockInvalidateDataSourceAuth()
   })
 
@@ -204,7 +185,6 @@ describe('Card Component', () => {
     vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(
       mockInvalidDefaultDataSourceListAuth,
     )
-    vi.mocked(useInvalidDataSourceList).mockReturnValue(mockInvalidateDataSourceList)
     vi.mocked(useInvalidDataSourceAuth).mockReturnValue(mockInvalidateDataSourceAuth)
 
     vi.mocked(usePluginAuthAction).mockReturnValue(mockPluginAuthActionReturn)
@@ -219,7 +199,6 @@ describe('Card Component', () => {
   const expectAuthUpdated = () => {
     expect(mockInvalidateDataSourceListAuth).toHaveBeenCalled()
     expect(mockInvalidDefaultDataSourceListAuth).toHaveBeenCalled()
-    expect(mockInvalidateDataSourceList).toHaveBeenCalled()
     expect(mockInvalidateDataSourceAuth).toHaveBeenCalled()
   }
 
@@ -229,15 +208,14 @@ describe('Card Component', () => {
       render(<Card item={mockItem} />)
 
       // Assert
-      // Assert
       expect(screen.getByText('Test Label'))!.toBeInTheDocument()
       expect(screen.queryByText(/Test Author/))!.not.toBeInTheDocument()
       expect(screen.queryByText(/test-name/))!.not.toBeInTheDocument()
       expect(screen.getByText('1.2.0'))!.toBeInTheDocument()
-      expect(screen.getByRole('img', { name: 'Test Label' }))!.toHaveAttribute(
-        'src',
-        'test-icon-url',
-      )
+      const icon = screen.getByRole('img', { name: 'Test Label' })
+      expect(icon).toHaveAttribute('src', 'test-icon-url')
+      expect(icon).toHaveAttribute('loading', 'lazy')
+      expect(icon).toHaveAttribute('decoding', 'async')
       expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
       expect(screen.getByText(/plugin.auth.default/))!.toBeInTheDocument()
 

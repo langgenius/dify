@@ -1,7 +1,11 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
+import type { TFunction } from 'i18next'
+import type { ReactElement } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -11,13 +15,15 @@ import {
   DataSourceType,
   RerankingModeEnum,
 } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
 
-const mockUseModelList = vi.fn()
-const mockUseModelListAndDefaultModel = vi.fn()
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.fn()
+const mockModelListQuery = vi.fn()
+const mockModelListQueryAndDefaultModel = vi.fn()
+const mockModelListQueryAndDefaultModelAndCurrentProviderAndModel = vi.fn()
 const mockUseCurrentProviderAndModel = vi.fn()
 
 vi.mock('ky', () => {
@@ -27,31 +33,18 @@ vi.mock('ky', () => {
   return { __esModule: true, default: ky }
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: [],
-    textGenerationModelList: [],
-    supportRetrievalMethods: [
-      RETRIEVE_METHOD.semantic,
-      RETRIEVE_METHOD.fullText,
-      RETRIEVE_METHOD.hybrid,
-      RETRIEVE_METHOD.keywordSearch,
-    ],
-  }),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
-  useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
-  useModelList: (...args: unknown[]) => mockUseModelList(...args),
+    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel(...args),
+  useModelListAndDefaultModel: (...args: unknown[]) => mockModelListQueryAndDefaultModel(...args),
+
   useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
     <div data-testid="model-selector">
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
+      {value ? `${value.provider}/${value.model}` : 'no-model'}
     </div>
   ),
 }))
@@ -62,6 +55,14 @@ vi.mock('@/app/components/datasets/create/step-two', () => ({
     ECONOMICAL: 'economy',
   },
 }))
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
+    retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
@@ -210,19 +211,19 @@ describe('RetrievalSection', () => {
   const t = withSelectorKey((key: string, options?: { ns?: string }) => {
     const prefix = options?.ns ? `${options.ns}.` : ''
     return `${prefix}${key}`
-  }, 'datasetSettings')
+  }, 'datasetSettings') as TFunction<['datasetSettings']>
   const rowClass = 'row'
   const labelClass = 'label'
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseModelList.mockImplementation((type: ModelTypeEnum) => {
+    mockModelListQuery.mockImplementation((type: ModelTypeEnum) => {
       if (type === ModelTypeEnum.rerank)
         return { data: [{ provider: 'rerank-provider', models: [{ model: 'rerank-model' }] }] }
       return { data: [] }
     })
-    mockUseModelListAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
+    mockModelListQueryAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
+    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       defaultModel: null,
       currentModel: null,
     })
@@ -264,6 +265,7 @@ describe('RetrievalSection', () => {
     expect(screen.getByText('External API'))!.toBeInTheDocument()
     expect(screen.getByText('https://api.external.com'))!.toBeInTheDocument()
     expect(screen.getByText('ext-id-999'))!.toBeInTheDocument()
+    expect(screen.getAllByRole('separator')).toHaveLength(2)
     expect(handleExternalChange).toHaveBeenCalledWith(expect.objectContaining({ top_k: 4 }))
   })
 
@@ -332,4 +334,23 @@ describe('RetrievalSection', () => {
       }),
     )
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+
+      const args = options.queryKey[1].input?.params?.model_type
+      if (!args) throw new Error('Missing model type in query')
+      return mockModelListQuery(args)
+    },
+  }
 })

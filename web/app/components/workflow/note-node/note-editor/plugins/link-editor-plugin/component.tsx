@@ -1,7 +1,15 @@
-import { flip, FloatingPortal, offset, shift, useFloating } from '@floating-ui/react'
+import {
+  flip,
+  FloatingPortal,
+  offset,
+  shift,
+  useDismiss,
+  useFloating,
+  useInteractions,
+} from '@floating-ui/react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiEditLine, RiExternalLinkLine, RiLinkUnlinkM } from '@remixicon/react'
+import { RiExternalLinkLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import { escape } from 'es-toolkit/string'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
@@ -13,29 +21,36 @@ type LinkEditorComponentProps = {
   containerElement: HTMLDivElement | null
 }
 const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => {
-  const { t } = useTranslation()
-  const { handleSaveLink, handleUnlink } = useLink()
+  const { t } = useTranslation(['common', 'workflow'])
+  const { handleSaveLink, handleUnlink, restoreEditorFocus } = useLink()
   const selectedLinkUrl = useStore((s) => s.selectedLinkUrl)
   const linkAnchorElement = useStore((s) => s.linkAnchorElement)
   const linkOperatorShow = useStore((s) => s.linkOperatorShow)
-  const setLinkAnchorElement = useStore((s) => s.setLinkAnchorElement)
+  const dismissLinkEditor = useStore((s) => s.dismissLinkEditor)
   const setLinkOperatorShow = useStore((s) => s.setLinkOperatorShow)
   const [url, setUrl] = useState(selectedLinkUrl)
   const floatingRef = useRef<HTMLDivElement | null>(null)
-  const { refs, floatingStyles, elements } = useFloating({
-    placement: 'top',
-    middleware: [offset(4), shift(), flip()],
-  })
-
   const handleCancelLinkEdit = useCallback(() => {
     if (!linkOperatorShow && !selectedLinkUrl) {
       handleUnlink()
       return
     }
 
-    setLinkAnchorElement()
-    setLinkOperatorShow(false)
-  }, [handleUnlink, linkOperatorShow, selectedLinkUrl, setLinkAnchorElement, setLinkOperatorShow])
+    dismissLinkEditor()
+  }, [handleUnlink, linkOperatorShow, selectedLinkUrl, dismissLinkEditor])
+
+  const { refs, floatingStyles, elements, context } = useFloating({
+    open: !!linkAnchorElement,
+    onOpenChange: (open, _event, reason) => {
+      if (open) return
+      handleCancelLinkEdit()
+      if (reason === 'escape-key') restoreEditorFocus()
+    },
+    placement: 'top',
+    middleware: [offset(4), shift(), flip()],
+  })
+  const dismiss = useDismiss(context, { outsidePress: false })
+  const { getFloatingProps } = useInteractions([dismiss])
 
   useClickAway(() => {
     handleCancelLinkEdit()
@@ -54,6 +69,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
       {elements.reference && (
         <FloatingPortal root={containerElement}>
           <div
+            {...getFloatingProps()}
             className={cn(
               'nodrag nopan z-10 inline-flex w-max items-center rounded-md border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg',
               !linkOperatorShow && 'p-1 shadow-md',
@@ -68,7 +84,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
             {!linkOperatorShow && (
               <>
                 <input
-                  className="mr-0.5 h-6 w-[196px] appearance-none rounded-xs bg-transparent p-1 text-[13px] text-components-input-text-filled outline-hidden"
+                  className="mr-0.5 h-6 w-49 appearance-none rounded-xs bg-transparent p-1 text-[13px] text-components-input-text-filled outline-hidden"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyDown={(e) => {
@@ -76,13 +92,6 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
                       e.preventDefault()
                       e.stopPropagation()
                       if (url) handleSaveLink(url)
-                      return
-                    }
-
-                    if (e.key === 'Escape') {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleCancelLinkEdit()
                     }
                   }}
                   placeholder={t(($) => $['nodes.note.editor.enterUrl'], { ns: 'workflow' }) || ''}
@@ -110,28 +119,32 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
                   <div className="mr-1">
                     {t(($) => $['nodes.note.editor.openLink'], { ns: 'workflow' })}
                   </div>
-                  <div title={escape(url)} className="max-w-[140px] truncate text-text-accent">
+                  <div title={escape(url)} className="max-w-35 truncate text-text-accent">
                     {escape(url)}
                   </div>
                 </a>
                 <div className="mx-1 h-3.5 w-px bg-divider-regular"></div>
-                <div
-                  className="mr-0.5 flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
+                <Button
+                  variant="ghost"
+                  size="small"
+                  className="mr-0.5 px-2 text-text-tertiary"
                   onClick={(e) => {
                     e.stopPropagation()
                     setLinkOperatorShow(false)
                   }}
                 >
-                  <RiEditLine className="mr-1 size-3" />
+                  <span aria-hidden className="i-ri-edit-line size-3" />
                   {t(($) => $['operation.edit'], { ns: 'common' })}
-                </div>
-                <div
-                  className="flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="small"
+                  className="px-2 text-text-tertiary"
                   onClick={handleUnlink}
                 >
-                  <RiLinkUnlinkM className="mr-1 size-3" />
+                  <span aria-hidden className="i-ri-link-unlink-m size-3" />
                   {t(($) => $['nodes.note.editor.unlink'], { ns: 'workflow' })}
-                </div>
+                </Button>
               </>
             )}
           </div>

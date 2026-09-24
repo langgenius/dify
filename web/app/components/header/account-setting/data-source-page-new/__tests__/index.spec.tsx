@@ -3,17 +3,22 @@ import type { DataSourceAuth } from '../types'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
 import { useTheme } from 'next-themes'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { consoleQuery } from '@/service/console'
 import {
   useGetDataSourceListAuth,
   useGetDataSourceOAuthUrl,
   useInvalidDataSourceListAuth,
 } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
-import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import {
+  useCheckInstalled,
+  useInstalledPluginList,
+  useInvalidateInstalledPluginList,
+} from '@/service/use-plugins'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useDataSourceAuthUpdate, useMarketplaceAllPlugins } from '../hooks'
 import DataSourcePage from '../index'
 
@@ -37,11 +42,8 @@ vi.mock('@/service/use-datasource', () => ({
   useInvalidDataSourceListAuth: vi.fn(),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: vi.fn(),
-}))
-
 vi.mock('@/service/use-plugins', () => ({
+  useCheckInstalled: vi.fn(),
   useInstalledPluginList: vi.fn(),
   useInvalidateInstalledPluginList: vi.fn(),
 }))
@@ -51,8 +53,10 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 }))
 
 vi.mock('../plugin-actions', () => ({
-  default: ({ detail }: { detail: { plugin_id: string } }) => (
-    <button data-testid={`plugin-actions-${detail.plugin_id}`}>Actions</button>
+  default: ({ detail, onUpdate }: { detail: { plugin_id: string }; onUpdate?: () => void }) => (
+    <button data-testid={`plugin-actions-${detail.plugin_id}`} onClick={onUpdate}>
+      Actions
+    </button>
   ),
 }))
 
@@ -83,11 +87,9 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  __esModule: true,
   default: () => (
-    <button type="button">
+    <button type="button" aria-label="plugin.autoUpdate.autoUpdate">
       plugin.autoUpdate.autoUpdate
-      <span>plugin.autoUpdate.strategy.fixOnly.name</span>
     </button>
   ),
 }))
@@ -143,6 +145,7 @@ describe('DataSourcePage Component', () => {
       agent_strategy: undefined,
       trigger: undefined,
       datasource: {
+        provider_type: 'online_document',
         identity: {
           author: 'Dify',
           name: 'Dify Source',
@@ -175,17 +178,19 @@ describe('DataSourcePage Component', () => {
     vi.mocked(useTheme).mockReturnValue({ theme: 'light' } as unknown as ReturnType<
       typeof useTheme
     >)
-    vi.mocked(useRenderI18nObject).mockReturnValue(
-      (obj: Record<string, string>) => obj?.en_US || '',
-    )
+    vi.mocked(useRenderI18nObject).mockReturnValue((obj) => obj?.en_US || '')
     vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({
       mutateAsync: vi.fn(),
     } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
     vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(vi.fn())
-    vi.mocked(useInvalidDataSourceList).mockReturnValue(vi.fn())
     vi.mocked(useInstalledPluginList).mockReturnValue({
       data: { plugins: [], total: 0 },
     } as unknown as ReturnType<typeof useInstalledPluginList>)
+    vi.mocked(useCheckInstalled).mockReturnValue({
+      data: { plugins: [] },
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useCheckInstalled>)
     vi.mocked(usePluginsWithLatestVersion).mockImplementation(
       (plugins = []) => plugins as PluginDetail[],
     )
@@ -217,7 +222,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage stickyToolbar />, {
+      renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
         systemFeatures: { enable_marketplace: false },
       })
 
@@ -231,8 +236,9 @@ describe('DataSourcePage Component', () => {
         'px-6',
         'pb-2',
       )
-      expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
-      expect(screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')[0]).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+      ).toBeInTheDocument()
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.notSetUpTitle')).toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.installFirst')).toBeInTheDocument()
@@ -247,7 +253,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage stickyToolbar />, {
+      renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -266,7 +272,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
       })
 
@@ -286,12 +292,20 @@ describe('DataSourcePage Component', () => {
       } as unknown as ReturnType<typeof useInstalledPluginList>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      const { queryClient } = renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
       })
 
+      const catalogKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
+      queryClient.setQueryData(catalogKey, [])
+      fireEvent.click(screen.getByTestId('plugin-actions-plugin-1'))
+      expect(queryClient.getQueryState(catalogKey)?.isInvalidated).toBe(true)
+
       // Assert
       expect(screen.getByTestId('plugin-actions-plugin-1')).toBeInTheDocument()
+      expect(useInstalledPluginList).toHaveBeenLastCalledWith({
+        category: PluginCategoryEnum.datasource,
+      })
     })
 
     it('should filter installed data sources and pass search text to marketplace', () => {
@@ -301,7 +315,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
       fireEvent.change(screen.getByPlaceholderText('common.operation.search'), {
@@ -323,7 +337,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -339,7 +353,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -354,7 +368,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -370,7 +384,7 @@ describe('DataSourcePage Component', () => {
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
-      renderWithSystemFeatures(<DataSourcePage />, {
+      renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
       })
 

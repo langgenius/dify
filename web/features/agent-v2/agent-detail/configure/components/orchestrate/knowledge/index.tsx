@@ -22,13 +22,13 @@ import { AgentKnowledgeRetrievalDialog } from './dialog'
 
 function KnowledgeRetrievalIcon() {
   return (
-    <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-subtle bg-util-colors-green-green-500 p-[3px] text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3">
+    <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-subtle bg-util-colors-green-green-500 p-0.75 text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3">
       <span aria-hidden className="i-ri-book-open-line size-3.5" />
     </span>
   )
 }
 
-function getKnowledgeRetrievalName(item: AgentKnowledgeRetrievalItem, t: TFunction<'agentV2'>) {
+function getKnowledgeRetrievalName(item: AgentKnowledgeRetrievalItem, t: TFunction<['agentV2']>) {
   const nameKey = item.nameKey
   return item.name ?? (nameKey ? t(($) => $[nameKey]) : item.id)
 }
@@ -42,7 +42,7 @@ function AgentKnowledgeRetrievalRow({
   onEdit: () => void
   item: AgentKnowledgeRetrievalItem
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const itemName = getKnowledgeRetrievalName(item, t)
 
   return (
@@ -62,7 +62,7 @@ function AgentKnowledgeRetrievalRow({
 }
 
 export function AgentKnowledgeRetrieval() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addKnowledgeRetrieval = useSetAtom(addKnowledgeRetrievalAtom)
   const updateKnowledgeRetrieval = useSetAtom(updateKnowledgeRetrievalAtom)
@@ -71,7 +71,7 @@ export function AgentKnowledgeRetrieval() {
   const [addDialogName, setAddDialogName] = useState<string>()
   const [editingRetrieval, setEditingRetrieval] = useState<AgentKnowledgeRetrievalItem | null>(null)
   const addOptionsRef = useRef<AgentOrchestrateAddActionOptions | undefined>(undefined)
-  const knowledgeRetrievalTip = t(($) => $['agentDetail.configure.knowledgeRetrieval.tip'])
+
   const retrievalListId = 'agent-configure-knowledge-retrieval-list'
   const isDialogOpen = isAddDialogOpen || !!editingRetrieval
   const updateRetrieval = (nextRetrieval: AgentKnowledgeRetrievalItem) => {
@@ -105,7 +105,6 @@ export function AgentKnowledgeRetrieval() {
         labelId="agent-configure-knowledge-retrieval-label"
         panelId={retrievalListId}
         tip={<AgentConfigureTipContent type="knowledge" />}
-        tipAriaLabel={knowledgeRetrievalTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={

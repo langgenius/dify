@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DocumentActionType } from '@/models/datasets'
 import * as useDocument from '@/service/knowledge/use-document'
 import { useDocumentActions } from '../use-document-actions'
@@ -16,7 +16,7 @@ const mockUseDocumentDelete = vi.mocked(useDocument.useDocumentDelete)
 const mockUseDocumentBatchRetryIndex = vi.mocked(useDocument.useDocumentBatchRetryIndex)
 const mockUseDocumentDownloadZip = vi.mocked(useDocument.useDocumentDownloadZip)
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -25,7 +25,7 @@ const createTestQueryClient = () =>
   })
 
 const createWrapper = () => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )

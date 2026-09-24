@@ -13,7 +13,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const i18nPrefix = 'nodes.assigner'
 
 const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const nodes: Node[] = useNodes()
   if (data.version === '2') {
     const { items: operationItems } = data
@@ -26,7 +26,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({ data }) => {
       return (
         <div className="relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1">
           <div className="flex flex-col items-start gap-1 self-stretch">
-            <div className="flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg px-[5px] py-1">
+            <div className="flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg px-1.25 py-1">
               <div className="flex-1 system-xs-medium text-text-tertiary">
                 {t(($) => $[`${i18nPrefix}.varNotSet`], { ns: 'workflow' })}
               </div>

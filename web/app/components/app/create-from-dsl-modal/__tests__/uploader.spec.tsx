@@ -1,8 +1,10 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Uploader from '../uploader'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { toast } from '@/app/notifications'
+import { Uploader } from '../uploader'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -16,7 +18,13 @@ describe('Uploader', () => {
   const getDropZone = (container: HTMLElement) =>
     (container.firstChild as HTMLElement).querySelector('div') as HTMLElement
 
-  const getHiddenInput = () => document.getElementById('fileUploader') as HTMLInputElement
+  const getHiddenInput = () => document.querySelector<HTMLInputElement>('input[type="file"]')!
+
+  function ControlledUploader({ initialFile }: { initialFile?: File }) {
+    const [file, setFile] = useState<File | undefined>(initialFile)
+
+    return <Uploader file={file} updateFile={setFile} />
+  }
 
   it('should upload a single dropped file', () => {
     const updateFile = vi.fn()
@@ -32,6 +40,60 @@ describe('Uploader', () => {
     })
 
     expect(updateFile).toHaveBeenCalledWith(file)
+  })
+
+  it.each(['picker', 'drop'])(
+    'rejects an unsupported file from %s and preserves the current state',
+    async (source) => {
+      const user = userEvent.setup({ applyAccept: false })
+      const file = new File(['app: demo'], 'demo.yml')
+      const { container } = render(
+        <ControlledUploader initialFile={source === 'drop' ? file : undefined} />,
+      )
+      const invalid = new File(['binary'], 'wrong.zip')
+      if (source === 'picker') await user.upload(getHiddenInput(), invalid)
+      else fireEvent.drop(getDropZone(container), { dataTransfer: { files: [invalid] } })
+      if (source === 'drop')
+        expect(screen.getByRole('group', { name: 'demo.yml' })).toBeInTheDocument()
+      else
+        expect(screen.getByRole('button', { name: 'app.dslUploader.browse' })).toBeInTheDocument()
+      expect(screen.queryByText('wrong.zip')).not.toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining('dslUploader.invalidFileType'),
+      )
+    },
+  )
+
+  it('honors the pipeline extension instead of treating every upload as an App package', () => {
+    const updateFile = vi.fn()
+    const { container } = render(
+      <Uploader file={undefined} updateFile={updateFile} importType="pipeline" />,
+    )
+    fireEvent.drop(getDropZone(container), {
+      dataTransfer: { files: [new File(['PK'], 'agent.ifpkg')] },
+    })
+    expect(updateFile).not.toHaveBeenCalled()
+    const pipeline = new File(['pipeline'], 'knowledge.PIPELINE')
+    fireEvent.drop(getDropZone(container), { dataTransfer: { files: [pipeline] } })
+    expect(updateFile).toHaveBeenCalledWith(pipeline)
+  })
+
+  it('updates App file metadata when replacing a package with DSL', () => {
+    const updateFile = vi.fn()
+    const { rerender } = render(
+      <Uploader importType="app" file={new File(['PK'], 'agent.IFPKG')} updateFile={updateFile} />,
+    )
+    expect(screen.getByText('app.appPackage')).toBeInTheDocument()
+
+    rerender(
+      <Uploader
+        importType="app"
+        file={new File(['app: demo'], 'app.yml')}
+        updateFile={updateFile}
+      />,
+    )
+    expect(screen.getByText('DSL')).toBeInTheDocument()
+    expect(screen.queryByText('app.appPackage')).not.toBeInTheDocument()
   })
 
   it('should reject dropping multiple files', () => {
@@ -58,7 +120,7 @@ describe('Uploader', () => {
     const updateFile = vi.fn()
     const file = new File(['name: demo'], 'demo.yml', { type: 'text/yaml' })
 
-    render(<Uploader file={file} updateFile={updateFile} displayName="DSL" />)
+    render(<Uploader file={file} updateFile={updateFile} importType="app" />)
 
     expect(screen.getByText(/(?:^|\.)demo\.yml(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText('DSL')).toBeInTheDocument()
@@ -92,6 +154,83 @@ describe('Uploader', () => {
     })
 
     expect(updateFile).toHaveBeenCalledWith(nextFile)
+  })
+
+  it('should move keyboard focus to the selected file row before the remove action', async () => {
+    const user = userEvent.setup()
+    const nextFile = new File(['next'], 'next.yml', { type: 'text/yaml' })
+    render(<ControlledUploader />)
+
+    const browseButton = screen.getByRole('button', {
+      name: /(?:^|\.)dslUploader\.browse(?=$|:)/,
+    })
+    browseButton.focus()
+    await user.keyboard('{Enter}')
+    fireEvent.change(getHiddenInput(), {
+      target: {
+        files: [nextFile],
+      },
+    })
+
+    const fileRow = screen.getByRole('group', { name: 'next.yml' })
+    const deleteButton = screen.getByRole('button', {
+      name: /(?:^|\.)operation\.delete(?=$|:)/,
+    })
+
+    expect(fileRow).toHaveFocus()
+    await user.tab()
+    expect(deleteButton).toHaveFocus()
+  })
+
+  it('should preserve focus ownership after selecting a file with a pointer', async () => {
+    const user = userEvent.setup()
+    const nextFile = new File(['next'], 'next.yml', { type: 'text/yaml' })
+    render(<ControlledUploader />)
+
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)dslUploader\.browse(?=$|:)/ }))
+    fireEvent.change(getHiddenInput(), {
+      target: {
+        files: [nextFile],
+      },
+    })
+
+    expect(screen.getByRole('group', { name: 'next.yml' })).toHaveFocus()
+  })
+
+  it('should not move focus when a file is dropped', () => {
+    const nextFile = new File(['next'], 'next.yml', { type: 'text/yaml' })
+    const { container } = render(
+      <>
+        <button type="button">Outside</button>
+        <ControlledUploader />
+      </>,
+    )
+    const outsideButton = screen.getByRole('button', { name: 'Outside' })
+    const uploaderRoot = container.children[1] as HTMLElement
+    const dropZone = uploaderRoot.querySelector('input[type="file"]')?.nextElementSibling
+    outsideButton.focus()
+
+    fireEvent.drop(dropZone as Element, {
+      dataTransfer: {
+        files: [nextFile],
+      },
+    })
+
+    expect(outsideButton).toHaveFocus()
+  })
+
+  it('should restore keyboard focus to Browse after removing the file', async () => {
+    const user = userEvent.setup()
+    const file = new File(['name: demo'], 'demo.yml', { type: 'text/yaml' })
+    render(<ControlledUploader initialFile={file} />)
+
+    const deleteButton = screen.getByRole('button', {
+      name: /(?:^|\.)operation\.delete(?=$|:)/,
+    })
+    deleteButton.focus()
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByRole('button', { name: /(?:^|\.)dslUploader\.browse(?=$|:)/ })).toHaveFocus()
   })
 
   it('should toggle drag styles and clear them when leaving the overlay', () => {

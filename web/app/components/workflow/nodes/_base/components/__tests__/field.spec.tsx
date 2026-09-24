@@ -1,29 +1,42 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Field from '../field'
 
 describe('Field', () => {
-  it('should render subtitle styling, tooltip, operations, warning dot and required marker', () => {
-    const { container } = render(
-      <Field
-        title="Knowledge"
-        tooltip="tooltip text"
-        operations={<button type="button">operation</button>}
-        required
-        warningDot
-        isSubTitle
-      />,
+  it('names each explanation from its visible topic and keeps rich content in the dialog', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <Field
+          title={<span>Retrieval settings</span>}
+          tooltip={<p>Choose how documents are ranked.</p>}
+        />
+        <Field
+          title={<span>Model settings</span>}
+          tooltip={
+            <p>
+              Choose a model for this node. <a href="https://docs.dify.ai">Model documentation</a>
+            </p>
+          }
+        />
+      </>,
     )
 
-    expect(screen.getByText('Knowledge')).toBeInTheDocument()
-    expect(screen.getByLabelText('tooltip text')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'operation' })).toBeInTheDocument()
-    expect(screen.getByText('*')).toBeInTheDocument()
-    expect(container.querySelector('.system-xs-medium-uppercase')).not.toBeNull()
-    expect(container.querySelector('.bg-text-warning-secondary')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Retrieval settings' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Model settings' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Model settings' })
+    expect(within(dialog).getByText(/Choose a model for this node/)).toBeVisible()
+    expect(within(dialog).getByRole('link', { name: 'Model documentation' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Model settings' })).toHaveAccessibleName(
+      'Model settings',
+    )
+    expect(screen.queryByRole('dialog', { name: 'Retrieval settings' })).not.toBeInTheDocument()
   })
 
   it('should toggle folded children when supportFold is enabled', () => {
-    const { container } = render(
+    render(
       <Field title="Foldable" supportFold>
         <div>folded content</div>
       </Field>,
@@ -33,20 +46,8 @@ describe('Field', () => {
 
     fireEvent.click(screen.getByText('Foldable').closest('.cursor-pointer')!)
     expect(screen.getByText('folded content')).toBeInTheDocument()
-    expect(container.querySelector('svg')).toHaveStyle({ transform: 'rotate(0deg)' })
 
     fireEvent.click(screen.getByText('Foldable').closest('.cursor-pointer')!)
     expect(screen.queryByText('folded content')).not.toBeInTheDocument()
-  })
-
-  it('should render inline children without folding support', () => {
-    const { container } = render(
-      <Field title="Inline" inline>
-        <div>always visible</div>
-      </Field>,
-    )
-
-    expect(screen.getByText('always visible')).toBeInTheDocument()
-    expect(container.firstChild).toHaveClass('flex')
   })
 })

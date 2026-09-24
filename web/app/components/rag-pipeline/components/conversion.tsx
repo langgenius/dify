@@ -8,14 +8,15 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams } from '@/next/navigation'
 import { datasetDetailQueryKeyPrefix } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
@@ -24,10 +25,13 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import PipelineScreenShot from './screenshot'
 
 const Conversion = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { datasetId } = useParams()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const { mutateAsync: convert, isPending } = useConvertDatasetToPipeline()
@@ -73,7 +77,7 @@ const Conversion = () => {
   return (
     <div className="flex size-full items-center justify-center bg-background-body p-6 pb-16">
       <div className="flex rounded-2xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-sm shadow-shadow-shadow-4">
-        <div className="flex max-w-[480px] flex-col justify-between p-10">
+        <div className="flex max-w-120 flex-col justify-between p-10">
           <div className="flex flex-col gap-y-2.5">
             <div className="title-4xl-semi-bold text-text-primary">
               {t(($) => $['conversion.title'], { ns: 'datasetPipeline' })}
@@ -101,7 +105,7 @@ const Conversion = () => {
             </span>
           </div>
         </div>
-        <div className="pt-6 pr-0 pb-8 pl-[25px]">
+        <div className="pt-6 pr-0 pb-8 pl-6.25">
           <div className="rounded-l-xl border border-effects-highlight bg-background-default p-1 shadow-md shadow-shadow-shadow-5 backdrop-blur-[5px]">
             <div className="overflow-hidden rounded-l-lg">
               <PipelineScreenShot />
@@ -115,7 +119,10 @@ const Conversion = () => {
       >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogTitle
+              className="w-full truncate title-2xl-semi-bold text-text-primary"
+              title={confirmTitle}
+            >
               {confirmTitle}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
@@ -128,7 +135,7 @@ const Conversion = () => {
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={isPending}
-              disabled={isPending || !canConvertDataset}
+              disabled={!canConvertDataset}
               onClick={handleConvert}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}

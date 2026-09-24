@@ -40,7 +40,6 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
 vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
   default: (props: {
     setModel: (model: { model: string; model_type: string }) => void
-    isAgentStrategy?: boolean
     readonly?: boolean
   }) => {
     modelSelectorPropsSpy(props)
@@ -1229,32 +1228,6 @@ describe('Form', () => {
       expect(screen.getByText('Select A'))!.toBeInTheDocument()
     })
 
-    // No fieldMoreInfo: should not crash
-    it('should render without fieldMoreInfo', () => {
-      const formSchemas: AnyFormSchema[] = [
-        createTextSchema({
-          variable: 'f1',
-          label: createI18n('Field 1'),
-          placeholder: createI18n('Field 1'),
-        }),
-      ]
-      const value: FormValue = { f1: '' }
-
-      render(
-        <Form
-          value={value}
-          onChange={vi.fn()}
-          formSchemas={formSchemas}
-          validating={false}
-          validatedSuccess={false}
-          showOnVariableMap={{}}
-          isEditMode={false}
-        />,
-      )
-
-      expect(screen.getByPlaceholderText('Field 1'))!.toBeInTheDocument()
-    })
-
     it('should render tooltip when schema has tooltip property', () => {
       const formSchemas: AnyFormSchema[] = [
         createTextSchema({
@@ -1299,10 +1272,10 @@ describe('Form', () => {
       expect(screen.getByText('Region'))!.toBeInTheDocument()
       expect(screen.getByRole('combobox', { name: 'Model' }))!.toBeInTheDocument()
       expect(screen.getByText('Agree'))!.toBeInTheDocument()
-      expect(screen.getByLabelText('Enter your API key here'))!.toBeInTheDocument()
-      expect(screen.getByLabelText('Select region'))!.toBeInTheDocument()
-      expect(screen.getByLabelText('Choose model'))!.toBeInTheDocument()
-      expect(screen.getByLabelText('Agree tooltip'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'API Key' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Region' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Model' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Agree' }))!.toBeInTheDocument()
     })
 
     it('should render required asterisk for radio, select, checkbox, and other field types', () => {
@@ -1477,65 +1450,6 @@ describe('Form', () => {
 
       fireEvent.change(screen.getByPlaceholderText('Custom Key'), { target: { value: 'new' } })
       expect(onChange).toHaveBeenCalledWith({ custom_key: 'new' })
-    })
-
-    it('should return undefined when customRenderField is not provided for unknown type', () => {
-      const formSchemas: Array<AnyFormSchema | CustomSchema> = [
-        {
-          ...createTextSchema({
-            variable: 'unknown',
-            label: createI18n('Unknown'),
-          }),
-          type: 'custom-type',
-        } as unknown as CustomSchema,
-      ]
-      const value: FormValue = { unknown: '' }
-
-      render(
-        <Form<CustomSchema>
-          value={value}
-          onChange={vi.fn()}
-          formSchemas={formSchemas}
-          validating={false}
-          validatedSuccess={false}
-          showOnVariableMap={{}}
-          isEditMode={false}
-        />,
-      )
-
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      // Should not crash - the field simply doesn't render
-      expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
     })
 
     it('should render fieldMoreInfo for checkbox field', () => {
@@ -1751,38 +1665,6 @@ describe('Form', () => {
       )
     })
 
-    it('should pass isAgentStrategy to modelSelector', () => {
-      modelSelectorPropsSpy.mockClear()
-      const formSchemas: AnyFormSchema[] = [
-        createTextSchema({
-          variable: 'model_sel',
-          type: FormTypeEnum.modelSelector,
-          label: createI18n('Model Selector'),
-        }),
-      ]
-      const value: FormValue = { model_sel: '' }
-
-      render(
-        <Form
-          value={value}
-          onChange={vi.fn()}
-          formSchemas={formSchemas}
-          validating={false}
-          validatedSuccess={false}
-          showOnVariableMap={{}}
-          isEditMode={false}
-          isAgentStrategy
-        />,
-      )
-
-      expect(screen.getByText('Select Model'))!.toBeInTheDocument()
-      expect(modelSelectorPropsSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          isAgentStrategy: true,
-        }),
-      )
-    })
-
     it('should use empty array fallback for multiToolSelector when value is null', () => {
       // Arrange
       const formSchemas: AnyFormSchema[] = [
@@ -1808,8 +1690,6 @@ describe('Form', () => {
         />,
       )
 
-      // Assert - should render without crash (value[variable] || [] path taken)
-      // Assert - should render without crash (value[variable] || [] path taken)
       expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
     })
 
@@ -1935,8 +1815,6 @@ describe('Form', () => {
         />,
       )
 
-      // Assert - should render without crash
-      // Assert - should render without crash
       expect(screen.getByText('Any Field'))!.toBeInTheDocument()
     })
 

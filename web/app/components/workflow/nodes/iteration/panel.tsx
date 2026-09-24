@@ -3,6 +3,14 @@ import type { IterationNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -11,11 +19,17 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { MAX_PARALLEL_LIMIT } from '@/config'
@@ -27,7 +41,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.iteration'
 
 const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const maxParallelismLabel = t(($) => $[`${i18nPrefix}.MaxParallelismTitle`], { ns: 'workflow' })
   const errorResponseMethodLabel = t(($) => $[`${i18nPrefix}.errorResponseMethod`], {
     ns: 'workflow',
@@ -70,7 +84,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
           title={t(($) => $[`${i18nPrefix}.input`], { ns: 'workflow' })}
           required
           operations={
-            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary capitalize">
+            <div className="flex h-4.5 items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary capitalize">
               Array
             </div>
           }
@@ -91,7 +105,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
           title={t(($) => $[`${i18nPrefix}.output`], { ns: 'workflow' })}
           required
           operations={
-            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary capitalize">
+            <div className="flex h-4.5 items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary capitalize">
               Array
             </div>
           }
@@ -111,7 +125,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
         <Field
           title={t(($) => $[`${i18nPrefix}.parallelMode`], { ns: 'workflow' })}
           tooltip={
-            <div className="w-[230px]">
+            <div className="w-57.5">
               {t(($) => $[`${i18nPrefix}.parallelPanelDesc`], { ns: 'workflow' })}
             </div>
           }
@@ -126,32 +140,48 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
             title={maxParallelismLabel}
             isSubTitle
             tooltip={
-              <div className="w-[230px]">
+              <div className="w-57.5">
                 {t(($) => $[`${i18nPrefix}.MaxParallelismDesc`], { ns: 'workflow' })}
               </div>
             }
           >
-            <Fieldset className="row flex">
+            <Fieldset className="flex gap-4">
               <FieldsetLegend className="sr-only">{maxParallelismLabel}</FieldsetLegend>
-              <Input
-                aria-label={maxParallelismLabel}
-                type="number"
-                wrapperClassName="w-18 mr-4"
+              <NumberField
+                className="w-18 shrink-0"
                 max={MAX_PARALLEL_LIMIT}
                 min={MIN_ITERATION_PARALLEL_NUM}
                 value={inputs.parallel_nums}
-                onChange={(e) => {
-                  changeParallelNums(Number(e.target.value))
+                disabled={readOnly}
+                format={{ maximumFractionDigits: 0 }}
+                onValueChange={(value) => {
+                  if (value !== null) changeParallelNums(value)
                 }}
-              />
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput aria-label={maxParallelismLabel} className="px-2" />
+                  <NumberFieldControls>
+                    <NumberFieldIncrement />
+                    <NumberFieldDecrement />
+                  </NumberFieldControls>
+                </NumberFieldGroup>
+              </NumberField>
               <Slider
+                disabled={readOnly}
                 value={inputs.parallel_nums}
                 onValueChange={changeParallelNums}
                 max={MAX_PARALLEL_LIMIT}
                 min={MIN_ITERATION_PARALLEL_NUM}
                 className="mt-4 flex-1 shrink-0"
-                aria-label={maxParallelismLabel}
-              />
+              >
+                <SliderLabel className="sr-only">{maxParallelismLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
             </Fieldset>
           </Field>
         </div>
@@ -190,7 +220,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
         <Field
           title={t(($) => $[`${i18nPrefix}.flattenOutput`], { ns: 'workflow' })}
           tooltip={
-            <div className="w-[230px]">
+            <div className="w-57.5">
               {t(($) => $[`${i18nPrefix}.flattenOutputDesc`], { ns: 'workflow' })}
             </div>
           }

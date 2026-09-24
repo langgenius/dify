@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { fetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AppACLPermission } from '@/utils/permission'
 import Panel from '../panel'
 
@@ -12,6 +13,13 @@ const testState = vi.hoisted(() => ({
     hasConfigured: boolean
   }>,
 }))
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app/app-1/overview',
@@ -33,26 +41,12 @@ vi.mock('@/service/apps', () => ({
   updateTracingStatus: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: vi.fn(),
 }))
 
 vi.mock('@langgenius/dify-ui/status-dot', () => ({
   StatusDot: ({ status }: { status: string }) => <span data-testid="status-dot">{status}</span>,
-}))
-
-vi.mock('@/app/components/base/icons/src/public/tracing', () => ({
-  AliyunIcon: () => <span data-testid="aliyun-icon" />,
-  ArizeIcon: () => <span data-testid="arize-icon" />,
-  DatabricksIcon: () => <span data-testid="databricks-icon" />,
-  LangfuseIcon: () => <span data-testid="langfuse-icon" />,
-  LangsmithIcon: () => <span data-testid="langsmith-icon" />,
-  MlflowIcon: () => <span data-testid="mlflow-icon" />,
-  OpikIcon: () => <span data-testid="opik-icon" />,
-  PhoenixIcon: () => <span data-testid="phoenix-icon" />,
-  TencentIcon: () => <span data-testid="tencent-icon" />,
-  TracingIcon: () => <span data-testid="tracing-icon" />,
-  WeaveIcon: () => <span data-testid="weave-icon" />,
 }))
 
 vi.mock('../config-button', () => ({
@@ -90,6 +84,14 @@ const renderPanel = async () => {
 
   await screen.findAllByTestId('config-button')
 }
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('Tracing overview panel permissions', () => {
   beforeEach(() => {

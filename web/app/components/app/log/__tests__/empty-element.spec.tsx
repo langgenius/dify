@@ -1,6 +1,6 @@
 import type { App } from '@/types/app'
 import { screen } from '@testing-library/react'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import EmptyElement from '../empty-element'
 
@@ -68,14 +68,6 @@ describe('EmptyElement', () => {
       render(<EmptyElement appDetail={appDetail} />)
 
       expect(screen.getByText('table.empty.element.content', { exact: false })).toBeInTheDocument()
-    })
-
-    it('should render ThreeDotsIcon SVG', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
-      const { container } = render(<EmptyElement appDetail={appDetail} />)
-
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
     })
   })
 

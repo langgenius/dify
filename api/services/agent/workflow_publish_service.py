@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
 from models.agent import (
     Agent,
@@ -19,8 +20,8 @@ from models.agent import (
 )
 from models.agent_config_entities import (
     AgentSoulConfig,
-    DeclaredOutputConfig,
     WorkflowNodeJobConfig,
+    WorkflowOutputRoutes,
     WorkflowPreviousNodeOutputRef,
 )
 from models.workflow import Workflow
@@ -37,6 +38,18 @@ from services.entities.agent_entities import (
 )
 
 
+class _InlineAgentUnavailableError(ValueError):
+    pass
+
+
+class _InlineAgentOwnershipError(ValueError):
+    pass
+
+
+class _InlineAgentSnapshotError(ValueError):
+    pass
+
+
 class WorkflowAgentPublishService:
     """Validate and freeze Workflow Agent v2 bindings during workflow publish."""
 
@@ -44,6 +57,7 @@ class WorkflowAgentPublishService:
     _AGENT_BINDING_KEY = "agent_binding"
     _AGENT_TASK_KEY = "agent_task"
     _AGENT_DECLARED_OUTPUTS_KEY = "agent_declared_outputs"
+    _AGENT_OUTPUT_ROUTES_KEY = "agent_output_routes"
 
     @classmethod
     def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
@@ -87,6 +101,7 @@ class WorkflowAgentPublishService:
             node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
             if node_job.workflow_prompt is not None:
                 node_data[cls._AGENT_TASK_KEY] = node_job.workflow_prompt
+            node_data[cls._AGENT_OUTPUT_ROUTES_KEY] = node_job.output_routes.model_dump(mode="json")
             node_data[cls._AGENT_DECLARED_OUTPUTS_KEY] = [
                 output.model_dump(mode="json") for output in node_job.declared_outputs
             ]
@@ -172,26 +187,42 @@ class WorkflowAgentPublishService:
             node_job=node_job,
         )
         ComposerConfigValidator.validate_publish_payload(payload)
-        # ENG-623 §4.4: drive-backed refs must point at real drive rows before
-        # publishing. This stays out of composer save so autosave/save-draft can
-        # persist incomplete refs and surface them as non-blocking findings.
-        cls._require_drive_refs_resolved_for_publish(session=session, binding=binding, agent_soul=agent_soul)
+        cls._require_config_asset_refs_resolved_for_publish(
+            session=session,
+            binding=binding,
+            snapshot_id=snapshot_id,
+            agent_soul=agent_soul,
+        )
 
     @classmethod
-    def _require_drive_refs_resolved_for_publish(
+    def _require_config_asset_refs_resolved_for_publish(
         cls,
         *,
         session: Session,
         binding: WorkflowAgentNodeBinding,
+        snapshot_id: str,
         agent_soul: AgentSoulConfig,
     ) -> None:
         from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
+        from services.skill_management_service import SkillManagementService
 
-        del session
-        configured_skill_names = {item.name for item in agent_soul.config_skills}
-        configured_file_names = {item.name for item in agent_soul.config_files}
+        mentions = parse_prompt_mentions(agent_soul.prompt.system_prompt)
+        configured_skill_names = {item.name for item in agent_soul.config_skills if not item.is_missing}
+        has_unresolved_skill_ref = any(
+            mention.kind == MentionKind.SKILL and mention.ref_id not in configured_skill_names for mention in mentions
+        )
+        if has_unresolved_skill_ref and binding.agent_id is not None:
+            configured_skill_names.update(
+                str(item["name"])
+                for item in SkillManagementService(session=session).list_runtime_agent_skills(
+                    tenant_id=binding.tenant_id,
+                    agent_id=binding.agent_id,
+                    config_snapshot_id=snapshot_id,
+                )
+            )
+        configured_file_names = {item.name for item in agent_soul.config_files if not item.is_missing}
         missing_refs: list[str] = []
-        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
+        for mention in mentions:
             if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
                 continue
             ref_name = mention.ref_id
@@ -211,7 +242,7 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         account_id: str,
-    ) -> None:
+    ) -> set[str]:
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict))
         existing_bindings = list(
             session.scalars(
@@ -224,9 +255,12 @@ class WorkflowAgentPublishService:
             ).all()
         )
         existing_by_node_id = {binding.node_id: binding for binding in existing_bindings}
+        retirement_candidates: set[str] = set()
 
         for binding in existing_bindings:
             if binding.node_id not in agent_nodes:
+                if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id:
+                    retirement_candidates.add(binding.agent_id)
                 session.delete(binding)
 
         for node_id, node_data in agent_nodes.items():
@@ -239,16 +273,34 @@ class WorkflowAgentPublishService:
                 not binding_payload.get("agent_id") or not binding_payload.get("current_snapshot_id")
             ):
                 continue
+            existing_binding = existing_by_node_id.get(node_id)
+            replaced_inline_agent_id = (
+                existing_binding.agent_id
+                if existing_binding is not None
+                and existing_binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+                and existing_binding.agent_id
+                else None
+            )
             cls._sync_agent_binding_for_node(
                 session=session,
                 draft_workflow=draft_workflow,
                 node_id=node_id,
                 node_data=node_data,
                 node_binding=binding_payload,
-                existing_binding=existing_by_node_id.get(node_id),
+                existing_binding=existing_binding,
                 account_id=account_id,
             )
+            if (
+                replaced_inline_agent_id
+                and existing_binding is not None
+                and (
+                    existing_binding.binding_type != WorkflowAgentBindingType.INLINE_AGENT
+                    or existing_binding.agent_id != replaced_inline_agent_id
+                )
+            ):
+                retirement_candidates.add(replaced_inline_agent_id)
         session.flush()
+        return retirement_candidates
 
     @classmethod
     def sync_roster_agent_bindings_for_draft(
@@ -257,8 +309,8 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         account_id: str,
-    ) -> None:
-        cls.sync_agent_bindings_for_draft(
+    ) -> set[str]:
+        return cls.sync_agent_bindings_for_draft(
             session=session,
             draft_workflow=draft_workflow,
             account_id=account_id,
@@ -281,6 +333,11 @@ class WorkflowAgentPublishService:
         if not isinstance(agent_id, str) or not agent_id:
             raise ValueError(f"Workflow Agent node {node_id} agent binding requires agent_id.")
 
+        node_job_config = cls._node_job_config_from_node_data(
+            existing_binding=existing_binding,
+            node_data=node_data,
+        )
+
         if binding_type == WorkflowAgentBindingType.ROSTER_AGENT.value:
             agent, current_snapshot_id = cls._resolve_roster_agent_graph_binding(
                 session=session,
@@ -294,22 +351,38 @@ class WorkflowAgentPublishService:
             if not isinstance(raw_current_snapshot_id, str) or not raw_current_snapshot_id:
                 raise ValueError(f"Workflow Agent node {node_id} inline_agent binding requires current_snapshot_id.")
             current_snapshot_id = raw_current_snapshot_id
-            agent = cls._resolve_inline_agent_graph_binding(
-                session=session,
-                draft_workflow=draft_workflow,
-                node_id=node_id,
-                agent_id=agent_id,
-                current_snapshot_id=current_snapshot_id,
-            )
+            try:
+                agent = cls._resolve_inline_agent_graph_binding(
+                    session=session,
+                    draft_workflow=draft_workflow,
+                    node_id=node_id,
+                    agent_id=agent_id,
+                    current_snapshot_id=current_snapshot_id,
+                )
+            except (_InlineAgentUnavailableError, _InlineAgentOwnershipError):
+                existing_agent = cls._resolve_existing_inline_binding_agent(
+                    session=session,
+                    draft_workflow=draft_workflow,
+                    node_id=node_id,
+                    existing_binding=existing_binding,
+                )
+                if existing_agent is not None and existing_binding is not None:
+                    agent = existing_agent
+                    current_snapshot_id = existing_binding.current_snapshot_id or current_snapshot_id
+                else:
+                    agent, current_snapshot_id = cls._clone_inline_graph_binding_for_node(
+                        session=session,
+                        draft_workflow=draft_workflow,
+                        node_id=node_id,
+                        source_agent_id=agent_id,
+                        source_snapshot_id=current_snapshot_id,
+                        account_id=account_id,
+                    )
             resolved_binding_type = WorkflowAgentBindingType.INLINE_AGENT
         else:
             raise ValueError(f"Workflow Agent node {node_id} has unsupported agent_binding type.")
 
         binding = existing_binding
-        node_job_config = cls._node_job_config_from_node_data(
-            existing_binding=existing_binding,
-            node_data=node_data,
-        )
         if binding is None:
             binding = WorkflowAgentNodeBinding(
                 tenant_id=draft_workflow.tenant_id,
@@ -330,6 +403,79 @@ class WorkflowAgentPublishService:
         binding.updated_by = account_id
 
     @classmethod
+    def _resolve_existing_inline_binding_agent(
+        cls,
+        *,
+        session: Session,
+        draft_workflow: Workflow,
+        node_id: str,
+        existing_binding: WorkflowAgentNodeBinding | None,
+    ) -> Agent | None:
+        if (
+            existing_binding is None
+            or existing_binding.binding_type != WorkflowAgentBindingType.INLINE_AGENT
+            or not existing_binding.agent_id
+            or not existing_binding.current_snapshot_id
+        ):
+            return None
+        try:
+            return cls._resolve_inline_agent_graph_binding(
+                session=session,
+                draft_workflow=draft_workflow,
+                node_id=node_id,
+                agent_id=existing_binding.agent_id,
+                current_snapshot_id=existing_binding.current_snapshot_id,
+            )
+        except ValueError:
+            return None
+
+    @classmethod
+    def _clone_inline_graph_binding_for_node(
+        cls,
+        *,
+        session: Session,
+        draft_workflow: Workflow,
+        node_id: str,
+        source_agent_id: str,
+        source_snapshot_id: str,
+        account_id: str,
+    ) -> tuple[Agent, str]:
+        source_agent = session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == draft_workflow.tenant_id,
+                Agent.id == source_agent_id,
+                Agent.scope == AgentScope.WORKFLOW_ONLY,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+            .limit(1)
+        )
+        if source_agent is None:
+            raise ValueError(f"Workflow Agent node {node_id} references an unavailable inline agent.")
+        source_snapshot = session.scalar(
+            select(AgentConfigSnapshot)
+            .where(
+                AgentConfigSnapshot.tenant_id == draft_workflow.tenant_id,
+                AgentConfigSnapshot.agent_id == source_agent.id,
+                AgentConfigSnapshot.id == source_snapshot_id,
+            )
+            .limit(1)
+        )
+        if source_snapshot is None:
+            raise ValueError(f"Workflow Agent node {node_id} references a missing inline agent config snapshot.")
+
+        from services.agent.dsl_service import AgentDslService
+
+        agent, snapshot = AgentDslService(session).clone_inline_binding_for_node(
+            workflow=draft_workflow,
+            node_id=node_id,
+            source_agent=source_agent,
+            source_snapshot=source_snapshot,
+            account_id=account_id,
+        )
+        return agent, snapshot.id
+
+    @classmethod
     def _resolve_roster_agent_graph_binding(
         cls,
         *,
@@ -338,6 +484,8 @@ class WorkflowAgentPublishService:
         node_id: str,
         agent_id: str,
     ) -> tuple[Agent, str]:
+        """Resolve an active roster Agent whose published snapshot is callable."""
+
         agent = session.scalar(
             select(Agent)
             .where(
@@ -345,11 +493,12 @@ class WorkflowAgentPublishService:
                 Agent.id == agent_id,
                 Agent.scope == AgentScope.ROSTER,
                 Agent.status == AgentStatus.ACTIVE,
+                workflow_callable_active_snapshot_filter(),
             )
             .limit(1)
         )
         if agent is None:
-            raise ValueError(f"Workflow Agent node {node_id} references an unavailable roster agent.")
+            raise ValueError(f"Workflow Agent node {node_id} references an unavailable or unpublished roster agent.")
         if agent.scope != AgentScope.ROSTER:
             raise ValueError(f"Workflow Agent node {node_id} roster_agent binding must reference a roster agent.")
         if not agent.active_config_snapshot_id:
@@ -380,14 +529,16 @@ class WorkflowAgentPublishService:
             .limit(1)
         )
         if agent is None:
-            raise ValueError(f"Workflow Agent node {node_id} references an unavailable inline agent.")
+            raise _InlineAgentUnavailableError(f"Workflow Agent node {node_id} references an unavailable inline agent.")
         if (
             agent.scope != AgentScope.WORKFLOW_ONLY
             or agent.app_id != draft_workflow.app_id
             or agent.workflow_id != draft_workflow.id
             or agent.workflow_node_id != node_id
         ):
-            raise ValueError(f"Workflow Agent node {node_id} inline_agent binding does not belong to this node.")
+            raise _InlineAgentOwnershipError(
+                f"Workflow Agent node {node_id} inline_agent binding does not belong to this node."
+            )
 
         snapshot = session.scalar(
             select(AgentConfigSnapshot)
@@ -399,7 +550,9 @@ class WorkflowAgentPublishService:
             .limit(1)
         )
         if snapshot is None or snapshot.agent_id != agent.id:
-            raise ValueError(f"Workflow Agent node {node_id} references a missing inline agent config snapshot.")
+            raise _InlineAgentSnapshotError(
+                f"Workflow Agent node {node_id} references a missing inline agent config snapshot."
+            )
         return agent
 
     @classmethod
@@ -424,12 +577,16 @@ class WorkflowAgentPublishService:
             if not isinstance(declared_outputs_payload, list):
                 raise ValueError("Workflow Agent node agent_declared_outputs must be a list.")
             try:
-                node_job.declared_outputs = [
-                    DeclaredOutputConfig.model_validate(output) for output in declared_outputs_payload
-                ]
+                node_job = WorkflowNodeJobConfig.model_validate(
+                    {
+                        **node_job.model_dump(mode="python"),
+                        "declared_outputs": declared_outputs_payload,
+                    }
+                )
             except ValidationError as exc:
                 raise ValueError("Workflow Agent node has invalid agent_declared_outputs.") from exc
 
+        node_job.output_routes = WorkflowOutputRoutes.model_validate(node_data.get(cls._AGENT_OUTPUT_ROUTES_KEY, {}))
         return node_job
 
     @classmethod
@@ -444,12 +601,19 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         published_workflow: Workflow,
-    ) -> None:
+    ) -> bool:
+        """Copy all draft Roster and inline bindings to a published version.
+
+        Only copied inline bindings add owners for workflow-only Agents.
+        Publishing does not release existing draft or historical inline owners,
+        produces no retirement candidates. The return value reports whether
+        the published Workflow contains an inline Agent binding.
+        """
         node_ids = {
             node_id for node_id, _node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict)
         }
         if not node_ids:
-            return
+            return False
 
         bindings = session.scalars(
             select(WorkflowAgentNodeBinding).where(
@@ -461,25 +625,23 @@ class WorkflowAgentPublishService:
             )
         ).all()
         if not bindings:
-            return
+            return False
 
-        agents_by_id = {
-            agent.id: agent
-            for agent in session.scalars(
-                select(Agent).where(
-                    Agent.tenant_id == draft_workflow.tenant_id,
-                    Agent.id.in_({binding.agent_id for binding in bindings if binding.agent_id}),
-                )
-            ).all()
-        }
-
+        has_inline_agent = False
         for binding in bindings:
-            agent = agents_by_id.get(binding.agent_id) if binding.agent_id else None
-            current_snapshot_id = (
-                agent.active_config_snapshot_id
-                if agent is not None and binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
-                else binding.current_snapshot_id
+            has_inline_agent = has_inline_agent or (
+                binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+                and binding.agent_id is not None
+                and binding.current_snapshot_id is not None
             )
+            current_snapshot_id = binding.current_snapshot_id
+            if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and binding.agent_id:
+                _, current_snapshot_id = cls._resolve_roster_agent_graph_binding(
+                    session=session,
+                    draft_workflow=draft_workflow,
+                    node_id=binding.node_id,
+                    agent_id=binding.agent_id,
+                )
             copied = WorkflowAgentNodeBinding(
                 tenant_id=binding.tenant_id,
                 app_id=binding.app_id,
@@ -494,3 +656,89 @@ class WorkflowAgentPublishService:
                 updated_by=binding.updated_by,
             )
             session.add(copied)
+        return has_inline_agent
+
+    @classmethod
+    def restore_agent_node_bindings_to_draft(
+        cls,
+        *,
+        session: Session,
+        source_workflow: Workflow,
+        draft_workflow: Workflow,
+        account_id: str,
+    ) -> set[str]:
+        """Replace draft bindings with the frozen bindings of a published workflow."""
+
+        existing = session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == cls._DRAFT_WORKFLOW_VERSION,
+            )
+        ).all()
+        retirement_candidates = {
+            binding.agent_id
+            for binding in existing
+            if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id
+        }
+        source_bindings = session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == source_workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == source_workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == source_workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == source_workflow.version,
+            )
+        ).all()
+        for source in source_bindings:
+            if source.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and source.agent_id:
+                cls._resolve_roster_agent_graph_binding(
+                    session=session,
+                    draft_workflow=draft_workflow,
+                    node_id=source.node_id,
+                    agent_id=source.agent_id,
+                )
+
+        for binding in existing:
+            session.delete(binding)
+        session.flush()
+
+        for source in source_bindings:
+            agent_id = source.agent_id
+            snapshot_id = source.current_snapshot_id
+            if source.binding_type == WorkflowAgentBindingType.INLINE_AGENT and agent_id and snapshot_id:
+                try:
+                    cls._resolve_inline_agent_graph_binding(
+                        session=session,
+                        draft_workflow=draft_workflow,
+                        node_id=source.node_id,
+                        agent_id=agent_id,
+                        current_snapshot_id=snapshot_id,
+                    )
+                except ValueError:
+                    agent, snapshot_id = cls._clone_inline_graph_binding_for_node(
+                        session=session,
+                        draft_workflow=draft_workflow,
+                        node_id=source.node_id,
+                        source_agent_id=agent_id,
+                        source_snapshot_id=snapshot_id,
+                        account_id=account_id,
+                    )
+                    agent_id = agent.id
+            session.add(
+                WorkflowAgentNodeBinding(
+                    tenant_id=draft_workflow.tenant_id,
+                    app_id=draft_workflow.app_id,
+                    workflow_id=draft_workflow.id,
+                    workflow_version=cls._DRAFT_WORKFLOW_VERSION,
+                    node_id=source.node_id,
+                    binding_type=source.binding_type,
+                    agent_id=agent_id,
+                    current_snapshot_id=snapshot_id,
+                    node_job_config=WorkflowNodeJobConfig.model_validate(source.node_job_config_dict),
+                    created_by=account_id,
+                    updated_by=account_id,
+                )
+            )
+        session.flush()
+        return retirement_candidates

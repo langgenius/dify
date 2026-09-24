@@ -5,13 +5,15 @@ from faker import Faker
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from enums import DeploymentEdition
 from models import Account
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
-from services.app_ref_service import AnnotationRef
+from services.app_ref_service import AnnotationRef, AppRef
 from services.app_service import AppService, CreateAppParams
 from tests.test_containers_integration_tests.helpers import generate_valid_password
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class TestAnnotationService:
@@ -21,7 +23,7 @@ class TestAnnotationService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
             patch("services.annotation_service.FeatureService") as mock_feature_service,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_add_task,
             patch("services.annotation_service.update_annotation_to_index_task") as mock_update_task,
@@ -32,7 +34,6 @@ class TestAnnotationService:
             patch("services.annotation_service.current_account_with_tenant") as mock_current_account_with_tenant,
         ):
             # Setup default mock returns
-            mock_account_feature_service.get_features.return_value.billing.enabled = False
             mock_add_task.delay.return_value = None
             mock_update_task.delay.return_value = None
             mock_delete_task.delay.return_value = None
@@ -70,9 +71,7 @@ class TestAnnotationService:
         fake = Faker()
 
         # Setup mocks for account creation
-        mock_external_service_dependencies[
-            "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant first
         from services.account_service import AccountService, TenantService
@@ -122,7 +121,7 @@ class TestAnnotationService:
 
     @staticmethod
     def _annotation_ref(app, annotation_id: str) -> AnnotationRef:
-        return AnnotationRef(tenant_id=app.tenant_id, app_id=app.id, annotation_id=annotation_id)
+        return AnnotationRef(app=AppRef(tenant_id=app.tenant_id, app_id=app.id), annotation_id=annotation_id)
 
     def _create_test_conversation(self, db_session_with_containers: Session, app, account, fake):
         """
@@ -243,9 +242,7 @@ class TestAnnotationService:
         }
 
         with pytest.raises(ValueError):
-            AppAnnotationService.insert_app_annotation_directly(
-                annotation_args, app.id, session=db_session_with_containers
-            )
+            AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id, db_session_with_containers)
 
     def test_insert_app_annotation_directly_app_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -443,11 +440,7 @@ class TestAnnotationService:
 
         # Get annotation list
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id,
-            page=1,
-            limit=10,
-            keyword="",
-            session=db_session_with_containers,
+            app.id, page=1, limit=10, keyword="", session=db_session_with_containers
         )
 
         # Verify results
@@ -474,22 +467,18 @@ class TestAnnotationService:
             "question": f"Question with {unique_keyword} keyword",
             "answer": f"Answer with {unique_keyword} keyword",
         }
-        AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id, session=db_session_with_containers)
+        AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id, db_session_with_containers)
         # Create another annotation without the keyword
         other_args = {
             "question": "Different question without special term",
             "answer": "Different answer without special content",
         }
 
-        AppAnnotationService.insert_app_annotation_directly(other_args, app.id, session=db_session_with_containers)
+        AppAnnotationService.insert_app_annotation_directly(other_args, app.id, db_session_with_containers)
 
         # Search with keyword
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id,
-            page=1,
-            limit=10,
-            keyword=unique_keyword,
-            session=db_session_with_containers,
+            app.id, page=1, limit=10, keyword=unique_keyword, session=db_session_with_containers
         )
 
         # Verify only matching annotations are returned
@@ -516,9 +505,7 @@ class TestAnnotationService:
             "question": "Question with 50% discount",
             "answer": "Answer about 50% discount offer",
         }
-        AppAnnotationService.insert_app_annotation_directly(
-            annotation_with_percent, app.id, session=db_session_with_containers
-        )
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_percent, app.id, db_session_with_containers)
 
         annotation_with_underscore = {
             "question": "Question with test_data",
@@ -541,17 +528,11 @@ class TestAnnotationService:
             "question": "Question with 100% different",
             "answer": "Answer about 100% different content",
         }
-        AppAnnotationService.insert_app_annotation_directly(
-            annotation_no_match, app.id, session=db_session_with_containers
-        )
+        AppAnnotationService.insert_app_annotation_directly(annotation_no_match, app.id, db_session_with_containers)
 
         # Test 1: Search with % character - should find exact match only
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id,
-            page=1,
-            limit=10,
-            keyword="50%",
-            session=db_session_with_containers,
+            app.id, page=1, limit=10, keyword="50%", session=db_session_with_containers
         )
         assert total == 1
         assert len(annotation_list) == 1
@@ -559,11 +540,7 @@ class TestAnnotationService:
 
         # Test 2: Search with _ character - should find exact match only
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id,
-            page=1,
-            limit=10,
-            keyword="test_data",
-            session=db_session_with_containers,
+            app.id, page=1, limit=10, keyword="test_data", session=db_session_with_containers
         )
         assert total == 1
         assert len(annotation_list) == 1
@@ -571,11 +548,7 @@ class TestAnnotationService:
 
         # Test 3: Search with \ character - should find exact match only
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id,
-            page=1,
-            limit=10,
-            keyword="path\\to\\file",
-            session=db_session_with_containers,
+            app.id, page=1, limit=10, keyword="path\\to\\file", session=db_session_with_containers
         )
         assert total == 1
         assert len(annotation_list) == 1
@@ -583,11 +556,7 @@ class TestAnnotationService:
 
         # Test 4: Search with % should NOT match 100% (verifies escaping works)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id,
-            page=1,
-            limit=10,
-            keyword="50%",
-            session=db_session_with_containers,
+            app.id, page=1, limit=10, keyword="50%", session=db_session_with_containers
         )
         # Should only find the 50% annotation, not the 100% one
         assert total == 1
@@ -654,8 +623,7 @@ class TestAnnotationService:
         non_existent_app_id = fake.uuid4()
         annotation_id = fake.uuid4()
         app_ref = AnnotationRef(
-            tenant_id=fake.uuid4(),
-            app_id=non_existent_app_id,
+            app=AppRef(tenant_id=fake.uuid4(), app_id=non_existent_app_id),
             annotation_id=annotation_id,
         )
 
@@ -912,6 +880,7 @@ class TestAnnotationService:
         assert retrieved_annotation.content == annotation_args["answer"]
         assert retrieved_annotation.account_id == account.id
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_batch_import_app_annotations_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -933,8 +902,6 @@ class TestAnnotationService:
             stream=BytesIO(csv_content.encode("utf-8")), filename="annotations.csv", content_type="text/csv"
         )
 
-        mock_external_service_dependencies["feature_service"].get_features.return_value.billing.enabled = False
-
         # Mock pandas to return expected DataFrame
         import pandas as pd
 
@@ -945,9 +912,7 @@ class TestAnnotationService:
             mock_pd.read_csv.return_value = mock_df
 
             # Batch import annotations
-            result = AppAnnotationService.batch_import_app_annotations(
-                app.id, file_storage, session=db_session_with_containers
-            )
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage, db_session_with_containers)
 
         # Verify result structure
         assert "job_id" in result
@@ -987,14 +952,13 @@ class TestAnnotationService:
             mock_pd.read_csv.return_value = mock_df
 
             # Batch import annotations
-            result = AppAnnotationService.batch_import_app_annotations(
-                app.id, file_storage, session=db_session_with_containers
-            )
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage, db_session_with_containers)
 
         # Verify error result
         assert "error_msg" in result
         assert "empty" in result["error_msg"].lower()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_batch_import_app_annotations_quota_exceeded(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -1026,7 +990,6 @@ class TestAnnotationService:
             mock_pd.read_csv.return_value = mock_df
 
             # Mock FeatureService to return billing enabled with quota exceeded
-            mock_external_service_dependencies["feature_service"].get_features.return_value.billing.enabled = True
             mock_external_service_dependencies[
                 "feature_service"
             ].get_features.return_value.annotation_quota_limit.limit = 1
@@ -1035,9 +998,7 @@ class TestAnnotationService:
             ].get_features.return_value.annotation_quota_limit.size = 0
 
             # Batch import annotations
-            result = AppAnnotationService.batch_import_app_annotations(
-                app.id, file_storage, session=db_session_with_containers
-            )
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage, db_session_with_containers)
 
         # Verify error result
         assert "error_msg" in result
@@ -1079,7 +1040,7 @@ class TestAnnotationService:
         db_session_with_containers.commit()
 
         # Get annotation setting
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=db_session_with_containers)
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, db_session_with_containers)
 
         # Verify result structure
         assert result["enabled"] is True
@@ -1098,7 +1059,7 @@ class TestAnnotationService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Get annotation setting (no setting exists)
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=db_session_with_containers)
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, db_session_with_containers)
 
         # Verify result structure
         assert result["enabled"] is False
@@ -1180,9 +1141,7 @@ class TestAnnotationService:
             annotations.append(annotation)
 
         # Export annotation list
-        exported_annotations = AppAnnotationService.export_annotation_list_by_app_id(
-            app.id, session=db_session_with_containers
-        )
+        exported_annotations = AppAnnotationService.export_annotation_list_by_app_id(app.id, db_session_with_containers)
 
         # Verify results
         assert len(exported_annotations) == 3
@@ -1209,9 +1168,7 @@ class TestAnnotationService:
 
         # Try to export annotation list with non-existent app
         with pytest.raises(NotFound, match="App not found"):
-            AppAnnotationService.export_annotation_list_by_app_id(
-                non_existent_app_id, session=db_session_with_containers
-            )
+            AppAnnotationService.export_annotation_list_by_app_id(non_existent_app_id, db_session_with_containers)
 
     def test_insert_app_annotation_directly_with_setting_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies

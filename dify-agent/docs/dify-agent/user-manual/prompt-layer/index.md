@@ -68,5 +68,4 @@ prompt_layer = RunLayerSpec(
 - Prompt layer names are not reserved by the runtime, but `prompt` is the
   recommended conventional name.
 - When a [history layer](../history-layer/index.md) is present, current system
-  prompts are sent as a temporary prefix before stored history and are not saved
-  into memory.
+  prompts are passed as run-level instructions and are not saved into memory.

@@ -4,11 +4,10 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { ContentModeration } from '@/app/components/base/icons/src/vender/features'
-import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useCodeBasedExtensions } from '@/service/use-common'
 
@@ -18,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const Moderation = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { setShowModerationSettingModal } = useModalContext()
   const locale = useLocale()
   const featuresStore = useFeaturesStore()
@@ -119,7 +118,10 @@ const Moderation = ({ disabled, onChange }: Props) => {
     <FeatureCard
       icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-text-success p-1 shadow-xs">
-          <ContentModeration className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-content-moderation size-4 text-text-primary-on-surface"
+          />
         </div>
       }
       title={t(($) => $['feature.moderation.title'], { ns: 'appDebug' })}
@@ -145,7 +147,7 @@ const Moderation = ({ disabled, onChange }: Props) => {
                   </div>
                   <div className="system-xs-regular text-text-secondary">{providerContent}</div>
                 </div>
-                <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
+                <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
                   <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
                     {t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
@@ -160,7 +162,7 @@ const Moderation = ({ disabled, onChange }: Props) => {
                 onClick={handleOpenModerationSettingModal}
                 disabled={disabled}
               >
-                <RiEqualizer2Line className="mr-1 size-4" />
+                <RiEqualizer2Line className="size-4" />
                 {t(($) => $['operation.settings'], { ns: 'common' })}
               </Button>
             )}

@@ -8,10 +8,10 @@ EE blueprint chain so this module is unreachable there.
 from __future__ import annotations
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
 
+from constants.oauth_bearer import Scope
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, returns
+from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
     AppDescribeQuery,
     AppDescribeResponse,
@@ -20,27 +20,40 @@ from controllers.openapi._models import (
     PermittedExternalAppsListResponse,
 )
 from controllers.openapi.apps import build_app_describe_response
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, Edition
-from extensions.ext_database import db
-from libs.oauth_bearer import Scope, TokenType
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.requirements import (
+    CheckAppAccess,
+    CheckAppApiEnabled,
+    CheckScope,
+    CheckSubject,
+)
+from controllers.openapi.auth.subjects import ExternalSsoSubject
+from enums import DeploymentEdition
 from models import App
 from models.enums import AppStatus
 from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.app_permitted_service import list_permitted_apps
 
+_ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
+
 
 @openapi_ns.route("/permitted-external-apps")
 class PermittedExternalAppsListApi(Resource):
-    @auth_router.guard(
-        scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
-        allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}),
-        edition=frozenset({Edition.EE}),
+    @endpoint(
+        op="console_app.external.list",
+        kind=Kind.LIST,
+        summary="List apps an external SSO subject may run",
+        examples=(Example(title="List the apps this SSO subject may run, first page", input={"page": 1, "limit": 20}),),
+        requirements=(
+            CheckSubject(allowed=(ExternalSsoSubject,)),
+            CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
+        ),
+        query=PermittedExternalAppsListQuery,
+        returns=(200, PermittedExternalAppsListResponse, "Permitted external apps list"),
+        edition=_ENTERPRISE_ONLY,
     )
-    @returns(200, PermittedExternalAppsListResponse, description="Permitted external apps list")
-    @accepts(query=PermittedExternalAppsListQuery)
-    def get(self, *, auth_data: AuthData, query: PermittedExternalAppsListQuery):
+    def get(self, ctx: Context, *, query: PermittedExternalAppsListQuery):
         page_result = list_permitted_apps(
             page=query.page,
             limit=query.limit,
@@ -49,16 +62,16 @@ class PermittedExternalAppsListApi(Resource):
         )
 
         if not page_result.app_ids:
-            env = PermittedExternalAppsListResponse(
-                page=query.page, limit=query.limit, total=page_result.total, has_more=False, data=[]
+            env = PermittedExternalAppsListResponse.build(
+                page=query.page, limit=query.limit, total=page_result.total, items=[]
             )
             return env
 
         apps_by_id: dict[str, App] = {
-            str(a.id): a for a in AppService.find_visible_apps_by_ids(page_result.app_ids, session=db.session())
+            str(a.id): a for a in AppService.find_visible_apps_by_ids(page_result.app_ids, ctx.session)
         }
         tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
-        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(tenant_ids, session=db.session())}
+        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(tenant_ids, session=ctx.session)}
 
         items: list[AppListRow] = []
         for app_id in page_result.app_ids:
@@ -77,28 +90,29 @@ class PermittedExternalAppsListApi(Resource):
                     workspace_name=tenant.name if tenant else None,
                 )
             )
-        env = PermittedExternalAppsListResponse(
-            page=query.page,
-            limit=query.limit,
-            total=page_result.total,
-            has_more=query.page * query.limit < page_result.total,
-            data=items,
+        env = PermittedExternalAppsListResponse.build(
+            page=query.page, limit=query.limit, total=page_result.total, items=items
         )
         return env
 
 
 @openapi_ns.route("/permitted-external-apps/<string:app_id>")
 class PermittedExternalAppDescribeApi(Resource):
-    @auth_router.guard(
-        scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
-        allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}),
-        edition=frozenset({Edition.EE}),
+    @endpoint(
+        op="console_app.external.describe",
+        kind=Kind.OBJECT,
+        summary="External-subject app detail",
+        examples=(Example(title="Describe a permitted app with its input_schema", input={"app_id": "<app_id>"}),),
+        requirements=(
+            CheckSubject(allowed=(ExternalSsoSubject,)),
+            CheckAppApiEnabled(),
+            CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
+            CheckAppAccess(),
+        ),
+        query=AppDescribeQuery,
+        returns=(200, AppDescribeResponse, "Permitted external app description"),
+        edition=_ENTERPRISE_ONLY,
     )
-    @returns(200, AppDescribeResponse, description="Permitted external app description")
-    @accepts(query=AppDescribeQuery)
-    def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
-        # App already loaded and ACL-checked by the external_sso pipeline; project it.
-        app = auth_data.app
-        if app is None:
-            raise NotFound("app not found")
-        return build_app_describe_response(app, query.fields)
+    def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
+        # The pipeline has already loaded and ACL-checked the app; project it.
+        return build_app_describe_response(ctx.app, query.fields, session=ctx.session)

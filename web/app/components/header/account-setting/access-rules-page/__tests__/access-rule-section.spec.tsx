@@ -1,52 +1,23 @@
 import type { ReactNode } from 'react'
-import type { AccessPolicyWithBindings } from '@/models/access-control'
+import type { AccessRule } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import AccessRuleSection from '../access-rule-section'
 
 const mocks = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mocks.workspacePermissionKeys,
   }))
 })
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
-const rule: AccessPolicyWithBindings = {
+const rule: AccessRule = {
   policy: {
     id: 'app-rule-1',
     tenant_id: 'tenant-1',
@@ -57,8 +28,8 @@ const rule: AccessPolicyWithBindings = {
     permission_keys: ['app.edit'],
     is_builtin: true,
     category: 'global_system_default',
-    created_at: '2026-01-01',
-    updated_at: '2026-01-01',
+    created_at: 1767225600,
+    updated_at: 1767225600,
   },
   roles: [
     {
@@ -73,6 +44,8 @@ const rule: AccessPolicyWithBindings = {
     {
       account_id: 'account-1',
       account_name: 'Levi',
+      avatar: '',
+      email: 'levi@example.com',
       binding_id: 'account-binding-1',
       is_locked: false,
     },
@@ -122,7 +95,7 @@ describe('AccessRuleSection', () => {
 
     expect(screen.queryByText('Full Control')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { expanded: false }))
+    await userEvent.click(screen.getByRole('button', { name: /^App Access Rules/ }))
 
     expect(screen.getByText('Full Control')).toBeInTheDocument()
   })
@@ -231,7 +204,7 @@ describe('AccessRuleSection', () => {
     expect(onCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('should keep row actions when workspace role management is allowed', () => {
+  it('should keep row actions when workspace role management is allowed', async () => {
     mocks.workspacePermissionKeys = ['workspace.role.manage']
 
     renderWithQueryClient(
@@ -244,7 +217,12 @@ describe('AccessRuleSection', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'common.operation.moreActions' })).toBeInTheDocument()
+    const trigger = screen.getByRole('button', { name: 'common.operation.moreActions' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
+    await userEvent.click(trigger)
+
+    expect(trigger).toHaveAttribute('data-popup-open', '')
   })
 
   it('should hide create action when workspace role management is missing', () => {

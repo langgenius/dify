@@ -1,8 +1,8 @@
 import type { ToolNodeType } from '../../types'
 import { renderHook } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { VarType } from '../../types'
 import useConfig from '../use-config'
 
 const mockSetInputs = vi.hoisted(() => vi.fn())
@@ -15,9 +15,14 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-}))
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,
@@ -110,7 +115,7 @@ const currentToolWithoutDefaults = {
 }
 
 const createToolVarInput = (value: string) => ({
-  type: VarType.mixed,
+  type: VarKindType.mixed,
   value,
 })
 

@@ -7,7 +7,7 @@ type OptionListProps = {
 } & HTMLAttributes<HTMLUListElement>
 
 const optionListClassName = cn(
-  'flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]',
+  'flex h-52 flex-col gap-y-0.5 overflow-y-auto pb-46',
   'scrollbar-none [&::-webkit-scrollbar]:hidden',
 )
 

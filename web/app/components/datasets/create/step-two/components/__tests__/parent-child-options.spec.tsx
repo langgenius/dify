@@ -1,8 +1,10 @@
 import type { ParentChildConfig } from '../../hooks'
 import type { PreProcessingRule } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ParentChildOptions } from '../parent-child-options'
 
 vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
@@ -22,11 +24,11 @@ vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
   ),
 }))
 
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: true,
-}))
-
 const ns = 'datasetCreation'
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(<RadioGroup aria-label="Chunking mode">{ui}</RadioGroup>, {
+    systemFeatures: { deployment_edition: 'COMMUNITY' },
+  })
 
 const createRules = (): PreProcessingRule[] => [
   { id: 'remove_extra_spaces', enabled: true },
@@ -47,7 +49,6 @@ const defaultProps = {
   isActive: true,
   isInUpload: false,
   isNotUploadInEmptyDataset: false,
-  onDocFormChange: vi.fn(),
   onChunkForContextChange: vi.fn(),
   onParentDelimiterChange: vi.fn(),
   onParentMaxLengthChange: vi.fn(),
@@ -119,16 +120,6 @@ describe('ParentChildOptions', () => {
       render(<ParentChildOptions {...defaultProps} onRuleToggle={onRuleToggle} />)
       fireEvent.click(screen.getByText(`${ns}.stepTwo.removeUrlEmails`))
       expect(onRuleToggle).toHaveBeenCalledWith('remove_urls_emails')
-    })
-
-    it('should call onDocFormChange with parentChild when card switched', () => {
-      const onDocFormChange = vi.fn()
-      render(
-        <ParentChildOptions {...defaultProps} isActive={false} onDocFormChange={onDocFormChange} />,
-      )
-      const titleEl = screen.getByText(`${ns}.stepTwo.parentChild`)
-      fireEvent.click(titleEl.closest('[class*="rounded-xl"]')!)
-      expect(onDocFormChange).toHaveBeenCalledWith(ChunkingMode.parentChild)
     })
 
     it('should call onChunkForContextChange when full-doc chosen', () => {

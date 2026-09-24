@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { ParameterExtractorNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { AppModeEnum } from '@/types/app'
@@ -10,7 +10,7 @@ import { ReasoningModeType } from './types'
 const i18nPrefix = ''
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Transform,
+  classification: BlockClassification.Transform,
   sort: 6,
   type: BlockEnum.ParameterExtractor,
 })
@@ -31,7 +31,7 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
       enabled: false,
     },
   },
-  checkValid(payload: ParameterExtractorNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: ParameterExtractorNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     if (!errorMessages && (!payload.query || payload.query.length === 0))
       errorMessages = t(($) => $[`${i18nPrefix}errorMsg.fieldRequired`], {

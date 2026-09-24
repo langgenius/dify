@@ -3,11 +3,12 @@ import type {
   BlockEnum,
   Node,
   NodeDefault,
-  ToolWithProvider,
   ValueSelector,
+  WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { EnvironmentVariablePatch } from '@/service/workflow'
 import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
@@ -26,9 +27,18 @@ export type SyncDraftCallback = {
   onSettled?: () => void
 }
 
+export type SyncDraftResult = {
+  hash: string
+  updatedAt: number
+}
+
+export type SyncDraftOptions = {
+  environmentVariablePatch?: EnvironmentVariablePatch
+  forceLocal?: boolean
+}
+
 export type WorkflowAccessControl = {
   canEdit: boolean
-  canComment: boolean
   canRun: boolean
   canImportExportDSL: boolean
   canReleaseAndVersion: boolean
@@ -36,7 +46,6 @@ export type WorkflowAccessControl = {
 
 export const fullWorkflowAccessControl: WorkflowAccessControl = {
   canEdit: true,
-  canComment: true,
   canRun: true,
   canImportExportDSL: true,
   canReleaseAndVersion: true,
@@ -46,9 +55,10 @@ type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
-  ) => Promise<void>
+    options?: SyncDraftOptions,
+  ) => Promise<SyncDraftResult | null | void>
   syncWorkflowDraftWhenPageClose: () => void
-  handleRefreshWorkflowDraft: () => void
+  handleRefreshWorkflowDraft: (notUpdateCanvas?: boolean) => void
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
@@ -64,11 +74,12 @@ type CommonHooksFnMap = {
   availableNodesMetaData?: AvailableNodesMetaData
   getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
-  handleExportDSL?: (include?: boolean, flowId?: string) => Promise<void>
+  handleExportDSL?: (include?: boolean, flowId?: string) => Promise<boolean>
+  isExporting: boolean
   fetchInspectVars: (params: {
     passInVars?: boolean
     vars?: VarInInspect[]
-    passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>
+    passedInAllPluginInfoList?: WorkflowPluginCatalogs
     passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
   }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
@@ -106,7 +117,7 @@ export type Shape = {
 } & CommonHooksFnMap
 
 export const createHooksStore = ({
-  doSyncWorkflowDraft = async () => noop(),
+  doSyncWorkflowDraft = async () => null,
   syncWorkflowDraftWhenPageClose = noop,
   handleRefreshWorkflowDraft = noop,
   handleBackupDraft = noop,
@@ -129,7 +140,8 @@ export const createHooksStore = ({
     traceUrl: '',
   }),
   exportCheck = async () => noop(),
-  handleExportDSL = async () => noop(),
+  handleExportDSL = async () => false,
+  isExporting = false,
   fetchInspectVars = async () => noop(),
   hasNodeInspectVars = () => false,
   hasSetInspectVar = () => false,
@@ -169,6 +181,7 @@ export const createHooksStore = ({
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    isExporting,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

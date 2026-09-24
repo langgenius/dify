@@ -3,6 +3,7 @@
 import type { ImageLoadingStatus } from '@base-ui/react/avatar'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const avatarSizeClasses = {
   xxs: { root: 'size-4', text: 'text-[7px]' },
@@ -15,9 +16,9 @@ const avatarSizeClasses = {
   '3xl': { root: 'size-16', text: 'text-2xl' },
 } as const
 
-export type AvatarSize = keyof typeof avatarSizeClasses
+type AvatarSize = keyof typeof avatarSizeClasses
 
-export type AvatarProps = {
+type AvatarProps = {
   name: string
   avatar: string | null
   size?: AvatarSize
@@ -28,15 +29,16 @@ export type AvatarProps = {
 type AvatarRootProps = BaseAvatar.Root.Props & {
   size?: AvatarSize
 }
-
-export function AvatarRoot({ size = 'md', className, ...props }: AvatarRootProps) {
+function AvatarRoot({ size = 'md', className, ...props }: AvatarRootProps) {
   return (
     <BaseAvatar.Root
-      className={cn(
-        'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-600 select-none',
-        avatarSizeClasses[size].root,
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-600 select-none',
+          avatarSizeClasses[size].root,
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
@@ -45,38 +47,34 @@ export function AvatarRoot({ size = 'md', className, ...props }: AvatarRootProps
 type AvatarFallbackProps = BaseAvatar.Fallback.Props & {
   size?: AvatarSize
 }
-
-export function AvatarFallback({ size = 'md', className, ...props }: AvatarFallbackProps) {
+function AvatarFallback({ size = 'md', className, ...props }: AvatarFallbackProps) {
   return (
     <BaseAvatar.Fallback
-      className={cn(
-        'flex size-full items-center justify-center font-medium text-white',
-        avatarSizeClasses[size].text,
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'flex size-full items-center justify-center font-medium text-white',
+          avatarSizeClasses[size].text,
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
 type AvatarImageProps = BaseAvatar.Image.Props
-
-export function AvatarImage({ className, ...props }: AvatarImageProps) {
+function AvatarImage({ className, ...props }: AvatarImageProps) {
   return (
     <BaseAvatar.Image
-      className={cn('absolute inset-0 size-full object-cover', className)}
+      className={(state) =>
+        cn('absolute inset-0 size-full object-cover', resolveClassName(className, state))
+      }
       {...props}
     />
   )
 }
 
-export const Avatar = ({
-  name,
-  avatar,
-  size = 'md',
-  className,
-  onLoadingStatusChange,
-}: AvatarProps) => {
+const Avatar = ({ name, avatar, size = 'md', className, onLoadingStatusChange }: AvatarProps) => {
   return (
     <AvatarRoot size={size} className={className}>
       {avatar && (
@@ -86,3 +84,7 @@ export const Avatar = ({
     </AvatarRoot>
   )
 }
+
+export { Avatar, AvatarFallback, AvatarImage, AvatarRoot }
+
+export type { AvatarFallbackProps, AvatarImageProps, AvatarProps, AvatarRootProps, AvatarSize }

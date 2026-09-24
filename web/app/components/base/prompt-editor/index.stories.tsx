@@ -82,7 +82,7 @@ const PromptEditorDemo = (args: any) => {
 
   return (
     <div style={{ width: '600px' }}>
-      <div className="min-h-[120px] rounded-lg border border-gray-300 p-4">
+      <div className="min-h-30 rounded-lg border border-gray-300 p-4">
         <PromptEditorMock
           {...args}
           value={value}
@@ -189,7 +189,7 @@ const MultipleEditorsDemo = () => {
     <div style={{ width: '700px' }} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-gray-700">System Prompt</label>
-        <div className="min-h-[100px] rounded-lg border border-gray-300 bg-blue-50 p-4">
+        <div className="min-h-25 rounded-lg border border-gray-300 bg-blue-50 p-4">
           <PromptEditorMock
             value={systemPrompt}
             onChange={setSystemPrompt}
@@ -200,7 +200,7 @@ const MultipleEditorsDemo = () => {
       </div>
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-gray-700">User Prompt</label>
-        <div className="min-h-[100px] rounded-lg border border-gray-300 p-4">
+        <div className="min-h-25 rounded-lg border border-gray-300 p-4">
           <PromptEditorMock
             value={userPrompt}
             onChange={setUserPrompt}
@@ -264,7 +264,7 @@ The Team`)
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-gray-700">Email Body</label>
-          <div className="min-h-[200px] rounded-lg border border-gray-300 p-4">
+          <div className="min-h-50 rounded-lg border border-gray-300 p-4">
             <PromptEditorMock
               value={body}
               onChange={setBody}
@@ -303,7 +303,7 @@ const ChatPromptBuilderDemo = () => {
         <h3 className="text-lg font-semibold">Chat Prompt Builder</h3>
         <span className="text-xs text-gray-500">{characterCount} characters</span>
       </div>
-      <div className="min-h-[200px] rounded-lg border border-gray-300 bg-gray-50 p-4">
+      <div className="min-h-50 rounded-lg border border-gray-300 bg-gray-50 p-4">
         <PromptEditorMock
           value={prompt}
           onChange={handleChange}
@@ -334,7 +334,7 @@ const APIInstructionEditorDemo = () => {
   return (
     <div style={{ width: '700px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">API Processing Instructions</h3>
-      <div className="min-h-[180px] rounded-lg border-2 border-indigo-300 bg-indigo-50 p-4">
+      <div className="min-h-45 rounded-lg border-2 border-indigo-300 bg-indigo-50 p-4">
         <PromptEditorMock
           value={instructions}
           onChange={setInstructions}

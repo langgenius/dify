@@ -36,7 +36,9 @@ describe('TopKItem', () => {
     it('should render tooltip trigger', () => {
       render(<TopKItem {...defaultProps} />)
 
-      expect(screen.getByLabelText('appDebug.datasetConfig.top_kTip')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'appDebug.datasetConfig.top_k' }),
+      ).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {
@@ -48,12 +50,6 @@ describe('TopKItem', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<TopKItem {...defaultProps} className="custom-cls" />)
-
-      expect(container.firstChild).toHaveClass('custom-cls')
-    })
-
     it('should disable controls when enable is false', () => {
       render(<TopKItem {...defaultProps} enable={false} />)
 

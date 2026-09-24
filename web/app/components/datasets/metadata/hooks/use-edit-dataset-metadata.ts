@@ -1,9 +1,9 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
 import type { DataSet } from '@/models/datasets'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import {
   useBuiltInMetaDataFields,
   useCreateMetaData,
@@ -24,7 +24,7 @@ const useEditDatasetMetadata = ({
   dataset?: DataSet
   onUpdateDocList: () => void
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
   useEffect(() => {
     const isShowManageMetadata = localStorage.getItem(isShowManageMetadataLocalStorageKey)

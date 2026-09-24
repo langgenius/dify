@@ -1,7 +1,6 @@
-import type { ToolNodeType, ToolVarInputs } from '../types'
+import type { ToolNodeType } from '../types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -12,11 +11,12 @@ import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { updateBuiltInToolCredential } from '@/service/tools'
 import { useInvalidToolsByType } from '@/service/use-tools'
+import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import { isToolAuthorizationRequired } from '../auth'
 import { normalizeJsonSchemaType } from '../output-schema-utils'
 import useCurrentToolCollection from './use-current-tool-collection'
@@ -29,7 +29,7 @@ const formatDisplayType = (output: Record<string, unknown>): string => {
 const useConfig = (id: string, payload: ToolNodeType) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const language = useLanguage()
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ToolNodeType>(id, payload)
@@ -43,7 +43,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   // Auth
   const isShowAuthBtn = isToolAuthorizationRequired(provider_type, currCollection)
-  const [showSetAuth, { setTrue: showSetAuthModal, setFalse: hideSetAuthModal }] = useBoolean(false)
+  const [showSetAuth, setShowSetAuth] = useState(false)
 
   const invalidToolsByType = useInvalidToolsByType(provider_type)
   const handleSaveAuth = useCallback(
@@ -52,9 +52,9 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       invalidToolsByType()
-      hideSetAuthModal()
+      setShowSetAuth(false)
     },
-    [currCollection?.name, hideSetAuthModal, t, invalidToolsByType],
+    [currCollection?.name, t, invalidToolsByType],
   )
 
   const currTool = useMemo(() => {
@@ -123,7 +123,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const configuredToolSettings = getConfiguredValue(
           tool_configurations,
           toolSettingSchema,
-        ) as ToolVarInputs
+        ) as ResourceVarInputs
         if (Object.keys(configuredToolSettings).length > 0)
           draft.tool_configurations = configuredToolSettings
       }
@@ -131,7 +131,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const configuredToolParameters = getConfiguredValue(
           tool_parameters,
           toolInputVarSchema,
-        ) as ToolVarInputs
+        ) as ResourceVarInputs
         if (Object.keys(configuredToolParameters).length > 0)
           draft.tool_parameters = configuredToolParameters
       }
@@ -155,7 +155,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   // setting when call
   const setInputVar = useCallback(
-    (value: ToolVarInputs) => {
+    (value: ResourceVarInputs) => {
       setInputs({
         ...inputs,
         tool_parameters: value,
@@ -233,8 +233,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     currCollection,
     isShowAuthBtn,
     showSetAuth,
-    showSetAuthModal,
-    hideSetAuthModal,
+    showSetAuthModal: () => setShowSetAuth(true),
+    hideSetAuthModal: () => setShowSetAuth(false),
     handleSaveAuth,
     isLoading,
     outputSchema,

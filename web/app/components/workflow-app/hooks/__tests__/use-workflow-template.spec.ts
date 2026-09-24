@@ -10,7 +10,7 @@ let appStoreState: {
   }
 }
 
-vi.mock('@/app/components/workflow-app/hooks/use-is-chat-mode', () => ({
+vi.mock('../use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 

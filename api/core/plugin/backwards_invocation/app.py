@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,7 +26,15 @@ from models.model import (
     load_annotation_reply_config,
 )
 from models.workflow import Workflow
-from services.end_user_service import EndUserService
+
+
+class AppScopedEndUserProvisioner(Protocol):
+    def get_or_create_end_user(
+        self,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser: ...
 
 
 class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
@@ -61,7 +69,6 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def invoke_app(
         cls,
-        session: Session,
         app_id: str,
         user_id: str,
         tenant_id: str,
@@ -70,19 +77,21 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
+        session: Session,
+        end_users: AppScopedEndUserProvisioner,
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke app
         """
         app = cls._get_app(app_id, tenant_id)
         if not user_id:
-            user = EndUserService.get_or_create_end_user(app)
+            user = end_users.get_or_create_end_user(app.tenant_id, app.id, None)
         else:
             try:
                 user = cls._get_user(user_id, app)
             except ValueError:
                 # Plugins such as WeCom Bot pass external sender IDs rather than EndUser UUIDs.
-                user = EndUserService.get_or_create_end_user(app, user_id=user_id)
+                user = end_users.get_or_create_end_user(app.tenant_id, app.id, user_id)
 
         conversation_id = conversation_id or ""
 
@@ -91,21 +100,20 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 if not query:
                     raise ValueError("missing query")
 
-                return cls.invoke_chat_app(session, app, user, conversation_id, query, stream, inputs, files)
+                return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files, session)
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app)
                 if not workflow:
                     raise ValueError("unexpected app type")
                 return cls.invoke_workflow_app(app, workflow, user, stream, inputs, files)
             case AppMode.COMPLETION:
-                return cls.invoke_completion_app(session, app, user, stream, inputs, files)
+                return cls.invoke_completion_app(app, user, stream, inputs, files, session)
             case _:
                 raise ValueError("unexpected app type")
 
     @classmethod
     def invoke_chat_app(
         cls,
-        session: Session,
         app: App,
         user: Account | EndUser,
         conversation_id: str,
@@ -113,6 +121,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
+        session: Session,
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke chat app
@@ -142,6 +151,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     workflow_run_id=str(uuid.uuid4()),
                     streaming=stream,
                     pause_state_config=pause_config,
+                    session=session,
                 )
             case AppMode.AGENT_CHAT:
                 return AgentChatAppGenerator().generate(
@@ -155,10 +165,10 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     },
                     invoke_from=InvokeFrom.SERVICE_API,
                     streaming=stream,
+                    session=session,
                 )
             case AppMode.CHAT:
                 return ChatAppGenerator().generate(
-                    session=session,
                     app_model=app,
                     user=user,
                     args={
@@ -169,6 +179,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     },
                     invoke_from=InvokeFrom.SERVICE_API,
                     streaming=stream,
+                    session=session,
                 )
             case _:
                 raise ValueError("unexpected app type")
@@ -205,23 +216,23 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def invoke_completion_app(
         cls,
-        session: Session,
         app: App,
         user: EndUser | Account,
         stream: bool,
         inputs: Mapping,
         files: list[dict],
+        session: Session,
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke completion app
         """
         return CompletionAppGenerator().generate(
-            session=session,
             app_model=app,
             user=user,
             args={"inputs": inputs, "files": files},
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,
+            session=session,
         )
 
     @classmethod
@@ -268,8 +279,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).limit(1))
                 if app:
                     session.expunge(app)
-        except Exception:
-            raise ValueError("app not found")
+        except Exception as e:
+            raise ValueError("app not found") from e
 
         if not app:
             raise ValueError("app not found")
@@ -279,7 +290,10 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def _get_workflow(cls, app: App) -> Workflow | None:
         """
-        get workflow without relying on App.workflow's request-scoped session property
+        get workflow with an owned session, additionally scoped by tenant and app
+
+        `App.workflow_with_session` resolves by `workflow_id` alone; a plugin
+        invocation must also confirm the workflow belongs to this tenant and app.
         """
         if not app.workflow_id:
             return None

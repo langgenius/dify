@@ -1,13 +1,15 @@
 import type { AgentInlineBinding } from '../../block-selector/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { useInlineAgentScope } from '@/features/agent-v2/analytics'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getDefaultAgentSoul } from './agent-soul-config'
 
 type CreatedInlineAgentBinding = AgentInlineBinding & {
@@ -19,6 +21,9 @@ type CreateInlineAgentBindingOptions = {
   onError?: () => void
   onSuccess?: (binding: CreatedInlineAgentBinding) => void
 }
+
+const INLINE_AGENT_CREATION_REFETCH_INTERVAL = 1000
+const INLINE_AGENT_CREATION_RETRY_COUNT = 5
 
 export function useAgentRosterDetail(agentId?: string) {
   return useQuery(
@@ -34,10 +39,32 @@ export function useAgentRosterDetail(agentId?: string) {
   )
 }
 
-export function useWorkflowInlineAgentDetail(nodeId?: string, agentId?: string | null) {
+export function useWorkflowInlineAgentDetail(
+  nodeId?: string,
+  agentId?: string | null,
+  options?: {
+    pollUntilReady?: boolean
+  },
+) {
   const configsMap = useHooksStore((state) => state.configsMap)
+  const refetchUntilReady = options?.pollUntilReady
+    ? {
+        retry: INLINE_AGENT_CREATION_RETRY_COUNT,
+        refetchInterval: (query: {
+          state: {
+            data?: {
+              agent?: unknown
+            }
+            status: 'error' | 'pending' | 'success'
+          }
+        }) =>
+          query.state.status === 'error' || query.state.data?.agent
+            ? false
+            : INLINE_AGENT_CREATION_REFETCH_INTERVAL,
+      }
+    : {}
 
-  return useQuery(
+  const appComposerQuery = useQuery(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({
       input:
         configsMap?.flowId && configsMap.flowType === FlowType.appFlow && nodeId && agentId
@@ -48,45 +75,82 @@ export function useWorkflowInlineAgentDetail(nodeId?: string, agentId?: string |
               },
             }
           : skipToken,
+      ...refetchUntilReady,
     }),
   )
+  const snippetComposerQuery = useQuery(
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions(
+      {
+        input:
+          configsMap?.flowId && configsMap.flowType === FlowType.snippet && nodeId && agentId
+            ? {
+                params: {
+                  snippet_id: configsMap.flowId,
+                  node_id: nodeId,
+                },
+              }
+            : skipToken,
+        ...refetchUntilReady,
+      },
+    ),
+  )
+
+  return configsMap?.flowType === FlowType.snippet ? snippetComposerQuery : appComposerQuery
 }
 
 export function useCreateInlineAgentBinding() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const configsMap = useHooksStore((state) => state.configsMap)
+  const agentScope = useInlineAgentScope()
   const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
   const queryClient = useQueryClient()
-  const { isPending, mutateAsync } = useMutation(
+  const { isPending: isAppComposerPending, mutateAsync: mutateAppComposerAsync } = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
+  const { isPending: isSnippetComposerPending, mutateAsync: mutateSnippetComposerAsync } =
+    useMutation(
+      consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+    )
 
   const createInlineAgentBinding = useCallback(
     async (nodeId: string, options?: CreateInlineAgentBindingOptions) => {
-      if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow) {
+      if (
+        !configsMap?.flowId ||
+        (configsMap.flowType !== FlowType.appFlow && configsMap.flowType !== FlowType.snippet)
+      ) {
         toast.error(t(($) => $['roster.nodeSelector.createInlineFailed']))
         options?.onError?.()
         return
       }
 
       try {
-        const composerState = await mutateAsync({
-          params: {
-            app_id: configsMap.flowId,
-            node_id: nodeId,
+        const body = {
+          variant: 'workflow' as const,
+          save_strategy: 'node_job_only' as const,
+          binding: {
+            binding_type: 'inline_agent' as const,
           },
-          body: {
-            variant: 'workflow',
-            save_strategy: 'node_job_only',
-            binding: {
-              binding_type: 'inline_agent',
-            },
-            soul_lock: {
-              locked: false,
-            },
-            agent_soul: getDefaultAgentSoul(defaultModel),
+          soul_lock: {
+            locked: false,
           },
-        })
+          agent_soul: getDefaultAgentSoul(defaultModel),
+        }
+        const composerState =
+          configsMap.flowType === FlowType.snippet
+            ? await mutateSnippetComposerAsync({
+                params: {
+                  snippet_id: configsMap.flowId,
+                  node_id: nodeId,
+                },
+                body,
+              })
+            : await mutateAppComposerAsync({
+                params: {
+                  app_id: configsMap.flowId,
+                  node_id: nodeId,
+                },
+                body,
+              })
         const binding = composerState.binding
 
         if (
@@ -99,17 +163,38 @@ export function useCreateInlineAgentBinding() {
           return
         }
 
-        queryClient.setQueryData(
-          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-            input: {
-              params: {
-                app_id: configsMap.flowId,
-                node_id: nodeId,
+        if (configsMap.flowType === FlowType.snippet) {
+          queryClient.setQueryData(
+            consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+              {
+                input: {
+                  params: {
+                    snippet_id: configsMap.flowId,
+                    node_id: nodeId,
+                  },
+                },
               },
-            },
-          }),
-          composerState,
-        )
+            ),
+            composerState,
+          )
+        } else {
+          queryClient.setQueryData(
+            consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+              input: {
+                params: {
+                  app_id: configsMap.flowId,
+                  node_id: nodeId,
+                },
+              },
+            }),
+            composerState,
+          )
+        }
+        trackCreateApp({
+          source: 'studio_blank',
+          appMode: 'agent-v2',
+          agentScope,
+        })
         options?.onSuccess?.({
           binding_type: 'inline_agent',
           agent_id: binding.agent_id,
@@ -119,11 +204,20 @@ export function useCreateInlineAgentBinding() {
         options?.onError?.()
       }
     },
-    [configsMap?.flowId, configsMap?.flowType, defaultModel, mutateAsync, queryClient, t],
+    [
+      agentScope,
+      configsMap?.flowId,
+      configsMap?.flowType,
+      defaultModel,
+      mutateAppComposerAsync,
+      mutateSnippetComposerAsync,
+      queryClient,
+      t,
+    ],
   )
 
   return {
     createInlineAgentBinding,
-    isCreatingInlineAgent: isPending,
+    isCreatingInlineAgent: isAppComposerPending || isSnippetComposerPending,
   }
 }

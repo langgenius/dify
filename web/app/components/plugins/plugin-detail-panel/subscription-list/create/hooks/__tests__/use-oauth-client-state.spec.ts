@@ -3,8 +3,8 @@ import type {
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import {
   AuthorizationStatusEnum,
   ClientTypeEnum,
@@ -52,7 +52,7 @@ function createMockSubscriptionBuilder(
     id: 'builder-123',
     name: 'Test Builder',
     provider: 'test-provider',
-    credential_type: TriggerCredentialTypeEnum.Oauth2,
+    credential_type: TriggerCredentialType.Oauth2,
     credentials: {},
     endpoint: 'https://example.com/callback',
     parameters: {},
@@ -93,7 +93,7 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) =>
       mockToastNotify({ type: options?.type, message }),

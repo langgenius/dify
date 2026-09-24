@@ -8,16 +8,22 @@ import { omit } from 'es-toolkit/object'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import PageTitle from '../log-annotation/page-title'
+import {
+  resolveLogTimePeriod,
+  resolveLogTimePeriodOption,
+  useCloudSandboxPlanStatus,
+} from './cloud-sandbox-retention'
 import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
+import { RetentionUpgradeNotice } from './retention-upgrade-notice'
 
 type ILogsProps = {
   appDetail: App
@@ -46,7 +52,7 @@ const logsStateCache = new Map<
 >()
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const docLink = useDocLink()
   const router = useRouter()
   const pathname = usePathname()
@@ -57,6 +63,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     return pageParam - 1
   }, [searchParams])
   const cachedState = logsStateCache.get(appDetail.id)
+  const cloudSandboxPlanState = useCloudSandboxPlanStatus()
   const [queryParams, setQueryParams] = useState<QueryParam>(
     cachedState?.queryParams ?? defaultQueryParams,
   )
@@ -64,7 +71,15 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     () => cachedState?.currPage ?? getPageFromParams(),
   )
   const [limit, setLimit] = React.useState<number>(cachedState?.limit ?? APP_PAGE_LIMIT)
+  const effectivePeriod = resolveLogTimePeriod(queryParams.period, cloudSandboxPlanState)
+  const effectiveQueryParams = { ...queryParams, period: effectivePeriod }
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+  const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
+  const requestTimePeriod = resolveLogTimePeriodOption(
+    requestQueryParams.period,
+    TIME_PERIOD_MAPPING[requestQueryParams.period]!,
+    cloudSandboxPlanState,
+  )
 
   useEffect(() => {
     const pageFromParams = getPageFromParams()
@@ -85,17 +100,17 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const query = {
     page: currPage + 1,
     limit,
-    ...(debouncedQueryParams.period !== '9'
+    ...(requestQueryParams.period !== '9'
       ? {
           start: dayjs()
-            .subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period]!.value, 'day')
+            .subtract(requestTimePeriod.value, 'day')
             .startOf('day')
             .format('YYYY-MM-DD HH:mm'),
           end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
         }
       : {}),
-    ...(isChatMode ? { sort_by: debouncedQueryParams.sort_by } : {}),
-    ...omit(debouncedQueryParams, ['period']),
+    ...(isChatMode ? { sort_by: requestQueryParams.sort_by } : {}),
+    ...omit(requestQueryParams, ['period']),
   }
 
   // When the details are obtained, proceed to the next request
@@ -143,11 +158,12 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         <Filter
           isChatMode={isChatMode}
           appId={appDetail.id}
-          queryParams={queryParams}
+          queryParams={effectiveQueryParams}
           setQueryParams={handleQueryParamsChange}
         />
+        <RetentionUpgradeNotice />
         {total === undefined ? (
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List
             logs={isChatMode ? chatConversations : completionConversations}

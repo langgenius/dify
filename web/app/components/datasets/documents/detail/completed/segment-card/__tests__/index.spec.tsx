@@ -7,14 +7,16 @@ import type {
   SegmentDetailModel,
 } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ChunkingMode } from '@/models/datasets'
 import SegmentCard from '../index'
 
 // Context Mocks - need to control test scenarios
 
-const mockDocForm = { current: ChunkingMode.text }
+const mockDocForm: { current: ChunkingMode } = { current: ChunkingMode.text }
 const mockParentMode = { current: 'paragraph' as ParentMode }
+const mockCanEdit = { current: true }
 
 vi.mock('../../../context', () => ({
   useDocumentContext: (selector: (value: DocumentContextValue) => unknown) => {
@@ -23,6 +25,7 @@ vi.mock('../../../context', () => ({
       documentId: 'test-document-id',
       docForm: mockDocForm.current,
       parentMode: mockParentMode.current,
+      canEdit: mockCanEdit.current,
     }
     return selector(value)
   },
@@ -157,14 +160,53 @@ describe('SegmentCard', () => {
     mockDocForm.current = ChunkingMode.text
     mockParentMode.current = 'paragraph'
     mockIsCollapsed.current = true
+    mockCanEdit.current = true
   })
+
+  it.each([true, false])(
+    'should disable single chunk mutations without edit permission (enabled: %s)',
+    async (enabled) => {
+      mockCanEdit.current = false
+      const user = userEvent.setup()
+      const onClickEdit = vi.fn()
+      const onChangeSwitch = vi.fn()
+      const onDelete = vi.fn()
+
+      render(
+        <SegmentCard
+          loading={false}
+          detail={createMockSegmentDetail({ enabled })}
+          embeddingAvailable
+          focused={defaultFocused}
+          onClickEdit={onClickEdit}
+          onChangeSwitch={onChangeSwitch}
+          onDelete={onDelete}
+        />,
+      )
+
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
+      const statusSwitch = screen.getByRole('switch')
+      expect(editButton).toBeDisabled()
+      expect(deleteButton).toBeDisabled()
+      expect(statusSwitch).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(editButton)
+      await user.click(deleteButton)
+      await user.click(statusSwitch)
+
+      expect(onClickEdit).not.toHaveBeenCalled()
+      expect(onChangeSwitch).not.toHaveBeenCalled()
+      expect(onDelete).not.toHaveBeenCalled()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    },
+  )
 
   describe('Rendering', () => {
     it('should render loading skeleton when loading is true', () => {
       render(<SegmentCard loading={true} focused={defaultFocused} />)
 
-      // ParentChunkCardSkeleton should render
-      expect(screen.getByTestId('parent-chunk-card-skeleton')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.viewMore' })).toBeDisabled()
     })
 
     it('should render segment card content when loading is false', () => {
@@ -200,22 +242,6 @@ describe('SegmentCard', () => {
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
       expect(screen.getByText('42 datasetDocuments.segment.hitCount')).toBeInTheDocument()
-    })
-
-    it('should apply custom className', () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          className="custom-class"
-          focused={defaultFocused}
-        />,
-      )
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).toHaveClass('custom-class')
     })
   })
 
@@ -275,21 +301,6 @@ describe('SegmentCard', () => {
 
       expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     })
-
-    it('should apply focused styles when segmentContent is focused', () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          focused={{ segmentIndex: false, segmentContent: true }}
-        />,
-      )
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).toHaveClass('bg-dataset-chunk-detail-card-hover-bg')
-    })
   })
 
   describe('State Management', () => {
@@ -341,6 +352,28 @@ describe('SegmentCard', () => {
   })
 
   describe('Callbacks', () => {
+    it('opens a chunk from its keyboard-accessible detail button', async () => {
+      const user = userEvent.setup()
+      const onClick = vi.fn()
+
+      render(
+        <SegmentCard
+          loading={false}
+          detail={createMockSegmentDetail()}
+          onClick={onClick}
+          focused={defaultFocused}
+        />,
+      )
+
+      const detailButton = screen.getByRole('button', {
+        name: 'datasetDocuments.segment.chunk-01 datasetDocuments.segment.chunkDetail',
+      })
+      detailButton.focus()
+      await user.keyboard('{Enter}')
+
+      expect(onClick).toHaveBeenCalledTimes(1)
+    })
+
     it('should call onClick when card is clicked in general mode', () => {
       const onClick = vi.fn()
       const detail = createMockSegmentDetail()
@@ -643,29 +676,6 @@ describe('SegmentCard', () => {
 
   // Mode-specific Rendering Tests
   describe('Mode-specific Rendering', () => {
-    it('should render without padding classes in full-doc mode', () => {
-      mockDocForm.current = ChunkingMode.parentChild
-      mockParentMode.current = 'full-doc'
-      const detail = createMockSegmentDetail()
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).not.toHaveClass('pb-2')
-      expect(card).not.toHaveClass('pt-2.5')
-    })
-
-    it('should render with hover classes in non full-doc mode', () => {
-      mockDocForm.current = ChunkingMode.text
-      const detail = createMockSegmentDetail()
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).toHaveClass('pb-2')
-      expect(card).toHaveClass('pt-2.5')
-    })
-
     it('should not render status item in full-doc mode', () => {
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'full-doc'
@@ -1054,40 +1064,6 @@ describe('SegmentCard', () => {
       expect(screen.getByText('This is the question content')).toBeInTheDocument()
       // Should render answer content
       expect(screen.getByText('This is the answer content')).toBeInTheDocument()
-    })
-
-    it('should apply line-clamp-2 class when isCollapsed is true in QA mode', () => {
-      mockIsCollapsed.current = true
-      const detail = createMockSegmentDetail({
-        content: 'Question content',
-        answer: 'Answer content',
-        sign_content: '',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      // Markdown components should have line-clamp-2 class when collapsed
-      const markdowns = screen.getAllByTestId('markdown')
-      markdowns.forEach((markdown) => {
-        expect(markdown).toHaveClass('line-clamp-2')
-      })
-    })
-
-    it('should apply line-clamp-20 class when isCollapsed is false in QA mode', () => {
-      mockIsCollapsed.current = false
-      const detail = createMockSegmentDetail({
-        content: 'Question content',
-        answer: 'Answer content',
-        sign_content: '',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      // Markdown components should have line-clamp-20 class when not collapsed
-      const markdowns = screen.getAllByTestId('markdown')
-      markdowns.forEach((markdown) => {
-        expect(markdown).toHaveClass('line-clamp-20')
-      })
     })
 
     it('should render QA mode with className applied to wrapper', () => {

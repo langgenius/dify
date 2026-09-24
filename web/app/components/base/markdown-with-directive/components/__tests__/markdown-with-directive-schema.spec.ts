@@ -7,10 +7,6 @@ describe('markdown-with-directive-schema', () => {
 
   // Validate the happy path for known directives.
   describe('valid props', () => {
-    it('should return true for withiconcardlist when className is provided', () => {
-      expect(validateDirectiveProps('withiconcardlist', { className: 'custom-list' })).toBe(true)
-    })
-
     it('should return true for withiconcarditem when icon is https URL', () => {
       expect(
         validateDirectiveProps('withiconcarditem', { icon: 'https://example.com/icon.png' }),

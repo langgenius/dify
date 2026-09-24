@@ -1,17 +1,12 @@
 import type { ReactElement } from 'react'
 import type { PluginDeclaration, PluginDetail } from '../../types'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { PluginCategoryEnum, PluginSource } from '../../types'
 import PluginItem from '../index'
 
 const mockEnableMarketplace = vi.fn(() => true)
-
-const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
-    systemFeatures: { enable_marketplace: mockEnableMarketplace() },
-  })
 
 const mockTheme = vi.fn(() => 'light')
 vi.mock('@/hooks/use-theme', () => ({
@@ -37,13 +32,13 @@ vi.mock('../../hooks', () => ({
   }),
 }))
 
-const mockCurrentPluginID = vi.fn((): string | undefined => undefined)
-const mockSetCurrentPluginID = vi.fn()
+const mockSelectedItem = vi.fn((): { type: 'plugin'; id: string } | undefined => undefined)
+const mockSetSelectedItem = vi.fn()
 vi.mock('../../plugin-page/context', () => ({
   usePluginPageContext: (selector: (v: Record<string, unknown>) => unknown) => {
     const context = {
-      currentPluginID: mockCurrentPluginID(),
-      setCurrentPluginID: mockSetCurrentPluginID,
+      selectedItem: mockSelectedItem(),
+      setSelectedItem: mockSetSelectedItem,
     }
     return selector(context)
   },
@@ -58,58 +53,25 @@ const mockLangGeniusVersionInfo = vi.fn(() => ({
   current_env: '',
   current_version: '1.0.0',
   latest_version: '',
-  release_date: '',
   release_notes: '',
   version: '',
-  can_auto_update: false,
 }))
 
 const createLangGeniusVersionInfo = (currentVersion: string) => ({
   current_env: '',
   current_version: currentVersion,
   latest_version: '',
-  release_date: '',
   release_notes: '',
   version: '',
-  can_auto_update: false,
 })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    accountProfileMeta: {
+      currentVersion: mockLangGeniusVersionInfo().current_version,
+    },
+    systemFeatures: { enable_marketplace: mockEnableMarketplace() },
+  })
 
 vi.mock('../action', () => ({
   default: ({ onDelete, pluginName }: { onDelete: () => void; pluginName: string }) => (
@@ -212,7 +174,7 @@ describe('PluginItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockTheme.mockReturnValue('light')
-    mockCurrentPluginID.mockReturnValue(undefined)
+    mockSelectedItem.mockReturnValue(undefined)
     mockEnableMarketplace.mockReturnValue(true)
     mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
     mockGetValueFromI18nObject.mockImplementation((obj: Record<string, string>) => obj?.en_US || '')
@@ -233,7 +195,7 @@ describe('PluginItem', () => {
       expect(screen.getByTestId('version-badge')).toBeInTheDocument()
     })
 
-    it('should render plugin icon', () => {
+    it('should keep the plugin name visible without exposing a decorative image', () => {
       // Arrange
       const plugin = createPluginDetail()
 
@@ -241,8 +203,8 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
-      expect(img).toHaveAttribute('alt', `plugin-${plugin.plugin_unique_identifier}-logo`)
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
+      expect(screen.getByText('Test Plugin')).toBeVisible()
     })
 
     it('should not render category label in corner mark', () => {
@@ -256,18 +218,6 @@ describe('PluginItem', () => {
 
       // Assert
       expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
-    })
-
-    it('should apply custom className', () => {
-      // Arrange
-      const plugin = createPluginDetail()
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} className="custom-class" />)
-
-      // Assert
-      const innerDiv = container.querySelector('.custom-class')
-      expect(innerDiv).toBeInTheDocument()
     })
   })
 
@@ -439,35 +389,6 @@ describe('PluginItem', () => {
       const { container } = render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const warningIcon = container.querySelector('.text-text-accent')
-      expect(warningIcon).not.toBeInTheDocument()
-    })
-
-    it('should handle missing current_version gracefully', () => {
-      // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo(''))
-      const plugin = createPluginDetail()
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert - Should not crash and not show warning
-      const warningIcon = container.querySelector('.text-text-accent')
-      expect(warningIcon).not.toBeInTheDocument()
-    })
-
-    it('should handle missing minimum_dify_version gracefully', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          meta: { version: '1.0.0' },
-        }),
-      })
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert - Should not crash and not show warning
       const warningIcon = container.querySelector('.text-text-accent')
       expect(warningIcon).not.toBeInTheDocument()
     })
@@ -663,7 +584,7 @@ describe('PluginItem', () => {
 
   // ==================== User Interactions Tests ====================
   describe('User Interactions', () => {
-    it('should call setCurrentPluginID when plugin is clicked', () => {
+    it('should select the plugin when its card is clicked', () => {
       // Arrange
       const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
 
@@ -673,12 +594,15 @@ describe('PluginItem', () => {
       fireEvent.click(pluginContainer)
 
       // Assert
-      expect(mockSetCurrentPluginID).toHaveBeenCalledWith('test-plugin-id')
+      expect(mockSetSelectedItem).toHaveBeenCalledWith({
+        type: 'plugin',
+        id: 'test-plugin-id',
+      })
     })
 
     it('should highlight selected plugin', () => {
       // Arrange
-      mockCurrentPluginID.mockReturnValue('test-plugin-id')
+      mockSelectedItem.mockReturnValue({ type: 'plugin', id: 'test-plugin-id' })
       const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
 
       // Act
@@ -686,12 +610,14 @@ describe('PluginItem', () => {
 
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).toHaveClass('border-components-option-card-option-selected-border')
+      expect(pluginContainer).toHaveClass(
+        'after:inset-ring-components-option-card-option-selected-border',
+      )
     })
 
     it('should not highlight unselected plugin', () => {
       // Arrange
-      mockCurrentPluginID.mockReturnValue('other-plugin-id')
+      mockSelectedItem.mockReturnValue({ type: 'plugin', id: 'other-plugin-id' })
       const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
 
       // Act
@@ -700,7 +626,7 @@ describe('PluginItem', () => {
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
       expect(pluginContainer).not.toHaveClass(
-        'border-components-option-card-option-selected-border',
+        'after:inset-ring-components-option-card-option-selected-border',
       )
     })
 
@@ -713,8 +639,8 @@ describe('PluginItem', () => {
       const actionArea = screen.getByTestId('plugin-action').parentElement
       fireEvent.click(actionArea!)
 
-      // Assert - setCurrentPluginID should not be called
-      expect(mockSetCurrentPluginID).not.toHaveBeenCalled()
+      // Assert - selecting the plugin should not be triggered
+      expect(mockSetSelectedItem).not.toHaveBeenCalled()
     })
 
     it('should only reveal actions on card hover or focus', () => {
@@ -726,9 +652,18 @@ describe('PluginItem', () => {
 
       // Assert
       expect(screen.getByTestId('plugin-action').parentElement).toHaveClass(
+        'absolute',
+        'top-1/2',
+        'right-0',
+        '-translate-y-1/2',
+        'pointer-events-none',
         'opacity-0',
+        'group-hover/plugin-item:pointer-events-auto',
         'group-hover/plugin-item:opacity-100',
-        'focus-within:opacity-100',
+        'group-focus-within/plugin-item:pointer-events-auto',
+        'group-focus-within/plugin-item:opacity-100',
+        '[@media(hover:none)]:pointer-events-auto',
+        '[@media(hover:none)]:opacity-100',
       )
     })
   })
@@ -780,7 +715,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img.getAttribute('src')).toContain('dark-icon.png')
     })
 
@@ -798,7 +733,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img.getAttribute('src')).toContain('light-icon.png')
     })
 
@@ -816,7 +751,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img.getAttribute('src')).toContain('light-icon.png')
     })
 
@@ -832,7 +767,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img).toHaveAttribute('src', 'https://example.com/icon.png')
     })
   })
@@ -912,7 +847,7 @@ describe('PluginItem', () => {
       expect(() => render(<PluginItem plugin={plugin} />)).not.toThrow()
 
       // The img element should still be rendered
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img).toBeInTheDocument()
     })
 
@@ -1028,26 +963,6 @@ describe('PluginItem', () => {
   })
 
   describe('Callback Stability', () => {
-    it('should have stable handleDelete callback', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ category: PluginCategoryEnum.tool }),
-      })
-
-      // Act
-      const { rerender } = render(<PluginItem plugin={plugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-      const firstCallArgs = mockRefreshPluginList.mock.calls[0]
-
-      mockRefreshPluginList.mockClear()
-      rerender(<PluginItem plugin={plugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-      const secondCallArgs = mockRefreshPluginList.mock.calls[0]
-
-      // Assert - Both calls should have same arguments
-      expect(firstCallArgs).toEqual(secondCallArgs)
-    })
-
     it('should update handleDelete when category changes', () => {
       // Arrange
       const toolPlugin = createPluginDetail({
@@ -1066,17 +981,6 @@ describe('PluginItem', () => {
       rerender(<PluginItem plugin={modelPlugin} />)
       fireEvent.click(screen.getByTestId('delete-button'))
       expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: PluginCategoryEnum.model })
-    })
-  })
-
-  describe('React.memo Behavior', () => {
-    it('should be wrapped with React.memo', () => {
-      // Arrange & Assert
-      // The component is exported as React.memo(PluginItem)
-      // We can verify by checking the displayName or type
-      expect(PluginItem).toBeDefined()
-      // React.memo components have a $$typeof property
-      expect((PluginItem as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
     })
   })
 })

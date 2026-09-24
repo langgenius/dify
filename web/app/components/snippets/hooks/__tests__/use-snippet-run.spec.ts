@@ -82,7 +82,7 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-workflow-interactions', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({
     handleUpdateWorkflowCanvas: mocks.mockHandleUpdateWorkflowCanvas,
   }),

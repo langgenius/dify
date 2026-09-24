@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as datasetsService from '@/service/datasets'
 import {
   calculatePercent,
@@ -19,7 +19,7 @@ const mockFetchIndexingStatus = vi.mocked(datasetsService.fetchIndexingStatus)
 const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
 const mockResumeDocIndexing = vi.mocked(datasetsService.resumeDocIndexing)
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -28,7 +28,7 @@ const createTestQueryClient = () =>
   })
 
 const createWrapper = () => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )

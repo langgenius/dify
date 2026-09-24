@@ -1,15 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { DataSourceType } from '@/models/datasets'
 
-// Mock config to control web crawl feature flags
 vi.mock('@/config', () => ({
   ENABLE_WEBSITE_FIRECRAWL: true,
   ENABLE_WEBSITE_JINAREADER: true,
   ENABLE_WEBSITE_WATERCRAWL: false,
 }))
 
-// Mock CSS module
 vi.mock('../../../index.module.css', () => ({
   default: {
     dataSourceItem: 'ds-item',
@@ -23,44 +22,60 @@ vi.mock('../../../index.module.css', () => ({
 
 const { default: DataSourceTypeSelector } = await import('../data-source-type-selector')
 
-describe('DataSourceTypeSelector', () => {
-  const defaultProps = {
-    currentType: DataSourceType.FILE,
-    disabled: false,
-    onChange: vi.fn(),
-    onClearPreviews: vi.fn(),
-  }
+const defaultProps = {
+  currentType: DataSourceType.FILE,
+  disabled: false,
+  onChange: vi.fn(),
+  onClearPreviews: vi.fn(),
+}
 
+describe('DataSourceTypeSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  describe('rendering', () => {
-    it('should render file, notion, and web options', () => {
-      render(<DataSourceTypeSelector {...defaultProps} />)
-      expect(screen.getByText('datasetCreation.stepOne.dataSourceType.file')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepOne.dataSourceType.notion')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepOne.dataSourceType.web')).toBeInTheDocument()
-    })
+  it('shows the available data source types', () => {
+    render(<DataSourceTypeSelector {...defaultProps} />)
 
-    it('should render as a 3-column grid', () => {
-      const { container } = render(<DataSourceTypeSelector {...defaultProps} />)
-      expect(container.firstElementChild).toHaveClass('grid-cols-3')
-    })
+    expect(screen.getByText('datasetCreation.stepOne.dataSourceType.file')).toBeInTheDocument()
+    expect(screen.getByText('datasetCreation.stepOne.dataSourceType.notion')).toBeInTheDocument()
+    expect(screen.getByText('datasetCreation.stepOne.dataSourceType.web')).toBeInTheDocument()
   })
 
-  describe('interactions', () => {
-    it('should call onChange and onClearPreviews on type click', () => {
-      render(<DataSourceTypeSelector {...defaultProps} />)
-      fireEvent.click(screen.getByText('datasetCreation.stepOne.dataSourceType.notion'))
-      expect(defaultProps.onChange).toHaveBeenCalledWith(DataSourceType.NOTION)
-      expect(defaultProps.onClearPreviews).toHaveBeenCalledWith(DataSourceType.NOTION)
-    })
+  it('changes data source type and clears the previous preview', async () => {
+    const user = userEvent.setup()
+    render(<DataSourceTypeSelector {...defaultProps} />)
 
-    it('should not call onChange when disabled', () => {
-      render(<DataSourceTypeSelector {...defaultProps} disabled />)
-      fireEvent.click(screen.getByText('datasetCreation.stepOne.dataSourceType.notion'))
-      expect(defaultProps.onChange).not.toHaveBeenCalled()
-    })
+    await user.click(screen.getByText('datasetCreation.stepOne.dataSourceType.notion'))
+
+    expect(defaultProps.onChange).toHaveBeenCalledWith(DataSourceType.NOTION)
+    expect(defaultProps.onClearPreviews).toHaveBeenCalledWith(DataSourceType.NOTION)
+  })
+
+  it('changes source with the keyboard and exposes the selected option', async () => {
+    const user = userEvent.setup()
+    const Example = () => {
+      const [value, setValue] = useState<DataSourceType>(DataSourceType.FILE)
+      return <DataSourceTypeSelector {...defaultProps} currentType={value} onChange={setValue} />
+    }
+    render(<Example />)
+    await user.tab()
+    expect(
+      screen.getByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.file' }),
+    ).toHaveFocus()
+    await user.keyboard('{ArrowRight}')
+    expect(
+      screen.getByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.notion' }),
+    ).toBeChecked()
+    expect(defaultProps.onClearPreviews).toHaveBeenCalledWith(DataSourceType.NOTION)
+  })
+
+  it('does not change data source type while disabled', async () => {
+    const user = userEvent.setup()
+    render(<DataSourceTypeSelector {...defaultProps} disabled />)
+
+    await user.click(screen.getByText('datasetCreation.stepOne.dataSourceType.notion'))
+
+    expect(defaultProps.onChange).not.toHaveBeenCalled()
   })
 })

@@ -3,13 +3,13 @@ import type { FC } from 'react'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { Item } from './config-param'
 import ScoreSlider from './score-slider'
@@ -35,7 +35,7 @@ const ConfigParamModal: FC<Props> = ({
   isInit,
   annotationConfig: oldAnnotationConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'common'])
   const {
     modelList: embeddingsModelList,
     defaultModel: embeddingsDefaultModel,
@@ -85,7 +85,7 @@ const ConfigParamModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="mt-14! w-[640px]! max-w-none! border-none p-6! text-left align-middle">
+      <DialogContent className="mt-14! w-160! max-w-none! border-none p-6! text-left align-middle">
         <div className="mb-2 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`initSetup.${isInit ? 'title' : 'configTitle'}`], { ns: 'appAnnotation' })}
         </div>
@@ -115,14 +115,14 @@ const ConfigParamModal: FC<Props> = ({
           >
             <div className="pt-1">
               <ModelSelector
-                defaultModel={
+                value={
                   embeddingModel && {
                     provider: embeddingModel.providerName,
                     model: embeddingModel.modelName,
                   }
                 }
-                modelList={embeddingsModelList}
-                onSelect={(val) => {
+                models={embeddingsModelList}
+                onValueChange={(val) => {
                   setEmbeddingModel({
                     providerName: val.provider,
                     modelName: val.model,
@@ -136,7 +136,6 @@ const ConfigParamModal: FC<Props> = ({
         <div className="mt-6 flex justify-end gap-2">
           <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button variant="primary" onClick={handleSave} loading={isLoading}>
-            <div></div>
             <div>
               {t(($) => $[`initSetup.${isInit ? 'confirmBtn' : 'configConfirmBtn'}`], {
                 ns: 'appAnnotation',

@@ -1,17 +1,27 @@
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { RerankingModeEnum } from '@/models/datasets'
-import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset', () => ({
   default: function MockAddKnowledge({
@@ -100,23 +110,23 @@ function ConfigSnapshotPreview() {
 function renderKnowledgeRetrieval({
   initialDraft = agentKnowledgeDraft,
   readOnly = false,
+  viewingVersion = false,
   showConfigSnapshot = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
   readOnly?: boolean
+  viewingVersion?: boolean
   showConfigSnapshot?: boolean
 } = {}) {
-  const queryClient = new QueryClient()
-
   return render(
-    <QueryClientProvider client={queryClient}>
-      <AgentComposerProvider initialDraft={initialDraft}>
+    <AgentComposerProvider initialDraft={initialDraft}>
+      <AgentOrchestrateViewingVersionContext value={viewingVersion}>
         <AgentOrchestrateReadOnlyContext value={readOnly}>
           <AgentKnowledgeRetrieval />
         </AgentOrchestrateReadOnlyContext>
-        {showConfigSnapshot && <ConfigSnapshotPreview />}
-      </AgentComposerProvider>
-    </QueryClientProvider>,
+      </AgentOrchestrateViewingVersionContext>
+      {showConfigSnapshot && <ConfigSnapshotPreview />}
+    </AgentComposerProvider>,
   )
 }
 
@@ -125,6 +135,14 @@ function getDialogNameEditButton(dialog: HTMLElement) {
     name: /agentDetail\.configure\.knowledgeRetrieval\.edit/,
   })
 }
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('AgentKnowledgeRetrieval', () => {
   beforeEach(() => {
@@ -143,8 +161,8 @@ describe('AgentKnowledgeRetrieval', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should hide add, edit, and remove actions when readonly', () => {
-      renderKnowledgeRetrieval({ readOnly: true })
+    it('should hide add, edit, and remove actions when viewing a version', () => {
+      renderKnowledgeRetrieval({ readOnly: true, viewingVersion: true })
 
       expect(
         screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne'),
@@ -164,6 +182,16 @@ describe('AgentKnowledgeRetrieval', () => {
           name: 'agentV2.agentDetail.configure.knowledgeRetrieval.remove:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
         }),
       ).not.toBeInTheDocument()
+    })
+
+    it('should keep add action available for build drafts', () => {
+      renderKnowledgeRetrieval({ readOnly: true })
+
+      expect(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add',
+        }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -271,7 +299,7 @@ describe('AgentKnowledgeRetrieval', () => {
         }),
       )
 
-      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(
         screen.queryByRole('button', {
@@ -722,7 +750,7 @@ describe('AgentKnowledgeRetrieval', () => {
           name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add',
         }),
       )
-      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(
         screen.queryByRole('dialog', {
@@ -754,7 +782,7 @@ describe('AgentKnowledgeRetrieval', () => {
         }),
         'temporary query',
       )
-      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 
       await user.click(
         screen.getByRole('button', {

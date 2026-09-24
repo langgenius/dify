@@ -142,9 +142,6 @@ const buildMarketplaceRedirectPath = (searchParams: LegacyPluginsSearchParams, t
 export const getLegacyPluginRedirectPath = (searchParams: LegacyPluginsSearchParams = {}) => {
   const tab = getFirstSearchParamValue(searchParams.tab)
 
-  if ((!tab || tab === INSTALLED_PLUGINS_TAB) && hasInstallSearchParams(searchParams))
-    return undefined
-
   if (!tab || tab === INSTALLED_PLUGINS_TAB) return '/integrations'
 
   const integrationPluginPath = getIntegrationPluginPathByTab(tab)
@@ -156,5 +153,5 @@ export const getLegacyPluginRedirectPath = (searchParams: LegacyPluginsSearchPar
 
   if (marketplacePluginTabs.has(tab)) return buildMarketplaceRedirectPath(searchParams, tab)
 
-  return undefined
+  return '/integrations'
 }

@@ -1,8 +1,8 @@
 'use client'
 
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -10,28 +10,22 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
-import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
-
-function buildReturnUrl(pathname: string, search: string) {
-  try {
-    const base = `${globalThis.location.origin}${pathname}${search}`
-    return base
-  } catch {
-    return pathname + search
-  }
-}
+import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'oauth'])
 
   const SCOPE_INFO_MAP: Record<
     string,
@@ -62,8 +56,10 @@ export default function OAuthAuthorize() {
   const router = useRouter()
   const language = useLanguage()
   const searchParams = useSearchParams()
-  const client_id = decodeURIComponent(searchParams.get('client_id') || '')
-  const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
+  const clientId = searchParams.get('client_id') || ''
+  const redirectUri = searchParams.get('redirect_uri') || ''
+  const state = searchParams.get('state')
+  const hasOAuthParams = Boolean(clientId && redirectUri)
   // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
   // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
   // service/base.ts prevents a redirect loop here.
@@ -80,13 +76,45 @@ export default function OAuthAuthorize() {
   const {
     data: authAppInfo,
     isLoading: isOAuthLoading,
-    isError,
-  } = useOAuthAppInfo(client_id, redirect_uri)
-  const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
+    isFetching: isOAuthFetching,
+    isError: isOAuthError,
+    refetch: refetchOAuthApp,
+  } = useQuery(
+    consoleQuery.oauth.provider.post.queryOptions({
+      input: hasOAuthParams
+        ? { body: { client_id: clientId, redirect_uri: redirectUri } }
+        : skipToken,
+      context: { silent: true },
+    }),
+  )
+  const { mutateAsync: authorize, isPending: authorizing } = useMutation(
+    consoleQuery.oauth.provider.authorize.post.mutationOptions(),
+  )
   const { mutateAsync: logout } = useLogout()
-  const hasNotifiedRef = useRef(false)
+  const { isAutoAuthorizing } = useSilentAuthorize({
+    authAppInfo,
+    authorize,
+    clientId,
+    hasOAuthParams,
+    isLoggedIn,
+    isProfileLoading,
+    redirectUri,
+    searchParams,
+    state,
+  })
+  const localizedAppLabel =
+    authAppInfo?.app_label[language] ?? authAppInfo?.app_label[language.replace('_', '-')]
+  const englishAppLabel = authAppInfo?.app_label.en_US ?? authAppInfo?.app_label['en-US']
+  const appLabel =
+    (typeof localizedAppLabel === 'string' && localizedAppLabel) ||
+    (typeof englishAppLabel === 'string' && englishAppLabel) ||
+    t(($) => $.unknownApp, { ns: 'oauth' })
+  useDocumentTitle(
+    authAppInfo
+      ? `${t(($) => $.connect, { ns: 'oauth' })} ${appLabel}`
+      : t(($) => $.connect, { ns: 'oauth' }),
+  )
 
-  const isLoading = isOAuthLoading || isProfileLoading
   const onLoginSwitchClick = async () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
@@ -98,34 +126,42 @@ export default function OAuthAuthorize() {
   }
 
   const onAuthorize = async () => {
-    if (!client_id || !redirect_uri) return
+    if (!clientId || !redirectUri) return
     try {
-      const { code } = await authorize({ client_id })
-      const url = new URL(redirect_uri)
-      url.searchParams.set('code', code)
-      globalThis.location.href = url.toString()
-    } catch (err: any) {
-      toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${err.message}`)
+      const { code } = await authorize({ body: { client_id: clientId } })
+      globalThis.location.href = buildOAuthCallbackUrl(redirectUri, code, state)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
     }
   }
 
-  useEffect(() => {
-    const invalidParams = !client_id || !redirect_uri
-    if ((invalidParams || isError) && !hasNotifiedRef.current) {
-      hasNotifiedRef.current = true
-      toast.error(
-        invalidParams
-          ? t(($) => $['error.invalidParams'], { ns: 'oauth' })
-          : t(($) => $['error.authAppInfoFetchFailed'], { ns: 'oauth' }),
-        { timeout: 0 },
-      )
-    }
-  }, [client_id, redirect_uri, isError])
+  if (!hasOAuthParams || isOAuthError) {
+    return (
+      <div className="flex flex-col gap-4 bg-background-default-subtle text-text-secondary">
+        <div className="body-md-regular">
+          {t(($) => $[hasOAuthParams ? 'error.authAppInfoFetchFailed' : 'error.invalidParams'], {
+            ns: 'oauth',
+          })}
+        </div>
+        {isOAuthError && (
+          <Button
+            variant="secondary"
+            size="large"
+            onClick={() => void refetchOAuthApp()}
+            loading={isOAuthFetching}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        )}
+      </div>
+    )
+  }
 
-  if (isLoading) {
+  if (isProfileLoading || isOAuthLoading || isAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -143,11 +179,7 @@ export default function OAuthAuthorize() {
           {isLoggedIn && (
             <div className="text-text-primary">{t(($) => $.connect, { ns: 'oauth' })}</div>
           )}
-          <div className="text-saas-dify-blue-inverted">
-            {authAppInfo?.app_label[language] ||
-              authAppInfo?.app_label?.en_US ||
-              t(($) => $.unknownApp, { ns: 'oauth' })}
-          </div>
+          <div className="text-saas-dify-blue-inverted">{appLabel}</div>
           {!isLoggedIn && (
             <div className="text-text-primary">
               {t(($) => $['tips.notLoggedIn'], { ns: 'oauth' })}
@@ -156,7 +188,7 @@ export default function OAuthAuthorize() {
         </div>
         <div className="body-md-regular text-text-secondary">
           {isLoggedIn
-            ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t(($) => $.unknownApp, { ns: 'oauth' })} ${t(($) => $['tips.loggedIn'], { ns: 'oauth' })}`
+            ? `${appLabel} ${t(($) => $['tips.loggedIn'], { ns: 'oauth' })}`
             : t(($) => $['tips.needLogin'], { ns: 'oauth' })}
         </div>
       </div>
@@ -166,7 +198,7 @@ export default function OAuthAuthorize() {
           <div className="flex items-center gap-2.5">
             <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
-              <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
+              <div className="text-text-secondary">{userProfile.name}</div>
               <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>
             </div>
           </div>
@@ -177,23 +209,20 @@ export default function OAuthAuthorize() {
       )}
 
       {isLoggedIn && Boolean(authAppInfo?.scope) && (
-        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-[22px] py-5 text-text-secondary">
+        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-5.5 py-5 text-text-secondary">
           {authAppInfo!.scope
             .split(/\s+/)
             .filter(Boolean)
             .map((scope: string) => {
-              const Icon = SCOPE_INFO_MAP[scope]
+              const scopeInfo = SCOPE_INFO_MAP[scope]
+              const ScopeIcon = scopeInfo?.icon ?? RiAccountCircleLine
               return (
                 <div
                   key={scope}
                   className="flex items-center gap-2 body-sm-medium text-text-secondary"
                 >
-                  {Icon ? (
-                    <Icon.icon className="size-4" />
-                  ) : (
-                    <RiAccountCircleLine className="size-4" />
-                  )}
-                  {Icon!.label}
+                  <ScopeIcon className="size-4" />
+                  {scopeInfo?.label ?? scope}
                 </div>
               )
             })}
@@ -202,9 +231,14 @@ export default function OAuthAuthorize() {
 
       <div className="flex flex-col items-center gap-2 pt-4">
         {!isLoggedIn ? (
-          <Button variant="primary" size="large" className="w-full" onClick={onLoginSwitchClick}>
+          <Link
+            href={`/signin?redirect_url=${encodeURIComponent(
+              buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`),
+            )}`}
+            className={cn(buttonVariants({ variant: 'primary', size: 'large' }), 'w-full')}
+          >
             {t(($) => $.login, { ns: 'oauth' })}
-          </Button>
+          </Link>
         ) : (
           <>
             <Button
@@ -212,14 +246,14 @@ export default function OAuthAuthorize() {
               size="large"
               className="w-full"
               onClick={onAuthorize}
-              disabled={!client_id || !redirect_uri || isError || authorizing}
+              disabled={!clientId || !redirectUri || isOAuthError}
               loading={authorizing}
             >
               {t(($) => $.continue, { ns: 'oauth' })}
             </Button>
-            <Button size="large" className="w-full" onClick={() => router.push('/apps')}>
+            <Link href="/apps" className={cn(buttonVariants({ size: 'large' }), 'w-full')}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
+            </Link>
           </>
         )}
       </div>

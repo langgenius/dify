@@ -14,8 +14,7 @@ type TagsFilterProps = {
   onChange: (tags: string[]) => void
 }
 const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['common', 'pluginTags'])
   const [searchText, setSearchText] = useState('')
   const { tags: options, getTagLabel } = useTags()
   const filteredOptions = options.filter((option) =>
@@ -24,7 +23,7 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
   const selectedTagsLength = value.length
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         nativeButton={false}
         render={
@@ -65,9 +64,9 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
-        <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <SearchInput
               value={searchText}
@@ -79,7 +78,7 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
             aria-label={t(($) => $.allTags, { ns: 'pluginTags' })}
             value={value}
             onValueChange={(nextValue) => onChange(nextValue)}
-            className="max-h-[448px] overflow-y-auto p-1"
+            className="max-h-112 overflow-y-auto p-1"
           >
             {filteredOptions.map((option) => (
               <label

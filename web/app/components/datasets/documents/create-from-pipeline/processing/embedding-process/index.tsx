@@ -2,9 +2,10 @@ import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
 import {
   RiAedFill,
   RiArrowRightLine,
@@ -13,20 +14,21 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
-import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
-import { useProviderContext } from '@/context/provider-context'
+import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
 import Link from '@/next/link'
-import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import RuleDetail from './rule-detail'
@@ -46,9 +48,14 @@ const EmbeddingProcess = ({
   indexingType,
   retrievalMethod,
 }: EmbeddingProcessProps) => {
-  const { t } = useTranslation()
-  const router = useRouter()
-  const { enableBilling, plan } = useProviderContext()
+  const { t } = useTranslation(['billing', 'datasetCreation', 'datasetDocuments'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse[]>(
     [],
   )
@@ -86,10 +93,7 @@ const EmbeddingProcess = ({
   const { data: ruleDetail } = useProcessRule(firstDocument!.id)
 
   const invalidDocumentList = useInvalidDocumentList()
-  const navToDocumentList = () => {
-    invalidDocumentList()
-    router.push(`/datasets/${datasetId}/documents`)
-  }
+  const documentsHref = `/datasets/${datasetId}/documents`
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const isEmbeddingWaiting = useMemo(() => {
@@ -112,6 +116,15 @@ const EmbeddingProcess = ({
       ['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status || ''),
     )
   }, [indexingStatusBatchDetail])
+  const vectorSpaceAdmissionError = useMemo(
+    () =>
+      indexingStatusBatchDetail.find(
+        (detail) => detail.error_code === 'vector_space_estimate_exceeded',
+      ),
+    [indexingStatusBatchDetail],
+  )
+  const showUpgrade =
+    deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional')
 
   const getSourceName = (id: string) => {
     const doc = documents.find((document) => document.id === id)
@@ -155,8 +168,16 @@ const EmbeddingProcess = ({
           )}
           {isEmbeddingCompleted && t(($) => $['embedding.completed'], { ns: 'datasetDocuments' })}
         </div>
-        {enableBilling && plan.type !== Plan.team && (
-          <div className="flex h-[52px] items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
+        {vectorSpaceAdmissionError?.estimated_vector_space_mb != null &&
+          vectorSpaceAdmissionError.vector_space_limit_mb != null && (
+            <VectorSpaceAdmissionAlert
+              showUpgrade={showUpgrade}
+              estimatedMb={vectorSpaceAdmissionError.estimated_vector_space_mb}
+              planLimitMb={vectorSpaceAdmissionError.vector_space_limit_mb}
+            />
+          )}
+        {deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional') && (
+          <div className="flex h-13 items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
             <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
               <RiAedFill className="size-4 text-text-primary-on-surface" />
             </div>
@@ -171,7 +192,7 @@ const EmbeddingProcess = ({
             <div
               key={indexingStatusDetail.id}
               className={cn(
-                'relative h-[26px] overflow-hidden rounded-md bg-components-progress-bar-bg',
+                'relative h-6.5 overflow-hidden rounded-md bg-components-progress-bar-bg',
                 indexingStatusDetail.indexing_status === 'error' &&
                   'bg-state-destructive-hover-alt',
               )}
@@ -182,7 +203,7 @@ const EmbeddingProcess = ({
                   style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}
                 />
               )}
-              <div className="z-1 flex h-full items-center gap-1 pr-2 pl-[6px]">
+              <div className="z-1 flex h-full items-center gap-1 pr-2 pl-1.5">
                 {getSourceType(indexingStatusDetail.id) === DatasourceType.localFile && (
                   <DocumentFileIcon
                     size="sm"
@@ -205,7 +226,7 @@ const EmbeddingProcess = ({
                   <div className="truncate system-xs-medium text-text-secondary">
                     {getSourceName(indexingStatusDetail.id)}
                   </div>
-                  {enableBilling && <PriorityLabel className="ml-0" />}
+                  <PriorityLabel className="ml-0" />
                 </div>
                 {isSourceEmbedding(indexingStatusDetail) && (
                   <div className="shrink-0 text-xs text-text-secondary">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
@@ -219,7 +240,7 @@ const EmbeddingProcess = ({
                     >
                       <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
                     </PopoverTrigger>
-                    <PopoverContent popupClassName="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-[14px] body-xs-regular text-text-secondary">
+                    <PopoverContent className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-3.5 body-xs-regular text-text-secondary">
                       {indexingStatusDetail.error}
                     </PopoverContent>
                   </Popover>
@@ -231,7 +252,7 @@ const EmbeddingProcess = ({
             </div>
           ))}
         </div>
-        <Divider type="horizontal" className="my-0 bg-divider-subtle" />
+        <Separator orientation="horizontal" className="my-0 h-[0.5px] bg-divider-subtle" />
         <RuleDetail
           sourceData={ruleDetail}
           indexingType={indexingType}
@@ -239,18 +260,23 @@ const EmbeddingProcess = ({
         />
       </div>
       <div className="mt-6 flex items-center gap-x-2 py-2">
-        <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
-          <Button className="w-fit gap-x-0.5 px-3">
-            <RiTerminalBoxLine className="size-4" />
-            <span className="px-0.5">Access the API</span>
-          </Button>
+        <Link
+          href={apiReferenceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants(), 'w-fit')}
+        >
+          <RiTerminalBoxLine className="size-4" />
+          <span>Access the API</span>
         </Link>
-        <Button className="w-fit gap-x-0.5 px-3" variant="primary" onClick={navToDocumentList}>
-          <span className="px-0.5">
-            {t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}
-          </span>
+        <Link
+          href={documentsHref}
+          className={cn(buttonVariants({ variant: 'primary' }), 'w-fit')}
+          onClick={invalidDocumentList}
+        >
+          <span>{t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
           <RiArrowRightLine className="size-4 stroke-current stroke-1" />
-        </Button>
+        </Link>
       </div>
     </>
   )

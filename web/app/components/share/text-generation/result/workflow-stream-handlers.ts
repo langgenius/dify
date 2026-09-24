@@ -134,11 +134,12 @@ const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
   if (!traces) return
 
   const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
-    if (
-      [NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(
-        trace.status as NodeRunningStatus,
-      )
-    )
+    const unfinishedStatuses: readonly NodeRunningStatus[] = [
+      NodeRunningStatus.Running,
+      NodeRunningStatus.Waiting,
+    ]
+
+    if (unfinishedStatuses.includes(trace.status as NodeRunningStatus))
       trace.status = NodeRunningStatus.Stopped
 
     trace.details?.forEach((detailGroup) => detailGroup.forEach(markTrace))
@@ -155,10 +156,14 @@ const applyWorkflowFinishedState = (
   error?: string,
 ) => {
   return updateWorkflowProcess(current, (draft) => {
+    const errorStatuses: readonly WorkflowRunningStatus[] = [
+      WorkflowRunningStatus.Stopped,
+      WorkflowRunningStatus.Failed,
+    ]
+
     draft.status = status
     draft.error = error
-    if ([WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Failed].includes(status))
-      markNodesStopped(draft.tracing)
+    if (errorStatuses.includes(status)) markNodesStopped(draft.tracing)
   })
 }
 
@@ -280,6 +285,7 @@ export const createWorkflowStreamHandlers = ({
   taskId,
 }: CreateWorkflowStreamHandlersParams): IOtherOptions => {
   let tempMessageId = ''
+  let hasStartedResumeStream = false
 
   const finishWithFailure = () => {
     setRespondingFalse()
@@ -341,15 +347,25 @@ export const createWorkflowStreamHandlers = ({
       setWorkflowProcessData(finishWorkflowNode(getWorkflowProcessData(), data))
     },
     onWorkflowFinished: ({ data }) => {
+      const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (isTimedOut()) {
+        const finishedStatus =
+          workflowStatus === WorkflowRunningStatus.Stopped
+            ? WorkflowRunningStatus.Stopped
+            : workflowStatus === WorkflowRunningStatus.Failed || data.error
+              ? WorkflowRunningStatus.Failed
+              : WorkflowRunningStatus.Succeeded
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), finishedStatus, data.error),
+        )
         notify({
           type: 'warning',
           message: t(($) => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }),
         })
+        markEnded()
         return
       }
 
-      const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (workflowStatus === WorkflowRunningStatus.Stopped) {
         setWorkflowProcessData(
           applyWorkflowFinishedState(
@@ -410,8 +426,14 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
-      // WebApp workflows must keep using the public API namespace after pause/resume.
-      void sseGet(`/workflow/${data.workflow_run_id}/events`, {}, otherOptions)
+      if (!hasStartedResumeStream) {
+        hasStartedResumeStream = true
+        void sseGet(
+          `/workflow/${data.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`,
+          {},
+          otherOptions,
+        )
+      }
       setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
     },
   }

@@ -7,12 +7,10 @@ import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { DERIVED_MODEL_STATUS_BADGE_I18N } from '@/app/components/header/account-setting/model-provider-page/derive-model-status'
-import {
-  useLanguage,
-  useModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
-import { consoleQuery } from '@/service/client'
+import { renderI18nObject } from '@/i18n/metadata'
+import { consoleQuery } from '@/service/console'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import { useSettingsDisplay } from './hooks/use-settings-display'
 import { IndexMethodEnum } from './types'
@@ -59,11 +57,27 @@ const RETRIEVAL_WARNING_CODES = new Set<KnowledgeBaseValidationIssueCode>([
 ])
 
 const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'common',
+    'datasetCreation',
+    'datasetSettings',
+    'plugin',
+    'workflow',
+  ])
   const language = useLanguage()
   const settingsDisplay = useSettingsDisplay()
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const chunkStructure = data.chunk_structure
   const indexChunkVariableSelector = data.index_chunk_variable_selector
   const indexingTechnique = data.indexing_technique
@@ -149,8 +163,7 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
     }
 
     return (
-      currentEmbeddingModel?.label[language] ||
-      currentEmbeddingModel?.label.en_US ||
+      (currentEmbeddingModel && renderI18nObject(currentEmbeddingModel.label, language)) ||
       data.embedding_model ||
       '-'
     )
@@ -181,7 +194,7 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
     return (
       <div className="mb-1 space-y-0.5 px-3 py-1">
         <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-          <span className="mr-1 size-[4px] shrink-0 rounded-xs bg-text-warning-secondary" />
+          <span className="mr-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
           <div
             className="grow truncate system-xs-medium text-text-warning"
             title={validationIssueMessage}

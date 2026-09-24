@@ -5,7 +5,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalParamConfig from '../index'
 
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockNotify(message),
   },
@@ -33,20 +33,17 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    onSelect,
-    defaultModel,
+  ModelSelector: ({
+    onValueChange,
+    value,
   }: {
-    onSelect: (v: { provider: string; model: string }) => void
-    defaultModel?: { provider: string; model: string }
+    onValueChange: (v: { provider: string; model: string }) => void
+    value?: { provider: string; model: string }
   }) => (
-    <div
-      data-testid="model-selector"
-      data-default-model={defaultModel ? JSON.stringify(defaultModel) : ''}
-    >
+    <div data-testid="model-selector" data-value={value ? JSON.stringify(value) : ''}>
       <button
         data-testid="select-model-btn"
-        onClick={() => onSelect({ provider: 'new-provider', model: 'new-model' })}
+        onClick={() => onValueChange({ provider: 'new-provider', model: 'new-model' })}
       >
         Select Model
       </button>
@@ -115,24 +112,6 @@ vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({
-    checked,
-    onCheckedChange,
-  }: {
-    checked: boolean
-    onCheckedChange?: (v: boolean) => void
-  }) => (
-    <button
-      data-testid="rerank-switch"
-      data-checked={checked}
-      onClick={() => onCheckedChange?.(!checked)}
-    >
-      Switch
-    </button>
-  ),
-}))
-
 describe('RetrievalParamConfig', () => {
   const createDefaultConfig = (overrides?: Partial<RetrievalConfig>): RetrievalConfig => ({
     search_method: RETRIEVE_METHOD.semantic,
@@ -166,7 +145,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('rerank-switch'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
+      ).toBeChecked()
     })
 
     it('should render model selector when reranking is enabled', () => {
@@ -232,7 +213,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('rerank-switch'))
+      fireEvent.click(screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }))
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -251,7 +232,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('rerank-switch'))
+      fireEvent.click(screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }))
 
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
@@ -375,7 +356,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('rerank-switch'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
+      ).toBeChecked()
     })
 
     it('should hide score threshold when reranking is disabled for full text search', () => {
@@ -422,7 +405,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByTestId('rerank-switch')).not.toBeInTheDocument()
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     })
 
     it('should not render model selector for keyword search', () => {
@@ -762,7 +745,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByTestId('rerank-switch')).not.toBeInTheDocument()
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     })
 
     it('should update model selection for hybrid search', () => {
@@ -797,7 +780,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByLabelText('common.modelProvider.rerankModel.tip'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'common.modelProvider.rerankModel.key' }),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -871,8 +856,8 @@ describe('RetrievalParamConfig', () => {
     })
   })
 
-  describe('Model Selector Default Model', () => {
-    it('should pass correct default model to ModelSelector', () => {
+  describe('Model Selector Value', () => {
+    it('should pass the selected value to ModelSelector', () => {
       const config = createDefaultConfig({
         reranking_enable: true,
         reranking_model: {
@@ -889,9 +874,9 @@ describe('RetrievalParamConfig', () => {
       )
 
       const modelSelector = screen.getByTestId('model-selector')
-      const defaultModel = JSON.parse(modelSelector.getAttribute('data-default-model') || '{}')
-      expect(defaultModel.provider).toBe('custom-provider')
-      expect(defaultModel.model).toBe('custom-model')
+      const value = JSON.parse(modelSelector.getAttribute('data-value') || '{}')
+      expect(value.provider).toBe('custom-provider')
+      expect(value.model).toBe('custom-model')
     })
   })
 })

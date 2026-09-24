@@ -14,19 +14,24 @@ import type {
 } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
+import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { VarType } from '../../../types'
 import { SUB_VARIABLES } from '../../constants'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
@@ -78,11 +83,20 @@ const ConditionWrap: FC<Props> = ({
   varsIsVarFileAttribute = {},
   filterVar = () => true,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const getAvailableVars = useGetAvailableVars()
 
   const [willDeleteCaseId, setWillDeleteCaseId] = useState('')
+  const keyboardSort = useKeyboardSortable({
+    items: cases,
+    onChange: (items) => handleSortCase(items.map((item) => ({ ...item, id: item.case_id }))),
+    disabled: readOnly || isSubVariable,
+  })
+  const sortableCases = useMemo(
+    () => keyboardSort.items.map((item) => ({ ...item, id: item.case_id })),
+    [keyboardSort.items],
+  )
   const casesLength = cases.length
 
   const filterNumberVar = useCallback((varPayload: Var) => {
@@ -96,32 +110,41 @@ const ConditionWrap: FC<Props> = ({
 
   return (
     <>
+      {keyboardSort.announcement}
       <ReactSortable
-        list={cases.map((caseItem) => ({ ...caseItem, id: caseItem.case_id }))}
-        setList={handleSortCase}
+        list={sortableCases}
+        setList={(items) => {
+          if (
+            !keyboardSort.isSorting &&
+            items.some((item, index) => item.id !== sortableCases[index]?.id)
+          )
+            handleSortCase(items)
+        }}
         handle=".handle"
         ghostClass="bg-components-panel-bg"
         animation={150}
-        disabled={readOnly || isSubVariable}
+        disabled={readOnly || isSubVariable || keyboardSort.isSorting}
       >
-        {cases.map((item, index) => (
+        {keyboardSort.items.map((item, index) => (
           <div key={item.case_id}>
             <div
               className={cn(
                 'group relative rounded-[10px] bg-components-panel-bg',
                 willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
-                !isSubVariable && 'min-h-[40px] px-3 py-1',
+                !isSubVariable && 'min-h-10 px-3 py-1',
                 isSubVariable && 'px-1 py-2',
               )}
             >
               {!isSubVariable && (
                 <>
-                  <RiDraggable
-                    className={cn(
-                      'handle absolute top-2 left-1 hidden size-3 cursor-pointer text-text-quaternary',
-                      casesLength > 1 && 'group-hover:block',
-                    )}
-                  />
+                  {!readOnly && casesLength > 1 && (
+                    <IconButton
+                      {...keyboardSort.getHandleProps(index)}
+                      className="handle pointer-events-none absolute top-1 -left-2 z-10 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                    >
+                      <span aria-hidden="true" className="i-ri-draggable size-3" />
+                    </IconButton>
+                  )}
                   <div
                     className={cn(
                       'absolute left-4 text-[13px] leading-4 font-semibold text-text-secondary',
@@ -130,7 +153,7 @@ const ConditionWrap: FC<Props> = ({
                   >
                     {index === 0 ? 'IF' : 'ELIF'}
                     {casesLength > 1 && (
-                      <div className="text-[10px] font-medium text-text-tertiary">
+                      <div className="text-2xs font-medium text-text-tertiary">
                         CASE
                         {index + 1}
                       </div>
@@ -168,10 +191,10 @@ const ConditionWrap: FC<Props> = ({
 
               <div
                 className={cn(
-                  'flex items-center justify-between pr-[30px]',
+                  'flex items-center justify-between pr-7.5',
                   !item.conditions.length && !isSubVariable && 'mt-1',
                   !item.conditions.length && isSubVariable && 'mt-2',
-                  !isSubVariable && 'pl-[60px]',
+                  !isSubVariable && 'pl-15',
                 )}
               >
                 {isSubVariable ? (
@@ -188,17 +211,23 @@ const ConditionWrap: FC<Props> = ({
                       className="border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
                     >
                       <Button size="small" disabled={readOnly}>
-                        <RiAddLine className="mr-1 size-3.5" />
+                        <RiAddLine className="size-3.5" />
                         {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
                       </Button>
                     </SelectTrigger>
-                    <SelectContent popupClassName="w-[165px]" listClassName="max-h-none p-1">
-                      {subVarOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <SelectItemText>{option.name}</SelectItemText>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectPortal>
+                      <SelectPositioner>
+                        <SelectPopup className="w-41.25">
+                          <SelectList className="max-h-none p-1">
+                            {subVarOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                <SelectItemText>{option.name}</SelectItemText>
+                              </SelectItem>
+                            ))}
+                          </SelectList>
+                        </SelectPopup>
+                      </SelectPositioner>
+                    </SelectPortal>
                   </Select>
                 ) : (
                   <ConditionAdd
@@ -219,7 +248,7 @@ const ConditionWrap: FC<Props> = ({
                     onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
                     onMouseLeave={() => setWillDeleteCaseId('')}
                   >
-                    <RiDeleteBinLine className="mr-1 size-3.5" />
+                    <RiDeleteBinLine className="size-3.5" />
                     {t(($) => $['operation.remove'], { ns: 'common' })}
                   </Button>
                 )}
@@ -235,7 +264,7 @@ const ConditionWrap: FC<Props> = ({
           disabled={readOnly}
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
-          <RiAddLine className="mr-1 size-3.5" />
+          <RiAddLine className="size-3.5" />
           {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
         </Button>
       )}

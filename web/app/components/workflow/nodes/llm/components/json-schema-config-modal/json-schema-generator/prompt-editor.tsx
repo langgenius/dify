@@ -2,12 +2,12 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Model } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
 type ModelInfo = {
@@ -36,7 +36,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
   onGenerate,
   onModelChange,
 }) => {
-  const { t } = useTranslation()
+  const instructionLabelId = React.useId()
+
+  const { t } = useTranslation(['common', 'workflow'])
 
   const handleInstructionChange = useCallback(
     (value: string) => {
@@ -46,7 +48,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   )
 
   return (
-    <div className="relative flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
+    <div className="relative flex w-120 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
       <button
         type="button"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -82,18 +84,20 @@ const PromptEditor: FC<PromptEditorProps> = ({
       </div>
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
-          <span>{t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}</span>
-          <Infotip
-            aria-label={t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
-            className="size-3.5"
-          >
-            {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
+          <span id={instructionLabelId}>
+            {t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}
+          </span>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={instructionLabelId} className="size-3.5" />
+            <InfotipContent aria-labelledby={instructionLabelId}>
+              {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
+            </InfotipContent>
           </Infotip>
         </div>
         <div className="flex items-center">
           <Textarea
             aria-label={t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}
-            className="h-[364px] resize-none px-2 py-1"
+            className="h-91 resize-none px-2 py-1"
             value={instruction}
             placeholder={t(($) => $['nodes.llm.jsonSchema.promptPlaceholder'], { ns: 'workflow' })}
             onValueChange={handleInstructionChange}
@@ -105,7 +109,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <Button variant="secondary" onClick={onClose}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button variant="primary" className="flex items-center gap-x-0.5" onClick={onGenerate}>
+        <Button variant="primary" className="flex items-center" onClick={onGenerate}>
           <RiSparklingFill className="size-4" />
           <span>{t(($) => $['nodes.llm.jsonSchema.generate'], { ns: 'workflow' })}</span>
         </Button>

@@ -22,6 +22,7 @@ export type IntegrationSidebarNavItemData = {
   iconClassName?: string
   label: string
   section?: IntegrationSection
+  stepByStepTourTarget?: string
 }
 
 const renderIcon = (icon: IconComponent | string, className = 'size-4') => {
@@ -29,6 +30,18 @@ const renderIcon = (icon: IconComponent | string, className = 'size-4') => {
 
   const Icon = icon
   return <Icon className={className} />
+}
+
+const StepByStepTourTargetAnchor = ({ target }: { target?: string }) => {
+  if (!target) return null
+
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-y-1 right-0 left-0"
+      data-step-by-step-tour-target={target}
+    />
+  )
 }
 
 type IntegrationSidebarNavItemProps = {
@@ -47,6 +60,7 @@ export function IntegrationSidebarNavItem({
 
   const className = cn(
     integrationSidebarNavItemClassName,
+    item.stepByStepTourTarget && 'relative',
     isActive
       ? integrationSidebarActiveNavItemClassName
       : integrationSidebarInactiveNavItemClassName,
@@ -56,14 +70,15 @@ export function IntegrationSidebarNavItem({
   if (!item.section) {
     return (
       <div
-        aria-label={item.label}
         className={cn(
           integrationSidebarNavItemClassName,
           integrationSidebarDisabledNavItemClassName,
+          item.stepByStepTourTarget && 'relative',
           item.className,
         )}
         aria-disabled="true"
       >
+        <StepByStepTourTargetAnchor target={item.stepByStepTourTarget} />
         <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
           {renderIcon(item.icon, item.iconClassName)}
         </span>
@@ -89,11 +104,11 @@ export function IntegrationSidebarNavItem({
     return (
       <button
         type="button"
-        aria-label={item.label}
         aria-pressed={isActive}
         className={cn('border-none bg-transparent', className)}
         onClick={() => onSelect(item.section!)}
       >
+        <StepByStepTourTargetAnchor target={item.stepByStepTourTarget} />
         {content}
       </button>
     )
@@ -102,10 +117,10 @@ export function IntegrationSidebarNavItem({
   return (
     <Link
       href={buildIntegrationPath(item.section)}
-      aria-label={item.label}
       aria-current={isActive ? 'page' : undefined}
       className={className}
     >
+      <StepByStepTourTargetAnchor target={item.stepByStepTourTarget} />
       {content}
     </Link>
   )

@@ -1,40 +1,51 @@
-import type { Mock } from 'vitest'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { Mock } from 'vite-plus/test'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
-import { Plan } from '@/app/components/billing/type'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithoutPricing } from '@/test/console/render'
 import SupportMenu from '../support-menu'
 
-const { mockConfig, mockOpenZendeskWindow, mockMailToSupport, mockSetShowPricingModal } =
+let plan: CloudPlan = 'team'
+
+const { mockConfig, mockOpenZendeskWindow, mockMailToSupport, onPricingUrlUpdate, mockToastError } =
   vi.hoisted(() => ({
     mockConfig: {
-      isCloudEdition: true,
       supportEmailAddress: '',
       zendeskWidgetKey: 'zendesk-key',
     },
     mockOpenZendeskWindow: vi.fn(),
     mockMailToSupport: vi.fn(),
-    mockSetShowPricingModal: vi.fn(),
+    onPricingUrlUpdate: vi.fn(),
+    mockToastError: vi.fn(),
   }))
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   current: {
     langGeniusVersionInfo: { current_version: '1.0.0' },
     userProfile: { email: 'user@example.com' },
   },
 }))
 
-vi.mock('@/app/components/base/zendesk/utils', () => ({
-  openZendeskWindow: mockOpenZendeskWindow,
+vi.mock('@/app/components/base/zendesk/runtime', () => ({
+  zendeskRuntime: {
+    open: mockOpenZendeskWindow,
+  },
 }))
 
-vi.mock('@/app/components/header/utils/util', () => ({
+vi.mock('@/app/notifications', () => ({
+  toast: { error: mockToastError },
+}))
+
+vi.mock('@/app/components/header/utils/util', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/header/utils/util')>()),
   mailToSupport: mockMailToSupport,
 }))
 
@@ -42,9 +53,6 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
     get SUPPORT_EMAIL_ADDRESS() {
       return mockConfig.supportEmailAddress
     },
@@ -54,103 +62,92 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
 describe('SupportMenu', () => {
+  let deploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' = 'CLOUD'
+
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.isCloudEdition = true
+    deploymentEdition = 'CLOUD'
     mockConfig.supportEmailAddress = ''
     mockConfig.zendeskWidgetKey = 'zendesk-key'
-    mockAppContextState.current = {
+    mockOpenZendeskWindow.mockResolvedValue(undefined)
+    mockConsoleState.current = {
       langGeniusVersionInfo: { current_version: '1.0.0' },
       userProfile: { email: 'user@example.com' },
     }
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: Plan.team },
-    })
-    ;(useModalContext as Mock).mockReturnValue({
-      setShowPricingModal: mockSetShowPricingModal,
-    })
+    plan = 'team'
+
     ;(mailToSupport as Mock).mockReturnValue('mailto:support@example.com')
   })
 
-  const renderSupportMenu = (onContactUsClick = vi.fn()) => {
+  const renderSupportMenu = (withPlan = true) => {
+    const queryClient = createConsoleQueryClient()
+    if (!withPlan && deploymentEdition === 'CLOUD') {
+      void queryClient.query({
+        ...consoleQuery.features.get.queryOptions(),
+        queryFn: () => new Promise(() => {}),
+      })
+    }
+    const { wrapper } = createConsoleQueryWrapper({
+      queryClient,
+      accountProfile: mockConsoleState.current.userProfile,
+      accountProfileMeta: {
+        currentVersion: mockConsoleState.current.langGeniusVersionInfo.current_version,
+      },
+      systemFeatures: { deployment_edition: deploymentEdition },
+      ...(withPlan ? { features: { billing: { subscription: { plan } } } } : {}),
+    })
     return render(
       <DropdownMenu open={true} onOpenChange={() => {}}>
         <DropdownMenuTrigger>open</DropdownMenuTrigger>
         <DropdownMenuContent>
-          <SupportMenu onContactUsClick={onContactUsClick} />
+          <SupportMenu />
         </DropdownMenuContent>
       </DropdownMenu>,
+      { wrapper },
     )
   }
 
-  it('renders contact us before community support entries when Zendesk is configured', () => {
-    const onContactUsClick = vi.fn()
-    renderSupportMenu(onContactUsClick)
+  it('renders contact us before Discord when Zendesk is configured', () => {
+    renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.community')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
+    expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.userProfile.community')).not.toBeInTheDocument()
     expect(
       screen
         .getByText('common.userProfile.contactUs')
-        .compareDocumentPosition(screen.getByText('common.userProfile.forum')),
+        .compareDocumentPosition(screen.getByText('common.userProfile.discord')),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(screen.getByRole('menuitem', { name: 'common.userProfile.forum' })).toHaveClass(
+    expect(screen.getByRole('menuitem', { name: 'common.userProfile.discord' })).toHaveClass(
       'mx-0',
       'px-3',
     )
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
-    expect(openZendeskWindow).toHaveBeenCalled()
-    expect(onContactUsClick).toHaveBeenCalled()
+    expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
   })
 
-  it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', () => {
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: Plan.sandbox },
-    })
+  it('reports a Zendesk load failure so the user can retry', async () => {
+    mockOpenZendeskWindow.mockRejectedValueOnce(new Error('load failed'))
+    renderSupportMenu()
 
-    const onContactUsClick = vi.fn()
-    renderSupportMenu(onContactUsClick)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('common.api.actionFailed'))
+  })
+
+  it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', async () => {
+    plan = 'sandbox'
+
+    renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toHaveClass('text-text-disabled')
     expect(screen.getByText('billing.upgradeBtn.encourageShort')).toHaveClass(
@@ -162,37 +159,22 @@ describe('SupportMenu', () => {
       screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(
-      screen.getByRole('menuitem', {
-        name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
-      }),
-    )
-
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
-    expect(openZendeskWindow).not.toHaveBeenCalled()
-    expect(onContactUsClick).toHaveBeenCalled()
-  })
-
-  it('hides upgrade contact for Cloud sandbox plan when billing is disabled', () => {
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: false,
-      plan: { type: Plan.sandbox },
+    const upgradeItem = screen.getByRole('menuitem', {
+      name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
     })
+    expect(upgradeItem).not.toHaveAttribute('aria-label')
+    expect(screen.getByText('billing.upgradeBtn.encourageShort')).not.toHaveAttribute('aria-hidden')
+    fireEvent.click(upgradeItem)
 
-    renderSupportMenu()
-
-    expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
-    expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-    expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
+    expect(zendeskRuntime.open).not.toHaveBeenCalled()
   })
 
   it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', () => {
     mockConfig.supportEmailAddress = 'support@example.com'
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: Plan.sandbox },
-    })
+    plan = 'sandbox'
 
     renderSupportMenu()
 
@@ -200,17 +182,14 @@ describe('SupportMenu', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
-    expect(openZendeskWindow).toHaveBeenCalled()
-    expect(mockSetShowPricingModal).not.toHaveBeenCalled()
+    expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
+    expect(onPricingUrlUpdate).not.toHaveBeenCalled()
   })
 
   it('keeps email support for Cloud sandbox plan with support email and no Zendesk configured', () => {
     mockConfig.supportEmailAddress = 'support@example.com'
     mockConfig.zendeskWidgetKey = ''
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: Plan.sandbox },
-    })
+    plan = 'sandbox'
 
     renderSupportMenu()
 
@@ -219,24 +198,21 @@ describe('SupportMenu', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     expect(mailToSupport).toHaveBeenCalledWith(
       'user@example.com',
-      Plan.sandbox,
+      'sandbox',
       '1.0.0',
       'support@example.com',
     )
   })
 
   it('hides dedicated support channels for non-Cloud sandbox plan without support email', () => {
-    mockConfig.isCloudEdition = false
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: Plan.sandbox },
-    })
+    deploymentEdition = 'COMMUNITY'
+    plan = 'sandbox'
 
     renderSupportMenu()
 
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
   })
 
   it('renders email support when Zendesk is not configured for a dedicated support channel', () => {
@@ -246,18 +222,39 @@ describe('SupportMenu', () => {
 
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
-    expect(mailToSupport).toHaveBeenCalledWith('user@example.com', Plan.team, '1.0.0', '')
+    expect(mailToSupport).toHaveBeenCalledWith('user@example.com', 'team', '1.0.0', '')
     expect(
       screen.getByRole('menuitem', { name: 'common.userProfile.emailSupport' }),
     ).toHaveAttribute('href', 'mailto:support@example.com')
   })
 
-  it('has correct forum and community links', () => {
+  it('waits for the Cloud plan before generating a support email', () => {
+    mockConfig.supportEmailAddress = 'support@example.com'
+    mockConfig.zendeskWidgetKey = ''
+    renderSupportMenu(false)
+
+    expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
+    expect(mailToSupport).not.toHaveBeenCalled()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
+  })
+
+  it('keeps configured self-hosted email support independent of Cloud plan data', () => {
+    deploymentEdition = 'ENTERPRISE'
+    mockConfig.supportEmailAddress = 'support@example.com'
+    renderSupportMenu(false)
+
+    expect(
+      screen.getByRole('menuitem', { name: 'common.userProfile.emailSupport' }),
+    ).toHaveAttribute('href', 'mailto:support@example.com')
+    expect(mailToSupport).not.toHaveBeenCalled()
+  })
+
+  it('has the Discord link and no Forum entry', () => {
     renderSupportMenu()
 
-    const forumLink = screen.getByText('common.userProfile.forum').closest('a')
-    const communityLink = screen.getByText('common.userProfile.community').closest('a')
-    expect(forumLink).toHaveAttribute('href', 'https://forum.dify.ai/')
-    expect(communityLink).toHaveAttribute('href', 'https://discord.gg/5AEfbxcd9k')
+    const discordLink = screen.getByText('common.userProfile.discord').closest('a')
+    expect(discordLink).toHaveAttribute('href', 'https://discord.gg/5AEfbxcd9k')
+    expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.userProfile.community')).not.toBeInTheDocument()
   })
 })

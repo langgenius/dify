@@ -1,8 +1,8 @@
 import type { WebhookTriggerNodeType } from '../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { renderHook } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { fetchWebhookUrl } from '@/service/apps'
 import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
 import { useConfig } from '../use-config'
@@ -21,20 +21,25 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   __esModule: true,
   toast: {
     error: vi.fn(),
   },
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
-  useWorkflow: () => ({
-    isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
-    removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
-  }),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => mockUseNodesReadOnly(),
+    useWorkflow: () => ({
+      isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
+      removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<WebhookTriggerNodeType>(mockSetInputs),

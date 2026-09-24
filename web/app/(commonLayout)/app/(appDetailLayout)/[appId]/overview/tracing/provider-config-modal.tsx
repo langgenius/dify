@@ -23,14 +23,12 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import { toast } from '@/app/notifications'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'
 import Field from './field'
@@ -147,7 +145,7 @@ const ProviderConfigModal: FC<Props> = ({
   onSaved,
   onChosen,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
@@ -370,7 +368,7 @@ const ProviderConfigModal: FC<Props> = ({
         >
           <DialogContent className="max-h-[calc(100dvh-1rem)] w-auto max-w-[calc(100vw-1rem)] overflow-visible border-none bg-transparent p-0 shadow-none">
             <div className="flex items-center justify-center">
-              <div className="mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
+              <div className="mx-2 max-h-[calc(100vh-120px)] w-160 overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
                 <div className="px-8 pt-8">
                   <div className="mb-4 flex items-center justify-between">
                     <div className="title-2xl-semi-bold text-text-primary">
@@ -388,12 +386,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as ArizeConfig).api_key}
                           onChange={handleConfigChange('api_key')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: 'API Key',
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: 'API Key',
+                          })!}
                         />
                         <Field
                           label="Space ID"
@@ -401,12 +397,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as ArizeConfig).space_id}
                           onChange={handleConfigChange('space_id')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: 'Space ID',
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: 'Space ID',
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
@@ -414,12 +408,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as ArizeConfig).project}
                           onChange={handleConfigChange('project')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label="Endpoint"
@@ -438,12 +430,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as PhoenixConfig).api_key}
                           onChange={handleConfigChange('api_key')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: 'API Key',
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: 'API Key',
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
@@ -451,12 +441,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as PhoenixConfig).project}
                           onChange={handleConfigChange('project')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label="Endpoint"
@@ -475,12 +463,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as AliyunConfig).license_key}
                           onChange={handleConfigChange('license_key')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: 'License Key',
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: 'License Key',
+                          })!}
                         />
                         <Field
                           label="Endpoint"
@@ -505,9 +491,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as TencentConfig).token}
                           onChange={handleConfigChange('token')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], { ns: 'app', key: 'Token' })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: 'Token',
+                          })!}
                         />
                         <Field
                           label="Endpoint"
@@ -535,12 +522,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as WeaveConfig).api_key}
                           onChange={handleConfigChange('api_key')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: 'API Key',
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: 'API Key',
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
@@ -548,21 +533,20 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as WeaveConfig).project}
                           onChange={handleConfigChange('project')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label="Entity"
                           labelClassName="text-sm!"
                           value={(config as WeaveConfig).entity}
                           onChange={handleConfigChange('entity')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], { ns: 'app', key: 'Entity' })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: 'Entity',
+                          })!}
                         />
                         <Field
                           label="Endpoint"
@@ -588,12 +572,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as LangSmithConfig).api_key}
                           onChange={handleConfigChange('api_key')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: 'API Key',
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: 'API Key',
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
@@ -601,12 +583,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as LangSmithConfig).project}
                           onChange={handleConfigChange('project')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label="Endpoint"
@@ -625,12 +605,10 @@ const ProviderConfigModal: FC<Props> = ({
                           value={(config as LangFuseConfig).secret_key}
                           isRequired
                           onChange={handleConfigChange('secret_key')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' })!}
@@ -638,12 +616,10 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as LangFuseConfig).public_key}
                           onChange={handleConfigChange('public_key')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label="Host"
@@ -662,24 +638,20 @@ const ProviderConfigModal: FC<Props> = ({
                           labelClassName="text-sm!"
                           value={(config as OpikConfig).api_key}
                           onChange={handleConfigChange('api_key')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: 'API Key',
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: 'API Key',
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
                           labelClassName="text-sm!"
                           value={(config as OpikConfig).project}
                           onChange={handleConfigChange('project')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label="Workspace"
@@ -713,36 +685,30 @@ const ProviderConfigModal: FC<Props> = ({
                           isRequired
                           value={(config as MLflowConfig).experiment_id}
                           onChange={handleConfigChange('experiment_id')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' })!}
                           labelClassName="text-sm!"
                           value={(config as MLflowConfig).username}
                           onChange={handleConfigChange('username')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' })!}
                           labelClassName="text-sm!"
                           value={(config as MLflowConfig).password}
                           onChange={handleConfigChange('password')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' }),
+                          })!}
                         />
                       </>
                     )}
@@ -753,12 +719,10 @@ const ProviderConfigModal: FC<Props> = ({
                           labelClassName="text-sm!"
                           value={(config as DatabricksConfig).experiment_id}
                           onChange={handleConfigChange('experiment_id')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
+                          })!}
                           isRequired
                         />
                         <Field
@@ -766,12 +730,10 @@ const ProviderConfigModal: FC<Props> = ({
                           labelClassName="text-sm!"
                           value={(config as DatabricksConfig).host}
                           onChange={handleConfigChange('host')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' }),
+                          })!}
                           isRequired
                         />
                         <Field
@@ -779,43 +741,37 @@ const ProviderConfigModal: FC<Props> = ({
                           labelClassName="text-sm!"
                           value={(config as DatabricksConfig).client_id}
                           onChange={handleConfigChange('client_id')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' })!}
                           labelClassName="text-sm!"
                           value={(config as DatabricksConfig).client_secret}
                           onChange={handleConfigChange('client_secret')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' }),
+                          })!}
                         />
                         <Field
                           label={t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' })!}
                           labelClassName="text-sm!"
                           value={(config as DatabricksConfig).personal_access_token}
                           onChange={handleConfigChange('personal_access_token')}
-                          placeholder={
-                            t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                              ns: 'app',
-                              key: t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' }),
-                            })!
-                          }
+                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                            ns: 'app',
+                            key: t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' }),
+                          })!}
                         />
                       </>
                     )}
                   </div>
                   <div className="my-8 flex h-8 items-center justify-between">
                     <a
-                      className="flex items-center space-x-1 text-xs leading-[18px] font-normal text-[#155EEF]"
+                      className="flex items-center space-x-1 text-xs leading-4.5 font-normal text-primary-600"
                       target="_blank"
                       href={docURL[type]}
                     >
@@ -825,7 +781,10 @@ const ProviderConfigModal: FC<Props> = ({
                           key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
                         })}
                       </span>
-                      <LinkExternal02 className="size-3" />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-line-general-link-external-02 size-3"
+                      />
                     </a>
                     <div className="flex items-center">
                       {isEdit && (
@@ -838,7 +797,7 @@ const ProviderConfigModal: FC<Props> = ({
                               {t(($) => $['operation.remove'], { ns: 'common' })}
                             </span>
                           </Button>
-                          <Divider type="vertical" className="mx-3 h-[18px]" />
+                          <Separator orientation="vertical" className="mx-3 h-4.5" />
                         </>
                       )}
                       <Button
@@ -862,7 +821,10 @@ const ProviderConfigModal: FC<Props> = ({
                 </div>
                 <div className="border-t-[0.5px] border-divider-regular">
                   <div className="flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary">
-                    <Lock01 className="mr-1 size-3 text-text-tertiary" />
+                    <span
+                      aria-hidden
+                      className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
+                    />
                     {t(($) => $['modelProvider.encrypted.front'], { ns: 'common' })}
                     <a
                       className="mx-1 text-primary-600"
@@ -884,12 +846,10 @@ const ProviderConfigModal: FC<Props> = ({
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
               <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {
-                  t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
-                    ns: 'app',
-                    key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
-                  })!
-                }
+                {t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
+                  ns: 'app',
+                  key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
+                })!}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
                 {t(($) => $[`${I18N_PREFIX}.removeConfirmContent`], { ns: 'app' })}

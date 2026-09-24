@@ -1,9 +1,9 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
-import Divider from '@/app/components/base/divider'
 import { AppSourceType } from '@/service/share'
 import { useEmbeddedChatbotContext } from '../context'
 
@@ -13,12 +13,12 @@ type Props = Readonly<{
 }>
 
 const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const {
     appSourceType,
     isMobile,
     currentConversationId,
-    themeBuilder,
+    theme,
     handleStartChat,
     allInputsHidden,
     inputsForms,
@@ -38,7 +38,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
     >
       <div
         className={cn(
-          'w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
+          'w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
           collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
           isTryApp && 'max-w-[auto]',
         )}
@@ -87,9 +87,9 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
               className="w-full"
               onClick={() => handleStartChat(() => setCollapsed(true))}
               style={
-                themeBuilder?.theme
+                theme
                   ? {
-                      backgroundColor: themeBuilder?.theme.primaryColor,
+                      backgroundColor: theme.primaryColor,
                     }
                   : {}
               }
@@ -100,9 +100,9 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
         )}
       </div>
       {collapsed && (
-        <div className="flex w-full max-w-[720px] items-center py-4">
-          <Divider bgStyle="gradient" className="h-px basis-1/2 rotate-180" />
-          <Divider bgStyle="gradient" className="h-px basis-1/2" />
+        <div className="flex w-full max-w-180 items-center py-4">
+          <Separator decorative variant="gradient" className="my-2 basis-1/2 rotate-180" />
+          <Separator decorative variant="gradient" className="my-2 basis-1/2" />
         </div>
       )}
     </div>

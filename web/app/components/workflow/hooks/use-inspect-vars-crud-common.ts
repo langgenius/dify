@@ -5,8 +5,6 @@ import type { VarInInspect } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import {
   isConversationVar,
   isENV,
@@ -23,6 +21,8 @@ import {
 } from '@/service/use-tools'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { VarInInspectType } from '@/types/workflow'
+import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 
 type Params = {
   flowId: string

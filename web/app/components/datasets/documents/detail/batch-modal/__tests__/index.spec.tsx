@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import BatchModal from '../index'
 
@@ -44,12 +44,6 @@ describe('BatchModal', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing when isShow is true', () => {
-      render(<BatchModal {...defaultProps} />)
-
-      expect(screen.getByText(/list\.batchModal\.title/i)).toBeInTheDocument()
-    })
-
     it('should not render content when isShow is false', () => {
       render(<BatchModal {...defaultProps} isShow={false} />)
 

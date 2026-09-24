@@ -12,9 +12,9 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import DisplayToggle from '../display-toggle'
 import s from '../style.module.css'
 
@@ -43,7 +43,7 @@ function MenuBar({
   isCollapsed,
   toggleCollapsed,
 }: MenuBarProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const selectedStatus = statusList.find((item) => item.value === selectDefaultValue) ?? null
 
   return (
@@ -69,10 +69,13 @@ function MenuBar({
           if (nextItem) onChangeStatus(nextItem)
         }}
       >
-        <SelectTrigger className="mr-2 w-[100px] shrink-0 shadow-none">
+        <SelectTrigger
+          aria-label={t(($) => $['segment.statusFilterLabel'], { ns: 'datasetDocuments' })}
+          className="mr-2 w-25 shrink-0 shadow-none"
+        >
           {selectedStatus?.name ?? ''}
         </SelectTrigger>
-        <SelectContent popupClassName="w-[160px]">
+        <SelectContent className="w-40">
           {statusList.map((item) => (
             <SelectItem key={item.value} value={item.value}>
               <SelectItemText>{item.name}</SelectItemText>
@@ -81,15 +84,8 @@ function MenuBar({
           ))}
         </SelectContent>
       </Select>
-      <Input
-        showLeftIcon
-        showClearIcon
-        wrapperClassName="w-52!"
-        value={inputValue}
-        onChange={(e) => onInputChange(e.target.value)}
-        onClear={() => onInputChange('')}
-      />
-      <Divider type="vertical" className="mx-3 h-3.5" />
+      <SearchInput className="w-52!" value={inputValue} onValueChange={onInputChange} />
+      <Separator orientation="vertical" className="mx-3 h-3.5" />
       <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={toggleCollapsed} />
     </div>
   )

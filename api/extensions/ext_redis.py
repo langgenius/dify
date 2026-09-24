@@ -1,9 +1,11 @@
 import functools
 import logging
+import socket
 import ssl
+import sys
 from collections.abc import Callable
 from datetime import timedelta
-from typing import Any, Union, cast
+from typing import Any, Protocol, Union, cast, runtime_checkable
 
 import redis
 from redis import RedisError
@@ -12,6 +14,7 @@ from redis.cache import CacheConfig
 from redis.client import PubSub
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
+from redis.exceptions import ConnectionError, TimeoutError
 from redis.retry import Retry
 from redis.sentinel import Sentinel
 from typing_extensions import TypedDict
@@ -36,6 +39,11 @@ _normalize_redis_key_prefix = normalize_redis_key_prefix
 _serialize_redis_name = serialize_redis_name
 _serialize_redis_name_arg = serialize_redis_name_arg
 _serialize_redis_name_args = serialize_redis_name_args
+
+
+@runtime_checkable
+class _ScriptRegistrar(Protocol):
+    def register_script(self, script: str) -> Callable[..., Any]: ...
 
 
 class RedisClientWrapper:
@@ -214,6 +222,28 @@ class RedisClientWrapper:
     def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Any:
         return self._require_client().pipeline(transaction=transaction, shard_hint=shard_hint)
 
+    def register_script(self, script: str) -> Callable[..., Any]:
+        """Register a Lua script whose key arguments use logical Redis names."""
+        client = self._require_client()
+        if not isinstance(client, _ScriptRegistrar):
+            raise RuntimeError("Redis client does not support Lua script registration")
+        registered_script = client.register_script(script)
+
+        def execute(
+            keys: list[str | bytes] | tuple[str | bytes, ...] | None = None,
+            args: list[Any] | tuple[Any, ...] | None = None,
+            client: RedisClientWrapper | redis.Redis | RedisCluster | None = None,
+        ) -> Any:
+            redis_keys = _serialize_redis_name_args(tuple(keys or ()), self._get_prefix())
+            execution_client = client._require_client() if isinstance(client, RedisClientWrapper) else client
+            return registered_script(
+                keys=redis_keys,
+                args=args,
+                client=execution_client or self._require_client(),
+            )
+
+        return execute
+
     def __getattr__(self, item: str) -> Any:
         return getattr(self._require_client(), item)
 
@@ -234,12 +264,16 @@ class RedisHealthParamsDict(TypedDict):
     socket_timeout: float | None
     socket_connect_timeout: float | None
     health_check_interval: int | None
+    socket_keepalive: bool
+    socket_keepalive_options: dict[int, int]
 
 
 class RedisClusterHealthParamsDict(TypedDict):
     retry: Retry
     socket_timeout: float | None
     socket_connect_timeout: float | None
+    socket_keepalive: bool
+    socket_keepalive_options: dict[int, int]
 
 
 class RedisBaseParamsDict(TypedDict):
@@ -255,6 +289,8 @@ class RedisBaseParamsDict(TypedDict):
     socket_timeout: float | None
     socket_connect_timeout: float | None
     health_check_interval: int | None
+    socket_keepalive: bool
+    socket_keepalive_options: dict[int, int]
 
 
 def _get_ssl_configuration() -> tuple[type[Union[Connection, SSLConnection]], dict[str, Any]]:
@@ -299,16 +335,32 @@ def _get_retry_policy() -> Retry:
             cap=dify_config.REDIS_RETRY_BACKOFF_CAP,
         ),
         retries=dify_config.REDIS_RETRY_RETRIES,
+        supported_errors=(
+            ConnectionError,
+            TimeoutError,
+            BrokenPipeError,
+            OSError,
+        ),
     )
 
 
 def _get_connection_health_params() -> RedisHealthParamsDict:
     """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
+    socket_keepalive_options: dict[int, int] = {}
+    if sys.platform == "linux":
+        socket_keepalive_options[socket.TCP_KEEPIDLE] = dify_config.REDIS_KEEPALIVE_IDLE
+        socket_keepalive_options[socket.TCP_KEEPINTVL] = dify_config.REDIS_KEEPALIVE_INTERVAL
+        socket_keepalive_options[socket.TCP_KEEPCNT] = dify_config.REDIS_KEEPALIVE_COUNT
+    elif sys.platform == "darwin":
+        socket_keepalive_options[socket.TCP_KEEPALIVE] = dify_config.REDIS_KEEPALIVE_IDLE
+
     return RedisHealthParamsDict(
         retry=_get_retry_policy(),
         socket_timeout=dify_config.REDIS_SOCKET_TIMEOUT,
         socket_connect_timeout=dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         health_check_interval=dify_config.REDIS_HEALTH_CHECK_INTERVAL,
+        socket_keepalive=dify_config.REDIS_KEEPALIVE,
+        socket_keepalive_options=socket_keepalive_options,
     )
 
 
@@ -325,6 +377,8 @@ def _get_cluster_connection_health_params() -> RedisClusterHealthParamsDict:
         "retry": health_params["retry"],
         "socket_timeout": health_params["socket_timeout"],
         "socket_connect_timeout": health_params["socket_connect_timeout"],
+        "socket_keepalive": health_params["socket_keepalive"],
+        "socket_keepalive_options": health_params["socket_keepalive_options"],
     }
     return result
 
@@ -344,6 +398,18 @@ def _get_base_redis_params() -> RedisBaseParamsDict:
     )
 
 
+def _parse_redis_nodes(value: str) -> list[tuple[str, int]]:
+    nodes = []
+    for raw_node in value.split(","):
+        host, separator, port = raw_node.strip().rpartition(":")
+        if not separator or not host or not port:
+            raise ValueError(f"Invalid Redis node: {raw_node}")
+        if host.startswith("[") and host.endswith("]"):
+            host = host[1:-1]
+        nodes.append((host, int(port)))
+    return nodes
+
+
 def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
     """Create Redis client using Sentinel configuration."""
     if not dify_config.REDIS_SENTINELS:
@@ -352,12 +418,16 @@ def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Re
     if not dify_config.REDIS_SENTINEL_SERVICE_NAME:
         raise ValueError("REDIS_SENTINEL_SERVICE_NAME must be set when REDIS_USE_SENTINEL is True")
 
-    sentinel_hosts = [(node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")]
+    sentinel_hosts = _parse_redis_nodes(dify_config.REDIS_SENTINELS)
+
+    health_params = _get_connection_health_params()
 
     sentinel_kwargs = {
         "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
         "username": dify_config.REDIS_SENTINEL_USERNAME,
         "password": dify_config.REDIS_SENTINEL_PASSWORD,
+        "socket_keepalive": health_params["socket_keepalive"],
+        "socket_keepalive_options": health_params["socket_keepalive_options"],
     }
 
     if dify_config.REDIS_MAX_CONNECTIONS:
@@ -378,10 +448,7 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
     if not dify_config.REDIS_CLUSTERS:
         raise ValueError("REDIS_CLUSTERS must be set when REDIS_USE_CLUSTERS is True")
 
-    nodes = [
-        ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
-        for node in dify_config.REDIS_CLUSTERS.split(",")
-    ]
+    nodes = [ClusterNode(host=host, port=port) for host, port in _parse_redis_nodes(dify_config.REDIS_CLUSTERS)]
 
     cluster_kwargs: dict[str, Any] = {
         "startup_nodes": nodes,

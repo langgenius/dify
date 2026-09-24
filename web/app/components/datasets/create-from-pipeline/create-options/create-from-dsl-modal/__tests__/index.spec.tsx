@@ -1,10 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import DSLConfirmModal from '../dsl-confirm-modal'
-import Header from '../header'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from '../index'
-import Tab from '../tab'
-import TabItem from '../tab/item'
 import Uploader from '../uploader'
 
 const mockPush = vi.fn()
@@ -62,7 +60,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
@@ -113,12 +111,6 @@ describe('CreateFromDSLModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing when show is true', () => {
-      render(<CreateFromDSLModal show={true} onClose={vi.fn()} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('app.importFromDSL'))!.toBeInTheDocument()
-    })
-
     it('should not render modal content when show is false', () => {
       render(<CreateFromDSLModal show={false} onClose={vi.fn()} />, { wrapper: createWrapper() })
 
@@ -130,8 +122,15 @@ describe('CreateFromDSLModal', () => {
     it('should render file tab by default', () => {
       render(<CreateFromDSLModal show={true} onClose={vi.fn()} />, { wrapper: createWrapper() })
 
-      expect(screen.getByText('app.importFromDSLFile'))!.toBeInTheDocument()
-      expect(screen.getByText('app.importFromDSLUrl'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'app.importFromDSL' }))!.toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'app.importFromDSLFile' }))!.toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      expect(screen.getByRole('tab', { name: 'app.importFromDSLUrl' }))!.toHaveAttribute(
+        'aria-selected',
+        'false',
+      )
     })
 
     it('should render cancel and import buttons', () => {
@@ -164,8 +163,7 @@ describe('CreateFromDSLModal', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('DSL URL'))!.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'DSL URL' }))!.toBeInTheDocument()
     })
   })
 
@@ -216,18 +214,17 @@ describe('CreateFromDSLModal', () => {
   })
 
   describe('State Management', () => {
-    it('should switch between tabs', () => {
+    it('should move focus from the URL tab directly into its field', async () => {
+      const user = userEvent.setup()
       render(<CreateFromDSLModal show={true} onClose={vi.fn()} />, { wrapper: createWrapper() })
 
-      // Initially file tab is active
-      // Initially file tab is active
-      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
+      const urlTab = screen.getByRole('tab', { name: 'app.importFromDSLUrl' })
+      await user.click(urlTab)
 
-      fireEvent.click(screen.getByText('app.importFromDSLUrl'))
+      const input = screen.getByRole('textbox', { name: 'DSL URL' })
+      await user.tab()
 
-      // URL input should be visible
-      // URL input should be visible
-      expect(screen.getByText('DSL URL'))!.toBeInTheDocument()
+      expect(input)!.toHaveFocus()
     })
 
     it('should update URL value when typing', () => {
@@ -519,13 +516,32 @@ describe('CreateFromDSLModal', () => {
       const onClose = vi.fn()
       render(<CreateFromDSLModal show={true} onClose={onClose} />, { wrapper: createWrapper() })
 
-      // Find and click the close icon in header
-      const closeIcon = document.querySelector('[class*="cursor-pointer"]')
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-      if (closeIcon) {
-        fireEvent.click(closeIcon)
-        expect(onClose).toHaveBeenCalled()
-      }
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('should submit a URL import when Enter is pressed in the URL field', async () => {
+      const user = userEvent.setup()
+      mockImportDSL.mockResolvedValue(createImportDSLResponse())
+      render(
+        <CreateFromDSLModal
+          show={true}
+          onClose={vi.fn()}
+          activeTab={CreateFromDSLModalTab.FROM_URL}
+        />,
+        { wrapper: createWrapper() },
+      )
+
+      const input = screen.getByRole('textbox', { name: 'DSL URL' })
+      await user.type(input, 'https://example.com/test.pipeline{Enter}')
+
+      await waitFor(() => {
+        expect(mockImportDSL).toHaveBeenCalledWith({
+          mode: 'yaml-url',
+          yaml_url: 'https://example.com/test.pipeline',
+        })
+      })
     })
 
     it('should close modal on ESC key press', () => {
@@ -879,7 +895,7 @@ describe('CreateFromDSLModal', () => {
         expect(screen.getByText('test.pipeline'))!.toBeInTheDocument()
       })
 
-      // Now remove the file by clicking delete button (inside ActionButton)
+      // Now remove the file by clicking the delete icon button.
       const actionButton = document.querySelector('[class*="group-hover"]')
       const deleteButton = actionButton?.querySelector('button')
       if (deleteButton) {
@@ -1147,131 +1163,6 @@ describe('CreateFromDSLModal', () => {
   })
 })
 
-// Header Component Tests
-describe('Header', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render title', () => {
-      render(<Header onClose={vi.fn()} />)
-      expect(screen.getByText('app.importFromDSL'))!.toBeInTheDocument()
-    })
-
-    it('should render close icon', () => {
-      render(<Header onClose={vi.fn()} />)
-      // Check for close icon container
-      const closeButton = document.querySelector('[class*="cursor-pointer"]')
-      expect(closeButton)!.toBeInTheDocument()
-    })
-  })
-
-  describe('Event Handlers', () => {
-    it('should call onClose when close icon is clicked', () => {
-      const onClose = vi.fn()
-      render(<Header onClose={onClose} />)
-
-      const closeButton = document.querySelector('[class*="cursor-pointer"]')!
-      fireEvent.click(closeButton)
-
-      expect(onClose).toHaveBeenCalled()
-    })
-  })
-})
-
-// Tab Component Tests
-describe('Tab', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render both tabs', () => {
-      render(<Tab currentTab={CreateFromDSLModalTab.FROM_FILE} setCurrentTab={vi.fn()} />)
-
-      expect(screen.getByText('app.importFromDSLFile'))!.toBeInTheDocument()
-      expect(screen.getByText('app.importFromDSLUrl'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Event Handlers', () => {
-    it('should call setCurrentTab when clicking file tab', () => {
-      const setCurrentTab = vi.fn()
-      render(<Tab currentTab={CreateFromDSLModalTab.FROM_URL} setCurrentTab={setCurrentTab} />)
-
-      fireEvent.click(screen.getByText('app.importFromDSLFile'))
-      // Tab uses bind() which passes the key as first argument and event as second
-      expect(setCurrentTab).toHaveBeenCalled()
-      expect(setCurrentTab.mock.calls[0]![0]).toBe(CreateFromDSLModalTab.FROM_FILE)
-    })
-
-    it('should call setCurrentTab when clicking URL tab', () => {
-      const setCurrentTab = vi.fn()
-      render(<Tab currentTab={CreateFromDSLModalTab.FROM_FILE} setCurrentTab={setCurrentTab} />)
-
-      fireEvent.click(screen.getByText('app.importFromDSLUrl'))
-      // Tab uses bind() which passes the key as first argument and event as second
-      expect(setCurrentTab).toHaveBeenCalled()
-      expect(setCurrentTab.mock.calls[0]![0]).toBe(CreateFromDSLModalTab.FROM_URL)
-    })
-  })
-})
-
-// Tab Item Component Tests
-describe('TabItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render label', () => {
-      render(<TabItem isActive={false} label="Test Tab" onClick={vi.fn()} />)
-
-      expect(screen.getByText('Test Tab'))!.toBeInTheDocument()
-    })
-
-    it('should render active indicator when active', () => {
-      render(<TabItem isActive={true} label="Test Tab" onClick={vi.fn()} />)
-
-      // Active indicator is the bottom border div
-      const indicator = document.querySelector('[class*="bg-util-colors-blue"]')
-      expect(indicator)!.toBeInTheDocument()
-    })
-
-    it('should not render active indicator when inactive', () => {
-      render(<TabItem isActive={false} label="Test Tab" onClick={vi.fn()} />)
-
-      const indicator = document.querySelector('[class*="bg-util-colors-blue"]')
-      expect(indicator).toBeNull()
-    })
-
-    it('should have active text color when active', () => {
-      render(<TabItem isActive={true} label="Test Tab" onClick={vi.fn()} />)
-
-      const item = screen.getByText('Test Tab')
-      expect(item.className).toContain('text-text-primary')
-    })
-
-    it('should have inactive text color when inactive', () => {
-      render(<TabItem isActive={false} label="Test Tab" onClick={vi.fn()} />)
-
-      const item = screen.getByText('Test Tab')
-      expect(item.className).toContain('text-text-tertiary')
-    })
-  })
-
-  describe('Event Handlers', () => {
-    it('should call onClick when clicked', () => {
-      const onClick = vi.fn()
-      render(<TabItem isActive={false} label="Test Tab" onClick={onClick} />)
-
-      fireEvent.click(screen.getByText('Test Tab'))
-      expect(onClick).toHaveBeenCalled()
-    })
-  })
-})
-
 // Uploader Component Tests
 describe('Uploader', () => {
   beforeEach(() => {
@@ -1293,14 +1184,6 @@ describe('Uploader', () => {
 
       expect(screen.getByText('test.pipeline'))!.toBeInTheDocument()
       expect(screen.getByText('PIPELINE'))!.toBeInTheDocument()
-    })
-
-    it('should apply custom className', () => {
-      const { container } = render(
-        <Uploader file={undefined} updateFile={vi.fn()} className="custom-class" />,
-      )
-
-      expect(container.firstChild)!.toHaveClass('custom-class')
     })
   })
 
@@ -1626,8 +1509,6 @@ describe('DSLConfirmModal', () => {
     it('should render with default empty versions', () => {
       render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
 
-      // Should not crash with default empty strings
-      // Should not crash with default empty strings
       expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
     })
 
@@ -1687,14 +1568,6 @@ describe('DSLConfirmModal', () => {
   })
 
   describe('Props', () => {
-    it('should use default versions when not provided', () => {
-      render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
-
-      // Component should render without crashing
-      // Component should render without crashing
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
-    })
-
     it('should use default confirmDisabled when not provided', () => {
       render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
 

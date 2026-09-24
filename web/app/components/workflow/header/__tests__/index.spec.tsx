@@ -27,11 +27,11 @@ function DynamicHeaderRestoring(props: Record<string, unknown>) {
   )
 }
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow-mode', () => ({
   useWorkflowMode: () => mockWorkflowMode,
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => {
     dynamicMockState.calls += 1
     return dynamicMockState.calls === 1 ? DynamicHeaderHistory : DynamicHeaderRestoring

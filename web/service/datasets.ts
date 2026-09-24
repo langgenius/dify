@@ -1,6 +1,5 @@
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
-import type { CreateApiKeyResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type {
   CreateDocumentReq,
@@ -257,26 +256,6 @@ export const fetchNotionPagePreview = ({
   })
 }
 
-export const delApikey = ({
-  url,
-  params,
-}: {
-  url: string
-  params: Record<string, any>
-}): Promise<CommonResponse> => {
-  return del<CommonResponse>(url, params)
-}
-
-export const createApikey = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<CreateApiKeyResponse> => {
-  return post<CreateApiKeyResponse>(url, body)
-}
-
 export const createFirecrawlTask = (body: Record<string, any>): Promise<CommonResponse> => {
   return post<CommonResponse>('website/crawl', {
     body: {
@@ -344,10 +323,6 @@ export const checkWatercrawlTaskStatus = (jobId: string): Promise<CommonResponse
       silent: true,
     },
   )
-}
-
-export type FileTypesRes = {
-  allowed_extensions: string[]
 }
 
 export const retryErrorDocs = ({

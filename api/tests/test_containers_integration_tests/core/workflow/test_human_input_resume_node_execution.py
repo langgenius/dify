@@ -267,12 +267,14 @@ class TestHumanInputResumeNodeExecutionIntegration:
         )
         execution_repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=self.session.get_bind(),
+            tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         node_execution_repo = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=self.session.get_bind(),
+            tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

@@ -15,8 +15,6 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
-import { RiSettings2Line } from '@remixicon/react'
 import { useDebounce, useGetState } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -25,8 +23,8 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
+import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
-import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
 import { AuthHeaderPrefix, AuthType } from '../types'
 import ConfigCredentials from './config-credentials'
 import GetSchema from './get-schema'
@@ -51,7 +49,10 @@ const EditCustomCollectionModal: FC<Props> = ({
   onEdit,
   onRemove,
 }) => {
-  const { t } = useTranslation()
+  const providerNameInputId = React.useId()
+  const privacyPolicyInputId = React.useId()
+  const customDisclaimerInputId = React.useId()
+  const { t } = useTranslation(['common', 'tools'])
   const isAdd = !payload
   const isEdit = !!payload
 
@@ -240,10 +241,13 @@ const EditCustomCollectionModal: FC<Props> = ({
                   <div className="flex h-full flex-col">
                     <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
                       <div>
-                        <div className="py-2 system-sm-medium text-text-primary">
+                        <label
+                          htmlFor={providerNameInputId}
+                          className="block py-2 system-sm-medium text-text-primary"
+                        >
                           {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
                           <span className="ml-1 text-red-500">*</span>
-                        </div>
+                        </label>
                         <div className="flex items-center justify-between gap-3">
                           <AppIcon
                             size="large"
@@ -255,10 +259,11 @@ const EditCustomCollectionModal: FC<Props> = ({
                             background={emoji.background}
                           />
                           <Input
+                            id={providerNameInputId}
                             className="h-10 grow"
-                            placeholder={
-                              t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!
-                            }
+                            placeholder={t(($) => $['createTool.toolNamePlaceHolder'], {
+                              ns: 'tools',
+                            })!}
                             value={customCollection.provider}
                             onChange={(e) => {
                               const newCollection = produce(customCollection, (draft) => {
@@ -283,24 +288,27 @@ const EditCustomCollectionModal: FC<Props> = ({
                               href="https://swagger.io/specification/"
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex h-[18px] items-center space-x-1 text-text-accent"
+                              className="flex h-4.5 items-center space-x-1 text-text-accent"
                             >
                               <div className="text-xs font-normal">
                                 {t(($) => $['createTool.viewSchemaSpec'], { ns: 'tools' })}
                               </div>
-                              <LinkExternal02 className="size-3" />
+                              <span
+                                aria-hidden
+                                className="i-custom-vender-line-general-link-external-02 size-3"
+                              />
                             </a>
                           </div>
                           <GetSchema onChange={setSchema} />
                         </div>
                         <Textarea
                           aria-label={t(($) => $['createTool.schema'], { ns: 'tools' })}
-                          className="h-[240px] resize-none"
+                          className="h-60 resize-none"
                           value={schema}
                           onValueChange={(value) => setSchema(value)}
-                          placeholder={
-                            t(($) => $['createTool.schemaPlaceHolder'], { ns: 'tools' })!
-                          }
+                          placeholder={t(($) => $['createTool.schemaPlaceHolder'], {
+                            ns: 'tools',
+                          })!}
                         />
                       </div>
 
@@ -321,7 +329,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                                 <th className="p-2 pl-3 font-medium">
                                   {t(($) => $['createTool.availableTools.name'], { ns: 'tools' })}
                                 </th>
-                                <th className="w-[236px] p-2 pl-3 font-medium">
+                                <th className="w-59 p-2 pl-3 font-medium">
                                   {t(($) => $['createTool.availableTools.description'], {
                                     ns: 'tools',
                                   })}
@@ -332,7 +340,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                                 <th className="p-2 pl-3 font-medium">
                                   {t(($) => $['createTool.availableTools.path'], { ns: 'tools' })}
                                 </th>
-                                <th className="w-[54px] p-2 pl-3 font-medium">
+                                <th className="w-13.5 p-2 pl-3 font-medium">
                                   {t(($) => $['createTool.availableTools.action'], { ns: 'tools' })}
                                 </th>
                               </tr>
@@ -344,10 +352,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                                   className="border-b border-divider-regular last:border-0"
                                 >
                                   <td className="p-2 pl-3">{item.operation_id}</td>
-                                  <td className="w-[236px] p-2 pl-3">{item.summary}</td>
+                                  <td className="w-59 p-2 pl-3">{item.summary}</td>
                                   <td className="p-2 pl-3">{item.method}</td>
                                   <td className="p-2 pl-3">{getPath(item.server_url)}</td>
-                                  <td className="w-[62px] p-2 pl-3">
+                                  <td className="w-15.5 p-2 pl-3">
                                     <Button
                                       size="small"
                                       onClick={() => {
@@ -372,8 +380,9 @@ const EditCustomCollectionModal: FC<Props> = ({
                         <div className="py-2 system-sm-medium text-text-primary">
                           {t(($) => $['createTool.authMethod.title'], { ns: 'tools' })}
                         </div>
-                        <div
-                          className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5"
+                        <button
+                          type="button"
+                          className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active"
                           onClick={() => setCredentialsModalShow(true)}
                         >
                           <div className="system-xs-regular text-text-primary">
@@ -381,8 +390,11 @@ const EditCustomCollectionModal: FC<Props> = ({
                               ns: 'tools',
                             })}
                           </div>
-                          <RiSettings2Line className="size-4 text-text-secondary" />
-                        </div>
+                          <span
+                            aria-hidden
+                            className="i-ri-settings-2-line size-4 text-text-secondary"
+                          />
+                        </button>
                       </div>
 
                       {/* Labels */}
@@ -395,10 +407,14 @@ const EditCustomCollectionModal: FC<Props> = ({
 
                       {/* Privacy Policy */}
                       <div>
-                        <div className="py-2 system-sm-medium text-text-primary">
+                        <label
+                          htmlFor={privacyPolicyInputId}
+                          className="block py-2 system-sm-medium text-text-primary"
+                        >
                           {t(($) => $['createTool.privacyPolicy'], { ns: 'tools' })}
-                        </div>
+                        </label>
                         <Input
+                          id={privacyPolicyInputId}
                           value={customCollection.privacy_policy}
                           onChange={(e) => {
                             const newCollection = produce(customCollection, (draft) => {
@@ -415,10 +431,14 @@ const EditCustomCollectionModal: FC<Props> = ({
                       </div>
 
                       <div>
-                        <div className="py-2 system-sm-medium text-text-primary">
+                        <label
+                          htmlFor={customDisclaimerInputId}
+                          className="block py-2 system-sm-medium text-text-primary"
+                        >
                           {t(($) => $['createTool.customDisclaimer'], { ns: 'tools' })}
-                        </div>
+                        </label>
                         <Input
+                          id={customDisclaimerInputId}
                           value={customCollection.custom_disclaimer}
                           onChange={(e) => {
                             const newCollection = produce(customCollection, (draft) => {

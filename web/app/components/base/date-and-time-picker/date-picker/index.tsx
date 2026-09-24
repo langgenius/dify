@@ -1,3 +1,4 @@
+import type { PopoverProps } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 import type { DatePickerProps, Period } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -28,16 +29,19 @@ const DatePicker = ({
   onChange,
   onClear,
   placeholder,
+  disabled = false,
   needTimePicker = true,
   renderTrigger,
   triggerWrapClassName,
   noConfirm,
   getIsDateDisabled,
 }: DatePickerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'time'])
   const [isOpen, setIsOpen] = useState(false)
-  const [view, setView] = useState(ViewType.date)
+  const [view, setView] = useState<ViewType>(ViewType.date)
+  const dateConfirmationViews: readonly ViewType[] = [ViewType.date, ViewType.time]
   const isInitialRef = useRef(true)
+  const triggerAreaRef = useRef<HTMLDivElement>(null)
 
   // Normalize the value to ensure that all subsequent uses are Day.js objects.
   const normalizedValue = useMemo(() => {
@@ -76,8 +80,32 @@ const DatePicker = ({
     // oxlint-disable-next-line react/exhaustive-deps -- this effect intentionally runs only when timezone changes.
   }, [timezone])
 
-  const handleOpenChange = useCallback(
-    (nextOpen: boolean) => {
+  const handleOpenChange = useCallback<NonNullable<PopoverProps['onOpenChange']>>(
+    (nextOpen, details) => {
+      const isFocusGuardClose =
+        !nextOpen && details.reason === 'focus-out' && details.event.type === 'focusin'
+      if (isFocusGuardClose) {
+        details.cancel()
+        // Let Base UI move focus past its guard before the controlled root closes.
+        queueMicrotask(() => {
+          setIsOpen(false)
+          setView(ViewType.date)
+        })
+        return
+      }
+      const outsideTarget =
+        details.reason === 'focus-out' && details.event instanceof FocusEvent
+          ? details.event.relatedTarget
+          : details.event.target
+      if (
+        !nextOpen &&
+        (details.reason === 'outside-press' || details.reason === 'focus-out') &&
+        outsideTarget instanceof Node &&
+        triggerAreaRef.current?.contains(outsideTarget)
+      ) {
+        details.cancel()
+        return
+      }
       setIsOpen(nextOpen)
       setView(ViewType.date)
       if (nextOpen && normalizedValue) {
@@ -89,9 +117,7 @@ const DatePicker = ({
   )
 
   const handleClickTrigger = (e: React.MouseEvent) => {
-    e.preventDefault()
     e.stopPropagation()
-    handleOpenChange(!isOpen)
   }
 
   const handleClear = (e: React.MouseEvent) => {
@@ -223,65 +249,81 @@ const DatePicker = ({
     : t(($) => $['dateFormats.display'], { ns: 'time' })
   const displayValue = normalizedValue?.format(timeFormat) || ''
   const displayTime = selectedDate?.format('hh:mm A') || '--:-- --'
-  const placeholderDate =
-    isOpen && selectedDate
-      ? selectedDate.format(timeFormat)
-      : placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
-
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
-      <PopoverTrigger
-        nativeButton={false}
-        className={triggerWrapClassName}
-        render={
-          renderTrigger ? (
-            renderTrigger({
-              value: normalizedValue,
-              selectedDate,
-              isOpen,
-              handleClear,
-              handleClickTrigger,
-            })
-          ) : (
-            <div
-              className="group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt"
-              onClick={handleClickTrigger}
-              data-testid="date-picker-trigger"
-            >
-              <input
-                className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder"
-                readOnly
-                value={isOpen ? '' : displayValue}
-                placeholder={placeholderDate}
-              />
-              <span
+      <div ref={triggerAreaRef} className={cn('min-w-0', triggerWrapClassName)}>
+        <PopoverTrigger
+          disabled={disabled}
+          onClick={handleClickTrigger}
+          className={triggerWrapClassName}
+          render={(props, state) => {
+            if (renderTrigger) {
+              return renderTrigger(props, state, {
+                value: normalizedValue,
+                selectedDate,
+                handleClear,
+              })
+            }
+
+            const triggerPlaceholder = placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
+            const triggerDisplayValue = state.open
+              ? selectedDate?.format(timeFormat) || ''
+              : displayValue
+
+            return (
+              <div
                 className={cn(
-                  'i-ri-calendar-line size-4 shrink-0 text-text-quaternary',
-                  isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-                  (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
+                  'group relative flex w-63 items-center rounded-lg bg-components-input-bg-normal hover:bg-state-base-hover-alt',
+                  disabled && 'opacity-60',
+                  props.className,
                 )}
-              />
-              <button
-                type="button"
-                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                className={cn(
-                  'hidden size-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                  (displayValue || (isOpen && selectedDate)) && 'group-hover:inline-block',
-                )}
-                onClick={handleClear}
               >
-                <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />
-              </button>
-            </div>
-          )
-        }
-      />
+                <button
+                  {...props}
+                  type="button"
+                  aria-label={`${triggerPlaceholder}${triggerDisplayValue ? `: ${triggerDisplayValue}` : ''}`}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-x-0.5 rounded-lg px-2 py-1 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default"
+                  data-testid="date-picker-trigger"
+                >
+                  <span
+                    className={cn(
+                      'min-w-0 flex-1 truncate p-1 system-xs-regular',
+                      triggerDisplayValue
+                        ? 'text-components-input-text-filled'
+                        : 'text-components-input-text-placeholder',
+                    )}
+                  >
+                    {triggerDisplayValue || triggerPlaceholder}
+                  </span>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'i-ri-calendar-line size-4 shrink-0 text-text-quaternary',
+                      state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+                    )}
+                  />
+                </button>
+                {(displayValue || (state.open && selectedDate)) && !disabled && (
+                  <button
+                    type="button"
+                    aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                    className="absolute right-2 flex size-4 shrink-0 items-center justify-center rounded-full border-none bg-components-input-bg-normal p-0 text-text-quaternary opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden [@media(hover:none)]:opacity-100"
+                    onClick={handleClear}
+                  >
+                    <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            )
+          }}
+        />
+      </div>
       <PopoverContent
         placement="bottom-end"
         sideOffset={0}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
-        <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
+        <div className="mt-1 w-63 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}
           {view === ViewType.date ? (
             <DatePickerHeader
@@ -325,7 +367,7 @@ const DatePicker = ({
           )}
 
           {/* Footer */}
-          {[ViewType.date, ViewType.time].includes(view) && !noConfirm && (
+          {dateConfirmationViews.includes(view) && !noConfirm && (
             <DatePickerFooter
               needTimePicker={needTimePicker}
               displayTime={displayTime}
@@ -335,7 +377,7 @@ const DatePicker = ({
               handleConfirmDate={handleConfirmDate}
             />
           )}
-          {![ViewType.date, ViewType.time].includes(view) && (
+          {!dateConfirmationViews.includes(view) && (
             <YearAndMonthPickerFooter
               handleYearMonthCancel={handleYearMonthCancel}
               handleYearMonthConfirm={handleYearMonthConfirm}

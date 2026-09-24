@@ -184,24 +184,6 @@ describe('PageSelector', () => {
     expect(handleSelect).toHaveBeenCalledWith(new Set(['child-1']))
   })
 
-  it('should handle preview when onPreview is not provided', async () => {
-    const user = userEvent.setup()
-    render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    const previewBtn = screen.getByTestId('notion-page-preview-root-1')
-    await user.click(previewBtn)
-    // Should not crash
-  })
-
   it('should handle toggle when item is already expanded', async () => {
     const user = userEvent.setup()
     render(
@@ -537,7 +519,7 @@ describe('PageSelector', () => {
       />,
     )
 
-    const pageName = screen.getByTestId('notion-page-name-root-1')
+    const pageName = screen.getByText('Root 1')
     expect(pageName)!.toHaveAttribute('title', 'Root 1')
   })
 
@@ -572,9 +554,9 @@ describe('PageSelector', () => {
 
     // Should show Root 1, Child 1, and Grandchild 1
     // Should show Root 1, Child 1, and Grandchild 1
-    expect(screen.getByTestId('notion-page-name-root-1'))!.toBeInTheDocument()
-    expect(screen.getByTestId('notion-page-name-child-1'))!.toBeInTheDocument()
-    expect(screen.getByTestId('notion-page-name-grandchild-1'))!.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Root 1' }))!.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Child 1' }))!.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Grandchild 1' }))!.toBeInTheDocument()
     // Should not show Root 2, Child 2
     // Should not show Root 2, Child 2
     // Should not show Root 2, Child 2
@@ -607,8 +589,8 @@ describe('PageSelector', () => {
     // Should not show Root 2, Child 2
     // Should not show Root 2, Child 2
     // Should not show Root 2, Child 2
-    expect(screen.queryByTestId('notion-page-name-root-2')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('notion-page-name-child-2')).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Root 2' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Child 2' })).not.toBeInTheDocument()
   })
 
   it('should handle disabled parent when selecting child', async () => {

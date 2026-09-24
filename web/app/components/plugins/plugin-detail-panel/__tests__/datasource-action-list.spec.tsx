@@ -1,96 +1,52 @@
-import type { PluginDetail } from '@/app/components/plugins/types'
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import DatasourceActionList from '../datasource-action-list'
+import type { PropsWithChildren } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
+import { consoleQuery } from '@/service/console'
+import ActionList from '../datasource-action-list'
 
-const mockDataSourceList = [{ plugin_id: 'test-plugin', name: 'Data Source 1' }]
-
-let mockDataSourceListData: typeof mockDataSourceList | undefined
-
-vi.mock('@/service/use-pipeline', () => ({
-  useDataSourceList: () => ({ data: mockDataSourceListData }),
-}))
-
-vi.mock('@/app/components/workflow/block-selector/utils', () => ({
-  transformDataSourceToTool: (ds: unknown) => ds,
-}))
-
-const createPluginDetail = (): PluginDetail => ({
-  id: 'test-id',
-  created_at: '2024-01-01',
-  updated_at: '2024-01-02',
-  name: 'Test Plugin',
-  plugin_id: 'test-plugin',
-  plugin_unique_identifier: 'test-uid',
-  declaration: {
-    datasource: {
-      identity: {
-        author: 'test-author',
-        name: 'test-datasource',
-        description: { en_US: 'Test' },
-        icon: 'icon.png',
-        label: { en_US: 'Test Datasource' },
-        tags: [],
-      },
-      credentials_schema: [],
-    },
-  } as unknown as PluginDetail['declaration'],
-  installation_id: 'install-1',
-  tenant_id: 'tenant-1',
-  endpoints_setups: 0,
-  endpoints_active: 0,
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_unique_identifier: 'test-uid',
-  source: 'marketplace' as PluginDetail['source'],
-  meta: undefined,
-  status: 'active',
-  deprecated_reason: '',
-  alternative_plugin_id: '',
+const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
+vi.mock('@/service/base', () => ({ request }))
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({ 'plugin.detailPanel.actionNum': '{{num}} {{action}}' })
 })
 
-describe('DatasourceActionList', () => {
+describe('datasource action list', () => {
+  let client: QueryClient
+  const wrapper = ({ children }: PropsWithChildren) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  )
   beforeEach(() => {
     vi.clearAllMocks()
-    mockDataSourceListData = mockDataSourceList
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  })
+  afterEach(() => client.clear())
+
+  it('retains the zero-action heading for a matching installed provider', async () => {
+    const provider = createDatasourceProvider()
+    request.mockResolvedValue(Response.json([provider]))
+    render(<ActionList detail={{ plugin_id: provider.plugin_id }} />, { wrapper })
+
+    expect(await screen.findByText('0 action')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(
+      client.getQueryData(consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()),
+    ).toEqual([provider])
   })
 
-  describe('Rendering', () => {
-    it('should render action count when data and provider exist', () => {
-      render(<DatasourceActionList detail={createPluginDetail()} />)
+  it('does not show the heading for a different installed plugin', async () => {
+    request.mockResolvedValue(Response.json([createDatasourceProvider()]))
+    const { container } = render(<ActionList detail={{ plugin_id: 'missing/plugin' }} />, {
+      wrapper,
+    })
 
-      // The component always shows "0 action" because data is hardcoded as empty array
+    await waitFor(() =>
       expect(
-        screen.getByText('plugin.detailPanel.actionNum:{"num":0,"action":"action"}'),
-      ).toBeInTheDocument()
-    })
-
-    it('should return null when no provider found', () => {
-      mockDataSourceListData = []
-      const { container } = render(<DatasourceActionList detail={createPluginDetail()} />)
-
-      expect(container).toBeEmptyDOMElement()
-    })
-
-    it('should return null when dataSourceList is undefined', () => {
-      mockDataSourceListData = undefined
-      const { container } = render(<DatasourceActionList detail={createPluginDetail()} />)
-
-      expect(container).toBeEmptyDOMElement()
-    })
-  })
-
-  describe('Props', () => {
-    it('should use plugin_id to find matching datasource', () => {
-      const detail = createPluginDetail()
-      detail.plugin_id = 'different-plugin'
-      mockDataSourceListData = [{ plugin_id: 'different-plugin', name: 'Different DS' }]
-
-      render(<DatasourceActionList detail={detail} />)
-
-      expect(
-        screen.getByText('plugin.detailPanel.actionNum:{"num":0,"action":"action"}'),
-      ).toBeInTheDocument()
-    })
+        client.getQueryState(consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey())?.status,
+      ).toBe('success'),
+    )
+    expect(container).toBeEmptyDOMElement()
   })
 })

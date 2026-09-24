@@ -1,212 +1,181 @@
-from __future__ import annotations
+"""Transport parsing, permission declarations and sandbox error serialization."""
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from inspect import unwrap
-from types import SimpleNamespace
+from uuid import UUID
 
 import pytest
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
-from dify_agent.protocol import SandboxListResponse, SandboxReadResponse
+from dify_agent.protocol import BindingFileListResponse, BindingFileReadResponse
+from flask import Flask
+from flask_restx import Resource
 
 from controllers.console import agent_app_sandbox as module
-from models.model import App, AppMode, IconType
-from services.agent_app_sandbox_service import AgentSandboxInfo, AgentSandboxInspectorError, AgentSandboxUploadDownload
+from machinery.context import RequestContext
+from services.agent.errors import AgentNotFoundError
+from services.app.agent_app_contracts import (
+    AgentAppNotFoundError,
+    AgentSandboxBindingNotFoundError,
+    AgentSandboxCaller,
+    AgentSandboxDownload,
+    AgentSandboxDownloadUnavailableError,
+    AgentSandboxInfo,
+    AgentSandboxUnavailableError,
+    SandboxCaller,
+    WorkflowSandboxAppNotFoundError,
+    WorkflowSandboxCaller,
+)
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+
+CONTEXT = RequestContext("request", "trace", "actor", "workspace")
+RESOURCE_ID = UUID("11111111-1111-1111-1111-111111111111")
 
 
-class _AgentAppService:
+class SandboxService:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str, str, str, str]] = []
+        self.calls: list[tuple[str, RequestContext, SandboxCaller, str]] = []
+        self.error: Exception | None = None
 
-    def get_info(self, *, tenant_id: str, app_id: str, conversation_id: str) -> AgentSandboxInfo:
-        self.calls.append(("info", tenant_id, app_id, conversation_id, ""))
-        return AgentSandboxInfo(session_id="abc1234", workspace_cwd="~/workspace/abc1234")
+    def record(self, operation: str, context: RequestContext, caller: SandboxCaller, path: str = "") -> None:
+        self.calls.append((operation, context, caller, path))
+        if self.error:
+            raise self.error
 
-    def list_files(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str) -> SandboxListResponse:
-        self.calls.append(("list", tenant_id, app_id, conversation_id, path))
-        return SandboxListResponse(path=path, entries=[], truncated=False)
+    def get_info(self, context: RequestContext, caller: SandboxCaller) -> AgentSandboxInfo:
+        self.record("info", context, caller)
+        return AgentSandboxInfo(workspace_cwd=".")
 
-    def read_file(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str) -> SandboxReadResponse:
-        self.calls.append(("read", tenant_id, app_id, conversation_id, path))
-        return SandboxReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
+    def list_files(self, context: RequestContext, caller: SandboxCaller, path: str) -> BindingFileListResponse:
+        self.record("list", context, caller, path)
+        return BindingFileListResponse(path=path, entries=[], truncated=False)
 
-    def upload_file(
-        self, *, tenant_id: str, app_id: str, conversation_id: str, path: str
-    ) -> AgentSandboxUploadDownload:
-        self.calls.append(("upload", tenant_id, app_id, conversation_id, path))
-        return AgentSandboxUploadDownload(url="https://files.example/report.txt")
+    def read_file(self, context: RequestContext, caller: SandboxCaller, path: str) -> BindingFileReadResponse:
+        self.record("read", context, caller, path)
+        return BindingFileReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
 
-
-class _WorkflowService:
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, str, str, str, str, str | None, str]] = []
-
-    def list_files(
-        self,
-        *,
-        tenant_id: str,
-        app_id: str,
-        workflow_run_id: str,
-        node_id: str,
-        node_execution_id: str | None,
-        path: str,
-        session,
-    ) -> SandboxListResponse:
-        self.calls.append(("list", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
-        return SandboxListResponse(path=path, entries=[], truncated=False)
-
-    def read_file(
-        self,
-        *,
-        tenant_id: str,
-        app_id: str,
-        workflow_run_id: str,
-        node_id: str,
-        node_execution_id: str | None,
-        path: str,
-        session,
-    ) -> SandboxReadResponse:
-        self.calls.append(("read", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
-        return SandboxReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
-
-    def upload_file(
-        self,
-        *,
-        tenant_id: str,
-        app_id: str,
-        workflow_run_id: str,
-        node_id: str,
-        node_execution_id: str | None,
-        path: str,
-        session,
-    ) -> AgentSandboxUploadDownload:
-        self.calls.append(("upload", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
-        return AgentSandboxUploadDownload(url="https://files.example/upload.txt")
+    def download_file(self, context: RequestContext, caller: SandboxCaller, path: str) -> AgentSandboxDownload:
+        self.record("download", context, caller, path)
+        return AgentSandboxDownload(url="https://files.example/report.txt")
 
 
-def _app_model(app_id: str = "app-1") -> App:
-    return App(
-        id=app_id,
-        tenant_id="tenant-1",
-        name="App",
-        mode=AppMode.AGENT,
-        icon_type=IconType.EMOJI,
-        icon="bot",
-        icon_background="#fff",
-        enable_site=False,
-        enable_api=False,
+@dataclass
+class AgentServices:
+    sandbox: SandboxService
+
+
+@dataclass
+class Services:
+    agent_apps: AgentServices
+
+
+@pytest.fixture
+def service(monkeypatch: pytest.MonkeyPatch) -> SandboxService:
+    service = SandboxService()
+    monkeypatch.setattr(module, "application_services", lambda: Services(AgentServices(service)))
+    return service
+
+
+@pytest.mark.parametrize(
+    ("resource", "method", "verb", "operation", "workflow"),
+    [
+        (module.AgentAppSandboxInfoResource, module.AgentAppSandboxInfoResource.get, "get", "info", False),
+        (module.AgentAppSandboxListResource, module.AgentAppSandboxListResource.get, "get", "list", False),
+        (module.AgentAppSandboxReadResource, module.AgentAppSandboxReadResource.get, "get", "read", False),
+        (
+            module.AgentAppSandboxDownloadResource,
+            module.AgentAppSandboxDownloadResource.post,
+            "post",
+            "download",
+            False,
+        ),
+        (module.WorkflowAgentSandboxListResource, module.WorkflowAgentSandboxListResource.get, "get", "list", True),
+        (module.WorkflowAgentSandboxReadResource, module.WorkflowAgentSandboxReadResource.get, "get", "read", True),
+        (
+            module.WorkflowAgentSandboxDownloadResource,
+            module.WorkflowAgentSandboxDownloadResource.post,
+            "post",
+            "download",
+            True,
+        ),
+    ],
+)
+def test_controller_parses_and_serializes(
+    app: Flask,
+    service: SandboxService,
+    resource: type[Resource],
+    method: Callable[..., object],
+    verb: str,
+    operation: str,
+    workflow: bool,
+) -> None:
+    payload = {"node_execution_id": "execution"} if workflow else {"caller_type": "build_draft", "caller_id": "draft"}
+    if operation != "info":
+        payload["path"] = "~/report.txt"
+    kwargs = {"json": payload} if verb == "post" else {"query_string": payload}
+    params = (RESOURCE_ID, RESOURCE_ID, "node") if workflow else (RESOURCE_ID,)
+    with app.test_request_context("/", method=verb.upper(), **kwargs):
+        result = unwrap(method)(resource(), CONTEXT, *params)
+    caller = (
+        WorkflowSandboxCaller(str(RESOURCE_ID), str(RESOURCE_ID), "node", "execution")
+        if workflow
+        else (AgentSandboxCaller(str(RESOURCE_ID), "build_draft", "draft"))
     )
+    assert service.calls == [(operation, CONTEXT, caller, "" if operation == "info" else "~/report.txt")]
+    if operation == "info":
+        assert result == {"workspace_cwd": "."}
+    elif operation == "download":
+        assert result == {"url": "https://files.example/report.txt"}
+    elif operation == "read":
+        assert result == {"path": "~/report.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
+    else:
+        assert result == {"path": "~/report.txt", "entries": [], "truncated": False}
+
+    [check] = rbac_checks(method)
+    if workflow:
+        assert isinstance(check.locator, module.PlainApp)
+        assert check.scene == module.RBACPermission.APP_VIEW_LAYOUT
+    else:
+        assert isinstance(check.locator, module.AgentId)
+        assert check.scene == (
+            module.RBACPermission.AGENT_EDIT if operation == "download" else module.RBACPermission.AGENT_PREVIEW
+        )
 
 
-def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
-    assert module._handle(AgentSandboxInspectorError("no_sandbox", "no sandbox", status_code=404)) == (
-        {"code": "no_sandbox", "message": "no sandbox"},
-        404,
-    )
-    assert module._handle(DifyAgentHTTPError(404, {"code": "sandbox_path_not_found", "message": "missing"})) == (
-        {"code": "sandbox_path_not_found", "message": "missing"},
-        404,
-    )
-    assert module._handle(DifyAgentHTTPError(500, "backend exploded")) == (
-        {"code": "agent_backend_error", "message": "backend exploded"},
-        500,
-    )
-    assert module._handle(DifyAgentTimeoutError("connection refused")) == (
-        {"code": "agent_backend_unreachable", "message": "connection refused"},
-        502,
-    )
-    assert module._handle(DifyAgentClientError("transport failed")) == (
-        {"code": "agent_backend_unreachable", "message": "transport failed"},
-        502,
-    )
-    with pytest.raises(RuntimeError):
-        module._handle(RuntimeError("boom"))
+@pytest.mark.parametrize(
+    ("error", "code", "message", "status"),
+    [
+        (AgentSandboxBindingNotFoundError("no active binding"), "no_active_binding", "no active binding", 404),
+        (AgentSandboxUnavailableError("unavailable"), "inspector_unavailable", "unavailable", 503),
+        (
+            AgentSandboxDownloadUnavailableError("cannot download"),
+            "binding_file_download_unavailable",
+            "cannot download",
+            502,
+        ),
+        (DifyAgentHTTPError(409, {"code": "conflict", "message": "busy"}), "conflict", "busy", 409),
+        (DifyAgentHTTPError(500, "backend exploded"), "agent_backend_error", "backend exploded", 500),
+        (DifyAgentTimeoutError("connection refused"), "agent_backend_unreachable", "connection refused", 502),
+        (DifyAgentClientError("transport failed"), "agent_backend_unreachable", "transport failed", 502),
+    ],
+)
+def test_sandbox_error_responses(
+    app: Flask, service: SandboxService, error: Exception, code: str, message: str, status: int
+) -> None:
+    service.error = error
+    with app.test_request_context("/?caller_type=conversation&caller_id=conversation"):
+        result = unwrap(module.AgentAppSandboxInfoResource.get)(object(), CONTEXT, RESOURCE_ID)
+    assert result == ({"code": code, "message": message}, status)
 
 
-def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
-    service = _AgentAppService()
-    monkeypatch.setattr(module, "AgentAppSandboxService", lambda: service)
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda *, tenant_id, agent_id: _app_model())
-    monkeypatch.setattr(
-        module,
-        "query_params_from_request",
-        lambda model: SimpleNamespace(conversation_id="conv-1", path="sub/report.txt"),
-    )
-    monkeypatch.setattr(
-        module,
-        "request",
-        SimpleNamespace(get_json=lambda silent=True: {"conversation_id": "conv-1", "path": "report.txt"}),
-    )
-
-    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), "tenant-1", "agent-1")
-    listing = unwrap(module.AgentAppSandboxListResource.get)(object(), "tenant-1", "agent-1")
-    preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), "tenant-1", "agent-1")
-    upload = unwrap(module.AgentAppSandboxUploadResource.post)(object(), "tenant-1", "agent-1")
-
-    assert info == {"session_id": "abc1234", "workspace_cwd": "~/workspace/abc1234"}
-    assert listing["path"] == "sub/report.txt"
-    assert preview["text"] == "hello"
-    assert upload == {"url": "https://files.example/report.txt"}
-    assert service.calls == [
-        ("info", "tenant-1", "app-1", "conv-1", ""),
-        ("list", "tenant-1", "app-1", "conv-1", "sub/report.txt"),
-        ("read", "tenant-1", "app-1", "conv-1", "sub/report.txt"),
-        ("upload", "tenant-1", "app-1", "conv-1", "report.txt"),
-    ]
-
-
-def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    class FailingService:
-        def get_info(self, **kwargs):
-            raise AgentSandboxInspectorError("no_active_session", "no active session", status_code=404)
-
-        def list_files(self, **kwargs):
-            raise AgentSandboxInspectorError("no_active_session", "no active session", status_code=404)
-
-    monkeypatch.setattr(module, "AgentAppSandboxService", FailingService)
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda *, tenant_id, agent_id: _app_model())
-    monkeypatch.setattr(
-        module, "query_params_from_request", lambda model: SimpleNamespace(conversation_id="conv-1", path=".")
-    )
-
-    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), "tenant-1", "agent-1") == (
-        {"code": "no_active_session", "message": "no active session"},
-        404,
-    )
-    assert unwrap(module.AgentAppSandboxListResource.get)(object(), "tenant-1", "agent-1") == (
-        {"code": "no_active_session", "message": "no active session"},
-        404,
-    )
-
-
-def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
-    service = _WorkflowService()
-    monkeypatch.setattr(module, "WorkflowAgentSandboxService", lambda: service)
-    monkeypatch.setattr(
-        module,
-        "query_params_from_request",
-        lambda model: SimpleNamespace(node_execution_id="exec-1", path="out.txt"),
-    )
-    monkeypatch.setattr(
-        module,
-        "request",
-        SimpleNamespace(get_json=lambda silent=True: {"node_execution_id": "exec-1", "path": "upload.txt"}),
-    )
-    app_model = _app_model()
-
-    listing = unwrap(module.WorkflowAgentSandboxListResource.get)(
-        object(), "tenant-1", app_model, "run-1", "agent-node"
-    )
-    preview = unwrap(module.WorkflowAgentSandboxReadResource.get)(
-        object(), "tenant-1", app_model, "run-1", "agent-node"
-    )
-    upload = unwrap(module.WorkflowAgentSandboxUploadResource.post)(
-        object(), "tenant-1", app_model, "run-1", "agent-node"
-    )
-
-    assert listing["path"] == "out.txt"
-    assert preview["text"] == "hello"
-    assert upload == {"url": "https://files.example/upload.txt"}
-    assert service.calls == [
-        ("list", "tenant-1", "app-1", "run-1", "agent-node", "exec-1", "out.txt"),
-        ("read", "tenant-1", "app-1", "run-1", "agent-node", "exec-1", "out.txt"),
-        ("upload", "tenant-1", "app-1", "run-1", "agent-node", "exec-1", "upload.txt"),
-    ]
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (AgentAppNotFoundError(), AgentNotFoundError),
+        (WorkflowSandboxAppNotFoundError(), module.AppNotFoundError),
+        (RuntimeError("unexpected"), RuntimeError),
+    ],
+)
+def test_resource_errors_keep_existing_http_contract(error: Exception, expected: type[Exception]) -> None:
+    with pytest.raises(expected):
+        module._handle(error)

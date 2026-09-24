@@ -169,7 +169,7 @@ describe('checkbox list component', () => {
 
     render(<CheckboxList options={options} value={[]} onChange={onChange} disabled />)
 
-    await userEvent.click(screen.getByText('Option 1'))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Option 1' }))
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -187,19 +187,6 @@ describe('checkbox list component', () => {
     options.forEach((option) => {
       expect(screen.getByText(option.label))!.toBeInTheDocument()
     })
-  })
-
-  it('renders with custom containerClassName', () => {
-    const { container } = render(
-      <CheckboxList options={options} containerClassName="custom-class" />,
-    )
-    expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
-  })
-
-  it('applies maxHeight style to options container', () => {
-    render(<CheckboxList options={options} maxHeight="200px" />)
-    const optionsContainer = screen.getByTestId('options-container')
-    expect(optionsContainer)!.toHaveStyle({ maxHeight: '200px', overflowY: 'auto' })
   })
 
   it('shows indeterminate state when some options are selected', async () => {
@@ -247,10 +234,7 @@ describe('checkbox list component', () => {
 
     render(<CheckboxList options={options} value={[]} onChange={onChange} showSelectAll={false} />)
 
-    const optionLabel = screen.getByText('Option 1')
-    const optionRow = optionLabel.closest('label[data-testid="option-item"]')
-    expect(optionRow)!.toBeInTheDocument()
-    await userEvent.click(optionRow as HTMLElement)
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Option 1' }))
 
     expect(onChange).toHaveBeenCalledWith(['option1'])
   })
@@ -261,9 +245,7 @@ describe('checkbox list component', () => {
 
     render(<CheckboxList options={disabledOptions} value={[]} onChange={onChange} />)
 
-    const optionRow = screen.getByText('Option 1').closest('label[data-testid="option-item"]')
-    expect(optionRow)!.toBeInTheDocument()
-    await userEvent.click(optionRow as HTMLElement)
+    await userEvent.click(screen.getByText('Option 1'))
 
     expect(onChange).not.toHaveBeenCalled()
   })

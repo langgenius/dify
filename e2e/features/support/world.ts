@@ -1,15 +1,15 @@
 import type { IWorldOptions } from '@cucumber/cucumber'
-import type { Browser, BrowserContext, ConsoleMessage, Download, Page } from '@playwright/test'
-import type { AuthSessionMetadata } from '../../fixtures/auth'
+import type { APIRequestContext, Browser, BrowserContext, Download, Page } from '@playwright/test'
+import type { AuthSessionMetadata } from '../../fixtures/auth.ts'
+import type { ConsoleClient } from '../../support/api/console-client.ts'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
-import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
-import { baseURL, defaultLocale } from '../../test-env'
+import { request } from '@playwright/test'
+import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth.ts'
+import { createConsoleClient } from '../../support/api/console-client.ts'
+import { runCleanupTasks } from '../../support/cleanup.ts'
+import { apiURL, baseURL, defaultLocale } from '../../test-env.ts'
 
 export type ScenarioCleanup = () => Promise<void> | void
-export type CreatedAgentDriveFile = {
-  agentId: string
-  key: string
-}
 export type CreatedAgentConfigFile = {
   agentId: string
   name: string
@@ -29,7 +29,7 @@ export type AgentBuilderChatModel = {
 }
 export type AgentBuilderPreseededResource = {
   id: string
-  kind: 'agent' | 'api-key' | 'dataset' | 'skill' | 'tool' | 'workflow'
+  kind: 'agent' | 'dataset' | 'skill' | 'tool' | 'workflow'
   name: string
 }
 export type AgentV2WorkflowOutputVariable = {
@@ -41,11 +41,16 @@ export type AgentBuilderSpeechToTextRequest = {
   path: string
   status: number
 }
+export type WorkflowPreviewFixture = {
+  appName: string
+  agentNodeId: string
+  failureEdgeId: string
+  routes: { edgeId: string; label: string }[]
+}
 
 export const createAgentBuilderWorldState = () => ({
-  preflight: {
+  fixtures: {
     agentDecisionModel: undefined as AgentBuilderChatModel | undefined,
-    brokenModel: undefined as AgentBuilderChatModel | undefined,
     preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
     speechToTextModel: undefined as AgentBuilderChatModel | undefined,
     stableModel: undefined as AgentBuilderChatModel | undefined,
@@ -68,6 +73,7 @@ export const createAgentBuilderWorldState = () => ({
   },
   workflow: {
     agentConsolePage: undefined as Page | undefined,
+    outputRouteSnippet: undefined as { id: string; name: string } | undefined,
     outputVariables: [] as AgentV2WorkflowOutputVariable[],
   },
 })
@@ -76,25 +82,30 @@ export type AgentBuilderWorldState = ReturnType<typeof createAgentBuilderWorldSt
 
 export class DifyWorld extends World {
   context: BrowserContext | undefined
+  consoleRequestContext: APIRequestContext | undefined
+  consoleClient: ConsoleClient | undefined
   page: Page | undefined
   consoleErrors: string[] = []
   pageErrors: string[] = []
   scenarioStartedAt: number | undefined
   session: AuthSessionMetadata | undefined
   lastCreatedAppName: string | undefined
+  lastSelectedAppType: string | undefined
   lastCreatedAgentName: string | undefined
   lastCreatedAgentRole: string | undefined
   createdAppIds: string[] = []
+  createdSnippetIds: string[] = []
   createdAgentIds: string[] = []
   createdDatasetIds: string[] = []
   createdAgentConfigFiles: CreatedAgentConfigFile[] = []
   createdAgentConfigSkills: CreatedAgentConfigSkill[] = []
-  createdAgentDriveFiles: CreatedAgentDriveFile[] = []
   createdBuiltinToolCredentials: CreatedBuiltinToolCredential[] = []
   agentBuilder: AgentBuilderWorldState = createAgentBuilderWorldState()
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
+  sharedAppPage: Page | undefined
+  workflowPreview: WorkflowPreviewFixture | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -102,22 +113,25 @@ export class DifyWorld extends World {
   }
 
   resetScenarioState() {
+    this.workflowPreview = undefined
     this.consoleErrors = []
     this.pageErrors = []
     this.lastCreatedAppName = undefined
+    this.lastSelectedAppType = undefined
     this.lastCreatedAgentName = undefined
     this.lastCreatedAgentRole = undefined
     this.createdAppIds = []
+    this.createdSnippetIds = []
     this.createdAgentIds = []
     this.createdDatasetIds = []
     this.createdAgentConfigFiles = []
     this.createdAgentConfigSkills = []
-    this.createdAgentDriveFiles = []
     this.createdBuiltinToolCredentials = []
     this.agentBuilder = createAgentBuilderWorldState()
     this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined
+    this.sharedAppPage = undefined
   }
 
   async startSession(browser: Browser, authenticated: boolean) {
@@ -128,18 +142,21 @@ export class DifyWorld extends World {
       ...(authenticated ? { storageState: authStatePath } : {}),
     })
     this.context.setDefaultTimeout(30_000)
-    this.page = await this.context.newPage()
-    this.page.setDefaultTimeout(30_000)
-
-    this.page.on('console', (message: ConsoleMessage) => {
+    this.consoleRequestContext = await request.newContext({
+      baseURL: apiURL,
+      storageState: authStatePath,
+    })
+    this.consoleClient = createConsoleClient({ requestContext: this.consoleRequestContext })
+    this.context.on('console', (message) => {
       if (message.type() === 'error') this.consoleErrors.push(message.text())
     })
-    this.page.on('pageerror', (error) => {
-      this.pageErrors.push(error.message)
+    this.context.on('weberror', (webError) => {
+      this.pageErrors.push(webError.error().message)
     })
-    this.page.on('download', (dl) => {
+    this.context.on('download', (dl) => {
       this.capturedDownloads.push(dl)
     })
+    this.page = await this.context.newPage()
   }
 
   async startAuthenticatedSession(browser: Browser) {
@@ -156,6 +173,13 @@ export class DifyWorld extends World {
     return this.page
   }
 
+  getConsoleClient() {
+    if (!this.consoleClient)
+      throw new Error('Console API client has not been initialized for this scenario.')
+
+    return this.consoleClient
+  }
+
   async getAuthSession() {
     this.session ??= await readAuthSessionMetadata()
     return this.session
@@ -165,27 +189,28 @@ export class DifyWorld extends World {
     this.scenarioCleanups.push(cleanup)
   }
 
-  async runRegisteredCleanups() {
-    const errors: string[] = []
-
-    for (const cleanup of this.scenarioCleanups.toReversed()) {
-      try {
-        await cleanup()
-      } catch (error) {
-        errors.push(error instanceof Error ? error.message : String(error))
-      }
-    }
-
-    if (errors.length > 0) this.attach(`Cleanup errors:\n${errors.join('\n')}`, 'text/plain')
+  runRegisteredCleanups() {
+    return runCleanupTasks(
+      this.scenarioCleanups.toReversed().map((run, index) => ({
+        label: `Registered cleanup ${index + 1}`,
+        run,
+      })),
+    )
   }
 
   async closeSession() {
-    await this.context?.close()
-    this.context = undefined
-    this.page = undefined
-    this.session = undefined
-    this.scenarioStartedAt = undefined
-    this.resetScenarioState()
+    try {
+      await this.context?.close()
+    } finally {
+      await this.consoleRequestContext?.dispose()
+      this.context = undefined
+      this.consoleRequestContext = undefined
+      this.consoleClient = undefined
+      this.page = undefined
+      this.session = undefined
+      this.scenarioStartedAt = undefined
+      this.resetScenarioState()
+    }
   }
 }
 

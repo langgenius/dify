@@ -1,16 +1,19 @@
-from typing import Any, cast
+from typing import Any
 
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common import fields
+from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
-from controllers.console.explore.wraps import InstalledAppResource
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from extensions.ext_database import db
-from models.model import AppMode, InstalledApp
-from services.app_service import AppService
+from controllers.console.explore.installed_app_admission import get_installed_app
+from controllers.console.flask_admission import console_account_admission
+from extensions.ext_application_services import application_services
+from libs.helper import dump_response
+from machinery.context import RequestContext
+from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.installed_app_access_service import InstalledAppRef
 
 
 class ExploreAppMetaResponse(BaseModel):
@@ -22,47 +25,39 @@ class ExploreAppMetaResponse(BaseModel):
     tool_icons: dict[str, str | dict[str, Any]] = Field(default_factory=dict)
 
 
-register_response_schema_models(console_ns, fields.Parameters, ExploreAppMetaResponse)
+register_response_schema_models(console_ns, Parameters, ExploreAppMetaResponse)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/parameters", endpoint="installed_app_parameters")
-class AppParameterApi(InstalledAppResource):
+class AppParameterApi(Resource):
     """Resource for app variables."""
 
-    @console_ns.response(200, "Success", console_ns.models[fields.Parameters.__name__])
-    def get(self, installed_app: InstalledApp):
+    @console_ns.response(200, "Success", console_ns.models[Parameters.__name__])
+    @console_account_admission()
+    @get_installed_app
+    def get(self, request_context: RequestContext, installed_app: InstalledAppRef) -> dict[str, object]:
         """Retrieve app parameters."""
-        app_model = installed_app.app
+        try:
+            parameters = application_services().app_definitions.get_parameters(installed_app.app_id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
 
-        if app_model is None:
-            raise AppUnavailableError()
-
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
-            if workflow is None:
-                raise AppUnavailableError()
-
-            features_dict: dict[str, Any] = workflow.features_dict
-            user_input_form = workflow.user_input_form(to_old_structure=True)
-        else:
-            app_model_config = app_model.app_model_config
-            if app_model_config is None:
-                raise AppUnavailableError()
-
-            features_dict = cast(dict[str, Any], app_model_config.to_dict())
-
-            user_input_form = features_dict.get("user_input_form", [])
-
-        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
-        return fields.Parameters.model_validate(parameters).model_dump(mode="json")
+        return dump_response(Parameters, parameters)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/meta", endpoint="installed_app_meta")
-class ExploreAppMetaApi(InstalledAppResource):
+class ExploreAppMetaApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[ExploreAppMetaResponse.__name__])
-    def get(self, installed_app: InstalledApp):
+    @console_account_admission()
+    @get_installed_app
+    def get(self, request_context: RequestContext, installed_app: InstalledAppRef) -> dict[str, object]:
         """Get app meta"""
-        app_model = installed_app.app
-        if not app_model:
-            raise ValueError("App not found")
-        return AppService().get_app_meta(app_model, session=db.session())
+        try:
+            tool_icons = application_services().app_definitions.get_tool_icons(installed_app.app_id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+
+        return dump_response(
+            ExploreAppMetaResponse,
+            {"tool_icons": tool_icons},
+        )

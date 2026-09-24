@@ -1,6 +1,6 @@
 import type { HumanInputFilledFormData } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { SubmittedHumanInputContent } from '../submitted'

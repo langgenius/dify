@@ -1,22 +1,22 @@
 import type { ReactNode } from 'react'
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type { Theme } from '../../embedded-chatbot/theme/theme'
 import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import { FileContextProvider, useFileStore } from '@/app/components/base/file-uploader/store'
-import { Infotip } from '@/app/components/base/infotip'
 import VoiceInput from '@/app/components/base/voice-input'
+import { toast } from '@/app/notifications'
 import { TransferMethod } from '@/types/app'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
@@ -86,7 +86,9 @@ const ChatInputArea = ({
   autoFocus = true,
   sendOnEnter = true,
 }: ChatInputAreaProps) => {
-  const { t } = useTranslation()
+  const footerNoticeLabelId = useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const {
     wrapperRef,
     textareaRef,
@@ -295,24 +297,20 @@ const ChatInputArea = ({
   const shouldShowFooterNotice = footerNotice !== undefined && footerNotice !== null
   const shouldShowFooterNoticeTooltip =
     footerNoticeTooltip !== undefined && footerNoticeTooltip !== null
-  const footerNoticeText = typeof footerNotice === 'string' ? footerNotice.trim() : ''
-  const footerNoticeAriaLabel = footerNoticeText
-    ? `${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${footerNoticeText}`
-    : t(($) => $['operation.learnMore'], { ns: 'common' })
   return (
     <>
       <div
         className={cn(
-          'pointer-events-auto relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
+          'pointer-events-auto relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-2.25 shadow-md',
           isDragActive &&
             'border border-dashed border-components-option-card-option-selected-border',
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
       >
-        <div className="px-[9px] pt-[9px]">
+        <div className="px-2.25 pt-2.25">
           <FileListInChatInput fileConfig={visionConfig!} />
         </div>
-        <div className="relative max-h-[158px] overflow-x-hidden overflow-y-auto px-[9px]">
+        <div className="relative max-h-39.5 overflow-x-hidden overflow-y-auto px-2.25">
           <div ref={wrapperRef} className="flex items-center justify-between">
             <div className="relative flex w-full grow items-center">
               <div
@@ -335,7 +333,7 @@ const ChatInputArea = ({
                         t(
                           ($) =>
                             $[readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder'],
-                          { ns: 'common', botName },
+                          { ns: 'common', botName: botName ?? '' },
                         ) || '',
                       )
                 }
@@ -360,7 +358,7 @@ const ChatInputArea = ({
           </div>
         </div>
         {showVoiceInput && speechToTextTarget && (
-          <div className="px-[9px]">
+          <div className="px-2.25">
             <VoiceInput
               ref={voiceInputRef}
               target={speechToTextTarget}
@@ -372,20 +370,27 @@ const ChatInputArea = ({
             />
           </div>
         )}
-        {isMultipleLine && <div className="px-[9px]">{operation}</div>}
+        {isMultipleLine && <div className="px-2.25">{operation}</div>}
       </div>
       {shouldShowFooterNotice && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
           <div className="flex items-center gap-1">
-            <div className="min-w-0 flex-1 body-xs-medium text-text-accent">{footerNotice}</div>
+            <div
+              id={footerNoticeLabelId}
+              className="min-w-0 flex-1 body-xs-medium text-text-accent"
+            >
+              {footerNotice}
+            </div>
             {shouldShowFooterNoticeTooltip && (
-              <Infotip
-                aria-label={footerNoticeAriaLabel}
-                className="ml-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
-                iconVariant="information"
-                popupClassName="max-w-80 border-0 text-start wrap-break-word"
-              >
-                {footerNoticeTooltip}
+              <Infotip>
+                <InfotipTrigger
+                  aria-labelledby={footerNoticeLabelId}
+                  className="ml-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
+                  iconVariant="information"
+                />
+                <InfotipContent aria-labelledby={footerNoticeLabelId} className="max-w-80">
+                  {footerNoticeTooltip}
+                </InfotipContent>
               </Infotip>
             )}
           </div>

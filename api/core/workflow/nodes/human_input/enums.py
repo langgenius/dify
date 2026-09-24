@@ -67,10 +67,10 @@ class FormInputType(enum.StrEnum):
 
 class ValueSourceType(enum.StrEnum):
     """ValueSourceType records whether the value comes from a static setting
-    in form definiton, or a variable while the workflow is running.
+    in form definition, or a variable while the workflow is running.
     """
 
     # `VARIABLE` means that the value comes from a variable in workflow execution
     VARIABLE = enum.auto()
-    # `CONSTANT` measn that the value comes from a static setting in form definition.
+    # `CONSTANT` means that the value comes from a static setting in form definition.
     CONSTANT = enum.auto()

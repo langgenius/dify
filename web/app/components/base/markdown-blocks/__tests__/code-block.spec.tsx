@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
-import CodeBlock from '../code-block'
+import { CodeBlock } from '../code-block'
 
 const { mockHighlightCode } = vi.hoisted(() => ({
   mockHighlightCode: vi.fn(),
@@ -205,12 +205,6 @@ describe('CodeBlock', () => {
       expect(code?.textContent).toBe('const a=1;')
     })
 
-    it('should render code element when className does not include language prefix', () => {
-      const { container } = render(<CodeBlock className="plain">abc</CodeBlock>)
-
-      expect(container.querySelector('code')?.textContent).toBe('abc')
-    })
-
     it('should render code element when className is not provided', () => {
       const { container } = render(<CodeBlock>plain text</CodeBlock>)
 
@@ -257,12 +251,12 @@ describe('CodeBlock', () => {
       const user = userEvent.setup()
       render(<CodeBlock className="language-svg">{'<svg/>'}</CodeBlock>)
 
-      expect(await screen.findByText(/Error rendering SVG/i))!.toBeInTheDocument()
+      expect(await screen.findByText('common.svgRenderer.generatingImage'))!.toBeInTheDocument()
 
       const svgToggleButton = screen.getAllByRole('button')[0]
       await user.click(svgToggleButton!)
 
-      expect(screen.queryByText(/Error rendering SVG/i)).not.toBeInTheDocument()
+      expect(screen.queryByText('common.svgRenderer.generatingImage')).not.toBeInTheDocument()
     })
 
     it('should render syntax-highlighted output when language is standard and app theme is dark', async () => {

@@ -148,6 +148,26 @@ describe('FollowUpSettingModal', () => {
   })
 
   describe('Custom Prompt', () => {
+    it('should expose the selected prompt mode through RadioItem state attributes', async () => {
+      const user = userEvent.setup()
+      renderModal()
+
+      const defaultOption = screen
+        .getByText('appDebug.feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOption')
+        .closest('button')!
+      const customOption = screen
+        .getByText('appDebug.feature.suggestedQuestionsAfterAnswer.modal.customPromptOption')
+        .closest('button')!
+
+      expect(defaultOption).toHaveAttribute('data-checked')
+      expect(customOption).not.toHaveAttribute('data-checked')
+
+      await user.click(customOption)
+
+      expect(defaultOption).not.toHaveAttribute('data-checked')
+      expect(customOption).toHaveAttribute('data-checked')
+    })
+
     it('should enable custom prompt input and save the custom prompt when selected', async () => {
       const user = userEvent.setup()
       const { onSave } = renderModal()

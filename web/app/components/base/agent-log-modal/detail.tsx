@@ -3,14 +3,14 @@ import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { uniq } from 'es-toolkit/array'
 import { flatten } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { fetchAgentLogDetail } from '@/service/log'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
@@ -27,7 +27,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   messageID,
   log,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog'])
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
   const appDetail = useAppStore((s) => s.appDetail)
   const [loading, setLoading] = useState<boolean>(true)
@@ -80,7 +80,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
         <button
           type="button"
           className={cn(
-            'mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            'mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-4.5 font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
             currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
           )}
           data-active={currentTab === 'DETAIL'}
@@ -91,7 +91,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
         <button
           type="button"
           className={cn(
-            'mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            'mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-4.5 font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
             currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
           )}
           data-active={currentTab === 'TRACING'}
@@ -109,7 +109,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
       >
         {loading && (
           <div className="flex h-full items-center justify-center bg-components-panel-bg">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {!loading && currentTab === 'DETAIL' && runDetail && (

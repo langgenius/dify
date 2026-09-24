@@ -4,7 +4,7 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import { InputVarType } from '@/app/components/workflow/types'
-import { useIsChatMode } from '../../hooks'
+import { useIsChatMode } from '../../hooks/use-workflow'
 
 type Params = {
   id: string
@@ -16,7 +16,7 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isChatMode = useIsChatMode()
 
   const forms = (() => {

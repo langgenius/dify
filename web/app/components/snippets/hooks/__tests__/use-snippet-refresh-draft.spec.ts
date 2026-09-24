@@ -19,7 +19,7 @@ vi.mock('@/service/use-snippet-workflows', () => ({
   fetchSnippetDraftWorkflow: (...args: unknown[]) => mockFetchSnippetDraftWorkflow(...args),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({
     handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
   }),

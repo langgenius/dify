@@ -3,12 +3,13 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { DETAIL_SIDEBAR_TOGGLE_HOTKEY } from './hotkeys'
 import { useDetailSidebarMode } from './storage'
 
 type DetailSidebarRenderProps = {
@@ -18,6 +19,7 @@ type DetailSidebarRenderProps = {
 
 type DetailSidebarFrameProps = {
   className?: string
+  compact?: boolean
   renderTop: (props: DetailSidebarRenderProps) => ReactNode
   renderSection: (props: Pick<DetailSidebarRenderProps, 'expand'>) => ReactNode
 }
@@ -28,19 +30,28 @@ const secondarySidebarHelpTriggerIcon = (
 
 function SecondarySidebarHelpMenu({ triggerClassName }: { triggerClassName?: string }) {
   return (
-    <HelpMenu triggerIcon={secondarySidebarHelpTriggerIcon} triggerClassName={triggerClassName} />
+    <HelpMenu
+      triggerIcon={secondarySidebarHelpTriggerIcon}
+      triggerSize="lg"
+      triggerClassName={triggerClassName}
+    />
   )
 }
 
 export function DetailSidebarFrame({
   className,
+  compact = false,
   renderTop,
   renderSection,
 }: DetailSidebarFrameProps) {
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentEnv } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentEnv,
+  })
   const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useDetailSidebarMode()
+  const [compactExpanded, setCompactExpanded] = useState(false)
   const detailNavigationMode = storedDetailSidebarExpand === 'collapse' ? 'collapse' : 'expand'
-  const detailNavigationExpanded = detailNavigationMode === 'expand'
+  const detailNavigationExpanded = compact ? compactExpanded : detailNavigationMode === 'expand'
   const [detailNavigationHoverPreviewOpen, setDetailNavigationHoverPreviewOpen] = useState(false)
   const [detailNavigationTransitionDisabled, setDetailNavigationTransitionDisabled] =
     useState(false)
@@ -49,14 +60,18 @@ export function DetailSidebarFrame({
   )
   const detailNavigationTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDetailNavigationHoverPreviewOpen =
-    !detailNavigationExpanded && detailNavigationHoverPreviewOpen
+    !compact && !detailNavigationExpanded && detailNavigationHoverPreviewOpen
   const detailNavigationVisibleExpanded =
     detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
   const bottomNavigationExpanded = detailNavigationVisibleExpanded
-  const currentEnv = langGeniusVersionInfo?.current_env
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
-  const handleToggleDetailNavigation = useCallback(() => {
+  function handleToggleDetailNavigation() {
+    if (compact) {
+      setCompactExpanded((expanded) => !expanded)
+      return
+    }
+
     if (isDetailNavigationHoverPreviewOpen) {
       if (detailNavigationTransitionTimerRef.current)
         clearTimeout(detailNavigationTransitionTimerRef.current)
@@ -73,25 +88,25 @@ export function DetailSidebarFrame({
     const nextMode = detailNavigationExpanded ? 'collapse' : 'expand'
     setDetailNavigationHoverPreviewOpen(false)
     setStoredDetailSidebarExpand(nextMode)
-  }, [detailNavigationExpanded, isDetailNavigationHoverPreviewOpen, setStoredDetailSidebarExpand])
+  }
 
-  const openDetailNavigationHoverPreview = useCallback(() => {
-    if (detailNavigationExpanded) return
+  function openDetailNavigationHoverPreview() {
+    if (compact || detailNavigationExpanded) return
 
     if (closeDetailNavigationHoverPreviewTimerRef.current)
       clearTimeout(closeDetailNavigationHoverPreviewTimerRef.current)
 
     setDetailNavigationHoverPreviewOpen(true)
-  }, [detailNavigationExpanded])
+  }
 
-  const closeDetailNavigationHoverPreview = useCallback(() => {
+  function closeDetailNavigationHoverPreview() {
     if (closeDetailNavigationHoverPreviewTimerRef.current)
       clearTimeout(closeDetailNavigationHoverPreviewTimerRef.current)
 
     closeDetailNavigationHoverPreviewTimerRef.current = setTimeout(() => {
       setDetailNavigationHoverPreviewOpen(false)
     }, 120)
-  }, [])
+  }
 
   useEffect(() => {
     return () => {
@@ -102,16 +117,10 @@ export function DetailSidebarFrame({
     }
   }, [])
 
-  useHotkey(
-    'Mod+B',
-    (e) => {
-      e.preventDefault()
-      handleToggleDetailNavigation()
-    },
-    {
-      ignoreInputs: false,
-    },
-  )
+  useHotkey(DETAIL_SIDEBAR_TOGGLE_HOTKEY, handleToggleDetailNavigation, {
+    ignoreInputs: true,
+    preventDefault: true,
+  })
 
   return (
     <aside
@@ -134,10 +143,12 @@ export function DetailSidebarFrame({
             : 'overflow-hidden rounded-lg bg-components-panel-bg',
           detailNavigationVisibleExpanded ? 'w-60' : 'w-14',
         )}
-        onMouseEnter={!detailNavigationExpanded ? openDetailNavigationHoverPreview : undefined}
         onMouseLeave={!detailNavigationExpanded ? closeDetailNavigationHoverPreview : undefined}
       >
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div
+          className="flex min-h-0 flex-1 flex-col"
+          onMouseEnter={!detailNavigationExpanded ? openDetailNavigationHoverPreview : undefined}
+        >
           {renderTop({
             expand: detailNavigationVisibleExpanded,
             onToggle: handleToggleDetailNavigation,
@@ -155,7 +166,7 @@ export function DetailSidebarFrame({
           className={cn(
             !bottomNavigationExpanded
               ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'
-              : 'flex w-60 items-center justify-between bg-components-panel-bg py-3 pr-1 pl-3',
+              : 'flex w-60 items-center justify-between bg-components-panel-bg p-3',
           )}
         >
           {!bottomNavigationExpanded ? (
@@ -168,9 +179,7 @@ export function DetailSidebarFrame({
               <div className="flex min-w-0 items-center gap-1 overflow-hidden">
                 <AccountSection />
               </div>
-              <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-                <SecondarySidebarHelpMenu />
-              </div>
+              <SecondarySidebarHelpMenu />
             </>
           )}
         </div>

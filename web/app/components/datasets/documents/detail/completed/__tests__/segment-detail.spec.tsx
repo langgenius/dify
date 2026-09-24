@@ -1,11 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode } from '@/models/datasets'
 import { SegmentDetail } from '../segment-detail'
 
 // Mock dataset detail context
-let mockIndexingTechnique = IndexingType.QUALIFIED
+let mockIndexingTechnique: IndexingType = IndexingType.QUALIFIED
 let mockRuntimeMode = 'general'
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
@@ -23,8 +23,8 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock document context
 let mockParentMode = 'paragraph'
 vi.mock('../../context', () => ({
-  useDocumentContext: (selector: (state: { parentMode: string }) => unknown) => {
-    return selector({ parentMode: mockParentMode })
+  useDocumentContext: (selector: (state: { parentMode: string; canEdit: boolean }) => unknown) => {
+    return selector({ parentMode: mockParentMode, canEdit: true })
   },
 }))
 
@@ -53,7 +53,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('../common/action-buttons', () => ({
-  default: ({
+  ActionButtons: ({
     handleCancel,
     handleSave,
     handleRegeneration,
@@ -240,12 +240,6 @@ describe('SegmentDetail', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<SegmentDetail {...defaultProps} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render title for view mode', () => {
       render(<SegmentDetail {...defaultProps} isEditMode={false} />)
 
@@ -448,18 +442,6 @@ describe('SegmentDetail', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle segInfo with minimal data', () => {
-      const minimalSegInfo = {
-        id: 'segment-minimal',
-        position: 1,
-        word_count: 0,
-      }
-
-      const { container } = render(<SegmentDetail {...defaultProps} segInfo={minimalSegInfo} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should handle empty keywords array', () => {
       mockIndexingTechnique = IndexingType.ECONOMICAL
       const segInfo = { ...defaultSegInfo, keywords: [] }

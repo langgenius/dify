@@ -9,6 +9,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 @click.command("setup-system-tool-oauth-client", help="Setup system tool oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")
-def setup_system_tool_oauth_client(provider, client_params):
+def setup_system_tool_oauth_client(provider: str, client_params: str):
     """
     Setup system tool oauth client
     """
@@ -78,7 +79,7 @@ def setup_system_tool_oauth_client(provider, client_params):
 @click.command("setup-system-trigger-oauth-client", help="Setup system trigger oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")
-def setup_system_trigger_oauth_client(provider, client_params):
+def setup_system_trigger_oauth_client(provider: str, client_params: str):
     """
     Setup system trigger oauth client
     """
@@ -128,7 +129,7 @@ def setup_system_trigger_oauth_client(provider, client_params):
 @click.command("setup-datasource-oauth-client", help="Setup datasource oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")
-def setup_datasource_oauth_client(provider, client_params):
+def setup_datasource_oauth_client(provider: str, client_params: str):
     """
     Setup datasource oauth client
     """
@@ -578,9 +579,6 @@ def install_rag_pipeline_plugins(input_file, output_file, workers):
     """
     click.echo(click.style("Installing rag pipeline plugins", fg="yellow"))
     plugin_migration = PluginMigration()
-    plugin_migration.install_rag_pipeline_plugins(
-        input_file,
-        output_file,
-        workers,
-    )
+    with session_factory.create_session() as session:
+        plugin_migration.install_rag_pipeline_plugins(input_file, output_file, workers, session=session)
     click.echo(click.style("Installing rag pipeline plugins successfully", fg="green"))

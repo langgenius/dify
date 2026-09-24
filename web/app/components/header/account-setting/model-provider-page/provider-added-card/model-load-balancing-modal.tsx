@@ -17,11 +17,11 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { toast } from '@/app/notifications'
 import { useGetModelCredential, useUpdateModelLoadBalancingConfig } from '@/service/use-models'
 import { ConfigurationMethodEnum, FormTypeEnum } from '../declarations'
 import { useRefreshModel } from '../hooks'
@@ -51,7 +51,7 @@ const ModelLoadBalancingModal = ({
   onClose,
   onSave,
 }: ModelLoadBalancingModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { doingAction, deleteModel, openConfirmDelete, closeConfirmDelete, handleConfirmDelete } =
     useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, {
       isModelCredential: true,
@@ -249,10 +249,10 @@ const ModelLoadBalancingModal = ({
           if (!open) onClose?.()
         }}
       >
-        <DialogContent className="w-[640px] max-w-none border-none px-8 pt-8 text-left align-middle">
+        <DialogContent className="w-160 max-w-none border-none px-8 pt-8 text-left align-middle">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             <div className="pb-3 font-semibold">
-              <div className="h-[30px]">
+              <div className="h-7.5">
                 {draftConfig?.enabled
                   ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })
                   : t(($) => $['modelProvider.auth.configModel'], { ns: 'common' })}
@@ -277,7 +277,7 @@ const ModelLoadBalancingModal = ({
           </DialogTitle>
 
           {!draftConfig ? (
-            <Loading type="area" />
+            <LoadingPlaceholder />
           ) : (
             <>
               <div className="py-2">
@@ -290,7 +290,7 @@ const ModelLoadBalancingModal = ({
                   )}
                   onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
                 >
-                  <div className="flex items-center gap-2 px-[15px] py-3 select-none">
+                  <div className="flex items-center gap-2 px-3.75 py-3 select-none">
                     <div className="flex size-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-components-card-border bg-components-card-bg">
                       {Boolean(model) && (
                         <ModelIcon

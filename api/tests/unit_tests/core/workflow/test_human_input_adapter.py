@@ -18,12 +18,12 @@ from core.workflow.human_input_adapter import (
 )
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from graphon.runtime import VariablePool
 
 
 def test_email_delivery_config_helpers_render_and_sanitize_text() -> None:
-    variable_pool = SimpleNamespace(
-        convert_template=lambda body: SimpleNamespace(text=body.replace("{{#node.value#}}", "42"))
-    )
+    variable_pool = VariablePool()
+    variable_pool.add(["node", "value"], "42")
 
     rendered = EmailDeliveryConfig.render_body_template(
         body="Open {{#url#}} and use {{#node.value#}}",

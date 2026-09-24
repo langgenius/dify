@@ -15,8 +15,8 @@ class DifyHITLEventType(StrEnum):
 
     """
 
-    # Ideally this should be a string constaint. However, we cannot put
-    # string constant into Literal type cosntructor. We have to warp it as a
+    # Ideally this should be a string constraint. However, we cannot put
+    # string constant into Literal type constructor. We have to wrap it as a
     # string enumeration.
     HUMAN_INPUT_REQUIRED = PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED.value
 

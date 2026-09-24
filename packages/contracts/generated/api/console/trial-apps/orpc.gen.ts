@@ -24,6 +24,12 @@ import {
   zPostTrialAppsByAppIdCompletionMessagesBody,
   zPostTrialAppsByAppIdCompletionMessagesPath,
   zPostTrialAppsByAppIdCompletionMessagesResponse,
+  zPostTrialAppsByAppIdFilesUploadBody,
+  zPostTrialAppsByAppIdFilesUploadPath,
+  zPostTrialAppsByAppIdFilesUploadResponse,
+  zPostTrialAppsByAppIdRemoteFilesUploadBody,
+  zPostTrialAppsByAppIdRemoteFilesUploadPath,
+  zPostTrialAppsByAppIdRemoteFilesUploadResponse,
   zPostTrialAppsByAppIdTextToAudioBody,
   zPostTrialAppsByAppIdTextToAudioPath,
   zPostTrialAppsByAppIdTextToAudioResponse,
@@ -32,7 +38,7 @@ import {
   zPostTrialAppsByAppIdWorkflowsRunResponse,
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath,
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const post = oc
   .route({
@@ -109,6 +115,35 @@ export const datasets = {
   get,
 }
 
+/**
+ * Upload a file into the tenant that owns the trial app
+ */
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdFilesUpload',
+    path: '/trial-apps/{app_id}/files/upload',
+    successStatus: 201,
+    summary: 'Upload a file into the tenant that owns the trial app',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdFilesUploadBody,
+      params: zPostTrialAppsByAppIdFilesUploadPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdFilesUploadResponse)
+
+export const upload = {
+  post: post4,
+}
+
+export const files = {
+  upload,
+}
+
 export const get2 = oc
   .route({
     inputStructure: 'detailed',
@@ -152,6 +187,35 @@ export const parameters = {
 }
 
 /**
+ * Upload a remote file into the tenant that owns the trial app
+ */
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdRemoteFilesUpload',
+    path: '/trial-apps/{app_id}/remote-files/upload',
+    successStatus: 201,
+    summary: 'Upload a remote file into the tenant that owns the trial app',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdRemoteFilesUploadBody,
+      params: zPostTrialAppsByAppIdRemoteFilesUploadPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdRemoteFilesUploadResponse)
+
+export const upload2 = {
+  post: post5,
+}
+
+export const remoteFiles = {
+  upload: upload2,
+}
+
+/**
  * Retrieve app site info
  *
  * Returns the site configuration for the application including theme, icons, and text.
@@ -174,7 +238,7 @@ export const site = {
   get: get4,
 }
 
-export const post4 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -191,13 +255,13 @@ export const post4 = oc
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
-  post: post4,
+  post: post6,
 }
 
 /**
  * Run workflow
  */
-export const post5 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -215,13 +279,13 @@ export const post5 = oc
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
 
 export const run = {
-  post: post5,
+  post: post7,
 }
 
 /**
  * Stop workflow task
  */
-export const post6 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -234,7 +298,7 @@ export const post6 = oc
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
 
 export const stop = {
-  post: post6,
+  post: post8,
 }
 
 export const byTaskId = {
@@ -246,7 +310,7 @@ export const tasks = {
 }
 
 /**
- * Get workflow detail
+ * Get a detached workflow definition after catalog preview admission
  */
 export const get5 = oc
   .route({
@@ -254,7 +318,7 @@ export const get5 = oc
     method: 'GET',
     operationId: 'getTrialAppsByAppIdWorkflows',
     path: '/trial-apps/{app_id}/workflows',
-    summary: 'Get workflow detail',
+    summary: 'Get a detached workflow definition after catalog preview admission',
     tags: ['console'],
   })
   .input(z.object({ params: zGetTrialAppsByAppIdWorkflowsPath }))
@@ -267,7 +331,7 @@ export const workflows = {
 }
 
 /**
- * Get app detail
+ * Get app detail using the viewer's workspace for tool configuration
  */
 export const get6 = oc
   .route({
@@ -275,7 +339,7 @@ export const get6 = oc
     method: 'GET',
     operationId: 'getTrialAppsByAppId',
     path: '/trial-apps/{app_id}',
-    summary: 'Get app detail',
+    summary: "Get app detail using the viewer's workspace for tool configuration",
     tags: ['console'],
   })
   .input(z.object({ params: zGetTrialAppsByAppIdPath }))
@@ -287,8 +351,10 @@ export const byAppId = {
   chatMessages,
   completionMessages,
   datasets,
+  files,
   messages,
   parameters,
+  remoteFiles,
   site,
   textToAudio,
   workflows,

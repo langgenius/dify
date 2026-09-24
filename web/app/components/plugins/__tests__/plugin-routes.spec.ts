@@ -32,12 +32,15 @@ describe('plugin routes', () => {
   })
 
   it.each([
-    { 'package-ids': '["langgenius/telegram_trigger"]' },
-    { tab: 'plugins', 'package-ids': '["langgenius/telegram_trigger"]' },
-    { 'bundle-info': '{"org":"langgenius","name":"bundle","version":"1.0.0"}' },
-  ])('keeps install deep links on the legacy plugin page for search params %j', (searchParams) => {
-    expect(getLegacyPluginRedirectPath(searchParams)).toBeUndefined()
-  })
+    [{ 'package-ids': '["langgenius/telegram_trigger"]' }, '/integrations'],
+    [{ tab: 'plugins', 'package-ids': '["langgenius/telegram_trigger"]' }, '/integrations'],
+    [{ 'bundle-info': '{"org":"langgenius","name":"bundle","version":"1.0.0"}' }, '/integrations'],
+  ])(
+    'redirects unresolved install deep links to integrations for search params %j',
+    (searchParams, expected) => {
+      expect(getLegacyPluginRedirectPath(searchParams)).toBe(expected)
+    },
+  )
 
   it('parses the first package id from marketplace install search params', () => {
     expect(
@@ -149,10 +152,10 @@ describe('plugin routes', () => {
     expect(getLegacyPluginRedirectPath(searchParams)).toBe(expected)
   })
 
-  it.each([{ tab: 'unsupported' }, { tab: 'toString' }])(
-    'does not redirect unsupported plugin URLs for search params %j',
-    (searchParams) => {
-      expect(getLegacyPluginRedirectPath(searchParams)).toBeUndefined()
-    },
-  )
+  it.each([
+    [{ tab: 'unsupported' }, '/integrations'],
+    [{ tab: 'toString' }, '/integrations'],
+  ])('redirects unsupported plugin URLs for search params %j', (searchParams, expected) => {
+    expect(getLegacyPluginRedirectPath(searchParams)).toBe(expected)
+  })
 })

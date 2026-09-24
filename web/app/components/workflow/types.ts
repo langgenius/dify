@@ -1,8 +1,9 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { Edge as ReactFlowEdge, Node as ReactFlowNode, Viewport, XYPosition } from 'reactflow'
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type {
-  BlockClassificationEnum,
+  BlockClassification,
   BlockDefaultValue,
   PluginDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
@@ -11,8 +12,8 @@ import type {
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { Resolution, TransferMethod } from '@/types/app'
@@ -24,51 +25,57 @@ import type {
   PanelProps,
 } from '@/types/workflow'
 
-export enum BlockEnum {
-  Start = 'start',
-  StartPlaceholder = 'start-placeholder',
-  End = 'end',
-  Answer = 'answer',
-  LLM = 'llm',
-  KnowledgeRetrieval = 'knowledge-retrieval',
-  QuestionClassifier = 'question-classifier',
-  IfElse = 'if-else',
-  Code = 'code',
-  TemplateTransform = 'template-transform',
-  HttpRequest = 'http-request',
-  VariableAssigner = 'variable-assigner',
-  VariableAggregator = 'variable-aggregator',
-  Tool = 'tool',
-  ParameterExtractor = 'parameter-extractor',
-  Iteration = 'iteration',
-  DocExtractor = 'document-extractor',
-  ListFilter = 'list-operator',
-  IterationStart = 'iteration-start',
-  Assigner = 'assigner', // is now named as VariableAssigner
-  Agent = 'agent',
-  AgentV2 = 'agent-v2',
-  Loop = 'loop',
-  LoopStart = 'loop-start',
-  LoopEnd = 'loop-end',
-  HumanInput = 'human-input',
-  DataSource = 'datasource',
-  DataSourceEmpty = 'datasource-empty',
-  KnowledgeBase = 'knowledge-index',
-  TriggerSchedule = 'trigger-schedule',
-  TriggerWebhook = 'trigger-webhook',
-  TriggerPlugin = 'trigger-plugin',
-}
+export const BlockEnum = {
+  Start: 'start',
+  StartPlaceholder: 'start-placeholder',
+  End: 'end',
+  Answer: 'answer',
+  LLM: 'llm',
+  KnowledgeRetrieval: 'knowledge-retrieval',
+  QuestionClassifier: 'question-classifier',
+  IfElse: 'if-else',
+  Code: 'code',
+  TemplateTransform: 'template-transform',
+  HttpRequest: 'http-request',
+  VariableAssigner: 'variable-assigner',
+  VariableAggregator: 'variable-aggregator',
+  Tool: 'tool',
+  ParameterExtractor: 'parameter-extractor',
+  Iteration: 'iteration',
+  DocExtractor: 'document-extractor',
+  ListFilter: 'list-operator',
+  IterationStart: 'iteration-start',
+  Assigner: 'assigner', // is now named as VariableAssigner
+  Agent: 'agent',
+  AgentV2: 'agent-v2',
+  Loop: 'loop',
+  LoopStart: 'loop-start',
+  LoopEnd: 'loop-end',
+  HumanInput: 'human-input',
+  DataSource: 'datasource',
+  DataSourceEmpty: 'datasource-empty',
+  KnowledgeBase: 'knowledge-index',
+  TriggerSchedule: 'trigger-schedule',
+  TriggerWebhook: 'trigger-webhook',
+  TriggerPlugin: 'trigger-plugin',
+} as const
 
-export enum ControlMode {
-  Pointer = 'pointer',
-  Hand = 'hand',
-  Comment = 'comment',
-}
-export enum ErrorHandleMode {
-  Terminated = 'terminated',
-  ContinueOnError = 'continue-on-error',
-  RemoveAbnormalOutput = 'remove-abnormal-output',
-}
+export type BlockEnum = (typeof BlockEnum)[keyof typeof BlockEnum]
+
+export const ControlMode = {
+  Pointer: 'pointer',
+  Hand: 'hand',
+  Comment: 'comment',
+} as const
+
+export type ControlMode = (typeof ControlMode)[keyof typeof ControlMode]
+export const ErrorHandleMode = {
+  Terminated: 'terminated',
+  ContinueOnError: 'continue-on-error',
+  RemoveAbnormalOutput: 'remove-abnormal-output',
+} as const
+
+export type ErrorHandleMode = (typeof ErrorHandleMode)[keyof typeof ErrorHandleMode]
 export type Branch = {
   id: string
   name: string
@@ -116,7 +123,12 @@ export type CommonNodeType<T = {}> = {
   provider_id?: string
   _dimmed?: boolean
 } & T &
-  Partial<PluginDefaultValue>
+  Partial<
+    Pick<
+      PluginDefaultValue,
+      'provider_type' | 'provider_name' | 'plugin_id' | 'plugin_unique_identifier'
+    >
+  >
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -170,11 +182,22 @@ export type Variable = {
   isParagraph?: boolean
 }
 
+export type LLMCompletionParams = Record<string, unknown>
+
+export type LLMEnvironmentVariableValue = {
+  provider: string
+  name: string
+  mode: string
+  completion_params?: LLMCompletionParams
+}
+
+export type EnvironmentVariableValue = string | number | LLMEnvironmentVariableValue
+
 export type EnvironmentVariable = {
   id: string
   name: string
-  value: any
-  value_type: 'string' | 'number' | 'secret'
+  value: EnvironmentVariableValue
+  value_type: 'string' | 'number' | 'secret' | 'llm'
   description: string
 }
 
@@ -192,22 +215,24 @@ export type GlobalVariable = {
   description: string
 }
 
-export enum InputVarType {
-  textInput = 'text-input',
-  paragraph = 'paragraph',
-  select = 'select',
-  number = 'number',
-  url = 'url',
-  files = 'files',
-  json = 'json', // obj, array
-  jsonObject = 'json_object', // only object support define json schema
-  contexts = 'contexts', // knowledge retrieval
-  iterator = 'iterator', // iteration input
-  singleFile = 'file',
-  multiFiles = 'file-list',
-  loop = 'loop', // loop input
-  checkbox = 'checkbox',
-}
+export const InputVarType = {
+  textInput: 'text-input',
+  paragraph: 'paragraph',
+  select: 'select',
+  number: 'number',
+  url: 'url',
+  files: 'files',
+  json: 'json', // obj, array
+  jsonObject: 'json_object', // only object support define json schema
+  contexts: 'contexts', // knowledge retrieval
+  iterator: 'iterator', // iteration input
+  singleFile: 'file',
+  multiFiles: 'file-list',
+  loop: 'loop', // loop input
+  checkbox: 'checkbox',
+} as const
+
+export type InputVarType = (typeof InputVarType)[keyof typeof InputVarType]
 
 export type InputVar = {
   type: InputVarType
@@ -234,23 +259,24 @@ export type InputVar = {
   json_schema?: string | Record<string, any> // for jsonObject type
 } & Partial<UploadFileSetting>
 
-export type ModelConfig = {
-  provider: string
-  name: string
-  mode: string
-  completion_params: Record<string, any>
+export type ModelConfig = LLMEnvironmentVariableValue & {
+  completion_params: LLMCompletionParams
 }
 
-export enum PromptRole {
-  system = 'system',
-  user = 'user',
-  assistant = 'assistant',
-}
+export const PromptRole = {
+  system: 'system',
+  user: 'user',
+  assistant: 'assistant',
+} as const
 
-export enum EditionType {
-  basic = 'basic',
-  jinja2 = 'jinja2',
-}
+export type PromptRole = (typeof PromptRole)[keyof typeof PromptRole]
+
+export const EditionType = {
+  basic: 'basic',
+  jinja2: 'jinja2',
+} as const
+
+export type EditionType = (typeof EditionType)[keyof typeof EditionType]
 
 export type PromptItem = {
   id?: string
@@ -260,10 +286,12 @@ export type PromptItem = {
   jinja2_text?: string
 }
 
-export enum MemoryRole {
-  user = 'user',
-  assistant = 'assistant',
-}
+export const MemoryRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const
+
+export type MemoryRole = (typeof MemoryRole)[keyof typeof MemoryRole]
 
 export type RolePrefix = {
   user: string
@@ -274,33 +302,37 @@ export type Memory = {
   role_prefix?: RolePrefix
   window: {
     enabled: boolean
-    size: number | string | null
+    size: number | null
   }
   query_prompt_template: string
 }
 
-export enum VarType {
-  string = 'string',
-  number = 'number',
-  integer = 'integer',
-  secret = 'secret',
-  boolean = 'boolean',
-  object = 'object',
-  file = 'file',
-  array = 'array',
-  arrayString = 'array[string]',
-  arrayNumber = 'array[number]',
-  arrayObject = 'array[object]',
-  arrayBoolean = 'array[boolean]',
-  arrayFile = 'array[file]',
-  any = 'any',
-  arrayAny = 'array[any]',
-}
+export const VarType = {
+  string: 'string',
+  number: 'number',
+  integer: 'integer',
+  secret: 'secret',
+  boolean: 'boolean',
+  object: 'object',
+  file: 'file',
+  array: 'array',
+  arrayString: 'array[string]',
+  arrayNumber: 'array[number]',
+  arrayObject: 'array[object]',
+  arrayBoolean: 'array[boolean]',
+  arrayFile: 'array[file]',
+  any: 'any',
+  arrayAny: 'array[any]',
+} as const
 
-export enum ValueType {
-  variable = 'variable',
-  constant = 'constant',
-}
+export type VarType = (typeof VarType)[keyof typeof VarType]
+
+export const ValueType = {
+  variable: 'variable',
+  constant: 'constant',
+} as const
+
+export type ValueType = (typeof ValueType)[keyof typeof ValueType]
 
 export type Var = {
   variable: string
@@ -327,9 +359,17 @@ export type NodeOutPutVar = {
   isFlat?: boolean
 }
 
+export type WorkflowPluginCatalogs = {
+  buildInTools?: ToolWithProvider[]
+  customTools?: ToolWithProvider[]
+  workflowTools?: ToolWithProvider[]
+  mcpTools?: ToolWithProvider[]
+  dataSourceList?: RagPipelineDatasourceProviderResponse[]
+}
+
 export type NodeDefault<T = {}> = {
   metaData: {
-    classification: BlockClassificationEnum
+    classification: BlockClassification
     sort: number
     type: BlockEnum
     title: string
@@ -351,7 +391,7 @@ export type NodeDefault<T = {}> = {
   ) => { isValid: boolean; errorMessage?: string }
   getOutputVars?: (
     payload: T,
-    allPluginInfoList: Record<string, ToolWithProvider[]>,
+    allPluginInfoList: WorkflowPluginCatalogs,
     ragVariables?: Var[],
     utils?: {
       schemaTypeDefinitions?: SchemaTypeDefinition[]
@@ -361,32 +401,37 @@ export type NodeDefault<T = {}> = {
 
 export type OnSelectBlock = (type: BlockEnum, defaultValue?: BlockDefaultValue) => void
 
-export enum WorkflowRunningStatus {
-  Waiting = 'waiting',
-  Running = 'running',
-  Succeeded = 'succeeded',
-  Failed = 'failed',
-  Stopped = 'stopped',
-  Paused = 'paused',
-}
+export const WorkflowRunningStatus = {
+  Waiting: 'waiting',
+  Running: 'running',
+  Succeeded: 'succeeded',
+  Failed: 'failed',
+  Stopped: 'stopped',
+  Paused: 'paused',
+} as const
 
-export enum WorkflowVersion {
-  Draft = 'draft',
-  Latest = 'latest',
-}
+export type WorkflowRunningStatus =
+  (typeof WorkflowRunningStatus)[keyof typeof WorkflowRunningStatus]
 
-export enum NodeRunningStatus {
-  NotStart = 'not-start',
-  Waiting = 'waiting',
-  Listening = 'listening',
-  Running = 'running',
-  Succeeded = 'succeeded',
-  Failed = 'failed',
-  Exception = 'exception',
-  Retry = 'retry',
-  Stopped = 'stopped',
-  Paused = 'paused',
-}
+export const WorkflowVersion = {
+  Draft: 'draft',
+  Latest: 'latest',
+} as const
+
+export const NodeRunningStatus = {
+  NotStart: 'not-start',
+  Waiting: 'waiting',
+  Listening: 'listening',
+  Running: 'running',
+  Succeeded: 'succeeded',
+  Failed: 'failed',
+  Exception: 'exception',
+  Retry: 'retry',
+  Stopped: 'stopped',
+  Paused: 'paused',
+} as const
+
+export type NodeRunningStatus = (typeof NodeRunningStatus)[keyof typeof NodeRunningStatus]
 
 export type OnNodeAdd = (
   newNodePayload: {
@@ -451,10 +496,12 @@ export type HistoryWorkflowData = {
   finished_at?: number
 }
 
-export enum ChangeType {
-  changeVarName = 'changeVarName',
-  remove = 'remove',
-}
+export const ChangeType = {
+  changeVarName: 'changeVarName',
+  remove: 'remove',
+} as const
+
+export type ChangeType = (typeof ChangeType)[keyof typeof ChangeType]
 
 export type MoreInfo = {
   type: ChangeType
@@ -466,7 +513,7 @@ export type MoreInfo = {
 
 export type ToolWithProvider = Collection & {
   tools: Tool[]
-  meta: PluginMeta
+  meta?: PluginMeta
   plugin_unique_identifier?: string
 }
 
@@ -475,13 +522,16 @@ export type RAGRecommendedPlugins = {
   uninstalled_recommended_plugins: Plugin[]
 }
 
-export enum SupportUploadFileTypes {
-  image = 'image',
-  document = 'document',
-  audio = 'audio',
-  video = 'video',
-  custom = 'custom',
-}
+export const SupportUploadFileTypes = {
+  image: 'image',
+  document: 'document',
+  audio: 'audio',
+  video: 'video',
+  custom: 'custom',
+} as const
+
+export type SupportUploadFileTypes =
+  (typeof SupportUploadFileTypes)[keyof typeof SupportUploadFileTypes]
 
 export type UploadFileSetting = {
   allowed_file_upload_methods: TransferMethod[]
@@ -497,18 +547,24 @@ export type VisionSetting = {
   detail: Resolution
 }
 
-export enum WorkflowVersionFilterOptions {
-  all = 'all',
-  onlyYours = 'onlyYours',
-}
+export const WorkflowVersionFilterOptions = {
+  all: 'all',
+  onlyYours: 'onlyYours',
+} as const
 
-export enum VersionHistoryContextMenuOptions {
-  restore = 'restore',
-  edit = 'edit',
-  delete = 'delete',
-  exportDSL = 'exportDSL',
-  copyId = 'copyId',
-}
+export type WorkflowVersionFilterOptions =
+  (typeof WorkflowVersionFilterOptions)[keyof typeof WorkflowVersionFilterOptions]
+
+export const VersionHistoryContextMenuOptions = {
+  restore: 'restore',
+  edit: 'edit',
+  delete: 'delete',
+  exportDSL: 'exportDSL',
+  copyId: 'copyId',
+} as const
+
+export type VersionHistoryContextMenuOptions =
+  (typeof VersionHistoryContextMenuOptions)[keyof typeof VersionHistoryContextMenuOptions]
 
 export type ChildNodeTypeCount = {
   [key: string]: number

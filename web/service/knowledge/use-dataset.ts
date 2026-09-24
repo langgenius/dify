@@ -1,12 +1,10 @@
 import type { MutationOptions } from '@tanstack/react-query'
-import type { ApiKeysListResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type {
   DataSet,
   DatasetListRequest,
   DataSetListResponse,
   ErrorDocsResponse,
-  ExternalAPIListResponse,
   FetchDatasetsParams,
   HitTestingRecordsResponse,
   IndexingStatusBatchRequest,
@@ -14,13 +12,7 @@ import type {
   ProcessRuleResponse,
   RelatedAppResponse,
 } from '@/models/datasets'
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import qs from 'qs'
 import { get, post } from '../base'
 import { useInvalid } from '../use-base'
@@ -169,31 +161,6 @@ export const useDisableDatasetServiceApi = () => {
     mutationKey: [NAME_SPACE, 'disable-api'],
     mutationFn: (datasetId: string) =>
       post<CommonResponse>(`/datasets/${datasetId}/api-keys/disable`),
-  })
-}
-
-export const useDatasetApiKeys = (options?: { enabled?: boolean }) => {
-  return useQuery<ApiKeysListResponse>({
-    queryKey: [NAME_SPACE, 'api-keys'],
-    queryFn: () => get<ApiKeysListResponse>('/datasets/api-keys'),
-    enabled: options?.enabled ?? true,
-  })
-}
-
-export const useInvalidateDatasetApiKeys = () => {
-  const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'api-keys'],
-    })
-  }
-}
-
-export const useExternalKnowledgeApiList = (options?: { enabled?: boolean }) => {
-  return useQuery<ExternalAPIListResponse>({
-    queryKey: [NAME_SPACE, 'external-knowledge-api'],
-    queryFn: () => get<ExternalAPIListResponse>('/datasets/external-knowledge-api'),
-    enabled: options?.enabled ?? true,
   })
 }
 

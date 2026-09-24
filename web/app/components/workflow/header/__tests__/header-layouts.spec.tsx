@@ -1,5 +1,7 @@
 import type { Shape } from '../../store/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
@@ -25,60 +27,38 @@ const mockViewHistory = vi.fn()
 
 let mockNodesReadOnly = false
 let mockTheme: 'light' | 'dark' = 'light'
-const mockAppContextState = vi.hoisted(() => ({
-  userProfile: {
-    id: '',
-    name: '',
-  },
-}))
-
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
 vi.mock('reactflow', () => ({
   useNodes: () => mockUseNodes(),
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
+}))
+
+vi.mock('../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({ handleNodeSelect: mockHandleNodeSelect }),
+}))
+
+vi.mock('../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleBackupDraft: mockHandleBackupDraft,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
   }),
+}))
+
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
   }),
 }))
 
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
   }),
@@ -106,7 +86,7 @@ vi.mock('../../collaboration/core/collaboration-manager', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -147,7 +127,7 @@ vi.mock('../run-and-history', () => ({
 }))
 
 vi.mock('../version-history-button', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
+  VersionHistoryButton: ({ onClick }: { onClick: () => void }) => (
     <button type="button" onClick={onClick}>
       version-history
     </button>
@@ -206,6 +186,7 @@ const createCurrentVersion = (): NonNullable<Shape['currentVersion']> => ({
   tool_published: false,
   environment_variables: [],
   version: WorkflowVersion.Latest,
+  version_number: 5,
   marked_name: '',
   marked_comment: '',
 })
@@ -308,6 +289,9 @@ describe('Header layout components', () => {
       const onRestoreSettled = vi.fn()
       const deleteAllInspectVars = vi.fn()
       const currentVersion = createCurrentVersion()
+      const currentUser = { id: 'user-1', name: 'Alice' }
+      const queryClient = createAccountProfileQueryClient(currentUser)
+      seedSystemFeatures(queryClient)
 
       const { store } = renderWorkflowComponent(
         <HeaderInRestoring onRestoreSettled={onRestoreSettled} />,
@@ -326,6 +310,7 @@ describe('Header layout components', () => {
               fileSettings: {},
             },
           },
+          queryClient,
         },
       )
 
@@ -346,9 +331,9 @@ describe('Header layout components', () => {
       })
       expect(mockEmitRestoreIntent).toHaveBeenCalledWith({
         versionId: currentVersion.id,
-        versionName: currentVersion.marked_name,
-        initiatorUserId: '',
-        initiatorName: '',
+        versionName: '# 5',
+        initiatorUserId: currentUser.id,
+        initiatorName: currentUser.name,
       })
       expect(mockEmitRestoreComplete).toHaveBeenCalledWith({
         versionId: currentVersion.id,

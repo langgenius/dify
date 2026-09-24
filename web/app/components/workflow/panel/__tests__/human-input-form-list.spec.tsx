@@ -1,5 +1,5 @@
 import type { HumanInputFormData } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import {
@@ -7,6 +7,7 @@ import {
   UserActionButtonType,
 } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import HumanInputFormList from '../human-input-form-list'
 
 const mockNodes: Array<{
@@ -140,6 +141,23 @@ describe('HumanInputFormList', () => {
     render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
 
     expect(screen.queryByTestId('tips')).not.toBeInTheDocument()
+  })
+
+  it('should reset inputs when the same node produces a new form', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
+
+    const input = screen.getByTestId('content-item-textarea')
+    await user.clear(input)
+    await user.type(input, 'previous response')
+
+    rerender(
+      <HumanInputFormList
+        humanInputFormDataList={[createFormData({ form_id: 'form-2', form_token: 'token-2' })]}
+      />,
+    )
+
+    expect(screen.getByTestId('content-item-textarea')).toHaveValue('prefill')
   })
 
   it('should render an empty container when there are no visible forms', () => {

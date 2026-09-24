@@ -316,10 +316,10 @@ class OracleVector(BaseVector):
                     entities.append(current_entity)
             else:
                 try:
-                    nltk.data.find("tokenizers/punkt")
+                    nltk.data.find("tokenizers/punkt_tab")
                     nltk.data.find("corpora/stopwords")
                 except LookupError:
-                    raise LookupError("Unable to find the required NLTK data package: punkt and stopwords")
+                    raise LookupError("Unable to find the required NLTK data package: punkt_tab and stopwords")
                 e_str = re.sub(r"[^\w ]", "", query)
                 all_tokens = nltk.word_tokenize(e_str)
                 stop_words = stopwords.words("english")

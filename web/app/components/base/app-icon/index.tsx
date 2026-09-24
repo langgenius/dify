@@ -1,25 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import type { AppIconType } from '@/types/app'
-import data from '@emoji-mart/data'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import { cva } from 'class-variance-authority'
-import { init } from 'emoji-mart'
 import * as React from 'react'
-import { useRef, useSyncExternalStore } from 'react'
-
-init({ data })
-
-const subscribeHydrationState = () => () => {}
-
-const useIsHydrated = () =>
-  useSyncExternalStore(
-    subscribeHydrationState,
-    () => true,
-    () => false,
-  )
+import { useRef } from 'react'
+import { resolveEmoji } from '@/utils/emoji'
 
 type AppIconProps = {
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large' | 'xl' | 'xxl'
@@ -28,6 +16,7 @@ type AppIconProps = {
   icon?: string
   background?: string | null
   imageUrl?: string | null
+  decorative?: boolean
   className?: string
   innerIcon?: React.ReactNode
   coverElement?: React.ReactNode
@@ -86,7 +75,7 @@ const EditIconVariants = cva('text-text-primary-on-surface', {
       xs: 'size-3',
       tiny: 'size-3.5',
       small: 'size-5',
-      medium: 'size-[22px]',
+      medium: 'size-5.5',
       large: 'size-6',
       xl: 'size-7',
       xxl: 'size-8',
@@ -103,6 +92,7 @@ const AppIcon: FC<AppIconProps> = ({
   icon,
   background,
   imageUrl,
+  decorative = false,
   className,
   innerIcon,
   coverElement,
@@ -110,9 +100,8 @@ const AppIcon: FC<AppIconProps> = ({
   showEditIcon = false,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
-  const emojiIcon = icon && icon !== '' ? icon : '🤖'
-  const isHydrated = useIsHydrated()
-  const Icon = isHydrated ? <em-emoji key={emojiIcon} id={emojiIcon} /> : emojiIcon
+  const isDecorative = decorative && !onClick
+  const Icon = resolveEmoji(icon)
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
   const handleKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>) => {
@@ -133,9 +122,10 @@ const AppIcon: FC<AppIconProps> = ({
       onKeyDown={onClick ? handleKeyDown : undefined}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
+      aria-hidden={isDecorative || undefined}
     >
       {isValidImageIcon ? (
-        <img src={imageUrl} className="size-full" alt="app icon" />
+        <img src={imageUrl} className="size-full" alt={isDecorative ? '' : 'app icon'} />
       ) : (
         innerIcon || Icon
       )}

@@ -1,8 +1,8 @@
 'use client'
-import type { RadioItemProps } from '@langgenius/dify-ui/radio'
+import type { RadioItemProps } from '@langgenius/dify-ui/radio-group'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio-group'
 
 type BaseProps = {
   className?: string
@@ -99,7 +99,7 @@ function RadioCard<Value = string>(props: Props<Value>) {
   )
   const rootClassName = cn(
     'group/radio-card relative rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3 transition-colors',
-    'has-[[data-checked]]:border-[1.5px] has-[[data-checked]]:bg-components-option-card-option-selected-bg',
+    'has-data-checked:border-[1.5px] has-data-checked:bg-components-option-card-option-selected-bg',
     className,
   )
   const config = !!chosenConfig && (

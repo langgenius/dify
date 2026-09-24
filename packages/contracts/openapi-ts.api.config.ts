@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { $, defineConfig } from '@hey-api/openapi-ts'
+import ts from 'typescript'
 
 type JsonObject = Record<string, unknown>
 
@@ -39,7 +40,6 @@ type ApiSpec = {
 }
 
 type ApiJob = {
-  clean?: boolean
   document: SwaggerDocument
   outputPath: string
   plugins?: UserConfig['plugins']
@@ -60,6 +60,7 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
+const strictZodSchemaNames = new Set(['AccountProfilePatchPayload', 'Parameters'])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
@@ -260,10 +261,146 @@ const filterContractOperations = (document: SwaggerDocument) => {
   }
 }
 
+const includeMultipartRequestSchemas = (document: SwaggerDocument) => {
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation) || !isObject(operation.requestBody))
+        continue
+      const content = operation.requestBody.content
+      if (!isObject(content)) continue
+      const json = content['application/json']
+      const multipart = content['multipart/form-data']
+      if (
+        !isObject(json) ||
+        !isObject(json.schema) ||
+        !isObject(multipart) ||
+        !isObject(multipart.schema)
+      )
+        continue
+
+      // hey-api selects JSON for mixed request media; retain the multipart shape
+      // so the generated client can serialize File values as FormData.
+      json.schema = { anyOf: [json.schema, multipart.schema] }
+    }
+  }
+}
+
+const includeNonJsonResponseSchemas = (document: SwaggerDocument) => {
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation)) continue
+
+      for (const [status, response] of Object.entries(
+        (operation as SwaggerOperation).responses ?? {},
+      )) {
+        if (!/^2\d\d$/.test(status) || !isObject(response) || !isObject(response.content)) continue
+
+        const jsonMedia = response.content['application/json']
+        if (!isObject(jsonMedia) || !isObject(jsonMedia.schema)) continue
+
+        const alternatives: SwaggerSchema[] = []
+        for (const [mediaType, media] of Object.entries(response.content)) {
+          if (mediaType === 'application/json' || !isObject(media) || !isObject(media.schema))
+            continue
+          if (mediaType === 'text/event-stream' || media.schema.format === 'binary')
+            alternatives.push(media.schema)
+        }
+        if (alternatives.length === 0) continue
+
+        // hey-api selects the JSON schema when one status advertises multiple
+        // response media types. Preserve SSE and binary transports in the generated
+        // TypeScript and Zod contracts by making that selected schema a union.
+        jsonMedia.schema = {
+          anyOf: [jsonMedia.schema, ...alternatives],
+        }
+      }
+    }
+  }
+}
+
+const normalizeCodegenSchemas = (document: SwaggerDocument) => {
+  const visitedSchemas = new WeakSet<object>()
+
+  const visitSchema = (value: unknown) => {
+    if (!isObject(value) || visitedSchemas.has(value)) return
+
+    visitedSchemas.add(value)
+    if (value.default === null) delete value.default
+    // Dify serializes int64 fields as JSON numbers. hey-api maps int64 to
+    // bigint in Zod, which disagrees with both the wire value and its own
+    // generated TypeScript type. Keep int64 in the published OpenAPI specs,
+    // but generate number-based client validators from this in-memory copy.
+    if (value.type === 'integer' && value.format === 'int64') delete value.format
+
+    for (const key of [
+      'additionalProperties',
+      'contains',
+      'else',
+      'if',
+      'items',
+      'not',
+      'propertyNames',
+      'then',
+      'unevaluatedItems',
+      'unevaluatedProperties',
+    ]) {
+      visitSchema(value[key])
+    }
+
+    for (const key of ['allOf', 'anyOf', 'oneOf', 'prefixItems']) {
+      const schemas = value[key]
+      if (Array.isArray(schemas)) schemas.forEach(visitSchema)
+    }
+
+    for (const key of [
+      '$defs',
+      'definitions',
+      'dependentSchemas',
+      'patternProperties',
+      'properties',
+    ]) {
+      const schemas = value[key]
+      if (isObject(schemas)) Object.values(schemas).forEach(visitSchema)
+    }
+  }
+
+  const visitedDocumentObjects = new WeakSet<object>()
+  const findSchemas = (value: unknown, parentKey?: string) => {
+    if (!value || typeof value !== 'object' || visitedDocumentObjects.has(value)) return
+
+    visitedDocumentObjects.add(value)
+    if (parentKey === 'schema') {
+      visitSchema(value)
+      return
+    }
+    if (parentKey === 'schemas' && isObject(value)) {
+      Object.values(value).forEach(visitSchema)
+      return
+    }
+    if (parentKey === 'example' || parentKey === 'examples') return
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => findSchemas(item))
+      return
+    }
+
+    Object.entries(value).forEach(([key, item]) => findSchemas(item, key))
+  }
+
+  findSchemas(document)
+}
+
 const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
+  includeMultipartRequestSchemas(document)
+  includeNonJsonResponseSchemas(document)
+  // OpenAPI defaults describe server behavior. Keep them in the exported specs,
+  // but do not let Zod synthesize omitted transport fields during client-side
+  // request or response validation. Non-null defaults remain useful for query
+  // parameter ergonomics and preserve the existing generated contract behavior.
+  normalizeCodegenSchemas(document)
 
   return document
 }
@@ -359,7 +496,7 @@ const consoleContractEntryContent = (segments: string[]) => {
   const contractEntries = contracts
     .map(
       (contract) =>
-        `  ${contract.name}: () => import('./${contract.importPath}/orpc.gen').then(({ ${contract.name} }) => ({ ${contract.name} })),`,
+        `  ${contract.name}: () => import('./${contract.importPath}/orpc.gen.ts').then(({ ${contract.name} }) => ({ ${contract.name} })),`,
     )
     .join('\n')
 
@@ -386,7 +523,7 @@ const consoleRouterContractContent = (segments: string[]) => {
   })
 
   const imports = contracts
-    .map((contract) => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+    .map((contract) => `import { ${contract.name} } from './${contract.importPath}/orpc.gen.ts'`)
     .join('\n')
 
   const communityContractEntries = contracts.map((contract) => `  ${contract.name},`).join('\n')
@@ -394,7 +531,7 @@ const consoleRouterContractContent = (segments: string[]) => {
   return `// This file is auto-generated by packages/contracts/openapi-ts.api.config.ts
 
 ${imports}
-import { contract as enterpriseContract } from '../../enterprise/orpc.gen'
+import { contract as enterpriseContract } from '../../enterprise/orpc.gen.ts'
 
 const communityContract = {
 ${communityContractEntries}
@@ -415,7 +552,6 @@ const writeConsoleRouterContract = (segments: string[]) => {
 
 const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
   return {
-    clean: false,
     document,
     outputPath: 'generated/api/console',
     plugins: [],
@@ -442,12 +578,10 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
   }
 
   const segments = [...pathsBySegment.keys()].sort((left, right) => left.localeCompare(right))
-  const jobs = segments.map(
-    (segment): ApiJob => ({
-      document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
-      outputPath: `generated/api/console/${toKebabCase(segment)}`,
-    }),
-  )
+  const jobs = segments.map((segment): ApiJob => ({
+    document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
+    outputPath: `generated/api/console/${toKebabCase(segment)}`,
+  }))
 
   return [...jobs, createConsoleContractEntryJob(document, segments)]
 }
@@ -477,7 +611,8 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     file: false,
   },
   output: {
-    ...(job.clean === undefined ? {} : { clean: job.clean }),
+    module: { extension: '.ts' },
+    clean: false,
     entryFile: false,
     fileName: {
       suffix: '.gen',
@@ -493,11 +628,35 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     {
       name: 'zod',
       '~resolvers': {
+        object: (ctx) => {
+          const objectSchema = ctx.nodes.base(ctx)
+          const additionalProperties = ctx.schema.additionalProperties
+          // openapi-ts normalizes `additionalProperties: false` to `never`, but
+          // does not make shaped Zod objects strict.
+          const isStrictSchema = ctx.path['~ref'].some(
+            (segment) => typeof segment === 'string' && strictZodSchemaNames.has(segment),
+          )
+          if (
+            isStrictSchema &&
+            (additionalProperties === false || additionalProperties?.type === 'never')
+          )
+            return objectSchema.attr('strict').call()
+
+          return objectSchema
+        },
         string: (ctx) => {
           if (ctx.schema.format === 'binary')
             return $(ctx.symbols.z)
               .attr('custom')
-              .call()
+              .call(
+                $.func((predicate) => {
+                  const value = $.id('value')
+                  const isBlob = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('Blob'))
+                  const isFile = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('File'))
+                  predicate.param('value')
+                  predicate.do($.return($.binary(isBlob, '||', isFile)))
+                }),
+              )
               .generic($.type.or($.type('Blob'), $.type('File')))
 
           if (ctx.schema.pattern === pydanticDecimalStringPattern) {

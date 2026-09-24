@@ -1,23 +1,22 @@
 import type { FC } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import {
   BoxGroup,
   BoxGroupField,
   Group,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import { IS_CE_EDITION } from '@/config'
-import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'
 import EmbeddingModel from './components/embedding-model'
@@ -29,10 +28,30 @@ import { ChunkStructureEnum, IndexMethodEnum } from './types'
 import { getKnowledgeBaseValidationIssue, KnowledgeBaseValidationIssueCode } from './utils'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const rerankingChunkStructures: readonly ChunkStructureEnum[] = [
+    ChunkStructureEnum.general,
+    ChunkStructureEnum.parent_child,
+  ]
+
+  const { t } = useTranslation(['workflow'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const { nodesReadOnly } = useNodesReadOnly()
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const chunkStructure = data.chunk_structure
   const indexChunkVariableSelector = data.index_chunk_variable_selector
   const indexingTechnique = data.indexing_technique
@@ -240,10 +259,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({ id, data }) => {
                 <Split className="h-px" />
               </div>
               {data.indexing_technique === IndexMethodEnum.QUALIFIED &&
-                [ChunkStructureEnum.general, ChunkStructureEnum.parent_child].includes(
-                  data.chunk_structure,
-                ) &&
-                IS_CE_EDITION && (
+                rerankingChunkStructures.includes(data.chunk_structure) &&
+                isNonCloudEdition && (
                   <>
                     <SummaryIndexSetting
                       summaryIndexSetting={data.summary_index_setting}

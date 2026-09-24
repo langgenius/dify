@@ -2,13 +2,12 @@ import type { DataSourceCredential } from '@/app/components/header/account-setti
 import type { DataSourceNotionWorkspace } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import NotionPageSelector from '@/app/components/base/notion-page-selector/base'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 const mockInvalidPreImportNotionPages = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 const mockUsePreImportNotionPages = vi.fn()
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -29,16 +28,10 @@ vi.mock('@/service/knowledge/use-import', () => ({
   useInvalidPreImportNotionPages: () => mockInvalidPreImportNotionPages,
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (
-    selector: (state: {
-      setShowAccountSettingModal: typeof mockSetShowAccountSettingModal
-    }) => unknown,
-  ) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 const buildCredential = (
   id: string,
@@ -152,11 +145,14 @@ describe('Base Notion Page Selector Flow', () => {
       ]),
     )
 
-    await user.type(screen.getByTestId('notion-search-input'), 'missing-page')
+    await user.type(
+      screen.getByPlaceholderText('common.dataSource.notion.selector.searchPages'),
+      'missing-page',
+    )
     expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-    expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
+    expect(screen.getByText('Root 1')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('notion-page-preview-root-1'))
     expect(onPreview).toHaveBeenCalledWith(
@@ -181,7 +177,7 @@ describe('Base Notion Page Selector Flow', () => {
     expect(onSelectCredential).toHaveBeenCalledWith('c1')
 
     await user.click(screen.getByRole('combobox', { name: /Workspace 1/ }))
-    await user.click(screen.getByTestId('notion-credential-item-c2'))
+    await user.click(screen.getByRole('option', { name: /Workspace 2/ }))
 
     expect(mockInvalidPreImportNotionPages).toHaveBeenCalledWith({
       datasetId: 'dataset-1',
@@ -191,14 +187,12 @@ describe('Base Notion Page Selector Flow', () => {
 
     await waitFor(() => {
       expect(onSelectCredential).toHaveBeenLastCalledWith('c2')
-      expect(screen.getByTestId('notion-page-name-external-1')).toBeInTheDocument()
+      expect(screen.getByText('External 1')).toBeInTheDocument()
     })
 
     await user.click(
       screen.getByRole('button', { name: 'common.dataSource.notion.selector.configure' }),
     )
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
   })
 })

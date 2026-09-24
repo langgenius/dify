@@ -1,6 +1,7 @@
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   clampNodePanelWidth,
@@ -73,10 +74,10 @@ describe('workflow-panel helpers', () => {
       const dataSourceData = asNodeData({
         type: BlockEnum.DataSource,
         plugin_id: 'source-1',
-        provider_type: 'remote',
+        provider_type: 'online_document',
       })
       const triggerPlugins = [{ plugin_id: 'trigger-1', id: '1' }]
-      const dataSources = [{ plugin_id: 'source-1' }]
+      const dataSources = [createDatasourceProvider({ plugin_id: 'source-1' })]
 
       expect(getCurrentTriggerPlugin(triggerData, asTriggerList(triggerPlugins))).toEqual(
         triggerPlugins[0],

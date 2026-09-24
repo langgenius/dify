@@ -5,7 +5,7 @@ import { noop } from 'es-toolkit/function'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
@@ -21,7 +21,7 @@ type PipelineSettingsProps = {
 }
 
 const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const { push } = useRouter()
   const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(
     undefined,
@@ -178,7 +178,7 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
   )
 
   if (isFetchingLastRunData) {
-    return <Loading type="app" />
+    return <LoadingPlaceholder className="h-full" />
   }
 
   if (isError)
@@ -190,7 +190,7 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
     )
 
   return (
-    <div className="relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
+    <div className="relative flex h-[calc(100vh-56px)] min-w-5xl overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
       <div className="h-full min-w-0 flex-1">
         <div className="flex h-full flex-col px-14">
           <LeftHeader title={t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })} />

@@ -1,6 +1,6 @@
 import type { ModelProvider } from '../../declarations'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -29,12 +29,7 @@ const {
   mockChangePriorityFn: vi.fn().mockResolvedValue({ result: 'success' }),
 }))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return { ...actual, IS_CLOUD_EDITION: true }
-})
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: mockToastNotify },
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
@@ -44,8 +39,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const mockedModelProviders = {
     byProvider: {
       models: {
@@ -116,12 +111,6 @@ vi.mock('@langgenius/dify-ui/status-dot', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning', () => ({
-  default: (props: Record<string, unknown>) => (
-    <div data-testid="warning-icon" className={props.className as string} />
-  ),
-}))
-
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
   ({
     provider: 'langgenius/openai/openai',
@@ -140,7 +129,8 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
   }) as unknown as ModelProvider
 
 const renderWithQueryClient = (provider: ModelProvider) => {
-  return renderWithSystemFeatures(<CredentialPanel provider={provider} />, {
+  return renderWithConsoleQuery(<CredentialPanel provider={provider} />, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
     trialModels: ['langgenius/openai/openai'],
   })
 }
@@ -218,19 +208,6 @@ describe('CredentialPanel', () => {
       )
       expect(screen.getByText(/aiCreditsInUse/)).toBeInTheDocument()
     })
-
-    it('should show warning icon for credits-fallback variant', () => {
-      renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.noConfigure,
-            available_credentials: [],
-          },
-        }),
-      )
-      expect(screen.getByTestId('warning-icon')).toBeInTheDocument()
-    })
   })
 
   describe('Status label variants', () => {
@@ -241,12 +218,6 @@ describe('CredentialPanel', () => {
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
 
-    it('should show warning icon for api-fallback variant', () => {
-      mockTrialCredits.isExhausted = true
-      renderWithQueryClient(createProvider())
-      expect(screen.getByTestId('warning-icon')).toBeInTheDocument()
-    })
-
     it('should show green indicator for api-active (custom priority + authorized)', () => {
       renderWithQueryClient(
         createProvider({
@@ -255,15 +226,6 @@ describe('CredentialPanel', () => {
       )
       expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
-    })
-
-    it('should NOT show warning icon for api-active variant', () => {
-      renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-        }),
-      )
-      expect(screen.queryByTestId('warning-icon')).not.toBeInTheDocument()
     })
 
     it('should show red indicator and credential name for api-unavailable (exhausted + named unauthorized key)', () => {

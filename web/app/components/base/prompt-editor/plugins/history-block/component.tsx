@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiMoreFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_HISTORY_EVENT_EMITTER } from '../../constants'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
@@ -22,7 +21,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   roleName = { user: '', assistant: '' },
   onEditRole,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HISTORY_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -44,7 +43,10 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
       className={`group inline-flex h-6 items-center rounded-[5px] border border-transparent pr-0.5 pl-1 text-[#DD2590] hover:bg-[#FCE7F6] ${open ? 'bg-[#FCE7F6]' : 'bg-[#FDF2FA]'} ${isSelected && 'border-[#F670C7]!'} `}
       ref={ref}
     >
-      <MessageClockCircle className="mr-1 h-[14px] w-[14px]" />
+      <span
+        aria-hidden
+        className="mr-1 i-custom-vender-solid-general-message-clock-circle h-3.5 w-3.5"
+      />
       <div className="mr-1 text-xs font-medium">
         {t(($) => $['promptEditor.history.item.title'], { ns: 'common' })}
       </div>
@@ -53,7 +55,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
           nativeButton={false}
           render={
             <div
-              className={`flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded ${open ? 'bg-[#DD2590] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'} `}
+              className={`flex h-4.5 w-4.5 cursor-pointer items-center justify-center rounded ${open ? 'bg-[#DD2590] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'} `}
               ref={triggerRef}
               onClick={(e) => e.preventDefault()}
             >
@@ -65,9 +67,9 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
           placement="top-end"
           sideOffset={4}
           alignOffset={-148}
-          popupClassName="border-none bg-transparent shadow-none"
+          className="border-none bg-transparent shadow-none"
         >
-          <div className="w-[360px] rounded-xl bg-white shadow-lg">
+          <div className="w-90 rounded-xl bg-white shadow-lg">
             <div className="p-4">
               <div className="mb-2 text-xs font-medium text-gray-500">
                 {t(($) => $['promptEditor.history.modal.title'], { ns: 'common' })}
@@ -82,7 +84,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
               </div>
             </div>
             <div
-              className="cursor-pointer rounded-b-xl border-t border-black/5 px-4 py-3 text-xs text-[#155EEF]"
+              className="cursor-pointer rounded-b-xl border-t border-black/5 px-4 py-3 text-xs text-primary-600"
               onClick={onEditRole}
             >
               {t(($) => $['promptEditor.history.modal.edit'], { ns: 'common' })}

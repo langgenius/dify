@@ -1,11 +1,11 @@
+import type { ReactElement } from 'react'
 import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
-import { useProviderContext } from '@/context/provider-context'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter } from '@/next/navigation'
-import { createApp } from '@/service/apps'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -14,12 +14,12 @@ import CreateAppModal from '../index'
 const ahooksMocks = vi.hoisted(() => ({
   keyPressHandlers: [] as Array<() => void>,
 }))
-const mockInvalidateAppList = vi.hoisted(() => vi.fn())
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
+const mockCreateApp = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
@@ -43,17 +43,38 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: vi.fn(),
 }))
-vi.mock('@/service/apps', () => ({
-  createApp: vi.fn(),
-}))
-vi.mock('@/service/use-apps', () => ({
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      features: actual.consoleQuery.features,
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      apps: {
+        ...actual.consoleQuery.apps,
+        post: {
+          mutationOptions: () => ({
+            mutationFn: ({ body }: { body: Record<string, unknown> }) => mockCreateApp(body),
+          }),
+        },
+      },
+    },
+  }
+})
 const toastMocks = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
 }))
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: toastMocks.mockToastSuccess,
     error: toastMocks.mockToastError,
@@ -72,40 +93,12 @@ vi.mock('@/app/components/base/app-icon', () => ({
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
-})
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => '/guides',
 }))
@@ -115,72 +108,45 @@ vi.mock('@/hooks/use-theme', () => ({
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
-const mockCreateApp = vi.mocked(createApp)
 const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
-const mockUseProviderContext = vi.mocked(useProviderContext)
 const { mockToastSuccess, mockToastError } = toastMocks
 
-const defaultPlanUsage = {
-  buildApps: 0,
-  teamMembers: 0,
-  annotatedResponse: 0,
-  documentsUploadQuota: 0,
-  apiRateLimit: 0,
-  triggerEvents: 0,
-  vectorSpace: 0,
-}
+let appQuota = { size: 0, limit: 1 }
 
 const renderModal = () => {
   const onClose = vi.fn()
-  const onSuccess = vi.fn()
   const onCreateFromTemplate = vi.fn()
   render(
     <CreateAppModal
       show
       onClose={onClose}
-      onSuccess={onSuccess}
       onCreateFromTemplate={onCreateFromTemplate}
       defaultAppMode={AppModeEnum.ADVANCED_CHAT}
     />,
   )
-  return { onClose, onSuccess, onCreateFromTemplate }
+  return { onClose, onCreateFromTemplate }
+}
+
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { apps: appQuota },
+  })
 }
 
 describe('CreateAppModal', () => {
-  const mockSetItem = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
     ahooksMocks.keyPressHandlers.length = 0
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: AppModeEnum.ADVANCED_CHAT,
-        usage: defaultPlanUsage,
-        total: { ...defaultPlanUsage, buildApps: 1 },
-        reset: {},
-      },
-      enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
-    mockUseAppContext.mockReturnValue({
+    appQuota = { size: 0, limit: 1 }
+    mockConsoleStateReader.mockReturnValue({
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['app.create_and_management'],
     })
-    mockAppContextState.userProfile = { id: 'user-1' }
-    mockAppContextState.workspacePermissionKeys = ['app.create_and_management']
-    mockSetItem.mockClear()
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        setItem: mockSetItem,
-        getItem: vi.fn(),
-        removeItem: vi.fn(),
-        clear: vi.fn(),
-        key: vi.fn(),
-        length: 0,
-      },
-      writable: true,
-    })
+    mockConsoleState.userProfile = { id: 'user-1' }
+    mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
@@ -190,7 +156,7 @@ describe('CreateAppModal', () => {
       maintainer: 'user-1',
     }
     mockCreateApp.mockResolvedValue(mockApp as App)
-    const { onClose, onSuccess } = renderModal()
+    const { onClose } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
@@ -212,10 +178,7 @@ describe('CreateAppModal', () => {
       appMode: AppModeEnum.ADVANCED_CHAT,
     })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
-    expect(onSuccess).toHaveBeenCalled()
-    expect(onClose).toHaveBeenCalled()
-    await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
-    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
+    expect(onClose).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
         currentUserId: 'user-1',
@@ -252,6 +215,11 @@ describe('CreateAppModal', () => {
         appMode: AppModeEnum.ADVANCED_CHAT,
       })
     })
+    const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
+    expect(createButton).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(createButton)
+
+    expect(mockCreateApp).toHaveBeenCalledTimes(1)
     expect(mockGetRedirection).not.toHaveBeenCalled()
 
     resolveTracking?.()
@@ -275,15 +243,7 @@ describe('CreateAppModal', () => {
   })
 
   it('shows the apps-full notice and disables creation when the workspace quota is exhausted', () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: AppModeEnum.ADVANCED_CHAT,
-        usage: { ...defaultPlanUsage, buildApps: 1 },
-        total: { ...defaultPlanUsage, buildApps: 1 },
-        reset: {},
-      },
-      enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
+    appQuota = { size: 1, limit: 1 }
 
     renderModal()
 
@@ -307,12 +267,12 @@ describe('CreateAppModal', () => {
     fireEvent.click(screen.getByText('app.types.chatbot'))
     fireEvent.click(screen.getByText('open-icon-picker'))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
     fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
       target: { value: 'Keyboard App' },
@@ -329,7 +289,7 @@ describe('CreateAppModal', () => {
         description: 'Created from shortcut',
         icon_type: 'emoji',
         icon: '🤖',
-        icon_background: '#E4FBCC',
+        icon_background: '#F3FEE7',
         mode: AppModeEnum.CHAT,
       })
     })
@@ -345,28 +305,20 @@ describe('CreateAppModal', () => {
   })
 
   it('ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker', async () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: AppModeEnum.ADVANCED_CHAT,
-        usage: { ...defaultPlanUsage, buildApps: 1 },
-        total: { ...defaultPlanUsage, buildApps: 1 },
-        reset: {},
-      },
-      enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
+    appQuota = { size: 1, limit: 1 }
 
     renderModal()
 
     fireEvent.click(screen.getByText('open-icon-picker'))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+    await userEvent.setup().keyboard('{Escape}')
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
 
-    expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
     ahooksMocks.keyPressHandlers.at(-1)?.()
 
@@ -414,6 +366,11 @@ describe('CreateAppModal', () => {
 
     const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
     fireEvent.click(createButton)
+    await waitFor(() => {
+      expect(mockCreateApp).toHaveBeenCalledTimes(1)
+    })
+
+    expect(createButton).toHaveAttribute('aria-disabled', 'true')
     fireEvent.click(createButton)
 
     expect(mockCreateApp).toHaveBeenCalledTimes(1)
@@ -424,3 +381,5 @@ describe('CreateAppModal', () => {
     })
   })
 })
+
+mockEmojiData()

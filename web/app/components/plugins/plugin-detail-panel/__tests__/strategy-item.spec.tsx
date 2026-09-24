@@ -1,104 +1,138 @@
-import type { StrategyDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import StrategyItem from '../strategy-item'
+import type {
+  AgentProviderResponse,
+  AgentStrategyEntity,
+  AgentStrategyProviderIdentity,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import AgentStrategyList from '../agent-strategy-list'
 
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (obj: Record<string, string>) => obj?.en_US || '',
+const { request } = vi.hoisted(() => ({ request: vi.fn() }))
+vi.mock('@/service/base', () => ({ request }))
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => 'zh-Hans',
 }))
 
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
-}))
-
-vi.mock('../strategy-detail', () => ({
-  default: ({ onHide }: { onHide: () => void }) => (
-    <div data-testid="strategy-detail-panel">
-      <button data-testid="hide-btn" onClick={onHide}>
-        Hide
-      </button>
-    </div>
-  ),
-}))
-
-const mockProvider = {
+const provider: AgentStrategyProviderIdentity = {
   author: 'test-author',
   name: 'test-provider',
-  description: { en_US: 'Provider desc' } as Record<string, string>,
-  tenant_id: 'tenant-1',
+  description: { en_US: 'Provider description', zh_Hans: null },
   icon: 'icon.png',
-  label: { en_US: 'Test Provider' } as Record<string, string>,
-  tags: [] as string[],
+  label: { en_US: 'Test Provider', zh_Hans: null },
+  tags: null,
 }
 
-const mockDetail = {
+const strategy: AgentStrategyEntity = {
   identity: {
     author: 'author-1',
     name: 'strategy-1',
-    icon: 'icon.png',
-    label: { en_US: 'Strategy Label' } as Record<string, string>,
+    label: { en_US: 'Strategy Label', zh_Hans: null },
     provider: 'provider-1',
   },
-  parameters: [],
-  description: { en_US: 'Strategy description' } as Record<string, string>,
-  output_schema: {},
-  features: [],
-} as StrategyDetail
+  description: { en_US: 'Strategy description', zh_Hans: null },
+  parameters: [
+    { name: 'query', type: 'string', label: { en_US: 'Query' }, help: { en_US: 'Search text' } },
+  ],
+}
 
-describe('StrategyItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+const plugin = normalizeInstalledPluginDetail({
+  id: 'test-id',
+  created_at: '2024-01-01',
+  updated_at: '2024-01-02',
+  plugin_id: 'test-plugin',
+  plugin_unique_identifier: 'test-uid',
+  tenant_id: 'tenant-1',
+  endpoints_setups: 0,
+  endpoints_active: 0,
+  version: '1.0.0',
+  source: 'marketplace',
+  runtime_type: 'local',
+  checksum: 'checksum',
+  meta: {},
+  declaration: {
+    version: '1.0.0',
+    author: 'Dify',
+    name: 'Test Plugin',
+    category: 'agent-strategy',
+    created_at: '2024-01-01',
+    icon: 'plugin.svg',
+    label: { en_US: 'Test Plugin' },
+    description: { en_US: 'Strategy plugin' },
+    resource: {},
+    plugins: {},
+    meta: {},
+    agent_strategy: { identity: provider },
+  },
+})
+
+const createResponse = (): AgentProviderResponse => ({
+  declaration: {
+    identity: { ...provider, name: 'test-plugin/test-provider' },
+    strategies: [
+      { ...strategy, identity: { ...strategy.identity, provider: 'test-plugin/test-provider' } },
+    ],
+  },
+  meta: {},
+  plugin_id: 'test-plugin',
+  plugin_unique_identifier: 'test-uid',
+  provider: 'test-provider',
+})
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  request.mockImplementation(async () => Response.json(createResponse()))
+})
+
+describe('Plugin agent strategies', () => {
+  it('loads the provider and opens and closes its real strategy drawer with localized fallback', async () => {
+    const user = userEvent.setup()
+    const requests: string[] = []
+    request.mockImplementation(async (url: string) => {
+      requests.push(decodeURIComponent(new URL(url).pathname))
+      return Response.json(createResponse())
+    })
+    render(<AgentStrategyList detail={plugin} />)
+
+    await user.click(await screen.findByText('Strategy Label'))
+    const drawer = await screen.findByRole('dialog', { name: 'Strategy Label' })
+    expect(within(drawer).getByText('Test Provider')).toBeInTheDocument()
+    expect(within(drawer).getByText('Query')).toBeInTheDocument()
+    expect(within(drawer).getByText('Search text')).toBeInTheDocument()
+    expect(requests).toEqual([
+      expect.stringMatching(/\/workspaces\/current\/agent-provider\/test-plugin\/test-provider$/),
+    ])
+
+    await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByText('Strategy Label'))
+    await user.click(screen.getByText('BACK'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  describe('Rendering', () => {
-    it('should render strategy label', () => {
-      render(<StrategyItem provider={mockProvider} detail={mockDetail} />)
+  it('allows an empty provider declaration without fabricating strategies', async () => {
+    const response = createResponse()
+    response.declaration.strategies = undefined
+    request.mockImplementation(async () => Response.json(response))
+    render(<AgentStrategyList detail={plugin} />)
 
-      expect(screen.getByText('Strategy Label')).toBeInTheDocument()
-    })
-
-    it('should render strategy description', () => {
-      render(<StrategyItem provider={mockProvider} detail={mockDetail} />)
-
-      expect(screen.getByText('Strategy description')).toBeInTheDocument()
-    })
-
-    it('should not show detail panel initially', () => {
-      render(<StrategyItem provider={mockProvider} detail={mockDetail} />)
-
-      expect(screen.queryByTestId('strategy-detail-panel')).not.toBeInTheDocument()
-    })
+    expect(
+      await screen.findByText('plugin.detailPanel.strategyNum:{"num":0,"strategy":"strategy"}'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Strategy Label')).not.toBeInTheDocument()
   })
 
-  describe('User Interactions', () => {
-    it('should show detail panel when clicked', () => {
-      render(<StrategyItem provider={mockProvider} detail={mockDetail} />)
+  it('does not request a provider when the plugin has no strategy declaration', () => {
+    render(
+      <AgentStrategyList
+        detail={{ ...plugin, declaration: { ...plugin.declaration, agent_strategy: null } }}
+      />,
+    )
 
-      fireEvent.click(screen.getByText('Strategy Label'))
-
-      expect(screen.getByTestId('strategy-detail-panel')).toBeInTheDocument()
-    })
-
-    it('should hide detail panel when hide is called', () => {
-      render(<StrategyItem provider={mockProvider} detail={mockDetail} />)
-
-      fireEvent.click(screen.getByText('Strategy Label'))
-      expect(screen.getByTestId('strategy-detail-panel')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('hide-btn'))
-      expect(screen.queryByTestId('strategy-detail-panel')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should handle empty description', () => {
-      const detailWithEmptyDesc = {
-        ...mockDetail,
-        description: { en_US: '' } as Record<string, string>,
-      } as StrategyDetail
-      render(<StrategyItem provider={mockProvider} detail={detailWithEmptyDesc} />)
-
-      expect(screen.getByText('Strategy Label')).toBeInTheDocument()
-    })
+    expect(request).not.toHaveBeenCalled()
+    expect(screen.queryByText(/plugin.detailPanel.strategyNum/)).not.toBeInTheDocument()
   })
 })

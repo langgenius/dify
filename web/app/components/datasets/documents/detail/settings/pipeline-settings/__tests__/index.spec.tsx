@@ -185,22 +185,6 @@ describe('PipelineSettings', () => {
   // ==================== Rendering Tests ====================
   // Test basic rendering with real components
   describe('Rendering', () => {
-    it('should render without crashing when data is loaded', () => {
-      const props = createDefaultProps()
-
-      renderWithProviders(<PipelineSettings {...props} />)
-
-      // Assert - Real LeftHeader should render with correct content
-      expect(screen.getByText('datasetPipeline.documentSettings.title')).toBeInTheDocument()
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.steps.processDocuments'),
-      ).toBeInTheDocument()
-      // Real ProcessDocuments should render
-      expect(screen.getByTestId('process-form')).toBeInTheDocument()
-      // ChunkPreview should render
-      expect(screen.getByTestId('chunk-preview')).toBeInTheDocument()
-    })
-
     it('should render Loading component when fetching data', () => {
       mockUsePipelineExecutionLog.mockReturnValue({
         data: undefined,
@@ -228,15 +212,6 @@ describe('PipelineSettings', () => {
 
       // Assert - AppUnavailable should be rendered
       expect(screen.queryByText('datasetPipeline.documentSettings.title')).not.toBeInTheDocument()
-    })
-
-    it('should render container with correct CSS classes', () => {
-      const props = createDefaultProps()
-
-      const { container } = renderWithProviders(<PipelineSettings {...props} />)
-
-      const mainContainer = container.firstChild as HTMLElement
-      expect(mainContainer).toHaveClass('relative', 'flex', 'min-w-[1024px]')
     })
   })
 

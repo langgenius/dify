@@ -582,7 +582,9 @@ class TestDatasetServiceGetDatasetsByIds:
         dataset_ids = [dataset.id for dataset in datasets]
 
         # Act
-        result_datasets, total = DatasetService.get_datasets_by_ids(dataset_ids, tenant.id)
+        result_datasets, total = DatasetService.get_datasets_by_ids(
+            dataset_ids, tenant.id, session=db_session_with_containers
+        )
 
         # Assert
         assert len(result_datasets) == 3
@@ -596,7 +598,7 @@ class TestDatasetServiceGetDatasetsByIds:
         dataset_ids = []
 
         # Act
-        datasets, total = DatasetService.get_datasets_by_ids(dataset_ids, tenant_id)
+        datasets, total = DatasetService.get_datasets_by_ids(dataset_ids, tenant_id, session=db_session_with_containers)
 
         # Assert
         assert datasets == []
@@ -608,7 +610,7 @@ class TestDatasetServiceGetDatasetsByIds:
         tenant_id = str(uuid4())
 
         # Act
-        datasets, total = DatasetService.get_datasets_by_ids(None, tenant_id)
+        datasets, total = DatasetService.get_datasets_by_ids(None, tenant_id, session=db_session_with_containers)
 
         # Assert
         assert datasets == []
@@ -684,7 +686,7 @@ class TestDatasetServiceGetDatasetQueries:
             )
 
         # Act
-        queries, total = DatasetService.get_dataset_queries(dataset.id, page, per_page)
+        queries, total = DatasetService.get_dataset_queries(dataset.id, page, per_page, db_session_with_containers)
 
         # Assert
         assert len(queries) == 3
@@ -702,7 +704,7 @@ class TestDatasetServiceGetDatasetQueries:
         per_page = 20
 
         # Act
-        queries, total = DatasetService.get_dataset_queries(dataset.id, page, per_page)
+        queries, total = DatasetService.get_dataset_queries(dataset.id, page, per_page, db_session_with_containers)
 
         # Assert
         assert queries == []

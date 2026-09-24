@@ -23,7 +23,7 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {
@@ -44,10 +44,6 @@ vi.mock('../store', () => ({
   useWorkflowStore: () => ({
     getState: () => mentionStoreState,
   }),
-}))
-
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="mention-avatar">{name}</div>,
 }))
 
 const mentionUsers: UserProfile[] = [

@@ -2,6 +2,7 @@
 import type { FC, ReactNode } from 'react'
 import type { ModelConfig, Node, NodeOutPutVar, Variable } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -11,18 +12,14 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
-import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import { useStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useWorkflowVariableType } from '../../../../hooks/use-workflow-variables'
 import { BlockEnum, EditionType } from '../../../../types'
 import { CodeLanguage } from '../../../code/types'
 import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
@@ -110,7 +107,7 @@ const Editor: FC<Props> = ({
   editorContainerClassName,
   required,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
 
@@ -193,21 +190,21 @@ const Editor: FC<Props> = ({
                       </button>
                     }
                   />
-                  <PopoverContent popupClassName="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary">
+                  <PopoverContent className="max-w-75 px-3 py-2 system-xs-regular text-text-tertiary">
                     {titleTooltip}
                   </PopoverContent>
                 </Popover>
               )}
             </div>
             <div className="flex items-center">
-              <div className="text-xs leading-[18px] font-medium text-text-tertiary">
+              <div className="text-xs leading-4.5 font-medium text-text-tertiary">
                 {value?.length || 0}
               </div>
               {isSupportPromptGenerator && (
                 <PromptGeneratorBtn
                   nodeId={nodeId!}
                   editorId={editorId}
-                  className="ml-[5px]"
+                  className="ml-1.25"
                   onGenerated={onGenerated}
                   modelConfig={modelConfig}
                   currentPrompt={value}
@@ -216,13 +213,13 @@ const Editor: FC<Props> = ({
 
               <div className="mx-2 h-3 w-px bg-divider-regular"></div>
               {/* Operations */}
-              <div className="flex items-center space-x-[2px]">
+              <div className="flex items-center space-x-0.5">
                 {isSupportJinja && (
                   <div
                     className={cn(
                       editionType === EditionType.jinja2 &&
                         'border-components-button-ghost-bg-hover bg-components-button-ghost-bg-hover',
-                      'flex h-[22px] items-center space-x-0.5 rounded-[5px] border border-transparent px-1.5 hover:border-components-button-ghost-bg-hover',
+                      'flex h-5.5 items-center space-x-0.5 rounded-[5px] border border-transparent px-1.5 hover:border-components-button-ghost-bg-hover',
                     )}
                   >
                     <Popover>
@@ -234,11 +231,14 @@ const Editor: FC<Props> = ({
                             type="button"
                             className="flex h-4 w-7 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                           >
-                            <Jinja className="h-3 w-6 text-text-quaternary" />
+                            <span
+                              aria-hidden
+                              className="i-custom-vender-workflow-jinja h-3 w-6 text-text-quaternary"
+                            />
                           </button>
                         }
                       />
-                      <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                      <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
                         <div>
                           <div>{t(($) => $['common.enableJinja'], { ns: 'workflow' })}</div>
                           <a
@@ -265,9 +265,15 @@ const Editor: FC<Props> = ({
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <ActionButton onClick={handleInsertVariable}>
-                          <Variable02 className="size-4" />
-                        </ActionButton>
+                        <IconButton
+                          aria-label={t(($) => $['common.insertVarTip'], { ns: 'workflow' })}
+                          onClick={handleInsertVariable}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="i-custom-vender-solid-development-variable-02 size-4"
+                          />
+                        </IconButton>
                       }
                     />
                     <TooltipContent>
@@ -276,18 +282,27 @@ const Editor: FC<Props> = ({
                   </Tooltip>
                 )}
                 {showRemove && (
-                  <ActionButton onClick={onRemove}>
-                    <RiDeleteBinLine className="size-4" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+                    onClick={onRemove}
+                  >
+                    <RiDeleteBinLine aria-hidden="true" className="size-4" />
+                  </IconButton>
                 )}
                 {!isCopied ? (
-                  <ActionButton onClick={handleCopy}>
-                    <Copy className="size-4" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+                    onClick={handleCopy}
+                  >
+                    <span aria-hidden="true" className="i-custom-vender-line-files-copy size-4" />
+                  </IconButton>
                 ) : (
-                  <ActionButton>
-                    <CopyCheck className="size-4" />
-                  </ActionButton>
+                  <IconButton aria-label={t(($) => $['operation.copy'], { ns: 'common' })}>
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-files-copy-check size-4"
+                    />
+                  </IconButton>
                 )}
                 <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
               </div>
@@ -299,8 +314,8 @@ const Editor: FC<Props> = ({
             {!(isSupportJinja && editionType === EditionType.jinja2) ? (
               <div
                 className={cn(
-                  isExpand ? 'grow' : 'max-h-[536px]',
-                  'relative min-h-[56px] overflow-y-auto px-3',
+                  isExpand ? 'grow' : 'max-h-134',
+                  'relative min-h-14 overflow-y-auto px-3',
                   editorContainerClassName,
                 )}
               >
@@ -310,7 +325,7 @@ const Editor: FC<Props> = ({
                   placeholderClassName={placeholderClassName}
                   instanceId={instanceId}
                   compact
-                  className={cn('min-h-[56px]', inputClassName)}
+                  className={cn('min-h-14', inputClassName)}
                   style={isExpand ? { height: editorExpandHeight - 5 } : {}}
                   value={value}
                   contextBlock={{
@@ -368,8 +383,8 @@ const Editor: FC<Props> = ({
             ) : (
               <div
                 className={cn(
-                  isExpand ? 'grow' : 'max-h-[536px]',
-                  'relative min-h-[56px] overflow-y-auto px-3',
+                  isExpand ? 'grow' : 'max-h-134',
+                  'relative min-h-14 overflow-y-auto px-3',
                   editorContainerClassName,
                 )}
               >

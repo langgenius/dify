@@ -88,7 +88,7 @@ import {
   zPostWorkflowsRunResponse,
   zPostWorkflowsTasksByTaskIdStopPath,
   zPostWorkflowsTasksByTaskIdStopResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Convert audio to text
@@ -367,11 +367,12 @@ export const emailCodeLogin = {
  * FilenameNotExistsError: File has no filename
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
+ * BlockedFileExtensionError: File extension is blocked
  */
 export const post9 = oc
   .route({
     description:
-      'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
+      'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported\n    BlockedFileExtensionError: File extension is blocked',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFilesUpload',
@@ -797,14 +798,19 @@ export const passport = {
  * int: HTTP status code 201 for success
  *
  * Raises:
- * RemoteFileUploadError: Failed to fetch file from remote URL
+ * RemoteFileInvalidUrlError: Remote file URL is invalid
+ * RemoteFileUrlBlockedError: Remote file URL is blocked
+ * RemoteFileNotFoundError: Remote file does not exist
+ * RemoteFileAccessDeniedError: Remote file requires authorization
+ * RemoteFileUnavailableError: Remote file is unavailable
+ * RemoteFileInvalidResponseError: Remote file response is invalid
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
 export const post19 = oc
   .route({
     description:
-      'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
+      'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRemoteFilesUpload',
@@ -939,34 +945,23 @@ export const site = {
 }
 
 /**
- * Get system feature flags and configuration
+ * Get the non-sensitive bootstrap snapshot exposed before authentication
  *
- * Get system feature flags and configuration
- * Returns the current system feature flags and configuration
- * that control various functionalities across the platform.
- *
- * Returns:
- * dict: System feature configuration object
- *
+ * Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
  * This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
  * except it is intended for use by the web app, instead of the console dashboard.
  *
- * NOTE: This endpoint is unauthenticated by design, as it provides system features
- * data required for webapp initialization.
- *
- * Authentication would create circular dependency (can't authenticate without webapp loading).
- *
- * Only non-sensitive configuration data should be returned by this endpoint.
+ * Authentication configuration must be available before the authentication flow can be selected.
  */
 export const get13 = oc
   .route({
     description:
-      "Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can't authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.",
+      'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',
     path: '/system-features',
-    summary: 'Get system feature flags and configuration',
+    summary: 'Get the non-sensitive bootstrap snapshot exposed before authentication',
     tags: ['web'],
   })
   .output(zGetSystemFeaturesResponse)

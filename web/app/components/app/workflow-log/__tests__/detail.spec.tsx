@@ -104,12 +104,6 @@ describe('DetailPanel', () => {
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DetailPanel runID="run-123" onClose={defaultOnClose} />)
-
-      expect(screen.getByText('appLog.runDetail.workflowTitle')).toBeInTheDocument()
-    })
-
     it('should render workflow title', () => {
       render(<DetailPanel runID="run-123" onClose={defaultOnClose} />)
 

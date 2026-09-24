@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import type { Dependency } from '../../types'
+import type { Dependency, InstallStatus, Plugin, VersionProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,25 +13,35 @@ import ReadyToInstall from './ready-to-install'
 
 const i18nPrefix = 'installModal'
 
-export enum InstallType {
-  fromLocal = 'fromLocal',
-  fromMarketplace = 'fromMarketplace',
-  fromDSL = 'fromDSL',
-}
+export type InstallBundleCompleteCallback = (
+  plugins: Plugin[],
+  installStatus: InstallStatus[],
+  versionInfo: VersionProps[],
+) => void
+
+export const InstallType = {
+  fromLocal: 'fromLocal',
+  fromMarketplace: 'fromMarketplace',
+  fromDSL: 'fromDSL',
+} as const
+
+export type InstallType = (typeof InstallType)[keyof typeof InstallType]
 
 type Props = Readonly<{
   installType?: InstallType
   fromDSLPayload: Dependency[]
   // plugins?: PluginDeclaration[]
   onClose: () => void
+  onInstallComplete?: InstallBundleCompleteCallback
 }>
 
 const InstallBundle: FC<Props> = ({
   installType = InstallType.fromMarketplace,
   fromDSLPayload,
   onClose,
+  onInstallComplete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [step, setStep] = useState<InstallStep>(
     installType === InstallType.fromMarketplace
       ? InstallStep.readyToInstall
@@ -59,14 +70,24 @@ const InstallBundle: FC<Props> = ({
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'w-full max-w-[480px] overflow-hidden! text-left align-middle',
+          'w-full max-w-120 overflow-hidden! text-left align-middle',
           cn(
             modalClassName,
-            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+            'flex max-h-[calc(100dvh-48px)] min-w-140 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
           ),
         )}
       >
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
 
         <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
           <div className="self-stretch title-2xl-semi-bold text-text-primary">{getTitle()}</div>
@@ -78,6 +99,7 @@ const InstallBundle: FC<Props> = ({
           setIsInstalling={setIsInstalling}
           allPlugins={fromDSLPayload}
           onClose={onClose}
+          onInstallComplete={onInstallComplete}
         />
       </DialogContent>
     </Dialog>

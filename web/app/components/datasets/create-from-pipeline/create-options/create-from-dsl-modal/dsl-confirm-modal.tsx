@@ -24,7 +24,7 @@ const DSLConfirmModal = ({
   onConfirm,
   confirmDisabled = false,
 }: DSLConfirmModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <AlertDialog
@@ -33,7 +33,7 @@ const DSLConfirmModal = ({
         if (!open) onCancel()
       }}
     >
-      <AlertDialogContent className="w-[480px] max-w-none! overflow-hidden! border-none p-6 text-left align-middle shadow-xl">
+      <AlertDialogContent className="w-120 max-w-none! overflow-hidden! border-none p-6 text-left align-middle shadow-xl">
         <div className="flex flex-col items-start gap-2 self-stretch pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}

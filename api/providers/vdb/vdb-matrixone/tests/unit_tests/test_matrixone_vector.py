@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import types
 from types import SimpleNamespace
@@ -8,6 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_mo_vector_modules():
@@ -168,7 +170,8 @@ def test_get_client_handles_full_text_index_creation_error(matrixone_module, mon
 def test_add_texts_generates_ids_and_inserts(matrixone_module, monkeypatch: pytest.MonkeyPatch):
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
-    monkeypatch.setattr(matrixone_module.uuid, "uuid4", lambda: "generated-uuid")
+    generated_ids = iter(["generated-id-b", "generated-id-c"])
+    monkeypatch.setattr(matrixone_module.uuid, "uuid4", lambda: next(generated_ids))
     docs = [
         Document(page_content="a", metadata={"doc_id": "doc-a", "document_id": "d-1"}),
         Document(page_content="b", metadata={"document_id": "d-2"}),
@@ -177,18 +180,15 @@ def test_add_texts_generates_ids_and_inserts(matrixone_module, monkeypatch: pyte
 
     ids = vector.add_texts(docs, [[0.1], [0.2], [0.3]])
 
-    # For current prod code, only docs with metadata get ids, so only two ids
-    assert ids == ["doc-a", "generated-uuid"]
+    assert ids == ["doc-a", "generated-id-b", "generated-id-c"]
     vector.client.insert.assert_called_once()
     insert_kwargs = vector.client.insert.call_args.kwargs
-    # All lists passed to insert should be the same length
     texts = insert_kwargs["texts"]
     embeddings = insert_kwargs["embeddings"]
     metadatas = insert_kwargs["metadatas"]
     ids_insert = insert_kwargs["ids"]
-    assert len(texts) == len(embeddings) == len(metadatas) == len(docs)
-    # ids may be shorter than docs for current prod code, but should match number of docs with metadata
-    assert ids_insert == ["doc-a", "generated-uuid"]
+    assert len(ids_insert) == len(texts) == len(embeddings) == len(metadatas) == len(docs)
+    assert ids_insert == ids
 
 
 def test_delete_and_metadata_methods(matrixone_module):
@@ -208,30 +208,34 @@ def test_delete_and_metadata_methods(matrixone_module):
     assert vector.client.delete.call_count == 3
 
 
-def test_search_by_vector_builds_documents(matrixone_module):
+def test_search_by_vector_applies_score_threshold(matrixone_module):
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
     vector.client.query.return_value = [
-        SimpleNamespace(document="doc-a", metadata={"doc_id": "1"}),
-        SimpleNamespace(document="doc-b", metadata={"doc_id": "2"}),
+        SimpleNamespace(document="doc-a", metadata={"doc_id": "1"}, distance=0.25),
+        SimpleNamespace(document="doc-b", metadata={"doc_id": "2"}, distance=2.0),
     ]
 
-    docs = vector.search_by_vector([0.1, 0.2], top_k=2, document_ids_filter=["d-1"])
+    docs = vector.search_by_vector(
+        [0.1, 0.2],
+        top_k=2,
+        score_threshold=0.5,
+        document_ids_filter=["d-1"],
+    )
 
-    assert len(docs) == 2
+    assert len(docs) == 1
     assert docs[0].page_content == "doc-a"
-    assert docs[1].metadata["doc_id"] == "2"
+    assert docs[0].metadata["doc_id"] == "1"
+    assert docs[0].metadata["score"] == pytest.approx(0.8)
     assert vector.client.query.call_args.kwargs["filter"] == {"document_id": {"$in": ["d-1"]}}
 
 
 def test_matrixone_factory_uses_existing_or_generated_collection(matrixone_module, monkeypatch: pytest.MonkeyPatch):
     factory = matrixone_module.MatrixoneVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(matrixone_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(matrixone_module.dify_config, "MATRIXONE_HOST", "127.0.0.1")

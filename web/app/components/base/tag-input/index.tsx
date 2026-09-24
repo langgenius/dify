@@ -1,10 +1,13 @@
-import type { ChangeEvent, KeyboardEvent } from 'react'
+import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 
-type TagInputProps = {
+type TagInputProps = Pick<
+  InputHTMLAttributes<HTMLInputElement>,
+  'aria-label' | 'aria-describedby' | 'aria-invalid'
+> & {
   items: string[]
   onChange: (items: string[]) => void
   disableRemove?: boolean
@@ -26,8 +29,11 @@ const TagInput = ({
   placeholder,
   required = false,
   inputClassName,
+  'aria-label': ariaLabel,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: TagInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
   const isSpecialMode = customizedConfirmKey === 'Tab'
@@ -66,7 +72,7 @@ const TagInput = ({
   const handleKeyDown = (e: KeyboardEvent) => {
     if (isSpecialMode && e.key === 'Enter') setValue(`${value}↵`)
     if (e.key === customizedConfirmKey) {
-      if (isSpecialMode) e.preventDefault()
+      e.preventDefault()
       handleNewTag(value)
     }
   }
@@ -78,7 +84,7 @@ const TagInput = ({
     <div
       className={cn(
         'flex flex-wrap',
-        !isInWorkflow && 'min-w-[200px]',
+        !isInWorkflow && 'min-w-50',
         isSpecialMode ? 'rounded-lg bg-components-input-bg-normal pb-1 pl-1' : '',
       )}
     >
@@ -118,14 +124,17 @@ const TagInput = ({
           <span
             data-input-value={value || inputPlaceholder}
             className={cn(
-              !isInWorkflow && 'max-w-[300px]',
-              isInWorkflow && 'max-w-[146px]',
+              !isInWorkflow && 'max-w-75',
+              isInWorkflow && 'max-w-36.5',
               'grid overflow-hidden rounded-md py-1 system-xs-regular after:invisible after:col-start-1 after:row-start-1 after:whitespace-pre after:content-[attr(data-input-value)]',
               isSpecialMode && 'border border-transparent px-1.5',
               focused && isSpecialMode && 'border-dashed border-divider-deep',
             )}
           >
             <input
+              aria-label={ariaLabel}
+              aria-describedby={ariaDescribedBy}
+              aria-invalid={ariaInvalid}
               className={cn(
                 'col-start-1 row-start-1 w-full min-w-0 appearance-none text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary',
                 isSpecialMode ? 'bg-transparent' : '',

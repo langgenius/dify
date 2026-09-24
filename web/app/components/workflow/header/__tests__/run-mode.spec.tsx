@@ -33,21 +33,42 @@ let mockIsListening = false
 let mockCanRun = true
 let mockDynamicOptions = [{ type: TriggerType.UserInput, nodeId: 'start-node' }]
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowStartRun: () => ({
-    handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
-    handleWorkflowTriggerScheduleRunInWorkflow: mockHandleWorkflowTriggerScheduleRunInWorkflow,
-    handleWorkflowTriggerWebhookRunInWorkflow: mockHandleWorkflowTriggerWebhookRunInWorkflow,
-    handleWorkflowTriggerPluginRunInWorkflow: mockHandleWorkflowTriggerPluginRunInWorkflow,
-    handleWorkflowRunAllTriggersInWorkflow: mockHandleWorkflowRunAllTriggersInWorkflow,
-  }),
-  useWorkflowRun: () => ({
-    handleStopRun: mockHandleStopRun,
-  }),
-  useWorkflowRunValidation: () => ({
-    warningNodes: mockWarningNodes,
-  }),
-}))
+vi.mock('../../hooks/use-checklist', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-checklist')>()
+
+  return {
+    ...actual,
+    useWorkflowRunValidation: () => ({
+      warningNodes: mockWarningNodes,
+    }),
+  }
+})
+
+vi.mock('../../hooks/use-workflow-run', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow-run')>()
+
+  return {
+    ...actual,
+    useWorkflowRun: () => ({
+      handleStopRun: mockHandleStopRun,
+    }),
+  }
+})
+
+vi.mock('../../hooks/use-workflow-start-run', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow-start-run')>()
+
+  return {
+    ...actual,
+    useWorkflowStartRun: () => ({
+      handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
+      handleWorkflowTriggerScheduleRunInWorkflow: mockHandleWorkflowTriggerScheduleRunInWorkflow,
+      handleWorkflowTriggerWebhookRunInWorkflow: mockHandleWorkflowTriggerWebhookRunInWorkflow,
+      handleWorkflowTriggerPluginRunInWorkflow: mockHandleWorkflowTriggerPluginRunInWorkflow,
+      handleWorkflowRunAllTriggersInWorkflow: mockHandleWorkflowRunAllTriggersInWorkflow,
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/store/workflow', () => ({
   useStore: (
@@ -78,7 +99,7 @@ vi.mock('../../hooks/use-dynamic-test-run-options', () => ({
   useDynamicTestRunOptions: () => mockDynamicOptions,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),

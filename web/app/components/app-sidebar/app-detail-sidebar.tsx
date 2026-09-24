@@ -2,7 +2,7 @@
 
 import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
 import AppDetailSection from './app-detail-section'
-import AppDetailTop from './app-detail-top'
+import { AppDetailTop } from './app-detail-top'
 
 export function AppDetailSidebar() {
   return (

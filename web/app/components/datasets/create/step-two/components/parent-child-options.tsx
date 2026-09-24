@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, MouseEventHandler } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type {
   ParentMode,
@@ -9,14 +9,14 @@ import type {
 } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiSearchEyeLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import RadioCard from '@/app/components/base/radio-card'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
 import FileList from '../../assets/file-list-3-fill.svg'
 import Note from '../../assets/note-mod.svg'
@@ -45,14 +45,13 @@ type ParentChildOptionsProps = {
   isInUpload: boolean
   isNotUploadInEmptyDataset: boolean
   // Actions
-  onDocFormChange: (form: ChunkingMode) => void
   onChunkForContextChange: (mode: ParentMode) => void
   onParentDelimiterChange: (value: string) => void
   onParentMaxLengthChange: (value: number) => void
   onChildDelimiterChange: (value: string) => void
   onChildMaxLengthChange: (value: number) => void
   onRuleToggle: (id: string) => void
-  onPreview: () => void
+  onPreview: MouseEventHandler<HTMLButtonElement>
   onReset: () => void
   showSummaryIndexSetting?: boolean
 }
@@ -65,7 +64,6 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   isActive,
   isInUpload,
   isNotUploadInEmptyDataset,
-  onDocFormChange,
   onChunkForContextChange,
   onParentDelimiterChange,
   onParentMaxLengthChange,
@@ -77,7 +75,12 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   onReset,
   showSummaryIndexSetting,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
 
   const getRuleName = (key: string): string => {
     const ruleNameMap: Record<string, string> = {
@@ -91,17 +94,17 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   return (
     <OptionCard
       title={t(($) => $['stepTwo.parentChild'], { ns: 'datasetCreation' })}
-      icon={<ParentChildChunk className="h-[20px] w-[20px]" />}
+      icon={<span aria-hidden className="i-custom-vender-knowledge-parent-child-chunk h-5 w-5" />}
       effectImg={BlueEffect.src}
       className="text-util-colors-blue-light-blue-light-500"
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
       description={t(($) => $['stepTwo.parentChildTip'], { ns: 'datasetCreation' })}
       isActive={isActive}
-      onSwitched={() => onDocFormChange(ChunkingMode.parentChild)}
+      value={ChunkingMode.parentChild}
       actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <RiSearchEyeLine className="mr-0.5 size-4" />
+            <RiSearchEyeLine className="size-4" />
             {t(($) => $['stepTwo.previewChunk'], { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
@@ -120,7 +123,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 {t(($) => $['stepTwo.parentChunkForContext'], { ns: 'datasetCreation' })}
               </TextLabel>
             </div>
-            <Divider className="grow" bgStyle="gradient" />
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
           </div>
           <RadioGroup<ParentMode>
             aria-label={t(($) => $['stepTwo.parentChunkForContext'], { ns: 'datasetCreation' })}
@@ -134,13 +137,13 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
               title={t(($) => $['stepTwo.paragraph'], { ns: 'datasetCreation' })}
               description={t(($) => $['stepTwo.paragraphTip'], { ns: 'datasetCreation' })}
               chosenConfig={
-                <div className="flex gap-3">
+                <div className="flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
                   <DelimiterInput
                     value={parentChildConfig.parent.delimiter}
-                    tooltip={
-                      t(($) => $['stepTwo.parentChildDelimiterTip'], { ns: 'datasetCreation' })!
-                    }
-                    onChange={(e) => onParentDelimiterChange(e.target.value)}
+                    tooltip={t(($) => $['stepTwo.parentChildDelimiterTip'], {
+                      ns: 'datasetCreation',
+                    })!}
+                    onValueChange={onParentDelimiterChange}
                   />
                   <MaxLengthInput
                     unit="characters"
@@ -167,15 +170,15 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 {t(($) => $['stepTwo.childChunkForRetrieval'], { ns: 'datasetCreation' })}
               </TextLabel>
             </div>
-            <Divider className="grow" bgStyle="gradient" />
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
           </div>
-          <div className="mt-1 flex gap-3">
+          <div className="mt-1 flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
             <DelimiterInput
               value={parentChildConfig.child.delimiter}
-              tooltip={
-                t(($) => $['stepTwo.parentChildChunkDelimiterTip'], { ns: 'datasetCreation' })!
-              }
-              onChange={(e) => onChildDelimiterChange(e.target.value)}
+              tooltip={t(($) => $['stepTwo.parentChildChunkDelimiterTip'], {
+                ns: 'datasetCreation',
+              })!}
+              onValueChange={onChildDelimiterChange}
             />
             <MaxLengthInput
               unit="characters"
@@ -191,7 +194,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             <div className="inline-flex shrink-0">
               <TextLabel>{t(($) => $['stepTwo.rules'], { ns: 'datasetCreation' })}</TextLabel>
             </div>
-            <Divider className="grow" bgStyle="gradient" />
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
           </div>
           <div className="mt-1">
             {rules.map((rule) => (
@@ -202,7 +205,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 </span>
               </label>
             ))}
-            {showSummaryIndexSetting && IS_CE_EDITION && (
+            {showSummaryIndexSetting && isNonCloudEdition && (
               <div className="mt-3">
                 <SummaryIndexSetting
                   entry="create-document"

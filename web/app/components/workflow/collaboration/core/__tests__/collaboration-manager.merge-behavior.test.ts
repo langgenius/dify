@@ -3,6 +3,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { LoroDoc } from 'loro-crdt/base64'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
+import { attachCrdtRuntime } from './test-crdt-runtime'
 
 const NODE_ID = 'node-1'
 const LLM_NODE_ID = 'llm-node'
@@ -163,6 +164,7 @@ const getManagerInternals = (manager: CollaborationManager): CollaborationManage
 
 const getManager = (doc: LoroDoc) => {
   const manager = new CollaborationManager()
+  attachCrdtRuntime(manager)
   const internals = getManagerInternals(manager)
   internals.doc = doc
   internals.nodesMap = doc.getMap('nodes')

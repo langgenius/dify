@@ -1,3 +1,20 @@
+"""
+Low-level implementation of the default ("local") tenant credential encryption key provider.
+
+Do NOT import this module directly to encrypt/decrypt tenant credentials. It only implements
+one specific key provider (per-tenant RSA key pair, private key kept in STORAGE_TYPE). Other
+KEY_PROVIDER_TYPE options (e.g. 'azure-keyvault') are not implemented here.
+
+Instead use:
+  - core.helper.encrypter (encrypt_token / decrypt_token / batch_decrypt_token / ...) for
+    application code that needs to encrypt or decrypt tenant credentials.
+  - libs.key_providers (generate_key_pair) when provisioning the key for a new tenant.
+
+This module is only meant to be imported by libs.key_providers.rsa_key_provider.RSAKeyProvider,
+which the rest of the codebase should reach through extensions.ext_key_provider.key_provider_manager.
+This is enforced by the "no-direct-rsa-imports" contract in .importlinter (run via `make lint`).
+"""
+
 import hashlib
 from typing import Union
 

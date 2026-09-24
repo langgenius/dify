@@ -1,3 +1,4 @@
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
@@ -9,7 +10,7 @@ import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]
-  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 
 const HumanInputFormList = ({
@@ -77,12 +78,12 @@ const HumanInputFormList = ({
     <div className="flex flex-col gap-y-3">
       {filteredHumanInputFormDataList.map((formData) => (
         <ContentWrapper
-          key={formData.node_id}
+          key={formData.form_id}
           nodeTitle={formData.node_title}
           className="bg-components-panel-bg"
         >
           <UnsubmittedHumanInputContent
-            key={formData.node_id}
+            key={formData.form_id}
             formData={formData}
             showEmailTip={!!deliveryMethodsConfig[formData.node_id]?.showEmailTip}
             isEmailDebugMode={!!deliveryMethodsConfig[formData.node_id]?.isEmailDebugMode}

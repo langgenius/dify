@@ -2,14 +2,14 @@ import type { IconInfo } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import {
@@ -17,10 +17,10 @@ import {
   usePublishAsCustomizedPipeline,
 } from '@/service/use-pipeline'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
-import Popup from './popup'
+import { Popup } from './popup'
 
 const Publisher = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline', 'workflow'])
   const [open, setOpen] = useState(false)
   const [confirmVisible, { setFalse: hideConfirm, setTrue: showConfirm }] = useBoolean(false)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -104,7 +104,7 @@ const Publisher = () => {
           nativeButton
           render={
             <Button className="px-2" variant="primary" disabled={!canPipelineRelease}>
-              <span className="pl-1">{t(($) => $['common.publish'], { ns: 'workflow' })}</span>
+              <span>{t(($) => $['common.publish'], { ns: 'workflow' })}</span>
               <RiArrowDownSLine className="size-4" />
             </Button>
           }
@@ -113,7 +113,7 @@ const Publisher = () => {
           placement="bottom-end"
           sideOffset={4}
           alignOffset={40}
-          popupClassName={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}
+          className={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}
         >
           <Popup
             onRequestClose={closePopover}

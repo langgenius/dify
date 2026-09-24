@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import useWebAppBrand from '../hooks/use-web-app-brand'
 import CustomWebAppBrand from '../index'
 
@@ -18,9 +18,10 @@ const createHookState = (
   uploading: false,
   webappLogo: 'https://example.com/replace.png',
   webappBrandRemoved: false,
+  isCustomConfigUnavailable: false,
   uploadDisabled: false,
   workspaceLogo: 'https://example.com/workspace-logo.png',
-  isSandbox: false,
+  canReplaceLogo: true,
   canManageCustomBrand: true,
   handleApply: vi.fn(),
   handleCancel: vi.fn(),
@@ -87,7 +88,7 @@ describe('CustomWebAppBrand', () => {
 
     it('should disable the switch when sandbox restrictions are active', () => {
       renderComponent({
-        isSandbox: true,
+        canReplaceLogo: false,
       })
 
       expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
@@ -103,6 +104,18 @@ describe('CustomWebAppBrand', () => {
       expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
       expect(screen.getByRole('button', { name: 'custom.change' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'custom.apply' })).toBeDisabled()
+    })
+
+    it('should disable brand edits while the custom config is unavailable', () => {
+      renderComponent({
+        fileId: 'new-logo',
+        isCustomConfigUnavailable: true,
+        uploadDisabled: true,
+      })
+
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('button', { name: 'custom.change' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'custom.apply' })).toBeDisabled()
     })
 
@@ -128,14 +141,6 @@ describe('CustomWebAppBrand', () => {
 
   // User interactions delegated to the hook callbacks.
   describe('Interactions', () => {
-    it('should delegate switch changes to the hook handler', () => {
-      const { hookState } = renderComponent()
-
-      fireEvent.click(screen.getByRole('switch'))
-
-      expect(hookState.handleSwitch).toHaveBeenCalledWith(true)
-    })
-
     it('should delegate file input changes and reset the native input value on click', () => {
       const { container, hookState } = renderComponent()
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement

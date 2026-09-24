@@ -1,6 +1,7 @@
 {
   "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
+    "noUncheckedSideEffectImports": true,
     "types": ["vite-plus/test/globals", "vite-plus/test/matchers"]
   },
   "include": [
@@ -9,7 +10,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "vite.config.ts",
-    "vitest.config.ts"
+    "vitest.setup.ts"
   ],
   "exclude": ["node_modules", "dist", "storybook-static", "coverage"]
 }

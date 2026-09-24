@@ -1,14 +1,13 @@
-import type { DifyWorld } from '../../support/world'
-import { Given, Then, When } from '@cucumber/cucumber'
+import type { DifyWorld } from '../../support/world.ts'
+import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
-import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
+import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials.ts'
 import {
   expectAgentConfigFileHidden,
   expectAgentConfigFileSaved,
   expectAgentConfigFileVisible,
   uploadAgentConfigFile,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 When('I upload the small Agent v2 file from the Files section', async function (this: DifyWorld) {
   await uploadAgentConfigFile(this, 'smallFile')
@@ -63,8 +62,9 @@ Then(
   async function (this: DifyWorld) {
     const page = this.getPage()
     const dialog = page.getByRole('dialog', { name: 'Upload file' })
+    const notifications = page.getByRole('region', { name: 'Notifications' })
 
-    await expect(page.getByText('Upload one file.')).toBeVisible()
+    await expect(notifications.getByRole('dialog')).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Upload' })).toBeDisabled()
     await expect(
       dialog.getByText(agentBuilderTestMaterials.smallFile, { exact: true }),
@@ -124,45 +124,3 @@ Then(
     await expectAgentConfigFileSaved(this, 'specialFilename')
   },
 )
-
-async function skipUnsupportedFileFormatRejection(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Agent v2 unsupported file format rejection is not stable: default upload configuration allows arbitrary extensions unless UPLOAD_FILE_EXTENSION_BLACKLIST is seeded.',
-    {
-      owner: 'product/seed',
-      remediation:
-        'Define Agent config file type restrictions or seed UPLOAD_FILE_EXTENSION_BLACKLIST before enabling this scenario.',
-    },
-  )
-}
-
-Given('Agent v2 unsupported file format rejection is available', async function (this: DifyWorld) {
-  return skipUnsupportedFileFormatRejection(this)
-})
-
-Then(
-  'Agent v2 unsupported file format rejection should be available',
-  async function (this: DifyWorld) {
-    return skipUnsupportedFileFormatRejection(this)
-  },
-)
-
-async function skipOversizedFileRejection(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Agent v2 oversized file rejection lacks a clear user-visible reason: the current upload dialog collapses upload and commit failures into a generic failure toast.',
-    {
-      owner: 'product',
-      remediation: 'Expose a stable user-visible file-size error before enabling this scenario.',
-    },
-  )
-}
-
-Given('Agent v2 oversized file rejection is available', async function (this: DifyWorld) {
-  return skipOversizedFileRejection(this)
-})
-
-Then('Agent v2 oversized file rejection should be available', async function (this: DifyWorld) {
-  return skipOversizedFileRejection(this)
-})

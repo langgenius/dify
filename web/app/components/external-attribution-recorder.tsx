@@ -2,7 +2,7 @@
 
 import Cookies from 'js-cookie'
 import { useEffect } from 'react'
-import { IS_CLOUD_EDITION } from '@/config'
+import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { useSearchParams } from '@/next/navigation'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 
@@ -56,7 +56,8 @@ const resolveAttributionSearchParams = (
 /**
  * Captures external-campaign params (utm_* + blog `slug`) from the landing URL.
  *
- * Blog links point straight at cloud.dify.ai (e.g. `/apps?utm_source=dify_blog&slug=…`),
+ * Blog links point straight at cloud.dify.ai (e.g. `/apps?utm_source=dify_blog&slug=…`
+ * or `/agents?utm_source=dify_blog&slug=…`),
  * bypassing the marketing site that normally seeds the `utm_info` cookie. A new visitor
  * is bounced to sign-up, and the URL params are lost on that redirect — so we persist
  * them here, on the landing render, before the redirect happens:
@@ -69,10 +70,11 @@ const resolveAttributionSearchParams = (
  * slug is intentionally NOT attached to page-view events; only these conversion events.
  */
 const ExternalAttributionRecorder = () => {
+  const analyticsConsent = useAnalyticsConsent()
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (!IS_CLOUD_EDITION) return
+    if (analyticsConsent !== 'granted') return
 
     const attributionSearchParams = resolveAttributionSearchParams(searchParams)
     if (!attributionSearchParams) return
@@ -97,7 +99,7 @@ const ExternalAttributionRecorder = () => {
       expires: UTM_INFO_COOKIE_EXPIRES_DAYS,
       path: '/',
     })
-  }, [searchParams])
+  }, [analyticsConsent, searchParams])
 
   return null
 }

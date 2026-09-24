@@ -25,30 +25,17 @@ describe('SnippetLayout', () => {
     localStorage.clear()
   })
 
-  describe('Document title', () => {
-    it('should set the document title to the snippet name when snippet detail is available', () => {
-      render(
-        <SnippetLayout snippetId="snippet-1" snippet={createSnippet()} section="orchestrate">
-          <div>content</div>
-        </SnippetLayout>,
-      )
+  it('sets the document title and leaves navigation to the parent layout', () => {
+    render(
+      <SnippetLayout snippetId="snippet-1" snippet={createSnippet()} section="orchestrate">
+        <div>content</div>
+      </SnippetLayout>,
+    )
 
-      expect(mockUseDocumentTitle).toHaveBeenCalledWith('Snippet Title')
-    })
-  })
-
-  describe('Layout', () => {
-    it('should render the detail content without owning sidebar navigation', () => {
-      render(
-        <SnippetLayout snippetId="snippet-1" snippet={createSnippet()} section="orchestrate">
-          <div>content</div>
-        </SnippetLayout>,
-      )
-
-      expect(screen.getByText('content')).toBeInTheDocument()
-      expect(
-        screen.queryByRole('link', { name: 'snippet.sectionOrchestrate' }),
-      ).not.toBeInTheDocument()
-    })
+    expect(mockUseDocumentTitle).toHaveBeenCalledWith('Snippet Title')
+    expect(screen.getByText('content')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'snippet.sectionOrchestrate' }),
+    ).not.toBeInTheDocument()
   })
 })

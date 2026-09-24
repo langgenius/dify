@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { renderHook } from '@testing-library/react'
 import { useChat } from '../../hooks'
@@ -27,7 +26,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -44,8 +43,11 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('../../../../hooks', () => ({
+vi.mock('../../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({ handleRun: mockHandleRun }),
+}))
+
+vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 

@@ -11,9 +11,14 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => mockUseIsChatMode(),
+  }
+})
 
 const createPayload = (overrides: Partial<StartNodeType> = {}): StartNodeType => ({
   title: 'Start',

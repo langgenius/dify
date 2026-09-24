@@ -67,6 +67,7 @@ class FormCreateParams:
     # workflow_execution_id for chatflow runs; set alone (workflow_execution_id None)
     # for Agent v2 chat ask_human forms, which have no workflow run.
     conversation_id: str | None = None
+    form_id: str | None = None
 
 
 class HumanInputFormRecipientEntity(Protocol):
@@ -110,7 +111,7 @@ class HumanInputFormEntity(Protocol):
 
 
 class HumanInputFormRepository(Protocol):
-    def get_form(self, node_id: str) -> HumanInputFormEntity | None: ...
+    def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None: ...
 
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity: ...
 
@@ -460,8 +461,7 @@ class HumanInputFormRepositoryImpl:
             raise ValueError("a runtime human input form requires a workflow_execution_id or conversation_id")
 
         with session_factory.create_session() as session, session.begin():
-            # Generate unique form ID
-            form_id = str(uuidv7())
+            form_id = params.form_id or str(uuidv7())
             start_time = naive_utc_now()
             node_expiration = form_config.expiration_time(start_time)
             form_definition = FormDefinition(
@@ -546,7 +546,7 @@ class HumanInputFormRepositoryImpl:
 
         return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
 
-    def get_form(self, node_id: str) -> HumanInputFormEntity | None:
+    def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None:
         if self._workflow_execution_id is None:
             raise ValueError("workflow_execution_id is required to load runtime human input forms")
 
@@ -555,6 +555,8 @@ class HumanInputFormRepositoryImpl:
             HumanInputForm.node_id == node_id,
             HumanInputForm.tenant_id == self._tenant_id,
         )
+        if form_id is not None:
+            form_query = form_query.where(HumanInputForm.id == form_id)
         with session_factory.create_session() as session:
             form_model: HumanInputForm | None = session.scalars(form_query).first()
             if form_model is None:

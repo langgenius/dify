@@ -6,7 +6,6 @@ import { act, render, waitFor } from '@testing-library/react'
 import { $nodesOfType, COMMAND_PRIORITY_EDITOR } from 'lexical'
 import { useEffect, useState } from 'react'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readEditorStateValue,
@@ -14,7 +13,8 @@ import {
   renderLexicalEditor,
   selectRootEnd,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import {
   DELETE_HITL_INPUT_BLOCK_COMMAND,
   HITLInputBlock,

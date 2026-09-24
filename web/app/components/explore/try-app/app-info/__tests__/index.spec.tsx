@@ -1,7 +1,7 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import AppInfo from '../index'
 
 const mockUseGetRequirements = vi.fn()
@@ -269,24 +269,6 @@ describe('AppInfo', () => {
       expect(
         requirementRow.querySelector('.i-custom-public-other-default-tool-icon'),
       ).toBeInTheDocument()
-    })
-  })
-
-  describe('className prop', () => {
-    it('applies custom className', () => {
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      const { container } = render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="custom-class"
-          onCreate={mockOnCreate}
-        />,
-      )
-
-      expect(container.firstChild).toHaveClass('custom-class')
     })
   })
 

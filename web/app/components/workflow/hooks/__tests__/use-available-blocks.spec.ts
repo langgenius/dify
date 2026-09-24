@@ -1,6 +1,6 @@
 import type { NodeDefault } from '../../types'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import { useAvailableBlocks } from '../use-available-blocks'
 
@@ -29,7 +29,7 @@ const mockNodeTypes = [
 function createNodeDefault(type: BlockEnum): NodeDefault {
   return {
     metaData: {
-      classification: BlockClassificationEnum.Default,
+      classification: BlockClassification.Default,
       sort: 0,
       type,
       title: type,
@@ -145,7 +145,7 @@ describe('useAvailableBlocks', () => {
   })
 
   describe('inContainer filtering', () => {
-    it('should exclude Iteration, Loop, End, DataSource, KnowledgeBase, HumanInput when inContainer=true', () => {
+    it('should allow HumanInput while excluding unsupported blocks when inContainer=true', () => {
       const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM, true), {
         hooksStoreProps,
       })
@@ -155,7 +155,7 @@ describe('useAvailableBlocks', () => {
       expect(result.current.availableNextBlocks).not.toContain(BlockEnum.End)
       expect(result.current.availableNextBlocks).not.toContain(BlockEnum.DataSource)
       expect(result.current.availableNextBlocks).not.toContain(BlockEnum.KnowledgeBase)
-      expect(result.current.availableNextBlocks).not.toContain(BlockEnum.HumanInput)
+      expect(result.current.availableNextBlocks).toContain(BlockEnum.HumanInput)
     })
 
     it('should exclude LoopEnd when not in container', () => {

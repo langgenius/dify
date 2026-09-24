@@ -47,11 +47,7 @@ const lexicalContextValue: LexicalComposerContextWithEditor = [
 ]
 
 const renderWithLexicalContext = (ui: ReactElement) => {
-  return render(
-    <LexicalComposerContext.Provider value={lexicalContextValue}>
-      {ui}
-    </LexicalComposerContext.Provider>,
-  )
+  return render(<LexicalComposerContext value={lexicalContextValue}>{ui}</LexicalComposerContext>)
 }
 
 describe('WorkflowVariableBlock', () => {
@@ -98,7 +94,6 @@ describe('WorkflowVariableBlock', () => {
       expect.any(Function),
       COMMAND_PRIORITY_EDITOR,
     )
-    expect(WorkflowVariableBlock.displayName).toBe('WorkflowVariableBlock')
   })
 
   it('should dispatch workflow node map update on mount', () => {

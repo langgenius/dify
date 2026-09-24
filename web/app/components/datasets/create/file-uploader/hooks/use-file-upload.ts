@@ -1,15 +1,17 @@
 'use client'
 import type { RefObject } from 'react'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { IS_CE_EDITION } from '@/config'
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { toast } from '@/app/notifications'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { LanguagesSupported } from '@/i18n/language'
 import { upload } from '@/service/base'
-import { useFileSupportTypes, useFileUploadConfig } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
+import { useFileUploadConfig } from '@/service/use-common'
 import { getFileExtension } from '@/utils/format'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../constants'
 
@@ -27,8 +29,7 @@ type UseFileUploadOptions = {
   onPreview: (file: File) => void
   supportBatchUpload?: boolean
   /**
-   * Optional list of allowed file extensions. If not provided, fetches from API.
-   * Pass this when you need custom extension filtering instead of using the global config.
+   * Overrides the supported extensions from the API, including an empty list.
    */
   allowedExtensions?: string[]
 }
@@ -68,7 +69,12 @@ export const useFileUpload = ({
   supportBatchUpload = false,
   allowedExtensions,
 }: UseFileUploadOptions): UseFileUploadReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloudEdition = deploymentEdition === 'CLOUD'
   const locale = useLocale()
 
   const [dragging, setDragging] = useState(false)
@@ -80,8 +86,9 @@ export const useFileUpload = ({
   const hideUpload = !supportBatchUpload && fileList.length > 0
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const { data: supportFileTypesResponse } = useFileSupportTypes()
-  // Use provided allowedExtensions or fetch from API
+  const { data: supportFileTypesResponse } = useQuery(
+    consoleQuery.files.supportType.get.queryOptions(),
+  )
   const supportTypes = useMemo(
     () => allowedExtensions ?? supportFileTypesResponse?.allowed_extensions ?? [],
     [allowedExtensions, supportFileTypesResponse?.allowed_extensions],
@@ -108,7 +115,10 @@ export const useFileUpload = ({
 
   const fileUploadConfig = useMemo(
     () => ({
-      file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
+      file_size_limit:
+        fileUploadConfigResponse?.knowledge_file_size_limit ??
+        fileUploadConfigResponse?.file_size_limit ??
+        15,
       batch_count_limit: supportBatchUpload
         ? (fileUploadConfigResponse?.batch_count_limit ?? 5)
         : 1,
@@ -219,7 +229,7 @@ export const useFileUpload = ({
       const filesCountLimit = fileUploadConfig.file_upload_limit
       if (!files.length) return false
 
-      if (files.length + fileList.length > filesCountLimit && !IS_CE_EDITION) {
+      if (files.length + fileList.length > filesCountLimit && isCloudEdition) {
         toast.error(
           t(($) => $['stepOne.uploader.validation.filesNumber'], {
             ns: 'datasetCreation',
@@ -239,7 +249,7 @@ export const useFileUpload = ({
       fileListRef.current = newFiles
       uploadMultipleFiles(preparedFiles)
     },
-    [prepareFileList, uploadMultipleFiles, t, fileList, fileUploadConfig],
+    [prepareFileList, uploadMultipleFiles, t, fileList, fileUploadConfig, isCloudEdition],
   )
 
   const traverseFileEntry = useCallback(

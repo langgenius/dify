@@ -39,11 +39,7 @@ const lexicalContextValue: LexicalComposerContextWithEditor = [
 ]
 
 const renderWithLexicalContext = (ui: ReactElement) => {
-  return render(
-    <LexicalComposerContext.Provider value={lexicalContextValue}>
-      {ui}
-    </LexicalComposerContext.Provider>,
-  )
+  return render(<LexicalComposerContext value={lexicalContextValue}>{ui}</LexicalComposerContext>)
 }
 
 describe('ErrorMessageBlock', () => {
@@ -77,7 +73,6 @@ describe('ErrorMessageBlock', () => {
       expect.any(Function),
       COMMAND_PRIORITY_EDITOR,
     )
-    expect(ErrorMessageBlock.displayName).toBe('ErrorMessageBlock')
   })
 
   it('should throw when ErrorMessageBlockNode is not registered', () => {

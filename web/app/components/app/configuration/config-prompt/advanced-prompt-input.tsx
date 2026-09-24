@@ -4,7 +4,8 @@ import type { ExternalDataTool } from '@/models/common'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiDeleteBinLine, RiErrorWarningFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
@@ -13,8 +14,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
-import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import { Infotip } from '@/app/components/base/infotip'
+import { toast } from '@/app/components/app/configuration/toast'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
@@ -54,7 +54,9 @@ const AdvancedPromptInput: FC<Props> = ({
   onHideContextMissingTip,
   noResize,
 }) => {
-  const { t } = useTranslation()
+  const promptLabelId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const { eventEmitter } = useEventEmitterContextContext()
 
   const {
@@ -159,7 +161,7 @@ const AdvancedPromptInput: FC<Props> = ({
     >
       <div className="flex items-center pr-2">
         <RiErrorWarningFill className="mr-1 h-4 w-4 text-[#F79009]" />
-        <div className="text-[13px] leading-[18px] font-medium text-[#DC6803]">
+        <div className="text-[13px] leading-4.5 font-medium text-[#DC6803]">
           {t(($) => $['promptMode.contextMissing'], { ns: 'appDebug' })}
         </div>
       </div>
@@ -186,15 +188,14 @@ const AdvancedPromptInput: FC<Props> = ({
               <MessageTypeSelector value={type} onChange={onTypeChange} />
             ) : (
               <div className="flex items-center space-x-1">
-                <div className="text-sm font-semibold text-indigo-800 uppercase">
+                <div id={promptLabelId} className="text-sm font-semibold text-indigo-800 uppercase">
                   {t(($) => $['pageTitle.line1'], { ns: 'appDebug' })}
                 </div>
-                <Infotip
-                  aria-label={t(($) => $.promptTip, { ns: 'appDebug' })}
-                  className="ml-1"
-                  popupClassName="w-[180px]"
-                >
-                  {t(($) => $.promptTip, { ns: 'appDebug' })}
+                <Infotip>
+                  <InfotipTrigger aria-labelledby={promptLabelId} className="ml-1" />
+                  <InfotipContent aria-labelledby={promptLabelId} className="w-45">
+                    {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
+                  </InfotipContent>
                 </Infotip>
               </div>
             )}
@@ -205,29 +206,38 @@ const AdvancedPromptInput: FC<Props> = ({
                   className="size-6 cursor-pointer p-1 text-text-tertiary"
                 />
               )}
-              {!isCopied ? (
-                <Copy
-                  className="size-6 cursor-pointer p-1 text-text-tertiary"
-                  onClick={() => {
-                    copy(value)
-                    setIsCopied(true)
-                  }}
+              <IconButton
+                aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+                aria-disabled={isCopied}
+                size="md"
+                onClick={() => {
+                  if (isCopied) return
+                  copy(value)
+                  setIsCopied(true)
+                }}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    'size-4',
+                    isCopied
+                      ? 'i-custom-vender-line-files-copy-check'
+                      : 'i-custom-vender-line-files-copy',
+                  )}
                 />
-              ) : (
-                <CopyCheck className="size-6 p-1 text-text-tertiary" />
-              )}
+              </IconButton>
             </div>
           </div>
         )}
 
         <PromptEditorHeightResizeWrap
-          className="min-h-[102px] overflow-y-auto px-4 text-sm text-text-secondary"
+          className="min-h-25.5 overflow-y-auto px-4 text-sm text-text-secondary"
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           footer={
             <div className="flex pb-2 pl-4">
-              <div className="h-[18px] rounded-md bg-divider-regular px-1 text-xs leading-[18px] text-text-tertiary">
+              <div className="h-4.5 rounded-md bg-divider-regular px-1 text-xs leading-4.5 text-text-tertiary">
                 {value.length}
               </div>
             </div>
@@ -235,7 +245,7 @@ const AdvancedPromptInput: FC<Props> = ({
           hideResize={noResize}
         >
           <PromptEditor
-            className="min-h-[84px]"
+            className="min-h-21"
             value={value}
             contextBlock={{
               show: true,

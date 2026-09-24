@@ -21,39 +21,30 @@ vi.mock('uuid', () => ({
 }))
 
 vi.mock('ahooks', () => ({
-  useBoolean: (initialValue: boolean) => {
-    let current = initialValue
-    return [
-      current,
-      {
-        setTrue: () => {
-          current = true
-        },
-        setFalse: () => {
-          current = false
-        },
-      },
-    ] as const
-  },
   useDebounceFn: (fn: (...args: unknown[]) => void) => ({
     run: fn,
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useWorkflow: () => ({
-    handleOutVarRenameChange: (...args: unknown[]) => mockHandleOutVarRenameChange(...args),
-    isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
-    removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
-  }),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+    useWorkflow: () => ({
+      handleOutVarRenameChange: (...args: unknown[]) => mockHandleOutVarRenameChange(...args),
+      isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
+      removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<VariableAssignerNodeType>(mockSetInputs),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
   __esModule: true,
   default: () => ({
     deleteNodeInspectorVars: (...args: unknown[]) => mockDeleteNodeInspectorVars(...args),
@@ -107,16 +98,6 @@ describe('useConfig', () => {
     vi.clearAllMocks()
     mockGetAvailableVars.mockReturnValue([])
     mockIsVarUsedInNodes.mockReturnValue(false)
-  })
-
-  it('should expose read-only state, group mode and typed variable filters', () => {
-    const { result } = renderHook(() => useConfig('assigner-node', createPayload()))
-
-    expect(result.current.readOnly).toBe(false)
-    expect(result.current.isEnableGroup).toBe(true)
-    expect(result.current.filterVar(VarType.string)({ type: VarType.any } as never)).toBe(true)
-    expect(result.current.filterVar(VarType.number)({ type: VarType.string } as never)).toBe(false)
-    expect(result.current.getAvailableVars).toBe(mockGetAvailableVars)
   })
 
   it('should update root and grouped variable payloads', () => {

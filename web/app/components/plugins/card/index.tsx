@@ -7,7 +7,7 @@ import { useTranslation } from '#i18n'
 import { useGetLanguage } from '@/context/i18n'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import useTheme from '@/hooks/use-theme'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { Theme } from '@/types/app'
 import { formatNumber } from '@/utils/format'
 import Partner from '../base/badges/partner'
@@ -42,6 +42,37 @@ type Props = Readonly<{
   variant?: 'default' | 'marketplace'
 }>
 
+type CardIconProps = {
+  icon: CardPayload['icon']
+  installFailed?: boolean
+  installed?: boolean
+  marketplace?: boolean
+  plugin: Pick<Plugin, 'from' | 'name' | 'org' | 'type'>
+}
+
+const WorkspaceCardIcon = ({ icon, installFailed, installed, plugin }: CardIconProps) => {
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const iconSrc = getPluginCardIconUrl(plugin, icon, currentWorkspaceId)
+
+  return <Icon src={iconSrc} installed={installed} installFailed={installFailed} />
+}
+
+const CardIcon = ({ icon, installFailed, installed, marketplace, plugin }: CardIconProps) => {
+  if (marketplace || plugin.from === 'marketplace') {
+    const iconSrc = getPluginCardIconUrl({ ...plugin, from: 'marketplace' }, icon, '')
+    return <Icon src={iconSrc} installed={installed} installFailed={installFailed} />
+  }
+
+  return (
+    <WorkspaceCardIcon
+      icon={icon}
+      installFailed={installFailed}
+      installed={installed}
+      plugin={plugin}
+    />
+  )
+}
+
 const Card = ({
   className,
   payload,
@@ -58,17 +89,13 @@ const Card = ({
   variant = 'default',
 }: Props) => {
   const locale = useGetLanguage()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { categoriesMap } = useCategories(true)
-  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { category, type, name, org, label, brief, icon, icon_dark, verified, from } = payload
   const badges = payload.badges ?? []
   const { theme } = useTheme()
-  const iconSrc = getPluginCardIconUrl(
-    { from, name, org, type },
-    theme === Theme.dark && icon_dark ? icon_dark : icon,
-    currentWorkspaceId,
-  )
+  const activeIcon = theme === Theme.dark && icon_dark ? icon_dark : icon
+  const pluginIdentity = { from, name, org, type }
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
   const isPartner = badges.includes('partner')
@@ -77,10 +104,9 @@ const Card = ({
   const cornerMarkText = categoriesMap[type === 'bundle' ? type : category]?.label ?? ''
 
   const wrapClassName = cn(
-    // oxlint-disable-next-line tailwindcss/no-unknown-classes -- Used by page feedback tooling to identify plugin cards.
     'hover-bg-components-panel-on-panel-item-bg relative overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs',
     isMarketplaceVariant &&
-      'h-[148px] transition-all group-hover:bg-components-panel-on-panel-item-bg-hover group-hover:shadow-md',
+      'h-37 transition-all group-hover:bg-components-panel-on-panel-item-bg-hover group-hover:shadow-md',
     className,
   )
   if (isLoading) {
@@ -93,7 +119,13 @@ const Card = ({
         <div className="relative flex h-full flex-col">
           {!hideCornerMark && <CornerMark text={cornerMarkText} />}
           <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-            <Icon src={iconSrc} installed={installed} installFailed={installFailed} />
+            <CardIcon
+              icon={activeIcon}
+              installed={installed}
+              installFailed={installFailed}
+              marketplace
+              plugin={pluginIdentity}
+            />
             <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
               <div className="flex h-5 min-w-0 items-center">
                 <div className="truncate system-md-medium text-text-primary">
@@ -117,7 +149,7 @@ const Card = ({
                 {org && (
                   <div className="flex min-w-0 items-center gap-1">
                     <span className="shrink-0 lowercase">
-                      {t(($) => $.author, { ns: 'tools' })}
+                      {t(($) => $['marketplace.by'], { ns: 'plugin' })}
                     </span>
                     <span className="truncate">{org}</span>
                   </div>
@@ -153,7 +185,12 @@ const Card = ({
         {!hideCornerMark && <CornerMark text={cornerMarkText} />}
         {/* Header */}
         <div className="flex">
-          <Icon src={iconSrc} installed={installed} installFailed={installFailed} />
+          <CardIcon
+            icon={activeIcon}
+            installed={installed}
+            installFailed={installFailed}
+            plugin={pluginIdentity}
+          />
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={getLocalizedText(label)} />

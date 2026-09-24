@@ -9,7 +9,6 @@ import Panel from '../panel'
 import { OrderBy } from '../types'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockSwitch = vi.hoisted(() => vi.fn())
 const mockVarReferencePicker = vi.hoisted(() => vi.fn())
 const mockFilterCondition = vi.hoisted(() => vi.fn())
 const mockExtractInput = vi.hoisted(() => vi.fn())
@@ -20,27 +19,6 @@ const mockOptionCard = vi.hoisted(() => vi.fn())
 vi.mock('../use-config', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseConfig(...args),
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: (props: {
-    checked?: boolean
-    disabled?: boolean
-    onCheckedChange: (value: boolean) => void
-  }) => {
-    mockSwitch(props)
-    return (
-      <button
-        type="button"
-        role="switch"
-        aria-checked={props.checked}
-        disabled={props.disabled}
-        onClick={() => props.onCheckedChange(!props.checked)}
-      >
-        {props.disabled ? 'switch:disabled' : 'switch:enabled'}
-      </button>
-    )
-  },
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
@@ -208,13 +186,9 @@ describe('list-operator/panel', () => {
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
-  it('renders enabled sections and forwards all main interactions', async () => {
+  it('renders enabled sections and handles variable, filter, limit, and sort changes', async () => {
     const user = userEvent.setup()
-    const config = createConfigResult({
-      handleOrderByTypeChange: vi.fn(
-        (value: OrderBy) => () => config.handleOrderByEnabledChange(value === OrderBy.ASC),
-      ),
-    })
+    const config = createConfigResult()
     mockUseConfig.mockReturnValue(config)
 
     renderPanel()
@@ -240,9 +214,6 @@ describe('list-operator/panel', () => {
     await user.click(screen.getByRole('button', { name: 'extract-input:1' }))
     await user.click(screen.getByRole('button', { name: 'limit-config:10' }))
     await user.click(screen.getByRole('button', { name: 'sub-variable:size' }))
-    await user.click(screen.getAllByRole('switch')[0]!)
-    await user.click(screen.getAllByRole('switch')[1]!)
-    await user.click(screen.getAllByRole('switch')[2]!)
     await user.click(screen.getByRole('button', { name: 'workflow.nodes.listFilter.asc:selected' }))
     await user.click(screen.getByRole('button', { name: 'workflow.nodes.listFilter.desc:idle' }))
 
@@ -251,9 +222,6 @@ describe('list-operator/panel', () => {
     expect(config.handleExtractsChange).toHaveBeenCalledWith('2')
     expect(config.handleLimitChange).toHaveBeenCalledWith({ enabled: true, size: 11 })
     expect(config.handleOrderByKeyChange).toHaveBeenCalledWith('name')
-    expect(config.handleFilterEnabledChange).toHaveBeenCalledWith(false)
-    expect(config.handleExtractsEnabledChange).toHaveBeenCalledWith(false)
-    expect(config.handleOrderByEnabledChange).toHaveBeenCalled()
     expect(config.handleOrderByTypeChange).toHaveBeenCalledWith(OrderBy.ASC)
     expect(config.handleOrderByTypeChange).toHaveBeenCalledWith(OrderBy.DESC)
   })
@@ -294,8 +262,8 @@ describe('list-operator/panel', () => {
       screen.queryByRole('button', { name: 'workflow.nodes.listFilter.asc:idle' }),
     ).not.toBeInTheDocument()
     expect(screen.getAllByRole('switch')).toHaveLength(3)
-    expect(screen.getAllByRole('switch').every((button) => button.hasAttribute('disabled'))).toBe(
-      true,
-    )
+    expect(
+      screen.getAllByRole('switch').every((control) => control.hasAttribute('data-disabled')),
+    ).toBe(true)
   })
 })

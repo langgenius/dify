@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import * as https from 'node:https'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { createHttpClient } from './client.js'
 
 function generateSelfSignedCert(dir: string): { key: Buffer; cert: Buffer } {

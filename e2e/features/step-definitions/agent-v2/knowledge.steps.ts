@@ -1,27 +1,27 @@
 import type { Locator } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createConfiguredTestAgent, getAgentComposerDraft } from '../../agent-v2/support/agent'
 import {
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from '../../agent-v2/support/agent-builder-resources'
+} from '../../agent-v2/support/agent-builder-resources.ts'
 import {
   createAgentSoulConfigWithKnowledgeDataset,
   normalAgentSoulConfig,
-} from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord } from '../../agent-v2/support/preflight/common'
-import { getCurrentAgentId } from './configure-helpers'
+} from '../../agent-v2/support/agent-soul.ts'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent.ts'
+import { asArray, asRecord } from '../../agent-v2/support/fixtures/common.ts'
+import { getCurrentAgentId } from './configure-helpers.ts'
 
 const getPreseededKnowledgeBase = (world: DifyWorld) => {
   const resource =
-    world.agentBuilder.preflight.preseededResources[
+    world.agentBuilder.fixtures.preseededResources[
       agentBuilderPreseededResources.agentKnowledgeBase
     ]
   if (!resource || resource.kind !== 'dataset') {
     throw new Error(
-      `Preseeded dataset "${agentBuilderPreseededResources.agentKnowledgeBase}" is not available. Run the matching preflight step first.`,
+      `Preseeded dataset "${agentBuilderPreseededResources.agentKnowledgeBase}" is not available. Run the matching fixture setup step first.`,
     )
   }
 
@@ -31,8 +31,10 @@ const getPreseededKnowledgeBase = (world: DifyWorld) => {
 const getKnowledgeSection = (world: DifyWorld) =>
   world.getPage().getByRole('region', { name: 'Knowledge Retrieval' })
 
-const getKnowledgeSets = async (agentId: string) => {
-  const draft = await getAgentComposerDraft(agentId)
+const getKnowledgeSets = async (world: DifyWorld, agentId: string) => {
+  const draft = await world
+    .getConsoleClient()
+    .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
 
   return asArray(asRecord(draft.agent_soul?.knowledge).sets)
 }
@@ -96,7 +98,7 @@ const expectKnowledgeRetrievalDraft = async (
   await expect
     .poll(
       async () => {
-        const knowledgeSets = await getKnowledgeSets(agentId)
+        const knowledgeSets = await getKnowledgeSets(world, agentId)
         const knowledgeSet = asRecord(knowledgeSets[0])
         const datasets = asArray(knowledgeSet.datasets)
         const query = asRecord(knowledgeSet.query)
@@ -125,7 +127,7 @@ Given(
   'a knowledge-backed Agent v2 test agent has been created via API',
   async function (this: DifyWorld) {
     const knowledgeBase = getPreseededKnowledgeBase(this)
-    const agent = await createConfiguredTestAgent({
+    const agent = await createConfiguredTestAgent(this.getConsoleClient(), {
       agentSoul: createAgentSoulConfigWithKnowledgeDataset(normalAgentSoulConfig, {
         id: knowledgeBase.id,
         name: knowledgeBase.name,
@@ -254,7 +256,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const knowledgeSets = await getKnowledgeSets(agentId)
+          const knowledgeSets = await getKnowledgeSets(this, agentId)
 
           return knowledgeSets.some((set) =>
             asArray(asRecord(set).datasets).some((dataset) => {

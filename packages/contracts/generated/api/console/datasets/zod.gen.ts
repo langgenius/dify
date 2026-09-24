@@ -10,10 +10,18 @@ export const zApiBaseUrlResponse = z.object({
 })
 
 /**
+ * DatasetApiKeyCreatePayload
+ */
+export const zDatasetApiKeyCreatePayload = z.object({
+  dataset_ids: z.array(z.string()).optional(),
+})
+
+/**
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
+  dataset_ids: z.array(z.string()).optional().default([]),
   id: z.string(),
   last_used_at: z.int().nullish(),
   token: z.string(),
@@ -44,6 +52,13 @@ export const zBatchImportPayload = z.object({
 
 /**
  * ExternalDatasetCreatePayload
+ *
+ * Validated fields required to create an external dataset binding.
+ *
+ * The console controller owns HTTP concerns, but the service also needs this
+ * contract when creating the tenant-scoped dataset and external knowledge
+ * binding. Keep it outside controllers so service imports do not depend on
+ * Flask blueprint initialization.
  */
 export const zExternalDatasetCreatePayload = z.object({
   description: z.string().max(400).nullish(),
@@ -541,8 +556,8 @@ export const zDocumentResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
   data_source_type: z.string().nullish(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
@@ -581,8 +596,8 @@ export const zDocumentWithSegmentsResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
   data_source_type: z.string().nullish(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
@@ -861,7 +876,7 @@ export const zProcessRule = z.object({
  * MetadataDetail
  */
 export const zMetadataDetail = z.object({
-  id: z.string(),
+  id: z.uuid(),
   name: z.string(),
   value: z.union([z.string(), z.int(), z.number()]).nullish(),
 })
@@ -870,7 +885,7 @@ export const zMetadataDetail = z.object({
  * DocumentMetadataOperation
  */
 export const zDocumentMetadataOperation = z.object({
-  document_id: z.string(),
+  document_id: z.uuid(),
   metadata_list: z.array(zMetadataDetail),
   partial_update: z.boolean().optional().default(false),
 })
@@ -1473,6 +1488,8 @@ export const zGetDatasetsApiBaseInfoResponse = zApiBaseUrlResponse
  * API keys retrieved successfully
  */
 export const zGetDatasetsApiKeysResponse = zApiKeyList
+
+export const zPostDatasetsApiKeysBody = zDatasetApiKeyCreatePayload
 
 /**
  * API key created successfully

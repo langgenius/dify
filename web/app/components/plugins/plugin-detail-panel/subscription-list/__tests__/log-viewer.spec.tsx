@@ -1,12 +1,12 @@
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import LogViewer from '../log-viewer'
 
 const mockToastNotify = vi.fn()
 const mockWriteText = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) =>
       mockToastNotify({ type: options?.type, message }),
@@ -111,20 +111,6 @@ describe('LogViewer', () => {
 
     fireEvent.click(trigger)
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
-  })
-
-  it('should apply distinct styling when response is an error', () => {
-    const { container: errorContainer } = render(
-      <LogViewer logs={[createLog({ response: { ...createLog().response, status_code: 500 } })]} />,
-    )
-    const errorWrapperClass = errorContainer.querySelector('[class*="border"]')?.className ?? ''
-
-    cleanup()
-
-    const { container: okContainer } = render(<LogViewer logs={[createLog()]} />)
-    const okWrapperClass = okContainer.querySelector('[class*="border"]')?.className ?? ''
-
-    expect(errorWrapperClass).not.toBe(okWrapperClass)
   })
 
   it('should render raw response text and allow copying', () => {

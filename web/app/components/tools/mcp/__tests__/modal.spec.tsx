@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react'
+import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import MCPModal from '../modal'
 
 // Mock the service API
@@ -12,7 +14,7 @@ vi.mock('@/service/common', () => ({
 }))
 
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },
@@ -24,34 +26,15 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 // toggle stays hidden even when sso_enforced_for_signin is true.
 const mockSystemFeatures = vi.hoisted(() => ({
   sso_enforced_for_signin: false,
-  sso_enforced_for_signin_protocol: '' as 'oidc' | 'oauth2' | 'saml' | '',
+  sso_enforced_for_signin_protocol: null as SsoProtocol | null,
 }))
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['mock-system-features'],
-    queryFn: async () => mockSystemFeatures,
-  }),
-}))
-
 describe('MCPModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  const createWrapper = () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    // useSuspenseQuery(systemFeaturesQueryOptions) reads from this key —
-    // pre-populate so the modal renders synchronously instead of suspending.
-    queryClient.setQueryData(['mock-system-features'], mockSystemFeatures)
-    return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-  }
+  const createWrapper = () =>
+    createConsoleQueryWrapper({ systemFeatures: mockSystemFeatures }).wrapper
 
   const defaultProps = {
     show: true,
@@ -60,11 +43,6 @@ describe('MCPModal', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.title'))!.toBeInTheDocument()
-    })
-
     it('should not render when show is false', () => {
       render(<MCPModal {...defaultProps} show={false} />, { wrapper: createWrapper() })
       expect(screen.queryByText('tools.mcp.modal.title')).not.toBeInTheDocument()
@@ -73,6 +51,7 @@ describe('MCPModal', () => {
     it('should render create title when no data is provided', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.modal.title'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toHaveAccessibleName('tools.mcp.modal.title')
     })
 
     it('should render edit title when data is provided', () => {
@@ -212,6 +191,15 @@ describe('MCPModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
       expect(onHide).toHaveBeenCalled()
+    })
+
+    it('should call onHide when the dialog requests close', () => {
+      const onHide = vi.fn()
+      render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      expect(onHide).toHaveBeenCalledTimes(1)
     })
 
     it('should have confirm button disabled when form is empty', () => {
@@ -703,7 +691,7 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('app.iconPicker.search'))!.toBeInTheDocument()
         })
       }
     })
@@ -720,19 +708,19 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('app.iconPicker.search'))!.toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+        fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
         fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
         await waitFor(() => {
-          expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+          expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
         })
       }
     })
 
-    it('should close app icon picker and reset icon when close button is clicked', async () => {
+    it('should close app icon picker and reset icon when Escape is pressed', async () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       // Open the icon picker
@@ -744,13 +732,13 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('app.iconPicker.search'))!.toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+        await userEvent.setup().keyboard('{Escape}')
 
         await waitFor(() => {
-          expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+          expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
         })
       }
     })
@@ -760,14 +748,14 @@ describe('MCPModal', () => {
   describe('Forward-user-identity toggle', () => {
     beforeEach(() => {
       mockSystemFeatures.sso_enforced_for_signin = false
-      mockSystemFeatures.sso_enforced_for_signin_protocol = ''
+      mockSystemFeatures.sso_enforced_for_signin_protocol = null
     })
 
     // Helper: turn SSO on with a refresh-capable protocol so the toggle is
     // visible. Use this for any test that needs the field rendered.
     const enableRefreshCapableSSO = () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oidc'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.oidc
     }
 
     const fillRequiredFields = () => {
@@ -797,14 +785,14 @@ describe('MCPModal', () => {
 
     it('does not render the toggle when SSO protocol is SAML (no refresh model)', () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'saml'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.saml
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.queryByText('tools.mcp.modal.forwardUserIdentity')).not.toBeInTheDocument()
     })
 
     it('renders the toggle when SSO protocol is OAuth2', () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oauth2'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.oauth2
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.modal.forwardUserIdentity')).toBeInTheDocument()
     })
@@ -912,3 +900,5 @@ describe('MCPModal', () => {
     })
   })
 })
+
+mockEmojiData()

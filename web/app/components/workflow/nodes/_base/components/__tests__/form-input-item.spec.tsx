@@ -4,22 +4,38 @@ import type {
   FormOption,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarType } from '@/app/components/workflow/types'
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: () => false,
-  useWorkflow: () => ({
-    getTreeLeafNodes: () => [],
-    getNodeById: () => undefined,
-    getBeforeNodesInSameBranchIncludeParent: () => [],
-  }),
-  useWorkflowVariables: () => ({
-    getNodeAvailableVars: () => [],
-  }),
-}))
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => false,
+    useWorkflow: () => ({
+      getTreeLeafNodes: () => [],
+      getNodeById: () => undefined,
+      getBeforeNodesInSameBranchIncludeParent: () => [],
+    }),
+  }
+})
+
+vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariables: () => ({
+      getNodeAvailableVars: () => [],
+      getCurrentVariableType: () => VarType.string,
+    }),
+  }
+})
 
 const createSchema = (
   overrides: Partial<
@@ -78,7 +94,23 @@ const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>
 }
 
 describe('FormInputItem', () => {
-  it('should parse number inputs as numbers', () => {
+  it('shows a schema-provided numeric string and prevents edits in readonly mode', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderFormInputItem({
+      readOnly: true,
+      schema: createSchema({ type: FormTypeEnum.textNumber }),
+      value: { field: { type: VarKindType.constant, value: '3.5' } },
+    })
+    const input = screen.getByRole('textbox')
+    expect(input).toHaveValue('3.5')
+    expect(input).toHaveAttribute('readonly')
+    await user.type(input, '9{ArrowUp}')
+    expect(onChange).not.toHaveBeenCalled()
+    expect(input).toHaveValue('3.5')
+  })
+
+  it('should store a numeric constant and clear it without producing NaN', async () => {
+    const user = userEvent.setup()
     const { onChange } = renderFormInputItem({
       schema: createSchema({ type: FormTypeEnum.textNumber }),
       value: {
@@ -89,13 +121,19 @@ describe('FormInputItem', () => {
       },
     })
 
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '3.5' } })
+    const input = screen.getByRole('textbox')
+    await user.clear(input)
+    await user.type(input, '3.5')
 
     expect(onChange).toHaveBeenCalledWith({
       field: {
         type: VarKindType.constant,
         value: 3.5,
       },
+    })
+    await user.clear(input)
+    expect(onChange).toHaveBeenLastCalledWith({
+      field: { type: VarKindType.constant, value: null },
     })
   })
 
@@ -161,3 +199,24 @@ describe('FormInputItem', () => {
     })
   })
 })
+
+it.each([false, 0])(
+  'retains the static schema default %s when switching a variable to a constant',
+  (defaultValue) => {
+    const { onChange } = renderFormInputItem({
+      staticSchema: true,
+      schema: {
+        ...createSchema({
+          type: typeof defaultValue === 'number' ? FormTypeEnum.textNumber : FormTypeEnum.checkbox,
+          _type: typeof defaultValue === 'number' ? FormTypeEnum.textNumber : FormTypeEnum.boolean,
+        }),
+        default: defaultValue,
+      },
+      value: { field: { type: VarKindType.variable, value: ['upstream', 'value'] } },
+    })
+    fireEvent.click(screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }))
+    expect(onChange).toHaveBeenCalledWith({
+      field: { type: VarKindType.constant, value: defaultValue },
+    })
+  },
+)

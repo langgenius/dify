@@ -61,7 +61,6 @@ describe('applyToNewApp', () => {
       params: {
         graph,
         features: {},
-        environment_variables: [],
         conversation_variables: [],
       },
     })
@@ -101,12 +100,12 @@ describe('applyToNewApp', () => {
 
   // Instruction-only-of-punctuation must still produce a usable, non-empty
   // app name so create-app doesn't fail validation.
-  it('should fall back to "Generated Workflow" when the instruction is empty', async () => {
-    await applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: '   ' })
+  it('should reject an empty instruction before creating an app', async () => {
+    await expect(
+      applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: '   ' }),
+    ).rejects.toThrow('Cannot create a generated app without an instruction.')
 
-    expect(mockCreateApp).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Generated Workflow' }),
-    )
+    expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
   // When the planner picks a name + emoji, those win over the
@@ -218,9 +217,10 @@ describe('applyToCurrentApp', () => {
         hash: 'h-existing',
       }),
     })
-    // Existing env vars and conversation vars must be preserved verbatim.
+    // Environment variables are preserved server-side; conversation variables
+    // must still be forwarded verbatim.
     const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
-    expect(params.environment_variables).toHaveLength(1)
+    expect(params).not.toHaveProperty('environment_variables')
     expect(params.conversation_variables).toHaveLength(1)
   })
 
@@ -236,7 +236,7 @@ describe('applyToCurrentApp', () => {
     const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
     expect(params).not.toHaveProperty('hash')
     expect(params.features).toEqual({})
-    expect(params.environment_variables).toEqual([])
+    expect(params).not.toHaveProperty('environment_variables')
     expect(params.conversation_variables).toEqual([])
   })
 

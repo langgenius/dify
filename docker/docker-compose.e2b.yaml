@@ -1,0 +1,50 @@
+x-api-build: &api-build
+  context: ..
+  dockerfile: api/Dockerfile
+
+services:
+  api:
+    image: dify-api:e2b-local
+    build: *api-build
+
+  api_websocket:
+    image: dify-api:e2b-local
+    build: *api-build
+
+  worker:
+    image: dify-api:e2b-local
+    build: *api-build
+
+  worker_beat:
+    image: dify-api:e2b-local
+    build: *api-build
+
+  agent_backend:
+    image: dify-agent-backend:e2b-local
+    build:
+      context: ..
+      dockerfile: dify-agent/Dockerfile
+    environment:
+      DIFY_AGENT_RUNTIME_BACKEND: e2b
+      DIFY_AGENT_E2B_API_KEY: ${DIFY_AGENT_E2B_API_KEY:-${E2B_API_KEY:-${E2B_API_TOKEN:-}}}
+      DIFY_AGENT_E2B_TEMPLATE: ${DIFY_AGENT_E2B_TEMPLATE:-difys-default-team/dify-agent-local-sandbox}
+    ports:
+      - "${EXPOSE_AGENT_BACKEND_PORT:-15050}:5050"
+
+  plugin_daemon:
+    ports: !override []
+
+  # Keep the normal local sandbox out of an E2B deployment without changing
+  # the default compose stack.
+  local_sandbox:
+    profiles:
+      - local-agent-sandbox
+
+  # This overlay is intended for branch validation and deliberately starts
+  # from an isolated PostgreSQL data volume.
+  db_postgres:
+    volumes: !override
+      - dify_e2b_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  dify_e2b_postgres_data:

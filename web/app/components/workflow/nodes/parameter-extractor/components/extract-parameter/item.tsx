@@ -4,7 +4,6 @@ import type { Param } from '../../types'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
@@ -15,13 +14,16 @@ type Props = Readonly<{
 }>
 
 const Item: FC<Props> = ({ payload, onEdit, onDelete }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="group relative rounded-lg bg-components-input-bg-normal px-2.5 py-2 hover:shadow-xs">
       <div className="flex justify-between">
         <div className="flex items-center">
-          <Variable02 className="size-3.5 text-text-accent-secondary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-development-variable-02 size-3.5 text-text-accent-secondary"
+          />
           <div className="ml-1 text-[13px] font-medium text-text-primary">{payload.name}</div>
           <div className="ml-2 text-xs font-normal text-text-tertiary capitalize">
             {payload.type}
@@ -33,10 +35,10 @@ const Item: FC<Props> = ({ payload, onEdit, onDelete }) => {
           </div>
         )}
       </div>
-      <div className="mt-0.5 text-xs leading-[18px] font-normal text-text-tertiary">
+      <div className="mt-0.5 text-xs leading-4.5 font-normal text-text-tertiary">
         {payload.description}
       </div>
-      <div className="absolute top-0 right-0 hidden h-full w-[119px] items-center justify-end space-x-1 rounded-lg bg-linear-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-1 group-hover:flex">
+      <div className="absolute top-0 right-0 hidden h-full w-29.75 items-center justify-end space-x-1 rounded-lg bg-linear-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-1 group-hover:flex">
         <div className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover" onClick={onEdit}>
           <RiEditLine className="size-4 text-text-tertiary" />
         </div>

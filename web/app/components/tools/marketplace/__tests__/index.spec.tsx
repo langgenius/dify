@@ -137,7 +137,7 @@ describe('Marketplace', () => {
       )
 
       // Assert
-      expect(document.querySelector('svg.spin-animation')).toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).toBeInTheDocument()
       expect(screen.queryByTestId('marketplace-list')).not.toBeInTheDocument()
     })
 
@@ -200,7 +200,7 @@ describe('Marketplace', () => {
       // Arrange
       const marketplaceContext = createMarketplaceContext()
       const showMarketplacePanel = vi.fn()
-      const { container } = render(
+      render(
         <Marketplace
           searchPluginText="vector"
           filterPluginTags={['tag-a', 'tag-b']}
@@ -211,9 +211,7 @@ describe('Marketplace', () => {
       )
 
       // Act
-      const arrowIcon = container.querySelector('svg.cursor-pointer')
-      expect(arrowIcon).toBeTruthy()
-      await user.click(arrowIcon as SVGElement)
+      await user.click(screen.getByRole('button', { name: /plugin.marketplace.moreFrom/i }))
 
       // Assert
       expect(showMarketplacePanel).toHaveBeenCalledTimes(1)

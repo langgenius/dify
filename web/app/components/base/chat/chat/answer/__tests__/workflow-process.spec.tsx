@@ -160,7 +160,7 @@ describe('WorkflowProcessItem', () => {
         />,
       )
       expect(screen.getByTestId('workflow-process-item')).toHaveClass(
-        'bg-[var(--color-workflow-process-failed-bg)]',
+        'bg-(--color-workflow-process-failed-bg)',
       )
     })
 

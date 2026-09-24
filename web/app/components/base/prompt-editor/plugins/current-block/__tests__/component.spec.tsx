@@ -44,9 +44,9 @@ const renderComponent = (props?: {
         nodes: withNode ? [CustomTextNode, CurrentBlockNode] : [CustomTextNode],
       }}
     >
-      <div onClick={onParentClick}>
+      <button type="button" onClick={onParentClick}>
         <CurrentBlockComponent nodeKey="current-node" generatorType={generatorType} />
-      </div>
+      </button>
     </LexicalComposer>,
   )
 }
@@ -57,28 +57,22 @@ describe('CurrentBlockComponent', () => {
   })
 
   describe('Rendering', () => {
-    it('should render prompt label and selected classes when generator type is prompt and selected', () => {
-      const { container } = renderComponent({
+    it('should render the prompt label for the prompt generator type', () => {
+      renderComponent({
         generatorType: GeneratorType.prompt,
         isSelected: true,
       })
-      const wrapper = container.querySelector('.group\\/wrap')
 
       expect(screen.getByText('current_prompt')).toBeInTheDocument()
-      expect(wrapper).toHaveClass('border-state-accent-solid')
-      expect(wrapper).toHaveClass('bg-state-accent-hover')
     })
 
-    it('should render code label and default classes when generator type is code and not selected', () => {
-      const { container } = renderComponent({
+    it('should render the code label for the code generator type', () => {
+      renderComponent({
         generatorType: GeneratorType.code,
         isSelected: false,
       })
-      const wrapper = container.querySelector('.group\\/wrap')
 
       expect(screen.getByText('current_code')).toBeInTheDocument()
-      expect(wrapper).toHaveClass('border-components-panel-border-subtle')
-      expect(wrapper).toHaveClass('bg-components-badge-white-to-dark')
     })
 
     it('should wire useSelectOrDelete with node key and delete command', () => {

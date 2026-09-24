@@ -3,11 +3,12 @@ import type {
   NodePanelPresenceMap,
   NodePanelPresenceUser,
 } from '@/app/components/workflow/collaboration/types/collaboration'
-import type { CommonNodeType, Edge, Node } from '@/app/components/workflow/types'
+import type { CommonNodeType, Edge, Node, PromptItem } from '@/app/components/workflow/types'
 import { LoroDoc } from 'loro-crdt/base64'
 import { Position } from 'reactflow'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, EditionType } from '@/app/components/workflow/types'
+import { attachCrdtRuntime } from './test-crdt-runtime'
 
 const NODE_ID = '1760342909316'
 
@@ -84,10 +85,6 @@ type ParameterExtractorNodeData = {
   }
 }
 
-type LLMNodeDataWithUnknownTemplate = Omit<LLMNodeData, 'prompt_template'> & {
-  prompt_template: unknown
-}
-
 type ManagerDoc = LoroDoc | { commit: () => void }
 
 type CollaborationManagerInternals = {
@@ -100,6 +97,7 @@ type CollaborationManagerInternals = {
   forceDisconnect: () => void
   activeConnections: Set<string>
   isUndoRedoInProgress: boolean
+  crdtTrusted: boolean
 }
 
 const createVariable = (
@@ -246,11 +244,13 @@ const setupManager = (): {
   internals: CollaborationManagerInternals
 } => {
   const manager = new CollaborationManager()
+  attachCrdtRuntime(manager)
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
   internals.doc = doc
   internals.nodesMap = doc.getMap('nodes')
   internals.edgesMap = doc.getMap('edges')
+  internals.crdtTrusted = true
   return { manager, internals }
 }
 
@@ -562,22 +562,57 @@ describe('CollaborationManager syncNodes', () => {
     expect(storedData.variables).toBeUndefined()
   })
 
-  it('treats non-array list inputs as empty lists during synchronization', () => {
-    const { manager: promptManager, internals: promptInternals } = setupManager()
+  it('preserves completion prompt objects when adding, editing, and reloading nodes', () => {
+    const { manager: promptManager } = setupManager()
+    const prompt: PromptItem = { text: '测试指令', edition_type: EditionType.basic }
+    const baseNode = createLLMNodeSnapshot([])
+    const completionNode = {
+      ...baseNode,
+      data: {
+        ...baseNode.data,
+        model: { ...baseNode.data.model, mode: 'completion' },
+        prompt_template: prompt,
+      },
+    }
 
-    const nodeWithInvalidTemplate = createLLMNodeSnapshot([])
-    promptInternals.syncNodes([], [deepClone(nodeWithInvalidTemplate)])
+    promptManager.setNodes([], [completionNode])
+    expect(promptManager.getNodes()[0]).toHaveProperty('data.prompt_template', prompt)
 
-    const mutated = deepClone(nodeWithInvalidTemplate) as Node<LLMNodeDataWithUnknownTemplate>
-    mutated.data.prompt_template = 'not-an-array'
+    const updatedPrompt: PromptItem = { ...prompt, text: '修改后的测试指令' }
+    const updatedNode = {
+      ...completionNode,
+      data: { ...completionNode.data, prompt_template: updatedPrompt },
+    }
+    promptManager.setNodes([completionNode], [updatedNode])
+    expect(promptManager.getNodes()[0]).toHaveProperty('data.prompt_template', updatedPrompt)
 
-    promptInternals.syncNodes([deepClone(nodeWithInvalidTemplate)], [mutated])
+    const { manager: reloadedManager } = setupManager()
+    reloadedManager.setNodes([], deepClone(promptManager.getNodes()))
+    expect(reloadedManager.getNodes()[0]).toHaveProperty('data.prompt_template', updatedPrompt)
+  })
 
-    const stored = promptManager
-      .getNodes()
-      .find((node) => node.id === LLM_NODE_ID) as Node<LLMNodeData>
-    expect(Array.isArray(stored.data.prompt_template)).toBe(true)
-    expect(stored.data.prompt_template).toHaveLength(0)
+  it('preserves prompt shape when switching between chat and completion models', () => {
+    const { manager: promptManager } = setupManager()
+    const chatNode = createLLMNodeSnapshot([{ id: 'system', role: 'system', text: 'Chat prompt' }])
+    promptManager.setNodes([], [chatNode])
+
+    const completionPrompt: PromptItem = { text: '测试指令', edition_type: EditionType.basic }
+    const completionNode = {
+      ...chatNode,
+      data: {
+        ...chatNode.data,
+        model: { ...chatNode.data.model, mode: 'completion' },
+        prompt_template: completionPrompt,
+      },
+    }
+    promptManager.setNodes([chatNode], [completionNode])
+    expect(promptManager.getNodes()[0]).toHaveProperty('data.prompt_template', completionPrompt)
+
+    promptManager.setNodes([completionNode], [chatNode])
+    expect(promptManager.getNodes()[0]).toHaveProperty(
+      'data.prompt_template',
+      chatNode.data.prompt_template,
+    )
   })
 
   it('updates edges map when edges are added, modified, and removed', () => {
@@ -653,6 +688,7 @@ describe('CollaborationManager public API wrappers', () => {
   beforeEach(() => {
     manager = new CollaborationManager()
     internals = getManagerInternals(manager)
+    internals.crdtTrusted = true
   })
 
   it('setNodes delegates to syncNodes and commits the CRDT document', () => {

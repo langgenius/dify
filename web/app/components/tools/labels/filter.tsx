@@ -5,10 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 
 type LabelFilterProps = {
@@ -16,11 +13,8 @@ type LabelFilterProps = {
   onChange: (v: string[]) => void
 }
 const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
+  const { t } = useTranslation(['common'])
   const { tags: labelList } = useTags()
-
   const [keywords, setKeywords] = useState('')
 
   const filteredLabelList = useMemo(() => {
@@ -37,7 +31,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <div className="relative">
         <PopoverTrigger
           className={cn(
@@ -63,45 +57,45 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
             className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
             onClick={() => onChange([])}
           >
-            <XCircle
-              className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
+            <span
               aria-hidden="true"
+              className="i-custom-vender-solid-general-x-circle size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
             />
           </button>
         )}
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+          className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
           <div className="relative">
             <div className="p-2">
-              <Input
-                showLeftIcon
-                showClearIcon
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                onClear={() => setKeywords('')}
-              />
+              <SearchInput value={keywords} onValueChange={setKeywords} />
             </div>
             <div className="p-1">
               {filteredLabelList.map((label) => (
                 <button
                   key={label.name}
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-[6px] pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
+                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-1.5 pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
                   onClick={() => selectLabel(label)}
                 >
                   <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
                   {value.includes(label.name) && (
-                    <Check className="size-4 shrink-0 text-text-accent" aria-hidden="true" />
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-general-check size-4 shrink-0 text-text-accent"
+                    />
                   )}
                 </button>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="size-6 text-text-quaternary" />
-                  <div className="text-xs leading-[14px] text-text-tertiary">
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-financeAndECommerce-tag-03 size-6 text-text-quaternary"
+                  />
+                  <div className="text-xs leading-3.5 text-text-tertiary">
                     {t(($) => $['tag.noTag'], { ns: 'common' })}
                   </div>
                 </div>

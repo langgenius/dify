@@ -4,6 +4,7 @@ import { act, render, renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { TransferMethod } from '@/types/app'
 import FormContent from '../form'
 import { useFormSubmit } from '../use-form-submit'
@@ -50,6 +51,8 @@ vi.mock('@/hooks/use-document-title', () => ({
   __esModule: true,
   default: vi.fn(),
 }))
+
+const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item', () => ({
   __esModule: true,
@@ -113,14 +116,13 @@ vi.mock('@/app/components/base/chat/chat/answer/human-input-content/expiration-t
   default: () => <div>expiration-time</div>,
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  __esModule: true,
-  default: () => <div>loading</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div>loading</div>,
 }))
 
 vi.mock('@/app/components/base/logo/dify-logo', () => ({
   __esModule: true,
-  default: () => <div>dify-logo</div>,
+  DifyLogo: () => <div>dify-logo</div>,
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
@@ -197,6 +199,13 @@ describe('Human input share form', () => {
     render(<FormContent />)
 
     expect(screen.getByText('loading')).toBeInTheDocument()
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('common.loading')
+  })
+
+  it('should use the app name as the loaded form document title', () => {
+    render(<FormContent />)
+
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('Review App')
   })
 
   it('should render status cards for terminal fetch states', () => {
@@ -205,29 +214,33 @@ describe('Human input share form', () => {
         error: { code: 'human_input_form_expired' },
         title: 'share.humanInput.sorry',
         subtitle: 'share.humanInput.expired',
+        documentTitle: 'share.humanInput.expired',
         submissionID: true,
       },
       {
         error: { code: 'human_input_form_submitted' },
         title: 'share.humanInput.sorry',
         subtitle: 'share.humanInput.completed',
+        documentTitle: 'share.humanInput.completed',
         submissionID: true,
       },
       {
         error: { code: 'web_form_rate_limit_exceeded' },
         title: 'share.humanInput.rateLimitExceeded',
         subtitle: undefined,
+        documentTitle: 'share.humanInput.rateLimitExceeded',
         submissionID: false,
       },
       {
         error: null,
         title: 'share.humanInput.formNotFound',
         subtitle: undefined,
+        documentTitle: 'share.humanInput.formNotFound',
         submissionID: false,
       },
     ]
 
-    cases.forEach(({ error, title, subtitle, submissionID }) => {
+    cases.forEach(({ error, title, subtitle, documentTitle, submissionID }) => {
       mockUseGetHumanInputForm.mockReturnValue({
         data: undefined,
         isLoading: false,
@@ -236,6 +249,7 @@ describe('Human input share form', () => {
       const { unmount } = render(<FormContent />)
 
       expect(screen.getByText(title)).toBeInTheDocument()
+      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith(documentTitle)
       if (subtitle) expect(screen.getByText(subtitle)).toBeInTheDocument()
       else expect(screen.queryByText('share.humanInput.expired')).not.toBeInTheDocument()
 

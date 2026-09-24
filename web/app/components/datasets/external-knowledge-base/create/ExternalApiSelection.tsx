@@ -1,14 +1,15 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine } from '@remixicon/react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useModalContext } from '@/context/modal-context'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import ExternalApiSelect from './ExternalApiSelect'
 
 type ExternalApiSelectionProps = {
@@ -22,17 +23,22 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
   external_knowledge_id,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
-  const { externalKnowledgeApiList } = useExternalKnowledgeApi()
+  const queryClient = useQueryClient()
+  const externalKnowledgeApiQueryOptions =
+    consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
+  const { data } = useQuery(externalKnowledgeApiQueryOptions)
+  const externalKnowledgeApiList = data?.data ?? []
+  const externalKnowledgeApiLabelId = useId()
+  const externalKnowledgeIdInputId = useId()
   const [selectedApiId, setSelectedApiId] = useState(external_knowledge_api_id)
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
-  const { mutateExternalKnowledgeApis } = useExternalKnowledgeApi()
 
   const apiItems = externalKnowledgeApiList.map((api) => ({
     value: api.id,
     name: api.name,
-    url: api.settings.endpoint,
+    url: api.settings && typeof api.settings.endpoint === 'string' ? api.settings.endpoint : '',
   }))
 
   useEffect(() => {
@@ -48,11 +54,10 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
     setShowExternalKnowledgeAPIModal({
       payload: { name: '', settings: { endpoint: '', api_key: '' } },
       onSaveCallback: async () => {
-        mutateExternalKnowledgeApis()
+        await queryClient.invalidateQueries({
+          queryKey: externalKnowledgeApiQueryOptions.queryKey,
+        })
         router.refresh()
-      },
-      onCancelCallback: () => {
-        mutateExternalKnowledgeApis()
       },
       isEditMode: false,
     })
@@ -67,12 +72,13 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
     <form className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-col gap-1 self-stretch">
         <div className="flex flex-col self-stretch">
-          <label className="system-sm-semibold text-text-secondary">
+          <span id={externalKnowledgeApiLabelId} className="system-sm-semibold text-text-secondary">
             {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
-          </label>
+          </span>
         </div>
         {apiItems.length > 0 ? (
           <ExternalApiSelect
+            aria-labelledby={externalKnowledgeApiLabelId}
             items={apiItems}
             value={selectedApiId}
             onSelect={(e) => {
@@ -81,7 +87,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
             }}
           />
         ) : (
-          <Button variant="tertiary" onClick={handleAddNewAPI} className="justify-start gap-0.5">
+          <Button variant="tertiary" onClick={handleAddNewAPI} className="justify-start">
             <RiAddLine className="size-4 text-text-tertiary" />
             <span className="system-sm-regular text-text-tertiary">
               {t(($) => $.noExternalKnowledge, { ns: 'dataset' })}
@@ -91,14 +97,18 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
       </div>
       <div className="flex flex-col gap-1 self-stretch">
         <div className="flex flex-col self-stretch">
-          <label className="system-sm-semibold text-text-secondary">
+          <label
+            htmlFor={externalKnowledgeIdInputId}
+            className="system-sm-semibold text-text-secondary"
+          >
             {t(($) => $.externalKnowledgeId, { ns: 'dataset' })}
           </label>
         </div>
         <Input
+          id={externalKnowledgeIdInputId}
           value={external_knowledge_id}
-          onChange={(e) =>
-            onChange({ external_knowledge_id: e.target.value, external_knowledge_api_id })
+          onValueChange={(value) =>
+            onChange({ external_knowledge_id: value, external_knowledge_api_id })
           }
           placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' }) ?? ''}
         />

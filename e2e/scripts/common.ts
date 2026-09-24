@@ -6,7 +6,7 @@ import { access, copyFile, readFile, writeFile } from 'node:fs/promises'
 import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { sleep } from '../support/process'
+import { sleep } from '../support/process.ts'
 
 type RunCommandOptions = {
   command: string
@@ -33,6 +33,7 @@ export const rootDir = fileURLToPath(new URL('../..', import.meta.url))
 export const e2eDir = path.join(rootDir, 'e2e')
 export const apiDir = path.join(rootDir, 'api')
 export const difyAgentDir = path.join(rootDir, 'dify-agent')
+export const difyAgentRuntimeDir = path.join(rootDir, 'dify-agent-runtime')
 export const dockerDir = path.join(rootDir, 'docker')
 export const webDir = path.join(rootDir, 'web')
 

@@ -1,21 +1,26 @@
 import type { QuestionClassifierNodeType } from '../types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
-import useConfigVision from '@/app/components/workflow/hooks/use-config-vision'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
+import useConfigVision from '../../../hooks/use-config-vision'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
 import useConfig from '../use-config'
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: vi.fn(),
-  useIsChatMode: vi.fn(),
-  useWorkflow: vi.fn(),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: vi.fn(),
+    useIsChatMode: vi.fn(),
+    useWorkflow: vi.fn(),
+  }
+})
 
 vi.mock('reactflow', () => ({
   useUpdateNodeInternals: vi.fn(() => vi.fn()),
@@ -47,7 +52,7 @@ vi.mock('@/app/components/workflow/hooks-store/store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-config-vision', () => ({
+vi.mock('../../../hooks/use-config-vision', () => ({
   __esModule: true,
   default: vi.fn(),
 }))

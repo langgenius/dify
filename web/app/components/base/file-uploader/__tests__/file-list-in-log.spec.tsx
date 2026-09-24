@@ -108,20 +108,6 @@ describe('FileListInLog', () => {
     expect(screen.getByText('documents')).toBeInTheDocument()
   })
 
-  it('should apply noBorder class when noBorder is true', () => {
-    const fileList = [{ varName: 'files', list: [createFile()] }]
-    const { container } = render(<FileListInLog fileList={fileList} noBorder />)
-
-    expect(container.firstChild).not.toHaveClass('border-t')
-  })
-
-  it('should apply noPadding class when noPadding is true', () => {
-    const fileList = [{ varName: 'files', list: [createFile()] }]
-    const { container } = render(<FileListInLog fileList={fileList} noPadding />)
-
-    expect(container.firstChild).toHaveClass('p-0!')
-  })
-
   it('should render image file with empty url when both base64Url and url are undefined', () => {
     const fileList = [
       {

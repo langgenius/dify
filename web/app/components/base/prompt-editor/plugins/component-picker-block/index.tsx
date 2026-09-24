@@ -69,7 +69,7 @@ const ComponentPicker = ({
   lastRunBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
@@ -86,6 +86,7 @@ const ComponentPicker = ({
   const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
     maxLength: 75,
+    requireTriggerBoundary: triggerString === '/',
   })
   const checkForTriggerMatch = useCallback(
     (text: string, editor: LexicalEditor) => {
@@ -243,7 +244,7 @@ const ComponentPicker = ({
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
             <div className="size-0">
               <div
-                className="w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
+                className="w-65 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
@@ -266,7 +267,6 @@ const ComponentPicker = ({
                       onBlur={handleClose}
                       showManageInputField={workflowVariableBlock.showManageInputField}
                       onManageInputField={workflowVariableBlock.onManageInputField}
-                      autoFocus={false}
                       isInCodeGeneratorInstructionEditor={
                         currentBlock?.generatorType === GeneratorType.code
                       }

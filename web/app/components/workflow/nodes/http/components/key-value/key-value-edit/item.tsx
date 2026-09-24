@@ -5,10 +5,13 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -19,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'
-// import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.http'
 
@@ -54,7 +56,7 @@ const KeyValueItem: FC<Props> = ({
   keyNotSupportVar,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const hasValuePayload = payload.type === 'file' ? !!payload.file?.length : !!payload.value
 
   const handleChange = useCallback(
@@ -80,7 +82,9 @@ const KeyValueItem: FC<Props> = ({
   )
 
   const filterOnlyFileVariable = (varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }
 
   const handleValueContainerClick = useCallback(() => {
@@ -91,10 +95,7 @@ const KeyValueItem: FC<Props> = ({
     // group class name is for hover row show remove button
     <div className={cn(className, 'group flex min-h-7 border-t border-divider-regular')}>
       <div
-        className={cn(
-          'shrink-0 border-r border-divider-regular',
-          isSupportFile ? 'w-[140px]' : 'w-1/2',
-        )}
+        className={cn('shrink-0 border-r border-divider-regular', isSupportFile ? 'w-35' : 'w-1/2')}
       >
         {!keyNotSupportVar ? (
           <InputItem
@@ -116,7 +117,7 @@ const KeyValueItem: FC<Props> = ({
         )}
       </div>
       {isSupportFile && (
-        <div className="w-[70px] shrink-0 border-r border-divider-regular">
+        <div className="w-17.5 shrink-0 border-r border-divider-regular">
           <Select
             value={payload.type ?? 'text'}
             onValueChange={(value) => value && handleChange('type')(value)}
@@ -128,16 +129,22 @@ const KeyValueItem: FC<Props> = ({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent popupClassName="w-[80px]" listClassName="min-w-0">
-              <SelectItem value="text">
-                <SelectItemText>text</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-              <SelectItem value="file">
-                <SelectItemText>file</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            </SelectContent>
+            <SelectPortal>
+              <SelectPositioner>
+                <SelectPopup className="w-20">
+                  <SelectList className="min-w-0">
+                    <SelectItem value="text">
+                      <SelectItemText>text</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                    <SelectItem value="file">
+                      <SelectItemText>file</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  </SelectList>
+                </SelectPopup>
+              </SelectPositioner>
+            </SelectPortal>
           </Select>
         </div>
       )}

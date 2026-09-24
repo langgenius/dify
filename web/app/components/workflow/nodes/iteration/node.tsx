@@ -2,10 +2,10 @@ import type { FC } from 'react'
 import type { IterationNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Background, useNodesInitialized, useViewport } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { IterationStartNodeDumb } from '../iteration-start'
 import AddBlock from './add-block'
 import { useNodeIterationInteractions } from './use-interactions'
@@ -16,7 +16,7 @@ const Node: FC<NodeProps<IterationNodeType>> = ({ id, data }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
   const { handleNodeIterationRerender } = useNodeIterationInteractions()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [showTips, setShowTips] = useState(data._isShowTips)
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const Node: FC<NodeProps<IterationNodeType>> = ({ id, data }) => {
   return (
     <div
       className={cn(
-        'relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl bg-workflow-canvas-workflow-bg',
+        'relative h-full min-h-22.5 w-full min-w-60 rounded-2xl bg-workflow-canvas-workflow-bg',
       )}
     >
       <Background

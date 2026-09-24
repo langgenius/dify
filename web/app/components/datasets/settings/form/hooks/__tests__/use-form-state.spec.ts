@@ -1,12 +1,17 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import {
   ChunkingMode,
   DatasetPermission,
   DataSourceType,
+  RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../../create/step-two'
@@ -21,47 +26,31 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
 const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+const renderHook = (callback: () => ReturnType<typeof useFormState>) =>
+  renderHookWithConsoleState(callback, {
+    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  })
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => ({
+  return createSystemFeaturesStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
   }))
@@ -150,13 +139,6 @@ vi.mock('@/context/dataset-detail', () => ({
   },
 }))
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
-
 // Mock services
 vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn().mockResolvedValue({}),
@@ -197,15 +179,12 @@ vi.mock('@/service/use-common', () => ({
   }),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({ data: [] }),
-}))
-
-vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
+vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -513,7 +492,7 @@ describe('useFormState', () => {
 
   describe('handleSave', () => {
     it('should show error toast when name is empty', async () => {
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { toast } = await import('@/app/notifications')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -528,7 +507,7 @@ describe('useFormState', () => {
     })
 
     it('should show error toast when name is whitespace only', async () => {
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { toast } = await import('@/app/notifications')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -576,7 +555,7 @@ describe('useFormState', () => {
     })
 
     it('should show success toast on successful save', async () => {
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { toast } = await import('@/app/notifications')
       const { result } = renderHook(() => useFormState())
 
       await act(async () => {
@@ -651,7 +630,7 @@ describe('useFormState', () => {
 
     it('should show error toast on save failure', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { toast } = await import('@/app/notifications')
       vi.mocked(updateDatasetSetting).mockRejectedValueOnce(new Error('Network error'))
 
       const { result } = renderHook(() => useFormState())
@@ -782,6 +761,126 @@ describe('useFormState', () => {
         }),
       })
     })
+
+    it('should send the configured score threshold when score_threshold_enabled is true', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setRetrievalConfig({
+          ...result.current.retrievalConfig,
+          score_threshold_enabled: true,
+          score_threshold: 0.62,
+        })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            score_threshold_enabled: true,
+            score_threshold: 0.62,
+          }),
+        }),
+      })
+    })
+  })
+
+  describe('Hybrid Search reranking_enable derivation', () => {
+    const hybridConfigWithRerankModel = (
+      base: RetrievalConfig,
+      rerankingEnable: boolean,
+    ): RetrievalConfig => ({
+      ...base,
+      search_method: RETRIEVE_METHOD.hybrid,
+      reranking_enable: rerankingEnable,
+      reranking_mode: RerankingModeEnum.RerankingModel,
+      reranking_model: {
+        reranking_provider_name: 'langgenius/xinference/xinference',
+        reranking_model_name: 'bge-reranker-v2-m3',
+      },
+    })
+
+    it('should persist reranking_enable=true when a rerank model is configured but the stale flag is false', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      // Reproduces the reported bug: Hybrid Search renders no rerank switch, so the flag keeps
+      // the stale `false` default even though a rerank model is selected.
+      act(() => {
+        result.current.setRetrievalConfig(
+          hybridConfigWithRerankModel(result.current.retrievalConfig, false),
+        )
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            search_method: RETRIEVE_METHOD.hybrid,
+            reranking_enable: true,
+          }),
+        }),
+      })
+    })
+
+    it('should leave reranking_enable untouched when Hybrid Search uses weighted score', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setRetrievalConfig({
+          ...hybridConfigWithRerankModel(result.current.retrievalConfig, false),
+          reranking_mode: RerankingModeEnum.WeightedScore,
+        })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            reranking_enable: false,
+          }),
+        }),
+      })
+    })
+
+    it('should leave reranking_enable untouched for semantic search', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setRetrievalConfig({
+          ...hybridConfigWithRerankModel(result.current.retrievalConfig, false),
+          search_method: RETRIEVE_METHOD.semantic,
+        })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            reranking_enable: false,
+          }),
+        }),
+      })
+    })
   })
 
   describe('External Provider', () => {
@@ -855,4 +954,20 @@ describe('useFormState', () => {
       })
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: [] }
+    },
+  }
 })

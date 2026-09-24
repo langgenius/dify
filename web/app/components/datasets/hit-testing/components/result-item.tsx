@@ -23,7 +23,7 @@ type ResultItemProps = {
 }
 
 const ResultItem = ({ payload }: ResultItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetHitTesting'])
   const { segment, score, child_chunks, files, summary } = payload
   const data = segment
   const { position, word_count, content, sign_content, keywords, document } = data
@@ -94,7 +94,7 @@ const ResultItem = ({ payload }: ResultItemProps) => {
                 {child_chunks.map((item) => (
                   <div
                     key={item.id}
-                    className="ml-[7px] border-l-2 border-text-accent-secondary pl-[7px]"
+                    className="ml-1.75 border-l-2 border-text-accent-secondary pl-1.75"
                   >
                     <ChildChunkItem payload={item} isShowAll={false} />
                   </div>

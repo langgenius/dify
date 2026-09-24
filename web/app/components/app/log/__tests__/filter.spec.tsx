@@ -1,9 +1,37 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { QueryParam } from '../index'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 
 let mockAnnotationsCountLoading = false
 let mockAnnotationsCountData: { count: number } | null = { count: 10 }
+const scenario = {
+  deploymentEdition: 'CLOUD' as DeploymentEdition,
+  pending: false,
+  planType: 'professional' as CloudPlan,
+}
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  if (scenario.pending) {
+    void queryClient.query({
+      queryKey: consoleQuery.features.get.queryKey(),
+      queryFn: () => new Promise(() => {}),
+    })
+  } else seedFeatures(queryClient, { billing: { subscription: { plan: scenario.planType } } })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: scenario.deploymentEdition },
+  })
+}
 
 vi.mock('@/service/use-log', () => ({
   useAnnotationsCount: () => ({
@@ -12,28 +40,43 @@ vi.mock('@/service/use-log', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/chip', () => ({
-  default: ({
-    items,
-    value,
-    onSelect,
-    onClear,
-  }: {
-    items: Array<{ value: string; name: string }>
-    value?: string
-    onSelect: (item: { value: string; name: string }) => void
-    onClear: () => void
-  }) => {
-    const currentItem = items.find((item) => item.value === value) ?? items[0]
-    return (
-      <div>
-        <div>{currentItem?.name}</div>
-        <button onClick={() => onSelect(items.at(-1)!)}>{`select-${items.at(-1)?.value}`}</button>
-        <button onClick={onClear}>clear-chip</button>
-      </div>
-    )
-  },
-}))
+vi.mock('@/app/components/base/chip', async () => {
+  const { useState } = await import('react')
+
+  return {
+    default: function MockChip({
+      items,
+      value,
+      onSelect,
+      onClear,
+    }: {
+      items: Array<{ value: string; name: string }>
+      value?: string
+      onSelect: (item: { value: string; name: string }) => void
+      onClear: () => void
+    }) {
+      const [isOpen, setIsOpen] = useState(false)
+      const currentItem = items.find((item) => item.value === value) ?? items[0]
+      return (
+        <div>
+          <div>{currentItem?.name}</div>
+          <button aria-label={`open-options-${items[0]?.value}`} onClick={() => setIsOpen(true)}>
+            open-chip
+          </button>
+          {isOpen && (
+            <ul aria-label={`options-${items[0]?.value}`}>
+              {items.map((item) => (
+                <li key={item.value}>{item.name}</li>
+              ))}
+            </ul>
+          )}
+          <button onClick={() => onSelect(items.at(-1)!)}>{`select-${items.at(-1)?.value}`}</button>
+          <button onClick={onClear}>clear-chip</button>
+        </div>
+      )
+    },
+  }
+})
 
 vi.mock('@/app/components/base/sort', () => ({
   default: ({ onSelect }: { onSelect: (value: string) => void }) => (
@@ -59,13 +102,18 @@ describe('Filter', () => {
     vi.clearAllMocks()
     mockAnnotationsCountLoading = false
     mockAnnotationsCountData = { count: 10 }
+    scenario.deploymentEdition = 'CLOUD'
+    scenario.pending = false
+    scenario.planType = 'professional'
   })
 
   describe('Rendering', () => {
     it('should render filter components', () => {
       render(<Filter {...defaultProps} />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
 
     it('should return null when loading', () => {
@@ -77,13 +125,17 @@ describe('Filter', () => {
     it('should render sort component in chat mode', () => {
       render(<Filter {...defaultProps} isChatMode />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
 
     it('should not render sort component when not in chat mode', () => {
       render(<Filter {...defaultProps} isChatMode={false} />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -124,10 +176,84 @@ describe('Filter', () => {
   })
 
   describe('User Interactions', () => {
+    it('should only show supported periods for Cloud sandbox workspaces', () => {
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
+
+      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+
+      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+      expect(periodOptions.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        expect.stringMatching(/(?:^|\.)filter\.period\.today(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last7days(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last30days(?=$|:)/),
+      ])
+    })
+
+    it('should keep periods restricted until the Cloud plan resolves, then follow cache updates', async () => {
+      scenario.pending = true
+
+      const { queryClient } = render(
+        <Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+
+      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+      expect(periodOptions.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        expect.stringMatching(/(?:^|\.)filter\.period\.today(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last7days(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last30days(?=$|:)/),
+      ])
+
+      act(() => {
+        seedFeatures(queryClient, { billing: { subscription: { plan: 'professional' } } })
+      })
+      await waitFor(() => expect(periodOptions.getAllByRole('listitem')).toHaveLength(9))
+
+      act(() => {
+        seedFeatures(queryClient, { billing: { subscription: { plan: 'sandbox' } } })
+      })
+      await waitFor(() => expect(periodOptions.getAllByRole('listitem')).toHaveLength(3))
+    })
+
+    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+      'should keep all periods for sandbox workspaces in %s',
+      (edition) => {
+        scenario.deploymentEdition = edition
+        scenario.planType = 'sandbox'
+
+        render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+        fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+
+        const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+        expect(periodOptions.getAllByRole('listitem')).toHaveLength(9)
+      },
+    )
+
+    it('should reset the Cloud sandbox period to today when cleared', () => {
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
+
+      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+      fireEvent.click(screen.getAllByText('clear-chip')[0]!)
+
+      expect(mockSetQueryParams).toHaveBeenCalledWith({
+        ...defaultQueryParams,
+        period: '1',
+      })
+    })
+
     it('should update keyword when typing in search input', () => {
       render(<Filter {...defaultProps} />)
 
-      const searchInput = screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/)
+      const searchInput = screen.getByRole('searchbox', {
+        name: /(?:^|\.)operation\.search(?=$|:)/,
+      })
       fireEvent.change(searchInput, { target: { value: 'test search' } })
 
       expect(mockSetQueryParams).toHaveBeenCalledWith({
@@ -273,7 +399,9 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithSort} />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
 
     it('should handle descending sort order', () => {
@@ -285,7 +413,9 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithDescSort} />)
 
-      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: /(?:^|\.)operation\.search(?=$|:)/ }),
+      )!.toBeInTheDocument()
     })
   })
 })

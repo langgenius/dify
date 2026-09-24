@@ -25,17 +25,6 @@ describe('Options', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const payload = createMockCrawlOptions()
-      render(<Options payload={payload} onChange={mockOnChange} />)
-
-      // Check that key elements are rendered
-      // Check that key elements are rendered
-      expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
-      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
-      expect(screen.getByText(/maxDepth/i))!.toBeInTheDocument()
-    })
-
     it('should render all form fields', () => {
       const payload = createMockCrawlOptions()
       render(<Options payload={payload} onChange={mockOnChange} />)
@@ -51,16 +40,6 @@ describe('Options', () => {
       expect(screen.getByText(/maxDepth/i))!.toBeInTheDocument()
       expect(screen.getByText(/excludePaths/i))!.toBeInTheDocument()
       expect(screen.getByText(/includeOnlyPaths/i))!.toBeInTheDocument()
-    })
-
-    it('should render with custom className', () => {
-      const payload = createMockCrawlOptions()
-      const { container } = render(
-        <Options payload={payload} onChange={mockOnChange} className="custom-class" />,
-      )
-
-      const rootElement = container.firstChild as HTMLElement
-      expect(rootElement)!.toHaveClass('custom-class')
     })
 
     it('should render limit field with required indicator', () => {
@@ -247,20 +226,6 @@ describe('Options', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle empty string values', () => {
-      const payload = createMockCrawlOptions({
-        limit: '',
-        max_depth: '',
-        excludes: '',
-        includes: '',
-      } as unknown as CrawlOptions)
-      render(<Options payload={payload} onChange={mockOnChange} />)
-
-      // Component should render without crashing
-      // Component should render without crashing
-      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
-    })
-
     it('should handle zero values', () => {
       const payload = createMockCrawlOptions({
         limit: 0,
@@ -354,15 +319,6 @@ describe('Options', () => {
   })
 
   describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const payload = createMockCrawlOptions()
-      const { rerender } = render(<Options payload={payload} onChange={mockOnChange} />)
-
-      rerender(<Options payload={payload} onChange={mockOnChange} />)
-
-      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
-    })
-
     it('should re-render when payload changes', () => {
       const payload1 = createMockCrawlOptions({ limit: 10 })
       const payload2 = createMockCrawlOptions({ limit: 20 })

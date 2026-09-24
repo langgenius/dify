@@ -11,8 +11,11 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarType } from '@/app/components/workflow/types'
 import { VarKindType } from '../types'
 
-type FormInputSchema = CredentialFormSchema &
+export type FormInputSchema = Omit<CredentialFormSchema, 'default'> &
   Partial<{
+    default: unknown
+    min: number
+    max: number
     _type: FormTypeEnum
     multiple: boolean
     options: FormOption[]
@@ -27,7 +30,7 @@ type ShowOnCondition = {
   variable: string
 }
 
-type OptionLabel = string | TypeWithI18N
+type OptionLabel = string | Record<string, string>
 
 type SelectableOption = {
   icon?: string
@@ -49,6 +52,8 @@ type FormInputState = {
   isBoolean: boolean
   isCheckbox: boolean
   isConstant: boolean
+  isDate: boolean
+  isDateRange: boolean
   isDynamicSelect: boolean
   isFile: boolean
   isFiles: boolean
@@ -92,6 +97,8 @@ export const getFormInputState = (
     _type,
   } = schema
 
+  const isDateRange = type === FormTypeEnum.dateRange
+  const isDate = type === FormTypeEnum.date
   const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
@@ -105,7 +112,7 @@ export const getFormInputState = (
   const isDynamicSelect = type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
-  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
+  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect || isDate
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
   const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
@@ -117,6 +124,8 @@ export const getFormInputState = (
     isBoolean,
     isCheckbox,
     isConstant,
+    isDate,
+    isDateRange,
     isDynamicSelect,
     isFile,
     isFiles,
@@ -140,6 +149,7 @@ export const getTargetVarType = (state: FormInputState) => {
   if (state.isString) return VarType.string
   if (state.isNumber) return VarType.number
   if (state.isFile) return state.isFiles ? VarType.arrayFile : VarType.file
+  if (state.isSelect && state.isMultipleSelect) return VarType.arrayString
   if (state.isSelect) return VarType.string
   if (state.isBoolean) return VarType.boolean
   if (state.isObject) return VarType.object
@@ -149,18 +159,33 @@ export const getTargetVarType = (state: FormInputState) => {
 
 export const getFilterVar = (state: FormInputState) => {
   if (state.isNumber) return (varPayload: Var) => varPayload.type === VarType.number
-  if (state.isString)
-    return (varPayload: Var) =>
-      [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+  if (state.isSelect && state.isMultipleSelect)
+    return (varPayload: Var) => {
+      const stringArrayVariableTypes: readonly VarType[] = [VarType.array, VarType.arrayString]
+      return stringArrayVariableTypes.includes(varPayload.type)
+    }
+  if (state.isString || state.isDate)
+    return (varPayload: Var) => {
+      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      return textVariableTypes.includes(varPayload.type)
+    }
   if (state.isFile)
-    return (varPayload: Var) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return (varPayload: Var) => {
+      const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+      return fileVariableTypes.includes(varPayload.type)
+    }
   if (state.isBoolean) return (varPayload: Var) => varPayload.type === VarType.boolean
   if (state.isObject) return (varPayload: Var) => varPayload.type === VarType.object
   if (state.isArray)
-    return (varPayload: Var) =>
-      [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(
-        varPayload.type,
-      )
+    return (varPayload: Var) => {
+      const arrayVariableTypes: readonly VarType[] = [
+        VarType.array,
+        VarType.arrayString,
+        VarType.arrayNumber,
+        VarType.arrayObject,
+      ]
+      return arrayVariableTypes.includes(varPayload.type)
+    }
   return undefined
 }
 
@@ -172,7 +197,9 @@ export const getVarKindType = (state: FormInputState) => {
     state.isBoolean ||
     state.isNumber ||
     state.isArray ||
-    state.isObject
+    state.isObject ||
+    state.isDate ||
+    state.isDateRange
   )
     return VarKindType.constant
   if (state.isString) return VarKindType.mixed
@@ -226,14 +253,6 @@ export const getCheckboxListValue = (
 
   const allowedValues = new Set(availableOptions.map((option) => option.value))
   return current.filter((item) => allowedValues.has(item))
-}
-
-export const getNumberInputValue = (currentValue: unknown): number | string => {
-  if (typeof currentValue === 'number') return Number.isNaN(currentValue) ? '' : currentValue
-
-  if (typeof currentValue === 'string') return currentValue
-
-  return ''
 }
 
 export const normalizeVariableSelectorValue = (value: ValueSelector | string) => value || ''

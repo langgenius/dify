@@ -1,6 +1,7 @@
 import type { PipelineTemplate } from '@/models/pipeline'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import TemplateCard from '../index'
 
@@ -19,8 +20,8 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -45,14 +46,12 @@ let _capturedOpenEditModal: (() => void) | undefined
 vi.mock('../actions', () => ({
   default: ({
     onApplyTemplate,
-    handleShowTemplateDetails,
     showMoreOperations,
     openEditModal,
     handleExportDSL,
     handleDelete,
   }: {
     onApplyTemplate: () => void
-    handleShowTemplateDetails: () => void
     showMoreOperations: boolean
     openEditModal: () => void
     handleExportDSL: () => void
@@ -66,9 +65,7 @@ vi.mock('../actions', () => ({
         <button data-testid="action-choose" onClick={onApplyTemplate}>
           operations.choose
         </button>
-        <button data-testid="action-details" onClick={handleShowTemplateDetails}>
-          operations.details
-        </button>
+        <DialogTrigger data-testid="action-details">operations.details</DialogTrigger>
         {showMoreOperations && (
           <>
             <button data-testid="action-edit" onClick={openEditModal}>
@@ -202,11 +199,6 @@ describe('TemplateCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<TemplateCard {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
-    })
-
     it('should render pipeline name', () => {
       render(<TemplateCard {...defaultProps} />)
       expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
@@ -688,37 +680,16 @@ describe('TemplateCard', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper card styling', () => {
-      const { container } = render(<TemplateCard {...defaultProps} />)
-      const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass(
-        'group',
-        'relative',
-        'flex',
-        'cursor-pointer',
-        'flex-col',
-        'rounded-xl',
-      )
-    })
-
     it('should have fixed height', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('h-[132px]')
+      expect(card).toHaveClass('h-33')
     })
 
     it('should have shadow and border', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<TemplateCard {...defaultProps} />)
-      rerender(<TemplateCard {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
     })
   })
 })

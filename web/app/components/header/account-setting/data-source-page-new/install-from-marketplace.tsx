@@ -1,11 +1,11 @@
 import type { DataSourceAuth } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTheme } from 'next-themes'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
@@ -24,7 +24,7 @@ const InstallFromMarketplace = ({
   providers,
   searchText,
 }: InstallFromMarketplaceProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const { theme } = useTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
@@ -36,12 +36,12 @@ const InstallFromMarketplace = ({
   const cardRender = useCallback((plugin: Plugin) => {
     if (plugin.type === 'bundle') return null
 
-    return <ProviderCard key={plugin.plugin_id} className="h-[146px]" payload={plugin} />
+    return <ProviderCard key={plugin.plugin_id} className="h-36.5" payload={plugin} />
   }, [])
 
   return (
     <div className="mb-2">
-      <Divider className="mt-4! h-px" />
+      <Separator className="my-2 mt-4" />
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -81,7 +81,7 @@ const InstallFromMarketplace = ({
           )}
         </div>
       </div>
-      {!collapse && isAllPluginsLoading && <Loading type="area" />}
+      {!collapse && isAllPluginsLoading && <LoadingPlaceholder />}
       {!isAllPluginsLoading && !collapse && (
         <List
           marketplaceCollections={[]}

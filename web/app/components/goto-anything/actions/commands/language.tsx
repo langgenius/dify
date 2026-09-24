@@ -1,7 +1,7 @@
 import type { CommandSearchResult } from '../types'
 import type { SlashCommandHandler } from './types'
 import { getI18n } from 'react-i18next'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 import { registerCommands, unregisterCommands } from './command-bus'
 
 // Language dependency types
@@ -36,7 +36,7 @@ export const languageCommand: SlashCommandHandler<LanguageDeps> = {
   description: 'Switch between different languages',
   mode: 'submenu', // Explicitly set submenu mode
 
-  async search(args: string, _locale: string = 'en') {
+  search(args: string, _locale: string = 'en') {
     // Return language options directly, regardless of parameters
     return buildLanguageCommands(args)
   },

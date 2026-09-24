@@ -41,7 +41,6 @@ const TimezoneLabel: React.FC<TimezoneLabelProps> = ({ timezone, className, inli
         className,
       )}
       title={`Timezone: ${timezone} (${offsetStr})`}
-      data-testid="timezone-label"
     >
       {offsetStr}
     </span>

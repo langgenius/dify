@@ -1,17 +1,19 @@
 'use client'
+
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
@@ -59,11 +61,14 @@ const DocumentList = ({
   remoteSortValue,
   onSortChange,
 }: DocumentListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments', 'dataset'])
   const pageSize = pagination.limit ?? 10
   const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
   const datasetConfig = useDatasetDetailContext((s) => s.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(
     () =>
@@ -137,6 +142,12 @@ const DocumentList = ({
 
   return (
     <div className="relative mt-3 flex size-full flex-col">
+      <div role="status" aria-atomic="true" className="sr-only">
+        {t(($) => $['newKnowledge.documentsSelected'], {
+          ns: 'dataset',
+          count: selectedIds.length,
+        })}
+      </div>
       <CheckboxGroup
         value={selectedIds}
         onValueChange={(nextSelectedIds) => onSelectedIdChange(nextSelectedIds)}
@@ -144,12 +155,12 @@ const DocumentList = ({
         className="relative h-0 grow overflow-x-auto"
       >
         <table
-          className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}
+          className={`w-full max-w-full min-w-175 border-collapse border-0 text-sm ${s.documentTable}`}
         >
           <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
-            <tr>
-              <td className="w-12">
-                <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+            <tr className="[&>th]:text-left [&>th]:font-[weight:inherit]">
+              <th className="w-12">
+                <div className="flex items-center">
                   {embeddingAvailable && (
                     <Checkbox
                       className="mr-2 shrink-0"
@@ -159,15 +170,24 @@ const DocumentList = ({
                   )}
                   #
                 </div>
-              </td>
-              <td>{t(($) => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}</td>
-              <td className="w-[130px]">
+              </th>
+              <th>{t(($) => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}</th>
+              <th className="w-32.5">
                 {t(($) => $['list.table.header.chunkingMode'], { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-24">
+              </th>
+              <th className="w-24">
                 {t(($) => $['list.table.header.words'], { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-44">
+              </th>
+              <th
+                className="w-44"
+                aria-sort={
+                  sortField === 'hit_count'
+                    ? sortOrder === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : undefined
+                }
+              >
                 <SortHeader
                   field="hit_count"
                   label={t(($) => $['list.table.header.hitCount'], { ns: 'datasetDocuments' })}
@@ -175,8 +195,17 @@ const DocumentList = ({
                   sortOrder={sortOrder}
                   onSort={handleSort}
                 />
-              </td>
-              <td className="w-44">
+              </th>
+              <th
+                className="w-44"
+                aria-sort={
+                  sortField === 'created_at'
+                    ? sortOrder === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : undefined
+                }
+              >
                 <SortHeader
                   field="created_at"
                   label={t(($) => $['list.table.header.uploadTime'], { ns: 'datasetDocuments' })}
@@ -184,13 +213,13 @@ const DocumentList = ({
                   sortOrder={sortOrder}
                   onSort={handleSort}
                 />
-              </td>
-              <td className="w-40">
+              </th>
+              <th className="w-40">
                 {t(($) => $['list.table.header.status'], { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-20">
+              </th>
+              <th className="w-20">
                 {t(($) => $['list.table.header.action'], { ns: 'datasetDocuments' })}
-              </td>
+              </th>
             </tr>
           </thead>
           <tbody className="text-text-secondary">

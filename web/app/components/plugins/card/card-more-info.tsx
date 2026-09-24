@@ -17,8 +17,8 @@ const CardMoreInfoComponent = ({ downloadCount, tags, variant = 'default' }: Pro
             <div
               key={tag}
               className={cn(
-                'flex max-w-[120px] min-w-[18px] shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-[5px]',
-                'border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]',
+                'flex max-w-30 min-w-4.5 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-[5px]',
+                'border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75',
                 'system-2xs-medium-uppercase text-text-tertiary',
               )}
             >
@@ -41,10 +41,7 @@ const CardMoreInfoComponent = ({ downloadCount, tags, variant = 'default' }: Pro
         <>
           <div className="flex h-4 flex-wrap space-x-2 overflow-hidden">
             {tags.map((tag) => (
-              <div
-                key={tag}
-                className="flex max-w-[120px] space-x-1 overflow-hidden system-xs-regular"
-              >
+              <div key={tag} className="flex max-w-30 space-x-1 overflow-hidden system-xs-regular">
                 <span className="text-text-quaternary">#</span>
                 <span className="truncate text-text-tertiary">{tag}</span>
               </div>

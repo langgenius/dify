@@ -1,17 +1,14 @@
 'use client'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import Divider from '@/app/components/base/divider'
+import dynamic from 'next/dynamic'
+import { useLocale } from '#i18n'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import LocaleMenu from '@/app/signin/_locale-menu'
-import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages } from '@/i18n-config/language'
-import dynamic from '@/next/dynamic'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
 
-const DifyLogo = dynamic(() => import('@/app/components/base/logo/dify-logo'), {
-  ssr: false,
-  loading: () => <div className="h-7 w-16 bg-transparent" />,
-})
 const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector'), {
   ssr: false,
   loading: () => <div className="size-8 bg-transparent" />,
@@ -30,7 +27,7 @@ const Header = () => {
           alt="logo"
         />
       ) : (
-        <DifyLogo size="large" />
+        <DifyLogo alt="Dify" size="large" />
       )}
       <div className="flex items-center gap-1">
         <LocaleMenu
@@ -40,7 +37,7 @@ const Header = () => {
             setLocaleOnClient(value, false)
           }}
         />
-        <Divider type="vertical" className="mx-0 ml-2 h-4" />
+        <Separator decorative orientation="vertical" className="mx-0 ml-2 h-4" />
         <ThemeSelector />
       </div>
     </div>

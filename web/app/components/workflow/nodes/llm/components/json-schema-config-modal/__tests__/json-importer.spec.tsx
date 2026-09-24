@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import JsonImporter from '../json-importer'
 
@@ -35,59 +35,6 @@ vi.mock('../code-editor', () => ({
 vi.mock('../error-message', () => ({
   default: ({ message }: { message: string }) => <div data-testid="error-message">{message}</div>,
 }))
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const ReactModule = await vi.importActual<typeof import('react')>('react')
-
-  const PopoverContext = ReactModule.createContext<{
-    open: boolean
-    onOpenChange?: (open: boolean) => void
-  } | null>(null)
-
-  const PopoverTrigger = ReactModule.forwardRef<
-    HTMLButtonElement,
-    React.ButtonHTMLAttributes<HTMLButtonElement>
-  >(({ children, onClick, ...props }, ref) => {
-    const context = ReactModule.useContext(PopoverContext)
-
-    return (
-      <button
-        ref={ref}
-        type="button"
-        {...props}
-        onClick={(event) => {
-          onClick?.(event)
-          context?.onOpenChange?.(!context.open)
-        }}
-      >
-        {children}
-      </button>
-    )
-  })
-
-  PopoverTrigger.displayName = 'PopoverTrigger'
-
-  return {
-    Popover: ({
-      children,
-      open,
-      onOpenChange,
-    }: {
-      children: React.ReactNode
-      open: boolean
-      onOpenChange?: (open: boolean) => void
-    }) => (
-      <PopoverContext.Provider value={{ open, onOpenChange }}>{children}</PopoverContext.Provider>
-    ),
-    PopoverTrigger,
-    PopoverContent: ({ children }: { children: React.ReactNode }) => {
-      const context = ReactModule.useContext(PopoverContext)
-      if (!context?.open) return null
-
-      return <div data-testid="popover-content">{children}</div>
-    },
-  }
-})
 
 describe('JsonImporter', () => {
   const mockOnSubmit = vi.fn()
@@ -129,7 +76,7 @@ describe('JsonImporter', () => {
       screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
     )
 
-    expect(screen.getByTestId('popover-content')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(mockEmit).not.toHaveBeenCalled()
   })
 
@@ -185,16 +132,15 @@ describe('JsonImporter', () => {
 
   it('shows the parser error when JSON.parse throws an Error', async () => {
     const user = userEvent.setup()
-    const parseSpy = vi.spyOn(JSON, 'parse').mockImplementationOnce(() => {
-      throw new Error('Malformed JSON payload')
-    })
-
     render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
 
     await user.click(
       screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
     )
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":1}' } })
+    const parseSpy = vi.spyOn(JSON, 'parse').mockImplementation(() => {
+      throw new Error('Malformed JSON payload')
+    })
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
     expect(screen.getByTestId('error-message')).toHaveTextContent('Malformed JSON payload')
@@ -205,16 +151,15 @@ describe('JsonImporter', () => {
 
   it('falls back to the default invalid JSON message when JSON.parse throws a non-Error value', async () => {
     const user = userEvent.setup()
-    const parseSpy = vi
-      .spyOn(JSON, 'parse')
-      .mockImplementationOnce(() => throwUnknown(Object.create(null)))
-
     render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
 
     await user.click(
       screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
     )
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":1}' } })
+    const parseSpy = vi
+      .spyOn(JSON, 'parse')
+      .mockImplementation(() => throwUnknown(Object.create(null)))
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
     expect(screen.getByTestId('error-message')).toHaveTextContent('Invalid JSON')
@@ -235,13 +180,13 @@ describe('JsonImporter', () => {
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
     expect(mockOnSubmit).toHaveBeenCalledWith({ foo: 'bar' })
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
     )
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }))
 
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

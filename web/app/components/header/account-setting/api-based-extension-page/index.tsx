@@ -7,8 +7,9 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { Empty } from './empty'
 import { Item } from './item'
@@ -29,7 +30,7 @@ type ApiBasedExtensionPageProps = {
 }
 
 function ApiBasedExtensionListSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
@@ -55,7 +56,7 @@ function ApiBasedExtensionListSkeleton() {
 }
 
 export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {}) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManage = hasPermission(workspacePermissionKeys, 'api_extension.manage')
   const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(
@@ -102,9 +103,9 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
 
   const toolbar = (
     <div className="flex w-full items-center justify-between gap-2">
-      <SearchInput className="w-[200px]" value={keywords} onValueChange={setKeywords} />
+      <SearchInput className="w-50" value={keywords} onValueChange={setKeywords} />
       <Button variant="secondary" disabled={!canManage} onClick={handleOpenApiBasedExtensionModal}>
-        <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
+        <span className="i-ri-add-line size-4" aria-hidden="true" />
         {t(($) => $['apiBasedExtension.add'], { ns: 'common' })}
       </Button>
     </div>
@@ -124,13 +125,19 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
         )}
       {!isLoading &&
         !!filteredApiBasedExtensions.length &&
-        filteredApiBasedExtensions.map((item) => (
-          <Item
+        filteredApiBasedExtensions.map((item, index) => (
+          <div
             key={item.id}
-            apiBasedExtension={item}
-            onEdit={handleEditApiBasedExtension}
-            canManage={canManage}
-          />
+            data-step-by-step-tour-target={
+              index === 0 ? STEP_BY_STEP_TOUR_TARGETS.integrationCustomEndpointEmpty : undefined
+            }
+          >
+            <Item
+              apiBasedExtension={item}
+              onEdit={handleEditApiBasedExtension}
+              canManage={canManage}
+            />
+          </div>
         ))}
       {dialogState?.mode === 'create' && (
         <ApiBasedExtensionModal

@@ -3,8 +3,8 @@ import type { ValueSelector } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum } from '@/models/datasets'
+import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import {
   ChunkStructureEnum,
   HybridSearchModeEnum,

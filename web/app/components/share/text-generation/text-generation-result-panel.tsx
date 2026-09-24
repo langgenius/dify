@@ -6,7 +6,7 @@ import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Res from '@/app/components/share/text-generation/result'
 import ResDownload from './run-batch/res-download'
 import { TaskStatus } from './types'
@@ -76,7 +76,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
   textToSpeechEnabled,
   visionConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
 
   const renderResult = (task?: Task) => (
     <Res
@@ -125,7 +125,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           className={cn(
             isShowResultPanel
               ? 'flex items-center justify-center p-2 pt-6'
-              : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-[3px] pb-[57px]',
+              : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
           )}
           onClick={() => {
             if (isShowResultPanel) onHideResultPanel()
@@ -170,7 +170,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           {isCallBatchAPI ? showTaskList.map((task) => renderResult(task)) : renderResult()}
           {!noPendingTask && (
             <div className="mt-4">
-              <Loading type="area" />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>

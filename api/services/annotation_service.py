@@ -9,11 +9,12 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 from core.helper.csv_sanitizer import CSVSanitizer
-from extensions.ext_database import db  # noqa: F401
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from libs.pagination import paginate_query
+from models.dataset import DatasetCollectionBinding
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.app_ref_service import AnnotationRef, AppRef
 from services.feature_service import FeatureService
@@ -96,14 +97,14 @@ class AppAnnotationService:
             select(MessageAnnotation)
             .where(
                 MessageAnnotation.id == annotation_ref.annotation_id,
-                MessageAnnotation.app_id == annotation_ref.app_id,
+                MessageAnnotation.app_id == annotation_ref.app.app_id,
             )
             .limit(1)
         )
 
     @classmethod
     def up_insert_app_annotation_from_message(
-        cls, args: UpsertAnnotationArgs, app_id: str, *, session: Session
+        cls, args: UpsertAnnotationArgs, app_id: str, session: Session
     ) -> MessageAnnotation:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
@@ -120,7 +121,7 @@ class AppAnnotationService:
 
         raw_message_id = args.get("message_id")
         if raw_message_id:
-            message_id = str(raw_message_id)
+            message_id = raw_message_id
             message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app.id).limit(1))
 
             if not message:
@@ -128,7 +129,9 @@ class AppAnnotationService:
 
             question = args.get("question") or message.query or ""
 
-            annotation: MessageAnnotation | None = message.annotation
+            annotation = session.scalar(
+                select(MessageAnnotation).where(MessageAnnotation.message_id == message.id).limit(1)
+            )
             if annotation:
                 annotation.content = answer
                 annotation.question = question
@@ -174,19 +177,19 @@ class AppAnnotationService:
 
     @classmethod
     def enable_app_annotation(cls, args: EnableAnnotationArgs, app_id: str) -> AnnotationJobStatusDict:
-        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
+        enable_app_annotation_key = f"enable_app_annotation_{app_id}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
+        enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
         # send batch add segments task
         redis_client.setnx(enable_app_annotation_job_key, "waiting")
         current_user, current_tenant_id = current_account_with_tenant()
         enable_annotation_reply_task.delay(
-            str(job_id),
+            job_id,
             app_id,
             current_user.id,
             current_tenant_id,
@@ -199,21 +202,21 @@ class AppAnnotationService:
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> AnnotationJobStatusDict:
         _, current_tenant_id = current_account_with_tenant()
-        disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
+        disable_app_annotation_key = f"disable_app_annotation_{app_id}"
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
+        disable_app_annotation_job_key = f"disable_app_annotation_job_{job_id}"
         # send batch add segments task
         redis_client.setnx(disable_app_annotation_job_key, "waiting")
-        disable_annotation_reply_task.delay(str(job_id), app_id, current_tenant_id)
+        disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
-    def get_annotation_list_by_app_id(cls, app_id: str, page: int, limit: int, keyword: str, *, session: Session):
+    def get_annotation_list_by_app_id(cls, app_id: str, page: int, limit: int, keyword: str, session: Session):
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = session.scalar(
@@ -228,12 +231,12 @@ class AppAnnotationService:
             escaped_keyword = escape_like_pattern(keyword)
             stmt = (
                 select(MessageAnnotation)
-                .where(MessageAnnotation.app_id == app_id)
                 .where(
+                    MessageAnnotation.app_id == app_id,
                     or_(
                         MessageAnnotation.question.ilike(f"%{escaped_keyword}%", escape="\\"),
                         MessageAnnotation.content.ilike(f"%{escaped_keyword}%", escape="\\"),
-                    )
+                    ),
                 )
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
             )
@@ -243,11 +246,11 @@ class AppAnnotationService:
                 .where(MessageAnnotation.app_id == app_id)
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
             )
-        annotations = paginate_query(stmt, page=page, per_page=limit, max_per_page=100)
+        annotations = paginate_query(stmt, session=session, page=page, per_page=limit, max_per_page=100)
         return annotations.items, annotations.total or 0
 
     @classmethod
-    def export_annotation_list_by_app_id(cls, app_id: str, *, session: Session):
+    def export_annotation_list_by_app_id(cls, app_id: str, session: Session):
         """
         Export all annotations for an app with CSV injection protection.
 
@@ -281,7 +284,7 @@ class AppAnnotationService:
 
     @classmethod
     def insert_app_annotation_directly(
-        cls, args: InsertAnnotationArgs, app_id: str, *, session: Session
+        cls, args: InsertAnnotationArgs, app_id: str, session: Session
     ) -> MessageAnnotation:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
@@ -317,7 +320,10 @@ class AppAnnotationService:
 
     @classmethod
     def update_app_annotation_directly(
-        cls, args: UpdateAnnotationArgs, annotation_ref: AnnotationRef, session: Session
+        cls,
+        args: UpdateAnnotationArgs,
+        annotation_ref: AnnotationRef,
+        session: Session,
     ):
         annotation = cls._get_annotation_by_ref(annotation_ref, session)
 
@@ -338,15 +344,15 @@ class AppAnnotationService:
         session.commit()
         # if annotation reply is enabled , add annotation to index
         app_annotation_setting = session.scalar(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == annotation_ref.app_id).limit(1)
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == annotation_ref.app.app_id).limit(1)
         )
 
         if app_annotation_setting:
             update_annotation_to_index_task.delay(
                 annotation.id,
                 annotation.question_text,
-                annotation_ref.tenant_id,
-                annotation_ref.app_id,
+                annotation_ref.app.tenant_id,
+                annotation_ref.app.app_id,
                 app_annotation_setting.collection_binding_id,
             )
 
@@ -363,7 +369,7 @@ class AppAnnotationService:
 
         annotation_hit_histories = session.scalars(
             select(AppAnnotationHitHistory).where(
-                AppAnnotationHitHistory.app_id == annotation_ref.app_id,
+                AppAnnotationHitHistory.app_id == annotation_ref.app.app_id,
                 AppAnnotationHitHistory.annotation_id == annotation_ref.annotation_id,
             )
         ).all()
@@ -374,24 +380,27 @@ class AppAnnotationService:
         session.commit()
         # if annotation reply is enabled , delete annotation index
         app_annotation_setting = session.scalar(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == annotation_ref.app_id).limit(1)
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == annotation_ref.app.app_id).limit(1)
         )
 
         if app_annotation_setting:
             delete_annotation_index_task.delay(
                 annotation.id,
-                annotation_ref.app_id,
-                annotation_ref.tenant_id,
+                annotation_ref.app.app_id,
+                annotation_ref.app.tenant_id,
                 app_annotation_setting.collection_binding_id,
             )
 
     @classmethod
-    def delete_app_annotations_in_batch(cls, app_ref: AppRef, annotation_ids: list[str], *, session: Session):
+    def delete_app_annotations_in_batch(cls, app_ref: AppRef, annotation_ids: list[str], session: Session):
         # Fetch annotations and their settings in a single query
         annotations_to_delete = session.execute(
             select(MessageAnnotation, AppAnnotationSetting)
             .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
-            .where(MessageAnnotation.id.in_(annotation_ids), MessageAnnotation.app_id == app_ref.app_id)
+            .where(
+                MessageAnnotation.id.in_(annotation_ids),
+                MessageAnnotation.app_id == app_ref.app_id,
+            )
         ).all()
 
         if not annotations_to_delete:
@@ -428,7 +437,7 @@ class AppAnnotationService:
         return {"deleted_count": deleted_count}
 
     @classmethod
-    def batch_import_app_annotations(cls, app_id: str, file: FileStorage, *, session: Session):
+    def batch_import_app_annotations(cls, app_id: str, file: FileStorage, session: Session):
         """
         Batch import annotations from CSV file with enhanced security checks.
 
@@ -472,6 +481,7 @@ class AppAnnotationService:
             df = pd.read_csv(
                 file.stream,
                 dtype=str,
+                keep_default_na=False,
                 nrows=max_records + 1,  # Read one extra to detect overflow
                 engine="python",
                 on_bad_lines="skip",  # Skip malformed lines instead of crashing
@@ -524,14 +534,14 @@ class AppAnnotationService:
                 )
 
             # Check annotation quota limit
-            features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
-            if features.billing.enabled:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+                features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
                 annotation_quota_limit = features.annotation_quota_limit
-                if annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
+                if 0 < annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
                     raise ValueError("The number of annotations exceeds the limit of your subscription.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
+            indexing_cache_key = f"app_annotation_batch_import_{job_id}"
 
             # Register job in active tasks list for concurrency tracking
             current_time = int(naive_utc_now().timestamp() * 1000)
@@ -541,7 +551,7 @@ class AppAnnotationService:
 
             # Set job status
             redis_client.setnx(indexing_cache_key, "waiting")
-            batch_import_annotations_task.delay(str(job_id), result, app_id, current_tenant_id, current_user.id)
+            batch_import_annotations_task.delay(job_id, result, app_id, current_tenant_id, current_user.id)
 
         except ValueError as e:
             return {"error_msg": str(e)}
@@ -562,7 +572,7 @@ class AppAnnotationService:
         return {"job_id": job_id, "job_status": "waiting", "record_count": len(result)}
 
     @classmethod
-    def get_annotation_hit_histories(cls, annotation_ref: AnnotationRef, page, limit, *, session: Session):
+    def get_annotation_hit_histories(cls, annotation_ref: AnnotationRef, page, limit, session: Session):
         annotation = cls._get_annotation_by_ref(annotation_ref, session)
 
         if not annotation:
@@ -571,16 +581,16 @@ class AppAnnotationService:
         stmt = (
             select(AppAnnotationHitHistory)
             .where(
-                AppAnnotationHitHistory.app_id == annotation_ref.app_id,
+                AppAnnotationHitHistory.app_id == annotation_ref.app.app_id,
                 AppAnnotationHitHistory.annotation_id == annotation_ref.annotation_id,
             )
             .order_by(AppAnnotationHitHistory.created_at.desc())
         )
-        annotation_hit_histories = paginate_query(stmt, page=page, per_page=limit, max_per_page=100)
+        annotation_hit_histories = paginate_query(stmt, session=session, page=page, per_page=limit, max_per_page=100)
         return annotation_hit_histories.items, annotation_hit_histories.total or 0
 
     @classmethod
-    def get_annotation_by_id(cls, annotation_id: str, *, session: Session) -> MessageAnnotation | None:
+    def get_annotation_by_id(cls, annotation_id: str, session: Session) -> MessageAnnotation | None:
         annotation = session.get(MessageAnnotation, annotation_id)
 
         if not annotation:
@@ -599,7 +609,6 @@ class AppAnnotationService:
         message_id: str,
         from_source: str,
         score: float,
-        *,
         session: Session,
     ) -> None:
         # add hit count to annotation
@@ -621,11 +630,11 @@ class AppAnnotationService:
             annotation_content=annotation_content,
         )
         session.add(annotation_hit_history)
-        session.commit()
+        session.flush()
 
     @classmethod
     def get_app_annotation_setting_by_app_id(
-        cls, app_id: str, *, session: Session
+        cls, app_id: str, session: Session
     ) -> AnnotationSettingDict | AnnotationSettingDisabledDict:
         _, current_tenant_id = current_account_with_tenant()
         # get app info
@@ -640,7 +649,7 @@ class AppAnnotationService:
             select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
         )
         if annotation_setting:
-            collection_binding_detail = annotation_setting.collection_binding_detail
+            collection_binding_detail = session.get(DatasetCollectionBinding, annotation_setting.collection_binding_id)
             if collection_binding_detail:
                 return {
                     "id": annotation_setting.id,
@@ -662,7 +671,7 @@ class AppAnnotationService:
 
     @classmethod
     def update_app_annotation_setting(
-        cls, app_id: str, annotation_setting_id: str, args: UpdateAnnotationSettingArgs, *, session: Session
+        cls, app_id: str, annotation_setting_id: str, args: UpdateAnnotationSettingArgs, session: Session
     ) -> AnnotationSettingDict:
         current_user, current_tenant_id = current_account_with_tenant()
         # get app info
@@ -687,9 +696,9 @@ class AppAnnotationService:
         annotation_setting.updated_user_id = current_user.id
         annotation_setting.updated_at = naive_utc_now()
         session.add(annotation_setting)
-        session.commit()
+        session.flush()
 
-        collection_binding_detail = annotation_setting.collection_binding_detail
+        collection_binding_detail = session.get(DatasetCollectionBinding, annotation_setting.collection_binding_id)
 
         if collection_binding_detail:
             return {
@@ -710,7 +719,7 @@ class AppAnnotationService:
             }
 
     @classmethod
-    def clear_all_annotations(cls, app_id: str, *, session: Session):
+    def clear_all_annotations(cls, app_id: str, session: Session):
         _, current_tenant_id = current_account_with_tenant()
         app = session.scalar(
             select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)

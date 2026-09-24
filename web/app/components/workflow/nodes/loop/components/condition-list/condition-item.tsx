@@ -1,4 +1,3 @@
-import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
   HandleAddSubVariableCondition,
@@ -8,6 +7,7 @@ import type {
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
 } from '../../types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -15,13 +15,16 @@ import {
   SelectContent,
   SelectItem,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { VarType } from '@/app/components/workflow/types'
 import { ComparisonOperator } from '../../types'
@@ -73,7 +76,17 @@ const ConditionItem = ({
   numberVariables,
   availableVars,
 }: ConditionItemProps) => {
-  const { t } = useTranslation()
+  const containmentOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.contains,
+    ComparisonOperator.notContains,
+    ComparisonOperator.allOf,
+  ]
+  const membershipOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.in,
+    ComparisonOperator.notIn,
+  ]
+
+  const { t } = useTranslation(['common', 'workflow'])
 
   const [isHovered, setIsHovered] = useState(false)
   const [open, setOpen] = useState(false)
@@ -105,7 +118,7 @@ const ConditionItem = ({
   )
 
   const handleUpdateConditionNumberVarType = useCallback(
-    (numberVarType: NumberVarType) => {
+    (numberVarType: VarKindType) => {
       const newCondition = {
         ...condition,
         numberVarType,
@@ -118,11 +131,7 @@ const ConditionItem = ({
 
   const isSubVariable =
     condition.varType === VarType.arrayFile &&
-    [
-      ComparisonOperator.contains,
-      ComparisonOperator.notContains,
-      ComparisonOperator.allOf,
-    ].includes(condition.comparison_operator!)
+    containmentOperators.includes(condition.comparison_operator!)
   const fileAttr = useMemo(() => {
     if (file) return file
     if (isSubVariableKey) {
@@ -152,8 +161,7 @@ const ConditionItem = ({
   )
 
   const isSelect =
-    condition.comparison_operator &&
-    [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
+    condition.comparison_operator && membershipOperators.includes(condition.comparison_operator)
   const selectOptions = useMemo<Array<{ name: string; value: string }>>(() => {
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
@@ -208,7 +216,7 @@ const ConditionItem = ({
       const newCondition = produce(condition, (draft) => {
         draft.variable_selector = valueSelector
         draft.varType = varItem.type
-        draft.value = ''
+        draft.value = varItem.type === VarType.boolean ? false : ''
         draft.comparison_operator = getOperators(varItem.type)[0]
         delete draft.key
         delete draft.sub_variable_condition
@@ -248,7 +256,10 @@ const ConditionItem = ({
                   {selectedSubVarOption ? (
                     <div className="flex cursor-pointer justify-start">
                       <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
-                        <Variable02 className="size-3.5 shrink-0 text-text-accent" />
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-solid-development-variable-02 size-3.5 shrink-0 text-text-accent"
+                        />
                         <div className="ml-0.5 truncate system-xs-medium">
                           {selectedSubVarOption.name}
                         </div>
@@ -260,24 +271,33 @@ const ConditionItem = ({
                     </div>
                   )}
                 </SelectTrigger>
-                <SelectContent popupClassName="w-[165px]" listClassName="max-h-none p-1">
-                  {subVarOptions.map((option) => (
-                    <SelectItem
-                      key={option.value}
-                      value={option.value}
-                      className="h-8 py-0 pr-5 pl-1"
-                    >
-                      <div className="flex h-6 items-center justify-between">
-                        <div className="flex h-full items-center">
-                          <Variable02 className="mr-[5px] h-3.5 w-3.5 text-text-accent" />
-                          <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">
-                            {option.name}
-                          </SelectItemText>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectPortal>
+                  <SelectPositioner>
+                    <SelectPopup className="w-41.25">
+                      <SelectList className="max-h-none p-1">
+                        {subVarOptions.map((option) => (
+                          <SelectItem
+                            key={option.value}
+                            value={option.value}
+                            className="h-8 py-0 pr-5 pl-1"
+                          >
+                            <div className="flex h-6 items-center justify-between">
+                              <div className="flex h-full items-center">
+                                <span
+                                  aria-hidden
+                                  className="mr-1.25 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 text-text-accent"
+                                />
+                                <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">
+                                  {option.name}
+                                </SelectItemText>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectList>
+                    </SelectPopup>
+                  </SelectPositioner>
+                </SelectPortal>
               </Select>
             ) : (
               <ConditionVarSelector
@@ -304,7 +324,7 @@ const ConditionItem = ({
           !isNotInput &&
           condition.varType !== VarType.number &&
           condition.varType !== VarType.boolean && (
-            <div className="max-h-[100px] overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
+            <div className="max-h-25 overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
               <ConditionInput
                 disabled={disabled}
                 value={condition.value as string}
@@ -316,13 +336,16 @@ const ConditionItem = ({
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
           condition.varType === VarType.boolean && (
             <div className="p-1">
-              <BoolValue value={condition.value as boolean} onChange={handleUpdateConditionValue} />
+              <BoolValue
+                value={condition.value === true || condition.value === 'true'}
+                onChange={handleUpdateConditionValue}
+              />
             </div>
           )}
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
           !isNotInput &&
           condition.varType === VarType.number && (
-            <div className="border-t border-t-divider-subtle px-2 py-1 pt-[3px]">
+            <div className="border-t border-t-divider-subtle px-2 py-1 pt-0.75">
               <ConditionNumberInput
                 numberVarType={condition.numberVarType}
                 onNumberVarTypeChange={handleUpdateConditionNumberVarType}

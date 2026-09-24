@@ -1,23 +1,24 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
 import CreateEntryCard from './create-entry-card'
 
 type Props = Readonly<{
   onRefreshData: () => void
+  stepByStepTourTarget?: string
 }>
 
 function useCustomToolCreateAction({ onRefreshData }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const canManageTools = useCanManageTools()
-  const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
+  const [isShowEditCustomCollectionModal, setIsShowEditCustomCollectionModal] = useState(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     if (!canManageTools) return
@@ -31,18 +32,18 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
   return {
     canManageTools,
     doCreateCustomToolCollection,
-    isShowEditCollectionToolModal,
+    isShowEditCustomCollectionModal,
     setIsShowEditCustomCollectionModal,
   }
 }
 
 export const NewCustomToolButton = ({ onRefreshData }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const addSwaggerAPIAsToolLabel = t(($) => $.addSwaggerAPIAsTool, { ns: 'tools' })
   const {
     canManageTools,
     doCreateCustomToolCollection,
-    isShowEditCollectionToolModal,
+    isShowEditCustomCollectionModal,
     setIsShowEditCustomCollectionModal,
   } = useCustomToolCreateAction({ onRefreshData })
 
@@ -52,15 +53,14 @@ export const NewCustomToolButton = ({ onRefreshData }: Props) => {
     <>
       <Button
         variant="secondary"
-        className="gap-0.5 px-3!"
+        className="px-3!"
         onClick={() => setIsShowEditCustomCollectionModal(true)}
         title={addSwaggerAPIAsToolLabel}
-        aria-label={addSwaggerAPIAsToolLabel}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
         {addSwaggerAPIAsToolLabel}
       </Button>
-      {isShowEditCollectionToolModal && (
+      {isShowEditCustomCollectionModal && (
         <EditCustomToolModal
           payload={null}
           onHide={() => setIsShowEditCustomCollectionModal(false)}
@@ -71,13 +71,13 @@ export const NewCustomToolButton = ({ onRefreshData }: Props) => {
   )
 }
 
-const Contribute = ({ onRefreshData }: Props) => {
-  const { t } = useTranslation()
+const Contribute = ({ onRefreshData, stepByStepTourTarget }: Props) => {
+  const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const {
     canManageTools,
     doCreateCustomToolCollection,
-    isShowEditCollectionToolModal,
+    isShowEditCustomCollectionModal,
     setIsShowEditCustomCollectionModal,
   } = useCustomToolCreateAction({ onRefreshData })
 
@@ -90,9 +90,10 @@ const Contribute = ({ onRefreshData }: Props) => {
           linkText={t(($) => $.swaggerAPIAsToolTip, { ns: 'tools' })}
           linkUrl={docLink('/use-dify/workspace/tools#swagger-api')}
           onCreate={() => setIsShowEditCustomCollectionModal(true)}
+          stepByStepTourTarget={stepByStepTourTarget}
         />
       )}
-      {isShowEditCollectionToolModal && (
+      {isShowEditCustomCollectionModal && (
         <EditCustomToolModal
           payload={null}
           onHide={() => setIsShowEditCustomCollectionModal(false)}

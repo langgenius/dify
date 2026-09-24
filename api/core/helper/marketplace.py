@@ -19,7 +19,7 @@ MARKETPLACE_TIMEOUT = 30
 
 def get_plugin_pkg_url(plugin_unique_identifier: str) -> str:
     query = urlencode({"unique_identifier": plugin_unique_identifier})
-    return f"{marketplace_api_url / 'api/v1/plugins/download'}?{query}"
+    return f"{marketplace_api_url / 'api/v1/plugins/download-url'}?{query}"
 
 
 def download_plugin_pkg(plugin_unique_identifier: str) -> bytes:
@@ -74,7 +74,7 @@ def record_install_plugin_event(plugin_unique_identifier: str) -> None:
     response.raise_for_status()
 
 
-def fetch_global_plugin_manifest(cache_key_prefix: str, cache_ttl: int) -> None:
+def fetch_global_plugin_manifest(cache_key_prefix: str, cache_ttl: int) -> int:
     """
     Fetch all plugin manifests from marketplace and cache them in Redis.
     This should be called once per check cycle to populate the instance-level cache.
@@ -82,6 +82,11 @@ def fetch_global_plugin_manifest(cache_key_prefix: str, cache_ttl: int) -> None:
     Args:
         cache_key_prefix: Redis key prefix for caching plugin manifests
         cache_ttl: Cache TTL in seconds
+
+    Returns:
+        The number of plugin snapshots that were cached. Callers should treat ``0`` as an
+        unusable snapshot rather than an empty marketplace, and fall back to per-plugin
+        lookups instead of silently skipping upgrades.
 
     Raises:
         httpx.HTTPError: If the HTTP request fails
@@ -95,6 +100,7 @@ def fetch_global_plugin_manifest(cache_key_prefix: str, cache_ttl: int) -> None:
     plugins_data = raw_json.get("plugins", [])
 
     # Parse and cache all plugin snapshots
+    cached_count = 0
     for plugin_data in plugins_data:
         plugin_snapshot = MarketplacePluginSnapshot.model_validate(plugin_data)
         redis_client.setex(
@@ -102,3 +108,6 @@ def fetch_global_plugin_manifest(cache_key_prefix: str, cache_ttl: int) -> None:
             time=cache_ttl,
             value=plugin_snapshot.model_dump_json(),
         )
+        cached_count += 1
+
+    return cached_count

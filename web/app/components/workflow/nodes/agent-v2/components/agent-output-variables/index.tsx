@@ -7,10 +7,11 @@ import type {
   EditingState,
 } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import OutputVars from '../../../_base/components/output-vars'
+import { AGENT_V2_RESERVED_OUTPUT_NAMES } from '../../output-variables'
 import { OutputEditCard } from './edit-card'
 import {
   canOutputHaveChildren,
@@ -40,7 +41,7 @@ function OutputRow({
   onDelete: () => void
   onEdit: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const description = getOutputDescription(output, t)
   return (
     <div className="group flex min-h-12 flex-col rounded-lg py-0.5 focus-within:bg-state-base-hover hover:bg-state-base-hover">
@@ -123,7 +124,7 @@ export function AgentOutputVariables({
   collapsed,
   onCollapse,
 }: AgentOutputVariablesProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editingState, setEditingState] = useState<EditingState | null>(null)
   const [internalCollapsed, setInternalCollapsed] = useState(true)
   const isCollapsed = collapsed ?? internalCollapsed
@@ -275,6 +276,7 @@ export function AgentOutputVariables({
                     key={`${output.name}-editing`}
                     editingIndex={index}
                     existingOutputs={outputs}
+                    reservedNames={AGENT_V2_RESERVED_OUTPUT_NAMES}
                     state={editingState}
                     onCancel={() => setEditingState(null)}
                     onConfirm={handleConfirm}
@@ -310,11 +312,12 @@ export function AgentOutputVariables({
             )
           })}
           <div className="py-1">
-            <Divider type="horizontal" className="h-px bg-divider-subtle" />
+            <Separator decorative orientation="horizontal" className="my-2 bg-divider-subtle" />
           </div>
           {editingState && editingState.outputIndex == null ? (
             <OutputEditCard
               existingOutputs={outputs}
+              reservedNames={AGENT_V2_RESERVED_OUTPUT_NAMES}
               state={editingState}
               onCancel={() => setEditingState(null)}
               onConfirm={handleConfirm}
@@ -324,7 +327,7 @@ export function AgentOutputVariables({
               <Button
                 size="small"
                 variant="tertiary"
-                className="h-6 w-full gap-x-1 rounded-md bg-components-input-bg-normal text-text-secondary hover:bg-state-base-hover"
+                className="h-6 w-full rounded-md bg-components-input-bg-normal text-text-secondary hover:bg-state-base-hover"
                 onClick={handleNewOutput}
               >
                 <span aria-hidden="true" className="i-ri-add-line size-3.5" />

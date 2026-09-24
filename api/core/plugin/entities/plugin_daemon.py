@@ -12,7 +12,7 @@ from core.agent.plugin_entities import AgentProviderEntityWithPlugin
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.parameters import PluginParameterOption
-from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
+from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.trigger.entities.entities import TriggerProviderEntity
@@ -83,6 +83,11 @@ class PluginModelSchemaEntity(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
+class PluginModelProviderDeclaration(ProviderEntity):
+    plugin_unique_identifier: str = Field(description="The plugin unique identifier.")
+    installation_source: PluginInstallationSource | None = Field(description="The plugin installation source.")
+
+
 class PluginModelProviderEntity(BaseModel):
     id: str = Field(description="ID")
     created_at: datetime = Field(description="The created at time of the model provider.")
@@ -91,7 +96,23 @@ class PluginModelProviderEntity(BaseModel):
     tenant_id: str = Field(description="The tenant ID.")
     plugin_unique_identifier: str = Field(description="The plugin unique identifier.")
     plugin_id: str = Field(description="The plugin ID.")
+    installation_source: PluginInstallationSource | None = Field(
+        default=None, description="The plugin installation source."
+    )
     declaration: ProviderEntity = Field(description="The declaration of the model provider.")
+
+
+class PluginModelProviderBinding(BaseModel):
+    """Lightweight installation metadata for one model provider."""
+
+    provider: str
+    installation_id: str
+    plugin_id: str
+    plugin_unique_identifier: str
+    runtime_type: str
+    source: PluginInstallationSource
+    version: str
+    verified: bool = False
 
 
 class PluginTextEmbeddingNumTokensResponse(BaseModel):
@@ -112,6 +133,28 @@ class PluginLLMNumTokensResponse(BaseModel):
 
 class PluginStringResultResponse(BaseModel):
     result: str = Field(description="The result of the string.")
+
+
+class PluginTTSResultResponse(PluginStringResultResponse):
+    """One TTS data chunk returned by the plugin daemon."""
+
+    mime_type: str | None = Field(default=None, description="The MIME type of the audio chunk.")
+
+
+class TTSAudioChunk(bytes):
+    """A bytes-compatible TTS chunk carrying optional daemon MIME metadata.
+
+    The currently released Graphon runtime exposes TTS output as ``bytes``.
+    This carrier preserves that contract while retaining the daemon field until
+    the structured Graphon ``TTSChunk`` protocol is available in a release.
+    """
+
+    mime_type: str | None
+
+    def __new__(cls, data: bytes | bytearray | memoryview, mime_type: str | None = None):
+        instance = super().__new__(cls, data)
+        instance.mime_type = mime_type
+        return instance
 
 
 class PluginVoiceEntity(BaseModel):
@@ -205,6 +248,10 @@ class PluginOAuthCredentialsResponse(BaseModel):
 class PluginListResponse(BaseModel):
     list: list[PluginEntity]
     total: int
+
+
+class PluginInstalledIdsDaemonResponse(BaseModel):
+    plugin_ids: list[str]
 
 
 class PluginListWithoutTotalResponse(BaseModel):

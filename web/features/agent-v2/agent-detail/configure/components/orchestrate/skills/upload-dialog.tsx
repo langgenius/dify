@@ -9,18 +9,20 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
+import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { toast } from '@/app/notifications'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
+import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
 
 const skillPackageAccept = '.zip,.skill'
@@ -67,7 +69,10 @@ function AgentSkillPackageUploader({
   onChange: (file?: File) => void
   showWarning: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { data: fileUploadConfig } = useFileUploadConfig()
+  const { skillSizeLimit } = useFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const [dragging, setDragging] = useState(false)
@@ -76,6 +81,15 @@ function AgentSkillPackageUploader({
     const [uploadFile] = files
     if (files.length !== 1 || !uploadFile || !isSupportedSkillPackage(uploadFile)) {
       toast.error(t(($) => $['agentDetail.configure.skills.upload.invalidFile']))
+      return
+    }
+
+    if (uploadFile.size > skillSizeLimit) {
+      toast.error(
+        t(($) => $['agentDetail.configure.skills.upload.sizeLimit'], {
+          sizeLimit: formatFileSize(skillSizeLimit),
+        }),
+      )
       return
     }
 
@@ -167,25 +181,33 @@ function AgentSkillPackageUploader({
       {file && (
         <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
           <div className="flex items-center justify-center p-3">
-            <span aria-hidden className="i-custom-public-files-yaml size-6 shrink-0" />
+            <span aria-hidden className="i-ri-file-zip-line size-6 shrink-0 text-text-tertiary" />
           </div>
           <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
             <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
               {file.name}
             </span>
-            <div className="flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
+            <div className="flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">
               <span>{t(($) => $['agentDetail.configure.skills.upload.fileType'])}</span>
               <span className="text-text-quaternary">·</span>
               <span>{formatFileSize(file.size)}</span>
             </div>
           </div>
           <div className="hidden items-center pr-3 group-hover:flex">
-            <ActionButton onClick={() => onChange(undefined)}>
+            <IconButton
+              aria-label={tCommon(($) => $['operation.remove'])}
+              onClick={() => onChange(undefined)}
+            >
               <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-            </ActionButton>
+            </IconButton>
           </div>
         </div>
       )}
+      <p className="mt-2 system-xs-regular text-text-tertiary">
+        {t(($) => $['agentDetail.configure.skills.upload.sizeLimit'], {
+          sizeLimit: formatFileSize(skillSizeLimit),
+        })}
+      </p>
       {showWarning && (
         <div className="mt-2 flex items-start gap-2 rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
           <span
@@ -203,7 +225,7 @@ function AgentSkillPackageUploader({
                       href="https://agentskills.io/specification"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-sm underline outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="rounded-sm underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                     />
                   ),
                 }}
@@ -228,8 +250,8 @@ export function AgentSkillUploadDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const [file, setFile] = useState<File>()
   const uploadAgentSkillMutation = useMutation(
     consoleQuery.agent.byAgentId.config.skills.upload.post.mutationOptions(),
@@ -305,8 +327,18 @@ export function AgentSkillUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed">
-        <DialogCloseButton />
+      <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['agentDetail.configure.skills.upload.title'])}
         </DialogTitle>

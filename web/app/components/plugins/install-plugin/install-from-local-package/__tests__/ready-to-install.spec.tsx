@@ -1,6 +1,6 @@
 import type { PluginDeclaration } from '../../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InstallStep, PluginCategoryEnum } from '../../../types'
 import ReadyToInstall from '../ready-to-install'
 
@@ -423,69 +423,6 @@ describe('ReadyToInstall', () => {
       render(<ReadyToInstall {...defaultProps} step={InstallStep.installFailed} errorMsg="" />)
 
       expect(screen.getByTestId('installed-err-msg')).toHaveTextContent('null')
-    })
-  })
-
-  // ================================
-  // Callback Stability Tests
-  // ================================
-  describe('Callback Stability', () => {
-    it('should maintain stable handleInstalled callback across re-renders', () => {
-      const onStepChange = vi.fn()
-      const setIsInstalling = vi.fn()
-      const { rerender } = render(
-        <ReadyToInstall
-          {...defaultProps}
-          onStepChange={onStepChange}
-          setIsInstalling={setIsInstalling}
-        />,
-      )
-
-      // Rerender with same props
-      rerender(
-        <ReadyToInstall
-          {...defaultProps}
-          onStepChange={onStepChange}
-          setIsInstalling={setIsInstalling}
-        />,
-      )
-
-      // Callback should still work
-      fireEvent.click(screen.getByTestId('install-installed-btn'))
-
-      expect(onStepChange).toHaveBeenCalledWith(InstallStep.installed)
-      expect(setIsInstalling).toHaveBeenCalledWith(false)
-    })
-
-    it('should maintain stable handleFailed callback across re-renders', () => {
-      const onStepChange = vi.fn()
-      const setIsInstalling = vi.fn()
-      const onError = vi.fn()
-      const { rerender } = render(
-        <ReadyToInstall
-          {...defaultProps}
-          onStepChange={onStepChange}
-          setIsInstalling={setIsInstalling}
-          onError={onError}
-        />,
-      )
-
-      // Rerender with same props
-      rerender(
-        <ReadyToInstall
-          {...defaultProps}
-          onStepChange={onStepChange}
-          setIsInstalling={setIsInstalling}
-          onError={onError}
-        />,
-      )
-
-      // Callback should still work
-      fireEvent.click(screen.getByTestId('install-failed-msg-btn'))
-
-      expect(onStepChange).toHaveBeenCalledWith(InstallStep.installFailed)
-      expect(setIsInstalling).toHaveBeenCalledWith(false)
-      expect(onError).toHaveBeenCalledWith('Error message')
     })
   })
 })

@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import {
@@ -16,7 +17,6 @@ import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/us
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
-import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { getMarketplaceUrl } from '@/utils/var'
 
@@ -40,7 +40,7 @@ const getDetailUrl = (detail: PluginDetail, locale: string, theme: string) => {
 }
 
 const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { theme } = useTheme()
   const locale = useLocale()
   const readmeTriggerId = useId()
@@ -101,7 +101,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
           pluginID={detail.plugin_id}
           currentVersion={detail.version}
           onSelect={handleVersionSelect}
-          trigger={
+          trigger={() => (
             <Badge
               className="h-5 px-1.5"
               text={
@@ -118,7 +118,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
               hasRedCornerMark={hasNewVersion}
               uppercase={false}
             />
-          }
+          )}
         />
       )}
       {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (

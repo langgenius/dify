@@ -38,7 +38,7 @@ describe('Drawer wrapper', () => {
 
       expect(document.body.querySelector('[role="dialog"]')).not.toBeInTheDocument()
 
-      asHTMLElement(screen.getByRole('button', { name: 'Open settings' }).element()).click()
+      await screen.getByRole('button', { name: 'Open settings' }).click()
 
       await vi.waitFor(() => {
         expect(document.body.querySelector('[role="dialog"]')).toBeInTheDocument()
@@ -47,11 +47,13 @@ describe('Drawer wrapper', () => {
       const dialog = asHTMLElement(document.body.querySelector('[role="dialog"]')!)
       expect(document.body).toContainElement(dialog)
       expect(screen.container).not.toContainElement(dialog)
-      await expect.element(dialog).toHaveTextContent('Workspace controls')
-      await expect.element(screen.getByText('Configure the current workspace.')).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('dialog', { name: 'Settings' }))
+        .toHaveAccessibleDescription('Configure the current workspace.')
+      await expect.element(screen.getByText('Workspace controls')).toBeInTheDocument()
       await expect.element(screen.getByTestId('drawer-backdrop')).toBeInTheDocument()
 
-      asHTMLElement(screen.getByRole('button', { name: 'Close drawer' }).element()).click()
+      await screen.getByRole('button', { name: 'Close drawer' }).click()
 
       await vi.waitFor(() => {
         expect(document.body.querySelector('[role="dialog"]')).not.toBeInTheDocument()

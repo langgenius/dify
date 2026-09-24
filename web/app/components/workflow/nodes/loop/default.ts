@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { LoopNodeType } from './types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { LOOP_NODE_MAX_COUNT } from '@/config'
@@ -14,7 +14,7 @@ import { isEmptyRelatedOperator } from './utils'
 const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Logic,
+  classification: BlockClassification.Logic,
   sort: 3,
   type: BlockEnum.Loop,
   author: 'AICT-Team',
@@ -29,7 +29,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
     _children: [],
     logical_operator: LogicalOperator.and,
   },
-  checkValid(payload: LoopNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: LoopNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
 
     payload.loop_variables?.forEach((variable) => {
@@ -41,6 +41,11 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
     })
 
     payload.break_conditions!.forEach((condition) => {
+      const emptyOperators: readonly ComparisonOperator[] = [
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+
       if (
         !errorMessages &&
         (!condition.variable_selector || condition.variable_selector.length === 0)
@@ -57,9 +62,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
       if (!errorMessages) {
         if (
           condition.sub_variable_condition &&
-          ![ComparisonOperator.empty, ComparisonOperator.notEmpty].includes(
-            condition.comparison_operator!,
-          )
+          !emptyOperators.includes(condition.comparison_operator!)
         ) {
           const isSet = condition.sub_variable_condition.conditions.every((c) => {
             if (!c.comparison_operator) return false

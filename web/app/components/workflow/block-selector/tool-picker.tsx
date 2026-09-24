@@ -1,21 +1,20 @@
 'use client'
-import type { OffsetOptions } from '@floating-ui/react'
-import type { Placement } from '@langgenius/dify-ui/popover'
-import type { ReactNode } from 'react'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
+import type { ReactElement } from 'react'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
+import dynamic from 'next/dynamic'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
-import AllTools from '@/app/components/workflow/block-selector/all-tools'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
@@ -30,14 +29,18 @@ import {
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
 
-type Props = Readonly<{
-  disabled: boolean
-  trigger: ReactNode
-  placement?: Placement
-  offset?: OffsetOptions
-  isShow: boolean
-  onShowChange: (isShow: boolean) => void
-}> &
+const ToolBrowser = dynamic(() => import('./tool-browser'), {
+  loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
+})
+
+type Props = Readonly<
+  Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {
+    disabled: boolean
+    trigger: ReactElement
+    isShow: boolean
+    onShowChange: (isShow: boolean) => void
+  }
+> &
   ToolPickerContentProps
 
 export type ToolPickerContentProps = Readonly<{
@@ -46,9 +49,11 @@ export type ToolPickerContentProps = Readonly<{
   onSelect: (tool: ToolDefaultValue) => void
   onSelectMultiple: (tools: ToolDefaultValue[]) => void
   supportAddCustomTool?: boolean
-  scope?: string
+  scope?: ToolPickerScope
   selectedTools?: ToolValue[]
 }>
+
+export type ToolPickerScope = 'all' | 'plugins' | 'custom' | 'workflow'
 
 export function ToolPickerContent({
   focusSearchOnMount = false,
@@ -59,7 +64,7 @@ export function ToolPickerContent({
   selectedTools,
   panelClassName,
 }: ToolPickerContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const canManageTools = useCanManageTools()
@@ -69,6 +74,10 @@ export function ToolPickerContent({
     select: (s) => s.enable_marketplace,
   })
   const { data: buildInTools } = useAllBuiltInTools()
+  const installedPluginIds = useMemo(
+    () => new Set(buildInTools?.map((provider) => provider.plugin_id || provider.id)),
+    [buildInTools],
+  )
   const shouldFetchCustomTools = scope !== 'plugins' && scope !== 'workflow'
   const { data: customTools } = useAllCustomTools(shouldFetchCustomTools)
   const invalidateCustomTools = useInvalidateAllCustomTools()
@@ -111,8 +120,6 @@ export function ToolPickerContent({
     }
   }, [scope, buildInTools, customTools, workflowTools])
 
-  const handleAddedCustomTool = invalidateCustomTools
-
   const handleSelect = (_type: BlockEnum, tool?: ToolDefaultValue) => {
     onSelect(tool!)
   }
@@ -132,7 +139,7 @@ export function ToolPickerContent({
     await createCustomCollection(data)
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     hideEditCustomCollectionModal()
-    handleAddedCustomTool()
+    invalidateCustomTools()
   }
 
   if (isShowEditCollectionToolModal && canManageTools) {
@@ -161,7 +168,6 @@ export function ToolPickerContent({
           onTagsChange={setTags}
           placeholder={t(($) => $.searchTools, { ns: 'plugin' })!}
           supportAddCustomTool={supportAddCustomTool && canManageTools}
-          onAddedCustomTool={handleAddedCustomTool}
           onShowAddCustomCollectionModal={showEditCustomCollectionModal}
           // The picker replaces the focused menu item inside an already-open popover.
           // Focusing search keeps keyboard users in the same add-tool workflow.
@@ -170,7 +176,7 @@ export function ToolPickerContent({
           inputClassName="grow"
         />
       </div>
-      <AllTools
+      <ToolBrowser
         className="mt-1"
         toolContentClassName="max-w-full"
         tags={tags}
@@ -178,6 +184,7 @@ export function ToolPickerContent({
         onSelect={handleSelect as OnSelectBlock}
         onSelectMultiple={handleSelectMultiple}
         buildInTools={builtinToolList || []}
+        installedPluginIds={installedPluginIds}
         customTools={customToolList || []}
         workflowTools={workflowToolList || []}
         mcpTools={mcpTools || []}
@@ -201,33 +208,28 @@ function ToolPicker({
   disabled,
   trigger,
   placement = 'right-start',
-  offset = 0,
+  sideOffset = 0,
   isShow,
   onShowChange,
   ...contentProps
 }: Props) {
-  const sideOffset =
-    typeof offset === 'number' ? offset : typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0)
-  const alignOffset =
-    typeof offset === 'number' ? 0 : typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0)
-
+  const { t } = useTranslation(['plugin'])
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen && disabled) return
     onShowChange(nextOpen)
   }
-
   return (
     <Popover open={isShow} onOpenChange={handleOpenChange}>
-      <PopoverTrigger nativeButton={false} render={<div className="inline-block" />}>
-        {trigger}
-      </PopoverTrigger>
+      <PopoverTrigger disabled={disabled} render={trigger} />
 
       <PopoverContent
         placement={placement}
         sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
+        <PopoverTitle className="sr-only">
+          {t(($) => $['detailPanel.toolSelector.title'], { ns: 'plugin' })}
+        </PopoverTitle>
         <ToolPickerContent {...contentProps} />
       </PopoverContent>
     </Popover>

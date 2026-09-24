@@ -1,11 +1,11 @@
 import type { TFunction } from 'i18next'
-import type { NodeDefault, ToolWithProvider, Var } from '../../types'
+import type { NodeDefault, ToolWithProvider, Var, WorkflowPluginCatalogs } from '../../types'
 import type { ToolNodeType } from './types'
 import { CollectionType } from '@/app/components/tools/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { TOOL_OUTPUT_STRUCT } from '../../constants'
 import { Type } from '../llm/types'
 import { resolveVarType } from './output-schema-utils'
@@ -24,7 +24,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     tool_configurations: {},
     tool_node_version: '2',
   },
-  checkValid(payload: ToolNodeType, t: TFunction<'workflow'>, moreDataForCheckValid: any) {
+  checkValid(payload: ToolNodeType, t: TFunction<['workflow']>, moreDataForCheckValid: any) {
     const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid
     let errorMessages = ''
     if (notAuthed) errorMessages = t(($) => $[`${i18nPrefix}.authRequired`], { ns: 'workflow' })
@@ -51,7 +51,15 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
                 field: field.label,
               })
           } else {
-            if (!errorMessages && (value === undefined || value === null || value === ''))
+            const isEmptyMultiSelect =
+              field.type === 'select' &&
+              field.multiple &&
+              Array.isArray(value) &&
+              value.length === 0
+            if (
+              !errorMessages &&
+              (value === undefined || value === null || value === '' || isEmptyMultiSelect)
+            )
               errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
                 ns: 'workflow',
                 field: field.label,
@@ -67,7 +75,12 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
         })
         .forEach((field: any) => {
           const value = payload.tool_configurations[field.variable]
-          if (!errorMessages && (value === undefined || value === null || value === ''))
+          const isEmptyMultiSelect =
+            field.type === 'select' && field.multiple && Array.isArray(value) && value.length === 0
+          if (
+            !errorMessages &&
+            (value === undefined || value === null || value === '' || isEmptyMultiSelect)
+          )
             errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
               ns: 'workflow',
               field: field.label[language],
@@ -95,7 +108,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
   },
   getOutputVars(
     payload: ToolNodeType,
-    allPluginInfoList: Record<string, ToolWithProvider[]>,
+    allPluginInfoList: WorkflowPluginCatalogs,
     _ragVars: any,
     { schemaTypeDefinitions } = { schemaTypeDefinitions: [] },
   ) {
@@ -117,7 +130,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       default:
         currentTools = []
     }
-    const currCollection = currentTools.find((item) => canFindTool(item.id, provider_id))
+    const currCollection = currentTools.find((item) => matchesProviderReference(item, provider_id))
     const currTool = currCollection?.tools.find((tool) => tool.name === payload.tool_name)
     const output_schema = currTool?.output_schema
     let res: Var[] = []

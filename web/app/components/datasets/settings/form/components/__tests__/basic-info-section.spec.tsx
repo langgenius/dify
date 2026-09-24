@@ -1,25 +1,17 @@
+import type { ReactElement } from 'react'
 import type { Member } from '@/models/common'
 import type { DataSet, IconInfo } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import BasicInfoSection from '../basic-info-section'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({
-      data: {
-        rbac_enabled: false,
-      },
-    }),
-  }
-})
-
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
     name: 'Current User',
@@ -31,66 +23,23 @@ const mockAppContextState = vi.hoisted(() => ({
 
 // Mock app-context
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => mockAppContextState,
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
-})
+const render = (ui: ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { rbac_enabled: false },
+  })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 // Mock image uploader hooks for AppIconPicker
 vi.mock('@/app/components/base/image-uploader/hooks', () => ({
@@ -108,13 +57,6 @@ vi.mock('@/app/components/base/image-uploader/hooks', () => ({
     onClear: vi.fn(),
   }),
 }))
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
 
 describe('BasicInfoSection', () => {
   const mockDataset: DataSet = {
@@ -242,11 +184,6 @@ describe('BasicInfoSection', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<BasicInfoSection {...defaultProps} />)
-      expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
-    })
-
     it('should render name and icon section', () => {
       render(<BasicInfoSection {...defaultProps} />)
       expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
@@ -266,8 +203,11 @@ describe('BasicInfoSection', () => {
 
     it('should render name input with correct value', () => {
       render(<BasicInfoSection {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
+      const nameInput = screen.getByRole('textbox', {
+        name: 'datasetSettings.form.name',
+      })
       expect(nameInput)!.toBeInTheDocument()
+      expect(nameInput).toHaveValue('Test Dataset')
     })
 
     it('should render description textarea with correct value', () => {
@@ -276,11 +216,45 @@ describe('BasicInfoSection', () => {
       expect(descriptionTextarea)!.toBeInTheDocument()
     })
 
-    it('should render app icon with emoji', () => {
-      const { container } = render(<BasicInfoSection {...defaultProps} />)
-      // The icon section should be rendered (emoji may be in a span or SVG)
-      const iconSection = container.querySelector('[class*="cursor-pointer"]')
-      expect(iconSection)!.toBeInTheDocument()
+    it('names the icon action and opens it with the keyboard', async () => {
+      const user = userEvent.setup()
+      const handleOpenAppIconPicker = vi.fn()
+      render(
+        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
+      )
+
+      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
+      await user.tab()
+      expect(trigger).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
+    })
+
+    it('associates the permissions field label without losing the selected value', () => {
+      render(<BasicInfoSection {...defaultProps} />)
+
+      expect(
+        screen.getByRole('button', {
+          name: /datasetSettings.form.permissions .*datasetSettings.form.permissionsOnlyMe/,
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('does not open the icon picker when settings are read-only', async () => {
+      const user = userEvent.setup()
+      const handleOpenAppIconPicker = vi.fn()
+      render(
+        <BasicInfoSection
+          {...defaultProps}
+          readonly
+          handleOpenAppIconPicker={handleOpenAppIconPicker}
+        />,
+      )
+
+      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
+      expect(trigger).toBeDisabled()
+      await user.click(trigger)
+      expect(handleOpenAppIconPicker).not.toHaveBeenCalled()
     })
   })
 
@@ -289,7 +263,9 @@ describe('BasicInfoSection', () => {
       const setName = vi.fn()
       render(<BasicInfoSection {...defaultProps} setName={setName} />)
 
-      const nameInput = screen.getByDisplayValue('Test Dataset')
+      const nameInput = screen.getByRole('textbox', {
+        name: 'datasetSettings.form.name',
+      })
       fireEvent.change(nameInput, { target: { value: 'New Name' } })
 
       expect(setName).toHaveBeenCalledWith('New Name')
@@ -347,30 +323,15 @@ describe('BasicInfoSection', () => {
   })
 
   describe('App Icon', () => {
-    it('should call handleOpenAppIconPicker when icon is clicked', () => {
+    it('should call handleOpenAppIconPicker when icon is clicked', async () => {
+      const user = userEvent.setup()
       const handleOpenAppIconPicker = vi.fn()
-      const { container } = render(
+      render(
         <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
       )
 
-      // Find the clickable icon element - it's inside a wrapper that handles the click
-      const iconWrapper = container.querySelector('[class*="cursor-pointer"]')
-      if (iconWrapper) {
-        fireEvent.click(iconWrapper)
-        expect(handleOpenAppIconPicker).toHaveBeenCalled()
-      }
-    })
-
-    it('should render AppIconPicker when showAppIconPicker is true', () => {
-      const { baseElement } = render(
-        <BasicInfoSection {...defaultProps} showAppIconPicker={true} />,
-      )
-
-      // AppIconPicker renders a modal with emoji tabs and options via portal
-      // We just verify the component renders without crashing when picker is shown
-      // AppIconPicker renders a modal with emoji tabs and options via portal
-      // We just verify the component renders without crashing when picker is shown
-      expect(baseElement)!.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' }))
+      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
     })
 
     it('should not render AppIconPicker when showAppIconPicker is false', () => {
@@ -473,25 +434,6 @@ describe('BasicInfoSection', () => {
 
       expect(setPermission).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
     })
-
-    it('should call setSelectedMemberIDs when members are selected', async () => {
-      const setSelectedMemberIDs = vi.fn()
-      const { container } = render(
-        <BasicInfoSection
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          setSelectedMemberIDs={setSelectedMemberIDs}
-        />,
-      )
-
-      // For partial members permission, the member selector should be visible
-      // The exact interaction depends on the MemberSelector component
-      // We verify the component renders without crashing
-      // For partial members permission, the member selector should be visible
-      // The exact interaction depends on the MemberSelector component
-      // We verify the component renders without crashing
-      expect(container)!.toBeInTheDocument()
-    })
   })
 
   describe('Undefined Dataset', () => {
@@ -541,22 +483,6 @@ describe('BasicInfoSection', () => {
   })
 
   describe('Member List', () => {
-    it('should pass member list to PermissionSelector', () => {
-      const { container } = render(
-        <BasicInfoSection
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          memberList={mockMemberList}
-        />,
-      )
-
-      // For partial members, a member selector component should be rendered
-      // We verify it renders without crashing
-      // For partial members, a member selector component should be rendered
-      // We verify it renders without crashing
-      expect(container)!.toBeInTheDocument()
-    })
-
     it('should handle empty member list', () => {
       render(<BasicInfoSection {...defaultProps} memberList={[]} />)
 
@@ -568,8 +494,7 @@ describe('BasicInfoSection', () => {
     it('should have accessible name input', () => {
       render(<BasicInfoSection {...defaultProps} />)
 
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput.tagName.toLowerCase()).toBe('input')
+      expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeInTheDocument()
     })
 
     it('should have accessible description textarea', () => {

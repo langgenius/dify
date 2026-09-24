@@ -1,12 +1,9 @@
 import { screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { renderToString } from 'react-dom/server'
-import {
-  createSystemFeaturesWrapper,
-  renderWithSystemFeatures,
-} from '@/__tests__/utils/mock-system-features'
 import WebAppStoreProvider, { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 
 const navigationMocks = vi.hoisted(() => ({
   usePathname: vi.fn(() => '/chatbot/sample-app'),
@@ -89,7 +86,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       configurable: true,
       value: undefined,
     })
-    const { wrapper: Wrapper } = createSystemFeaturesWrapper()
+    const { wrapper: Wrapper } = createConsoleQueryWrapper()
 
     try {
       expect(() =>
@@ -111,13 +108,45 @@ describe('WebAppStoreProvider embedded user id handling', () => {
     expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith('redirected-app')
   })
 
+  it('does not derive a share code from an external redirect target', () => {
+    const params = new URLSearchParams()
+    params.set('redirect_url', 'https://evil.example/chatbot/evil-app')
+    navigationMocks.usePathname.mockReturnValue('/webapp-signin')
+    navigationMocks.useSearchParams.mockReturnValue(params)
+    mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
+
+    renderWithConsoleQuery(
+      <WebAppStoreProvider>
+        <TestConsumer />
+      </WebAppStoreProvider>,
+    )
+
+    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+  })
+
+  it.each(['/webapp-signin/check-code', '/console/webapp-signin/check-code'])(
+    'does not derive a share code from the sign-in route %s',
+    (pathname) => {
+      navigationMocks.usePathname.mockReturnValue(pathname)
+      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
+
+      renderWithConsoleQuery(
+        <WebAppStoreProvider>
+          <TestConsumer />
+        </WebAppStoreProvider>,
+      )
+
+      expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+    },
+  )
+
   it('hydrates embedded user and conversation ids from system variables', async () => {
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
       user_id: 'iframe-user-123',
       conversation_id: 'conversation-456',
     })
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <WebAppStoreProvider>
         <TestConsumer />
       </WebAppStoreProvider>,
@@ -139,7 +168,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
     }))
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <WebAppStoreProvider>
         <TestConsumer />
       </WebAppStoreProvider>,

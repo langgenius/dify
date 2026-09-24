@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook } from '@testing-library/react'
 import { useChat } from '../../hooks'
 
@@ -26,7 +25,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -43,8 +42,11 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('../../../../hooks', () => ({
+vi.mock('../../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({ handleRun: mockHandleRun }),
+}))
+
+vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
@@ -896,16 +898,6 @@ describe('useChat – handleSend SSE callbacks', () => {
         (t: any) => t.node_id === 'agent-node',
       )
       expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(2)
-    })
-
-    it('should not crash when node_id is not found in tracing', () => {
-      setupWithNode()
-
-      act(() => {
-        capturedCallbacks.onAgentLog({
-          data: { node_id: 'nonexistent-node', message_id: 'log-1', content: 'noop' },
-        })
-      })
     })
   })
 

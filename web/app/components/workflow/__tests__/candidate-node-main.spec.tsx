@@ -47,11 +47,20 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockUseWorkflowStore(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesInteractions: () => mockUseHooks().useNodesInteractions(),
-  useNodesSyncDraft: () => mockUseHooks().useNodesSyncDraft(),
-  useWorkflowHistory: () => mockUseHooks().useWorkflowHistory(),
+vi.mock('../hooks/use-auto-generate-webhook-url', () => ({
   useAutoGenerateWebhookUrl: () => mockUseHooks().useAutoGenerateWebhookUrl(),
+}))
+
+vi.mock('../hooks/use-nodes-interactions', () => ({
+  useNodesInteractions: () => mockUseHooks().useNodesInteractions(),
+}))
+
+vi.mock('../hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraft: () => mockUseHooks().useNodesSyncDraft(),
+}))
+
+vi.mock('../hooks/use-workflow-history', () => ({
+  useWorkflowHistory: () => mockUseHooks().useWorkflowHistory(),
   WorkflowHistoryEvent: {
     NodeAdd: 'NodeAdd',
     NoteAdd: 'NoteAdd',

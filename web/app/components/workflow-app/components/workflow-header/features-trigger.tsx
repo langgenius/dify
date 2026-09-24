@@ -1,36 +1,37 @@
-import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher'
+import type {
+  AppPublisherPublishOptions,
+  AppPublisherPublishParams,
+} from '@/app/components/app/app-publisher/types'
+import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { Plan } from '@/app/components/billing/type'
+// useWorkflowRunValidation,
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
   useChecklist,
   useChecklistBeforePublish,
-  useIsChatMode,
-  useNodesReadOnly,
-  useNodesSyncDraft,
-  // useWorkflowRunValidation,
-} from '@/app/components/workflow/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+} from '@/app/components/workflow/hooks/use-checklist'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
-import { useProviderContext } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { fetchAppDetail } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
+import { consoleQuery } from '@/service/console'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
   useInvalidateAppWorkflow,
@@ -39,7 +40,7 @@ import {
 } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { theme } = useTheme()
   const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()
@@ -49,7 +50,16 @@ const FeaturesTrigger = () => {
   const appID = appDetail?.id
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
-  const { plan, isFetchedPlan } = useProviderContext()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (features) => features.billing.subscription.plan,
+    }),
+  )
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const toolPublished = useStore((s) => s.toolPublished)
@@ -76,7 +86,6 @@ const FeaturesTrigger = () => {
   }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
-  const endNode = nodes.find((node) => node.data.type === BlockEnum.End)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
 
@@ -97,7 +106,22 @@ const FeaturesTrigger = () => {
 
     return data
   }, [fileSettings?.image?.enabled, startVariables])
-  const endVariables = useMemo(() => (endNode as Node<EndNodeType>)?.data?.outputs || [], [endNode])
+  const endVariables = useMemo<WorkflowToolOutputVariable[]>(
+    () =>
+      nodes.flatMap((node) => {
+        if (node.data.type !== BlockEnum.End) return []
+
+        return ((node as Node<EndNodeType>).data.outputs || []).map((output, outputIndex) => ({
+          ...output,
+          source: {
+            nodeId: node.id,
+            nodeTitle: node.data.title,
+            outputIndex,
+          },
+        }))
+      }),
+    [nodes],
+  )
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -120,8 +144,8 @@ const FeaturesTrigger = () => {
       if (nodeType === BlockEnum.Start || isTriggerNode(nodeType)) return count + 1
       return count
     }, 0)
-    return isFetchedPlan && plan.type === Plan.sandbox && entryCount > 2
-  }, [nodes, plan.type, isFetchedPlan])
+    return deploymentEdition === 'CLOUD' && plan === 'sandbox' && entryCount > 2
+  }, [nodes, plan, deploymentEdition])
 
   const hasHumanInputNode = useMemo(() => {
     return nodes.some((node) => node.data.type === BlockEnum.HumanInput)
@@ -141,12 +165,11 @@ const FeaturesTrigger = () => {
       if (!appID) return
 
       const res = await fetchAppDetail({ url: '/apps', id: appID })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appID], res)
       setAppDetail({ ...res })
     } catch (error) {
       console.error(error)
     }
-  }, [appID, queryClient, setAppDetail])
+  }, [appID, setAppDetail])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
@@ -154,7 +177,7 @@ const FeaturesTrigger = () => {
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(
-    async (params?: AppPublisherPublishParams) => {
+    async (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) => {
       const publishParams = params && 'title' in params ? params : undefined
       // First check if there are any items in the checklist
       // if (!validateBeforeRun())
@@ -167,13 +190,18 @@ const FeaturesTrigger = () => {
 
       // Then perform the detailed validation
       if (await handleCheckBeforePublish()) {
+        const draftSyncResult = await handleSyncWorkflowDraft(true)
+        if (!draftSyncResult) throw new Error('Workflow draft sync failed')
+
         const res = await publishWorkflow({
           url: publishParams?.url || `/apps/${appID}/workflows/publish`,
           title: publishParams?.title || '',
           releaseNotes: publishParams?.releaseNotes || '',
         })
         if (res) {
-          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+          if (options?.showSuccessToast !== false) {
+            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+          }
           updatePublishedWorkflow(appID!)
           updateAppDetail()
           invalidateAppTriggers(appID!)
@@ -206,6 +234,7 @@ const FeaturesTrigger = () => {
     [
       needWarningNodes,
       handleCheckBeforePublish,
+      handleSyncWorkflowDraft,
       publishWorkflow,
       appID,
       t,
@@ -222,7 +251,7 @@ const FeaturesTrigger = () => {
 
   const onPublisherToggle = useCallback(
     (state: boolean) => {
-      if (state) handleSyncWorkflowDraft(true)
+      if (state) void handleSyncWorkflowDraft(true)
     },
     [handleSyncWorkflowDraft],
   )
@@ -237,12 +266,12 @@ const FeaturesTrigger = () => {
       {isChatMode && (
         <Button
           className={cn(
-            'rounded-lg border border-transparent text-components-button-secondary-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg text-components-button-secondary-text inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
           onClick={handleShowFeatures}
         >
-          <span className="mr-1 i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
+          <span className="i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
           {t(($) => $['common.features'], { ns: 'workflow' })}
         </Button>
       )}

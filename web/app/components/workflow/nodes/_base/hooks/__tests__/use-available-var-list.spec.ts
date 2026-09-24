@@ -17,17 +17,30 @@ vi.mock('@/app/components/snippets/draft-store', () => ({
     selector({ inputFields: [] }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: () => true,
-  useWorkflow: () => ({
-    getTreeLeafNodes: mockGetTreeLeafNodes,
-    getBeforeNodesInSameBranchIncludeParent: mockGetBeforeNodesInSameBranchIncludeParent,
-    getNodeById: mockGetNodeById,
-  }),
-  useWorkflowVariables: () => ({
-    getNodeAvailableVars: mockGetNodeAvailableVars,
-  }),
-}))
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => true,
+    useWorkflow: () => ({
+      getTreeLeafNodes: mockGetTreeLeafNodes,
+      getBeforeNodesInSameBranchIncludeParent: mockGetBeforeNodesInSameBranchIncludeParent,
+      getNodeById: mockGetNodeById,
+    }),
+  }
+})
+
+vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariables: () => ({
+      getNodeAvailableVars: mockGetNodeAvailableVars,
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: { ragPipelineVariables: unknown[] }) => unknown) =>

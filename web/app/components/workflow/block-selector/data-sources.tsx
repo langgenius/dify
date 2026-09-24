@@ -1,34 +1,47 @@
-import type { OnSelectBlock, ToolWithProvider } from '../types'
-import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
-import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import type {
+  DatasourceEntity,
+  RagPipelineDatasourceProviderResponse,
+} from '@dify/contracts/api/console/rag/types.gen'
+import type { OnSelectBlock } from '../types'
+import type { DataSourceDefaultValue } from './types'
+import type { ListRef } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { useDebounce } from 'ahooks'
+import dynamic from 'next/dynamic'
+import { useCallback, useMemo, useRef } from 'react'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
+import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
+import { renderI18nObject } from '@/i18n/metadata'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
-import Tools from './tools'
-import { ViewType } from './view-type-select'
 
-type AllToolsProps = {
+const DatasourceList = dynamic(
+  () => import('./datasource-list').then((module) => module.DatasourceList),
+  {
+    loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
+  },
+)
+
+type DataSourcesProps = {
   className?: string
   toolContentClassName?: string
   searchText: string
   onSelect: OnSelectBlock
-  dataSources: ToolWithProvider[]
+  dataSources: RagPipelineDatasourceProviderResponse[]
 }
 
-const DataSources = ({
+function DataSources({
   className,
   toolContentClassName,
   searchText,
   onSelect,
   dataSources,
-}: AllToolsProps) => {
+}: DataSourcesProps) {
   const language = useGetLanguage()
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
@@ -38,47 +51,42 @@ const DataSources = ({
   }
 
   const filteredDatasources = useMemo(() => {
-    const hasFilter = searchText
-    if (!hasFilter)
-      return dataSources.filter((toolWithProvider) => toolWithProvider.tools.length > 0)
-
-    return dataSources.filter((toolWithProvider) => {
+    return dataSources.filter((provider) => {
+      const datasources = provider.declaration.datasources ?? []
+      if (!searchText) return datasources.length > 0
       return (
-        isMatchingKeywords(toolWithProvider.name, searchText) ||
-        toolWithProvider.tools.some((tool) => {
-          return (
-            tool.label[language]!.toLowerCase().includes(searchText.toLowerCase()) ||
-            tool.name.toLowerCase().includes(searchText.toLowerCase())
-          )
-        })
+        isMatchingKeywords(provider.provider, searchText) ||
+        datasources.some(
+          (datasource) =>
+            isMatchingKeywords(renderI18nObject(datasource.identity.label, language), searchText) ||
+            isMatchingKeywords(datasource.identity.name, searchText),
+        )
       )
     })
   }, [searchText, dataSources, language])
 
   const handleSelect = useCallback(
-    (_: BlockEnum, toolDefaultValue: ToolDefaultValue) => {
-      let defaultValue: DataSourceDefaultValue = {
-        plugin_id: toolDefaultValue?.provider_id,
-        provider_type: toolDefaultValue?.provider_type,
-        provider_name: toolDefaultValue?.provider_name,
-        datasource_name: toolDefaultValue?.tool_name,
-        datasource_label: toolDefaultValue?.tool_label,
-        title: toolDefaultValue?.title,
-        plugin_unique_identifier: toolDefaultValue?.plugin_unique_identifier,
+    (provider: RagPipelineDatasourceProviderResponse, datasource: DatasourceEntity) => {
+      const label = renderI18nObject(datasource.identity.label, language)
+      const defaultValue: DataSourceDefaultValue = {
+        plugin_id: provider.plugin_id,
+        provider_type: provider.declaration.provider_type,
+        provider_name: provider.provider,
+        datasource_name: datasource.identity.name,
+        datasource_label: label,
+        title: label,
+        plugin_unique_identifier: provider.plugin_unique_identifier,
+        ...(provider.plugin_id === 'langgenius/file' && provider.provider === 'file'
+          ? { fileExtensions: DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE }
+          : {}),
       }
-      // Update defaultValue with fileExtensions if this is the local file data source
-      if (
-        toolDefaultValue?.provider_id === 'langgenius/file' &&
-        toolDefaultValue?.provider_name === 'file'
-      ) {
-        defaultValue = {
-          ...defaultValue,
-          fileExtensions: DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE,
-        }
-      }
-      onSelect(BlockEnum.DataSource, toolDefaultValue && defaultValue)
+      onSelect(BlockEnum.DataSource, defaultValue)
+      trackEvent('tool_selected', {
+        tool_name: datasource.identity.name,
+        plugin_id: provider.plugin_id,
+      })
     },
-    [onSelect],
+    [onSelect, language],
   )
 
   const { data: enable_marketplace } = useSuspenseQuery({
@@ -86,42 +94,50 @@ const DataSources = ({
     select: (s) => s.enable_marketplace,
   })
 
-  const { queryPluginsWithDebounced: fetchPlugins, plugins: notInstalledPlugins = [] } =
-    useMarketplacePlugins()
-
-  useEffect(() => {
-    if (!enable_marketplace) return
-    if (searchText) {
-      fetchPlugins({
-        query: searchText,
-        category: PluginCategoryEnum.datasource,
-      })
-    }
-  }, [searchText, enable_marketplace])
+  const trimmedSearchText = searchText.trim()
+  const debouncedMarketplaceSearchText = useDebounce(trimmedSearchText, { wait: 500 })
+  const isMarketplaceSearchSettled = debouncedMarketplaceSearchText === trimmedSearchText
+  const marketplaceSearchParams = useMemo(
+    () =>
+      enable_marketplace && trimmedSearchText && isMarketplaceSearchSettled
+        ? {
+            query: debouncedMarketplaceSearchText,
+            category: PluginCategoryEnum.datasource,
+          }
+        : undefined,
+    [
+      debouncedMarketplaceSearchText,
+      enable_marketplace,
+      isMarketplaceSearchSettled,
+      trimmedSearchText,
+    ],
+  )
+  const { data: marketplacePluginsData } = useMarketplacePlugins(marketplaceSearchParams)
+  const notInstalledPlugins = useMemo(
+    () => marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? [],
+    [marketplacePluginsData?.pages],
+  )
 
   return (
-    <div className={cn('w-[400px] max-w-full min-w-0', className)}>
+    <div className={cn('w-100 max-w-full min-w-0', className)}>
       <div
         ref={wrapElemRef}
-        className="max-h-[464px] overflow-x-hidden overflow-y-auto"
-        onScroll={pluginRef.current?.handleScroll}
+        className="max-h-116 overflow-x-hidden overflow-y-auto"
+        onScroll={() => pluginRef.current?.handleScroll()}
       >
-        <Tools
+        <DatasourceList
           className={toolContentClassName}
-          tools={filteredDatasources}
-          onSelect={handleSelect as OnSelectBlock}
-          viewType={ViewType.flat}
+          providers={filteredDatasources}
+          onSelect={handleSelect}
           hasSearchText={!!searchText}
-          canNotSelectMultiple
         />
-        {/* Plugins from marketplace */}
         {enable_marketplace && (
           <PluginList
             ref={pluginRef}
             wrapElemRef={wrapElemRef}
             list={notInstalledPlugins}
             tags={[]}
-            searchText={searchText}
+            searchText={trimmedSearchText}
             category={PluginCategoryEnum.datasource}
             toolContentClassName={toolContentClassName}
           />

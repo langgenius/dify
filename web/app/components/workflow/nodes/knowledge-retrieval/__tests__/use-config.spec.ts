@@ -8,7 +8,6 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useDatasetsDetailStore } from '@/app/components/workflow/datasets-detail-store/store'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -16,6 +15,7 @@ import { DATASET_DEFAULT } from '@/config'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -33,11 +33,16 @@ vi.mock('uuid', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: vi.fn(),
-  useIsChatMode: vi.fn(),
-  useWorkflow: vi.fn(),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: vi.fn(),
+    useIsChatMode: vi.fn(),
+    useWorkflow: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),

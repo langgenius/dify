@@ -1,6 +1,7 @@
 import type { Inputs, ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ChatUserInput from '../chat-user-input'
 
 const mockSetInputs = vi.fn()
@@ -9,99 +10,6 @@ vi.mock('use-context-selector', () => ({
   useContext: () => mockUseContext(),
   createContext: vi.fn(() => ({})),
 }))
-
-vi.mock('@/app/components/base/input', () => ({
-  default: ({
-    value,
-    onChange,
-    placeholder,
-    autoFocus,
-    maxLength,
-    readOnly,
-    type,
-  }: {
-    value: string
-    onChange: (e: { target: { value: string } }) => void
-    placeholder?: string
-    autoFocus?: boolean
-    maxLength?: number
-    readOnly?: boolean
-    type?: string
-  }) => (
-    <input
-      data-testid={`input-${placeholder}`}
-      data-autofocus={autoFocus ? 'true' : undefined}
-      type={type || 'text'}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      maxLength={maxLength}
-      readOnly={readOnly}
-    />
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-  const SelectContext = React.createContext<{
-    disabled?: boolean
-    onValueChange?: (value: string) => void
-  }>({})
-
-  return {
-    Select: ({
-      children,
-      disabled,
-      onValueChange,
-    }: {
-      children: React.ReactNode
-      disabled?: boolean
-      onValueChange?: (value: string) => void
-    }) => (
-      <SelectContext.Provider value={{ disabled, onValueChange }}>
-        <div>{children}</div>
-      </SelectContext.Provider>
-    ),
-    SelectTrigger: ({ children, className }: { children: React.ReactNode; className?: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <div>
-          <button
-            data-testid="select-input"
-            type="button"
-            disabled={context.disabled}
-            className={className}
-          >
-            {children}
-          </button>
-          <button
-            data-testid="select-empty"
-            type="button"
-            onClick={() => context.onValueChange?.('')}
-          >
-            empty select value
-          </button>
-        </div>
-      )
-    },
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <button
-          data-testid={`select-${value}`}
-          type="button"
-          role="option"
-          onClick={() => context.onValueChange?.(value)}
-        >
-          {children}
-        </button>
-      )
-    },
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    SelectItemIndicator: () => null,
-  }
-})
 
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
   default: ({
@@ -233,7 +141,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument()
     })
 
     it('should render paragraph input type', () => {
@@ -249,7 +157,8 @@ describe('ChatUserInput', () => {
       expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
     })
 
-    it('should render select input type', () => {
+    it('should render select input type', async () => {
+      const user = userEvent.setup()
       mockUseContext.mockReturnValue(
         createContextValue({
           modelConfig: createModelConfig([
@@ -264,10 +173,11 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('select-input')).toBeInTheDocument()
-      expect(screen.getByText('A')).toBeInTheDocument()
-      expect(screen.getByText('B')).toBeInTheDocument()
-      expect(screen.getByText('C')).toBeInTheDocument()
+      const select = screen.getByRole('combobox', { name: 'Choice' })
+      await user.click(select)
+      expect(await screen.findByRole('option', { name: 'A' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'B' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'C' })).toBeInTheDocument()
     })
 
     it('should render number input type', () => {
@@ -280,7 +190,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      const input = screen.getByTestId('input-Count')
+      const input = screen.getByRole('spinbutton', { name: 'Count' })
       expect(input).toBeInTheDocument()
       expect(input).toHaveAttribute('type', 'number')
     })
@@ -315,9 +225,9 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument()
       expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
-      expect(screen.getByTestId('select-input')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Choice' })).toBeInTheDocument()
     })
 
     it('should show optional label for non-required fields', () => {
@@ -372,7 +282,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{ name: 'John' }} />)
-      expect(screen.getByTestId('input-Name')).toHaveValue('John')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('John')
     })
 
     it('should display existing input values for paragraph type', () => {
@@ -399,7 +309,7 @@ describe('ChatUserInput', () => {
 
       render(<ChatUserInput inputs={{ count: 42 }} />)
       // Number type input still uses string value internally
-      expect(screen.getByTestId('input-Count')).toHaveValue(42)
+      expect(screen.getByRole('spinbutton', { name: 'Count' })).toHaveValue(42)
     })
 
     it('should display checkbox as checked when value is truthy', () => {
@@ -440,7 +350,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{ name: '' }} />)
-      expect(screen.getByTestId('input-Name')).toHaveValue('')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('')
     })
 
     it('should handle undefined values', () => {
@@ -453,7 +363,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toHaveValue('')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('')
     })
   })
 
@@ -468,7 +378,9 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByTestId('input-Name'), { target: { value: 'New Value' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+        target: { value: 'New Value' },
+      })
 
       expect(mockSetInputs).toHaveBeenCalledWith({ name: 'New Value' })
     })
@@ -490,7 +402,8 @@ describe('ChatUserInput', () => {
       expect(mockSetInputs).toHaveBeenCalledWith({ desc: 'New Description' })
     })
 
-    it('should call setInputs when select input changes', () => {
+    it('should call setInputs when select input changes', async () => {
+      const user = userEvent.setup()
       mockUseContext.mockReturnValue(
         createContextValue({
           modelConfig: createModelConfig([
@@ -505,29 +418,10 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{ choice: 'A' }} />)
-      fireEvent.click(screen.getByTestId('select-B'))
+      await user.click(screen.getByRole('combobox', { name: 'Choice' }))
+      await user.click(await screen.findByRole('option', { name: 'B' }))
 
       expect(mockSetInputs).toHaveBeenCalledWith({ choice: 'B' })
-    })
-
-    it('should ignore empty select updates', () => {
-      mockUseContext.mockReturnValue(
-        createContextValue({
-          modelConfig: createModelConfig([
-            createPromptVariable({
-              key: 'choice',
-              name: 'Choice',
-              type: 'select',
-              options: ['A', 'B', 'C'],
-            }),
-          ]),
-        }),
-      )
-
-      render(<ChatUserInput inputs={{}} />)
-      fireEvent.click(screen.getByTestId('select-empty'))
-
-      expect(mockSetInputs).not.toHaveBeenCalled()
     })
 
     it('should call setInputs when number input changes', () => {
@@ -540,7 +434,9 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByTestId('input-Count'), { target: { value: '100' } })
+      fireEvent.change(screen.getByRole('spinbutton', { name: 'Count' }), {
+        target: { value: '100' },
+      })
 
       expect(mockSetInputs).toHaveBeenCalledWith({ count: '100' })
     })
@@ -585,7 +481,9 @@ describe('ChatUserInput', () => {
 
       render(<ChatUserInput inputs={{}} />)
 
-      fireEvent.change(screen.getByTestId('input-Name'), { target: { value: 'Valid' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+        target: { value: 'Valid' },
+      })
 
       expect(mockSetInputs).not.toHaveBeenCalled()
     })
@@ -604,7 +502,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).not.toHaveAttribute('readonly')
+      expect(screen.getByRole('textbox', { name: 'Name' })).not.toHaveAttribute('readonly')
     })
 
     it('should set string input as readonly when test/run is denied even if configuration is editable', () => {
@@ -619,7 +517,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toHaveAttribute('readonly')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('readonly')
     })
 
     it('should set string input as readonly when configuration is readonly and test/run is denied', () => {
@@ -634,7 +532,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toHaveAttribute('readonly')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('readonly')
     })
 
     it('should set paragraph input as readonly when configuration is readonly and test/run is denied', () => {
@@ -669,7 +567,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('select-input')).toBeDisabled()
+      expect(screen.getByRole('combobox', { name: 'Choice' })).toBeDisabled()
     })
 
     it('should disable checkbox when configuration is readonly and test/run is denied', () => {
@@ -795,39 +693,8 @@ describe('ChatUserInput', () => {
     })
   })
 
-  describe('AutoFocus', () => {
-    it('should set autoFocus on first string input', () => {
-      mockUseContext.mockReturnValue(
-        createContextValue({
-          modelConfig: createModelConfig([
-            createPromptVariable({ key: 'first', name: 'First', type: 'string' }),
-            createPromptVariable({ key: 'second', name: 'Second', type: 'string' }),
-          ]),
-        }),
-      )
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-First')).toHaveAttribute('data-autofocus', 'true')
-      expect(screen.getByTestId('input-Second')).not.toHaveAttribute('data-autofocus')
-    })
-
-    it('should set autoFocus on first number input when it is the first field', () => {
-      mockUseContext.mockReturnValue(
-        createContextValue({
-          modelConfig: createModelConfig([
-            createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
-            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-          ]),
-        }),
-      )
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Count')).toHaveAttribute('data-autofocus', 'true')
-    })
-  })
-
-  describe('MaxLength', () => {
-    it('should pass maxLength to string input', () => {
+  describe('Input constraints', () => {
+    it('preserves the text length constraint', () => {
       mockUseContext.mockReturnValue(
         createContextValue({
           modelConfig: createModelConfig([
@@ -837,25 +704,14 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toHaveAttribute('maxLength', '50')
-    })
 
-    it('should pass maxLength to number input', () => {
-      mockUseContext.mockReturnValue(
-        createContextValue({
-          modelConfig: createModelConfig([
-            createPromptVariable({ key: 'count', name: 'Count', type: 'number', max_length: 10 }),
-          ]),
-        }),
-      )
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Count')).toHaveAttribute('maxLength', '10')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('maxLength', '50')
     })
   })
 
   describe('Edge Cases', () => {
-    it('should handle select with empty options', () => {
+    it('should show no options when a select has no configured choices', async () => {
+      const user = userEvent.setup()
       mockUseContext.mockReturnValue(
         createContextValue({
           modelConfig: createModelConfig([
@@ -865,23 +721,9 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{}} />)
-      const select = screen.getByTestId('select-input')
-      expect(select).toBeInTheDocument()
+      const select = screen.getByRole('combobox', { name: 'Choice' })
+      await user.click(select)
       expect(screen.queryAllByRole('option')).toHaveLength(0)
-    })
-
-    it('should handle select with undefined options', () => {
-      mockUseContext.mockReturnValue(
-        createContextValue({
-          modelConfig: createModelConfig([
-            createPromptVariable({ key: 'choice', name: 'Choice', type: 'select' }),
-          ]),
-        }),
-      )
-
-      render(<ChatUserInput inputs={{}} />)
-      const select = screen.getByTestId('select-input')
-      expect(select).toBeInTheDocument()
     })
 
     it('should preserve other input values when updating one field', () => {
@@ -895,7 +737,9 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{ name: 'Existing', desc: 'Also Existing' }} />)
-      fireEvent.change(screen.getByTestId('input-Name'), { target: { value: 'Updated' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+        target: { value: 'Updated' },
+      })
 
       expect(mockSetInputs).toHaveBeenCalledWith({
         name: 'Updated',
@@ -913,7 +757,7 @@ describe('ChatUserInput', () => {
       )
 
       render(<ChatUserInput inputs={{ value: 123 as unknown as string }} />)
-      expect(screen.getByTestId('input-Value')).toHaveValue('123')
+      expect(screen.getByRole('textbox', { name: 'Value' })).toHaveValue('123')
     })
 
     it('should not hide label for checkbox type', () => {

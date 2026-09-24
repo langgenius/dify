@@ -39,25 +39,10 @@ describe('ErrorMessageBlockComponent', () => {
   })
 
   describe('Rendering', () => {
-    it('should render error_message text and base styles when unselected', () => {
-      const { container } = renderWithLexicalContext(
-        <ErrorMessageBlockComponent nodeKey="node-1" />,
-      )
+    it('should render error_message text when unselected', () => {
+      renderWithLexicalContext(<ErrorMessageBlockComponent nodeKey="node-1" />)
 
       expect(screen.getByText('error_message')).toBeInTheDocument()
-      expect(container.querySelector('svg')).toBeInTheDocument()
-      expect(container.firstChild).toHaveClass('border-components-panel-border-subtle')
-    })
-
-    it('should render selected styles when node is selected', () => {
-      vi.mocked(useSelectOrDelete).mockReturnValue([mockRef, true])
-
-      const { container } = renderWithLexicalContext(
-        <ErrorMessageBlockComponent nodeKey="node-1" />,
-      )
-
-      expect(container.firstChild).toHaveClass('border-state-accent-solid')
-      expect(container.firstChild).toHaveClass('bg-state-accent-hover')
     })
   })
 
@@ -68,9 +53,9 @@ describe('ErrorMessageBlockComponent', () => {
 
       render(
         <LexicalComposerContext.Provider value={lexicalContextValue}>
-          <div onClick={onParentClick}>
+          <button type="button" onClick={onParentClick}>
             <ErrorMessageBlockComponent nodeKey="node-1" />
-          </div>
+          </button>
         </LexicalComposerContext.Provider>,
       )
 

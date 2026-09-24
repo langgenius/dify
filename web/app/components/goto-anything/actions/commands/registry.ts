@@ -1,18 +1,18 @@
 import type { CommandSearchResult } from '../types'
-import type { SlashCommandHandler } from './types'
+import type { SlashCommand, SlashCommandHandler } from './types'
 
 /**
  * Slash Command Registry System
  * Responsible for managing registration, lookup, and search of all slash commands
  */
 export class SlashCommandRegistry {
-  private commands = new Map<string, SlashCommandHandler>()
-  private commandDeps = new Map<string, any>()
+  private commands = new Map<string, SlashCommand>()
+  private commandDeps = new Map<string, unknown>()
 
   /**
    * Register command handler
    */
-  register<TDeps = any>(handler: SlashCommandHandler<TDeps>, deps?: TDeps) {
+  register<TDeps>(handler: SlashCommandHandler<TDeps>, deps?: TDeps) {
     // Register main command name
     this.commands.set(handler.name, handler)
 
@@ -57,7 +57,7 @@ export class SlashCommandRegistry {
   /**
    * Find command handler
    */
-  findCommand(commandName: string): SlashCommandHandler | undefined {
+  findCommand(commandName: string): SlashCommand | undefined {
     return this.commands.get(commandName)
   }
 
@@ -65,7 +65,7 @@ export class SlashCommandRegistry {
    * Smart partial command matching
    * Prioritize alias matching, then match command name prefix
    */
-  private findBestPartialMatch(partialName: string): SlashCommandHandler | undefined {
+  private findBestPartialMatch(partialName: string): SlashCommand | undefined {
     const lowerPartial = partialName.toLowerCase()
 
     // First check if any alias starts with this
@@ -80,7 +80,7 @@ export class SlashCommandRegistry {
   /**
    * Find handler by alias prefix
    */
-  private findHandlerByAliasPrefix(prefix: string): SlashCommandHandler | undefined {
+  private findHandlerByAliasPrefix(prefix: string): SlashCommand | undefined {
     for (const handler of this.getAllCommands()) {
       if (handler.aliases?.some((alias) => alias.toLowerCase().startsWith(prefix))) return handler
     }
@@ -90,15 +90,15 @@ export class SlashCommandRegistry {
   /**
    * Find handler by name prefix
    */
-  private findHandlerByNamePrefix(prefix: string): SlashCommandHandler | undefined {
+  private findHandlerByNamePrefix(prefix: string): SlashCommand | undefined {
     return this.getAllCommands().find((handler) => handler.name.toLowerCase().startsWith(prefix))
   }
 
   /**
    * Get all registered commands (deduplicated)
    */
-  getAllCommands(): SlashCommandHandler[] {
-    const uniqueCommands = new Map<string, SlashCommandHandler>()
+  getAllCommands(): SlashCommand[] {
+    const uniqueCommands = new Map<string, SlashCommand>()
     this.commands.forEach((handler) => {
       uniqueCommands.set(handler.name, handler)
     })
@@ -109,7 +109,7 @@ export class SlashCommandRegistry {
    * Get all available commands in current context (deduplicated and filtered)
    * Commands without isAvailable method are considered always available
    */
-  getAvailableCommands(): SlashCommandHandler[] {
+  getAvailableCommands(): SlashCommand[] {
     return this.getAllCommands().filter((handler) => this.isCommandAvailable(handler))
   }
 
@@ -118,11 +118,11 @@ export class SlashCommandRegistry {
    * @param query Full query (e.g., "/theme dark" or "/lang en")
    * @param locale Current language
    */
-  async search(query: string, locale: string = 'en'): Promise<CommandSearchResult[]> {
+  search(query: string, locale: string = 'en'): CommandSearchResult[] {
     const trimmed = query.trim()
 
     // Handle root level search "/"
-    if (trimmed === '/' || !trimmed.replace('/', '').trim()) return await this.getRootCommands()
+    if (trimmed === '/' || !trimmed.replace('/', '').trim()) return this.getRootCommands()
 
     // Parse command and arguments
     const afterSlash = trimmed.substring(1).trim()
@@ -134,7 +134,7 @@ export class SlashCommandRegistry {
     let handler = this.findCommand(commandName)
     if (handler && this.isCommandAvailable(handler)) {
       try {
-        return await handler.search(args, locale)
+        return handler.search(args, locale)
       } catch (error) {
         console.warn(`Command search failed for ${commandName}:`, error)
         return []
@@ -145,7 +145,7 @@ export class SlashCommandRegistry {
     handler = this.findBestPartialMatch(commandName)
     if (handler && this.isCommandAvailable(handler)) {
       try {
-        return await handler.search(args, locale)
+        return handler.search(args, locale)
       } catch (error) {
         console.warn(`Command search failed for ${handler.name}:`, error)
         return []
@@ -160,7 +160,7 @@ export class SlashCommandRegistry {
    * Get root level command list
    * Only shows commands that are available in current context
    */
-  private async getRootCommands(): Promise<CommandSearchResult[]> {
+  private getRootCommands(): CommandSearchResult[] {
     return this.getAvailableCommands().map((handler) => ({
       id: `root-${handler.name}`,
       title: `/${handler.name}`,
@@ -221,7 +221,7 @@ export class SlashCommandRegistry {
   /**
    * Get command dependencies
    */
-  getCommandDependencies(commandName: string): any {
+  getCommandDependencies(commandName: string): unknown {
     return this.commandDeps.get(commandName)
   }
 
@@ -229,7 +229,7 @@ export class SlashCommandRegistry {
    * Determine if a command is available in the current context.
    * Defaults to true when a handler does not implement the guard.
    */
-  private isCommandAvailable(handler: SlashCommandHandler) {
+  private isCommandAvailable(handler: SlashCommand) {
     return handler.isAvailable?.() ?? true
   }
 }

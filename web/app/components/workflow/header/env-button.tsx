@@ -1,13 +1,15 @@
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
-import { Env } from '@/app/components/base/icons/src/vender/line/others'
-import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
+import { useTranslation } from 'react-i18next'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
+  const { t } = useTranslation(['workflow'])
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const showEnvPanel = useStore((s) => s.showEnvPanel)
   const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)
@@ -24,17 +26,30 @@ const EnvButton = ({ disabled }: { disabled: boolean }) => {
   }
 
   return (
-    <Button
-      className={cn(
-        'rounded-lg border border-transparent p-2',
-        theme === 'dark' && showEnvPanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
-      )}
-      variant="ghost"
-      disabled={disabled}
-      onClick={handleClick}
-    >
-      <Env className="size-4 text-components-button-secondary-text" />
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton
+            aria-label={t(($) => $['env.envPanelTitle'], { ns: 'workflow' })}
+            aria-expanded={showEnvPanel}
+            size="lg"
+            className={cn(
+              'border border-transparent',
+              theme === 'dark' && showEnvPanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            )}
+            variant="ghost"
+            disabled={disabled}
+            onClick={handleClick}
+          >
+            <span
+              aria-hidden
+              className="i-custom-vender-line-others-env size-4 text-components-button-secondary-text"
+            />
+          </IconButton>
+        }
+      />
+      <TooltipContent>{t(($) => $['env.envPanelTitle'], { ns: 'workflow' })}</TooltipContent>
+    </Tooltip>
   )
 }
 

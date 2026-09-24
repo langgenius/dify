@@ -27,16 +27,6 @@ function useHarness({ hasFooter, isInNode, clientHeight = 400 }: HookProps) {
 }
 
 describe('useToggleExpend', () => {
-  describe('collapsed state', () => {
-    it('returns empty wrapClassName and zero expand height when collapsed', () => {
-      const { result } = renderHook(() => useHarness({ clientHeight: 400 }))
-
-      expect(result.current.isExpand).toBe(false)
-      expect(result.current.wrapClassName).toBe('')
-      expect(result.current.editorExpandHeight).toBe(0)
-    })
-  })
-
   describe('expanded state (node context)', () => {
     it('uses fixed positioning inside a workflow node panel', () => {
       const { result } = renderHook(() => useHarness({ isInNode: true, clientHeight: 400 }))

@@ -1,7 +1,9 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComponentProps } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { TagSelectorProps } from '../components/tag-selector'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
+import { DatasetCardTags } from '../components/dataset-card-tags'
 import { TagSelector } from '../components/tag-selector'
 
 const { mockToast } = vi.hoisted(() => {
@@ -17,7 +19,7 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mockToast }))
+vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
 const { mockUseQueryData, createTag, bindTag, unBindTag } = vi.hoisted(() => {
   const mockUseQueryData: { current: Tag[] } = { current: [] }
@@ -33,47 +35,11 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'] as string[],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@tanstack/react-query', () => ({
@@ -88,7 +54,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       get: {
@@ -158,7 +124,7 @@ const defaultProps = {
   targetId: 'target-1',
   type: 'app',
   value: [appTags[0]!],
-} satisfies ComponentProps<typeof TagSelector>
+} satisfies TagSelectorProps
 
 describe('TagSelector', () => {
   beforeEach(() => {
@@ -182,6 +148,51 @@ describe('TagSelector', () => {
   it('renders selected tag names in the combobox trigger', () => {
     render(<TagSelector {...defaultProps} />)
     expect(screen.getByText('Frontend')).toBeInTheDocument()
+  })
+
+  it('adds the owning app name to the combobox accessible name', () => {
+    render(<TagSelector {...defaultProps} contextLabel="Test App" />)
+
+    expect(screen.getByRole('combobox', { name: 'Frontend: Test App' })).toBeInTheDocument()
+  })
+
+  it('keeps dataset tag interactions inside the tag trigger', async () => {
+    const user = userEvent.setup()
+    const onOuterClick = vi.fn()
+    mockUseQueryData.current = []
+
+    document.addEventListener('click', onOuterClick)
+    try {
+      render(<DatasetCardTags datasetId="dataset-1" embeddingAvailable tags={[]} />)
+
+      await user.click(screen.getByRole('combobox', { name: i18n.noTag }))
+
+      expect(onOuterClick).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('click', onOuterClick)
+    }
+  })
+
+  it('keeps dataset tag popup option interactions inside the tag trigger', async () => {
+    const user = userEvent.setup()
+    const onOuterClick = vi.fn()
+    mockUseQueryData.current = [
+      { id: 'knowledge-tag-1', name: 'Knowledge', type: 'knowledge', binding_count: '' },
+    ]
+
+    document.addEventListener('click', onOuterClick)
+    try {
+      render(
+        <DatasetCardTags datasetId="dataset-1" embeddingAvailable tags={[]} canBindOrUnbindTags />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: i18n.addTag }))
+      await user.click(await screen.findByRole('option', { name: 'Knowledge' }))
+
+      expect(onOuterClick).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('click', onOuterClick)
+    }
   })
 
   it('renders the no tag trigger when no current tag is visible and binding is unavailable', () => {
@@ -219,6 +230,20 @@ describe('TagSelector', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
+  })
+
+  it('matches existing tags without offering a case-only duplicate', async () => {
+    const user = userEvent.setup()
+    render(<TagSelector {...defaultProps} />)
+
+    await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
+    await user.type(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+      'frontend',
+    )
+
+    expect(screen.getByRole('option', { name: 'Frontend' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /common\.tag\.create/i })).not.toBeInTheDocument()
   })
 
   it('applies added tags only when the popup closes', async () => {

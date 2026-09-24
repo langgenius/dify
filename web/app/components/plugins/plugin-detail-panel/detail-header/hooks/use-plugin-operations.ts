@@ -2,11 +2,11 @@
 
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from './use-detail-header-state'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
+import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
@@ -23,12 +23,12 @@ type UsePluginOperationsParams = {
     setIsDowngrade: (downgrade: boolean) => void
   }
   isFromMarketplace: boolean
-  onUpdate?: (isDelete?: boolean) => void
+  onUpdate?: (isDelete?: boolean) => void | Promise<void>
 }
 
 type UsePluginOperationsReturn = {
   handleUpdate: (isDowngrade?: boolean) => Promise<void>
-  handleUpdatedFromMarketplace: () => void
+  handleUpdatedFromMarketplace: () => Promise<void>
   handleDelete: () => Promise<void>
 }
 
@@ -41,7 +41,7 @@ export const usePluginOperations = ({
   isFromMarketplace,
   onUpdate,
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshPluginList } = useRefreshPluginList()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
@@ -49,9 +49,9 @@ export const usePluginOperations = ({
   const { id, meta, plugin_id } = detail
   const { author, category, name } = detail.declaration || detail
   const handlePluginUpdated = useCallback(
-    (isDelete?: boolean) => {
+    async (isDelete?: boolean) => {
       invalidateCheckInstalled()
-      onUpdate?.(isDelete)
+      await onUpdate?.(isDelete)
     },
     [invalidateCheckInstalled, onUpdate],
   )
@@ -81,9 +81,7 @@ export const usePluginOperations = ({
 
       if (needUpdate) {
         setShowUpdatePluginModal({
-          onSaveCallback: () => {
-            handlePluginUpdated()
-          },
+          onSaveCallback: () => handlePluginUpdated(),
           payload: {
             type: PluginSource.github,
             category,
@@ -114,8 +112,8 @@ export const usePluginOperations = ({
     ],
   )
 
-  const handleUpdatedFromMarketplace = useCallback(() => {
-    handlePluginUpdated()
+  const handleUpdatedFromMarketplace = useCallback(async () => {
+    await handlePluginUpdated()
     modalStates.hideUpdateModal()
   }, [handlePluginUpdated, modalStates])
 

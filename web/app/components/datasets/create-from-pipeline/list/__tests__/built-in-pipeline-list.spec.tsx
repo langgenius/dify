@@ -1,11 +1,11 @@
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import BuiltInPipelineList from '../built-in-pipeline-list'
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { enable_marketplace: true },
   })
 
@@ -32,7 +32,8 @@ vi.mock('../template-card', () => ({
 // Configurable locale mock
 let mockLocale = 'en-US'
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale,
 }))
 
@@ -50,16 +51,6 @@ describe('BuiltInPipelineList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-      expect(screen.getByTestId('create-card')).toBeInTheDocument()
-    })
-
     it('should always render CreateCard', () => {
       mockUsePipelineTemplateList.mockReturnValue({
         data: null,

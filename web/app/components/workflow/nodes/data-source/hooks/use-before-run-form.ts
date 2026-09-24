@@ -13,7 +13,8 @@ import { useInvalidLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { FlowType } from '@/types/common'
-import { useNodeDataUpdate, useNodesSyncDraft } from '../../../hooks'
+import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
+import { useNodesSyncDraft } from '../../../hooks/use-nodes-sync-draft'
 import { NodeRunningStatus } from '../../../types'
 
 const useBeforeRunForm = ({

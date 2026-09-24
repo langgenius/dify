@@ -64,23 +64,365 @@ export type TrialDatasetListResponse = {
   total: number
 }
 
+export type FileResponse = {
+  conversation_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  extension?: string | null
+  file_key?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  original_url?: string | null
+  preview_url?: string | null
+  reference?: string | null
+  size: number
+  source_url?: string | null
+  tenant_id?: string | null
+  user_id?: string | null
+}
+
 export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
 
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
+}
+
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type FileWithSignedUrl = {
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  url: string | null
 }
 
 export type Site = {
@@ -111,17 +453,17 @@ export type TextToSpeechRequest = {
 export type AudioBinaryResponse = Blob | File
 
 export type TrialWorkflowResponse = {
-  conversation_variables?: Array<JsonObject2>
+  conversation_variables?: Array<WorkflowConversationVariableResponse>
   created_at?: number | null
   created_by?: TrialSimpleAccount | null
-  environment_variables?: Array<JsonObject2>
-  features?: JsonObject2
-  graph: JsonObject2
+  environment_variables?: Array<JsonObject>
+  features?: JsonObject
+  graph: JsonObject
   hash?: string | null
   id: string
   marked_comment?: string | null
   marked_name?: string | null
-  rag_pipeline_variables?: Array<JsonObject2>
+  rag_pipeline_variables?: Array<JsonObject>
   tool_published?: boolean | null
   updated_at?: number | null
   updated_by?: TrialSimpleAccount | null
@@ -151,29 +493,29 @@ export type TrialAppMode = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion
 
 export type TrialAppModelConfigResponse = {
   agent_mode?: TrialAppAgentMode | null
-  annotation_reply?: JsonObject2 | null
-  chat_prompt_config?: JsonObject2 | null
-  completion_prompt_config?: JsonObject2 | null
+  annotation_reply?: JsonObject | null
+  chat_prompt_config?: JsonObject | null
+  completion_prompt_config?: JsonObject | null
   created_at?: number | null
   created_by?: string | null
-  dataset_configs?: JsonObject2 | null
+  dataset_configs?: JsonObject | null
   dataset_query_variable?: string | null
-  external_data_tools?: Array<JsonObject2>
-  file_upload?: JsonObject2 | null
+  external_data_tools?: Array<JsonObject>
+  file_upload?: JsonObject | null
   model?: TrialAppModel | null
-  more_like_this?: JsonObject2 | null
+  more_like_this?: JsonObject | null
   opening_statement?: string | null
   pre_prompt?: string | null
   prompt_type?: string | null
-  retriever_resource?: JsonObject2 | null
-  sensitive_word_avoidance?: JsonObject2 | null
-  speech_to_text?: JsonObject2 | null
+  retriever_resource?: JsonObject | null
+  sensitive_word_avoidance?: JsonObject | null
+  speech_to_text?: JsonObject | null
   suggested_questions?: Array<string>
-  suggested_questions_after_answer?: JsonObject2 | null
-  text_to_speech?: JsonObject2 | null
+  suggested_questions_after_answer?: JsonObject | null
+  text_to_speech?: JsonObject | null
   updated_at?: number | null
   updated_by?: string | null
-  user_input_form?: Array<JsonObject2>
+  user_input_form?: Array<JsonObject>
 }
 
 export type TrialSiteResponse = {
@@ -230,10 +572,6 @@ export type TrialDatasetResponse = {
   permission_keys?: Array<string>
 }
 
-export type JsonObject = {
-  [key: string]: unknown
-}
-
 export type SystemParameters = {
   audio_file_size_limit: number
   file_size_limit: number
@@ -242,8 +580,12 @@ export type SystemParameters = {
   workflow_file_upload_limit: number
 }
 
-export type JsonObject2 = {
-  [key: string]: unknown
+export type WorkflowConversationVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
 }
 
 export type TrialSimpleAccount = {
@@ -252,14 +594,18 @@ export type TrialSimpleAccount = {
   name?: string | null
 }
 
+export type JsonObject = {
+  [key: string]: unknown
+}
+
 export type TrialAppAgentMode = {
   enabled?: boolean | null
   strategy?: string | null
-  tools?: Array<JsonObject2>
+  tools?: Array<JsonObject>
 }
 
 export type TrialAppModel = {
-  completion_params?: JsonObject2
+  completion_params?: JsonObject
   mode?: string | null
   name: string
   provider: string
@@ -370,6 +716,25 @@ export type GetTrialAppsByAppIdDatasetsResponses = {
 export type GetTrialAppsByAppIdDatasetsResponse =
   GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
 
+export type PostTrialAppsByAppIdFilesUploadData = {
+  body: {
+    file: Blob | File
+    source?: 'datasets'
+  }
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/files/upload'
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponses = {
+  201: FileResponse
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponse =
+  PostTrialAppsByAppIdFilesUploadResponses[keyof PostTrialAppsByAppIdFilesUploadResponses]
+
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
   path: {
@@ -402,6 +767,22 @@ export type GetTrialAppsByAppIdParametersResponses = {
 
 export type GetTrialAppsByAppIdParametersResponse =
   GetTrialAppsByAppIdParametersResponses[keyof GetTrialAppsByAppIdParametersResponses]
+
+export type PostTrialAppsByAppIdRemoteFilesUploadData = {
+  body: RemoteFileUploadPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/remote-files/upload'
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponse =
+  PostTrialAppsByAppIdRemoteFilesUploadResponses[keyof PostTrialAppsByAppIdRemoteFilesUploadResponses]
 
 export type GetTrialAppsByAppIdSiteData = {
   body?: never

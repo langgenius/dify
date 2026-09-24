@@ -51,17 +51,6 @@ describe('RosterReferenceBlockNode', () => {
     expect(container.querySelector('.i-custom-public-other-default-tool-icon')).toBeInTheDocument()
   })
 
-  it('should render knowledge icon with the configured retrieval row style', () => {
-    const { container } = render(
-      <RosterReferenceBlockComponent text="[§knowledge:manual-1:产品手册§]" />,
-    )
-
-    const iconShell = container.querySelector('.bg-util-colors-green-green-500')
-    expect(iconShell).toBeInTheDocument()
-    expect(iconShell).toHaveClass('text-text-primary-on-surface')
-    expect(iconShell?.querySelector('.i-ri-book-open-line')).toBeInTheDocument()
-  })
-
   it('should render warning state for missing references', async () => {
     const user = userEvent.setup()
     render(

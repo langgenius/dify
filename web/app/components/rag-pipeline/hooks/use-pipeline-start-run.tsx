@@ -1,9 +1,10 @@
-import type { useNodesSyncDraft } from '.'
+import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useCallback } from 'react'
-import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
+import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useInputFieldPanel, useNodesSyncDraftByCanEdit } from '.'
+import { useInputFieldPanel } from './use-input-field-panel'
+import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 

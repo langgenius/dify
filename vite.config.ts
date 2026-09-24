@@ -5,13 +5,13 @@ const lintFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
 const eslintFiles = '*.{json,jsonc,json5,md,yml,yaml,toml}'
 const formatOnlyFiles = '*.{mdx,css,scss,less,html,vue,svelte,gql,graphql,hbs,handlebars}'
 const checkFix = 'vp check --fix --no-error-on-unmatched-pattern'
+const formatFix = 'vp fmt --no-error-on-unmatched-pattern'
 const eslintFix =
   'eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern --no-warn-ignored'
 
 const nonFrontendIgnores = [
   '.agents/**',
   '.devcontainer/**',
-  '.github/**',
   '/*.md',
   'api/**',
   'codecov.yml',
@@ -19,7 +19,8 @@ const nonFrontendIgnores = [
   'dify-agent/**',
   'docker/**',
   'docs/**',
-  'scripts/**',
+  'scripts/**/*',
+  '!scripts/check-web-production-unused-after-knip-fix.mjs',
   'sdks/php-client/**',
   'sdks/python-client/**',
 ]
@@ -39,6 +40,8 @@ const generatedIgnores = [
   'web/public/embed.min.js',
   'web/public/pdf.worker.min.mjs',
   'web/public/vs/**',
+  // Vendored Emojibase JSON is served verbatim.
+  'web/public/emoji/emojibase-*/**',
 ]
 
 const formatterUnstableInputs = ['web/app/components/develop/template/*.mdx']
@@ -47,8 +50,19 @@ export default defineConfig({
   lint: lintConfig,
   staged: {
     [lintFiles]: checkFix,
-    [eslintFiles]: [eslintFix, checkFix],
-    [formatOnlyFiles]: checkFix,
+    [eslintFiles]: [eslintFix, formatFix],
+    [formatOnlyFiles]: formatFix,
+    '.vite-hooks/*': 'sh -n',
+    'api/**/*.{py,pyi}': [
+      // Format first so fixable long lines do not fail the API's E501 check.
+      'uv run --locked --project api --dev ruff format --force-exclude',
+      'uv run --locked --project api --dev ruff check --fix --force-exclude',
+      'uv run --locked --project api --dev ruff format --force-exclude',
+    ],
+    'dify-agent/{src,examples,tests,docs}/**/*.py': [
+      'uv run --locked --project dify-agent --dev ruff check --fix --force-exclude',
+      'uv run --locked --project dify-agent --dev ruff format --force-exclude',
+    ],
   },
   fmt: {
     ignorePatterns: [...nonFrontendIgnores, ...generatedIgnores, ...formatterUnstableInputs],
@@ -71,7 +85,7 @@ export default defineConfig({
     sortPackageJson: true,
     sortTailwindcss: {
       functions: ['cn', 'clsx', 'cva', 'tw', 'twMerge'],
-      preserveDuplicates: true,
+      preserveDuplicates: false,
       stylesheet: 'web/app/styles/globals.css',
     },
   },

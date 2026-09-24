@@ -1,17 +1,17 @@
 'use client'
 import type { MeterTone } from '@langgenius/dify-ui/meter'
-import type { ComponentType, FC, ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { NUM_INFINITE } from '../config'
 
 type Props = Readonly<{
   className?: string
-  Icon: ComponentType<{ className?: string }>
+  iconClassName: string
   name: string
   tooltip?: string
   usage: number
@@ -26,11 +26,12 @@ type Props = Readonly<{
   storageThreshold?: number
   storageTooltip?: string
   isSandboxPlan?: boolean
+  usageUnknown?: boolean
 }>
 
 const UsageInfo: FC<Props> = ({
   className,
-  Icon,
+  iconClassName,
   name,
   tooltip,
   usage,
@@ -44,17 +45,19 @@ const UsageInfo: FC<Props> = ({
   storageThreshold = 50,
   storageTooltip,
   isSandboxPlan = false,
+  usageUnknown = false,
 }) => {
-  const { t } = useTranslation()
+  const labelId = React.useId()
 
-  const isBelowThreshold = storageMode && usage < storageThreshold
-  const isSandboxFull = storageMode && isSandboxPlan && usage >= storageThreshold
+  const { t } = useTranslation(['billing'])
 
-  // Single source of truth: sandbox full is visually clamped to 100%; all other
-  // determinate cases show the real percent capped at 100. Tone derives from
-  // this, so we never need a separate tone override.
+  const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
+  const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
+
+  // Zero count quotas have no remaining capacity; storage keeps its separate limit convention.
+  const isZeroQuota = !storageMode && total === 0
   const rawPercent = total > 0 ? (usage / total) * 100 : 0
-  const effectivePercent = isSandboxFull ? 100 : Math.min(rawPercent, 100)
+  const effectivePercent = isSandboxFull || isZeroQuota ? 100 : Math.min(rawPercent, 100)
   const tone: MeterTone =
     effectivePercent >= 100 ? 'error' : effectivePercent >= 80 ? 'warning' : 'neutral'
 
@@ -79,6 +82,8 @@ const UsageInfo: FC<Props> = ({
   ) : null
 
   const usageDisplay: ReactNode = (() => {
+    if (usageUnknown) return <span>--</span>
+
     if (storageMode) {
       if (isSandboxFull) {
         return (
@@ -142,7 +147,7 @@ const UsageInfo: FC<Props> = ({
   )
 
   const wrapWithStorageTooltip = (children: ReactNode) => {
-    if (storageMode && storageTooltip) {
+    if (!usageUnknown && storageMode && storageTooltip) {
       return (
         <Tooltip>
           <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
@@ -154,21 +159,35 @@ const UsageInfo: FC<Props> = ({
   }
 
   return (
-    <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
-      {!hideIcon && Icon && <Icon className="size-4 text-text-tertiary" />}
-      <div className="flex items-center gap-1">
-        <div className="system-xs-medium text-text-tertiary">{name}</div>
-        {tooltip && (
-          <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
-            {tooltip}
-          </Infotip>
-        )}
-      </div>
-      <div className="flex items-center gap-1 system-md-semibold text-text-primary">
-        {wrapWithStorageTooltip(usageDisplay)}
-        {rightInfo}
-      </div>
-      {wrapWithStorageTooltip(bar)}
+    <div
+      role="group"
+      aria-label={name}
+      className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}
+    >
+      {!hideIcon && iconClassName && (
+        <span aria-hidden className={cn(iconClassName, 'size-4 text-text-tertiary')} />
+      )}
+      <dl className="flex flex-col gap-2">
+        <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
+          <span id={labelId}>{name}</span>
+          {tooltip && (
+            <Infotip>
+              <InfotipTrigger aria-labelledby={labelId} />
+              <InfotipContent aria-labelledby={labelId} className="w-45">
+                {tooltip}
+              </InfotipContent>
+            </Infotip>
+          )}
+        </dt>
+        <dd
+          data-testid="billing-quota-value"
+          className="flex items-center gap-1 system-md-semibold text-text-primary"
+        >
+          {wrapWithStorageTooltip(usageDisplay)}
+          {rightInfo}
+        </dd>
+      </dl>
+      {!usageUnknown && wrapWithStorageTooltip(bar)}
     </div>
   )
 }

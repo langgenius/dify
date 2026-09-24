@@ -1,7 +1,7 @@
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { useDatasourceUIState } from '../use-datasource-ui-state'
 
@@ -15,7 +15,7 @@ describe('useDatasourceUIState', () => {
     selectedFileIdsLength: 0,
     onlineDriveFileList: [] as OnlineDriveFile[],
     isVectorSpaceFull: false,
-    enableBilling: false,
+
     currentWorkspacePagesLength: 0,
     fileUploadConfig: { file_size_limit: 50, batch_count_limit: 20 },
   }
@@ -39,19 +39,12 @@ describe('useDatasourceUIState', () => {
   })
 
   describe('isShowVectorSpaceFull', () => {
-    it('should be false when billing disabled', () => {
-      const { result } = renderHook(() =>
-        useDatasourceUIState({ ...defaultParams, isVectorSpaceFull: true }),
-      )
-      expect(result.current.isShowVectorSpaceFull).toBe(false)
-    })
-
     it('should be true when billing enabled and space is full for local file', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
           isVectorSpaceFull: true,
-          enableBilling: true,
+
           allFileLoaded: true,
         }),
       )
@@ -64,7 +57,6 @@ describe('useDatasourceUIState', () => {
           ...defaultParams,
           datasource: undefined,
           isVectorSpaceFull: true,
-          enableBilling: true,
         }),
       )
       expect(result.current.isShowVectorSpaceFull).toBe(false)

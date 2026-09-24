@@ -1,14 +1,15 @@
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
+import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 const Header = () => {
   const workflowStore = useWorkflowStore()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
 
   const handleClose = useCallback(() => {
@@ -22,13 +23,14 @@ const Header = () => {
       <div className="grow pr-8 pl-1 system-xl-semibold text-text-primary">
         {t(($) => $['testRun.title'], { ns: 'datasetPipeline' })}
       </div>
-      <button
-        type="button"
-        className="flex size-8 shrink-0 items-center justify-center p-1.5"
+      <IconButton
+        size="lg"
+        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+        className="shrink-0"
         onClick={handleClose}
       >
-        <RiCloseLine className="size-4 text-text-tertiary" />
-      </button>
+        <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
+      </IconButton>
     </div>
   )
 }

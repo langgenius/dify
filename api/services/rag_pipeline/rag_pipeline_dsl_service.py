@@ -21,6 +21,12 @@ from core.file import remote_fetcher
 from core.helper.name_generator import generate_incremental_name
 from core.plugin.entities.plugin import PluginDependency
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.workflow.llm_environment_variable import (
+    LLMEnvironmentVariable,
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
+)
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
@@ -28,7 +34,7 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
@@ -38,7 +44,7 @@ from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
-from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus, PendingImportOwner
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,
@@ -64,7 +70,7 @@ class RagPipelineImportInfo(BaseModel):
     dataset_id: str | None = None
 
 
-class RagPipelinePendingData(BaseModel):
+class RagPipelinePendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
     pipeline_id: str | None
@@ -215,7 +221,12 @@ class RagPipelineDslService:
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
                 pending_data = RagPipelinePendingData(
+                    tenant_id=tenant_id,
+                    account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
                     pipeline_id=pipeline_id,
@@ -378,6 +389,15 @@ class RagPipelineDslService:
                     error="Invalid import information",
                 )
             pending_data = RagPipelinePendingData.model_validate_json(pending_data)
+            if not pending_data.is_accessible_by(
+                tenant_id=account.current_tenant_id,
+                account_id=account.id,
+            ):
+                return RagPipelineImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="Import information expired or does not exist",
+                )
             data = yaml.safe_load(pending_data.yaml_content)
 
             pipeline = None
@@ -542,6 +562,11 @@ class RagPipelineDslService:
         rag_pipeline_variables_list = workflow_data.get("rag_pipeline_variables", [])
 
         graph = workflow_data.get("graph", {})
+        if not isinstance(graph, dict):
+            raise ValueError("Workflow graph must be a mapping")
+        # The source canvas position should not determine the imported pipeline's initial view.
+        graph = graph.copy()
+        graph.pop("viewport", None)
         for node in graph.get("nodes", []):
             if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node["data"].get("dataset_ids", [])
@@ -707,6 +732,34 @@ class RagPipelineDslService:
         :return: dependencies list format like ["langgenius/google"]
         """
         graph = workflow.graph_dict
+        referenced_llm_nodes = [
+            node.get("data", {})
+            for node in graph.get("nodes", [])
+            if node.get("data", {}).get("type") == BuiltinNodeTypes.LLM
+            and should_resolve_llm_model_selector(node.get("data", {}).get("model_selector"))
+        ]
+        environment_variables = (
+            {variable.name: variable for variable in workflow.environment_variables} if referenced_llm_nodes else {}
+        )
+        for node_data in referenced_llm_nodes:
+            try:
+                selector = parse_llm_model_selector(node_data["model_selector"])
+                variable = environment_variables.get(selector[1])
+                if not isinstance(variable, LLMEnvironmentVariable):
+                    raise ValueError(
+                        f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                    )
+                node_data["model"] = resolve_llm_model_config(
+                    node_model=ModelConfig.model_validate(node_data.get("model", {})),
+                    variable_name=selector[1],
+                    variable_value=variable.value,
+                ).model_dump(mode="json")
+            except ValueError as exc:
+                logger.warning(
+                    "Skipping unresolved LLM environment model while extracting dependencies for selector %r: %s",
+                    node_data.get("model_selector"),
+                    exc,
+                )
         dependencies = self._extract_dependencies_from_workflow_graph(graph)
         return dependencies
 
@@ -719,12 +772,16 @@ class RagPipelineDslService:
         dependencies = []
         for node in graph.get("nodes", []):
             try:
-                typ = node.get("data", {}).get("type")
+                node_data = node.get("data", {})
+                typ = node_data.get("type")
+                if typ != BuiltinNodeTypes.DATASOURCE:
+                    dependencies.extend(DependenciesAnalysisService.extract_external_node_dependencies(node_data))
                 match typ:
                     case BuiltinNodeTypes.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
-                            DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
+                            node_data.get("plugin_id")
+                            or DependenciesAnalysisService.analyze_tool_provider_reference(tool_entity.provider_id),
                         )
                     case BuiltinNodeTypes.DATASOURCE:
                         datasource_entity = DatasourceNodeData.model_validate(node["data"])

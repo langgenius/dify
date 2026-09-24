@@ -1,5 +1,6 @@
 import type { Memory, ValueSelector, Var } from '../../types'
-import type { QuestionClassifierNodeType, Topic } from './types'
+import type { QuestionClassifierNodeType } from './types'
+import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import { produce } from 'immer'
 import { startTransition, useCallback, useEffect, useRef } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
@@ -10,8 +11,8 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks'
 import useConfigVision from '../../hooks/use-config-vision'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { BlockEnum, VarType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
@@ -181,11 +182,15 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   )
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string].includes(varPayload.type)
+    const scalarVariableTypes: readonly VarType[] = [VarType.number, VarType.string]
+
+    return scalarVariableTypes.includes(varPayload.type)
   }, [])
 
   const filterVisionInputVar = useCallback((varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }, [])
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {

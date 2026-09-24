@@ -5,7 +5,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import Panel from '../panel'
 import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
-const mockUseModelList = vi.hoisted(() => vi.fn())
+const mockModelListQuery = vi.hoisted(() => vi.fn())
 const mockUseQuery = vi.hoisted(() => vi.fn())
 const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
 const mockChunkStructure = vi.hoisted(() => vi.fn(() => <div data-testid="chunk-structure" />))
@@ -15,35 +15,45 @@ const mockSummaryIndexSetting = vi.hoisted(() =>
 )
 const mockQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: mockUseQuery,
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        modelProviders: {
-          byProvider: {
-            models: {
-              get: {
-                queryOptions: mockQueryOptions,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    consoleQuery: {
+      systemFeatures: {
+        get: {
+          queryKey: () => ['console', 'systemFeatures', 'get'],
+          queryOptions: (options?: Record<string, unknown>) => ({
+            queryKey: ['console', 'systemFeatures', 'get'],
+            ...options,
+          }),
+        },
+      },
+      workspaces: {
+        current: {
+          models: actual.consoleQuery.workspaces.current.models,
+          modelProviders: {
+            byProvider: {
+              models: {
+                get: {
+                  queryOptions: mockQueryOptions,
+                },
               },
             },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: mockUseModelList,
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-}))
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  }
+})
 
 vi.mock('../hooks/use-config', () => ({
   useConfig: () => ({
@@ -71,14 +81,6 @@ vi.mock('../hooks/use-embedding-model-status', () => ({
 vi.mock('@/app/components/datasets/settings/utils', () => ({
   checkShowMultiModalTip: () => false,
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CE_EDITION: true,
-  }
-})
 
 vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
   Group: ({ children }: { children: ReactNode }) => <div data-testid="group">{children}</div>,
@@ -159,19 +161,23 @@ describe('KnowledgeBasePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseQuery.mockReturnValue({ data: undefined })
-    mockUseModelList.mockImplementation((modelType: ModelTypeEnum) => {
-      if (modelType === ModelTypeEnum.textEmbedding) {
-        return {
-          data: [
-            {
-              provider: 'openai',
-              models: [{ model: 'text-embedding-3-large' }],
-            },
-          ],
+    mockModelListQuery.mockImplementation(
+      ({ input }: { input: { params: { model_type: string } } }) => {
+        const type = input.params.model_type
+        const modelType = type
+        if (modelType === ModelTypeEnum.textEmbedding) {
+          return {
+            data: [
+              {
+                provider: 'openai',
+                models: [{ model: 'text-embedding-3-large' }],
+              },
+            ],
+          }
         }
-      }
-      return { data: [] }
-    })
+        return { data: [] }
+      },
+    )
     mockUseEmbeddingModelStatus.mockReturnValue({ status: 'active' })
   })
 
@@ -242,4 +248,18 @@ describe('KnowledgeBasePanel', () => {
       }),
     )
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: ({ select }: { select: (value: unknown) => unknown }) => ({
+      data: select({ deployment_edition: 'COMMUNITY' }),
+    }),
+    useQuery: (options: { queryKey?: readonly [readonly string[], unknown] }) =>
+      options.queryKey?.[0].includes('modelTypes')
+        ? mockModelListQuery(options)
+        : mockUseQuery(options),
+  }
 })

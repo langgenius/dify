@@ -61,7 +61,7 @@ const ChunkPreview = ({
   handlePreviewWebsitePageChange,
   handlePreviewOnlineDriveFileChange,
 }: ChunkPreviewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const currentDocForm = useDatasetDetailContextWithSelector((s) => s.dataset?.doc_form)
 
   const [previewFile, setPreviewFile] = useState<DocumentItem>(localFiles[0] as DocumentItem)
@@ -240,7 +240,7 @@ const ChunkPreview = ({
               </SkeletonRow>
               <SkeletonRectangle className="w-full" />
               <SkeletonRectangle className="w-full" />
-              <SkeletonRectangle className="w-[422px]" />
+              <SkeletonRectangle className="w-105.5" />
             </SkeletonContainer>
           ))}
         </div>

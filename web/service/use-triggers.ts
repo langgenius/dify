@@ -17,8 +17,8 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'triggers'
@@ -72,6 +72,7 @@ const normalizeI18nObject = (value: GeneratedI18nObject | null | undefined, fall
     'de-DE': en,
     'ja-JP': ja,
     'ko-KR': en,
+    'lo-LA': en,
     'ru-RU': en,
     'it-IT': en,
     'th-TH': en,
@@ -86,9 +87,11 @@ const normalizeI18nObject = (value: GeneratedI18nObject | null | undefined, fall
     'id-ID': en,
     'nl-NL': en,
     'ar-TN': en,
+    'az-AZ': en,
     en_US: en,
     zh_Hans: zhHans,
     ja_JP: ja,
+    pt_BR: ptBr,
   }
 }
 
@@ -108,6 +111,7 @@ const normalizeUnknownI18nObject = (value: unknown, fallback = '') => {
     'de-DE': en,
     'ja-JP': ja,
     'ko-KR': en,
+    'lo-LA': en,
     'ru-RU': en,
     'it-IT': en,
     'th-TH': en,
@@ -122,9 +126,11 @@ const normalizeUnknownI18nObject = (value: unknown, fallback = '') => {
     'id-ID': en,
     'nl-NL': en,
     'ar-TN': en,
+    'az-AZ': en,
     en_US: en,
     zh_Hans: zhHans,
     ja_JP: ja,
+    pt_BR: ptBr,
   }
 }
 
@@ -346,16 +352,16 @@ export const normalizeTriggerProvider = (
 
 const normalizeCredentialType = (
   credentialType: GeneratedTriggerSubscription['credential_type'],
-): TriggerCredentialTypeEnum => {
+): TriggerCredentialType => {
   switch (credentialType) {
-    case TriggerCredentialTypeEnum.ApiKey:
-      return TriggerCredentialTypeEnum.ApiKey
-    case TriggerCredentialTypeEnum.Oauth2:
-      return TriggerCredentialTypeEnum.Oauth2
-    case TriggerCredentialTypeEnum.Unauthorized:
-      return TriggerCredentialTypeEnum.Unauthorized
+    case TriggerCredentialType.ApiKey:
+      return TriggerCredentialType.ApiKey
+    case TriggerCredentialType.Oauth2:
+      return TriggerCredentialType.Oauth2
+    case TriggerCredentialType.Unauthorized:
+      return TriggerCredentialType.Unauthorized
   }
-  return TriggerCredentialTypeEnum.Unauthorized
+  return TriggerCredentialType.Unauthorized
 }
 
 const normalizeTriggerSubscription = (
@@ -655,7 +661,7 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
       return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post(
         {
           params: { provider, subscription_builder_id: subscriptionBuilderId },
-          body: { credentials: credentials ?? {} },
+          body: credentials === undefined ? {} : { credentials },
         },
         {
           context: { silent: true },

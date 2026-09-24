@@ -16,12 +16,16 @@ import { useCustomModels } from './hooks'
 type ManageCustomModelCredentialsProps = {
   provider: ModelProvider
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 const ManageCustomModelCredentials = ({
   provider,
   currentCustomConfigurationModelFixedFields,
+  isOpen,
+  onOpenChange,
 }: ManageCustomModelCredentialsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const customModels = useCustomModels(provider)
   const noModels = !customModels.length
 
@@ -59,6 +63,8 @@ const ManageCustomModelCredentials = ({
           : undefined,
       }))}
       renderTrigger={renderTrigger}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
       authParams={{
         isModelCredential: true,
         mode: ModelModalModeEnum.configModelCredential,

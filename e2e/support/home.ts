@@ -6,10 +6,11 @@ const getExpectOptions = (timeout?: number) => (timeout === undefined ? undefine
 export const waitForConsoleHome = async (page: Page, timeout?: number) => {
   const options = getExpectOptions(timeout)
 
-  await expect.poll(() => new URL(page.url()).pathname, options).toBe('/')
+  await expect(page).toHaveURL(/\/(?:\?.*)?$/, options)
   await expect(page.getByRole('link', { name: 'Home' })).toHaveAttribute(
     'aria-current',
     'page',
     options,
   )
+  await expect(page.getByRole('heading', { name: 'Templates', exact: true })).toBeVisible(options)
 }

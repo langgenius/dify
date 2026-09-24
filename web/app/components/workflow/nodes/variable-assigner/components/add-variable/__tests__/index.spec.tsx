@@ -52,8 +52,14 @@ describe('variable-assigner/add-variable', () => {
       />,
     )
 
-    const trigger = container.querySelector('div[class*="group/addvariable"]')
-    fireEvent.click(trigger as HTMLElement)
+    const triggerButton = container.querySelector('button')!
+    const triggerVisual = triggerButton.firstElementChild!
+    expect(triggerButton).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(triggerButton)
+
+    expect(triggerButton).toHaveAttribute('data-popup-open', '')
+    expect(triggerVisual).toHaveClass('bg-primary-600!')
 
     expect(
       screen.getByText('workflow.nodes.variableAssigner.setAssignVariable'),

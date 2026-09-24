@@ -6,12 +6,15 @@ import type {
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { CrawlStep } from '@/models/datasets'
@@ -46,13 +49,13 @@ const WebsiteCrawl = ({
   supportBatchUpload = true,
   onCredentialChange,
 }: WebsiteCrawlProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const docLink = useDocLink()
   const [totalNum, setTotalNum] = useState(0)
   const [crawledNum, setCrawledNum] = useState(0)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { crawlResult, step, checkedCrawlResult, previewIndex, currentCredentialId } =
     useDataSourceStoreWithSelector(
       useShallow((state) => ({
@@ -158,10 +161,8 @@ const WebsiteCrawl = ({
   )
 
   const handleSetting = useCallback(() => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
 
   const handleCredentialChange = useCallback(
     (credentialId: string) => {

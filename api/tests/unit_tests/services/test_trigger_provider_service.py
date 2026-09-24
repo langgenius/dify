@@ -1,83 +1,120 @@
+"""SQLite-backed tests for trigger provider subscription lifecycle.
+
+The service intentionally owns short-lived sessions for subscription and OAuth
+client operations.  Tests bind those session constructors to an isolated SQLite
+engine and assert persisted tenant scope, commits, rollbacks, and constraints;
+provider daemons, encryption, Redis locks, and caches remain external mocks.
+"""
+
 from __future__ import annotations
 
 import contextlib
 import json
-import logging
+from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
-from pytest_mock import MockerFixture
+from sqlalchemy import func, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants import HIDDEN_VALUE
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
+from models.base import TypeBase
 from models.provider_ids import TriggerProviderID
+from models.trigger import (
+    TriggerOAuthSystemClient,
+    TriggerOAuthTenantClient,
+    TriggerSubscription,
+    WorkflowPluginTrigger,
+)
+from services.trigger import trigger_provider_service as service_module
 from services.trigger.trigger_provider_service import TriggerProviderService
 
 
-def _patch_redis_lock(mocker: MockerFixture) -> None:
-    mock_redis = mocker.patch("services.trigger.trigger_provider_service.redis_client")
-    mock_redis.lock.return_value = contextlib.nullcontext()
+@dataclass(frozen=True)
+class _DatabaseBinding:
+    engine: Engine
 
 
-def _mock_get_trigger_provider(mocker: MockerFixture, provider: object | None) -> None:
-    mocker.patch(
-        "services.trigger.trigger_provider_service.TriggerManager.get_trigger_provider",
-        return_value=provider,
+@dataclass(frozen=True)
+class TriggerDatabase:
+    """Factory and identifiers for persisted subscription lifecycle state."""
+
+    session_maker: sessionmaker[Session]
+    tenant_id: str
+    other_tenant_id: str
+    user_id: str
+    provider_id: TriggerProviderID
+
+    def add_subscription(
+        self,
+        *,
+        tenant_id: str | None = None,
+        subscription_id: str | None = None,
+        name: str = "main",
+        endpoint_id: str | None = None,
+        credential_type: CredentialType = CredentialType.API_KEY,
+        credentials: dict[str, str] | None = None,
+        properties: dict[str, object] | None = None,
+        parameters: dict[str, object] | None = None,
+        credential_expires_at: int = -1,
+        expires_at: int = -1,
+    ) -> TriggerSubscription:
+        subscription = TriggerSubscription(
+            tenant_id=tenant_id or self.tenant_id,
+            user_id=self.user_id,
+            name=name,
+            endpoint_id=endpoint_id or f"endpoint-{uuid4()}",
+            provider_id=str(self.provider_id),
+            parameters=parameters or {"event": "push"},
+            properties=properties or {"project": "encrypted"},
+            credentials=credentials or {"token": "encrypted"},
+            credential_type=credential_type,
+            credential_expires_at=credential_expires_at,
+            expires_at=expires_at,
+        )
+        if subscription_id is not None:
+            subscription.id = subscription_id
+        with self.session_maker.begin() as session:
+            session.add(subscription)
+        return subscription
+
+    def get_subscription(self, subscription_id: str) -> TriggerSubscription | None:
+        with self.session_maker() as session:
+            return session.get(TriggerSubscription, subscription_id)
+
+
+@pytest.fixture
+def trigger_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> TriggerDatabase:
+    """Create trigger tables and bind every service-owned session to SQLite."""
+
+    TypeBase.metadata.create_all(
+        sqlite_engine,
+        tables=[
+            TriggerSubscription.__table__,
+            WorkflowPluginTrigger.__table__,
+            TriggerOAuthTenantClient.__table__,
+            TriggerOAuthSystemClient.__table__,
+        ],
+    )
+    monkeypatch.setattr(service_module, "db", _DatabaseBinding(engine=sqlite_engine))
+    return TriggerDatabase(
+        session_maker=sessionmaker(bind=sqlite_engine, expire_on_commit=False),
+        tenant_id=str(uuid4()),
+        other_tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        provider_id=TriggerProviderID("langgenius/github/github"),
     )
 
 
-def _encrypter_mock(
-    *,
-    decrypted: dict[str, Any] | None = None,
-    encrypted: dict[str, Any] | None = None,
-    masked: dict[str, Any] | None = None,
-) -> MagicMock:
-    enc = MagicMock()
-    enc.decrypt.return_value = decrypted or {}
-    enc.encrypt.return_value = encrypted or {}
-    enc.mask_credentials.return_value = masked or {}
-    enc.mask_plugin_credentials.return_value = masked or {}
-    return enc
-
-
 @pytest.fixture
-def provider_id() -> TriggerProviderID:
-    # Arrange
-    return TriggerProviderID("langgenius/github/github")
-
-
-@pytest.fixture(autouse=True)
-def mock_db_engine(mocker: MockerFixture) -> SimpleNamespace:
-    # Arrange
-    mocked_db = SimpleNamespace(engine=object())
-    mocker.patch("services.trigger.trigger_provider_service.db", mocked_db)
-    return mocked_db
-
-
-@pytest.fixture
-def mock_session(mocker: MockerFixture) -> MagicMock:
-    """Mocks the database session context manager used by TriggerProviderService."""
-    # Arrange
-    mock_session_instance = MagicMock()
-    mock_session_cm = MagicMock()
-    mock_session_cm.__enter__.return_value = mock_session_instance
-    mock_session_cm.__exit__.return_value = False
-    mocker.patch("services.trigger.trigger_provider_service.Session", return_value=mock_session_cm)
-    mock_begin_cm = MagicMock()
-    mock_begin_cm.__enter__.return_value = mock_session_instance
-    mock_begin_cm.__exit__.return_value = False
-    mock_sessionmaker_instance = MagicMock()
-    mock_sessionmaker_instance.begin.return_value = mock_begin_cm
-    mocker.patch("services.trigger.trigger_provider_service.sessionmaker", return_value=mock_sessionmaker_instance)
-    return mock_session_instance
-
-
-@pytest.fixture
-def provider_controller() -> MagicMock:
-    # Arrange
-    controller = MagicMock()
+def provider_controller() -> Mock:
+    controller = Mock()
     controller.get_credential_schema_config.return_value = []
     controller.get_properties_schema.return_value = []
     controller.get_oauth_client_schema.return_value = []
@@ -85,1129 +122,534 @@ def provider_controller() -> MagicMock:
     return controller
 
 
-def test_get_trigger_provider_should_return_api_entity_from_manager(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-) -> None:
-    # Arrange
-    provider = MagicMock()
+def _patch_provider(mocker, provider: object) -> None:
+    mocker.patch.object(service_module.TriggerManager, "get_trigger_provider", return_value=provider)
+
+
+def _patch_lock(mocker) -> None:
+    redis = mocker.patch.object(service_module, "redis_client")
+    redis.lock.return_value = contextlib.nullcontext()
+
+
+def _encrypter(
+    *,
+    decrypted: dict[str, object] | None = None,
+    encrypted: dict[str, object] | None = None,
+    masked: dict[str, object] | None = None,
+) -> Mock:
+    result = Mock()
+    result.decrypt.side_effect = lambda value: decrypted if decrypted is not None else dict(value)
+    result.encrypt.side_effect = lambda value: encrypted if encrypted is not None else dict(value)
+    result.mask_credentials.side_effect = lambda value: masked if masked is not None else dict(value)
+    result.mask_plugin_credentials.side_effect = lambda value: masked if masked is not None else dict(value)
+    return result
+
+
+def _patch_identity_encryption(mocker) -> Mock:
+    encrypter = _encrypter()
+    cache = Mock()
+    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, cache))
+    mocker.patch.object(
+        service_module,
+        "create_trigger_provider_encrypter_for_subscription",
+        return_value=(encrypter, cache),
+    )
+    mocker.patch.object(
+        service_module,
+        "create_trigger_provider_encrypter_for_properties",
+        return_value=(encrypter, cache),
+    )
+    return cache
+
+
+def test_provider_manager_entities_are_forwarded(mocker, trigger_db: TriggerDatabase) -> None:
+    provider = Mock()
     provider.to_api_entity.return_value = {"provider": "ok"}
-    _mock_get_trigger_provider(mocker, provider)
-
-    # Act
-    result = TriggerProviderService.get_trigger_provider("tenant-1", provider_id)
-
-    # Assert
-    assert result == {"provider": "ok"}
-
-
-def test_list_trigger_providers_should_return_api_entities_from_manager(mocker: MockerFixture) -> None:
-    # Arrange
-    provider_a = MagicMock()
-    provider_b = MagicMock()
-    provider_a.to_api_entity.return_value = {"id": "a"}
-    provider_b.to_api_entity.return_value = {"id": "b"}
-    mocker.patch(
-        "services.trigger.trigger_provider_service.TriggerManager.list_all_trigger_providers",
-        return_value=[provider_a, provider_b],
+    _patch_provider(mocker, provider)
+    provider_b = Mock()
+    provider_b.to_api_entity.return_value = {"provider": "other"}
+    mocker.patch.object(
+        service_module.TriggerManager, "list_all_trigger_providers", return_value=[provider, provider_b]
     )
 
-    # Act
-    result = TriggerProviderService.list_trigger_providers("tenant-1")
+    assert TriggerProviderService.get_trigger_provider(trigger_db.tenant_id, trigger_db.provider_id) == {
+        "provider": "ok"
+    }
+    assert TriggerProviderService.list_trigger_providers(trigger_db.tenant_id) == [
+        {"provider": "ok"},
+        {"provider": "other"},
+    ]
 
-    # Assert
-    assert result == [{"id": "a"}, {"id": "b"}]
+
+def test_list_subscriptions_empty_state(trigger_db: TriggerDatabase) -> None:
+    assert (
+        TriggerProviderService.list_trigger_provider_subscriptions(trigger_db.tenant_id, trigger_db.provider_id) == []
+    )
 
 
-def test_list_trigger_provider_subscriptions_should_return_empty_list_when_no_subscriptions(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
+def test_list_subscriptions_masks_and_counts_distinct_apps(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    mock_session.scalars.return_value.all.return_value = []
+    target = trigger_db.add_subscription(subscription_id=str(uuid4()))
+    trigger_db.add_subscription(tenant_id=trigger_db.other_tenant_id, name="foreign")
+    with trigger_db.session_maker.begin() as session:
+        session.add_all(
+            [
+                WorkflowPluginTrigger(
+                    app_id=str(uuid4()),
+                    node_id="node-1",
+                    tenant_id=trigger_db.tenant_id,
+                    provider_id=str(trigger_db.provider_id),
+                    event_name="push",
+                    subscription_id=target.id,
+                ),
+                WorkflowPluginTrigger(
+                    app_id=str(uuid4()),
+                    node_id="node-2",
+                    tenant_id=trigger_db.tenant_id,
+                    provider_id=str(trigger_db.provider_id),
+                    event_name="push",
+                    subscription_id=target.id,
+                ),
+                WorkflowPluginTrigger(
+                    app_id=str(uuid4()),
+                    node_id="foreign",
+                    tenant_id=trigger_db.other_tenant_id,
+                    provider_id=str(trigger_db.provider_id),
+                    event_name="push",
+                    subscription_id=target.id,
+                ),
+            ]
+        )
+    _patch_provider(mocker, provider_controller)
+    masked = _encrypter(masked={"secret": "****"})
+    mocker.patch.object(
+        service_module, "create_trigger_provider_encrypter_for_subscription", return_value=(masked, Mock())
+    )
+    mocker.patch.object(
+        service_module, "create_trigger_provider_encrypter_for_properties", return_value=(masked, Mock())
+    )
 
-    # Act
-    result = TriggerProviderService.list_trigger_provider_subscriptions("tenant-1", provider_id)
+    subscriptions = TriggerProviderService.list_trigger_provider_subscriptions(
+        trigger_db.tenant_id, trigger_db.provider_id
+    )
 
-    # Assert
-    assert result == []
+    assert [item.id for item in subscriptions] == [target.id]
+    assert subscriptions[0].credentials == {"secret": "****"}
+    assert subscriptions[0].workflows_in_use == 2
 
 
-def test_list_trigger_provider_subscriptions_should_mask_fields_and_attach_workflow_counts(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
+@pytest.mark.parametrize("credential_type", [CredentialType.API_KEY, CredentialType.UNAUTHORIZED])
+def test_add_subscription_commits_encrypted_state(
+    mocker,
+    trigger_db: TriggerDatabase,
+    provider_controller: Mock,
+    credential_type: CredentialType,
 ) -> None:
-    # Arrange
-    api_sub = SimpleNamespace(
-        id="sub-1",
-        credentials={"token": "enc"},
-        properties={"hook": "enc"},
-        parameters={"event": "push"},
-        workflows_in_use=0,
-    )
-    db_sub = SimpleNamespace(to_api_entity=lambda: api_sub)
-    usage_row = SimpleNamespace(subscription_id="sub-1", app_count=2)
+    _patch_lock(mocker)
+    _patch_provider(mocker, provider_controller)
+    encrypter = _encrypter(encrypted={"stored": "encrypted"})
+    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, Mock()))
+    subscription_id = str(uuid4())
 
-    mock_session.scalars.return_value.all.return_value = [db_sub]
-    mock_session.execute.return_value.all.return_value = [usage_row]
-
-    _mock_get_trigger_provider(mocker, provider_controller)
-    cred_enc = _encrypter_mock(decrypted={"token": "plain"}, masked={"token": "****"})
-    prop_enc = _encrypter_mock(decrypted={"hook": "plain"}, masked={"hook": "****"})
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_subscription",
-        return_value=(cred_enc, MagicMock()),
-    )
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_properties",
-        return_value=(prop_enc, MagicMock()),
-    )
-
-    # Act
-    result = TriggerProviderService.list_trigger_provider_subscriptions("tenant-1", provider_id)
-
-    # Assert
-    assert len(result) == 1
-    assert result[0].credentials == {"token": "****"}
-    assert result[0].properties == {"hook": "****"}
-    assert result[0].workflows_in_use == 2
-
-
-def test_add_trigger_subscription_should_create_subscription_successfully_for_api_key(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    _patch_redis_lock(mocker)
-    mock_session.scalar.side_effect = [0, None]  # count=0, no existing name
-
-    _mock_get_trigger_provider(mocker, provider_controller)
-    cred_enc = _encrypter_mock(encrypted={"api_key": "enc"})
-    prop_enc = _encrypter_mock(encrypted={"project": "enc"})
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_provider_encrypter",
-        side_effect=[(cred_enc, MagicMock()), (prop_enc, MagicMock())],
-    )
-
-    # Act
     result = TriggerProviderService.add_trigger_subscription(
-        tenant_id="tenant-1",
-        user_id="user-1",
+        tenant_id=trigger_db.tenant_id,
+        user_id=trigger_db.user_id,
         name="main",
-        provider_id=provider_id,
-        endpoint_id="endpoint-1",
-        credential_type=CredentialType.API_KEY,
+        provider_id=trigger_db.provider_id,
+        endpoint_id="endpoint-main",
+        credential_type=credential_type,
         parameters={"event": "push"},
-        properties={"project": "demo"},
-        credentials={"api_key": "plain"},
+        properties={"project": "plain"},
+        credentials={"token": "plain"},
+        subscription_id=subscription_id,
     )
 
-    # Assert
-    assert result["result"] == "success"
-    mock_session.add.assert_called_once()
+    persisted = trigger_db.get_subscription(subscription_id)
+    assert result == {"result": "success", "id": subscription_id}
+    assert persisted is not None
+    assert persisted.properties == {"stored": "encrypted"}
+    expected_credentials = {} if credential_type == CredentialType.UNAUTHORIZED else {"stored": "encrypted"}
+    assert persisted.credentials == expected_credentials
 
 
-def test_add_trigger_subscription_should_store_empty_credentials_for_unauthorized_type(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
+def test_add_subscription_limit_rolls_back_without_cross_tenant_count(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    _patch_redis_lock(mocker)
-    mock_session.scalar.side_effect = [0, None]  # count=0, no existing name
+    for index in range(TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__):
+        trigger_db.add_subscription(name=f"target-{index}")
+    for index in range(3):
+        trigger_db.add_subscription(tenant_id=trigger_db.other_tenant_id, name=f"foreign-{index}")
+    _patch_lock(mocker)
+    _patch_provider(mocker, provider_controller)
 
-    _mock_get_trigger_provider(mocker, provider_controller)
-    prop_enc = _encrypter_mock(encrypted={"p": "enc"})
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_provider_encrypter",
-        return_value=(prop_enc, MagicMock()),
-    )
-
-    # Act
-    result = TriggerProviderService.add_trigger_subscription(
-        tenant_id="tenant-1",
-        user_id="user-1",
-        name="main",
-        provider_id=provider_id,
-        endpoint_id="endpoint-1",
-        credential_type=CredentialType.UNAUTHORIZED,
-        parameters={},
-        properties={"p": "v"},
-        credentials={},
-        subscription_id="sub-fixed",
-    )
-
-    # Assert
-    assert result == {"result": "success", "id": "sub-fixed"}
-
-
-def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    # Arrange
-    _patch_redis_lock(mocker)
-    mock_session.scalar.return_value = TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__
-    _mock_get_trigger_provider(mocker, provider_controller)
-
-    # Act + Assert
-    with caplog.at_level(logging.ERROR, logger="services.trigger.trigger_provider_service"):
-        with pytest.raises(ValueError, match="Maximum number of providers"):
-            TriggerProviderService.add_trigger_subscription(
-                tenant_id="tenant-1",
-                user_id="user-1",
-                name="main",
-                provider_id=provider_id,
-                endpoint_id="endpoint-1",
-                credential_type=CredentialType.API_KEY,
-                parameters={},
-                properties={},
-                credentials={},
-            )
-        assert any(r.levelno >= logging.ERROR for r in caplog.records)
-
-
-def test_add_trigger_subscription_should_raise_error_when_name_exists(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    _patch_redis_lock(mocker)
-    mock_session.scalar.side_effect = [0, object()]  # count=0, existing name conflict
-    _mock_get_trigger_provider(mocker, provider_controller)
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Credential name 'main' already exists"):
+    with pytest.raises(ValueError, match="Maximum number of providers"):
         TriggerProviderService.add_trigger_subscription(
-            tenant_id="tenant-1",
-            user_id="user-1",
-            name="main",
-            provider_id=provider_id,
-            endpoint_id="endpoint-1",
-            credential_type=CredentialType.API_KEY,
+            tenant_id=trigger_db.tenant_id,
+            user_id=trigger_db.user_id,
+            name="overflow",
+            provider_id=trigger_db.provider_id,
+            endpoint_id="overflow",
+            credential_type=CredentialType.UNAUTHORIZED,
             parameters={},
             properties={},
             credentials={},
         )
 
+    with trigger_db.session_maker() as session:
+        count = session.scalar(
+            select(func.count())
+            .select_from(TriggerSubscription)
+            .where(TriggerSubscription.tenant_id == trigger_db.tenant_id)
+        )
+    assert count == TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__
 
-def test_update_trigger_subscription_should_raise_error_when_subscription_not_found(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
+
+def test_add_duplicate_name_rolls_back_and_database_constraint_matches_precheck(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    _patch_redis_lock(mocker)
-    mock_session.scalar.return_value = None
+    original = trigger_db.add_subscription(name="main")
+    _patch_lock(mocker)
+    _patch_provider(mocker, provider_controller)
 
-    # Act + Assert
-    with pytest.raises(ValueError, match="not found"):
-        TriggerProviderService.update_trigger_subscription("tenant-1", "sub-1")
-
-
-def test_update_trigger_subscription_should_raise_error_when_name_conflicts(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    _patch_redis_lock(mocker)
-    subscription = SimpleNamespace(
-        id="sub-1",
-        name="old",
-        provider_id="langgenius/github/github",
-        credential_type=CredentialType.API_KEY,
-    )
-    mock_session.scalar.side_effect = [subscription, object()]  # found sub, name conflict
-    _mock_get_trigger_provider(mocker, provider_controller)
-
-    # Act + Assert
     with pytest.raises(ValueError, match="already exists"):
-        TriggerProviderService.update_trigger_subscription("tenant-1", "sub-1", name="new-name")
+        TriggerProviderService.add_trigger_subscription(
+            tenant_id=trigger_db.tenant_id,
+            user_id=trigger_db.user_id,
+            name="main",
+            provider_id=trigger_db.provider_id,
+            endpoint_id="second-endpoint",
+            credential_type=CredentialType.UNAUTHORIZED,
+            parameters={},
+            properties={},
+            credentials={},
+        )
+
+    duplicate = TriggerSubscription(
+        tenant_id=trigger_db.tenant_id,
+        user_id=trigger_db.user_id,
+        name="main",
+        endpoint_id="constraint-endpoint",
+        provider_id=str(trigger_db.provider_id),
+        parameters={},
+        properties={},
+        credentials={},
+        credential_type=CredentialType.UNAUTHORIZED,
+    )
+    with pytest.raises(IntegrityError):
+        with trigger_db.session_maker.begin() as session:
+            session.add(duplicate)
+    assert trigger_db.get_subscription(original.id) is not None
 
 
-def test_update_trigger_subscription_should_update_fields_and_clear_cache(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_controller: MagicMock,
+def test_update_subscription_persists_fields_and_preserves_hidden_property(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    _patch_redis_lock(mocker)
-    subscription = SimpleNamespace(
-        id="sub-1",
-        name="old",
-        tenant_id="tenant-1",
-        provider_id="langgenius/github/github",
-        properties={"project": "enc-old"},
-        parameters={"event": "old"},
-        credentials={"api_key": "enc-old"},
-        credential_type=CredentialType.API_KEY,
-        credential_expires_at=0,
-        expires_at=0,
+    subscription = trigger_db.add_subscription(properties={"project": "old-encrypted"})
+    _patch_lock(mocker)
+    _patch_provider(mocker, provider_controller)
+    properties = _encrypter(decrypted={"project": "old-value"})
+    credentials = _encrypter(encrypted={"token": "new-encrypted"})
+    mocker.patch.object(
+        service_module,
+        "create_provider_encrypter",
+        side_effect=[(properties, Mock()), (credentials, Mock())],
     )
-    mock_session.scalar.side_effect = [subscription, None]  # found sub, no name conflict
+    clear_cache = mocker.patch.object(service_module, "delete_cache_for_subscription")
 
-    _mock_get_trigger_provider(mocker, provider_controller)
-    prop_enc = _encrypter_mock(decrypted={"project": "old-value"}, encrypted={"project": "new-value"})
-    cred_enc = _encrypter_mock(encrypted={"api_key": "new-key"})
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_provider_encrypter",
-        side_effect=[(prop_enc, MagicMock()), (cred_enc, MagicMock())],
-    )
-    mock_delete_cache = mocker.patch("services.trigger.trigger_provider_service.delete_cache_for_subscription")
-
-    # Act
     TriggerProviderService.update_trigger_subscription(
-        tenant_id="tenant-1",
-        subscription_id="sub-1",
-        name="new",
+        trigger_db.tenant_id,
+        subscription.id,
+        name="renamed",
         properties={"project": HIDDEN_VALUE, "region": "us"},
-        parameters={"event": "new"},
-        credentials={"api_key": "plain-key"},
+        parameters={"event": "issues"},
+        credentials={"token": "plain"},
         credential_expires_at=100,
         expires_at=200,
     )
 
-    # Assert
-    assert subscription.name == "new"
-    assert subscription.parameters == {"event": "new"}
-    assert subscription.credentials == {"api_key": "new-key"}
-    assert subscription.credential_expires_at == 100
-    assert subscription.expires_at == 200
-
-    mock_delete_cache.assert_called_once()
-
-
-def test_get_subscription_by_id_should_return_none_when_missing(mocker: MockerFixture, mock_session: MagicMock) -> None:
-    # Arrange
-    mock_session.scalar.return_value = None
-
-    # Act
-    result = TriggerProviderService.get_subscription_by_id("tenant-1", "sub-1")
-
-    # Assert
-    assert result is None
+    persisted = trigger_db.get_subscription(subscription.id)
+    assert persisted is not None
+    assert persisted.name == "renamed"
+    assert persisted.properties == {"project": "old-value", "region": "us"}
+    assert persisted.credentials == {"token": "new-encrypted"}
+    assert persisted.expires_at == 200
+    clear_cache.assert_called_once()
 
 
-def test_get_subscription_by_id_should_decrypt_credentials_and_properties(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_controller: MagicMock,
+def test_update_missing_and_conflicting_names_leave_rows_unchanged(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    subscription = SimpleNamespace(
-        id="sub-1",
-        tenant_id="tenant-1",
-        provider_id="langgenius/github/github",
-        credentials={"token": "enc"},
-        properties={"project": "enc"},
-    )
-    mock_session.scalar.return_value = subscription
-    _mock_get_trigger_provider(mocker, provider_controller)
-    cred_enc = _encrypter_mock(decrypted={"token": "plain"})
-    prop_enc = _encrypter_mock(decrypted={"project": "plain"})
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_subscription",
-        return_value=(cred_enc, MagicMock()),
-    )
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_properties",
-        return_value=(prop_enc, MagicMock()),
-    )
+    first = trigger_db.add_subscription(name="first")
+    trigger_db.add_subscription(name="second")
+    _patch_lock(mocker)
+    _patch_provider(mocker, provider_controller)
 
-    # Act
-    result = TriggerProviderService.get_subscription_by_id("tenant-1", "sub-1")
-
-    # Assert
-    assert result is subscription
-    assert subscription.credentials == {"token": "plain"}
-    assert subscription.properties == {"project": "plain"}
-
-
-def test_delete_trigger_provider_should_raise_error_when_subscription_missing(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-) -> None:
-    # Arrange
-    mock_session.scalar.return_value = None
-
-    # Act + Assert
     with pytest.raises(ValueError, match="not found"):
-        TriggerProviderService.delete_trigger_provider("tenant-1", "sub-1", session=mock_session)
+        TriggerProviderService.update_trigger_subscription(trigger_db.tenant_id, str(uuid4()))
+    with pytest.raises(ValueError, match="already exists"):
+        TriggerProviderService.update_trigger_subscription(trigger_db.tenant_id, first.id, name="second")
+    assert trigger_db.get_subscription(first.id).name == "first"  # type: ignore[union-attr]
 
 
-def test_delete_trigger_provider_should_delete_and_clear_cache_even_if_unsubscribe_fails(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
+def test_get_subscription_scopes_tenant_and_decrypts(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    subscription = SimpleNamespace(
-        id="sub-1",
-        user_id="user-1",
-        provider_id=str(provider_id),
-        credential_type=CredentialType.OAUTH2,
-        credentials={"token": "enc"},
-        to_entity=lambda: SimpleNamespace(id="sub-1"),
+    subscription = trigger_db.add_subscription()
+    _patch_provider(mocker, provider_controller)
+    credential = _encrypter(decrypted={"token": "plain"})
+    properties = _encrypter(decrypted={"project": "plain"})
+    mocker.patch.object(
+        service_module, "create_trigger_provider_encrypter_for_subscription", return_value=(credential, Mock())
     )
-    mock_session.scalar.return_value = subscription
-    _mock_get_trigger_provider(mocker, provider_controller)
-    cred_enc = _encrypter_mock(decrypted={"token": "plain"})
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_subscription",
-        return_value=(cred_enc, MagicMock()),
+    mocker.patch.object(
+        service_module, "create_trigger_provider_encrypter_for_properties", return_value=(properties, Mock())
     )
-    mocker.patch(
-        "services.trigger.trigger_provider_service.TriggerManager.unsubscribe_trigger",
-        side_effect=RuntimeError("remote fail"),
-    )
-    mock_delete_cache = mocker.patch("services.trigger.trigger_provider_service.delete_cache_for_subscription")
 
-    # Act
-    TriggerProviderService.delete_trigger_provider("tenant-1", "sub-1", session=mock_session)
-
-    # Assert
-    mock_session.delete.assert_called_once_with(subscription)
-    mock_delete_cache.assert_called_once()
+    assert TriggerProviderService.get_subscription_by_id(trigger_db.other_tenant_id, subscription.id) is None
+    result = TriggerProviderService.get_subscription_by_id(trigger_db.tenant_id, subscription.id)
+    assert result is not None
+    assert result.credentials == {"token": "plain"}
+    assert result.properties == {"project": "plain"}
 
 
-def test_delete_trigger_provider_should_skip_unsubscribe_for_unauthorized(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
+@pytest.mark.parametrize("credential_type", [CredentialType.API_KEY, CredentialType.UNAUTHORIZED])
+def test_delete_subscription_uses_real_caller_transaction(
+    mocker,
+    trigger_db: TriggerDatabase,
+    provider_controller: Mock,
+    credential_type: CredentialType,
 ) -> None:
-    # Arrange
-    subscription = SimpleNamespace(
-        id="sub-2",
-        user_id="user-1",
-        provider_id=str(provider_id),
-        credential_type=CredentialType.UNAUTHORIZED,
-        credentials={},
-        to_entity=lambda: SimpleNamespace(id="sub-2"),
-    )
-    mock_session.scalar.return_value = subscription
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mock_unsubscribe = mocker.patch("services.trigger.trigger_provider_service.TriggerManager.unsubscribe_trigger")
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_subscription",
-        return_value=(_encrypter_mock(decrypted={}), MagicMock()),
-    )
+    subscription = trigger_db.add_subscription(credential_type=credential_type)
+    _patch_provider(mocker, provider_controller)
+    _patch_identity_encryption(mocker)
+    unsubscribe = mocker.patch.object(service_module.TriggerManager, "unsubscribe_trigger")
+    mocker.patch.object(service_module, "delete_cache_for_subscription")
 
-    # Act
-    TriggerProviderService.delete_trigger_provider("tenant-1", "sub-2", session=mock_session)
+    with trigger_db.session_maker.begin() as session:
+        TriggerProviderService.delete_trigger_provider(trigger_db.tenant_id, subscription.id, session=session)
 
-    # Assert
-    mock_unsubscribe.assert_not_called()
-    mock_session.delete.assert_called_once_with(subscription)
+    assert trigger_db.get_subscription(subscription.id) is None
+    if credential_type == CredentialType.UNAUTHORIZED:
+        unsubscribe.assert_not_called()
+    else:
+        unsubscribe.assert_called_once()
 
 
-def test_refresh_oauth_token_should_raise_error_when_subscription_missing(
-    mocker: MockerFixture, mock_session: MagicMock
+def test_refresh_oauth_token_persists_credentials_after_commit(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    mock_session.scalar.return_value = None
+    subscription = trigger_db.add_subscription(credential_type=CredentialType.OAUTH2)
+    _patch_provider(mocker, provider_controller)
+    encrypter = _encrypter(decrypted={"refresh": "old"}, encrypted={"access": "new"})
+    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, Mock()))
+    mocker.patch.object(TriggerProviderService, "get_oauth_client", return_value={"client": "system"})
+    handler = Mock()
+    handler.refresh_credentials.return_value = SimpleNamespace(credentials={"access": "plain"}, expires_at=1234)
+    mocker.patch.object(service_module, "OAuthHandler", return_value=handler)
+    clear_cache = mocker.patch.object(service_module, "delete_cache_for_subscription")
 
-    # Act + Assert
+    result = TriggerProviderService.refresh_oauth_token(trigger_db.tenant_id, subscription.id)
+
+    persisted = trigger_db.get_subscription(subscription.id)
+    assert result == {"result": "success", "expires_at": 1234}
+    assert persisted.credentials == {"access": "new"}  # type: ignore[union-attr]
+    assert persisted.credential_expires_at == 1234  # type: ignore[union-attr]
+    clear_cache.assert_called_once()
+
+
+def test_refresh_oauth_rejects_missing_and_non_oauth(trigger_db: TriggerDatabase) -> None:
     with pytest.raises(ValueError, match="not found"):
-        TriggerProviderService.refresh_oauth_token("tenant-1", "sub-1")
+        TriggerProviderService.refresh_oauth_token(trigger_db.tenant_id, str(uuid4()))
+    subscription = trigger_db.add_subscription(credential_type=CredentialType.API_KEY)
+    with pytest.raises(ValueError, match="Only OAuth"):
+        TriggerProviderService.refresh_oauth_token(trigger_db.tenant_id, subscription.id)
 
 
-def test_refresh_oauth_token_should_raise_error_for_non_oauth_credentials(
-    mocker: MockerFixture, mock_session: MagicMock
+def test_refresh_subscription_skips_or_persists_refreshed_properties(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.API_KEY)
-    mock_session.scalar.return_value = subscription
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Only OAuth credentials can be refreshed"):
-        TriggerProviderService.refresh_oauth_token("tenant-1", "sub-1")
-
-
-def test_refresh_oauth_token_should_refresh_and_persist_new_credentials(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    subscription = SimpleNamespace(
-        provider_id=str(provider_id),
-        user_id="user-1",
-        credential_type=CredentialType.OAUTH2,
-        credentials={"access_token": "enc"},
-        credential_expires_at=0,
-    )
-    mock_session.scalar.return_value = subscription
-    _mock_get_trigger_provider(mocker, provider_controller)
-    cache = MagicMock()
-    cred_enc = _encrypter_mock(decrypted={"access_token": "old"}, encrypted={"access_token": "new"})
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_provider_encrypter",
-        return_value=(cred_enc, cache),
-    )
-    mocker.patch.object(TriggerProviderService, "get_oauth_client", return_value={"client_id": "id"})
-    mock_delete_cache = mocker.patch("services.trigger.trigger_provider_service.delete_cache_for_subscription")
-    refreshed = SimpleNamespace(credentials={"access_token": "new"}, expires_at=12345)
-    oauth_handler = MagicMock()
-    oauth_handler.refresh_credentials.return_value = refreshed
-    mocker.patch("services.trigger.trigger_provider_service.OAuthHandler", return_value=oauth_handler)
-
-    # Act
-    result = TriggerProviderService.refresh_oauth_token("tenant-1", "sub-1")
-
-    # Assert
-    assert result == {"result": "success", "expires_at": 12345}
-    assert subscription.credentials == {"access_token": "new"}
-    assert subscription.credential_expires_at == 12345
-
-    cache.delete.assert_not_called()
-    mock_delete_cache.assert_called_once_with(
-        tenant_id="tenant-1",
-        provider_id=str(provider_id),
-        subscription_id="sub-1",
-    )
-
-
-def test_refresh_subscription_should_raise_error_when_subscription_missing(
-    mocker: MockerFixture, mock_session: MagicMock
-) -> None:
-    # Arrange
-    mock_session.scalar.return_value = None
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="not found"):
-        TriggerProviderService.refresh_subscription("tenant-1", "sub-1", now=100)
-
-
-def test_refresh_subscription_should_skip_when_not_due(mocker: MockerFixture, mock_session: MagicMock) -> None:
-    # Arrange
-    subscription = SimpleNamespace(expires_at=200)
-    mock_session.scalar.return_value = subscription
-
-    # Act
-    result = TriggerProviderService.refresh_subscription("tenant-1", "sub-1", now=100)
-
-    # Assert
-    assert result == {"result": "skipped", "expires_at": 200}
-
-
-def test_refresh_subscription_should_refresh_and_persist_properties(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    subscription = SimpleNamespace(
-        id="sub-1",
-        tenant_id="tenant-1",
-        endpoint_id="endpoint-1",
-        expires_at=50,
-        provider_id=str(provider_id),
+    skipped = trigger_db.add_subscription(name="future", expires_at=500)
+    assert TriggerProviderService.refresh_subscription(trigger_db.tenant_id, skipped.id, now=100) == {
+        "result": "skipped",
+        "expires_at": 500,
+    }
+    due = trigger_db.add_subscription(name="due", expires_at=50)
+    _patch_provider(mocker, provider_controller)
+    _patch_identity_encryption(mocker)
+    provider_controller.refresh_trigger.return_value = TriggerSubscriptionEntity(
+        expires_at=900,
+        endpoint="https://example.test/hook",
         parameters={"event": "push"},
-        properties={"p": "enc"},
-        credentials={"c": "enc"},
-        credential_type=CredentialType.API_KEY,
-    )
-    mock_session.scalar.return_value = subscription
-    _mock_get_trigger_provider(mocker, provider_controller)
-    cred_enc = _encrypter_mock(decrypted={"c": "plain"})
-    prop_cache = MagicMock()
-    prop_enc = _encrypter_mock(decrypted={"p": "plain"}, encrypted={"p": "new-enc"})
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_subscription",
-        return_value=(cred_enc, MagicMock()),
-    )
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_properties",
-        return_value=(prop_enc, prop_cache),
-    )
-    mocker.patch(
-        "services.trigger.trigger_provider_service.generate_plugin_trigger_endpoint_url",
-        return_value="https://endpoint",
-    )
-    provider_controller.refresh_trigger.return_value = SimpleNamespace(properties={"p": "new"}, expires_at=999)
-
-    # Act
-    result = TriggerProviderService.refresh_subscription("tenant-1", "sub-1", now=100)
-
-    # Assert
-    assert result == {"result": "success", "expires_at": 999}
-    assert subscription.properties == {"p": "new-enc"}
-    assert subscription.expires_at == 999
-
-    prop_cache.delete.assert_called_once()
-
-
-def test_get_oauth_client_should_return_tenant_client_when_available(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    tenant_client = SimpleNamespace(oauth_params={"client_id": "enc"})
-    mock_session.scalar.return_value = tenant_client
-    _mock_get_trigger_provider(mocker, provider_controller)
-    enc = _encrypter_mock(decrypted={"client_id": "plain"})
-    mocker.patch("services.trigger.trigger_provider_service.create_provider_encrypter", return_value=(enc, MagicMock()))
-
-    # Act
-    result = TriggerProviderService.get_oauth_client("tenant-1", provider_id)
-
-    # Assert
-    assert result == {"client_id": "plain"}
-
-
-def test_get_oauth_client_should_return_none_when_plugin_not_verified(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    mock_session.scalar.return_value = None  # no tenant client; plugin not verified → early return
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=False)
-
-    # Act
-    result = TriggerProviderService.get_oauth_client("tenant-1", provider_id)
-
-    # Assert
-    assert result is None
-
-
-def test_get_oauth_client_should_return_decrypted_system_client_when_verified(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    mock_session.scalar.side_effect = [None, SimpleNamespace(encrypted_oauth_params="enc")]
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=True)
-    mocker.patch(
-        "services.trigger.trigger_provider_service.decrypt_system_params",
-        return_value={"client_id": "system"},
+        properties={"project": "refreshed"},
     )
 
-    # Act
-    result = TriggerProviderService.get_oauth_client("tenant-1", provider_id)
+    result = TriggerProviderService.refresh_subscription(trigger_db.tenant_id, due.id, now=100)
 
-    # Assert
-    assert result == {"client_id": "system"}
+    persisted = trigger_db.get_subscription(due.id)
+    assert result == {"result": "success", "expires_at": 900}
+    assert persisted.properties == {"project": "refreshed"}  # type: ignore[union-attr]
 
 
-def test_get_oauth_client_should_raise_error_when_system_decryption_fails(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
+def test_oauth_client_prefers_enabled_tenant_record(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    mock_session.scalar.side_effect = [None, SimpleNamespace(encrypted_oauth_params="enc")]
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=True)
-    mocker.patch(
-        "services.trigger.trigger_provider_service.decrypt_system_params",
-        side_effect=RuntimeError("bad data"),
+    with trigger_db.session_maker.begin() as session:
+        session.add(
+            TriggerOAuthTenantClient(
+                tenant_id=trigger_db.tenant_id,
+                plugin_id=trigger_db.provider_id.plugin_id,
+                provider=trigger_db.provider_id.provider_name,
+                enabled=True,
+                encrypted_oauth_params=json.dumps({"client": "encrypted"}),
+            )
+        )
+    _patch_provider(mocker, provider_controller)
+    mocker.patch.object(
+        service_module, "create_provider_encrypter", return_value=(_encrypter(decrypted={"client": "tenant"}), Mock())
     )
 
-    # Act + Assert
-    with pytest.raises(ValueError, match="Error decrypting system oauth params"):
-        TriggerProviderService.get_oauth_client("tenant-1", provider_id)
+    assert TriggerProviderService.get_oauth_client(trigger_db.tenant_id, trigger_db.provider_id) == {"client": "tenant"}
 
 
-def test_is_oauth_system_client_exists_should_return_false_when_unverified(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
+def test_oauth_client_falls_back_to_verified_system_record(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=False)
+    with trigger_db.session_maker.begin() as session:
+        session.add(
+            TriggerOAuthSystemClient(
+                plugin_id=trigger_db.provider_id.plugin_id,
+                provider=trigger_db.provider_id.provider_name,
+                encrypted_oauth_params="system-encrypted",
+            )
+        )
+    _patch_provider(mocker, provider_controller)
+    mocker.patch.object(service_module.PluginService, "is_plugin_verified", return_value=True)
+    mocker.patch.object(service_module, "decrypt_system_params", return_value={"client": "system"})
 
-    # Act
-    result = TriggerProviderService.is_oauth_system_client_exists("tenant-1", provider_id)
-
-    # Assert
-    assert result is False
+    assert TriggerProviderService.get_oauth_client(trigger_db.tenant_id, trigger_db.provider_id) == {"client": "system"}
+    assert TriggerProviderService.is_oauth_system_client_exists(trigger_db.tenant_id, trigger_db.provider_id)
 
 
-@pytest.mark.parametrize("has_client", [True, False])
-def test_is_oauth_system_client_exists_should_reflect_database_record(
-    has_client: bool,
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
+def test_unverified_plugin_cannot_read_system_oauth(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    mock_session.scalar.return_value = object() if has_client else None
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=True)
+    _patch_provider(mocker, provider_controller)
+    mocker.patch.object(service_module.PluginService, "is_plugin_verified", return_value=False)
 
-    # Act
-    result = TriggerProviderService.is_oauth_system_client_exists("tenant-1", provider_id)
-
-    # Assert
-    assert result is has_client
+    assert TriggerProviderService.get_oauth_client(trigger_db.tenant_id, trigger_db.provider_id) is None
+    assert not TriggerProviderService.is_oauth_system_client_exists(trigger_db.tenant_id, trigger_db.provider_id)
 
 
-def test_save_custom_oauth_client_params_should_return_success_when_nothing_to_update(
-    provider_id: TriggerProviderID,
+def test_custom_oauth_client_create_mask_enable_and_delete(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    # Act
-    result = TriggerProviderService.save_custom_oauth_client_params("tenant-1", provider_id, None, None)
+    _patch_provider(mocker, provider_controller)
+    encrypter = _encrypter(
+        encrypted={"client_secret": "encrypted"}, decrypted={"client_secret": "plain"}, masked={"client_secret": "****"}
+    )
+    cache = Mock()
+    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, cache))
 
-    # Assert
-    assert result == {"result": "success"}
-
-
-def test_save_custom_oauth_client_params_should_create_record_and_clear_params_when_client_params_none(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    mock_session.scalar.return_value = None
-    _mock_get_trigger_provider(mocker, provider_controller)
-    fake_model = SimpleNamespace(encrypted_oauth_params="", enabled=False, oauth_params={})
-    # Also mock select() so SQLAlchemy doesn't validate the patched TriggerOAuthTenantClient.
-    mocker.patch("services.trigger.trigger_provider_service.select", MagicMock(return_value=MagicMock()))
-    mocker.patch("services.trigger.trigger_provider_service.TriggerOAuthTenantClient", return_value=fake_model)
-
-    # Act
-    result = TriggerProviderService.save_custom_oauth_client_params(
-        tenant_id="tenant-1",
-        provider_id=provider_id,
-        client_params=None,
+    assert TriggerProviderService.save_custom_oauth_client_params(
+        trigger_db.tenant_id,
+        trigger_db.provider_id,
+        client_params={"client_secret": "plain"},
         enabled=True,
-    )
+    ) == {"result": "success"}
+    assert TriggerProviderService.is_oauth_custom_client_enabled(trigger_db.tenant_id, trigger_db.provider_id)
+    assert TriggerProviderService.get_custom_oauth_client_params(trigger_db.tenant_id, trigger_db.provider_id) == {
+        "client_secret": "****"
+    }
+    assert TriggerProviderService.delete_custom_oauth_client_params(trigger_db.tenant_id, trigger_db.provider_id) == {
+        "result": "success"
+    }
+    assert TriggerProviderService.get_custom_oauth_client_params(trigger_db.tenant_id, trigger_db.provider_id) == {}
 
-    # Assert
-    assert result == {"result": "success"}
-    assert fake_model.encrypted_oauth_params == "{}"
-    assert fake_model.enabled is True
-    mock_session.add.assert_called_once_with(fake_model)
 
-
-def test_save_custom_oauth_client_params_should_merge_hidden_values_and_delete_cache(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
+def test_endpoint_lookup_decrypts_persisted_subscription(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    custom_client = SimpleNamespace(oauth_params={"client_id": "enc-old"}, enabled=False)
-    mock_session.scalar.return_value = custom_client
-    _mock_get_trigger_provider(mocker, provider_controller)
-    cache = MagicMock()
-    enc = _encrypter_mock(decrypted={"client_id": "old-id"}, encrypted={"client_id": "new-id"})
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_provider_encrypter",
-        return_value=(enc, cache),
-    )
+    subscription = trigger_db.add_subscription(endpoint_id="lookup-endpoint")
+    _patch_provider(mocker, provider_controller)
+    _patch_identity_encryption(mocker)
 
-    # Act
-    result = TriggerProviderService.save_custom_oauth_client_params(
-        tenant_id="tenant-1",
-        provider_id=provider_id,
-        client_params={"client_id": HIDDEN_VALUE, "client_secret": "new"},
-        enabled=None,
-    )
-
-    # Assert
-    assert result == {"result": "success"}
-    assert json.loads(custom_client.encrypted_oauth_params) == {"client_id": "new-id"}
-    cache.delete.assert_called_once()
+    assert TriggerProviderService.get_subscription_by_endpoint("missing") is None
+    found = TriggerProviderService.get_subscription_by_endpoint("lookup-endpoint")
+    assert found is not None
+    assert found.id == subscription.id
 
 
-def test_get_custom_oauth_client_params_should_return_empty_when_record_missing(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
+@pytest.mark.parametrize("valid", [True, False])
+def test_verify_api_key_credentials_uses_persisted_subscription(
+    mocker,
+    trigger_db: TriggerDatabase,
+    provider_controller: Mock,
+    valid: bool,
 ) -> None:
-    # Arrange
-    mock_session.scalar.return_value = None
+    subscription = trigger_db.add_subscription(credentials={"token": "old"})
+    _patch_provider(mocker, provider_controller)
+    _patch_identity_encryption(mocker)
+    if not valid:
+        provider_controller.validate_credentials.side_effect = RuntimeError("denied")
 
-    # Act
-    result = TriggerProviderService.get_custom_oauth_client_params("tenant-1", provider_id)
-
-    # Assert
-    assert result == {}
-
-
-def test_get_custom_oauth_client_params_should_return_masked_decrypted_values(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    custom_client = SimpleNamespace(oauth_params={"client_id": "enc"})
-    mock_session.scalar.return_value = custom_client
-    _mock_get_trigger_provider(mocker, provider_controller)
-    enc = _encrypter_mock(decrypted={"client_id": "plain"}, masked={"client_id": "pl***id"})
-    mocker.patch("services.trigger.trigger_provider_service.create_provider_encrypter", return_value=(enc, MagicMock()))
-
-    # Act
-    result = TriggerProviderService.get_custom_oauth_client_params("tenant-1", provider_id)
-
-    # Assert
-    assert result == {"client_id": "pl***id"}
-
-
-def test_delete_custom_oauth_client_params_should_delete_record_and_commit(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-) -> None:
-    # Act
-    result = TriggerProviderService.delete_custom_oauth_client_params("tenant-1", provider_id)
-
-    # Assert
-    assert result == {"result": "success"}
-
-
-@pytest.mark.parametrize("exists", [True, False])
-def test_is_oauth_custom_client_enabled_should_return_expected_boolean(
-    exists: bool,
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-) -> None:
-    # Arrange
-    mock_session.scalar.return_value = object() if exists else None
-
-    # Act
-    result = TriggerProviderService.is_oauth_custom_client_enabled("tenant-1", provider_id)
-
-    # Assert
-    assert result is exists
-
-
-def test_get_subscription_by_endpoint_should_return_none_when_not_found(
-    mocker: MockerFixture, mock_session: MagicMock
-) -> None:
-    # Arrange
-    mock_session.scalar.return_value = None
-
-    # Act
-    result = TriggerProviderService.get_subscription_by_endpoint("endpoint-1")
-
-    # Assert
-    assert result is None
-
-
-def test_get_subscription_by_endpoint_should_decrypt_credentials_and_properties(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    subscription = SimpleNamespace(
-        tenant_id="tenant-1",
-        provider_id="langgenius/github/github",
-        credentials={"token": "enc"},
-        properties={"hook": "enc"},
-    )
-    mock_session.scalar.return_value = subscription
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_subscription",
-        return_value=(_encrypter_mock(decrypted={"token": "plain"}), MagicMock()),
-    )
-    mocker.patch(
-        "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_properties",
-        return_value=(_encrypter_mock(decrypted={"hook": "plain"}), MagicMock()),
-    )
-
-    # Act
-    result = TriggerProviderService.get_subscription_by_endpoint("endpoint-1")
-
-    # Assert
-    assert result is subscription
-    assert subscription.credentials == {"token": "plain"}
-    assert subscription.properties == {"hook": "plain"}
-
-
-def test_verify_subscription_credentials_should_raise_when_provider_not_found(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-) -> None:
-    # Arrange
-    _mock_get_trigger_provider(mocker, None)
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Provider .* not found"):
-        TriggerProviderService.verify_subscription_credentials(
-            tenant_id="tenant-1",
-            user_id="user-1",
-            provider_id=provider_id,
-            subscription_id="sub-1",
-            credentials={},
+    if valid:
+        assert TriggerProviderService.verify_subscription_credentials(
+            trigger_db.tenant_id,
+            trigger_db.user_id,
+            trigger_db.provider_id,
+            subscription.id,
+            {"token": HIDDEN_VALUE},
+        ) == {"verified": True}
+        provider_controller.validate_credentials.assert_called_once_with(
+            trigger_db.user_id, credentials={"token": "old"}
         )
+    else:
+        with pytest.raises(ValueError, match="Invalid credentials"):
+            TriggerProviderService.verify_subscription_credentials(
+                trigger_db.tenant_id,
+                trigger_db.user_id,
+                trigger_db.provider_id,
+                subscription.id,
+                {"token": "new"},
+            )
 
 
-def test_verify_subscription_credentials_should_raise_when_subscription_not_found(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
+def test_rebuild_subscription_preserves_id_endpoint_and_updates_state(
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
-    # Arrange
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=None)
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Subscription sub-1 not found"):
-        TriggerProviderService.verify_subscription_credentials(
-            tenant_id="tenant-1",
-            user_id="user-1",
-            provider_id=provider_id,
-            subscription_id="sub-1",
-            credentials={},
-        )
-
-
-def test_verify_subscription_credentials_should_raise_when_api_key_validation_fails(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.API_KEY, credentials={"api_key": "old"})
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
-    provider_controller.validate_credentials.side_effect = RuntimeError("bad credentials")
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Invalid credentials: bad credentials"):
-        TriggerProviderService.verify_subscription_credentials(
-            tenant_id="tenant-1",
-            user_id="user-1",
-            provider_id=provider_id,
-            subscription_id="sub-1",
-            credentials={"api_key": HIDDEN_VALUE},
-        )
-
-
-def test_verify_subscription_credentials_should_return_verified_when_api_key_validation_succeeds(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.API_KEY, credentials={"api_key": "old"})
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
-
-    # Act
-    result = TriggerProviderService.verify_subscription_credentials(
-        tenant_id="tenant-1",
-        user_id="user-1",
-        provider_id=provider_id,
-        subscription_id="sub-1",
-        credentials={"api_key": HIDDEN_VALUE},
+    subscription = trigger_db.add_subscription(endpoint_id="stable-endpoint", credentials={"token": "old"})
+    _patch_provider(mocker, provider_controller)
+    _patch_lock(mocker)
+    _patch_identity_encryption(mocker)
+    mocker.patch.object(
+        service_module.TriggerManager, "unsubscribe_trigger", return_value=SimpleNamespace(success=True)
     )
-
-    # Assert
-    assert result == {"verified": True}
-
-
-def test_verify_subscription_credentials_should_return_verified_for_non_api_key_credentials(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.OAUTH2, credentials={})
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
-
-    # Act
-    result = TriggerProviderService.verify_subscription_credentials(
-        tenant_id="tenant-1",
-        user_id="user-1",
-        provider_id=provider_id,
-        subscription_id="sub-1",
-        credentials={},
+    mocker.patch.object(
+        service_module.TriggerManager,
+        "subscribe_trigger",
+        return_value=TriggerSubscriptionEntity(
+            expires_at=777,
+            endpoint="stable-endpoint",
+            parameters={"event": "issues"},
+            properties={"hook": "new"},
+        ),
     )
+    mocker.patch.object(service_module, "delete_cache_for_subscription")
 
-    # Assert
-    assert result == {"verified": True}
-
-
-def test_rebuild_trigger_subscription_should_raise_when_provider_not_found(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-) -> None:
-    # Arrange
-    _mock_get_trigger_provider(mocker, None)
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Provider .* not found"):
-        TriggerProviderService.rebuild_trigger_subscription(
-            tenant_id="tenant-1",
-            provider_id=provider_id,
-            subscription_id="sub-1",
-            credentials={},
-            parameters={},
-        )
-
-
-def test_rebuild_trigger_subscription_should_raise_when_subscription_not_found(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=None)
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Subscription sub-1 not found"):
-        TriggerProviderService.rebuild_trigger_subscription(
-            tenant_id="tenant-1",
-            provider_id=provider_id,
-            subscription_id="sub-1",
-            credentials={},
-            parameters={},
-        )
-
-
-def test_rebuild_trigger_subscription_should_raise_for_unsupported_credential_type(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.UNAUTHORIZED)
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="not supported for auto creation"):
-        TriggerProviderService.rebuild_trigger_subscription(
-            tenant_id="tenant-1",
-            provider_id=provider_id,
-            subscription_id="sub-1",
-            credentials={},
-            parameters={},
-        )
-
-
-def test_rebuild_trigger_subscription_should_raise_when_unsubscribe_fails(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    subscription = SimpleNamespace(
-        id="sub-1",
-        user_id="user-1",
-        endpoint_id="endpoint-1",
-        credential_type=CredentialType.API_KEY,
-        credentials={"api_key": "old"},
-        to_entity=lambda: SimpleNamespace(id="sub-1"),
-    )
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
-    mocker.patch(
-        "services.trigger.trigger_provider_service.TriggerManager.unsubscribe_trigger",
-        return_value=SimpleNamespace(success=False, message="remote error"),
-    )
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Failed to delete previous subscription"):
-        TriggerProviderService.rebuild_trigger_subscription(
-            tenant_id="tenant-1",
-            provider_id=provider_id,
-            subscription_id="sub-1",
-            credentials={},
-            parameters={},
-        )
-
-
-def test_rebuild_trigger_subscription_should_resubscribe_and_update_existing_subscription(
-    mocker: MockerFixture,
-    mock_session: MagicMock,
-    provider_id: TriggerProviderID,
-    provider_controller: MagicMock,
-) -> None:
-    # Arrange
-    subscription = SimpleNamespace(
-        id="sub-1",
-        user_id="user-1",
-        endpoint_id="endpoint-1",
-        credential_type=CredentialType.API_KEY,
-        credentials={"api_key": "old-key"},
-        to_entity=lambda: SimpleNamespace(id="sub-1"),
-    )
-    new_subscription = SimpleNamespace(properties={"project": "new"}, expires_at=888)
-    _mock_get_trigger_provider(mocker, provider_controller)
-    mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
-    mocker.patch(
-        "services.trigger.trigger_provider_service.TriggerManager.unsubscribe_trigger",
-        return_value=SimpleNamespace(success=True, message="ok"),
-    )
-    mock_subscribe = mocker.patch(
-        "services.trigger.trigger_provider_service.TriggerManager.subscribe_trigger",
-        return_value=new_subscription,
-    )
-    mocker.patch(
-        "services.trigger.trigger_provider_service.generate_plugin_trigger_endpoint_url",
-        return_value="https://endpoint",
-    )
-    mock_update = mocker.patch.object(TriggerProviderService, "update_trigger_subscription")
-
-    # Act
     TriggerProviderService.rebuild_trigger_subscription(
-        tenant_id="tenant-1",
-        provider_id=provider_id,
-        subscription_id="sub-1",
-        credentials={"api_key": HIDDEN_VALUE, "region": "us"},
-        parameters={"event": "push"},
-        name="updated",
+        trigger_db.tenant_id,
+        trigger_db.provider_id,
+        subscription.id,
+        credentials={"token": HIDDEN_VALUE},
+        parameters={"event": "issues"},
+        name="rebuilt",
     )
 
-    # Assert
-    call_kwargs = mock_subscribe.call_args.kwargs
-    assert call_kwargs["credentials"]["api_key"] == "old-key"
-    assert call_kwargs["credentials"]["region"] == "us"
-    mock_update.assert_called_once_with(
-        tenant_id="tenant-1",
-        subscription_id="sub-1",
-        name="updated",
-        parameters={"event": "push"},
-        credentials={"api_key": "old-key", "region": "us"},
-        properties={"project": "new"},
-        expires_at=888,
-    )
+    persisted = trigger_db.get_subscription(subscription.id)
+    assert persisted is not None
+    assert persisted.endpoint_id == "stable-endpoint"
+    assert persisted.name == "rebuilt"
+    assert persisted.credentials == {"token": "old"}
+    assert persisted.properties == {"hook": "new"}
+    assert persisted.expires_at == 777

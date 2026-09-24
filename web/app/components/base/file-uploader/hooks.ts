@@ -2,7 +2,6 @@ import type { ClipboardEvent } from 'react'
 import type { FileEntity } from './types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
@@ -13,15 +12,18 @@ import {
   FILE_SIZE_LIMIT,
   IMG_SIZE_LIMIT,
   MAX_FILE_UPLOAD_LIMIT,
+  SKILL_FILE_SIZE_LIMIT,
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { useParams, usePathname } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { useFileStore } from './store'
+import { useFileUploadContext } from './upload-context'
 import {
   fileUpload,
   getFileUploadErrorMessage,
@@ -37,6 +39,8 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
     Number(fileUploadConfig?.audio_file_size_limit) * 1024 * 1024 || AUDIO_SIZE_LIMIT
   const videoSizeLimit =
     Number(fileUploadConfig?.video_file_size_limit) * 1024 * 1024 || VIDEO_SIZE_LIMIT
+  const skillSizeLimit =
+    Number(fileUploadConfig?.skill_file_size_limit) * 1024 * 1024 || SKILL_FILE_SIZE_LIMIT
   const maxFileUploadLimit =
     Number(fileUploadConfig?.workflow_file_upload_limit) || MAX_FILE_UPLOAD_LIMIT
 
@@ -45,15 +49,17 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
     docSizeLimit,
     audioSizeLimit,
     videoSizeLimit,
+    skillSizeLimit,
     maxFileUploadLimit,
   }
 }
 
 export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const fileStore = useFileStore()
   const params = useParams()
   const pathname = usePathname()
+  const { localUploadUrl, remoteUploadUrl } = useFileUploadContext()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
@@ -196,11 +202,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             ...uploadParams,
           })
         } else {
-          fileUpload(uploadParams, !!params.token)
+          fileUpload(uploadParams, !!params.token, localUploadUrl)
         }
       }
     },
-    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token],
+    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token, localUploadUrl],
   )
 
   const startProgressTimer = useCallback(
@@ -234,9 +240,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       handleAddFile(uploadingFile)
       startProgressTimer(uploadingFile.id)
 
-      const remoteUpload = isHumanInputFormPage
-        ? uploadHumanInputFormRemoteFileInfo(formToken!, url)
-        : uploadRemoteFileInfo(url, !!params.token)
+      let remoteUpload
+      if (isHumanInputFormPage) remoteUpload = uploadHumanInputFormRemoteFileInfo(formToken!, url)
+      else if (remoteUploadUrl)
+        remoteUpload = uploadRemoteFileInfo(url, !!params.token, undefined, remoteUploadUrl)
+      else remoteUpload = uploadRemoteFileInfo(url, !!params.token)
 
       remoteUpload
         .then((res) => {
@@ -287,6 +295,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       isHumanInputFormPage,
       formToken,
       params.token,
+      remoteUploadUrl,
     ],
   )
 
@@ -374,7 +383,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               ...uploadParams,
             })
           } else {
-            fileUpload(uploadParams, !!params.token)
+            fileUpload(uploadParams, !!params.token, localUploadUrl)
           }
         },
         false,
@@ -397,6 +406,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       isHumanInputFormPage,
       formToken,
       params.token,
+      localUploadUrl,
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
       fileConfig?.enabled,

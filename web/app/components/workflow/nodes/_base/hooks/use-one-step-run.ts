@@ -8,7 +8,6 @@ import type {
 } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -17,8 +16,6 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import { useIsChatMode, useNodeDataUpdate, useWorkflow } from '@/app/components/workflow/hooks'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import {
   getNodeInfoById,
   isConversationVar,
@@ -50,6 +47,7 @@ import {
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { post, ssePost } from '@/service/base'
 import {
@@ -65,6 +63,9 @@ import {
   getLoopSingleNodeRunUrl,
   singleNodeRun,
 } from '@/service/workflow'
+import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
+import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
+import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
 
 const { checkValid: checkLLMValid } = LLMDefault
@@ -130,20 +131,19 @@ const varTypeToInputVarType = (
     isParagraph: boolean
   },
 ) => {
+  const structuredVariableTypes: readonly VarType[] = [
+    VarType.object,
+    VarType.array,
+    VarType.arrayNumber,
+    VarType.arrayString,
+    VarType.arrayObject,
+  ]
+
   if (isSelect) return InputVarType.select
   if (isParagraph) return InputVarType.paragraph
   if (type === VarType.number) return InputVarType.number
   if (type === VarType.boolean) return InputVarType.checkbox
-  if (
-    [
-      VarType.object,
-      VarType.array,
-      VarType.arrayNumber,
-      VarType.arrayString,
-      VarType.arrayObject,
-    ].includes(type)
-  )
-    return InputVarType.json
+  if (structuredVariableTypes.includes(type)) return InputVarType.json
   if (type === VarType.file) return InputVarType.singleFile
   if (type === VarType.arrayFile) return InputVarType.multiFiles
 
@@ -162,7 +162,7 @@ const useOneStepRun = <T>({
   isRunAfterSingleRun,
   isPaused,
 }: Params<T>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } =
     useWorkflow() as any
   const conversationVariables = useStore((s) => s.conversationVariables)

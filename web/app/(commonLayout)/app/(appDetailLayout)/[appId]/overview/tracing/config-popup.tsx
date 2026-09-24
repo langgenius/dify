@@ -13,6 +13,7 @@ import type {
   WeaveConfig,
 } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -20,7 +21,6 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import ProviderConfigModal from './provider-config-modal'
 import ProviderPanel from './provider-panel'
 import TracingIcon from './tracing-icon'
@@ -82,7 +82,7 @@ const ConfigPopup: FC<PopupProps> = ({
   onConfigUpdated,
   onConfigRemoved,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   const [currentProvider, setCurrentProvider] = useState<TracingProvider | null>(
     TracingProvider.langfuse,
@@ -359,7 +359,7 @@ const ConfigPopup: FC<PopupProps> = ({
   }
 
   return (
-    <div className="w-[420px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
+    <div className="w-105 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <TracingIcon size="md" className="mr-2" />
@@ -397,7 +397,7 @@ const ConfigPopup: FC<PopupProps> = ({
       <div className="mt-2 system-xs-regular text-text-tertiary">
         {t(($) => $[`${I18N_PREFIX}.tracingDescription`], { ns: 'app' })}
       </div>
-      <Divider className="my-3" />
+      <Separator className="my-3 h-[0.5px]" />
       <div className="relative">
         {providerAllConfigured || providerAllNotConfigured ? (
           <>

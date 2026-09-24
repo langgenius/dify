@@ -1,5 +1,5 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import ConfigParamModal from '../config-param-modal'
 
 let mockHooksReturn: {
@@ -23,22 +23,18 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/declaration
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    defaultModel,
-    onSelect,
+  ModelSelector: ({
+    value,
+    onValueChange,
   }: {
-    defaultModel?: { provider: string; model: string }
-    onSelect: (val: { provider: string; model: string }) => void
+    value?: { provider: string; model: string }
+    onValueChange: (val: { provider: string; model: string }) => void
   }) => (
-    <div
-      data-testid="model-selector"
-      data-provider={defaultModel?.provider}
-      data-model={defaultModel?.model}
-    >
+    <div data-testid="model-selector" data-provider={value?.provider} data-model={value?.model}>
       Model Selector
       <button
         data-testid="select-model"
-        onClick={() => onSelect({ provider: 'cohere', model: 'embed-english' })}
+        onClick={() => onValueChange({ provider: 'cohere', model: 'embed-english' })}
       >
         Select
       </button>

@@ -20,12 +20,13 @@ const AuthorizedInNode = ({
   credentialId,
   onDefaultCredentialChange,
 }: AuthorizedInNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [isOpen, setIsOpen] = useState(false)
   const {
     canApiKey,
     canOAuth,
     credentials,
+    isLoading,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
   } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
@@ -47,14 +48,25 @@ const AuthorizedInNode = ({
 
         const defaultCredential = credentials.find((c) => c.is_default)
 
-        if (defaultCredential?.not_allowed_to_use) {
+        if (isLoading) {
+          color = 'disabled'
+        } else if (!defaultCredential) {
+          color = 'error'
+          defaultUnavailable = true
+        } else if (defaultCredential.not_allowed_to_use) {
           color = 'disabled'
           defaultUnavailable = true
         }
       } else {
         const credential = credentials.find((c) => c.id === credentialId)
-        label = credential ? credential.name : t(($) => $['auth.authRemoved'], { ns: 'plugin' })
-        removed = !credential
+        if (credential) label = credential.name
+        else if (isLoading) {
+          label = t(($) => $.loading, { ns: 'common' })
+          color = 'disabled'
+        } else {
+          label = t(($) => $['auth.authRemoved'], { ns: 'plugin' })
+          removed = true
+        }
         unavailable = !!credential?.not_allowed_to_use && !credential?.from_enterprise
 
         if (removed) color = 'error'
@@ -69,7 +81,7 @@ const AuthorizedInNode = ({
           )}
           variant={defaultUnavailable || unavailable ? 'ghost' : 'secondary'}
         >
-          <StatusDot className="mr-1.5" status={color} />
+          <StatusDot status={color} />
           {label}
           {(unavailable || defaultUnavailable) && (
             <>
@@ -86,7 +98,7 @@ const AuthorizedInNode = ({
         </Button>
       )
     },
-    [credentialId, credentials, t],
+    [credentialId, credentials, isLoading, t],
   )
   const defaultUnavailable = credentials.find((c) => c.is_default)?.not_allowed_to_use
   const extraAuthorizationItems: Credential[] = [

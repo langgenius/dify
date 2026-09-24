@@ -35,9 +35,9 @@ type PlaceholderProps = {
   onTypeClick: (isVariable: boolean) => void
 }
 const Placeholder = ({ varPickerProps, onTypeClick }: PlaceholderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
-    <div className="mt-1 h-[80px] rounded-lg bg-components-input-bg-normal px-3 pt-2 system-sm-regular text-text-tertiary">
+    <div className="mt-1 h-20 rounded-lg bg-components-input-bg-normal px-3 pt-2 system-sm-regular text-text-tertiary">
       <div className="flex flex-wrap items-center leading-5">
         <Trans
           i18nKey={($) => $[`${i18nPrefix}.prePopulateFieldPlaceholder`]}
@@ -74,7 +74,7 @@ const PrePopulate: FC<Props> = ({
   value,
   onValueChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [onPlaceholderClicked, setOnPlaceholderClicked] = useState(false)
   const handleTypeChange = useCallback(
     (isVar: boolean) => {
@@ -92,7 +92,8 @@ const PrePopulate: FC<Props> = ({
     onChange: onValueSelectorChange!,
     readonly: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      return textVariableTypes.includes(varPayload.type)
     },
   }
 
@@ -117,7 +118,7 @@ const PrePopulate: FC<Props> = ({
 
   if (isVariable) {
     return (
-      <div className="relative h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2">
+      <div className="relative h-20 rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2">
         <VarReferencePicker {...varPickerProps} isJustShowValue />
         <TypeSwitch
           className="absolute bottom-1 left-1.5"
@@ -130,14 +131,14 @@ const PrePopulate: FC<Props> = ({
   return (
     <div
       className={cn(
-        'relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal pb-1',
+        'relative min-h-20 rounded-lg border border-transparent bg-components-input-bg-normal pb-1',
         isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs',
       )}
     >
       <Textarea
         aria-label={t(($) => $[`${i18nPrefix}.staticContent`], { ns: 'workflow' })}
         value={value || ''}
-        className="h-[43px] min-h-[43px] rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none"
+        className="h-10.75 min-h-10.75 rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none"
         onValueChange={(value) => onValueChange?.(value)}
         onFocus={() => {
           setOnPlaceholderClicked(true)

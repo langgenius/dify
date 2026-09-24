@@ -6,10 +6,10 @@ type TitleProps = {
 }
 
 const Title = ({ name }: TitleProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
-    <div className="px-[5px] py-1 system-sm-medium text-text-secondary">
+    <div className="px-1.25 py-1 system-sm-medium text-text-secondary">
       {t(($) => $['onlineDocument.pageSelectorTitle'], { ns: 'datasetPipeline', name })}
     </div>
   )

@@ -6,6 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import sessionmaker
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
@@ -26,7 +28,7 @@ from tests.workflow_test_utils import build_test_graph_init_params, build_test_v
 
 
 @pytest.fixture
-def runtime(monkeypatch) -> DifyToolNodeRuntime:
+def runtime(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> DifyToolNodeRuntime:
     module_name = "core.ops.ops_trace_manager"
     if module_name not in sys.modules:
         ops_stub = types.ModuleType(module_name)
@@ -44,9 +46,7 @@ def runtime(monkeypatch) -> DifyToolNodeRuntime:
         invoke_from="debugger",
         call_depth=0,
     )
-    session_maker = MagicMock()
-    session_maker.begin.return_value.__enter__.return_value = MagicMock(name="session")
-    session_maker.begin.return_value.__exit__.return_value = None
+    session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
     return DifyToolNodeRuntime(init_params.run_context, session_maker=session_maker)
 
 

@@ -69,7 +69,7 @@ const ValueContent = ({ currentVar, handleValueChange, isTruncated }: Props) => 
     if (currentVar.value_type === 'string') setValue(value)
 
     if (currentVar.value_type === 'number') {
-      if (/^-?\d+(\.)?(\d+)?$/.test(value)) setValue(Number.parseFloat(value))
+      if (/^-?\d+(?:\.\d*)?$/.test(value)) setValue(Number.parseFloat(value))
     }
     const newValue = currentVar.value_type === 'number' ? Number.parseFloat(value) : value
     debounceValueChange(currentVar.id, newValue)
@@ -131,7 +131,7 @@ const ValueContent = ({ currentVar, handleValueChange, isTruncated }: Props) => 
           />
         )}
         {showBoolEditor && (
-          <div className="w-[295px]">
+          <div className="w-73.75">
             <BoolValue
               value={currentVar.value as boolean}
               onChange={(newValue) => {

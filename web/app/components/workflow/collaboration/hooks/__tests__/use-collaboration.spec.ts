@@ -1,9 +1,9 @@
 import type { CursorPosition, NodePanelPresenceMap, OnlineUser } from '../../types/collaboration'
 import { waitFor } from '@testing-library/react'
-import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useCollaboration } from '../use-collaboration'
 
-type HookReactFlowStore = NonNullable<Parameters<typeof useCollaboration>[1]>
+type HookReactFlowStore = NonNullable<Parameters<typeof useCollaboration>[2]>
 type HookReactFlowInstance = Parameters<
   ReturnType<typeof useCollaboration>['startCursorTracking']
 >[1]
@@ -104,8 +104,8 @@ describe('useCollaboration', () => {
     const reactFlowStore: HookReactFlowStore = {
       getState: vi.fn(),
     }
-    const { result, unmount } = renderHookWithSystemFeatures(
-      () => useCollaboration('app-1', reactFlowStore),
+    const { result, unmount } = renderHookWithConsoleQuery(
+      () => useCollaboration('app-1', true, reactFlowStore),
       {
         systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
       },
@@ -155,18 +155,24 @@ describe('useCollaboration', () => {
     expect(mockDisconnect).toHaveBeenCalledWith('conn-1')
   })
 
-  it('does not connect or start cursor tracking when collaboration is disabled', async () => {
-    isCollaborationEnabled = false
-    const { result } = renderHookWithSystemFeatures(() => useCollaboration('app-1'), {
-      systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
-    })
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    'does not connect or track cursors when a collaboration gate is disabled',
+    async (featureEnabled, canEdit) => {
+      isCollaborationEnabled = featureEnabled
+      const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1', canEdit), {
+        systemFeatures: { enable_collaboration_mode: featureEnabled },
+      })
 
-    await waitFor(() => {
-      expect(mockConnect).not.toHaveBeenCalled()
-      expect(result.current.isEnabled).toBe(false)
-    })
+      await waitFor(() => {
+        expect(mockConnect).not.toHaveBeenCalled()
+        expect(result.current.isEnabled).toBe(false)
+      })
 
-    result.current.startCursorTracking({ current: document.createElement('div') })
-    expect(mockStartTracking).not.toHaveBeenCalled()
-  })
+      result.current.startCursorTracking({ current: document.createElement('div') })
+      expect(mockStartTracking).not.toHaveBeenCalled()
+    },
+  )
 })

@@ -1,11 +1,14 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { RiMailSendFill } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import { UpgradeModal as BaseUpgradeModal } from '@/app/components/base/upgrade-modal'
-import { IS_CLOUD_EDITION } from '@/config'
-import { useModalContextSelector } from '@/context/modal-context'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type UpgradeModalProps = {
   open: boolean
@@ -13,17 +16,21 @@ type UpgradeModalProps = {
 }
 
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
-  const { t } = useTranslation()
-  const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
+  const { t } = useTranslation(['billing', 'workflow'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const handleUpgrade = () => {
-    setShowPricingModal()
+    setPricing('open')
   }
 
   return (
     <BaseUpgradeModal
       open={open}
       onOpenChange={onOpenChange}
-      Icon={RiMailSendFill}
+      iconClassName="i-ri-mail-send-fill"
       title={t(($) => $['nodes.humanInput.deliveryMethod.upgradeTip'], { ns: 'workflow' })}
       description={t(($) => $['nodes.humanInput.deliveryMethod.upgradeTipContent'], {
         ns: 'workflow',
@@ -33,19 +40,19 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       }}
       footer={
         <>
-          <Button className="w-[72px]" onClick={() => onOpenChange(false)}>
+          <Button className="w-18" onClick={() => onOpenChange(false)}>
             {t(($) => $['nodes.humanInput.deliveryMethod.upgradeTipHide'], { ns: 'workflow' })}
           </Button>
-          {IS_CLOUD_EDITION && (
+          {deploymentEdition === 'CLOUD' && (
             <PremiumBadgeButton
               size="custom"
               color="blue"
-              className="h-8 w-[93px]"
+              className="h-8 w-23.25"
               onClick={handleUpgrade}
             >
-              <SparklesSoft
+              <span
                 aria-hidden="true"
-                className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+                className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
               />
               <div className="system-sm-medium">
                 <span className="p-1">

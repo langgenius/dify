@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import ChunkContent from '../chunk-content'
 
@@ -31,12 +31,6 @@ describe('ChunkContent', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<ChunkContent {...defaultProps} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render textarea in edit mode with text docForm', () => {
       render(<ChunkContent {...defaultProps} isEditMode={true} />)
 
@@ -81,6 +75,26 @@ describe('ChunkContent', () => {
       // Assert - In view mode, textarea should not be present, Markdown renders instead
       expect(container.querySelector('textarea')).not.toBeInTheDocument()
     })
+  })
+
+  it('names the editable content', () => {
+    render(<ChunkContent {...defaultProps} isEditMode={true} />)
+    expect(
+      screen.getByRole('textbox', { name: 'datasetDocuments.segment.contentPlaceholder' }),
+    ).toBeInTheDocument()
+  })
+
+  it('names the question and answer fields', () => {
+    render(
+      <ChunkContent
+        {...defaultProps}
+        docForm={ChunkingMode.qa}
+        answer="Test answer"
+        isEditMode={true}
+      />,
+    )
+    expect(screen.getByRole('textbox', { name: 'QUESTION' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'ANSWER' })).toBeInTheDocument()
   })
 
   // QA mode tests
@@ -302,14 +316,6 @@ describe('ChunkContent', () => {
 
       const textareas = screen.getAllByRole('textbox')
       expect(textareas[1])!.toHaveValue('')
-    })
-
-    it('should handle undefined answer in QA mode', () => {
-      render(<ChunkContent {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
-
-      // Assert - should render without crashing
-      // Assert - should render without crashing
-      expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
     })
 
     it('should maintain structure when rerendered', () => {

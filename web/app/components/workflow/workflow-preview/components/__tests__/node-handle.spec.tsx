@@ -84,11 +84,6 @@ describe('node-handle', () => {
       })
 
       await waitFor(() => expect(container.querySelector('.custom-target')).toBeInTheDocument())
-
-      const handle = container.querySelector('.custom-target')
-
-      expect(handle).toHaveClass('opacity-0')
-      expect(handle).toHaveClass('custom-target')
     })
   })
 

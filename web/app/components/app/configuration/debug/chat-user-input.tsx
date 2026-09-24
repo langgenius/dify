@@ -1,5 +1,6 @@
 import type { Inputs } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -7,13 +8,13 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 
@@ -22,7 +23,8 @@ type Props = Readonly<{
 }>
 
 const ChatUserInput = ({ inputs }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
+  const baseId = useId()
   const { modelConfig, setInputs, canTestAndRun = false } = useContext(ConfigContext)
   const debugInputReadonly = !canTestAndRun
 
@@ -80,12 +82,14 @@ const ChatUserInput = ({ inputs }: Props) => {
       )}
     >
       <div className="px-4 pt-3 pb-4">
-        {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
+        {promptVariables.map(({ key, name, type, options, max_length, required }) => (
           <div key={key} className="mb-4 last-of-type:mb-0">
             <div>
               {type !== 'checkbox' && (
                 <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
-                  <div className="truncate">{name || key}</div>
+                  <div id={`${baseId}-${key}-label`} className="truncate">
+                    {name || key}
+                  </div>
                   {!required && (
                     <span className="system-xs-regular text-text-tertiary">
                       {t(($) => $['panel.optional'], { ns: 'workflow' })}
@@ -96,20 +100,18 @@ const ChatUserInput = ({ inputs }: Props) => {
               <div className="grow">
                 {type === 'string' && (
                   <Input
+                    aria-labelledby={`${baseId}-${key}-label`}
                     value={inputs[key] ? `${inputs[key]}` : ''}
-                    onChange={(e) => {
-                      handleInputValueChange(key, e.target.value)
-                    }}
+                    onValueChange={(value) => handleInputValueChange(key, value)}
                     placeholder={name}
-                    autoFocus={index === 0}
                     maxLength={max_length}
                     readOnly={debugInputReadonly}
                   />
                 )}
                 {type === 'paragraph' && (
                   <Textarea
-                    className="h-[120px] grow"
-                    aria-label={name || key}
+                    className="h-30 grow"
+                    aria-labelledby={`${baseId}-${key}-label`}
                     placeholder={name}
                     value={inputs[key] ? `${inputs[key]}` : ''}
                     onValueChange={(value) => {
@@ -129,10 +131,10 @@ const ChatUserInput = ({ inputs }: Props) => {
                       handleInputValueChange(key, nextValue)
                     }}
                   >
-                    <SelectTrigger className="w-full">
-                      {typeof inputs[key] === 'string' && inputs[key] !== ''
-                        ? inputs[key]
-                        : t(($) => $['placeholder.select'], { ns: 'common' })}
+                    <SelectTrigger aria-labelledby={`${baseId}-${key}-label`} className="w-full">
+                      <SelectValue
+                        placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {(options || []).map((option) => (
@@ -146,13 +148,11 @@ const ChatUserInput = ({ inputs }: Props) => {
                 )}
                 {type === 'number' && (
                   <Input
+                    aria-labelledby={`${baseId}-${key}-label`}
                     type="number"
                     value={inputs[key] ? `${inputs[key]}` : ''}
-                    onChange={(e) => {
-                      handleInputValueChange(key, e.target.value)
-                    }}
+                    onValueChange={(value) => handleInputValueChange(key, value)}
                     placeholder={name}
-                    autoFocus={index === 0}
                     maxLength={max_length}
                     readOnly={debugInputReadonly}
                   />

@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import useMetadataDocument from '../hooks/use-metadata-document'
 import InfoGroup from './info-group'
 import NoData from './no-data'
@@ -26,7 +26,7 @@ const MetadataDocument: FC<Props> = ({
   docDetail,
   canEdit = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
   const {
     embeddingAvailable,
@@ -48,7 +48,7 @@ const MetadataDocument: FC<Props> = ({
   } = useMetadataDocument({ datasetId, documentId, docDetail })
 
   return (
-    <div className={cn('w-[388px] space-y-4', className)}>
+    <div className={cn('w-97 space-y-4', className)}>
       {hasData || isEdit ? (
         <div className="pl-2">
           <InfoGroup
@@ -71,7 +71,7 @@ const MetadataDocument: FC<Props> = ({
                 </div>
               ) : (
                 <Button variant="ghost" size="small" onClick={startToEdit}>
-                  <span className="mr-1 i-ri-edit-line size-3.5 cursor-pointer text-text-tertiary" />
+                  <span className="i-ri-edit-line size-3.5 cursor-pointer text-text-tertiary" />
                   <div>{t(($) => $['operation.edit'], { ns: 'common' })}</div>
                 </Button>
               ))
@@ -95,7 +95,7 @@ const MetadataDocument: FC<Props> = ({
       )}
       {builtInEnabled && (
         <div className="pl-2">
-          <Divider className="my-3" bgStyle="gradient" />
+          <Separator className="my-3 h-[0.5px]" variant="gradient" />
           <InfoGroup
             noHeader
             titleTooltip="Built-in metadata is system-generated metadata that is automatically added to the document. You can enable or disable built-in metadata here."

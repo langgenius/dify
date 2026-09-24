@@ -21,11 +21,17 @@ from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
-from enums.quota_type import QuotaType
+from core.trigger.constants import is_trigger_node_type
+from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
-from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.app import (
+    QuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
+    WorkflowIdFormatError,
+    WorkflowNotFoundError,
+)
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
 from services.workflow_service import WorkflowService
@@ -34,6 +40,13 @@ from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflo
 logger = logging.getLogger(__name__)
 
 SSE_TASK_START_FALLBACK_MS = 200
+_MANUAL_WORKFLOW_INVOKE_SOURCES = frozenset(
+    {
+        InvokeFrom.OPENAPI,
+        InvokeFrom.SERVICE_API,
+        InvokeFrom.WEB_APP,
+    }
+)
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
@@ -41,13 +54,14 @@ if TYPE_CHECKING:
 
 class AppGenerateService:
     @staticmethod
-    def _build_streaming_task_on_subscribe(start_task: Callable[[], None]) -> Callable[[], None]:
+    def _build_streaming_task_on_subscribe(
+        start_task: Callable[[], None],
+    ) -> Callable[[], None]:
         """
-        Build a subscription callback that coordinates when the background task starts.
+        Build a subscription callback that starts the background task on first subscribe.
 
-        - streams transport: start immediately (events are durable; late subscribers can replay).
-        - pubsub/sharded transport: start on first subscribe, with a short fallback timer so the task
-          still runs if the client never connects.
+        Pub/Sub transports also use a short fallback timer so the task still runs if the
+        client never connects. Streams rely on their prepared delivery boundary instead.
         """
         started = False
         lock = threading.Lock()
@@ -65,18 +79,13 @@ class AppGenerateService:
                 started = True
                 return True
 
-        channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
-        if channel_type == "streams":
-            # With Redis Streams, we can safely start right away; consumers can read past events.
-            _try_start()
+        if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "streams":
 
-            # Keep return type Callable[[], None] consistent while allowing an extra (no-op) call.
             def _on_subscribe_streams() -> None:
                 _try_start()
 
             return _on_subscribe_streams
 
-        # Pub/Sub modes (at-most-once): subscribe-gated start with a tiny fallback.
         timer = threading.Timer(SSE_TASK_START_FALLBACK_MS / 1000.0, _try_start)
         timer.daemon = True
         timer.start()
@@ -134,7 +143,7 @@ class AppGenerateService:
         action: Callable[[RateLimit, str], Any],
     ):
         quota_charge = unlimited()
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             try:
                 quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, app_model.tenant_id)
             except QuotaExceededError:
@@ -172,7 +181,9 @@ class AppGenerateService:
         request_id: str,
     ):
         effective_mode = (
-            AppMode.AGENT_CHAT if app_model.is_agent and app_model.mode != AppMode.AGENT_CHAT else app_model.mode
+            AppMode.AGENT_CHAT
+            if app_model.is_agent_with_session(session=session) and app_model.mode != AppMode.AGENT_CHAT
+            else app_model.mode
         )
         match effective_mode:
             case AppMode.COMPLETION:
@@ -193,7 +204,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
                         AgentChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            session=session,
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id,
@@ -202,7 +218,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     AgentAppGenerator.convert_to_event_stream(
                         AgentAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            session=session,
+                            streaming=streaming,
                         ),
                     ),
                     request_id,
@@ -274,6 +295,7 @@ class AppGenerateService:
                             workflow_run_id=str(uuid.uuid4()),
                             streaming=False,
                             pause_state_config=pause_config,
+                            session=session,
                         )
                     ),
                     request_id=request_id,
@@ -281,6 +303,7 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 if streaming:
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
@@ -335,6 +358,16 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
 
     @staticmethod
+    def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
+        if invoke_from not in _MANUAL_WORKFLOW_INVOKE_SOURCES:
+            return
+
+        for _, node_data in workflow.walk_nodes():
+            node_type = node_data.get("type")
+            if isinstance(node_type, str) and is_trigger_node_type(node_type):
+                raise TriggerWorkflowServiceModeUnavailableError()
+
+    @staticmethod
     def _get_max_active_requests(app: App) -> int:
         """
         Get the maximum number of active requests allowed for an app.
@@ -379,6 +412,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.WORKFLOW:
@@ -391,6 +425,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.CHANNEL | AppMode.RAG_PIPELINE:
@@ -422,6 +457,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.WORKFLOW:
@@ -434,6 +470,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.CHANNEL | AppMode.RAG_PIPELINE:

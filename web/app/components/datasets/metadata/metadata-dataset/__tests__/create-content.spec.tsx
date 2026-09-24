@@ -1,7 +1,8 @@
 import type { Props as CreateContentProps } from '../create-content'
 import { Popover } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType } from '../../types'
 import { CreateContent } from '../create-content'
 
@@ -15,12 +16,6 @@ const renderCreateContent = (props: CreateContentProps) => {
 
 describe('CreateContent', () => {
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const handleSave = vi.fn()
-      renderCreateContent({ onSave: handleSave })
-      expect(screen.getByText('dataset.metadata.createMetadata.title')).toBeInTheDocument()
-    })
-
     it('should render modal title', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })
@@ -38,7 +33,9 @@ describe('CreateContent', () => {
     it('should render name input field', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      ).toBeInTheDocument()
     })
 
     it('should render confirm button', () => {
@@ -55,6 +52,29 @@ describe('CreateContent', () => {
   })
 
   describe('Type Selection', () => {
+    it('lets keyboard users select and save the metadata type', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      renderCreateContent({ onSave, hasBack: true })
+
+      expect(
+        screen.getByRole('radiogroup', { name: 'dataset.metadata.createMetadata.type' }),
+      ).toBeInTheDocument()
+      await user.tab()
+      await user.tab()
+      expect(screen.getByRole('radio', { name: 'String' })).toHaveFocus()
+      expect(screen.getByRole('radio', { name: 'String' })).toBeChecked()
+      await user.keyboard('{ArrowRight}')
+      expect(screen.getByRole('radio', { name: 'Number' })).toBeChecked()
+      await user.tab()
+      await user.type(
+        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+        'rating',
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      expect(onSave).toHaveBeenCalledWith({ type: DataType.number, name: 'rating' })
+    })
+
     it('should save string type by default', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })
@@ -113,7 +133,9 @@ describe('CreateContent', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', {
+        name: 'dataset.metadata.createMetadata.name',
+      })
       fireEvent.change(input, { target: { value: 'new_field' } })
 
       expect(input).toHaveValue('new_field')
@@ -123,7 +145,9 @@ describe('CreateContent', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })
 
-      expect(screen.getByRole('textbox')).toHaveValue('')
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      ).toHaveValue('')
     })
   })
 
@@ -132,7 +156,9 @@ describe('CreateContent', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', {
+        name: 'dataset.metadata.createMetadata.name',
+      })
       fireEvent.change(input, { target: { value: 'test_field' } })
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -147,7 +173,9 @@ describe('CreateContent', () => {
       renderCreateContent({ onSave: handleSave })
 
       fireEvent.click(screen.getByText('Number'))
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', {
+        name: 'dataset.metadata.createMetadata.name',
+      })
       fireEvent.change(input, { target: { value: 'num_field' } })
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -233,7 +261,9 @@ describe('CreateContent', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', {
+        name: 'dataset.metadata.createMetadata.name',
+      })
       fireEvent.change(input, { target: { value: 'test_field_123' } })
 
       expect(input).toHaveValue('test_field_123')

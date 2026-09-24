@@ -1,11 +1,23 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
-import { memo, useCallback } from 'react'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
+import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
-import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import { ChunkStructureEnum, IndexMethodEnum } from '../types'
 import OptionCard from './option-card'
@@ -26,7 +38,8 @@ const IndexMethod = ({
   onKeywordNumberChange,
   readonly = false,
 }: IndexMethodProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetSettings'])
+  const keywordInputId = useId()
   const keywordNumberLabel = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
   const isEconomy = indexMethod === IndexMethodEnum.ECONOMICAL
@@ -39,9 +52,8 @@ const IndexMethod = ({
   )
 
   const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = Number(e.target.value)
-      if (!Number.isNaN(value)) onKeywordNumberChange(value)
+    (value: number | null) => {
+      if (value !== null) onKeywordNumberChange(value)
     },
     [onKeywordNumberChange],
   )
@@ -57,10 +69,14 @@ const IndexMethod = ({
           id={IndexMethodEnum.QUALIFIED}
           selectedId={indexMethod}
           icon={
-            <HighQuality
+            <span
+              aria-hidden
               className={cn(
-                'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-orange-orange-500',
-                isHighQuality && 'text-util-colors-orange-orange-500',
+                'i-custom-vender-knowledge-high-quality h-4.5 w-4.5',
+                cn(
+                  'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-orange-orange-500',
+                  isHighQuality && 'text-util-colors-orange-orange-500',
+                ),
               )}
             />
           }
@@ -75,10 +91,14 @@ const IndexMethod = ({
             id={IndexMethodEnum.ECONOMICAL}
             selectedId={indexMethod}
             icon={
-              <Economic
+              <span
+                aria-hidden
                 className={cn(
-                  'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
-                  isEconomy && 'text-util-colors-indigo-indigo-500',
+                  'i-custom-vender-knowledge-economic h-4.5 w-4.5',
+                  cn(
+                    'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
+                    isEconomy && 'text-util-colors-indigo-indigo-500',
+                  ),
                 )}
               />
             }
@@ -93,29 +113,44 @@ const IndexMethod = ({
             <Fieldset className="flex items-center">
               <FieldsetLegend className="sr-only">{keywordNumberLabel}</FieldsetLegend>
               <div className="flex grow items-center">
-                <div className="truncate system-xs-medium text-text-secondary">
+                <label
+                  htmlFor={keywordInputId}
+                  className="truncate system-xs-medium text-text-secondary"
+                >
                   {keywordNumberLabel}
-                </div>
-                <Infotip aria-label={keywordNumberLabel} className="ml-0.5 size-3.5">
-                  {keywordNumberLabel}
-                </Infotip>
+                </label>
               </div>
               <Slider
                 disabled={readonly}
                 className="mr-3 w-24 shrink-0"
                 value={keywordNumber}
                 onValueChange={onKeywordNumberChange}
-                aria-label={keywordNumberLabel}
-              />
-              <Input
-                aria-label={keywordNumberLabel}
+              >
+                <SliderLabel className="sr-only">{keywordNumberLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
+              <NumberField
+                id={keywordInputId}
                 disabled={readonly}
-                className="shrink-0"
-                wrapperClassName="shrink-0 w-[72px]"
-                type="number"
+                className="w-18 shrink-0"
+                min={0}
+                format={{ maximumFractionDigits: 0 }}
                 value={keywordNumber}
-                onChange={handleInputChange}
-              />
+                onValueChange={handleInputChange}
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput className="px-2" />
+                  <NumberFieldControls>
+                    <NumberFieldIncrement />
+                    <NumberFieldDecrement />
+                  </NumberFieldControls>
+                </NumberFieldGroup>
+              </NumberField>
             </Fieldset>
           </OptionCard>
         )}

@@ -251,6 +251,16 @@ class TestInit:
         )
         assert instance.host == "https://my.wandb.host"
 
+    def test_init_with_host_path(self, mock_wandb, mock_weave):
+        """A self-hosted host keeps its path prefix all the way to wandb.login."""
+        config = _make_weave_config(host="https://wandb.internal/api")
+        instance = WeaveDataTrace(config)
+
+        mock_wandb.login.assert_called_once_with(
+            key="wv-api-key", verify=True, relogin=True, host="https://wandb.internal/api"
+        )
+        assert instance.host == "https://wandb.internal/api"
+
     def test_init_without_entity(self, mock_wandb, mock_weave):
         """Test __init__ initializes weave without entity prefix when entity is None."""
         mock_w, weave_client = mock_weave

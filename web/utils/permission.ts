@@ -1,6 +1,8 @@
 import type { PermissionKey } from '@/models/access-control'
 
 export const AppACLPermission = {
+  AccessPointManage: 'app.acl.access_point_manage',
+  AccessPointView: 'app.acl.access_point_view',
   Preview: 'app.acl.preview',
   ViewLayout: 'app.acl.view_layout',
   TestAndRun: 'app.acl.test_and_run',
@@ -8,6 +10,7 @@ export const AppACLPermission = {
   ImportExportDSL: 'app.acl.import_export_dsl',
   Delete: 'app.acl.delete',
   ReleaseAndVersion: 'app.acl.release_and_version',
+  Deploy: 'app.acl.deploy',
   Monitor: 'app.acl.monitor',
   TracingConfig: 'app.acl.tracing_config',
   LogAndAnnotation: 'app.acl.log_and_annotation',
@@ -29,12 +32,6 @@ export const DatasetACLPermission = {
   AccessConfig: 'dataset.acl.access_config',
 } as const
 
-export const BillingPermission = {
-  View: 'billing.view',
-  Manage: 'billing.manage',
-  SubscriptionManage: 'billing.subscription.manage',
-} as const
-
 export type ResourceMaintainerPermissionOptions = {
   currentUserId?: string | null
   resourceMaintainer?: string | null
@@ -43,15 +40,17 @@ export type ResourceMaintainerPermissionOptions = {
 }
 
 type AppACLCapabilities = {
+  canManageAccessPoint: boolean
+  canViewAccessPoint: boolean
   canViewLayout: boolean
   canTestAndRun: boolean
   canEdit: boolean
   canAccessLayout: boolean
-  canComment: boolean
   canPreviewApp: boolean
   canImportExportDSL: boolean
   canDelete: boolean
   canReleaseAndVersion: boolean
+  canDeploy: boolean
   canMonitor: boolean
   canConfigureTracing: boolean
   canAccessLogAndAnnotation: boolean
@@ -138,13 +137,21 @@ export const getAppACLCapabilities = (
     AppACLPermission.Edit,
     hasMaintainerPermissions,
   )
-
   return {
+    canManageAccessPoint: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.AccessPointManage,
+      hasMaintainerPermissions,
+    ),
+    canViewAccessPoint: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.AccessPointView,
+      hasMaintainerPermissions,
+    ),
     canViewLayout,
     canTestAndRun,
     canEdit,
     canAccessLayout: canViewLayout || canTestAndRun || canEdit,
-    canComment: canViewLayout || canEdit,
     canPreviewApp: canViewLayout || canTestAndRun,
     canImportExportDSL: hasResourcePermission(
       permissionKeys,
@@ -161,6 +168,7 @@ export const getAppACLCapabilities = (
       AppACLPermission.ReleaseAndVersion,
       hasMaintainerPermissions,
     ),
+    canDeploy: hasPermission(permissionKeys, AppACLPermission.Deploy),
     canMonitor: hasResourcePermission(
       permissionKeys,
       AppACLPermission.Monitor,

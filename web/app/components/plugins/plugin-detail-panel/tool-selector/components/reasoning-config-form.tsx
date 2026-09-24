@@ -4,6 +4,8 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -14,12 +16,10 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiArrowRightUpLine, RiBracesLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -28,9 +28,12 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
+import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   createPickerProps,
   getFieldFlags,
@@ -42,7 +45,7 @@ import {
   updateVariableSelectorValue,
   updateVariableTypeValue,
 } from './reasoning-config-form.helpers'
-import SchemaModal from './schema-modal'
+import { SchemaModal } from './schema-modal'
 
 export type ReasoningConfigValue = ReasoningConfigValueShape
 
@@ -63,8 +66,14 @@ const ReasoningConfigForm: React.FC<Props> = ({
   availableNodes,
   nodeId,
 }) => {
-  const { t } = useTranslation()
+  const fieldLabelId = useId()
+
+  const { t } = useTranslation(['plugin', 'tools', 'workflow'])
   const language = useLanguage()
+  const { data: timezone } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone ?? 'UTC',
+  })
 
   const handleAutomatic = (key: string, val: boolean, type: string) => {
     onChange(updateInputAutoState(value, key, val, type))
@@ -141,8 +150,11 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const fieldTitle = getFieldTitle(label, language)
     const tooltipText = tooltip?.[language] || tooltip?.en_US
     const tooltipContent = tooltipText && (
-      <Infotip aria-label={tooltipText} className="ml-0.5 size-4" popupClassName="w-[200px]">
-        {tooltipText}
+      <Infotip>
+        <InfotipTrigger aria-labelledby={`${fieldLabelId}-${variable}`} className="ml-0.5" />
+        <InfotipContent aria-labelledby={`${fieldLabelId}-${variable}`} className="w-50">
+          {tooltipText}
+        </InfotipContent>
       </Infotip>
     )
     const varInput = value[variable]!.value
@@ -154,6 +166,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
       isSelect,
       isAppSelector,
       isModelSelector,
+      isDate,
+      isDateRange,
       showTypeSwitch,
       isConstant,
       showVariableSelector,
@@ -174,7 +188,10 @@ const ReasoningConfigForm: React.FC<Props> = ({
       <div key={variable} className="space-y-0.5">
         <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')}>
+            <span
+              id={`${fieldLabelId}-${variable}`}
+              className={cn('max-w-35 truncate code-sm-semibold text-text-secondary')}
+            >
               {fieldTitle}
             </span>
             {required && <span className="ml-1 text-red-500">*</span>}
@@ -195,20 +212,17 @@ const ReasoningConfigForm: React.FC<Props> = ({
                       className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                       onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
                     >
-                      <RiBracesLine className="size-3.5" />
+                      <span aria-hidden className="i-ri-braces-line size-3.5" />
                     </button>
                   }
                 />
-                <TooltipContent className="system-xs-medium text-text-secondary">
+                <TooltipContent>
                   {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>
             )}
           </div>
-          <div
-            className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover"
-            onClick={() => handleAutomatic(variable, !auto, type)}
-          >
+          <label className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover">
             <span className="system-xs-medium text-text-secondary">
               {t(($) => $['detailPanel.toolSelector.auto'], { ns: 'plugin' })}
             </span>
@@ -217,7 +231,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               checked={!!auto}
               onCheckedChange={(val) => handleAutomatic(variable, val, type)}
             />
-          </div>
+          </label>
         </div>
         {auto === 0 && (
           <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
@@ -237,12 +251,32 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {isNumber && isConstant && (
               <Input
+                aria-label={fieldTitle}
                 className="h-8 grow"
                 type="number"
                 value={(varInput?.value as string | number) || ''}
                 onChange={(e) => handleValueChange(variable, type)(e.target.value)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
+            )}
+            {isDate && isConstant && (
+              <div className="min-w-0 grow">
+                <ToolDatePicker
+                  value={typeof varInput?.value === 'string' ? varInput.value : ''}
+                  onChange={handleValueChange(variable, type)}
+                  timezone={timezone}
+                  placeholder={placeholder?.[language] || placeholder?.en_US}
+                />
+              </div>
+            )}
+            {isDateRange && varInput?.type !== VarKindType.variable && (
+              <div className="grow">
+                <ToolDateRangePicker
+                  value={varInput?.value}
+                  onChange={handleValueChange(variable, type)}
+                  timezone={timezone}
+                />
+              </div>
             )}
             {isBoolean && (
               <FormInputBoolean
@@ -335,7 +369,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             className="inline-flex items-center text-xs text-text-accent"
           >
             {t(($) => $.howToGet, { ns: 'tools' })}
-            <RiArrowRightUpLine className="ml-1 size-3" />
+            <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-3" />
           </a>
         )}
       </div>

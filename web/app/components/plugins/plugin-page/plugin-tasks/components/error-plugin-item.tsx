@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { Plugin, PluginStatus } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,12 +14,12 @@ import PluginItem from './plugin-item'
 type ErrorPluginItemProps = {
   plugin: PluginStatus
   getIconUrl: (icon: string) => string
-  language: Locale
+  language: PluginLanguage
   onClear: () => void
 }
 
 const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, language, onClear }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const source = plugin.source
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [installPayload, setInstallPayload] = useState<{
@@ -120,7 +120,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
           </span>
         }
         statusText={
-          <span className="block max-w-full min-w-0 [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
+          <span className="block max-w-full min-w-0 wrap-anywhere wrap-break-word whitespace-pre-wrap">
             {plugin.message || errorMsg}
           </span>
         }

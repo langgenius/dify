@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
+import { render } from '@/test/console/render'
 import MainNavLayout from '../layout'
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   current: {
     isCurrentWorkspaceDatasetOperator: false,
-    isCurrentWorkspaceEditor: true,
   },
 }))
 
@@ -31,31 +31,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState.current)
 })
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
@@ -84,9 +62,8 @@ describe('MainNavLayout', () => {
     localStorage.clear()
     useAppStore.getState().setAppDetail()
     ;(usePathname as Mock).mockReturnValue('/apps')
-    mockAppContextState.current = {
+    mockConsoleState.current = {
       isCurrentWorkspaceDatasetOperator: false,
-      isCurrentWorkspaceEditor: true,
     }
     ;(useSuspenseQuery as Mock).mockReturnValue({
       data: {
@@ -199,31 +176,73 @@ describe('MainNavLayout', () => {
     },
   )
 
-  it.each(['/datasets/create', '/datasets/dataset-1/documents/create', '/deployments/create'])(
-    'keeps the global main nav on collection and creation route %s',
-    (pathname) => {
-      ;(usePathname as Mock).mockReturnValue(pathname)
+  it('ignores a retained legacy detail sidebar on New Knowledge routes', () => {
+    ;(usePathname as Mock).mockReturnValue('/datasets/new/knowledge-1/sources')
 
-      render(
-        <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
-          <div>content</div>
-        </MainNavLayout>,
-      )
+    render(
+      <MainNavLayout
+        detailSidebar={<aside aria-label="Legacy dataset sidebar">Legacy dataset sidebar</aside>}
+      >
+        <div>new knowledge detail</div>
+      </MainNavLayout>,
+    )
 
-      expect(screen.getByTestId('main-nav')).toBeInTheDocument()
-      expect(
-        screen.queryByRole('complementary', { name: 'Detail sidebar' }),
-      ).not.toBeInTheDocument()
-    },
-  )
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('complementary', { name: 'Legacy dataset sidebar' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('new knowledge detail')
+  })
+
+  it('hides the global main nav on a skill detail route', () => {
+    ;(usePathname as Mock).mockReturnValue('/skills/skill-1')
+
+    render(
+      <MainNavLayout>
+        <div>skill detail</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('skill detail')
+  })
+
+  it('keeps the global main nav on the skills collection route', () => {
+    ;(usePathname as Mock).mockReturnValue('/skills')
+
+    render(
+      <MainNavLayout>
+        <div>skills collection</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+  })
+
+  it.each([
+    '/datasets/create',
+    '/datasets/new/create',
+    '/datasets/dataset-1/documents/create',
+    '/deployments/create',
+  ])('keeps the global main nav on collection and creation route %s', (pathname) => {
+    ;(usePathname as Mock).mockReturnValue(pathname)
+
+    render(
+      <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
+        <div>content</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
+  })
 
   it.each([
     {
       label: 'agent detail route for dataset operators',
       pathname: '/agents/agent-1/configure',
-      appContext: {
+      consoleState: {
         isCurrentWorkspaceDatasetOperator: true,
-        isCurrentWorkspaceEditor: true,
       },
       systemFeatures: {
         enable_app_deploy: true,
@@ -232,9 +251,8 @@ describe('MainNavLayout', () => {
     {
       label: 'deployment detail route for non-editor workspaces',
       pathname: '/deployments/app-instance-1/overview',
-      appContext: {
+      consoleState: {
         isCurrentWorkspaceDatasetOperator: false,
-        isCurrentWorkspaceEditor: false,
       },
       systemFeatures: {
         enable_app_deploy: true,
@@ -243,17 +261,16 @@ describe('MainNavLayout', () => {
     {
       label: 'deployment detail route when deployment is disabled',
       pathname: '/deployments/app-instance-1/overview',
-      appContext: {
+      consoleState: {
         isCurrentWorkspaceDatasetOperator: false,
-        isCurrentWorkspaceEditor: true,
       },
       systemFeatures: {
         enable_app_deploy: false,
       },
     },
-  ])('keeps the global main nav on $label', ({ pathname, appContext, systemFeatures }) => {
+  ])('keeps the global main nav on $label', ({ pathname, consoleState, systemFeatures }) => {
     ;(usePathname as Mock).mockReturnValue(pathname)
-    mockAppContextState.current = appContext
+    mockConsoleState.current = consoleState
     ;(useSuspenseQuery as Mock).mockReturnValue({
       data: systemFeatures,
     })

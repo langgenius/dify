@@ -1,7 +1,7 @@
 import type { SseEvent } from '@/http/sse'
 import { Buffer } from 'node:buffer'
 import { PassThrough, Writable } from 'node:stream'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { HitlPauseError } from './sse-collector'
 import { streamPrinterFor } from './stream-handlers'
 

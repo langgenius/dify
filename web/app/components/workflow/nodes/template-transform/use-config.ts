@@ -2,9 +2,9 @@ import type { Var, Variable } from '../../types'
 import type { TemplateTransformNodeType } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef } from 'react'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { VarType } from '../../types'
 import useVarList from '../_base/hooks/use-var-list'
@@ -87,7 +87,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   )
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [
+    const supportedVariableTypes: readonly VarType[] = [
       VarType.string,
       VarType.number,
       VarType.boolean,
@@ -97,7 +97,9 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
       VarType.arrayString,
       VarType.arrayBoolean,
       VarType.arrayObject,
-    ].includes(varPayload.type)
+    ]
+
+    return supportedVariableTypes.includes(varPayload.type)
   }, [])
 
   return {

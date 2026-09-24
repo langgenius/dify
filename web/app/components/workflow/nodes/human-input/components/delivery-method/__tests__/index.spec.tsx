@@ -1,4 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodForm from '../index'
@@ -10,9 +13,14 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesSyncDraft: () => mockUseNodesSyncDraft(),
-}))
+vi.mock('../../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-nodes-sync-draft')>()
+
+  return {
+    ...actual,
+    useNodesSyncDraft: () => mockUseNodesSyncDraft(),
+  }
+})
 
 vi.mock('../method-selector', () => ({
   __esModule: true,
@@ -128,3 +136,14 @@ describe('DeliveryMethodForm', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })
+
+function render(ui: React.ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}

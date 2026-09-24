@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
-import { useIsNodeInIteration, useWorkflow } from '../../hooks'
+import { useIsNodeInIteration, useWorkflow } from '../../hooks/use-workflow'
 import {
   getNodeInfoById,
   getNodeUsedVarPassToServerKey,
@@ -35,7 +35,7 @@ const useSingleRunFormParams = ({
   setRunInputData,
   iterationRunResult,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { isNodeInIteration } = useIsNodeInIteration(id)
 
   const { getIterationNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
@@ -65,7 +65,9 @@ const useSingleRunFormParams = ({
       }
     > = {}
     iterationChildrenNodes.forEach((node) => {
-      const nodeVars = getNodeUsedVars(node).filter((item) => item && item.length > 0)
+      const nodeVars = getNodeUsedVars(node, { forExecution: true }).filter(
+        (item) => item && item.length > 0,
+      )
       nodeVars.forEach((varSelector) => {
         if (varSelector[0] === id) {
           // skip iteration node itself variable: item, index

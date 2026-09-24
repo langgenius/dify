@@ -3,13 +3,13 @@
 import type { RoleModalMode, submitRoleData } from './role-modal'
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import {
   useCreateWorkspaceRole,
   useUpdateWorkspaceRole,
@@ -31,7 +31,7 @@ type ModalState = {
 const PAGE_SIZE = 20
 
 const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission'])
   const locale = useLocale()
   const [modalState, setModalState] = useState<ModalState>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -128,7 +128,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   return (
     <>
       <div className="flex min-w-0 flex-col gap-y-6">
-        <div className="flex min-h-[67px] min-w-0 items-center gap-3 overflow-hidden rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-regular bg-linear-to-b from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
+        <div className="flex min-h-16.75 min-w-0 items-center gap-3 overflow-hidden rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-regular bg-linear-to-b from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
           <div className="flex min-w-0 grow flex-col gap-y-1 overflow-hidden">
             <div className="truncate system-md-semibold text-text-secondary">
               {t(($) => $['role.workspaceRoles.title'], { ns: 'permission' })}

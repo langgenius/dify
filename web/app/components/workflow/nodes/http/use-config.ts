@@ -1,10 +1,9 @@
 import type { Var } from '../../types'
 import type { Authorization, Body, HttpNodeType, Method, Timeout } from './types'
-import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useEffect, useState } from 'react'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { VarType } from '../../types'
 import useVarList from '../_base/hooks/use-var-list'
@@ -113,8 +112,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   )
 
   // authorization
-  const [isShowAuthorization, { setTrue: showAuthorization, setFalse: hideAuthorization }] =
-    useBoolean(false)
+  const [isShowAuthorization, setIsShowAuthorization] = useState(false)
 
   const setAuthorization = useCallback(
     (authorization: Authorization) => {
@@ -137,11 +135,13 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   )
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+
+    return textVariableTypes.includes(varPayload.type)
   }, [])
 
   // curl import panel
-  const [isShowCurlPanel, { setTrue: showCurlPanel, setFalse: hideCurlPanel }] = useBoolean(false)
+  const [isShowCurlPanel, setIsShowCurlPanel] = useState(false)
 
   const handleCurlImport = useCallback(
     (newNode: HttpNodeType) => {
@@ -194,14 +194,14 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     handleSSLVerifyChange,
     // authorization
     isShowAuthorization,
-    showAuthorization,
-    hideAuthorization,
+    showAuthorization: () => setIsShowAuthorization(true),
+    hideAuthorization: () => setIsShowAuthorization(false),
     setAuthorization,
     setTimeout,
     // curl import
     isShowCurlPanel,
-    showCurlPanel,
-    hideCurlPanel,
+    showCurlPanel: () => setIsShowCurlPanel(true),
+    hideCurlPanel: () => setIsShowCurlPanel(false),
     handleCurlImport,
   }
 }

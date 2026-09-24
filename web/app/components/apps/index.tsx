@@ -1,22 +1,23 @@
 'use client'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
-import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
+import { noop, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEducationInit } from '@/app/education-apply/hooks'
+import { EducationExpireNotice } from '@/app/education/expire-notice'
+import { toast } from '@/app/notifications'
 import AppListContext from '@/context/app-list-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
-import dynamic from '@/next/dynamic'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { fetchAppDetail } from '@/service/explore'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
-import List from './list'
+import { List } from './list'
 
 const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), {
   ssr: false,
@@ -27,9 +28,11 @@ const ImportFromMarketplaceTemplateModal = dynamic(
   () => import('./import-from-marketplace-template-modal'),
   { ssr: false },
 )
+const AppListProvider = AppListContext.Provider
 
-const Apps = () => {
-  const { t } = useTranslation()
+const AppsContent = () => {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation(['app'])
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -37,59 +40,62 @@ const Apps = () => {
   const templateId = searchParams.get('template-id')
   const templateDismissedRef = useRef(false)
 
-  useDocumentTitle(t(($) => $['menus.apps'], { ns: 'common' }))
-  useEducationInit()
-
-  const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(
-    undefined,
-  )
-  const currentCreateAppModeRef = useRef<TryAppSelection['app']['app']['mode'] | null>(null)
+  const [currApp, setCurrApp] = useState<RecommendedAppResponse | undefined>(undefined)
+  const currentCreateAppModeRef = useRef<TrackCreateAppParams['appMode'] | null>(null)
   const currentCreateAppTrackingRef = useRef<Pick<
     TrackCreateAppParams,
     'source' | 'templateId'
   > | null>(null)
-  const currApp = currentTryAppParams?.app
   const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)
   const hideTryAppPanel = useCallback(() => {
     setIsShowTryAppPanel(false)
   }, [])
-  const setShowTryAppPanel = (showTryAppPanel: boolean, params?: TryAppSelection) => {
-    if (showTryAppPanel) setCurrentTryAppParams(params)
-    else setCurrentTryAppParams(undefined)
-    setIsShowTryAppPanel(showTryAppPanel)
-  }
+  const openTryAppPanel = useCallback(
+    (app: RecommendedAppResponse) => {
+      // Start the workflow request while the preview dialog's code and app details load.
+      if (app.app?.mode === 'workflow' || app.app?.mode === 'advanced-chat') {
+        void queryClient
+          .query(
+            consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
+              input: { params: { app_id: app.app_id } },
+            }),
+          )
+          .catch(noop)
+      }
+      setCurrApp(app)
+      setIsShowTryAppPanel(true)
+    },
+    [queryClient],
+  )
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
+
+  const handleCreateLearnDify = (app: RecommendedAppResponse) => {
+    if (!canCreateApp) return
+
+    setCurrApp(app)
+    setIsShowCreateModal(true)
+  }
 
   const handleShowFromTryApp = useCallback(() => {
     if (!canCreateApp) return
 
     currentCreateAppTrackingRef.current = {
       source: 'studio_template_preview',
-      templateId: currentTryAppParams?.appId || currentTryAppParams?.app.app_id,
+      templateId: currApp?.app_id,
     }
     setIsShowCreateModal(true)
-  }, [canCreateApp, currentTryAppParams?.app.app_id, currentTryAppParams?.appId])
-  const trackCurrentCreateApp = useCallback(
-    (appMode?: TryAppSelection['app']['app']['mode'] | null) => {
-      const currentCreateAppTracking = currentCreateAppTrackingRef.current
-      const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
-      if (!resolvedAppMode || !currentCreateAppTracking) return
+  }, [canCreateApp, currApp?.app_id])
+  const trackCurrentCreateApp = useCallback((appMode?: TrackCreateAppParams['appMode'] | null) => {
+    const currentCreateAppTracking = currentCreateAppTrackingRef.current
+    const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
+    if (!resolvedAppMode || !currentCreateAppTracking) return
 
-      trackCreateApp({
-        ...currentCreateAppTracking,
-        appMode: resolvedAppMode,
-      })
-      currentCreateAppTrackingRef.current = null
-      currentCreateAppModeRef.current = null
-    },
-    [],
-  )
-
-  const [controlRefreshList, setControlRefreshList] = useState(0)
-  const [controlHideCreateFromTemplatePanel, setControlHideCreateFromTemplatePanel] = useState(0)
-  const onSuccess = useCallback(() => {
-    setControlRefreshList((prev) => prev + 1)
-    setControlHideCreateFromTemplatePanel((prev) => prev + 1)
+    trackCreateApp({
+      ...currentCreateAppTracking,
+      appMode: resolvedAppMode,
+    })
+    currentCreateAppTrackingRef.current = null
+    currentCreateAppModeRef.current = null
   }, [])
 
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
@@ -108,10 +114,9 @@ const Apps = () => {
     await handleImportDSLConfirm({
       onSuccess: (response) => {
         trackCurrentCreateApp(response.app_mode)
-        onSuccess()
       },
     })
-  }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
+  }, [handleImportDSLConfirm, trackCurrentCreateApp])
 
   const handleMarketplaceTemplateConfirm = useCallback(
     async (dslContent: string) => {
@@ -131,7 +136,6 @@ const Apps = () => {
           onSuccess: (response) => {
             trackCurrentCreateApp(response.app_mode)
             handleCloseTemplateModal()
-            onSuccess()
           },
           onPending: () => {
             handleCloseTemplateModal()
@@ -140,101 +144,107 @@ const Apps = () => {
         },
       )
     },
-    [
-      canCreateApp,
-      handleImportDSL,
-      handleCloseTemplateModal,
-      onSuccess,
-      templateId,
-      trackCurrentCreateApp,
-    ],
+    [canCreateApp, handleImportDSL, handleCloseTemplateModal, templateId, trackCurrentCreateApp],
   )
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(
     async ({ name, icon_type, icon, icon_background, description }) => {
-      if (!canCreateApp) return
+      if (!canCreateApp || !currApp) return
 
       hideTryAppPanel()
 
-      const { export_data, mode } = await fetchAppDetail(currApp?.app.id as string)
-      currentCreateAppModeRef.current = mode
-      const payload = {
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: export_data,
-        name,
-        icon_type,
-        icon,
-        icon_background,
-        description,
+      try {
+        const { export_data, mode } = await consoleClient.explore.apps.byAppId.get({
+          params: { app_id: currApp.app_id },
+        })
+        currentCreateAppModeRef.current = mode
+        const payload = {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: export_data,
+          name,
+          icon_type,
+          icon,
+          icon_background,
+          description,
+        }
+        await handleImportDSL(payload, {
+          onSuccess: (response) => {
+            trackCurrentCreateApp(response.app_mode)
+            setIsShowCreateModal(false)
+          },
+          onPending: () => {
+            setShowDSLConfirmModal(true)
+          },
+        })
+      } catch {
+        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
       }
-      await handleImportDSL(payload, {
-        onSuccess: (response) => {
-          trackCurrentCreateApp(response.app_mode)
-          setIsShowCreateModal(false)
-        },
-        onPending: () => {
-          setShowDSLConfirmModal(true)
-        },
-      })
     },
-    [canCreateApp, currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp],
+    [canCreateApp, currApp, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp, t],
   )
 
   return (
-    <AppListContext.Provider
-      value={{
-        currentApp: currentTryAppParams,
-        isShowTryAppPanel,
-        setShowTryAppPanel,
-        controlHideCreateFromTemplatePanel,
-      }}
-    >
-      <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-        <List controlRefreshList={controlRefreshList} />
-        {isShowTryAppPanel && (
-          <TryApp
-            appId={currentTryAppParams?.appId || ''}
-            app={currentTryAppParams?.app}
-            categories={currentTryAppParams?.app?.categories}
-            onClose={hideTryAppPanel}
-            onCreate={handleShowFromTryApp}
-          />
-        )}
+    <>
+      <EducationExpireNotice />
+      <AppListProvider
+        value={{
+          openTryAppPanel,
+        }}
+      >
+        <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-background-body">
+          <List onCreateLearnDify={handleCreateLearnDify} onTryLearnDify={openTryAppPanel} />
+          {isShowTryAppPanel && currApp && (
+            <TryApp
+              appId={currApp.app_id}
+              canTrial={currApp.can_trial}
+              categories={currApp.categories}
+              templateName={currApp.app?.name}
+              onClose={hideTryAppPanel}
+              onCreate={handleShowFromTryApp}
+            />
+          )}
 
-        {showDSLConfirmModal && (
-          <DSLConfirmModal
-            versions={versions}
-            onCancel={() => setShowDSLConfirmModal(false)}
-            onConfirm={onConfirmDSL}
-            confirmDisabled={isFetching}
-          />
-        )}
+          {showDSLConfirmModal && (
+            <DSLConfirmModal
+              versions={versions}
+              onCancel={() => setShowDSLConfirmModal(false)}
+              onConfirm={onConfirmDSL}
+              confirmDisabled={isFetching}
+            />
+          )}
 
-        {isShowCreateModal && (
-          <CreateAppModal
-            appIconType={currApp?.app.icon_type || 'emoji'}
-            appIcon={currApp?.app.icon || ''}
-            appIconBackground={currApp?.app.icon_background || ''}
-            appIconUrl={currApp?.app.icon_url}
-            appName={currApp?.app.name || ''}
-            appDescription={currApp?.app.description || ''}
-            show
-            onConfirm={onCreate}
-            confirmDisabled={isFetching}
-            onHide={() => setIsShowCreateModal(false)}
-          />
-        )}
+          {isShowCreateModal && (
+            <CreateAppModal
+              appIconType={
+                currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
+                  ? currApp.app.icon_type
+                  : 'emoji'
+              }
+              appIcon={currApp?.app?.icon ?? ''}
+              appIconBackground={currApp?.app?.icon_background ?? ''}
+              appIconUrl={currApp?.app?.icon_url}
+              appName={currApp?.app?.name ?? ''}
+              appDescription=""
+              show
+              onConfirm={onCreate}
+              confirmDisabled={isFetching}
+              onHide={() => setIsShowCreateModal(false)}
+            />
+          )}
 
-        {canCreateApp && templateId && !templateDismissedRef.current && (
-          <ImportFromMarketplaceTemplateModal
-            templateId={templateId}
-            onClose={handleCloseTemplateModal}
-            onConfirm={handleMarketplaceTemplateConfirm}
-          />
-        )}
-      </div>
-    </AppListContext.Provider>
+          {canCreateApp && templateId && !templateDismissedRef.current && (
+            <ImportFromMarketplaceTemplateModal
+              templateId={templateId}
+              onClose={handleCloseTemplateModal}
+              onConfirm={handleMarketplaceTemplateConfirm}
+            />
+          )}
+        </div>
+      </AppListProvider>
+    </>
   )
 }
 
-export default Apps
+export function Apps() {
+  return <AppsContent />
+}

@@ -1,45 +1,32 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import {
-  CurrentSystemQuotaTypeEnum,
-  CustomConfigurationStatusEnum,
-  QuotaUnitEnum,
-} from '../declarations'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import ModelProviderPage from '../index'
 
-const mockQuotaConfig = {
-  quota_type: CurrentSystemQuotaTypeEnum.free,
-  quota_unit: QuotaUnitEnum.times,
-  quota_limit: 100,
-  quota_used: 1,
-  last_used: 0,
-  is_valid: true,
-}
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: false,
   }
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: [
-      {
-        provider: 'openai',
-        label: { en_US: 'OpenAI' },
-        custom_configuration: { status: CustomConfigurationStatusEnum.active },
-        system_configuration: {
-          enabled: false,
-          current_quota_type: CurrentSystemQuotaTypeEnum.free,
-          quota_configurations: [mockQuotaConfig],
-        },
-      },
-    ],
-  }),
-}))
 
 vi.mock('../hooks', () => ({
   useDefaultModel: () => ({ data: null, isLoading: false }),
@@ -117,8 +104,8 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
   default: () => <div data-testid="reference-setting-modal" />,
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const originalWorkspaces = actual.consoleQuery.workspaces
   return {
     ...actual,
@@ -129,6 +116,18 @@ vi.mock('@/service/client', async (importOriginal) => {
             ...originalWorkspaces,
             current: {
               ...originalWorkspaces.current,
+              modelProviders: {
+                summary: {
+                  get: {
+                    queryKey: () =>
+                      originalWorkspaces.current.modelProviders.summary.get.queryKey(),
+                    queryOptions: () => ({
+                      ...originalWorkspaces.current.modelProviders.summary.get.queryOptions(),
+                      queryFn: () => new Promise(() => {}),
+                    }),
+                  },
+                },
+              },
               plugin: {
                 ...originalWorkspaces.current.plugin,
                 list: {
@@ -177,9 +176,18 @@ vi.mock('@/service/client', async (importOriginal) => {
   }
 })
 
+const renderPage: typeof renderWithConsoleQuery = (ui, options) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: [{ ...providerSummaryFixture } satisfies ModelProviderSummaryResponse],
+    plugins: {},
+  })
+  return renderWithConsoleQuery(ui, { ...options, queryClient })
+}
+
 describe('ModelProviderPage non-cloud branch', () => {
   it('should skip the quota panel when cloud edition is disabled', () => {
-    renderWithSystemFeatures(<ModelProviderPage searchText="" />, {
+    renderPage(<ModelProviderPage searchText="" />, {
       systemFeatures: { enable_marketplace: false },
     })
 

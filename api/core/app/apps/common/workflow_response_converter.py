@@ -76,7 +76,7 @@ from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account, EndUser
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowRun
@@ -371,7 +371,7 @@ class WorkflowResponseConverter:
             pause_reasons,
             dispositions_by_form_id=dispositions_by_form_id,
             expiration_times_by_form_id={
-                form_id: int(expiration_time.timestamp())
+                form_id: to_utc_timestamp(expiration_time)
                 for form_id, expiration_time in expiration_times_by_form_id.items()
             },
         )
@@ -399,7 +399,7 @@ class WorkflowResponseConverter:
                             form_token=disposition.form_token if disposition else None,
                             approval_channels=list(disposition.approval_channels) if disposition else [],
                             resolved_default_values=reason.resolved_default_values,
-                            expiration_time=int(expiration_time.timestamp()),
+                            expiration_time=to_utc_timestamp(expiration_time),
                         ),
                     )
                 )
@@ -452,7 +452,7 @@ class WorkflowResponseConverter:
             data=HumanInputFormTimeoutResponse.Data(
                 node_id=event.node_id,
                 node_title=event.node_title,
-                expiration_time=int(event.expiration_time.timestamp()),
+                expiration_time=to_utc_timestamp(event.expiration_time),
             ),
         )
 
@@ -856,7 +856,9 @@ class WorkflowResponseConverter:
         return tuple(flattened_files)
 
     @classmethod
-    def _fetch_files_from_variable_value(cls, value: Union[dict, list, Segment]) -> Sequence[Mapping[str, Any]]:
+    def _fetch_files_from_variable_value(
+        cls, value: Union[dict, list, Segment, File, None]
+    ) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from variable value
         :param value: variable value

@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { act, renderHook } from '@testing-library/react'
 import { useChat } from '../../hooks'
@@ -27,7 +26,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -44,8 +43,11 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('../../../../hooks', () => ({
+vi.mock('../../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({ handleRun: mockHandleRun }),
+}))
+
+vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
@@ -122,7 +124,7 @@ describe('useChat – handleResume', () => {
     })
 
     expect(mockSseGet).toHaveBeenCalledWith(
-      '/workflow/wfr-1/events?include_state_snapshot=true',
+      '/workflow/wfr-1/events?include_state_snapshot=true&continue_on_pause=true',
       {},
       expect.any(Object),
     )
@@ -886,7 +888,7 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onWorkflowPaused', () => {
-    it('should re-subscribe via sseGet and set status to Paused', async () => {
+    it('should keep the resumable stream and set status to Paused', async () => {
       const { result } = await setupResumeWithTree()
       const sseGetCallsBefore = mockSseGet.mock.calls.length
 
@@ -896,7 +898,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      expect(mockSseGet.mock.calls.length).toBeGreaterThan(sseGetCallsBefore)
+      expect(mockSseGet.mock.calls.length).toBe(sseGetCallsBefore)
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('paused')
     })

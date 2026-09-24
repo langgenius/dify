@@ -1,7 +1,8 @@
 import type { FC, ReactNode } from 'react'
-import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
-import type { ChatConfig, ChatItem, Feedback, OnRegenerate, OnSend } from '../types'
+import type { Theme } from '../embedded-chatbot/theme/theme'
+import type { ChatConfig, ChatItem, OnFeedback, OnRegenerate, OnSend } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
+import type { AnswerActionPosition } from './answer/operation'
 import type { InputForm } from './type'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
@@ -9,7 +10,7 @@ import type { Node } from '@/app/components/workflow/types'
 import type { AppData, ToolIcon } from '@/models/share'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -22,6 +23,7 @@ import TryToAsk from './try-to-ask'
 import { useChatLayout } from './use-chat-layout'
 
 export type ChatProps = {
+  answerActionPosition?: AnswerActionPosition
   isTryApp?: boolean
   readonly?: boolean
   appData?: AppData
@@ -31,6 +33,7 @@ export type ChatProps = {
   noStopResponding?: boolean
   onStopResponding?: () => void
   noChatInput?: boolean
+  showRegenerate?: boolean
   onSend?: OnSend
   inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
@@ -55,11 +58,11 @@ export type ChatProps = {
   onAnnotationRemoved?: (index: number) => void
   chatNode?: ReactNode
   disableFeedback?: boolean
-  onFeedback?: (messageId: string, feedback: Feedback) => void
+  onFeedback?: OnFeedback
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   hideLogModal?: boolean
-  themeBuilder?: ThemeBuilder
+  theme?: Theme
   switchSibling?: (siblingMessageId: string) => void
   showFeatureBar?: boolean
   showFileUpload?: boolean
@@ -88,6 +91,7 @@ export type ChatProps = {
 }
 
 const Chat: FC<ChatProps> = ({
+  answerActionPosition,
   isTryApp,
   readonly = false,
   appData,
@@ -101,6 +105,7 @@ const Chat: FC<ChatProps> = ({
   noStopResponding,
   onStopResponding,
   noChatInput,
+  showRegenerate,
   chatContainerClassName,
   chatContainerInnerClassName,
   chatFooterClassName,
@@ -118,7 +123,7 @@ const Chat: FC<ChatProps> = ({
   chatAnswerContainerInner,
   hideProcessDetail,
   hideLogModal,
-  themeBuilder,
+  theme,
   switchSibling,
   showFeatureBar,
   showFileUpload,
@@ -141,7 +146,28 @@ const Chat: FC<ChatProps> = ({
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'appDebug'])
+  const responseStatusRef = useRef<HTMLDivElement>(null)
+  const wasRespondingRef = useRef(false)
+  const hasAgentContent = !!renderAgentContent
+
+  // Keep the live region mounted before a response starts. Synchronize only
+  // lifecycle transitions, never the streaming answer or elapsed-time counter.
+  useEffect(() => {
+    const status = responseStatusRef.current
+    if (!status) {
+      wasRespondingRef.current = false
+      return
+    }
+
+    const announcement = isResponding
+      ? t(($) => $['agentDetail.configure.answer.thinking'], { ns: 'agentV2' })
+      : wasRespondingRef.current
+        ? t(($) => $['agentDetail.configure.answer.responseEnded'], { ns: 'agentV2' })
+        : undefined
+    if (announcement && status.textContent !== announcement) status.textContent = announcement
+    wasRespondingRef.current = !!isResponding
+  }, [hasAgentContent, isResponding, t])
   const {
     currentLogItem,
     setCurrentLogItem,
@@ -179,6 +205,7 @@ const Chat: FC<ChatProps> = ({
       answerIcon={answerIcon}
       onSend={onSend}
       onRegenerate={onRegenerate}
+      showRegenerate={showRegenerate}
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}
@@ -186,6 +213,9 @@ const Chat: FC<ChatProps> = ({
       onFeedback={onFeedback}
       getHumanInputNodeData={getHumanInputNodeData}
     >
+      {hasAgentContent && (
+        <div ref={responseStatusRef} role="status" aria-atomic="true" className="sr-only" />
+      )}
       <div data-testid="chat-root" className={cn('relative h-full', isTryApp && 'flex flex-col')}>
         <div
           data-testid="chat-container"
@@ -211,6 +241,7 @@ const Chat: FC<ChatProps> = ({
                 const isLast = item.id === chatList.at(-1)?.id
                 return (
                   <Answer
+                    answerActionPosition={answerActionPosition}
                     appData={appData}
                     key={item.id}
                     item={item}
@@ -235,7 +266,7 @@ const Chat: FC<ChatProps> = ({
                   key={item.id}
                   item={item}
                   questionIcon={questionIcon}
-                  theme={themeBuilder?.theme}
+                  theme={theme}
                   enableEdit={config?.questionEditEnable}
                   switchSibling={switchSibling}
                   hideAvatar={hideAvatar}
@@ -263,10 +294,10 @@ const Chat: FC<ChatProps> = ({
             {!noStopResponding && isResponding && (
               <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
                 <Button
-                  className="pointer-events-auto border-components-panel-border bg-components-panel-bg text-components-button-secondary-text"
+                  className="pointer-events-auto bg-components-panel-bg text-components-button-secondary-text inset-ring-components-panel-border"
                   onClick={onStopResponding}
                 >
-                  <div className="mr-[5px] i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
+                  <div className="i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
                   <span className="text-xs font-normal">
                     {t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}
                   </span>
@@ -291,7 +322,7 @@ const Chat: FC<ChatProps> = ({
                 onSend={onSend}
                 inputs={inputs}
                 inputsForm={inputsForm}
-                theme={themeBuilder?.theme}
+                theme={theme}
                 isResponding={isResponding}
                 readonly={readonly}
                 sendButtonLabel={sendButtonLabel}

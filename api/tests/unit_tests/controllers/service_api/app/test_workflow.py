@@ -16,20 +16,26 @@ Focus on:
 import json
 import sys
 import uuid
-from dataclasses import dataclass, field
+from collections.abc import Callable
 from datetime import UTC, datetime
 from inspect import unwrap
-from unittest.mock import MagicMock, Mock, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.service_api.app.error import NotWorkflowAppError, WorkflowVersionExecutionNotAllowedError
+from controllers.service_api.app.error import (
+    CompletionRequestError,
+    NotWorkflowAppError,
+    TriggerWorkflowServiceModeUnavailableError,
+    WorkflowVersionExecutionNotAllowedError,
+)
 from controllers.service_api.app.workflow import (
     AppQueueManager,
-    DifyAPIRepositoryFactory,
     GraphEngineManager,
     WorkflowAppLogApi,
     WorkflowLogQuery,
@@ -41,68 +47,36 @@ from controllers.service_api.app.workflow import (
     WorkflowTaskStopApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.entities.app_invoke_entities import InvokeFrom
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
+from graphon.model_runtime.errors.invoke import InvokeRateLimitError as ProviderInvokeRateLimitError
+from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
+from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from services.app_generate_service import AppGenerateService
 from services.billing_service import BillingService
-from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.app import (
+    IsDraftWorkflowError,
+    WorkflowNotFoundError,
+)
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_app_service import LogView, LogViewDetails, WorkflowAppService
+from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 
 
 def _default_workflow_inputs() -> dict[str, object]:
     return {"input": "value"}
 
 
-def _default_log_details() -> LogViewDetails:
-    return {"trigger_metadata": {"node": "answer", "latency": 1.25}}
-
-
-class _DbSessionStub:
-    def get(self, *args: object, **kwargs: object) -> None:
-        return None
-
-
-@dataclass
-class _DbStub:
-    engine: object = field(default_factory=object)
-    session: _DbSessionStub = field(default_factory=_DbSessionStub)
-
-
-@dataclass
-class _WorkflowRunRepositoryStub:
-    run: WorkflowRun | None
-
-    def get_workflow_run_by_id(self, *, tenant_id: str, app_id: str, run_id: str) -> WorkflowRun | None:
-        return self.run if tenant_id and app_id and run_id else None
-
-    def get_workflow_run_by_id_without_tenant(self, *, run_id: str) -> WorkflowRun | None:
-        return self.run if run_id else None
-
-
-class _BeginStub:
-    def __enter__(self) -> object:
-        return object()
-
-    def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
-        return False
-
-
-class _SessionMakerStub:
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        pass
-
-    def begin(self) -> _BeginStub:
-        return _BeginStub()
-
-
 def _make_workflow_run(
     run_id: str = "run-1",
     *,
+    tenant_id: str = "tenant-1",
+    app_id: str = "app-1",
     workflow_id: str = "wf-1",
     inputs: dict[str, object] | None = None,
     outputs: dict[str, object] | None = None,
@@ -111,8 +85,8 @@ def _make_workflow_run(
 ) -> WorkflowRun:
     return WorkflowRun(
         id=run_id,
-        tenant_id="tenant-1",
-        app_id="app-1",
+        tenant_id=tenant_id,
+        app_id=app_id,
         workflow_id=workflow_id,
         type=WorkflowType.WORKFLOW,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -133,12 +107,17 @@ def _make_workflow_run(
     )
 
 
-def _make_workflow_app_log() -> WorkflowAppLog:
+def _make_workflow_app_log(
+    *,
+    tenant_id: str = "tenant-1",
+    app_id: str = "app-1",
+    workflow_run_id: str = "log-run-1",
+) -> WorkflowAppLog:
     log = WorkflowAppLog(
-        tenant_id="tenant-1",
-        app_id="app-1",
+        tenant_id=tenant_id,
+        app_id=app_id,
         workflow_id="wf-1",
-        workflow_run_id="log-run-1",
+        workflow_run_id=workflow_run_id,
         created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
@@ -146,16 +125,6 @@ def _make_workflow_app_log() -> WorkflowAppLog:
     log.id = "app-log-1"
     log.created_at = datetime(2026, 1, 1, 1, 0, 3, tzinfo=UTC)
     return log
-
-
-def _make_workflow_log_page() -> dict[str, object]:
-    return {
-        "page": 1,
-        "limit": 20,
-        "total": 1,
-        "has_more": False,
-        "data": [LogView(_make_workflow_app_log(), _default_log_details())],
-    }
 
 
 def _make_app_model(
@@ -177,6 +146,46 @@ def _make_end_user(user_id: str = "end-user-1") -> EndUser:
     return end_user
 
 
+def _bind_sqlite_database(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+) -> None:
+    """Bind controller- and model-owned database access to the test engine."""
+    database = SimpleNamespace(engine=sqlite_engine, session=sqlite_session)
+    monkeypatch.setattr(sys.modules["controllers.service_api.app.workflow"], "db", database)
+    monkeypatch.setattr(sys.modules["models.workflow"], "db", database)
+
+
+def _persist_workflow_log(
+    sqlite_session: Session,
+    *,
+    tenant_id: str,
+    app_id: str,
+) -> None:
+    workflow_run_id = "log-run-1"
+    account = Account(name="Log Account", email="log-account@example.com")
+    account.id = "account-1"
+    sqlite_session.add_all(
+        [
+            account,
+            _make_workflow_run(
+                run_id=workflow_run_id,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                created_at=datetime(2026, 1, 1, 1, tzinfo=UTC),
+                finished_at=datetime(2026, 1, 1, 1, 0, 2, tzinfo=UTC),
+            ),
+            _make_workflow_app_log(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_run_id=workflow_run_id,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+
+
 def _expected_workflow_log_pagination_payload() -> dict[str, object]:
     return {
         "page": 1,
@@ -195,19 +204,35 @@ def _expected_workflow_log_pagination_payload() -> dict[str, object]:
                     "elapsed_time": 0.1,
                     "total_tokens": 10,
                     "total_steps": 1,
-                    "created_at": 1767229200,
-                    "finished_at": 1767229202,
+                    "created_at": int(datetime(2026, 1, 1, 1).timestamp()),
+                    "finished_at": int(datetime(2026, 1, 1, 1, 0, 2).timestamp()),
                     "exceptions_count": 0,
                 },
-                "details": {"trigger_metadata": {"node": "answer", "latency": 1.25}},
+                "details": None,
                 "created_from": "service-api",
                 "created_by_role": "account",
-                "created_by_account": None,
+                "created_by_account": {
+                    "id": "account-1",
+                    "name": "Log Account",
+                    "email": "log-account@example.com",
+                },
                 "created_by_end_user": None,
-                "created_at": 1767229203,
+                "created_at": int(datetime(2026, 1, 1, 1, 0, 3).timestamp()),
             }
         ],
     }
+
+
+def _stub_workflow_app_logs(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    workflow_app_logs = MagicMock()
+    workflow_app_logs.list_logs.return_value = _expected_workflow_log_pagination_payload()
+    services = SimpleNamespace(workflow_app_logs=workflow_app_logs)
+    monkeypatch.setattr(
+        sys.modules["controllers.service_api.app.workflow"],
+        "application_services",
+        lambda: services,
+    )
+    return workflow_app_logs
 
 
 class TestWorkflowRunPayload:
@@ -351,167 +376,26 @@ class TestWorkflowRunResponse:
         }
 
 
-class TestWorkflowAppService:
-    """Test WorkflowAppService interface."""
-
-    def test_service_exists(self):
-        """Test WorkflowAppService class exists."""
-        service = WorkflowAppService()
-        assert service is not None
-
-    def test_get_paginate_workflow_app_logs_method_exists(self):
-        """Test get_paginate_workflow_app_logs method exists."""
-        assert hasattr(WorkflowAppService, "get_paginate_workflow_app_logs")
-        assert callable(WorkflowAppService.get_paginate_workflow_app_logs)
-
-    @patch.object(WorkflowAppService, "get_paginate_workflow_app_logs")
-    def test_get_paginate_workflow_app_logs_returns_pagination(self, mock_get_logs):
-        """Test get_paginate_workflow_app_logs returns paginated result."""
-        pagination = _make_workflow_log_page()
-        mock_get_logs.return_value = pagination
-
-        service = WorkflowAppService()
-        result = service.get_paginate_workflow_app_logs(
-            session=Mock(),
-            app_model=_make_app_model(),
-            keyword=None,
-            status=None,
-            created_at_before=None,
-            created_at_after=None,
-            page=1,
-            limit=20,
-            created_by_end_user_session_id=None,
-            created_by_account=None,
-        )
-
-        assert result == pagination
-
-
-class TestWorkflowExecutionStatus:
-    """Test WorkflowExecutionStatus enum."""
-
-    def test_succeeded_status_exists(self):
-        """Test succeeded status value exists."""
-        status = WorkflowExecutionStatus("succeeded")
-        assert status.value == "succeeded"
-
-    def test_failed_status_exists(self):
-        """Test failed status value exists."""
-        status = WorkflowExecutionStatus("failed")
-        assert status.value == "failed"
-
-    def test_stopped_status_exists(self):
-        """Test stopped status value exists."""
-        status = WorkflowExecutionStatus("stopped")
-        assert status.value == "stopped"
-
-
-class TestAppGenerateServiceWorkflow:
-    """Test AppGenerateService workflow integration."""
-
-    @patch.object(AppGenerateService, "generate")
-    def test_generate_accepts_workflow_args(self, mock_generate: MagicMock):
-        """Test generate accepts workflow-specific args."""
-        mock_generate.return_value = {"result": "success"}
-
-        result = AppGenerateService.generate(
-            app_model=_make_app_model(),
-            user=_make_end_user(),
-            args={"inputs": {"key": "value"}, "workflow_id": "workflow_123"},
-            invoke_from=InvokeFrom.SERVICE_API,
-            session=MagicMock(),
-            streaming=False,
-        )
-
-        assert result == {"result": "success"}
-        mock_generate.assert_called_once()
-
-    @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_workflow_not_found_error(self, mock_generate: MagicMock):
-        """Test generate raises WorkflowNotFoundError."""
-        mock_generate.side_effect = WorkflowNotFoundError("Workflow not found")
-
-        with pytest.raises(WorkflowNotFoundError):
-            AppGenerateService.generate(
-                app_model=_make_app_model(),
-                user=_make_end_user(),
-                args={"workflow_id": "invalid_id"},
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=MagicMock(),
-                streaming=False,
-            )
-
-    @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_is_draft_workflow_error(self, mock_generate: MagicMock):
-        """Test generate raises IsDraftWorkflowError."""
-        mock_generate.side_effect = IsDraftWorkflowError("Workflow is draft")
-
-        with pytest.raises(IsDraftWorkflowError):
-            AppGenerateService.generate(
-                app_model=_make_app_model(),
-                user=_make_end_user(),
-                args={"workflow_id": "draft_workflow"},
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=MagicMock(),
-                streaming=False,
-            )
-
-    @patch.object(AppGenerateService, "generate")
-    def test_generate_supports_streaming_mode(self, mock_generate: MagicMock):
-        """Test generate supports streaming response mode."""
-        mock_stream = Mock()
-        mock_generate.return_value = mock_stream
-
-        result = AppGenerateService.generate(
-            app_model=_make_app_model(),
-            user=_make_end_user(),
-            args={"inputs": {}, "response_mode": "streaming"},
-            invoke_from=InvokeFrom.SERVICE_API,
-            session=MagicMock(),
-            streaming=True,
-        )
-
-        assert result == mock_stream
-
-
-class TestWorkflowStopMechanism:
-    """Test workflow stop mechanisms."""
-
-    def test_app_queue_manager_has_stop_flag_method(self):
-        """Test AppQueueManager has set_stop_flag_no_user_check method."""
-        from core.app.apps.base_app_queue_manager import AppQueueManager
-
-        assert hasattr(AppQueueManager, "set_stop_flag_no_user_check")
-
-    def test_graph_engine_manager_has_send_stop_command(self):
-        """Test GraphEngineManager has send_stop_command method."""
-        from graphon.graph_engine.manager import GraphEngineManager
-
-        assert hasattr(GraphEngineManager, "send_stop_command")
-
-
 class TestWorkflowRunRepository:
     """Test workflow run repository interface."""
 
-    def test_repository_factory_can_create_workflow_run_repository(self):
-        """Test DifyAPIRepositoryFactory can create workflow run repository."""
-        from repositories.factory import DifyAPIRepositoryFactory
-
-        assert hasattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository")
-
-    @patch("repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository")
-    def test_workflow_run_repository_get_by_id(self, mock_factory):
-        """Test workflow run repository get_workflow_run_by_id method."""
+    @pytest.mark.parametrize("sqlite_session", [(WorkflowRun,)], indirect=True)
+    def test_workflow_run_repository_get_by_id(self, sqlite_engine: Engine, sqlite_session: Session):
+        """Test repository lookup against committed tenant-scoped state."""
         run = _make_workflow_run(run_id=str(uuid.uuid4()))
-        mock_factory.return_value = _WorkflowRunRepositoryStub(run=run)
-
+        sqlite_session.add(run)
+        sqlite_session.commit()
         from repositories.factory import DifyAPIRepositoryFactory
 
-        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessionmaker())
+        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+            sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+        )
 
-        result = repo.get_workflow_run_by_id(tenant_id="tenant_123", app_id="app_456", run_id="run_789")
+        result = repo.get_workflow_run_by_id(tenant_id="tenant-1", app_id="app-1", run_id=run.id)
 
-        assert result == run
+        assert result is not None
+        assert result.id == run.id
+        assert repo.get_workflow_run_by_id(tenant_id="other-tenant", app_id="app-1", run_id=run.id) is None
 
 
 class TestWorkflowRunDetailApi:
@@ -524,16 +408,17 @@ class TestWorkflowRunDetailApi:
             with pytest.raises(NotWorkflowAppError):
                 handler(api, app_model=app_model, workflow_run_id="run")
 
-    def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        run = _make_workflow_run(run_id="run")
-        repo = _WorkflowRunRepositoryStub(run=run)
-        workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module, "db", _DbStub())
-        monkeypatch.setattr(
-            DifyAPIRepositoryFactory,
-            "create_api_workflow_run_repository",
-            lambda *_args, **_kwargs: repo,
-        )
+    @pytest.mark.parametrize("sqlite_session", [(WorkflowRun,)], indirect=True)
+    def test_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        sqlite_session: Session,
+    ) -> None:
+        run = _make_workflow_run(run_id="run", tenant_id="t1", app_id="a1")
+        sqlite_session.add(run)
+        sqlite_session.commit()
+        _bind_sqlite_database(monkeypatch, sqlite_engine, sqlite_session)
 
         api = WorkflowRunDetailApi()
         handler = unwrap(api.get)
@@ -546,7 +431,8 @@ class TestWorkflowRunDetailApi:
 
 
 class TestWorkflowRunApi:
-    def test_not_workflow_app(self, app: Flask) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_not_workflow_app(self, app: Flask, sqlite_session: Session) -> None:
         api = WorkflowRunApi()
         handler = unwrap(api.post)
         app_model = _make_app_model(mode=AppMode.CHAT)
@@ -554,31 +440,92 @@ class TestWorkflowRunApi:
 
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
             with pytest.raises(NotWorkflowAppError):
-                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
+                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user)
 
-    def test_rate_limit(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    @pytest.mark.parametrize("api_class", [WorkflowRunApi, WorkflowRunByIdApi])
+    @pytest.mark.parametrize(
+        ("source_error", "http_error", "status_code", "error_code"),
+        [
+            pytest.param(InvokeRateLimitError, InvokeRateLimitHttpError, 429, "rate_limit_error", id="cloud-quota"),
+            pytest.param(
+                ProviderInvokeRateLimitError, CompletionRequestError, 400, "completion_request_error", id="provider"
+            ),
+        ],
+    )
+    def test_maps_rate_limits_by_source(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+        api_class: type[WorkflowRunApi | WorkflowRunByIdApi],
+        source_error: type[InvokeRateLimitError | ProviderInvokeRateLimitError],
+        http_error: type[InvokeRateLimitHttpError | CompletionRequestError],
+        status_code: int,
+        error_code: str,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         monkeypatch.setattr(
-            AppGenerateService,
-            "generate",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(InvokeRateLimitError("slow")),
+            BillingService, "get_info", Mock(return_value={"subscription": {"plan": CloudPlan.PROFESSIONAL}})
         )
+        generate = Mock(side_effect=source_error("rate limit reached"))
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
 
-        api = WorkflowRunApi()
+        api = api_class()
         handler = unwrap(api.post)
         app_model = _make_app_model()
         end_user = _make_end_user()
+        kwargs: dict[str, str] = {"workflow_id": str(uuid.uuid4())} if isinstance(api, WorkflowRunByIdApi) else {}
+
+        with app.test_request_context(
+            "/workflows/run", method="POST", json={"inputs": {}, "response_mode": "blocking"}
+        ):
+            with pytest.raises(http_error) as exc_info:
+                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, **kwargs)
+
+        generate.assert_called_once()
+        assert exc_info.value.code == status_code
+        assert exc_info.value.error_code == error_code
+        assert exc_info.value.description == "rate limit reached"
+
+    def test_trigger_workflow_returns_stable_unavailable_error(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            Mock(side_effect=TriggerWorkflowServiceModeUnavailableServiceError()),
+        )
+        api = WorkflowRunApi()
+        handler = unwrap(api.post)
 
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
-            with pytest.raises(InvokeRateLimitHttpError):
-                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
+            with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
+                handler(
+                    api,
+                    session=sqlite_session,
+                    app_model=_make_app_model(),
+                    end_user=_make_end_user(),
+                )
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
 
     def test_sandbox_billing_does_not_gate_default_workflow_run(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
     ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", True)
 
-        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
+        billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock(return_value={"result": "ok"})
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)
@@ -589,7 +536,7 @@ class TestWorkflowRunApi:
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
             response = handler(
                 api,
-                session=Mock(),
+                session=sqlite_session,
                 app_model=_make_app_model(),
                 end_user=_make_end_user(),
             )
@@ -600,11 +547,44 @@ class TestWorkflowRunApi:
 
 
 class TestWorkflowRunByIdApi:
-    def test_rejects_sandbox_plan_with_upgrade_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", True)
+    def test_trigger_workflow_version_returns_stable_unavailable_error(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            Mock(side_effect=TriggerWorkflowServiceModeUnavailableServiceError()),
+        )
+        api = WorkflowRunByIdApi()
+        handler = unwrap(api.post)
 
-        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
+        with app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}):
+            with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
+                handler(
+                    api,
+                    session=sqlite_session,
+                    app_model=_make_app_model(),
+                    end_user=_make_end_user(),
+                    workflow_id=str(uuid.uuid4()),
+                )
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
+
+    def test_rejects_sandbox_plan_with_upgrade_error(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+
+        billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)
@@ -617,7 +597,7 @@ class TestWorkflowRunByIdApi:
             with pytest.raises(WorkflowVersionExecutionNotAllowedError) as exc_info:
                 handler(
                     api,
-                    session=Mock(),
+                    session=sqlite_session,
                     app_model=app_model,
                     end_user=_make_end_user(),
                     workflow_id="w1",
@@ -637,25 +617,25 @@ class TestWorkflowRunByIdApi:
         }
 
     @pytest.mark.parametrize(
-        ("billing_config_enabled", "billing_enabled", "plan"),
+        ("deployment_edition", "plan"),
         [
-            (False, True, CloudPlan.SANDBOX),
-            (True, False, CloudPlan.SANDBOX),
-            (True, True, CloudPlan.PROFESSIONAL),
+            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX),
+            (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX),
+            (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL),
         ],
     )
     def test_allows_execution_outside_enabled_sandbox_plan(
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        billing_config_enabled: bool,
-        billing_enabled: bool,
+        deployment_edition: DeploymentEdition,
         plan: CloudPlan,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
     ) -> None:
-        workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", billing_config_enabled)
+        config_overrides(DEPLOYMENT_EDITION=deployment_edition)
 
-        billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
+        billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)
@@ -667,7 +647,7 @@ class TestWorkflowRunByIdApi:
         with app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}):
             response = handler(
                 api,
-                session=Mock(),
+                session=sqlite_session,
                 app_model=app_model,
                 end_user=_make_end_user(),
                 workflow_id="w1",
@@ -675,14 +655,21 @@ class TestWorkflowRunByIdApi:
 
         assert response.get_json() == {"result": "ok"}
         generate.assert_called_once()
-        if billing_config_enabled:
+        if deployment_edition == DeploymentEdition.CLOUD:
             billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
         else:
             billing_get_info.assert_not_called()
 
-    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_not_found(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", False)
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -696,11 +683,18 @@ class TestWorkflowRunByIdApi:
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
             with pytest.raises(NotFound):
-                handler(api, session=Mock(), app_model=app_model, end_user=end_user, workflow_id="w1")
+                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, workflow_id="w1")
 
-    def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_draft_workflow(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", False)
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -714,14 +708,15 @@ class TestWorkflowRunByIdApi:
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
             with pytest.raises(BadRequest):
-                handler(api, session=Mock(), app_model=app_model, end_user=end_user, workflow_id="w1")
+                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, workflow_id="w1")
 
 
 class TestWorkflowTaskStopApi:
-    def test_wrong_mode(self, app: Flask) -> None:
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION])
+    def test_wrong_mode(self, app: Flask, mode: AppMode) -> None:
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
-        app_model = _make_app_model(mode=AppMode.CHAT)
+        app_model = _make_app_model(mode=mode)
         end_user = _make_end_user()
 
         with app.test_request_context("/workflows/tasks/1/stop", method="POST"):
@@ -748,32 +743,26 @@ class TestWorkflowTaskStopApi:
 
 
 class TestWorkflowAppLogApi:
-    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        workflow_model_module = sys.modules["models.workflow"]
-        monkeypatch.setattr(workflow_module, "db", _DbStub())
-        monkeypatch.setattr(workflow_model_module, "db", _DbStub())
-        monkeypatch.setattr(workflow_module, "sessionmaker", _SessionMakerStub)
-        monkeypatch.setattr(
-            WorkflowAppService,
-            "get_paginate_workflow_app_logs",
-            lambda *_args, **_kwargs: _make_workflow_log_page(),
-        )
-        monkeypatch.setattr(
-            DifyAPIRepositoryFactory,
-            "create_api_workflow_run_repository",
-            lambda *_args, **_kwargs: _WorkflowRunRepositoryStub(
-                run=_make_workflow_run(
-                    run_id="log-run-1",
-                    created_at=datetime(2026, 1, 1, 1, tzinfo=UTC),
-                    finished_at=datetime(2026, 1, 1, 1, 0, 2, tzinfo=UTC),
-                )
-            ),
-        )
-
+    def test_success(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
         api = WorkflowAppLogApi()
         handler = unwrap(api.get)
         app_model = _make_app_model(app_id="a1")
+        _persist_workflow_log(sqlite_session, tenant_id=app_model.tenant_id, app_id=app_model.id)
+
+        workflow_app_logs = WorkflowAppLogQueryService(
+            logs=WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory),
+        )
+        monkeypatch.setattr(
+            sys.modules["controllers.service_api.app.workflow"],
+            "application_services",
+            lambda: SimpleNamespace(workflow_app_logs=workflow_app_logs),
+        )
 
         with app.test_request_context("/workflows/logs", method="GET"):
             response = handler(api, app_model=app_model)
@@ -803,18 +792,24 @@ class TestWorkflowRunDetailApiGet:
     and we call the unwrapped method directly in tests.
     """
 
-    @patch("controllers.service_api.app.workflow.DifyAPIRepositoryFactory")
-    @patch("controllers.service_api.app.workflow.db")
+    @pytest.mark.parametrize("sqlite_session", [(WorkflowRun,)], indirect=True)
     def test_get_workflow_run_success(
         self,
-        mock_db,
-        mock_repo_factory,
         app: Flask,
         workflow_app: App,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        sqlite_session: Session,
     ):
         """Test successful workflow run detail retrieval."""
-        run = _make_workflow_run(run_id="run-1")
-        mock_repo_factory.create_api_workflow_run_repository.return_value = _WorkflowRunRepositoryStub(run=run)
+        run = _make_workflow_run(
+            run_id="run-1",
+            tenant_id=workflow_app.tenant_id,
+            app_id=workflow_app.id,
+        )
+        sqlite_session.add(run)
+        sqlite_session.commit()
+        _bind_sqlite_database(monkeypatch, sqlite_engine, sqlite_session)
 
         from controllers.service_api.app.workflow import WorkflowRunDetailApi
 
@@ -834,13 +829,12 @@ class TestWorkflowRunDetailApiGet:
             "error": None,
             "total_steps": 1,
             "total_tokens": 10,
-            "created_at": 1767225600,
-            "finished_at": 1767225600,
+            "created_at": int(datetime(2026, 1, 1).timestamp()),
+            "finished_at": int(datetime(2026, 1, 1).timestamp()),
             "elapsed_time": 0.1,
         }
 
-    @patch("controllers.service_api.app.workflow.db")
-    def test_get_workflow_run_wrong_app_mode(self, mock_db, app: Flask):
+    def test_get_workflow_run_wrong_app_mode(self, app: Flask):
         """Test NotWorkflowAppError when app mode is not workflow or advanced_chat."""
         from controllers.service_api.app.workflow import WorkflowRunDetailApi
 
@@ -852,96 +846,25 @@ class TestWorkflowRunDetailApiGet:
                 unwrap(api.get)(api, app_model=app_model, workflow_run_id="run-1")
 
 
-class TestWorkflowTaskStopApiPost:
-    """Test suite for WorkflowTaskStopApi.post() endpoint.
-
-    ``post`` is wrapped by ``@validate_app_token(fetch_user_arg=...)``.
-    """
-
-    @patch("controllers.service_api.app.workflow.GraphEngineManager")
-    @patch("controllers.service_api.app.workflow.AppQueueManager")
-    def test_stop_workflow_task_success(
-        self,
-        mock_queue_mgr,
-        mock_graph_mgr,
-        app: Flask,
-        workflow_app: App,
-    ):
-        """Test successful workflow task stop."""
-        from controllers.service_api.app.workflow import WorkflowTaskStopApi
-
-        with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
-            api = WorkflowTaskStopApi()
-            result = unwrap(api.post)(
-                api,
-                app_model=workflow_app,
-                end_user=_make_end_user(),
-                task_id="task-1",
-            )
-
-        assert result == {"result": "success"}
-        mock_queue_mgr.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-        mock_graph_mgr.assert_called_once()
-        mock_graph_mgr.return_value.send_stop_command.assert_called_once_with("task-1")
-
-    def test_stop_workflow_task_wrong_app_mode(self, app: Flask):
-        """Test NotWorkflowAppError when app mode is not workflow."""
-        from controllers.service_api.app.workflow import WorkflowTaskStopApi
-
-        app_model = _make_app_model(mode=AppMode.COMPLETION)
-
-        with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
-            api = WorkflowTaskStopApi()
-            with pytest.raises(NotWorkflowAppError):
-                unwrap(api.post)(api, app_model=app_model, end_user=_make_end_user(), task_id="task-1")
-
-
 class TestWorkflowAppLogApiGet:
     """Test suite for WorkflowAppLogApi.get() endpoint.
 
     ``get`` is wrapped by ``@validate_app_token``.
     """
 
-    @patch("controllers.service_api.app.workflow.WorkflowAppService")
-    @patch("controllers.service_api.app.workflow.db")
     def test_get_workflow_logs_success(
         self,
-        mock_db,
-        mock_wf_svc_cls,
         app: Flask,
         workflow_app: App,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         """Test successful workflow log retrieval."""
-        mock_svc_instance = Mock()
-        mock_svc_instance.get_paginate_workflow_app_logs.return_value = _make_workflow_log_page()
-        mock_wf_svc_cls.return_value = mock_svc_instance
-        mock_repo = _WorkflowRunRepositoryStub(
-            run=_make_workflow_run(
-                run_id="log-run-1",
-                created_at=datetime(2026, 1, 1, 1, tzinfo=UTC),
-                finished_at=datetime(2026, 1, 1, 1, 0, 2, tzinfo=UTC),
-            )
-        )
-
-        # Mock sessionmaker(...).begin() context manager
-        mock_db.engine = object()
-        mock_db.session.get.return_value = None
+        _stub_workflow_app_logs(monkeypatch)
 
         from controllers.service_api.app.workflow import WorkflowAppLogApi
 
-        with app.test_request_context(
-            "/workflows/logs?page=1&limit=20",
-            method="GET",
-        ):
-            with (
-                patch("controllers.service_api.app.workflow.sessionmaker", _SessionMakerStub),
-                patch("models.workflow.db", _DbStub()),
-                patch(
-                    "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
-                    return_value=mock_repo,
-                ),
-            ):
-                api = WorkflowAppLogApi()
-                result = unwrap(api.get)(api, app_model=workflow_app)
+        with app.test_request_context("/workflows/logs?page=1&limit=20", method="GET"):
+            api = WorkflowAppLogApi()
+            result = unwrap(api.get)(api, app_model=workflow_app)
 
         assert result == _expected_workflow_log_pagination_payload()

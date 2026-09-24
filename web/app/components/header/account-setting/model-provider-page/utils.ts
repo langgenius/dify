@@ -5,22 +5,16 @@ import type {
   ModelType,
   ModelWithProviderEntityResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ComponentType } from 'react'
+import type { StaticImageData } from 'next/image'
 import type {
   CredentialFormSchemaSelect,
   CredentialFormSchemaTextInput,
   ModelItem,
   TypeWithI18N,
 } from './declarations'
-import {
-  AnthropicShortLight,
-  Deepseek,
-  Gemini,
-  Grok,
-  OpenaiSmall,
-  Tongyi,
-} from '@/app/components/base/icons/src/public/llm'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import openaiLogo from './assets/openai-small.svg'
+import tongyiLogo from './assets/tongyi.svg'
 import {
   ConfigurationMethodEnum,
   FormTypeEnum,
@@ -32,11 +26,6 @@ import {
 
 export { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 
-export const providerToPluginId = (providerKey: string): string => {
-  const lastSlash = providerKey.lastIndexOf('/')
-  return lastSlash > 0 ? providerKey.slice(0, lastSlash) : ''
-}
-
 export const MODEL_PROVIDER_QUOTA_GET_PAID = [
   ModelProviderQuotaGetPaid.OPENAI,
   ModelProviderQuotaGetPaid.ANTHROPIC,
@@ -46,16 +35,18 @@ export const MODEL_PROVIDER_QUOTA_GET_PAID = [
   ModelProviderQuotaGetPaid.TONGYI,
 ]
 
-export const providerIconMap: Record<
+export const providerLogoMap: Record<
   ModelProviderQuotaGetPaid,
-  ComponentType<{ className?: string }>
+  { iconClassName: string } | { image: StaticImageData }
 > = {
-  [ModelProviderQuotaGetPaid.OPENAI]: OpenaiSmall,
-  [ModelProviderQuotaGetPaid.ANTHROPIC]: AnthropicShortLight,
-  [ModelProviderQuotaGetPaid.GEMINI]: Gemini,
-  [ModelProviderQuotaGetPaid.X]: Grok,
-  [ModelProviderQuotaGetPaid.DEEPSEEK]: Deepseek,
-  [ModelProviderQuotaGetPaid.TONGYI]: Tongyi,
+  [ModelProviderQuotaGetPaid.OPENAI]: { image: openaiLogo },
+  [ModelProviderQuotaGetPaid.ANTHROPIC]: {
+    iconClassName: 'i-custom-public-llm-anthropic-short-light',
+  },
+  [ModelProviderQuotaGetPaid.GEMINI]: { iconClassName: 'i-custom-public-llm-gemini' },
+  [ModelProviderQuotaGetPaid.X]: { iconClassName: 'i-custom-public-llm-grok' },
+  [ModelProviderQuotaGetPaid.DEEPSEEK]: { iconClassName: 'i-custom-public-llm-deepseek' },
+  [ModelProviderQuotaGetPaid.TONGYI]: { image: tongyiLogo },
 }
 
 export const providerKeyToPluginId: Record<ModelProviderQuotaGetPaid, string> = {
@@ -86,7 +77,7 @@ export const sizeFormat = (size: number) => {
   else return `${remainder}K`
 }
 
-export const modelTypeFormat = (modelType: ModelTypeEnum) => {
+export const modelTypeFormat = (modelType: string) => {
   if (modelType === ModelTypeEnum.textEmbedding) return 'TEXT EMBEDDING'
 
   return modelType.toLocaleUpperCase()

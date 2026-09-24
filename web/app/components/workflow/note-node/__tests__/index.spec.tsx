@@ -24,13 +24,20 @@ const {
   mockHandleThemeChange: vi.fn(),
 }))
 
-vi.mock('../../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks')>()
+vi.mock('../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-node-data-update')>()
   return {
     ...actual,
     useNodeDataUpdate: () => ({
       handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
     }),
+  }
+})
+
+vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-interactions')>()
+  return {
+    ...actual,
     useNodesInteractions: () => ({
       handleNodesCopy: mockHandleNodesCopy,
       handleNodesDuplicate: mockHandleNodesDuplicate,

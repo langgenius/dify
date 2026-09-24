@@ -11,6 +11,25 @@ const getStringConfig = (envVar: string | undefined, defaultValue: string) => {
   return defaultValue
 }
 
+const isLocalMarketplaceApiUrl = (url: string | undefined) =>
+  /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::|\/)/i.test(url ?? '')
+
+// Docker entrypoint sets NEXT_PUBLIC_MARKETPLACE_API_PREFIX=${MARKETPLACE_API_URL}/api/v1.
+// MARKETPLACE_API_URL itself is the site origin (no /api/v1). Standalone marketplace
+// images may set MARKETPLACE_API_URL at runtime for SSR; normalize the same way
+// entrypoint does so console SSR does not call the HTML origin and fail Templates.
+const marketplaceApiPrefixFromUrl = (url: string) => {
+  const trimmed = url.replace(/\/$/, '')
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`
+}
+
+const runtimeMarketplaceApiUrl =
+  typeof globalThis.window === 'undefined' &&
+  process.env.MARKETPLACE_API_URL &&
+  !isLocalMarketplaceApiUrl(process.env.MARKETPLACE_API_URL)
+    ? marketplaceApiPrefixFromUrl(process.env.MARKETPLACE_API_URL)
+    : undefined
+
 export const API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_API_PREFIX,
   'http://localhost:5001/console/api',
@@ -20,19 +39,15 @@ export const PUBLIC_API_PREFIX = getStringConfig(
   'http://localhost:5001/api',
 )
 export const MARKETPLACE_API_PREFIX = getStringConfig(
-  env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
+  runtimeMarketplaceApiUrl || env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
   'http://localhost:5002/api',
 )
 export const MARKETPLACE_URL_PREFIX = getStringConfig(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX, '')
 
-const EDITION = env.NEXT_PUBLIC_EDITION
-
-export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
-export const IS_CLOUD_EDITION = EDITION === 'CLOUD'
-
 export const AMPLITUDE_API_KEY = getStringConfig(env.NEXT_PUBLIC_AMPLITUDE_API_KEY, '')
-
-export const isAmplitudeEnabled = IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
+export const COOKIEYES_SITE_KEY = getStringConfig(env.NEXT_PUBLIC_COOKIEYES_SITE_KEY, '')
+export const TURNSTILE_SITE_KEY = getStringConfig(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY, '')
+export const WEB_PREFIX = env.NEXT_PUBLIC_WEB_PREFIX
 
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_PROD = process.env.NODE_ENV === 'production'
@@ -110,7 +125,7 @@ export const PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) => `passport-${appC
 export const PASSPORT_HEADER_NAME = 'X-App-Passport'
 
 export const WEB_APP_SHARE_CODE_HEADER_NAME = 'X-App-Code'
-export const zhRegex = /^[\u4E00-\u9FA5]$/m
+const zhRegex = /^[\u4E00-\u9FA5]$/m
 export const emailRegex = /^[\w.!#$%&'*+\-/=?^{|}~]+@([\w-]+\.)+[\w-]{2,}$/m
 const MAX_ZN_VAR_NAME_LENGTH = 8
 const MAX_EN_VAR_VALUE_LENGTH = 30
@@ -269,9 +284,14 @@ export const JSON_SCHEMA_MAX_DEPTH = 10
 export const MAX_TOOLS_NUM = env.NEXT_PUBLIC_MAX_TOOLS_NUM
 export const MAX_PARALLEL_LIMIT = env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
 export const TEXT_GENERATION_TIMEOUT_MS = env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS
+export const WORKFLOW_GENERATION_TIMEOUT_MS = env.NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS
 export const LOOP_NODE_MAX_COUNT = env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT
 export const MAX_ITERATIONS_NUM = env.NEXT_PUBLIC_MAX_ITERATIONS_NUM
 export const MAX_TREE_DEPTH = env.NEXT_PUBLIC_MAX_TREE_DEPTH
+export const MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS =
+  env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
+export const MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH =
+  env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
 
 export const ALLOW_INLINE_STYLES = env.NEXT_PUBLIC_ALLOW_INLINE_STYLES
 export const ALLOW_UNSAFE_DATA_SCHEME = env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME

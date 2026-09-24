@@ -18,15 +18,11 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
-// Mock modal context - context provider requires mocking
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
-}))
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock ssePost - API service requires mocking
 const { mockSsePost } = vi.hoisted(() => ({
@@ -42,8 +38,8 @@ const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -237,7 +233,7 @@ describe('OnlineDocuments', () => {
 
     // Reset context values
     mockPipelineId = 'pipeline-123'
-    mockSetShowAccountSettingModal.mockClear()
+    mockSetSettingsDestination.mockClear()
 
     // Default mock return values
     mockUseGetDataSourceAuth.mockReturnValue({
@@ -248,14 +244,6 @@ describe('OnlineDocuments', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<OnlineDocuments {...props} />)
-
-      expect(screen.getByTestId('header')).toBeInTheDocument()
-    })
-
     it('should render Header with correct props', () => {
       mockStoreState.currentCredentialId = 'cred-123'
       const props = createDefaultProps({
@@ -275,7 +263,7 @@ describe('OnlineDocuments', () => {
 
       render(<OnlineDocuments {...props} />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should render PageSelector when documentsData has content', () => {
@@ -285,7 +273,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       expect(screen.getByTestId('page-selector')).toBeInTheDocument()
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
 
     it('should render Title with datasource_label', () => {
@@ -620,9 +608,7 @@ describe('OnlineDocuments', () => {
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
   })
 
@@ -668,7 +654,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading instead of PageSelector
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
   })
 
@@ -717,9 +703,7 @@ describe('OnlineDocuments', () => {
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
 
     it('should handle credential change', () => {
@@ -886,7 +870,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading when documentsData is undefined
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should handle undefined datasource_parameters (line 79 branch)', () => {
@@ -1135,7 +1119,7 @@ describe('OnlineDocuments', () => {
       })
 
       // Should still show loading since documentsData is empty
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should handle credential change and refetch documents', () => {

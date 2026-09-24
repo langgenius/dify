@@ -140,14 +140,19 @@ type TriggerFn = (text: string, editor: LexicalEditor) => MenuTextMatch | null
 const escapeForCharacterClass = (value: string) => value.replace(/[[\]\\^-]/g, '\\$&')
 export function useBasicTypeaheadTriggerMatch(
   trigger: string,
-  { minLength = 1, maxLength = 75 }: { minLength?: number; maxLength?: number },
+  {
+    minLength = 1,
+    maxLength = 75,
+    requireTriggerBoundary = false,
+  }: { minLength?: number; maxLength?: number; requireTriggerBoundary?: boolean },
 ): TriggerFn {
   return useCallback(
     (text: string) => {
       const escapedTrigger = escapeForCharacterClass(trigger)
       const validChars = `[^${escapedTrigger}\\n\\r]`
+      const triggerPrefix = requireTriggerBoundary ? '(^|\\s)' : '(.*)'
       const TypeaheadTriggerRegex = new RegExp(
-        '(.*)(' + `[${escapedTrigger}]` + `((?:${validChars}){0,${maxLength}})` + ')$',
+        `${triggerPrefix}([${escapedTrigger}]((?:${validChars}){0,${maxLength}}))$`,
       )
       const match = TypeaheadTriggerRegex.exec(text)
       if (match !== null) {
@@ -163,6 +168,6 @@ export function useBasicTypeaheadTriggerMatch(
       }
       return null
     },
-    [maxLength, minLength, trigger],
+    [maxLength, minLength, requireTriggerBoundary, trigger],
   )
 }

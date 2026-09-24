@@ -1,14 +1,14 @@
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { toast } from '@/app/notifications'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberMenu from '../member-menu'
 
 vi.mock('@/service/access-control/use-member-roles')
@@ -16,7 +16,7 @@ vi.mock('@/service/access-control/use-workspace-roles')
 vi.mock('@/service/common', () => ({
   deleteMemberOrCancelInvitation: vi.fn(),
 }))
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
   },
@@ -103,7 +103,7 @@ describe('MemberMenu', () => {
   it('should show edit role copy when multiple roles are disabled', async () => {
     const user = userEvent.setup()
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
       {
         systemFeatures: {
@@ -127,7 +127,7 @@ describe('MemberMenu', () => {
   it('should submit only one selected role from the assign modal when RBAC is disabled', async () => {
     const user = userEvent.setup()
 
-    renderWithSystemFeatures(
+    renderWithConsoleQuery(
       <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
       {
         systemFeatures: {
@@ -156,7 +156,7 @@ describe('MemberMenu', () => {
     const membersQueryKey = [...commonQueryKeys.members, 'en-US']
     queryClient.setQueryData(membersQueryKey, { accounts: [member] })
 
-    renderWithSystemFeatures(<MemberMenu member={member} isCurrentUser={false} />, {
+    renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} />, {
       queryClient,
     })
 

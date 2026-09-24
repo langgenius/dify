@@ -28,7 +28,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -45,8 +45,11 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({ handleRun: mockHandleRun }),
+}))
+
+vi.mock('../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 

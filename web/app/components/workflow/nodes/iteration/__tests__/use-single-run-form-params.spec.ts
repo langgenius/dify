@@ -13,10 +13,15 @@ const mockGetNodeUsedVarPassToServerKey = vi.hoisted(() => vi.fn())
 const mockGetNodeInfoById = vi.hoisted(() => vi.fn())
 const mockIsSystemVar = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsNodeInIteration: (...args: unknown[]) => mockUseIsNodeInIteration(...args),
-  useWorkflow: () => mockUseWorkflow(),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsNodeInIteration: (...args: unknown[]) => mockUseIsNodeInIteration(...args),
+    useWorkflow: () => mockUseWorkflow(),
+  }
+})
 
 vi.mock('@/app/components/workflow/run/utils/format-log', () => ({
   __esModule: true,
@@ -37,7 +42,7 @@ const createInputVar = (variable: string): InputVar => ({
   required: false,
 })
 
-const createNode = (id: string, title: string, type = BlockEnum.Tool): Node =>
+const createNode = (id: string, title: string, type: BlockEnum = BlockEnum.Tool): Node =>
   ({
     id,
     position: { x: 0, y: 0 },

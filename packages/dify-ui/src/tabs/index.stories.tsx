@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { expect } from 'storybook/test'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '.'
 
 const meta = {
@@ -34,4 +35,21 @@ export const Basic: Story = {
       </TabsPanel>
     </Tabs>
   ),
+  play: async ({ canvas, userEvent }) => {
+    const overviewTab = canvas.getByRole('tab', { name: 'Overview' })
+    const activityTab = canvas.getByRole('tab', { name: 'Activity' })
+
+    await expect(overviewTab).toHaveAttribute('aria-selected', 'true')
+    await expect(canvas.getByRole('tabpanel', { name: 'Overview' })).toBeVisible()
+
+    await userEvent.click(activityTab)
+
+    await expect(activityTab).toHaveAttribute('aria-selected', 'true')
+    const activityPanel = canvas.getByRole('tabpanel', { name: 'Activity' })
+    await expect(activityPanel).toBeVisible()
+
+    await userEvent.tab()
+
+    await expect(activityPanel).toHaveFocus()
+  },
 }

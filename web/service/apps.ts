@@ -1,29 +1,14 @@
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type {
   AppDetailResponse,
-  AppListResponse,
-  CreateApiKeyResponse,
-  DSLImportMode,
-  DSLImportResponse,
   TracingConfig,
   TracingStatus,
   UpdateAppModelConfigResponse,
-  UpdateAppSiteCodeResponse,
   WebhookTriggerResponse,
 } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppIconType, AppModeEnum, ModelConfig } from '@/types/app'
 import { del, get, patch, post, put } from './base'
-
-export const fetchAppList = ({
-  url,
-  params,
-}: {
-  url: string
-  params?: Record<string, any>
-}): Promise<AppListResponse> => {
-  return get<AppListResponse>(url, { params })
-}
 
 export const fetchAppDetail = ({
   url,
@@ -98,127 +83,8 @@ export const updateAppInfo = ({
   return put<AppDetailResponse>(`apps/${appID}`, { body })
 }
 
-export const copyApp = ({
-  appID,
-  name,
-  icon_type,
-  icon,
-  icon_background,
-  mode,
-  description,
-}: {
-  appID: string
-  name: string
-  icon_type: AppIconType
-  icon: string
-  icon_background?: string | null
-  mode: AppModeEnum
-  description?: string
-}): Promise<AppDetailResponse> => {
-  return post<AppDetailResponse>(`apps/${appID}/copy`, {
-    body: { name, icon_type, icon, icon_background, mode, description },
-  })
-}
-
-export const exportAppConfig = ({
-  appID,
-  include = false,
-  workflowID,
-}: {
-  appID: string
-  include?: boolean
-  workflowID?: string
-}): Promise<{ data: string }> => {
-  const params = new URLSearchParams({
-    include_secret: include.toString(),
-  })
-  if (workflowID) params.append('workflow_id', workflowID)
-  return get<{ data: string }>(`apps/${appID}/export?${params.toString()}`)
-}
-
-export const importDSL = ({
-  mode,
-  yaml_content,
-  yaml_url,
-  app_id,
-  name,
-  description,
-  icon_type,
-  icon,
-  icon_background,
-}: {
-  mode: DSLImportMode
-  yaml_content?: string
-  yaml_url?: string
-  app_id?: string
-  name?: string
-  description?: string
-  icon_type?: AppIconType
-  icon?: string
-  icon_background?: string
-}): Promise<DSLImportResponse> => {
-  return post<DSLImportResponse>('apps/imports', {
-    body: {
-      mode,
-      yaml_content,
-      yaml_url,
-      app_id,
-      name,
-      description,
-      icon,
-      icon_type,
-      icon_background,
-    },
-  })
-}
-
-export const importDSLConfirm = ({
-  import_id,
-}: {
-  import_id: string
-}): Promise<DSLImportResponse> => {
-  return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
-}
-
-export const switchApp = ({
-  appID,
-  name,
-  icon_type,
-  icon,
-  icon_background,
-}: {
-  appID: string
-  name: string
-  icon_type: AppIconType
-  icon: string
-  icon_background?: string | null
-}): Promise<{ new_app_id: string; permission_keys: string[] }> => {
-  return post<{ new_app_id: string; permission_keys: string[] }>(
-    `apps/${appID}/convert-to-workflow`,
-    { body: { name, icon_type, icon, icon_background } },
-  )
-}
-
 export const deleteApp = (appID: string): Promise<CommonResponse> => {
   return del<CommonResponse>(`apps/${appID}`)
-}
-
-export const updateAppSiteStatus = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<AppDetailResponse> => {
-  return post<AppDetailResponse>(url, { body })
-}
-
-export const updateAppSiteAccessToken = ({
-  url,
-}: {
-  url: string
-}): Promise<UpdateAppSiteCodeResponse> => {
-  return post<UpdateAppSiteCodeResponse>(url)
 }
 
 export const updateAppSiteConfig = ({
@@ -239,26 +105,6 @@ export const updateAppModelConfig = ({
   body: Record<string, any>
 }): Promise<UpdateAppModelConfigResponse> => {
   return post<UpdateAppModelConfigResponse>(url, { body })
-}
-
-export const delApikey = ({
-  url,
-  params,
-}: {
-  url: string
-  params: Record<string, any>
-}): Promise<CommonResponse> => {
-  return del<CommonResponse>(url, params)
-}
-
-export const createApikey = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<CreateApiKeyResponse> => {
-  return post<CreateApiKeyResponse>(url, body)
 }
 
 // Tracing

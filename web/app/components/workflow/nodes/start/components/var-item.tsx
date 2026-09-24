@@ -3,15 +3,13 @@ import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
-import { useBoolean, useHover } from 'ahooks'
+import { useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Badge from '@/app/components/base/badge'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import InputVarTypeIcon from '../../_base/components/input-var-type-icon'
 
 type Props = Readonly<{
@@ -37,20 +35,19 @@ const VarItem: FC<Props> = ({
   showLegacyBadge = false,
   canDrag,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const ref = useRef(null)
   const isHovering = useHover(ref)
-  const [isShowEditVarModal, { setTrue: showEditVarModal, setFalse: hideEditVarModal }] =
-    useBoolean(false)
+  const [isShowEditVarModal, setIsShowEditVarModal] = useState(false)
 
   const handlePayloadChange = useCallback(
     (payload: InputVar, moreInfo?: MoreInfo) => {
       const isValid = onChange(payload, moreInfo)
       if (!isValid) return
-      hideEditVarModal()
+      setIsShowEditVarModal(false)
     },
-    [onChange, hideEditVarModal],
+    [onChange],
   )
   return (
     <div
@@ -61,12 +58,20 @@ const VarItem: FC<Props> = ({
       )}
     >
       <div className="flex w-0 grow items-center space-x-1">
-        <Variable02
-          className={cn('size-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')}
+        <span
+          aria-hidden
+          className={cn(
+            'i-custom-vender-solid-development-variable-02 h-6 w-6',
+            cn(
+              'size-3.5 text-text-accent',
+              canDrag &&
+                'group-hover:opacity-0 group-has-[.handle:focus]:opacity-0 group-has-[.handle[aria-pressed=true]]:opacity-0',
+            ),
+          )}
         />
         <div
           title={payload.variable}
-          className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary"
+          className="max-w-32.5 shrink-0 truncate text-[13px] font-medium text-text-secondary"
         >
           {payload.variable}
         </div>
@@ -75,7 +80,7 @@ const VarItem: FC<Props> = ({
             <div className="shrink-0 text-xs font-medium text-text-quaternary">·</div>
             <div
               title={payload.label as string}
-              className="max-w-[130px] truncate text-[13px] font-medium text-text-tertiary"
+              className="max-w-32.5 truncate text-[13px] font-medium text-text-tertiary"
             >
               {payload.label as string}
             </div>
@@ -107,9 +112,12 @@ const VarItem: FC<Props> = ({
                     type="button"
                     aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
                     className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                    onClick={showEditVarModal}
+                    onClick={() => setIsShowEditVarModal(true)}
                   >
-                    <Edit03 className="size-4 text-text-tertiary" aria-hidden="true" />
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-solid-general-edit-03 size-4 text-text-tertiary"
+                    />
                   </button>
                   <button
                     type="button"
@@ -133,7 +141,7 @@ const VarItem: FC<Props> = ({
           isShow
           supportFile
           payload={payload}
-          onClose={hideEditVarModal}
+          onClose={() => setIsShowEditVarModal(false)}
           onConfirm={handlePayloadChange}
           varKeys={varKeys}
         />

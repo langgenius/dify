@@ -1,10 +1,14 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  getStepByStepTourTargetSelector,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
 import { getToolType } from '@/app/components/tools/utils'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
-import { ToolTypeEnum } from '../../workflow/block-selector/types'
+import { ToolType } from '../../workflow/block-selector/types'
 import ProviderList from '../tool-provider-list'
 
 vi.mock('@/app/components/plugins/hooks', () => ({
@@ -90,49 +94,23 @@ let mockCollectionData: ReturnType<typeof createDefaultCollections> = []
 let mockIsLoadingToolProviders = false
 const mockRefetch = vi.fn()
 const mockUseAllToolProviders = vi.hoisted(() => vi.fn())
+const mockUseAllCustomTools = vi.hoisted(() => vi.fn())
+const mockUseAllWorkflowTools = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: (enabled?: boolean) => mockUseAllToolProviders(enabled),
+  useAllToolProviders: (enabled?: boolean, type?: string) => mockUseAllToolProviders(enabled, type),
+  useAllCustomTools: (enabled?: boolean) => mockUseAllCustomTools(enabled),
+  useAllWorkflowTools: (enabled?: boolean) => mockUseAllWorkflowTools(enabled),
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 let mockCheckedInstalledData: { plugins: { id: string; name: string }[] } | null = null
@@ -184,14 +162,10 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  __esModule: true,
   default: () => (
-    <div data-testid="update-setting-dialog">
-      <button type="button">
-        plugin.autoUpdate.autoUpdate
-        <span>plugin.autoUpdate.strategy.fixOnly.name</span>
-      </button>
-    </div>
+    <button type="button" aria-label="plugin.autoUpdate.autoUpdate">
+      plugin.autoUpdate.autoUpdate
+    </button>
   ),
 }))
 
@@ -247,7 +221,11 @@ vi.mock('@/app/components/tools/labels/filter', () => ({
 }))
 
 vi.mock('@/app/components/tools/provider/custom-create-card', () => ({
-  default: () => <div data-testid="custom-create-card">Create Custom Tool</div>,
+  default: ({ stepByStepTourTarget }: { stepByStepTourTarget?: string }) => (
+    <div data-testid="custom-create-card" data-step-by-step-tour-target={stepByStepTourTarget}>
+      Create Custom Tool
+    </div>
+  ),
   NewCustomToolButton: () => (
     <button type="button" data-testid="toolbar-add-custom-tool">
       tools.addSwaggerAPIAsTool
@@ -334,10 +312,12 @@ vi.mock('@/app/components/tools/marketplace/hooks', () => ({
 
 vi.mock('@/app/components/tools/mcp', () => ({
   default: ({
+    providers,
     searchText,
     contentInset,
     showCreateCard,
   }: {
+    providers?: Array<{ id: string }>
     searchText: string
     contentInset?: string
     showCreateCard?: boolean
@@ -345,6 +325,7 @@ vi.mock('@/app/components/tools/mcp', () => ({
     <div
       data-testid="mcp-list"
       data-content-inset={contentInset}
+      data-provider-ids={providers?.map((provider) => provider.id).join(',')}
       data-show-create-card={String(showCreateCard)}
     >
       MCP List:
@@ -371,12 +352,12 @@ vi.mock('@/app/components/tools/mcp/create-card', () => ({
 
 describe('getToolType', () => {
   it.each([
-    ['builtin', ToolTypeEnum.BuiltIn],
-    ['api', ToolTypeEnum.Custom],
-    ['workflow', ToolTypeEnum.Workflow],
-    ['mcp', ToolTypeEnum.MCP],
-    ['unknown', ToolTypeEnum.BuiltIn],
-  ])('returns correct ToolTypeEnum for "%s"', (input, expected) => {
+    ['builtin', ToolType.BuiltIn],
+    ['api', ToolType.Custom],
+    ['workflow', ToolType.Workflow],
+    ['mcp', ToolType.MCP],
+    ['unknown', ToolType.BuiltIn],
+  ])('returns correct ToolType for "%s"', (input, expected) => {
     expect(getToolType(input)).toBe(expected)
   })
 })
@@ -386,11 +367,11 @@ const renderProviderList = (
   category?: ComponentProps<typeof ProviderList>['category'],
   contentInset?: ComponentProps<typeof ProviderList>['contentInset'],
 ) => {
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: mockEnableMarketplace },
   })
   const Wrapped = ({ children }: { children: ReactNode }) => (
-    <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
+    <ConsoleQueryWrapper>{children}</ConsoleQueryWrapper>
   )
   return renderWithNuqs(
     <Wrapped>
@@ -406,9 +387,21 @@ describe('ProviderList', () => {
     mockEnableMarketplace = false
     mockCollectionData = createDefaultCollections()
     mockIsLoadingToolProviders = false
-    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
     mockUseAllToolProviders.mockImplementation((enabled = true) => ({
       data: enabled ? mockCollectionData : [],
+      isLoading: enabled ? mockIsLoadingToolProviders : false,
+      refetch: mockRefetch,
+    }))
+    mockUseAllCustomTools.mockImplementation((enabled = true) => ({
+      data: enabled ? mockCollectionData.filter((collection) => collection.type === 'api') : [],
+      isLoading: enabled ? mockIsLoadingToolProviders : false,
+      refetch: mockRefetch,
+    }))
+    mockUseAllWorkflowTools.mockImplementation((enabled = true) => ({
+      data: enabled
+        ? mockCollectionData.filter((collection) => collection.type === 'workflow')
+        : [],
       isLoading: enabled ? mockIsLoadingToolProviders : false,
       refetch: mockRefetch,
     }))
@@ -444,7 +437,7 @@ describe('ProviderList', () => {
     })
 
     it('keeps custom and workflow tabs visible without tool.manage', () => {
-      mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+      mockConsoleState.workspacePermissionKeys = ['mcp.manage']
 
       renderProviderList()
 
@@ -455,7 +448,7 @@ describe('ProviderList', () => {
     })
 
     it('keeps MCP tab visible without mcp.manage', () => {
-      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+      mockConsoleState.workspacePermissionKeys = ['tool.manage']
 
       renderProviderList()
 
@@ -469,11 +462,13 @@ describe('ProviderList', () => {
       ['api', 'card-my-api'],
       ['workflow', 'card-wf-tool'],
     ] as const)('renders %s category read-only without tool.manage', (category, cardTestId) => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       renderProviderList({ category })
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false, undefined)
+      expect(mockUseAllCustomTools).toHaveBeenCalledWith(category === 'api')
+      expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(category === 'workflow')
       expect(screen.getByTestId(cardTestId)).toBeInTheDocument()
       expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
@@ -648,12 +643,12 @@ describe('ProviderList', () => {
       expect(screen.getByRole('searchbox')).toBeInTheDocument()
     })
 
-    it('uses the plugin update settings dialog from the tools toolbar', () => {
+    it('shows the plugin update settings action in the tools toolbar', () => {
       renderProviderList(undefined, 'builtin')
 
-      expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
-      expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
-      expect(screen.getByTestId('update-setting-dialog')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+      ).toBeInTheDocument()
     })
 
     it('hides the tools update settings action when permission management is unavailable', () => {
@@ -661,7 +656,9 @@ describe('ProviderList', () => {
 
       renderProviderList(undefined, 'builtin')
 
-      expect(screen.queryByTestId('update-setting-dialog')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
+      ).not.toBeInTheDocument()
     })
 
     it.each([['mcp'], ['api'], ['workflow']] as const)(
@@ -669,9 +666,8 @@ describe('ProviderList', () => {
       (category) => {
         renderProviderList({ category })
 
-        expect(screen.queryByText('plugin.autoUpdate.autoUpdate')).not.toBeInTheDocument()
         expect(
-          screen.queryByText('plugin.autoUpdate.strategy.fixOnly.name'),
+          screen.queryByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
         ).not.toBeInTheDocument()
       },
     )
@@ -682,8 +678,13 @@ describe('ProviderList', () => {
       mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'api')
       renderProviderList({ category: 'api' })
 
-      expect(screen.getByTestId('custom-create-card')).toBeInTheDocument()
+      const customCreateCard = screen.getByTestId('custom-create-card')
+      expect(customCreateCard).toBeInTheDocument()
       expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
+      const selector = getStepByStepTourTargetSelector(
+        STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid,
+      )
+      expect(document.querySelector(selector)).toBe(customCreateCard)
     })
 
     it('moves custom creation into the toolbar when API tools exist', () => {
@@ -707,6 +708,18 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap')
       expect(screen.getByTestId('card-my-api').parentElement).toHaveClass('min-w-0')
       expect(screen.getByTestId('card-my-api').parentElement).not.toHaveClass('flex-1')
+    })
+
+    it('anchors the Swagger API tour target to the first custom tool card', () => {
+      renderProviderList(undefined, 'api', 'compact')
+
+      const selector = getStepByStepTourTargetSelector(
+        STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid,
+      )
+      const target = document.querySelector(selector)
+
+      expect(target).toBe(screen.getByTestId('card-my-api').parentElement)
+      expect(target).not.toBe(screen.getByTestId('tool-provider-grid'))
     })
 
     it('shows custom API card author and label tags from collection labels', () => {
@@ -757,6 +770,18 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('card-wf-tool').parentElement).toHaveClass('min-w-0')
     })
 
+    it('anchors the Workflow as Tool tour target to the first workflow card', () => {
+      renderProviderList(undefined, 'workflow', 'compact')
+
+      const selector = getStepByStepTourTargetSelector(
+        STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid,
+      )
+      const target = document.querySelector(selector)
+
+      expect(target).toBe(screen.getByTestId('card-wf-tool').parentElement)
+      expect(target).not.toBe(screen.getByTestId('tool-provider-grid'))
+    })
+
     it('does not show the built-in badge on workflow cards', () => {
       renderProviderList(undefined, 'workflow', 'compact')
 
@@ -781,6 +806,19 @@ describe('ProviderList', () => {
       mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'workflow')
       renderProviderList({ category: 'workflow' })
       expect(screen.getByTestId('workflow-empty')).toBeInTheDocument()
+    })
+
+    it('anchors the Workflow as Tool tour target to the bounded empty state when no workflow collections exist', () => {
+      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'workflow')
+      renderProviderList(undefined, 'workflow', 'compact')
+
+      const selector = getStepByStepTourTargetSelector(
+        STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid,
+      )
+      const target = document.querySelector<HTMLElement>(selector)
+
+      expect(target).not.toBe(screen.getByTestId('tool-provider-grid'))
+      expect(target).toContainElement(screen.getByTestId('workflow-empty'))
     })
 
     it('does not show workflow empty state when search has no matches', () => {
@@ -913,17 +951,43 @@ describe('ProviderList', () => {
   })
 
   describe('MCP Tab', () => {
+    it('uses database provider IDs from the management list', () => {
+      const provider = {
+        id: '019d3f85-d61c-765e-9615-8f469d02689f',
+        name: 'mcp-server',
+        author: 'User',
+        description: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
+        icon: { background: '#fff', content: 'M' },
+        label: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
+        type: 'mcp' as const,
+        team_credentials: {},
+        is_team_authorization: false,
+        allow_delete: true,
+        labels: [],
+      }
+      mockCollectionData = [...createDefaultCollections(), provider]
+
+      renderProviderList({ category: 'mcp' })
+
+      expect(screen.getByTestId('mcp-list')).toHaveAttribute(
+        'data-provider-ids',
+        '019d3f85-d61c-765e-9615-8f469d02689f',
+      )
+    })
+
     it('renders MCPList component', () => {
       renderProviderList({ category: 'mcp' })
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
     })
 
     it('renders MCP list read-only without mcp.manage', () => {
-      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+      mockConsoleState.workspacePermissionKeys = ['tool.manage']
 
       renderProviderList({ category: 'mcp' })
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(true, 'mcp')
+      expect(mockUseAllCustomTools).toHaveBeenCalledWith(false)
+      expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(false)
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
       expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'false')
       expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()
@@ -963,6 +1027,7 @@ describe('ProviderList', () => {
     it('passes compact content inset to MCPList when rendered by integrations layout', () => {
       renderProviderList(undefined, 'mcp', 'compact')
 
+      expect(screen.getByTestId('toolbar-add-mcp')).toBeInTheDocument()
       expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-content-inset', 'compact')
     })
   })

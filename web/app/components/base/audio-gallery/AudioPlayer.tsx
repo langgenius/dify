@@ -1,8 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
@@ -11,7 +11,7 @@ type AudioPlayerProps = Readonly<{
   srcs?: string[] // Support multiple sources
 }>
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -233,7 +233,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     [duration],
   )
   return (
-    <div className="flex h-9 max-w-[420px] min-w-[240px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
+    <div className="flex h-9 max-w-105 min-w-60 items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
       <audio ref={audioRef} src={src} preload="auto" data-testid="audio-player">
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => <source key={index} src={srcUrl} />)}
@@ -263,7 +263,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
             onTouchMove={handleMouseMove}
             onTouchStart={handleCanvasInteraction}
           />
-          <div className="inline-flex min-w-[50px] items-center justify-center system-xs-medium text-text-accent-secondary">
+          <div className="inline-flex min-w-12.5 items-center justify-center system-xs-medium text-text-accent-secondary">
             <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>

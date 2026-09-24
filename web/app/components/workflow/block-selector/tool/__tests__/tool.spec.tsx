@@ -8,7 +8,7 @@ import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { BlockEnum } from '../../../types'
 import { createTool, createToolProvider } from '../../__tests__/factories'
-import { ViewType } from '../../view-type-select'
+import { ViewType } from '../../types'
 import Tool from '../tool'
 
 vi.mock('@/context/i18n', () => ({
@@ -40,7 +40,92 @@ describe('Tool', () => {
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
   })
 
-  it('expands a provider and selects an action item', async () => {
+  it('keeps provider disclosures independently expanded', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <>
+        <Tool
+          payload={createToolProvider()}
+          previewCardHandle={createPreviewCardHandle()}
+          viewType={ViewType.flat}
+          hasSearchText={false}
+          onSelect={vi.fn()}
+        />
+        <Tool
+          payload={createToolProvider({
+            id: 'provider-2',
+            name: 'provider-two',
+            label: { en_US: 'Provider Two', zh_Hans: 'Provider Two' },
+            tools: [createTool('tool-b', 'Tool B')],
+          })}
+          previewCardHandle={createPreviewCardHandle()}
+          viewType={ViewType.flat}
+          hasSearchText={false}
+          onSelect={vi.fn()}
+        />
+      </>,
+    )
+
+    const firstDisclosure = screen.getByRole('button', { name: /Provider One/ })
+    const secondDisclosure = screen.getByRole('button', { name: /Provider Two/ })
+
+    expect(firstDisclosure).toHaveAttribute('aria-expanded', 'false')
+    expect(firstDisclosure).toHaveAttribute('aria-controls')
+    expect(secondDisclosure).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(firstDisclosure)
+    await user.click(secondDisclosure)
+
+    expect(firstDisclosure).toHaveAttribute('aria-expanded', 'true')
+    expect(secondDisclosure).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Tool A' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tool B' })).toBeInTheDocument()
+  })
+
+  it('orders the provider, add-all, and action buttons without collapsing on add-all', async () => {
+    const user = userEvent.setup()
+    const onSelectMultiple = vi.fn()
+
+    render(
+      <Tool
+        payload={createToolProvider({
+          tools: [createTool('tool-a', 'Tool A'), createTool('tool-b', 'Tool B')],
+        })}
+        previewCardHandle={createPreviewCardHandle()}
+        viewType={ViewType.flat}
+        hasSearchText={false}
+        onSelect={vi.fn()}
+        onSelectMultiple={onSelectMultiple}
+      />,
+    )
+
+    const disclosure = screen.getByRole('button', { name: /Provider One/ })
+    disclosure.focus()
+    await user.keyboard('{Enter}')
+
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+
+    await user.tab()
+    const addAllButton = screen.getByRole('button', { name: 'workflow.tabs.addAll' })
+    expect(addAllButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+    expect(onSelectMultiple).toHaveBeenCalledWith(
+      BlockEnum.Tool,
+      expect.arrayContaining([
+        expect.objectContaining({ tool_name: 'tool-a' }),
+        expect.objectContaining({ tool_name: 'tool-b' }),
+      ]),
+    )
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Tool A' })).toHaveFocus()
+  })
+
+  it('selects an expanded action item', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
 
@@ -56,8 +141,8 @@ describe('Tool', () => {
       />,
     )
 
-    await user.click(screen.getByText('Provider One'))
-    await user.click(screen.getByText('Tool B'))
+    await user.click(screen.getByRole('button', { name: /Provider One/ }))
+    await user.click(screen.getByRole('button', { name: 'Tool B' }))
 
     expect(onSelect).toHaveBeenCalledWith(
       BlockEnum.Tool,

@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { StatusDotSize, StatusDotStatus } from '.'
+import type { StatusDotProps, StatusDotStatus } from '.'
 import * as React from 'react'
 import { StatusDot, StatusDotSkeleton } from '.'
+
+type StatusDotSize = NonNullable<StatusDotProps['size']>
 
 const statuses: StatusDotStatus[] = ['success', 'warning', 'error', 'normal', 'disabled']
 const sizes: StatusDotSize[] = ['small', 'medium']
@@ -14,7 +16,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Status Dot primitive from the Dify Design Kit. Use it for compact visual status indicators; provide an accessible label only when the dot is the sole status representation.',
+          'Decorative Status Dot primitive from the Dify Design Kit. Pair it with visible status text owned by the surrounding component; the dot itself stays hidden from assistive technology.',
       },
     },
   },

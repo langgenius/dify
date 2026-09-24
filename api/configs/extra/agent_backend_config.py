@@ -1,4 +1,4 @@
-from pydantic import Field, NonNegativeFloat
+from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat
 from pydantic_settings import BaseSettings
 
 
@@ -7,8 +7,25 @@ class AgentBackendConfig(BaseSettings):
     Configuration settings for the Agent backend runtime integration.
     """
 
+    AGENT_SANDBOX_METERING_ENABLED: bool = Field(default=False, description="Persist independent E2B runtime usage.")
+    AGENT_SANDBOX_METERING_PROJECT_ID: str = Field(
+        default="", description="Allowed E2B project/team for this database."
+    )
+    AGENT_SANDBOX_METERING_START_AT: str = Field(
+        default="", description="Immutable UTC activation instant, aligned to a whole second; required when enabled."
+    )
+    AGENT_SANDBOX_METERING_INTERVAL_SECONDS: int | str = Field(
+        default=60,
+        description="Celery Beat interval in seconds; validated only when registering optional usage collection.",
+    )
+
     AGENT_BACKEND_BASE_URL: str | None = Field(
         description="Base URL for the Dify Agent backend service.",
+        default=None,
+    )
+
+    AGENT_BACKEND_API_TOKEN: str | None = Field(
+        description="Bearer token for authenticating with the Agent backend control-plane API.",
         default=None,
     )
 
@@ -22,11 +39,33 @@ class AgentBackendConfig(BaseSettings):
         default="success",
     )
 
+    AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description="Read timeout for one Agent backend SSE connection.",
+        default=30,
+    )
+
+    AGENT_BACKEND_STREAM_MAX_RECONNECTS: NonNegativeInt = Field(
+        description="Maximum Agent backend SSE reconnects before failing the run.",
+        default=3,
+    )
+
+    AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description=(
+            "Client timeout for Agent backend calls that may carry a Home Snapshot transfer: "
+            "snapshot capture and delete, and Execution Binding creation that restores one. "
+        ),
+        default=45.0,
+    )
+
+    AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description="Client timeout for converting a Binding file to a ToolFile through the Agent backend.",
+        default=240,
+    )
+
     AGENT_SHELL_ENABLED: bool = Field(
         description=(
-            "Inject the dify.shell layer (sandboxed bash workspace) into Agent runs. "
-            "Requires the agent backend to be wired with a shellctl entrypoint before "
-            "shell-using Agent runs are executed."
+            "Inject the Home, Workspace, Sandbox, and Shell runtime layers into Agent runs. "
+            "Requires Dify Agent to have a deployment-selected runtime backend."
         ),
         default=True,
     )

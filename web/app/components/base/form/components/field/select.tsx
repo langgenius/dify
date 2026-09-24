@@ -53,7 +53,7 @@ const SelectField = ({
   disabled,
   popupProps,
 }: SelectFieldProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const field = useFieldContext<string>()
   const placeholderText = placeholder || t(($) => $['placeholder.select'], { ns: 'common' })
 
@@ -71,15 +71,15 @@ const SelectField = ({
         }}
       >
         <SelectTrigger id={field.name} className="px-2">
-          <SelectValue placeholder={placeholderText}>
-            {(nextValue: string | null) => getDisplayLabel(nextValue, options, placeholderText)}
+          <SelectValue<string> placeholder={placeholderText}>
+            {(nextValue) => getDisplayLabel(nextValue, options, placeholderText)}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent popupClassName={cn('bg-components-panel-bg-blur', popupProps?.className)}>
+        <SelectContent className={cn('bg-components-panel-bg-blur', popupProps?.className)}>
           {popupProps?.title && (
             <div
               className={cn(
-                'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
+                'flex h-5.5 items-center px-3 system-xs-medium-uppercase text-text-tertiary',
                 popupProps.titleClassName,
               )}
             >

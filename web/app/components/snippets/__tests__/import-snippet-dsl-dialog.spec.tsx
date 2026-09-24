@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import ImportSnippetDSLDialog from '../import-snippet-dsl-dialog'
 
 const serviceMocks = vi.hoisted(() => ({
@@ -24,50 +25,14 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMocks,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: contextMocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: contextMocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: contextMocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: contextMocks.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: contextMocks.workspacePermissionKeys,
   }))
 })
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
 }))
 
@@ -83,7 +48,7 @@ vi.mock('@/service/use-snippets', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
+  Uploader: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
     <button type="button" onClick={() => updateFile(new File(['name: snippet'], 'snippet.yml'))}>
       {file?.name || 'select-dsl-file'}
     </button>
@@ -108,7 +73,18 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
-    await user.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
+    expect(screen.getByRole('dialog', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'snippet.importFromDSLFile' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
+    expect(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
     await user.type(
       screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'),
       'https://example.com/snippet.yml',
@@ -182,7 +158,7 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
+    await user.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
     await user.type(
       screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'),
       'https://example.com/snippet.yml',

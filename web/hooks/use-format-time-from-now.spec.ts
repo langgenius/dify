@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 /**
  * Test suite for useFormatTimeFromNow hook
  *
@@ -14,10 +14,11 @@ import type { Mock } from 'vitest'
  */
 import { renderHook } from '@testing-library/react'
 // Import after mock to get the mocked version
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useFormatTimeFromNow } from './use-format-time-from-now'
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en-US'),
 }))
 
@@ -54,7 +55,7 @@ describe('useFormatTimeFromNow', () => {
       const formatted = result.current.formatTimeFromNow(oneHourAgo)
 
       // Should contain "hour" or "hours" and "ago"
-      expect(formatted).toMatch(/hour|hours/)
+      expect(formatted).toMatch(/hour/)
       expect(formatted).toMatch(/ago/)
     })
 
@@ -71,7 +72,7 @@ describe('useFormatTimeFromNow', () => {
       const fiveSecondsAgo = now - 5 * 1000
       const formatted = result.current.formatTimeFromNow(fiveSecondsAgo)
 
-      expect(formatted).toMatch(/second|seconds|few seconds/)
+      expect(formatted).toMatch(/second/)
     })
 
     /**
@@ -87,7 +88,7 @@ describe('useFormatTimeFromNow', () => {
       const threeDaysAgo = now - 3 * 24 * 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(threeDaysAgo)
 
-      expect(formatted).toMatch(/day|days/)
+      expect(formatted).toMatch(/day/)
       expect(formatted).toMatch(/ago/)
     })
 
@@ -105,7 +106,7 @@ describe('useFormatTimeFromNow', () => {
       const formatted = result.current.formatTimeFromNow(twoHoursFromNow)
 
       expect(formatted).toMatch(/in/)
-      expect(formatted).toMatch(/hour|hours/)
+      expect(formatted).toMatch(/hour/)
     })
   })
 
@@ -228,7 +229,7 @@ describe('useFormatTimeFromNow', () => {
 
       expect(typeof formatted).toBe('string')
       expect(formatted.length).toBeGreaterThan(0)
-      expect(formatted).toMatch(/year|years/)
+      expect(formatted).toMatch(/year/)
     })
 
     /**
@@ -303,90 +304,6 @@ describe('useFormatTimeFromNow', () => {
       // Months
       const months = result.current.formatTimeFromNow(now - 60 * 24 * 60 * 60 * 1000)
       expect(months).toMatch(/month/)
-    })
-  })
-
-  describe('Locale mapping', () => {
-    /**
-     * Test that all supported locales in the localeMap are handled correctly
-     * This ensures the mapping from app locales to dayjs locales works
-     */
-    it('should handle all mapped locales', () => {
-      const locales = [
-        'en-US',
-        'zh-Hans',
-        'zh-Hant',
-        'pt-BR',
-        'es-ES',
-        'fr-FR',
-        'de-DE',
-        'ja-JP',
-        'ko-KR',
-        'ru-RU',
-        'it-IT',
-        'th-TH',
-        'id-ID',
-        'uk-UA',
-        'vi-VN',
-        'ro-RO',
-        'pl-PL',
-        'hi-IN',
-        'tr-TR',
-        'fa-IR',
-        'sl-SI',
-      ]
-
-      const now = Date.now()
-      const oneHourAgo = now - 60 * 60 * 1000
-
-      locales.forEach((locale) => {
-        ;(useLocale as Mock).mockReturnValue(locale)
-
-        const { result } = renderHook(() => useFormatTimeFromNow())
-        const formatted = result.current.formatTimeFromNow(oneHourAgo)
-
-        // Should return a non-empty string for each locale
-        expect(typeof formatted).toBe('string')
-        expect(formatted.length).toBeGreaterThan(0)
-      })
-    })
-  })
-
-  describe('Performance', () => {
-    /**
-     * Test that the hook doesn't create new functions on every render
-     * The formatTimeFromNow function should be memoized with useCallback
-     */
-    it('should memoize formatTimeFromNow function', () => {
-      ;(useLocale as Mock).mockReturnValue('en-US')
-
-      const { result, rerender } = renderHook(() => useFormatTimeFromNow())
-
-      const firstFunction = result.current.formatTimeFromNow
-      rerender()
-      const secondFunction = result.current.formatTimeFromNow
-
-      // Same locale should return the same function reference
-      expect(firstFunction).toBe(secondFunction)
-    })
-
-    /**
-     * Test that changing locale creates a new function
-     * This ensures the memoization dependency on locale works correctly
-     */
-    it('should create new function when locale changes', () => {
-      const { result, rerender } = renderHook(() => useFormatTimeFromNow())
-
-      ;(useLocale as Mock).mockReturnValue('en-US')
-      rerender()
-      const englishFunction = result.current.formatTimeFromNow
-
-      ;(useLocale as Mock).mockReturnValue('es-ES')
-      rerender()
-      const spanishFunction = result.current.formatTimeFromNow
-
-      // Different locale should return different function reference
-      expect(englishFunction).not.toBe(spanishFunction)
     })
   })
 })

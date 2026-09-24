@@ -7,7 +7,7 @@ with appropriate retry policies and error handling.
 
 import logging
 from datetime import UTC, datetime
-from typing import Any, NotRequired
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
@@ -46,8 +46,6 @@ logger = logging.getLogger(__name__)
 class WorkflowGeneratorArgsDict(TypedDict):
     inputs: dict[str, Any]
     files: list[Any]
-    _skip_prepare_user_inputs: bool
-    workflow_id: NotRequired[str]
 
 
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
@@ -103,7 +101,6 @@ def _build_generator_args(trigger_data: TriggerData) -> WorkflowGeneratorArgsDic
     return {
         "inputs": dict(trigger_data.inputs),
         "files": list(trigger_data.files),
-        "_skip_prepare_user_inputs": True,
     }
 
 
@@ -150,12 +147,8 @@ def _execute_workflow_common(
             # Execute workflow using WorkflowAppGenerator
             generator = WorkflowAppGenerator()
 
-            # Prepare args matching AppGenerateService.generate format
+            # Adapt trigger inputs and files for the generator.
             args = _build_generator_args(trigger_data)
-
-            # If workflow_id was specified, add it to args
-            if trigger_data.workflow_id:
-                args["workflow_id"] = str(trigger_data.workflow_id)
 
             pause_config = PauseStateLayerConfig(
                 session_factory=session_factory.get_session_maker(),
@@ -247,12 +240,14 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowRunTriggeredFrom(workflow_run.triggered_from),
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -314,7 +309,7 @@ def _get_user(session: Session, workflow_run: WorkflowRun | WorkflowTriggerLog) 
     if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
         user = session.scalar(select(Account).where(Account.id == workflow_run.created_by))
         if user:
-            user.current_tenant = tenant
+            user.set_current_tenant_with_session(tenant, session=session)
     else:  # CreatorUserRole.END_USER
         user = session.scalar(select(EndUser).where(EndUser.id == workflow_run.created_by))
 

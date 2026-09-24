@@ -3,8 +3,11 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMetadata
+from models.dataset import Dataset
+from models.model import App, AppMode
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest
 from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveAppNotFoundError,
@@ -13,18 +16,54 @@ from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveDatasetTenantMismatchError,
 )
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
+from tests.unit_tests.model_factories import make_app, make_dataset
+
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+USER_ID = "33333333-3333-3333-3333-333333333333"
+APP_ID = "44444444-4444-4444-4444-444444444444"
+DATASET_1_ID = "55555555-5555-5555-5555-555555555555"
+DATASET_2_ID = "66666666-6666-6666-6666-666666666666"
+
+
+def _app(*, tenant_id: str = TENANT_ID) -> App:
+    return make_app(
+        app_id=APP_ID,
+        tenant_id=tenant_id,
+        mode=AppMode.WORKFLOW,
+        icon_type=None,
+        enable_site=False,
+        enable_api=False,
+    )
+
+
+def _dataset(*, dataset_id: str, tenant_id: str = TENANT_ID, enable_api: bool = True) -> Dataset:
+    return make_dataset(
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        name=f"Dataset {dataset_id[-1]}",
+        description="",
+        created_by=USER_ID,
+        enable_api=enable_api,
+    )
+
+
+def _persist_state(sqlite_session: Session, *models: App | Dataset) -> None:
+    sqlite_session.add_all(models)
+    sqlite_session.commit()
+    sqlite_session.expunge_all()
 
 
 def _build_request(**overrides):
     payload = {
         "caller": {
-            "tenant_id": "tenant-1",
-            "user_id": "user-1",
-            "app_id": "app-1",
+            "tenant_id": TENANT_ID,
+            "user_id": USER_ID,
+            "app_id": APP_ID,
             "user_from": "account",
             "invoke_from": "workflow",
         },
-        "dataset_ids": ["dataset-1", "dataset-2"],
+        "dataset_ids": [DATASET_1_ID, DATASET_2_ID],
         "query": "how to reset password",
         "retrieval": {
             "mode": "multiple",
@@ -73,15 +112,20 @@ def _build_source() -> Source:
 
 
 class TestInnerKnowledgeRetrievalService:
+    @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
     @patch("services.knowledge_retrieval_inner_service.DatasetRetrieval")
-    def test_retrieve_maps_multiple_request_and_skips_enable_api_check(self, mock_rag_cls):
+    def test_retrieve_maps_multiple_request_and_skips_enable_api_check(
+        self,
+        mock_rag_cls,
+        sqlite_session: Session,
+    ):
         request = _build_request()
-        mock_session = MagicMock()
-        mock_app = MagicMock(id="app-1", tenant_id="tenant-1")
-        dataset_1 = MagicMock(id="dataset-1", tenant_id="tenant-1", enable_api=False)
-        dataset_2 = MagicMock(id="dataset-2", tenant_id="tenant-1", enable_api=True)
-        mock_session.scalar.return_value = mock_app
-        mock_session.scalars.return_value.all.return_value = [dataset_1, dataset_2]
+        _persist_state(
+            sqlite_session,
+            _app(),
+            _dataset(dataset_id=DATASET_1_ID, enable_api=False),
+            _dataset(dataset_id=DATASET_2_ID, enable_api=True),
+        )
 
         rag = MagicMock()
         rag.knowledge_retrieval.return_value = [_build_source()]
@@ -103,13 +147,13 @@ class TestInnerKnowledgeRetrievalService:
         }
         mock_rag_cls.return_value = rag
 
-        response = InnerKnowledgeRetrievalService().retrieve(request, mock_session)
+        response = InnerKnowledgeRetrievalService().retrieve(request, sqlite_session)
 
         rag_request = rag.knowledge_retrieval.call_args.kwargs["request"]
-        assert rag_request.tenant_id == "tenant-1"
-        assert rag_request.app_id == "app-1"
-        assert rag_request.user_id == "user-1"
-        assert rag_request.dataset_ids == ["dataset-1", "dataset-2"]
+        assert rag_request.tenant_id == TENANT_ID
+        assert rag_request.app_id == APP_ID
+        assert rag_request.user_id == USER_ID
+        assert rag_request.dataset_ids == [DATASET_1_ID, DATASET_2_ID]
         assert rag_request.query == "how to reset password"
         assert rag_request.retrieval_mode == "multiple"
         assert rag_request.top_k == 4
@@ -127,11 +171,14 @@ class TestInnerKnowledgeRetrievalService:
         assert rag_request.attachment_ids == ["attachment-1"]
         assert response.results[0].title == "FAQ.md"
         assert response.usage.currency == "USD"
+        assert rag.knowledge_retrieval.call_args.kwargs["session"] is sqlite_session
+        assert sqlite_session.in_transaction()
 
+    @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
     @patch("services.knowledge_retrieval_inner_service.DatasetRetrieval")
-    def test_retrieve_maps_single_request(self, mock_rag_cls):
+    def test_retrieve_maps_single_request(self, mock_rag_cls, sqlite_session: Session):
         request = _build_request(
-            dataset_ids=["dataset-1"],
+            dataset_ids=[DATASET_1_ID],
             retrieval={
                 "mode": "single",
                 "model": {
@@ -152,9 +199,7 @@ class TestInnerKnowledgeRetrievalService:
             },
             attachment_ids=[],
         )
-        mock_session = MagicMock()
-        mock_session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-1")
-        mock_session.scalars.return_value.all.return_value = [MagicMock(id="dataset-1", tenant_id="tenant-1")]
+        _persist_state(sqlite_session, _app(), _dataset(dataset_id=DATASET_1_ID))
 
         rag = MagicMock()
         rag.knowledge_retrieval.return_value = []
@@ -174,7 +219,7 @@ class TestInnerKnowledgeRetrievalService:
         }
         mock_rag_cls.return_value = rag
 
-        InnerKnowledgeRetrievalService().retrieve(request, mock_session)
+        InnerKnowledgeRetrievalService().retrieve(request, sqlite_session)
 
         rag_request = rag.knowledge_retrieval.call_args.kwargs["request"]
         assert rag_request.retrieval_mode == "single"
@@ -185,36 +230,39 @@ class TestInnerKnowledgeRetrievalService:
         assert rag_request.metadata_filtering_mode == "automatic"
         assert rag_request.metadata_model_config is not None
         assert rag_request.metadata_model_config.provider == "openai"
+        assert sqlite_session.in_transaction()
 
-    def test_retrieve_raises_when_app_missing(self):
-        mock_session = MagicMock()
-        mock_session.scalar.return_value = None
-
+    @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
+    def test_retrieve_raises_when_app_missing(self, sqlite_session: Session):
         with pytest.raises(InnerKnowledgeRetrieveAppNotFoundError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request(), mock_session)
+            InnerKnowledgeRetrievalService().retrieve(_build_request(), sqlite_session)
+        assert sqlite_session.in_transaction()
 
-    def test_retrieve_raises_when_app_belongs_to_other_tenant(self):
-        mock_session = MagicMock()
-        mock_session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-2")
+    @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
+    def test_retrieve_raises_when_app_belongs_to_other_tenant(self, sqlite_session: Session):
+        _persist_state(sqlite_session, _app(tenant_id=OTHER_TENANT_ID))
 
         with pytest.raises(InnerKnowledgeRetrieveAppTenantMismatchError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request(), mock_session)
+            InnerKnowledgeRetrievalService().retrieve(_build_request(), sqlite_session)
+        assert sqlite_session.in_transaction()
 
-    def test_retrieve_raises_when_dataset_missing(self):
-        mock_session = MagicMock()
-        mock_session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-1")
-        mock_session.scalars.return_value.all.return_value = [MagicMock(id="dataset-1", tenant_id="tenant-1")]
+    @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
+    def test_retrieve_raises_when_dataset_missing(self, sqlite_session: Session):
+        _persist_state(sqlite_session, _app(), _dataset(dataset_id=DATASET_1_ID))
 
         with pytest.raises(InnerKnowledgeRetrieveDatasetNotFoundError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request(), mock_session)
+            InnerKnowledgeRetrievalService().retrieve(_build_request(), sqlite_session)
+        assert sqlite_session.in_transaction()
 
-    def test_retrieve_raises_when_dataset_belongs_to_other_tenant(self):
-        mock_session = MagicMock()
-        mock_session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-1")
-        mock_session.scalars.return_value.all.return_value = [
-            MagicMock(id="dataset-1", tenant_id="tenant-1"),
-            MagicMock(id="dataset-2", tenant_id="tenant-2"),
-        ]
+    @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
+    def test_retrieve_raises_when_dataset_belongs_to_other_tenant(self, sqlite_session: Session):
+        _persist_state(
+            sqlite_session,
+            _app(),
+            _dataset(dataset_id=DATASET_1_ID),
+            _dataset(dataset_id=DATASET_2_ID, tenant_id=OTHER_TENANT_ID),
+        )
 
         with pytest.raises(InnerKnowledgeRetrieveDatasetTenantMismatchError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request(), mock_session)
+            InnerKnowledgeRetrievalService().retrieve(_build_request(), sqlite_session)
+        assert sqlite_session.in_transaction()

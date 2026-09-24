@@ -1,9 +1,10 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from '../components/tag-combobox-item'
-import { Combobox } from '@langgenius/dify-ui/combobox'
-import { render, screen } from '@testing-library/react'
+import { Combobox, createComboboxItems } from '@langgenius/dify-ui/combobox'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMemo, useState } from 'react'
+import { render } from '@/test/console/render'
 import { isCreateTagOption } from '../components/tag-combobox-item'
 import { TagSearchContent } from '../components/tag-search-content'
 
@@ -15,47 +16,11 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 const i18n = {
@@ -87,8 +52,6 @@ type PanelHarnessProps = {
   onOpenTagManagement?: () => void
 }
 
-const tagToString = (tag: TagComboboxItem) => tag.name
-const isSameTag = (item: TagComboboxItem, value: TagComboboxItem) => item.id === value.id
 const tagFilter = (tag: TagComboboxItem, query: string) => tag.name.includes(query)
 
 const PanelHarness = ({
@@ -98,7 +61,7 @@ const PanelHarness = ({
   canBindOrUnbindTags,
   onOpenTagManagement,
 }: PanelHarnessProps) => {
-  const [selectedTags, setSelectedTags] = useState<Tag[]>(value)
+  const [selectedTagIds, setSelectedTagIds] = useState(() => value.map((tag) => tag.id))
   const [inputValue, setInputValue] = useState('')
   const items = useMemo<TagComboboxItem[]>(() => {
     const tags = tagList.filter((tag) => tag.type === type)
@@ -116,22 +79,33 @@ const PanelHarness = ({
       ...tags,
     ]
   }, [inputValue, tagList, type])
+  const itemById = useMemo(() => new Map(items.map((tag) => [tag.id, tag])), [items])
+  const comboboxItems = useMemo(
+    () =>
+      createComboboxItems(items, {
+        getValue: (tag) => tag.id,
+        getLabel: (tag) => tag.name,
+      }),
+    [items],
+  )
 
   return (
-    <Combobox
-      items={items}
+    <Combobox<string, true, TagComboboxItem>
+      items={comboboxItems}
       multiple
-      value={selectedTags}
-      onValueChange={(nextTags) => {
-        onValueChangeSpy(nextTags)
-        if (nextTags.some(isCreateTagOption)) return
-        setSelectedTags(nextTags)
+      value={selectedTagIds}
+      onValueChange={(nextTagIds) => {
+        onValueChangeSpy(nextTagIds)
+        const hasCreateOption = nextTagIds.some((tagId) => {
+          const tag = itemById.get(tagId)
+          return tag ? isCreateTagOption(tag) : false
+        })
+        if (hasCreateOption) return
+        setSelectedTagIds(nextTagIds)
       }}
       inputValue={inputValue}
       onInputValueChange={setInputValue}
       filter={tagFilter}
-      itemToStringLabel={tagToString}
-      isItemEqualToValue={isSameTag}
     >
       <TagSearchContent
         type={type}
@@ -179,9 +153,13 @@ describe('TagSearchContent', () => {
     expect(input).toHaveValue('Back')
     vi.clearAllMocks()
 
-    await user.click(screen.getByRole('button', { name: i18n.operationClear }))
+    const clearButton = screen.getByRole('button', { name: i18n.operationClear })
+    await user.pointer({ keys: '[MouseLeft>]', target: clearButton })
+    expect(input).toHaveFocus()
+    await user.pointer({ keys: '[/MouseLeft]', target: clearButton })
 
     expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
     expect(onValueChangeSpy).not.toHaveBeenCalled()
     expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute(
       'aria-selected',
@@ -214,12 +192,10 @@ describe('TagSearchContent', () => {
     render(<PanelHarness />)
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(
-      expect.arrayContaining([expect.objectContaining({ id: 'tag-2' })]),
-    )
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining(['tag-2']))
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'tag-1' })])
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(['tag-1'])
   })
 
   it('routes create option activation through the combobox value change API', async () => {
@@ -231,12 +207,7 @@ describe('TagSearchContent', () => {
     await user.click(screen.getByRole('option', { name: /BrandNewTag/i }))
 
     expect(onValueChangeSpy).toHaveBeenLastCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          isCreateOption: true,
-          name: 'BrandNewTag',
-        }),
-      ]),
+      expect.arrayContaining(['__create_tag__:BrandNewTag']),
     )
   })
 
@@ -283,9 +254,7 @@ describe('TagSearchContent', () => {
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
 
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(
-      expect.arrayContaining([expect.objectContaining({ id: 'tag-2' })]),
-    )
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining(['tag-2']))
     expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
   })
 

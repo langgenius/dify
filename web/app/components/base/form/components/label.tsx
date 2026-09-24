@@ -1,6 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '../../infotip'
 
 export type LabelProps = {
   htmlFor: string
@@ -12,12 +13,14 @@ export type LabelProps = {
 }
 
 const Label = ({ htmlFor, label, isRequired, showOptional, tooltip, className }: LabelProps) => {
-  const { t } = useTranslation()
+  const labelId = useId()
+
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="flex h-6 items-center">
       <label
-        data-testid="label"
+        id={labelId}
         htmlFor={htmlFor}
         className={cn('system-sm-medium text-text-secondary', className)}
       >
@@ -32,8 +35,11 @@ const Label = ({ htmlFor, label, isRequired, showOptional, tooltip, className }:
         <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
       )}
       {tooltip && (
-        <Infotip aria-label={tooltip} className="ml-0.5 size-4" popupClassName="w-[200px]">
-          {tooltip}
+        <Infotip>
+          <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+          <InfotipContent aria-labelledby={labelId} className="w-50">
+            {tooltip}
+          </InfotipContent>
         </Infotip>
       )}
     </div>

@@ -1,5 +1,6 @@
 import type { SnippetListItem } from '@/types/snippet'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import SnippetCard from '../snippet-card'
 
 const {
@@ -8,7 +9,6 @@ const {
   mockExportMutateAsync,
   mockOnRefresh,
   mockRenderTagSelector,
-  mockIsCurrentWorkspaceEditor,
   mockWorkspacePermissionKeys,
   mockToastError,
   mockToastSuccess,
@@ -17,7 +17,6 @@ const {
   mockDeleteMutate: vi.fn(),
   mockDownloadBlob: vi.fn(),
   mockExportMutateAsync: vi.fn(),
-  mockIsCurrentWorkspaceEditor: vi.fn(() => true),
   mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify', 'snippets.management']),
   mockOnRefresh: vi.fn(),
   mockRenderTagSelector: vi.fn(),
@@ -26,52 +25,17 @@ const {
   mockUpdateMutate: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/service/use-common', () => ({
@@ -127,7 +91,7 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: mockDownloadBlob,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -140,6 +104,7 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
     onTagsChange: () => void
     value: Array<{ name: string }>
     canBindOrUnbindTags?: boolean
+    contextLabel?: string
   }) => {
     mockRenderTagSelector(props)
     const { onOpenTagManagement, onTagsChange, value } = props
@@ -177,7 +142,6 @@ const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListIte
 describe('SnippetCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockWorkspacePermissionKeys.mockReturnValue([
       'snippets.create_and_modify',
       'snippets.management',
@@ -222,7 +186,11 @@ describe('SnippetCard', () => {
     it('should render supported operations only', async () => {
       render(<SnippetCard snippet={createSnippet()} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
+      )
 
       expect(
         await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }),
@@ -242,17 +210,22 @@ describe('SnippetCard', () => {
       render(<SnippetCard snippet={createSnippet()} />)
 
       expect(
-        screen.queryByRole('button', { name: 'common.operation.more' }),
+        screen.queryByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
       ).not.toBeInTheDocument()
     })
 
     it('should show edit info with create-and-modify permission without management actions', async () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
 
       render(<SnippetCard snippet={createSnippet()} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
+      )
 
       expect(
         await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }),
@@ -266,12 +239,15 @@ describe('SnippetCard', () => {
     })
 
     it('should show delete with snippet management permission without create-and-modify actions', async () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
 
       render(<SnippetCard snippet={createSnippet()} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
+      )
 
       expect(
         screen.queryByRole('menuitem', { name: 'snippet.menu.editInfo' }),
@@ -293,6 +269,7 @@ describe('SnippetCard', () => {
         expect.objectContaining({
           type: 'snippet',
           targetId: 'snippet-1',
+          contextLabel: 'Tone Rewriter',
           canBindOrUnbindTags: true,
         }),
       )
@@ -340,7 +317,11 @@ describe('SnippetCard', () => {
 
       render(<SnippetCard snippet={createSnippet()} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
+      )
       fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
 
       await waitFor(() => {
@@ -359,7 +340,11 @@ describe('SnippetCard', () => {
 
       render(<SnippetCard snippet={createSnippet()} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
+      )
       fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
 
       await waitFor(() => {
@@ -375,7 +360,11 @@ describe('SnippetCard', () => {
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
+      )
       fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }))
       fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
         target: { value: 'Updated Snippet' },
@@ -409,7 +398,11 @@ describe('SnippetCard', () => {
 
       render(<SnippetCard snippet={createSnippet({ description: '' })} onRefresh={mockOnRefresh} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
+      )
       fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }))
       fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
         target: { value: 'Updated Snippet' },
@@ -438,7 +431,11 @@ describe('SnippetCard', () => {
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
+      )
       fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }))
       fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
@@ -465,7 +462,11 @@ describe('SnippetCard', () => {
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
+        }),
+      )
       fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }))
       fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 

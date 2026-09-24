@@ -1,7 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useHooksStore } from '../hooks-store'
 import { useStore, useWorkflowStore } from '../store'
 import { ControlMode, WorkflowRunningStatus } from '../types'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
@@ -33,7 +32,6 @@ export const useWorkflowMoveMode = () => {
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const isRestoring = useStore((s) => s.isRestoring)
-  const canComment = useHooksStore((s) => s.accessControl.canComment)
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSelectionCancel } = useSelectionInteractions()
   const { data: isCommentModeAvailable } = useSuspenseQuery({
@@ -46,11 +44,7 @@ export const useWorkflowMoveMode = () => {
     historyWorkflowData ||
     isRestoring
   )
-  const canUseCommentMode = !!(
-    canComment &&
-    !isCommentModeOperationBlocked &&
-    isCommentModeAvailable
-  )
+  const canUseCommentMode = !!(!isCommentModeOperationBlocked && isCommentModeAvailable)
 
   const handleModePointer = useCallback(() => {
     if (getNodesReadOnly()) return

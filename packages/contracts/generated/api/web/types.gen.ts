@@ -43,6 +43,16 @@ export type AppMetaResponse = {
   }
 }
 
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
+
 export type AppPermissionQuery = {
   appId: string
 }
@@ -117,6 +127,8 @@ export type ConversationRenamePayload = (
   auto_generate?: boolean
   name?: string | null
 }
+
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type EmailCodeLoginSendPayload = {
   email: string
@@ -281,10 +293,6 @@ export type HumanInputUploadTokenResponse = {
   upload_token: string
 }
 
-export type JsonObject = {
-  [key: string]: unknown
-}
-
 export type JsonValue =
   | string
   | number
@@ -300,19 +308,11 @@ export type JsonValueType = unknown
 
 export type JsonValue2 = unknown
 
-export type LicenseLimitationModel = {
-  enabled: boolean
-  limit: number
-  size: number
-}
-
-export type LicenseModel = {
-  expired_at: string
-  status: LicenseStatus
-  workspaces: LicenseLimitationModel
-}
-
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
+
+export type LicenseStatusModel = {
+  status: LicenseStatus
+}
 
 export type LoginPayload = {
   email: string
@@ -363,18 +363,327 @@ export type ParagraphInputConfig = {
 }
 
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
 }
 
 export type PassportAccessTokenResponse = {
@@ -395,10 +704,6 @@ export type PluginInstallationScope =
   | 'none'
   | 'official_and_specific_partners'
   | 'official_only'
-
-export type PluginManagerModel = {
-  enabled: boolean
-}
 
 export type RemoteFileInfo = {
   file_length: number
@@ -432,6 +737,8 @@ export type RetrieverResource = {
   summary?: string | null
   word_count?: number | null
 }
+
+export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
 
 export type SavedMessageCreatePayload = {
   message_id: string
@@ -509,6 +816,7 @@ export type SuggestedQuestionsResponse = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
@@ -519,17 +827,15 @@ export type SystemFeatureModel = {
   enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
-  enable_trial_app: boolean
-  is_allow_create_workspace: boolean
+  enable_step_by_step_tour: boolean
   is_allow_register: boolean
   is_email_setup: boolean
-  license: LicenseModel
-  max_plugin_package_size: number
+  knowledge_fs_enabled: boolean
+  license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
-  plugin_manager: PluginManagerModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: string
+  sso_enforced_for_signin_protocol: SsoProtocol | null
   webapp_auth: WebAppAuthModel
 }
 
@@ -565,13 +871,14 @@ export type VerificationTokenResponse = {
 export type WebAppAuthModel = {
   allow_email_code_login: boolean
   allow_email_password_login: boolean
+  allow_public_access: boolean
   allow_sso: boolean
   enabled: boolean
   sso_config: WebAppAuthSsoModel
 }
 
 export type WebAppAuthSsoModel = {
-  protocol: string
+  protocol: SsoProtocol | null
 }
 
 export type WebAppCustomConfigResponse = {
@@ -585,6 +892,7 @@ export type WebAppSiteResponse = {
   custom_config?: WebAppCustomConfigResponse | null
   enable_site: boolean
   end_user_id?: string | null
+  mode: AppMode
   model_config?: WebModelConfigResponse | null
   plan: string
   site: WebSiteResponse
@@ -642,7 +950,7 @@ export type WebSiteResponse = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
-  readonly icon_url: string | null
+  icon_url?: string | null
   input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
@@ -652,12 +960,36 @@ export type WebSiteResponse = {
 }
 
 export type WorkflowRunPayload = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
@@ -665,30 +997,8 @@ export type WorkflowRunPayload = {
 
 export type GeneratedAppResponseWritable = JsonValue
 
-export type HumanInputFormDefinitionResponseWritable = {
-  expiration_time: number
-  form_content: string
-  inputs: Array<FormInputConfig>
-  resolved_default_values: {
-    [key: string]: string
-  }
-  site?: WebAppSiteResponseWritable | null
-  user_actions: Array<UserActionConfig>
-}
-
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: unknown
-}
-
-export type WebAppSiteResponseWritable = {
-  app_id: string
-  can_replace_logo: boolean
-  custom_config?: WebAppCustomConfigResponse | null
-  enable_site: boolean
-  end_user_id?: string | null
-  model_config?: WebModelConfigResponse | null
-  plan: string
-  site: WebSiteResponseWritable
 }
 
 export type WebMessageInfiniteScrollPaginationWritable = {
@@ -720,24 +1030,6 @@ export type WebMessageListItemWritable = {
   retriever_resources: Array<RetrieverResource>
   status: string
   total_price?: string | null
-}
-
-export type WebSiteResponseWritable = {
-  chat_color_theme?: string | null
-  chat_color_theme_inverted: boolean
-  copyright?: string | null
-  custom_disclaimer?: string | null
-  default_language?: string | null
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  input_placeholder?: string | null
-  privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title: string
-  use_icon_as_answer_icon?: boolean | null
 }
 
 export type PostAudioToTextData = {
@@ -1403,9 +1695,12 @@ export type PostRemoteFilesUploadData = {
 
 export type PostRemoteFilesUploadErrors = {
   400: unknown
+  404: unknown
   413: unknown
   415: unknown
+  422: unknown
   500: unknown
+  502: unknown
 }
 
 export type PostRemoteFilesUploadResponses = {
@@ -1428,6 +1723,7 @@ export type GetRemoteFilesByUrlErrors = {
   400: unknown
   404: unknown
   500: unknown
+  502: unknown
 }
 
 export type GetRemoteFilesByUrlResponses = {
@@ -1580,7 +1876,9 @@ export type GetWebappAccessModeData = {
 
 export type GetWebappAccessModeErrors = {
   400: unknown
+  404: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappAccessModeResponses = {
@@ -1603,6 +1901,7 @@ export type GetWebappPermissionErrors = {
   400: unknown
   401: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappPermissionResponses = {

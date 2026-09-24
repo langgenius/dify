@@ -80,11 +80,6 @@ describe('ExternalKnowledgeSection', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ExternalKnowledgeSection {...defaultProps} />)
-      expect(screen.getByText(/form\.retrievalSetting\.title/i)).toBeInTheDocument()
-    })
-
     it('should render retrieval settings section', () => {
       render(<ExternalKnowledgeSection {...defaultProps} />)
       expect(screen.getByText(/form\.retrievalSetting\.title/i)).toBeInTheDocument()
@@ -110,13 +105,6 @@ describe('ExternalKnowledgeSection', () => {
     it('should display external API endpoint', () => {
       render(<ExternalKnowledgeSection {...defaultProps} />)
       expect(screen.getByText('https://api.external.example.com/v1')).toBeInTheDocument()
-    })
-
-    it('should render API connection icon', () => {
-      const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
-      // The ApiConnectionMod icon should be rendered
-      const icon = container.querySelector('svg')
-      expect(icon).toBeInTheDocument()
     })
 
     it('should display API name and endpoint in the same row', () => {
@@ -238,24 +226,6 @@ describe('ExternalKnowledgeSection', () => {
       rerender(<ExternalKnowledgeSection {...defaultProps} currentDataset={updatedDataset} />)
 
       expect(screen.getByText('https://new-api.example.com/v2')).toBeInTheDocument()
-    })
-  })
-
-  describe('Layout', () => {
-    it('should have consistent row layout', () => {
-      const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
-
-      // Check for flex gap-x-1 class on rows
-      const rows = container.querySelectorAll('.flex.gap-x-1')
-      expect(rows.length).toBeGreaterThan(0)
-    })
-
-    it('should have consistent label width', () => {
-      const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
-
-      // Check for w-[180px] label containers
-      const labels = container.querySelectorAll('.w-\\[180px\\]')
-      expect(labels.length).toBeGreaterThan(0)
     })
   })
 

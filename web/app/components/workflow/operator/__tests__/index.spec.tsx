@@ -7,13 +7,20 @@ import Operator from '../index'
 const mockEmit = vi.fn()
 const mockDeleteAllInspectorVars = vi.fn()
 
-vi.mock('../../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks')>()
+vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
   return {
     ...actual,
     useNodesSyncDraft: () => ({
       handleSyncWorkflowDraft: vi.fn(),
     }),
+  }
+})
+
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+  return {
+    ...actual,
     useWorkflowReadOnly: () => ({
       workflowReadOnly: false,
       getWorkflowReadOnly: () => false,

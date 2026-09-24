@@ -452,5 +452,67 @@ describe('prompt-editor/hooks', () => {
       )
       expect(result.current('no trigger here', {} as LexicalEditor)).toBeNull()
     })
+
+    it('should match a trigger at the start of the text', () => {
+      const { result } = renderHook(() =>
+        useBasicTypeaheadTriggerMatch('/', {
+          minLength: 0,
+          maxLength: 75,
+          requireTriggerBoundary: true,
+        }),
+      )
+
+      expect(result.current('/query', {} as LexicalEditor)).toEqual({
+        leadOffset: 0,
+        matchingString: 'query',
+        replaceableString: '/query',
+      })
+    })
+
+    it('should match a trigger preceded by whitespace', () => {
+      const { result } = renderHook(() =>
+        useBasicTypeaheadTriggerMatch('/', {
+          minLength: 0,
+          maxLength: 75,
+          requireTriggerBoundary: true,
+        }),
+      )
+
+      expect(result.current('prefix /query', {} as LexicalEditor)).toEqual({
+        leadOffset: 7,
+        matchingString: 'query',
+        replaceableString: '/query',
+      })
+    })
+
+    it.each(['https://dict.youdao.com/dictvoice', 'path/to/file'])(
+      'should not match a trigger preceded by a non-whitespace character in %s',
+      (text) => {
+        const { result } = renderHook(() =>
+          useBasicTypeaheadTriggerMatch('/', {
+            minLength: 0,
+            maxLength: 75,
+            requireTriggerBoundary: true,
+          }),
+        )
+
+        expect(result.current(text, {} as LexicalEditor)).toBeNull()
+      },
+    )
+
+    it('should preserve triggers without a required boundary', () => {
+      const { result } = renderHook(() =>
+        useBasicTypeaheadTriggerMatch('{', {
+          minLength: 0,
+          maxLength: 75,
+        }),
+      )
+
+      expect(result.current('prefix{query', {} as LexicalEditor)).toEqual({
+        leadOffset: 6,
+        matchingString: 'query',
+        replaceableString: '{query',
+      })
+    })
   })
 })

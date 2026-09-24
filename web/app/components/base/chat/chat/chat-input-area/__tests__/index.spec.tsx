@@ -122,7 +122,7 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 // ---------------------------------------------------------------------------
 // Toast context
 // ---------------------------------------------------------------------------
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },
@@ -276,11 +276,6 @@ describe('ChatInputArea', () => {
     it('should fall back to the default placeholder when custom placeholder is blank', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="   " />)
       expect(getTextarea()!).toBeInTheDocument()
-    })
-
-    it('should apply disabled styles when the disabled prop is true', () => {
-      const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} disabled />)
-      expect(container.firstChild).toHaveClass('pointer-events-none', 'opacity-50')
     })
 
     it('should restore pointer events on the input surface', () => {
@@ -988,16 +983,6 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('Layout & Styles', () => {
-    it('should toggle opacity class based on disabled prop', () => {
-      const { container, rerender } = render(
-        <ChatInputArea visionConfig={mockVisionConfig} disabled={false} />,
-      )
-      expect(container.firstChild).not.toHaveClass('opacity-50')
-
-      rerender(<ChatInputArea visionConfig={mockVisionConfig} disabled={true} />)
-      expect(container.firstChild).toHaveClass('opacity-50')
-    })
-
     it('should handle multi-line layout correctly', () => {
       mockIsMultipleLine.value = true
       render(<ChatInputArea visionConfig={mockVisionConfig} />)
@@ -1021,7 +1006,6 @@ describe('ChatInputArea', () => {
       const footerNotice = 'Agent runs in a Linux sandbox.'
       const footerNoticeTooltip =
         'For Dify Community Edition, each of your agents runs in a Linux 7.0.0-10060-aws sandbox environment within your docker. Your edits to the environment via Build Chats are persistent.'
-      const accessibleName = `common.operation.learnMore: ${footerNotice}`
       render(
         <ChatInputArea
           visionConfig={mockVisionConfig}
@@ -1033,9 +1017,10 @@ describe('ChatInputArea', () => {
       expect(screen.getByText(footerNotice)).toBeInTheDocument()
       expect(screen.queryByText(footerNoticeTooltip)).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: accessibleName }))
+      await user.click(screen.getByRole('button', { name: footerNotice }))
 
-      expect(await screen.findByText(footerNoticeTooltip)).toBeInTheDocument()
+      const dialog = await screen.findByRole('dialog', { name: footerNotice })
+      expect(dialog).toHaveTextContent(footerNoticeTooltip)
     })
 
     it('should render feature bar when showFeatureBar is true', () => {

@@ -9,8 +9,8 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
-import { useIsChatMode } from '../../hooks'
 import useConfigVision from '../../hooks/use-config-vision'
+import { useIsChatMode } from '../../hooks/use-workflow'
 import { EditionType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -39,7 +39,7 @@ const useSingleRunFormParams = ({
   setRunInputData,
   toVarInputs,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { inputs } = useNodeCrud<LLMNodeType>(id, payload)
   const getVarInputs = getInputVars
   const isChatMode = useIsChatMode()
@@ -87,7 +87,7 @@ const useSingleRunFormParams = ({
   })()
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    return [
+    const supportedVariableTypes: readonly VarType[] = [
       VarType.arrayObject,
       VarType.array,
       VarType.number,
@@ -97,7 +97,9 @@ const useSingleRunFormParams = ({
       VarType.arrayNumber,
       VarType.file,
       VarType.arrayFile,
-    ].includes(varPayload.type)
+    ]
+
+    return supportedVariableTypes.includes(varPayload.type)
   }, [])
 
   const { availableVars } = useAvailableVarList(id, {

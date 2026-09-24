@@ -1,4 +1,4 @@
-import AudioPlayer from '@/app/components/base/audio-btn/audio'
+import { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 
 declare global {
   // oxlint-disable-next-line typescript/consistent-type-definitions
@@ -35,9 +35,7 @@ export class AudioPlayerManager {
     } else {
       if (this.audioPlayers) {
         try {
-          this.audioPlayers.pauseAudio()
-          this.audioPlayers.cacheBuffers = []
-          this.audioPlayers.sourceBuffer?.abort()
+          this.audioPlayers.destroy()
         } catch {}
       }
 

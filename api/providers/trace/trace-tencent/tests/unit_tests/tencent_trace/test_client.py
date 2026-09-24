@@ -16,6 +16,8 @@ from dify_trace_tencent.entities.tencent_trace_entity import SpanData
 from opentelemetry.sdk.trace import Event
 from opentelemetry.trace import SpanContext, Status, StatusCode, TraceFlags
 
+from enums import DeploymentEdition
+
 metric_reader_instances: list[DummyMetricReader] = []
 meter_provider_instances: list[DummyMeterProvider] = []
 
@@ -158,7 +160,7 @@ def patch_core_components(monkeypatch: pytest.MonkeyPatch) -> PatchedCoreCompone
         project=SimpleNamespace(version="test"),
         COMMIT_SHA="sha",
         DEPLOY_ENV="dev",
-        EDITION="cloud",
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
     )
     monkeypatch.setattr(client_module, "dify_config", fake_config)
 
@@ -331,6 +333,7 @@ def test_create_and_export_span_exception_logs_error(
     client = _build_client()
     span = patch_core_components["span"]
     span.get_span_context.return_value = _make_span_context(span_id=2)
+    # pyrefly: ignore [missing-attribute]
     client.tracer.start_span.side_effect = RuntimeError("boom")
 
     caplog.set_level(logging.DEBUG, logger=client_module.logger.name)
@@ -430,6 +433,7 @@ def test_shutdown_logs_when_meter_provider_fails(caplog: pytest.LogCaptureFixtur
     meter_provider = meter_provider_instances[-1]
     meter_provider.shutdown.side_effect = RuntimeError("boom")
     assert client.metric_reader is not None
+    # pyrefly: ignore [missing-attribute]
     client.metric_reader.shutdown.side_effect = RuntimeError("boom")
 
     caplog.set_level(logging.DEBUG, logger=client_module.logger.name)

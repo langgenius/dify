@@ -1,5 +1,5 @@
 import type { SearchResult } from '../../types'
-import { render } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { slashAction } from '../slash'
 import { SlashCommandProvider } from '../slash-provider'
 
@@ -27,19 +27,27 @@ const {
   featureFlag: { enabled: false },
 }))
 
-vi.mock('@/config', () => ({
-  get ENABLE_FEATURE_PREVIEW() {
-    return featureFlag.enabled
-  },
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+
+  return {
+    ...actual,
+    get ENABLE_FEATURE_PREVIEW() {
+      return featureFlag.enabled
+    },
+  }
+})
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({
     setTheme: mockSetTheme,
   }),
 }))
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n/client', () => ({
   setLocaleOnClient: mockSetLocale,
+}))
+vi.mock('@/features/agent-v2/feature-flag', () => ({
+  isAgentV2Enabled: () => true,
 }))
 
 vi.mock('../command-bus', () => ({
@@ -91,6 +99,8 @@ describe('slashAction', () => {
       { id: 'theme', title: '/theme', type: 'command', data: { command: 'theme' } },
     ])
 
+    expect(slashAction.source).toBe('local')
+    if (slashAction.source !== 'local') throw new Error('Expected a local slash action')
     const results = await slashAction.search('/theme dark', 'dark')
 
     expect(mockSearch).toHaveBeenCalledWith('/theme dark', 'ja')
@@ -113,9 +123,9 @@ describe('SlashCommandProvider', () => {
     expect(mockRegister.mock.calls.map((call) => call[0].name)).toEqual([
       'theme',
       'language',
-      'forum',
       'docs',
-      'community',
+      'discord',
+      'models',
       'account',
       'go',
     ])
@@ -125,6 +135,10 @@ describe('SlashCommandProvider', () => {
     expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'language' }), {
       setLocale: mockSetLocale,
     })
+    expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'go' }), {
+      agentsAvailable: true,
+      skillsAvailable: true,
+    })
 
     unmount()
 
@@ -133,9 +147,9 @@ describe('SlashCommandProvider', () => {
     expect(mockUnregister.mock.calls.map((call) => call[0])).toEqual([
       'theme',
       'language',
-      'forum',
       'docs',
-      'community',
+      'discord',
+      'models',
       'account',
       'go',
       'create',
@@ -151,9 +165,9 @@ describe('SlashCommandProvider', () => {
     expect(mockRegister.mock.calls.map((call) => call[0].name)).toEqual([
       'theme',
       'language',
-      'forum',
       'docs',
-      'community',
+      'discord',
+      'models',
       'account',
       'go',
       'create',
@@ -165,13 +179,24 @@ describe('SlashCommandProvider', () => {
     expect(mockUnregister.mock.calls.map((call) => call[0])).toEqual([
       'theme',
       'language',
-      'forum',
       'docs',
-      'community',
+      'discord',
+      'models',
       'account',
       'go',
       'create',
       'refine',
     ])
+  })
+
+  it('should register the enterprise documentation home URL', () => {
+    const { unmount } = render(<SlashCommandProvider />, {
+      systemFeatures: { deployment_edition: 'ENTERPRISE' },
+    })
+    const docsRegistration = mockRegister.mock.calls.find((call) => call[0].name === 'docs')
+
+    expect(docsRegistration?.[1].getDocsHomeUrl()).toBe('https://enterprise-docs.dify.ai/en/')
+
+    unmount()
   })
 })

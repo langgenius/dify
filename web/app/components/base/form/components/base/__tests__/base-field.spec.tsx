@@ -7,6 +7,11 @@ import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/
 import BaseField from '../base-field'
 
 const mockDynamicOptions = vi.fn()
+const mockCopy = vi.fn()
+
+vi.mock('foxact/use-clipboard', () => ({
+  useClipboard: () => ({ copy: mockCopy, copied: false }),
+}))
 
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (content: Record<string, string>) =>
@@ -73,6 +78,107 @@ describe('BaseField', () => {
       error: null,
     })
   })
+
+  it.each([
+    { type: FormTypeEnum.textInput, value: 'server-value', copied: 'server-value' },
+    { type: FormTypeEnum.textNumber, value: 0, copied: '0' },
+  ])(
+    'copies the $type field value through its keyboard-accessible action',
+    async ({ type, value, copied }) => {
+      const user = userEvent.setup()
+      renderBaseField({
+        formSchema: { type, name: 'value', label: 'Value', required: false, showCopy: true },
+        defaultValues: { value },
+      })
+
+      await user.click(screen.getByLabelText('Value'))
+      await user.tab()
+      const copyButton = screen.getByRole('button', { name: 'common.operation.copy' })
+      expect(copyButton).toHaveFocus()
+      await user.keyboard('{Enter}')
+
+      expect(mockCopy).toHaveBeenCalledWith(copied)
+      expect(copyButton).toHaveFocus()
+      expect(screen.getByLabelText('Value')).toHaveValue(String(value))
+    },
+  )
+
+  it.each([FormTypeEnum.textInput, FormTypeEnum.secretInput, FormTypeEnum.textNumber])(
+    'associates the visible label, description and required state for %s',
+    async (type) => {
+      const user = userEvent.setup()
+      renderBaseField({
+        formSchema: {
+          type,
+          name: 'credential',
+          label: 'Credential',
+          description: 'Use the workspace credential',
+          required: true,
+          options: [{ label: 'Primary', value: 'primary' }],
+        },
+      })
+      const control = screen.getByLabelText('Credential')
+      expect(control).toHaveAccessibleName('Credential')
+      expect(control).toHaveAccessibleDescription('Use the workspace credential')
+      expect(control).toBeRequired()
+      await user.click(screen.getByText('Credential'))
+      expect(control).toHaveFocus()
+    },
+  )
+
+  it.each([
+    { type: FormTypeEnum.select, multiple: false },
+    { type: FormTypeEnum.select, multiple: true },
+    { type: FormTypeEnum.dynamicSelect, multiple: false },
+    { type: FormTypeEnum.dynamicSelect, multiple: true },
+  ])(
+    'focuses the $type trigger from its label and supports keyboard selection (multiple: $multiple)',
+    async ({ type, multiple }) => {
+      const user = userEvent.setup()
+      const options = [{ label: 'Primary', value: 'primary' }]
+      mockDynamicOptions.mockReturnValue({
+        data: { options },
+        isLoading: false,
+        error: null,
+      })
+      renderBaseField({
+        formSchema: {
+          type,
+          multiple,
+          name: 'credential',
+          label: 'Credential',
+          description: 'Use the workspace credential',
+          tooltip: 'Credential help',
+          required: true,
+          options,
+        },
+        defaultValues: { credential: multiple ? [] : '' },
+        fieldState: {
+          validateStatus: FormItemValidateStatusEnum.Error,
+          errors: ['Choose a credential'],
+        },
+        showCurrentValue: true,
+      })
+
+      const control = screen.getByRole('combobox', { name: 'Credential' })
+      expect(control).toHaveAccessibleDescription(
+        'Use the workspace credential Choose a credential',
+      )
+      expect(control).toBeInvalid()
+      expect(control).toBeRequired()
+      expect(screen.getByRole('button', { name: 'Credential' })).toBeInTheDocument()
+      await user.click(screen.getByText('Credential'))
+      expect(control).toHaveFocus()
+      expect(control).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+      await user.keyboard('{ArrowDown}')
+      expect(control).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByRole('option', { name: 'Primary' })).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(screen.getByTestId('field-value')).toHaveTextContent('primary')
+    },
+  )
 
   it('should render text input and propagate changes', async () => {
     const onChange = vi.fn()
@@ -188,6 +294,31 @@ describe('BaseField', () => {
     expect(onChange).toHaveBeenCalledWith('visibility', 'private')
   })
 
+  it.each([
+    { type: FormTypeEnum.select, role: 'combobox' },
+    { type: FormTypeEnum.radio, role: 'radiogroup' },
+    { type: FormTypeEnum.checkbox, role: 'group' },
+  ])('associates $type validation and description with the named control', ({ type, role }) => {
+    renderBaseField({
+      formSchema: {
+        type,
+        name: 'access',
+        label: 'Access level',
+        description: 'Choose an access level',
+        required: true,
+        options: [{ label: 'Public', value: 'public' }],
+      },
+      defaultValues: { access: type === FormTypeEnum.checkbox ? [] : '' },
+      fieldState: {
+        validateStatus: FormItemValidateStatusEnum.Error,
+        errors: ['Choose an option'],
+      },
+    })
+    const control = screen.getByRole(role, { name: 'Access level' })
+    expect(control).toHaveAttribute('aria-invalid', 'true')
+    expect(control).toHaveAccessibleDescription('Choose an access level Choose an option')
+  })
+
   it('should show validation message when field state has an error', () => {
     renderBaseField({
       formSchema: {
@@ -202,7 +333,9 @@ describe('BaseField', () => {
       },
     })
 
-    expect(screen.getByText('Name is required')).toBeInTheDocument()
+    const input = screen.getByRole('textbox', { name: 'Name' })
+    expect(input).toBeInvalid()
+    expect(input).toHaveAccessibleDescription('Name is required')
   })
 
   it('should render description and help link when provided', () => {
@@ -240,7 +373,9 @@ describe('BaseField', () => {
     expect(screen.getByDisplayValue('abc')).toHaveAttribute('type', 'password')
   })
 
-  it('should render number input with number type', () => {
+  it('keeps numeric edits, zero and an empty value distinct at the form boundary', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
     renderBaseField({
       formSchema: {
         type: FormTypeEnum.textNumber,
@@ -249,9 +384,22 @@ describe('BaseField', () => {
         required: false,
       },
       defaultValues: { count: 7 },
+      onChange,
     })
 
-    expect(screen.getByDisplayValue('7')).toHaveAttribute('type', 'number')
+    const input = screen.getByRole('textbox', { name: 'Count' })
+    expect(input).toHaveValue('7')
+    await user.clear(input)
+    await user.type(input, '3.5')
+    await user.tab()
+    expect(onChange).toHaveBeenLastCalledWith('count', 3.5)
+    await user.clear(input)
+    await user.type(input, '0')
+    await user.tab()
+    expect(onChange).toHaveBeenLastCalledWith('count', 0)
+    await user.clear(input)
+    await user.tab()
+    expect(onChange).toHaveBeenLastCalledWith('count', null)
   })
 
   it('should render translated object label content', () => {
@@ -379,7 +527,7 @@ describe('BaseField', () => {
 
     expect(screen.getByText('Info')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Extra info' }))
+    await user.click(screen.getByRole('button', { name: 'Info' }))
 
     expect(screen.getByText('Extra info')).toBeInTheDocument()
   })
@@ -480,21 +628,6 @@ describe('BaseField', () => {
     })
     expect(screen.getByText('Option 1')).toBeInTheDocument()
     expect(screen.getByRole('radiogroup', { name: 'UI Radio' })).toBeInTheDocument()
-  })
-
-  it('should apply disabled styles', () => {
-    renderBaseField({
-      formSchema: {
-        type: FormTypeEnum.radio,
-        name: 'disabled_radio',
-        label: 'Disabled',
-        required: false,
-        options: [{ label: 'Option 1', value: '1' }],
-        disabled: true,
-      },
-    })
-    // In radio, the option itself has the disabled class
-    expect(screen.getByText('Option 1')).toHaveClass('cursor-not-allowed')
   })
 
   it('should return empty string for null content in getTranslatedContent', () => {

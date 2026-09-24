@@ -3,7 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditLine, RiLock2Line } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useState } from 'react'
-import { Env } from '@/app/components/base/icons/src/vender/line/others'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 
 type EnvItemProps = {
@@ -13,8 +13,19 @@ type EnvItemProps = {
 }
 
 const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
+  const { t } = useTranslation(['workflow'])
   const envSecrets = useStore((s) => s.envSecrets)
   const [destructive, setDestructive] = useState(false)
+  const typeLabel =
+    env.value_type === 'llm'
+      ? t(($) => $['blocks.llm'], { ns: 'workflow' })
+      : capitalize(env.value_type)
+  const displayValue =
+    env.value_type === 'secret'
+      ? envSecrets[env.id]
+      : typeof env.value === 'object'
+        ? env.value.name
+        : env.value
 
   return (
     <div
@@ -26,9 +37,12 @@ const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
       <div className="px-2.5 py-2">
         <div className="flex items-center justify-between">
           <div className="flex grow items-center gap-1">
-            <Env className="size-4 text-util-colors-violet-violet-600" />
+            <span
+              aria-hidden
+              className="i-custom-vender-line-others-env size-4 text-util-colors-violet-violet-600"
+            />
             <div className="system-sm-medium text-text-primary">{env.name}</div>
-            <div className="system-xs-medium text-text-tertiary">{capitalize(env.value_type)}</div>
+            <div className="system-xs-medium text-text-tertiary">{typeLabel}</div>
             {env.value_type === 'secret' && <RiLock2Line className="size-3 text-text-tertiary" />}
           </div>
           <div className="flex shrink-0 items-center gap-1 text-text-tertiary">
@@ -44,16 +58,14 @@ const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
             </div>
           </div>
         </div>
-        <div className="truncate system-xs-regular text-text-tertiary">
-          {env.value_type === 'secret' ? envSecrets[env.id] : env.value}
-        </div>
+        <div className="truncate system-xs-regular text-text-tertiary">{displayValue}</div>
       </div>
       {env.description && (
         <>
           <div className="h-[0.5px] bg-divider-subtle" />
           <div
             className={cn(
-              'rounded-br-[8px] rounded-bl-[8px] bg-background-default-subtle px-2.5 py-2 group-hover:bg-transparent',
+              'rounded-br-lg rounded-bl-lg bg-background-default-subtle px-2.5 py-2 group-hover:bg-transparent',
               destructive && 'bg-state-destructive-hover hover:bg-state-destructive-hover',
             )}
           >

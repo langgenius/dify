@@ -1,7 +1,13 @@
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
-import { act, render, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  renderWithConsoleQuery,
+} from '@/test/console/query-data'
 import { PROGRESS_ERROR } from '../../constants'
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
@@ -18,7 +24,7 @@ const { mockNotify, mockToast } = vi.hoisted(() => {
   return { mockNotify, mockToast }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -35,12 +41,8 @@ vi.mock('@/utils/format', () => ({
   },
 }))
 // Mock i18n config
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
-}))
-
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false,
 }))
 
 // Mock store functions
@@ -69,12 +71,6 @@ vi.mock('@/service/use-common', () => ({
       file_upload_limit: 10,
     },
   })),
-  // Required by the shared useFileUpload hook
-  useFileSupportTypes: vi.fn(() => ({
-    data: {
-      allowed_extensions: ['pdf', 'docx', 'txt'],
-    },
-  })),
 }))
 
 // Mock upload service
@@ -86,9 +82,23 @@ vi.mock('@/service/base', () => ({
 // Import after all mocks are set up
 const { useLocalFileUpload } = await import('../use-local-file-upload')
 
-const createWrapper = () => {
-  return ({ children }: { children: ReactNode }) => <>{children}</>
+const createQueryClient = () => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.files.supportType.get.queryOptions().queryKey, {
+    allowed_extensions: ['pdf', 'docx', 'txt'],
+  })
+  return queryClient
 }
+const createWrapper = () =>
+  createConsoleQueryWrapper({
+    queryClient: createQueryClient(),
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  }).wrapper
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    queryClient: createQueryClient(),
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
 
 describe('useLocalFileUpload', () => {
   beforeEach(() => {

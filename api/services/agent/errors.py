@@ -29,6 +29,66 @@ class AgentModelNotConfiguredError(BaseHTTPException):
     code = 400
 
 
+class AgentAccessNotReadyError(BaseHTTPException):
+    error_code = "agent_not_published"
+    description = "Publish the Agent before enabling Web App or API access."
+    code = 409
+
+
+class AgentBuildSandboxNotFoundError(BaseHTTPException):
+    error_code = "agent_build_sandbox_not_found"
+    description = "The retained Build Sandbox is no longer available."
+    code = 404
+
+
+class AgentHomeSnapshotCreateFailedError(BaseHTTPException):
+    error_code = "agent_home_snapshot_create_failed"
+    description = "Failed to capture the Agent Home Snapshot."
+    code = 502
+
+
+class AgentHomeSnapshotTooLargeError(BaseHTTPException):
+    error_code = "agent_home_snapshot_too_large"
+    description = "The Agent Home Snapshot exceeds the configured size limit."
+    code = 413
+
+
+class InvalidRosterAgentPackageError(BaseHTTPException):
+    error_code = "invalid_roster_agent_package"
+    description = "The Roster Agent package is invalid."
+    code = 400
+
+
+class RosterAgentPackageTooLargeError(BaseHTTPException):
+    error_code = "roster_agent_package_too_large"
+    description = "The Roster Agent package exceeds the size limit."
+    code = 413
+
+
+class RosterAgentPackageExportFailedError(BaseHTTPException):
+    error_code = "roster_agent_package_export_failed"
+    description = "The Roster Agent package could not be exported."
+    code = 500
+
+
+class RosterAgentPackageImportFailedError(BaseHTTPException):
+    error_code = "roster_agent_package_import_failed"
+    description = "The Roster Agent package could not be imported."
+    code = 500
+
+
+class RosterAgentPackageDependenciesMissingError(BaseHTTPException):
+    error_code = "roster_agent_package_dependencies_missing"
+    description = "Install the missing plugins before importing the Roster Agent package."
+    code = 409
+
+
+class RosterAgentPackageResourceUnavailableError(BaseHTTPException):
+    error_code = "roster_agent_package_resource_unavailable"
+    description = "The Roster Agent package resources could not be stored."
+    code = 503
+
+
 class AgentSoulLockedError(BadRequest):
     description = "Agent Soul is locked for this workflow node."
 

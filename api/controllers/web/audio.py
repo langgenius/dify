@@ -6,6 +6,7 @@ from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -76,10 +77,15 @@ class AudioApi(WebApiResource):
     @web_ns.response(200, "Success", web_ns.models[AudioToTextResponse.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Convert audio to text"""
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.external_user_id)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=end_user.external_user_id,
+            )
 
             return dump_response(AudioToTextResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -126,11 +132,10 @@ class TextApi(WebApiResource):
     )
     # response-contract:ignore provider audio bytes; TODO: model binary audio response if shape is standardized.
     @web_ns.response(200, "Success")
-    def post(self, app_model: App, end_user: EndUser):
+    @model_validate(TextToAudioPayload)
+    def post(self, payload: TextToAudioPayload, app_model: App, end_user: EndUser):
         """Convert text to audio"""
         try:
-            payload = TextToAudioPayload.model_validate(web_ns.payload or {})
-
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice

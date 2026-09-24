@@ -86,14 +86,24 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-DSL', () => ({
   useAutoGenerateWebhookUrl: () => mockAutoGenerateWebhookUrl,
   useDSL: () => ({
     exportCheck: mockExportCheck,
     handleExportDSL: mockHandleExportDSL,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   usePanelInteractions: () => ({
     handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-panel-interactions', () => ({
+  usePanelInteractions: () => ({
+    handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
+    handlePaneContextMenu: vi.fn(),
   }),
 }))
 
@@ -101,6 +111,10 @@ vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-auto-generate-webhook-url', () => ({
+  useAutoGenerateWebhookUrl: () => mockAutoGenerateWebhookUrl,
 }))
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
@@ -120,7 +134,7 @@ vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
   useAvailableNodesMetaData: () => ({
     nodesMap: {
       [BlockEnum.Start]: {
@@ -145,7 +159,7 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-auto-onboarding', () => ({
+vi.mock('../../hooks/use-auto-onboarding', () => ({
   useAutoOnboarding: () => ({
     handleOnboardingClose: mockHandleOnboardingClose,
   }),
@@ -163,7 +177,7 @@ vi.mock('@/app/components/workflow-app/components/workflow-panel', () => ({
   default: () => <div data-testid="workflow-panel">workflow-panel</div>,
 }))
 
-vi.mock('@/next/dynamic', async () => {
+vi.mock('next/dynamic', async () => {
   const ReactModule = await import('react')
 
   return {
@@ -219,7 +233,7 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
+vi.mock('@/app/components/app/export-confirm-modal', () => ({
   default: ({
     envList,
     onConfirm,

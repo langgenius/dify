@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -7,10 +7,11 @@ import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/compone
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { consoleQuery } from '@/service/console'
 import { useGetDataSourceListAuth, useInvalidDataSourceListAuth } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import UpdateSettingDialog from '../update-setting-dialog'
 import Card from './card'
@@ -41,7 +42,7 @@ function DataSourceCardSkeleton() {
 }
 
 function DataSourceListSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
@@ -53,7 +54,8 @@ function DataSourceListSkeleton() {
 }
 
 const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSourcePageProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
+  const queryClient = useQueryClient()
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')
   const { canSetPluginPreferences } = usePluginSettingsAccess()
@@ -62,11 +64,12 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
     select: (s) => s.enable_marketplace,
   })
   const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
-  const { data: installedPluginList } = useInstalledPluginList()
+  const { data: installedPluginList } = useInstalledPluginList({
+    category: PluginCategoryEnum.datasource,
+  })
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
-  const invalidateDataSourceList = useInvalidDataSourceList()
   const dataSources = useMemo(() => data?.result ?? [], [data?.result])
   const dataSourcePluginDetails = useMemo(() => {
     return pluginListWithLatestVersion.filter(
@@ -94,8 +97,10 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
   const handlePluginUpdate = useCallback(() => {
     invalidateInstalledPluginList()
     invalidateDataSourceListAuth()
-    invalidateDataSourceList()
-  }, [invalidateDataSourceList, invalidateDataSourceListAuth, invalidateInstalledPluginList])
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+    })
+  }, [queryClient, invalidateDataSourceListAuth, invalidateInstalledPluginList])
 
   const toolbar = (
     <div
@@ -108,7 +113,7 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
       }
     >
       <SearchInput
-        className="w-[200px]"
+        className="w-50"
         placeholder={t(($) => $['operation.search'], { ns: 'common' })}
         value={searchText}
         onValueChange={setSearchText}
@@ -121,7 +126,10 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
     <>
       {isDataSourceListLoading && <DataSourceListSkeleton />}
       {!isDataSourceListLoading && !dataSources.length && (
-        <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
+        <div
+          className="mb-2 rounded-[10px] bg-workflow-process-bg p-4"
+          data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceFirstCard}
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
             <span className="i-ri-database-2-line h-5 w-5 text-text-primary" />
           </div>
@@ -141,18 +149,20 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
       )}
       {!isDataSourceListLoading && !!filteredDataSources.length && (
         <div className="space-y-2">
-          {filteredDataSources.map((item) => {
+          {filteredDataSources.map((item, index) => {
             const pluginDetail = dataSourcePluginDetails.find(
               (plugin) => plugin.plugin_id === item.plugin_id,
             )
 
             return (
-              <Card
+              <div
                 key={item.plugin_unique_identifier}
-                item={item}
-                pluginDetail={pluginDetail}
-                onPluginUpdate={handlePluginUpdate}
-              />
+                data-step-by-step-tour-target={
+                  index === 0 ? STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceFirstCard : undefined
+                }
+              >
+                <Card item={item} pluginDetail={pluginDetail} onPluginUpdate={handlePluginUpdate} />
+              </div>
             )
           })}
         </div>

@@ -9,7 +9,7 @@ type IGroupNameProps = {
 const GroupName: FC<IGroupNameProps> = ({ name }) => {
   return (
     <div className="mb-1 flex items-center">
-      <div className="mr-3 text-xs leading-[18px] font-semibold text-text-tertiary uppercase">
+      <div className="mr-3 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
         {name}
       </div>
       <div

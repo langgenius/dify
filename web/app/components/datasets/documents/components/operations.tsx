@@ -14,18 +14,20 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { IS_CE_EDITION } from '@/config'
+import { toast } from '@/app/notifications'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import {
@@ -82,6 +84,11 @@ const Operations = ({
   canDelete,
   canViewSettings,
 }: OperationsProps) => {
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const {
     id,
     name,
@@ -93,7 +100,7 @@ const Operations = ({
   const [showModal, setShowModal] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const router = useRouter()
   const { mutateAsync: archiveDocument } = useDocumentArchive()
   const { mutateAsync: unArchiveDocument } = useDocumentUnArchive()
@@ -108,7 +115,7 @@ const Operations = ({
   const { mutateAsync: resumeDocument } = useDocumentResume()
   const isListScene = scene === 'list'
   const canShowRenameAction = canEdit && !archived
-  const canShowSummaryAction = canEdit && !archived && IS_CE_EDITION
+  const canShowSummaryAction = canEdit && !archived && isNonCloudEdition
   const canShowSettingsAction = canViewSettings
   const canShowDownloadAction = canDownload && data_source_type === DataSourceType.FILE
   const canShowSyncAction =
@@ -315,10 +322,12 @@ const Operations = ({
       </span>
     </button>
   )
+  const enabledLabel = `${t(($) => $['list.status.enabled'], { ns: 'datasetDocuments' })}: ${name}`
   const renderListSwitch = () => {
     if (!canEdit)
       return (
         <Switch
+          aria-label={enabledLabel}
           checked={archived ? false : enabled}
           onCheckedChange={noop}
           disabled={true}
@@ -334,11 +343,17 @@ const Operations = ({
             openOnHover
             render={
               <div>
-                <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
+                <Switch
+                  aria-label={enabledLabel}
+                  checked={false}
+                  onCheckedChange={noop}
+                  disabled={true}
+                  size="md"
+                />
               </div>
             }
           />
-          <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+          <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
             {t(($) => $['list.action.enableWarning'], { ns: 'datasetDocuments' })}
           </PopoverContent>
         </Popover>
@@ -347,6 +362,7 @@ const Operations = ({
 
     return (
       <Switch
+        aria-label={enabledLabel}
         checked={enabled}
         onCheckedChange={(v) => handleSwitch(v ? 'enable' : 'disable')}
         size="md"
@@ -355,19 +371,23 @@ const Operations = ({
   }
 
   return (
-    <div
-      className="flex items-center"
-      role="presentation"
-      onClick={stopPropagation}
-      onKeyDown={stopPropagation}
-    >
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Only stops child control events from reaching row navigation.
+    <div className="flex items-center" onClick={stopPropagation} onKeyDown={stopPropagation}>
       {isListScene && !embeddingAvailable && (
-        <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
+        <Switch
+          aria-label={enabledLabel}
+          checked={false}
+          onCheckedChange={noop}
+          disabled={true}
+          size="md"
+        />
       )}
       {isListScene && embeddingAvailable && (
         <>
           {renderListSwitch()}
-          {hasOperationsMenu && <Divider className="mr-2! ml-4! h-3!" type="vertical" />}
+          {hasOperationsMenu && (
+            <Separator decorative className="mr-2 ml-4 h-3" orientation="vertical" />
+          )}
         </>
       )}
       {hasOperationsMenu && (
@@ -397,7 +417,7 @@ const Operations = ({
             <DropdownMenuContent
               placement="bottom-end"
               sideOffset={4}
-              popupClassName={cn('w-[200px] py-0', className)}
+              className={cn('w-50 py-0', className)}
             >
               <div className="w-full py-1">
                 {canShowPrimarySection && (
@@ -460,7 +480,9 @@ const Operations = ({
                         </span>
                       </button>
                     )}
-                    {(canShowStatusSection || canShowDeleteAction) && <Divider className="my-1" />}
+                    {(canShowStatusSection || canShowDeleteAction) && (
+                      <DropdownMenuSeparator className="h-[0.5px] w-full shrink-0 bg-divider-regular" />
+                    )}
                   </>
                 )}
                 {canShowPauseAction && (
@@ -548,11 +570,7 @@ const Operations = ({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={deleting}
-              disabled={deleting}
-              onClick={() => onOperate('delete')}
-            >
+            <AlertDialogConfirmButton loading={deleting} onClick={() => onOperate('delete')}>
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 
 type BrandingFooterProps = {
   removeWebappBrand?: boolean
@@ -7,7 +7,7 @@ type BrandingFooterProps = {
 }
 
 const BrandingFooter = ({ removeWebappBrand, replaceWebappLogo }: BrandingFooterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
 
   if (removeWebappBrand) return null
 
@@ -20,7 +20,7 @@ const BrandingFooter = ({ removeWebappBrand, replaceWebappLogo }: BrandingFooter
         {replaceWebappLogo ? (
           <img src={replaceWebappLogo} alt="logo" className="block h-5 w-auto" />
         ) : (
-          <DifyLogo size="small" />
+          <DifyLogo alt="Dify" size="small" />
         )}
       </div>
     </div>

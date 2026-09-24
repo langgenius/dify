@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
   useActivePluginType,
   useFilterPluginTags,
+  useFilterTemplateLanguages,
   useMarketplaceMoreClick,
   useMarketplaceSearchMode,
   useMarketplaceSort,
@@ -128,6 +129,25 @@ describe('useFilterPluginTags', () => {
   })
 })
 
+describe('useFilterTemplateLanguages', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should return empty array as default', () => {
+    const { wrapper } = createWrapper()
+    const { result } = renderHook(() => useFilterTemplateLanguages(), { wrapper })
+
+    expect(result.current[0]).toEqual([])
+  })
+
+  it('parses languages from search params', () => {
+    const { wrapper } = createWrapper('?languages=ja')
+    const { result } = renderHook(() => useFilterTemplateLanguages(), { wrapper })
+    expect(result.current[0]).toEqual(['ja'])
+  })
+})
+
 describe('useMarketplaceSearchMode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -172,13 +192,6 @@ describe('useMarketplaceSearchMode', () => {
 describe('useMarketplaceMoreClick', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('should return a callback function', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceMoreClick(), { wrapper })
-
-    expect(typeof result.current).toBe('function')
   })
 
   it('should do nothing when called with no params', () => {

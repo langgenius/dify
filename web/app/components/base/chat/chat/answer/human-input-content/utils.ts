@@ -1,7 +1,8 @@
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { HumanInputFieldValue } from './field-renderer'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import type { HumanInputResolvedValue } from '@/types/workflow'
 import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
@@ -24,7 +25,7 @@ dayjs.extend(utc)
 dayjs.extend(relativeTime)
 dayjs.extend(isSameOrAfter)
 
-export const getButtonStyle = (style: UserActionButtonType) => {
+export const getButtonStyle = (style: UserActionButtonType): ButtonProps['variant'] => {
   if (style === UserActionButtonType.Primary) return 'primary'
   if (style === UserActionButtonType.Default) return 'secondary'
   if (style === UserActionButtonType.Accent) return 'secondary-accent'

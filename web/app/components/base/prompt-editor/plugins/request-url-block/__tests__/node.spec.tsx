@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react'
-import { createLexicalTestEditor, expectInlineWrapperDom } from '../../test-helpers'
+import { createLexicalTestEditor, expectInlineWrapperDom } from '../../__tests__/test-helpers'
 import RequestURLBlockComponent from '../component'
 import { $createRequestURLBlockNode, RequestURLBlockNode } from '../node'
 

@@ -3,26 +3,38 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
-import { IS_CE_EDITION } from '@/config'
-import { useProviderContext } from '@/context/provider-context'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 
 const APIKeyInfoPanel: FC = () => {
-  const isCloud = !IS_CE_EDITION
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloud = deploymentEdition === 'CLOUD'
 
-  const { isAPIKeySet } = useProviderContext()
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const { data: hasActiveProvider = false } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: 'llm' } },
+      select: (response) => response.data.some((provider) => provider.status === 'active'),
+    }),
+  )
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
 
   const [isShow, setIsShow] = useState(true)
 
-  if (isAPIKeySet) return null
+  if (hasActiveProvider) return null
 
   if (!isShow) return null
 
@@ -39,7 +51,7 @@ const APIKeyInfoPanel: FC = () => {
           isCloud ? 'flex h-8 items-center space-x-1' : 'mb-6 leading-8',
         )}
       >
-        {isCloud && <em-emoji id="😀" />}
+        {isCloud && <span>😀</span>}
         {isCloud ? (
           <div>
             {t(($) => $['apiKeyInfo.cloud.trial.title'], {
@@ -59,25 +71,21 @@ const APIKeyInfoPanel: FC = () => {
           {t(($) => $[`apiKeyInfo.cloud.${'trial'}.description`], { ns: 'appOverview' })}
         </div>
       )}
-      <Button
-        variant="primary"
-        className="mt-2 space-x-2"
-        onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
-      >
+      <Button variant="primary" className="mt-2" onClick={() => setSettingsDestination('provider')}>
         <div className="text-sm font-medium">
           {t(($) => $['apiKeyInfo.setAPIBtn'], { ns: 'appOverview' })}
         </div>
-        <LinkExternal02 className="size-4" />
+        <span aria-hidden className="i-custom-vender-line-general-link-external-02 size-4" />
       </Button>
       {!isCloud && (
         <a
-          className="mt-2 flex h-[26px] items-center space-x-1 p-1 text-xs font-medium text-[#155EEF]"
+          className="mt-2 flex h-6.5 items-center space-x-1 p-1 text-xs font-medium text-primary-600"
           href="https://cloud.dify.ai/apps"
           target="_blank"
           rel="noopener noreferrer"
         >
           <div>{t(($) => $['apiKeyInfo.tryCloud'], { ns: 'appOverview' })}</div>
-          <LinkExternal02 className="size-3" />
+          <span aria-hidden className="i-custom-vender-line-general-link-external-02 size-3" />
         </a>
       )}
       <div

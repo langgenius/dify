@@ -1,7 +1,13 @@
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
-import { act, render, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, renderHook, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  renderWithConsoleQuery,
+} from '@/test/console/query-data'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
 // Import after mocks
 import { useFileUpload } from '../use-file-upload'
@@ -9,7 +15,7 @@ import { useFileUpload } from '../use-file-upload'
 // Mock notify function
 const mockNotify = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),
   },
@@ -17,31 +23,29 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 // Mock upload service
 const mockUpload = vi.fn()
+const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
 vi.mock('@/service/base', () => ({
+  request,
   upload: (...args: unknown[]) => mockUpload(...args),
 }))
 
 // Mock file upload config
 const mockFileUploadConfig = {
   file_size_limit: 15,
+  knowledge_file_size_limit: 50,
   batch_count_limit: 5,
   file_upload_limit: 10,
 }
 
-const mockSupportTypes = {
+const supportedFormats = {
   allowed_extensions: ['pdf', 'docx', 'txt', 'md'],
 }
 
 vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({ data: mockFileUploadConfig }),
-  useFileSupportTypes: () => ({ data: mockSupportTypes }),
 }))
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
-}))
-
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false,
 }))
 
 // Mock file upload error message
@@ -49,9 +53,24 @@ vi.mock('@/app/components/base/file-uploader/utils', () => ({
   getFileUploadErrorMessage: (_e: unknown, defaultMsg: string) => defaultMsg,
 }))
 
-const createWrapper = () => {
-  return ({ children }: { children: ReactNode }) => <>{children}</>
+const createQueryClient = () => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.supportType.get.queryOptions().queryKey,
+    supportedFormats,
+  )
+  return queryClient
 }
+const createWrapper = () =>
+  createConsoleQueryWrapper({
+    queryClient: createQueryClient(),
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  }).wrapper
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    queryClient: createQueryClient(),
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
 
 describe('useFileUpload', () => {
   const defaultOptions = {
@@ -82,6 +101,7 @@ describe('useFileUpload', () => {
       expect(result.current.dropRef.current).toBeNull()
       expect(result.current.dragRef.current).toBeNull()
       expect(result.current.fileUploaderRef.current).toBeNull()
+      expect(result.current.fileUploadConfig.file_size_limit).toBe(50)
     })
 
     it('should set hideUpload true when not batch upload and has files', () => {
@@ -132,6 +152,66 @@ describe('useFileUpload', () => {
       expect(result.current.fileUploadConfig.file_upload_limit).toBe(1)
     })
   })
+
+  it.each([
+    { allowedExtensions: ['csv'], expectedAccept: '.csv', uploadCount: 1 },
+    { allowedExtensions: [], expectedAccept: '', uploadCount: 0 },
+  ])(
+    'keeps the explicit $allowedExtensions override while subscribing to supported formats',
+    async ({ allowedExtensions, expectedAccept, uploadCount }) => {
+      const queryClient = createConsoleQueryClient()
+      request.mockImplementation(async () => Response.json(supportedFormats))
+      const Uploader = () => {
+        const { fileUploaderRef, fileChangeHandle, acceptTypes } = useFileUpload({
+          ...defaultOptions,
+          allowedExtensions,
+        })
+        return (
+          <input
+            aria-label="Upload file"
+            type="file"
+            ref={fileUploaderRef}
+            accept={acceptTypes.join(',')}
+            onChange={fileChangeHandle}
+          />
+        )
+      }
+      renderWithConsoleQuery(<Uploader />, {
+        queryClient,
+        systemFeatures: { deployment_edition: 'CLOUD' },
+      })
+      const input = screen.getByLabelText('Upload file')
+      expect(input).toHaveAttribute('accept', expectedAccept)
+
+      await waitFor(() =>
+        expect(
+          queryClient.getQueryData(consoleQuery.files.supportType.get.queryOptions().queryKey),
+        ).toEqual(supportedFormats),
+      )
+
+      expect(request).toHaveBeenCalledTimes(1)
+      expect(input).toHaveAttribute('accept', expectedAccept)
+      fireEvent.change(input, {
+        target: { files: [new File(['row'], 'data.csv', { type: 'text/csv' })] },
+      })
+      await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(uploadCount))
+      if (uploadCount === 0) {
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'datasetCreation.stepOne.uploader.validation.typeError',
+        })
+        expect(defaultOptions.prepareFileList).not.toHaveBeenCalled()
+      } else {
+        expect(defaultOptions.prepareFileList).toHaveBeenCalledOnce()
+        expect(defaultOptions.onFileUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({ file: { id: 'default-id' } }),
+          PROGRESS_COMPLETE,
+          expect.any(Array),
+        )
+        expect(mockNotify).not.toHaveBeenCalled()
+      }
+    },
+  )
 
   describe('selectHandle', () => {
     it('should trigger click on file input', () => {
@@ -302,10 +382,8 @@ describe('useFileUpload', () => {
         wrapper: createWrapper(),
       })
 
-      // Create a file larger than the limit (15MB)
-      const largeFile = new File([new ArrayBuffer(20 * 1024 * 1024)], 'large.pdf', {
-        type: 'application/pdf',
-      })
+      const largeFile = new File(['content'], 'large.pdf', { type: 'application/pdf' })
+      Object.defineProperty(largeFile, 'size', { value: 51 * 1024 * 1024 })
 
       const event = {
         target: { files: [largeFile] },

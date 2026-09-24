@@ -1,12 +1,13 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { useLocale } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
 
@@ -14,8 +15,8 @@ type UninstalledItemProps = {
   payload: Plugin
 }
 
-const UninstalledItem = ({ payload }: UninstalledItemProps) => {
-  const { t } = useTranslation()
+function UninstalledItem({ payload }: UninstalledItemProps) {
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
 
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
@@ -35,12 +36,14 @@ const UninstalledItem = ({ payload }: UninstalledItemProps) => {
           <span className="system-xs-regular text-text-quaternary">{payload.org}</span>
         </div>
         {canInstallPlugin && (
-          <div
-            className="cursor-pointer pl-1.5 system-xs-medium text-components-button-secondary-accent-text"
+          <Button
+            variant="ghost"
+            size="small"
+            className="h-6 px-1.5 text-components-button-secondary-accent-text focus-visible:ring-inset"
             onClick={showInstallModal}
           >
             {t(($) => $.installAction, { ns: 'plugin' })}
-          </div>
+          </Button>
         )}
         {isShowInstallModal && canInstallPlugin && (
           <PluginInstallPermissionProvider

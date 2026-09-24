@@ -2,8 +2,9 @@
 import type { RefObject } from 'react'
 import type { FileUploadConfig } from '../hooks/use-file-upload'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 
 export type UploadDropzoneProps = {
   dropRef: RefObject<HTMLDivElement | null>
@@ -30,8 +31,8 @@ const UploadDropzone = ({
   onSelectFile,
   onFileChange,
 }: UploadDropzoneProps) => {
-  const { t } = useTranslation()
-  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
+  const { t } = useTranslation(['datasetCreation'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
 
   return (
     <>
@@ -47,7 +48,7 @@ const UploadDropzone = ({
       <div
         ref={dropRef}
         className={cn(
-          'relative mb-2 box-border flex min-h-20 max-w-[640px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-xs leading-4 text-text-tertiary',
+          'relative mb-2 box-border flex min-h-20 max-w-160 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-xs leading-4 text-text-tertiary',
           dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
         )}
       >
@@ -58,14 +59,18 @@ const UploadDropzone = ({
               ? t(($) => $['stepOne.uploader.button'], { ns: 'datasetCreation' })
               : t(($) => $['stepOne.uploader.buttonSingleFile'], { ns: 'datasetCreation' })}
             {acceptTypes.length > 0 && (
-              <label className="ml-1 cursor-pointer text-text-accent" onClick={onSelectFile}>
+              <button
+                type="button"
+                className="font-inherit ml-1 inline cursor-pointer appearance-none border-0 bg-transparent p-0 text-text-accent"
+                onClick={onSelectFile}
+              >
                 {t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })}
-              </label>
+              </button>
             )}
           </span>
         </div>
         <div>
-          {enableBilling
+          {deploymentEdition === 'CLOUD'
             ? t(($) => $['stepOne.uploader.tipWithTotalLimit'], {
                 ns: 'datasetCreation',
                 size: fileUploadConfig.file_size_limit,

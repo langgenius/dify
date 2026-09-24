@@ -7,9 +7,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import {
   useAppFeatures,
@@ -31,7 +31,7 @@ const defaultModerationConfig: ModerationConfig = {
 }
 
 function AgentContentModerationSettingsContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const locale = useLocale()
   const featuresStore = useFeaturesStore()
   const readOnly = useAgentOrchestrateReadOnly()
@@ -133,11 +133,11 @@ function AgentContentModerationSettingsContent() {
               <Button
                 size="small"
                 variant="ghost"
-                className="h-6 gap-0.5 px-1.5 py-1 text-text-tertiary"
+                className="h-6 py-1 text-text-tertiary"
                 onClick={() => openSettings()}
               >
                 <span className="i-ri-equalizer-2-line size-3.5" aria-hidden />
-                <span className="px-0.5 system-xs-medium">
+                <span className="system-xs-medium">
                   {t(($) => $['operation.settings'], { ns: 'common' })}
                 </span>
               </Button>
@@ -161,12 +161,14 @@ function AgentContentModerationSettingsContent() {
             </div>
             <div className="truncate system-xs-regular text-text-secondary">{providerContent}</div>
           </div>
-          <div className="h-[27px] w-px shrink-0 rotate-12 bg-divider-subtle" />
+          <div className="h-6.75 w-px shrink-0 rotate-12 bg-divider-subtle" />
           <div className="min-w-0">
             <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
               {t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
             </div>
-            <div className="truncate system-xs-regular text-text-secondary">{enabledContent}</div>
+            <div className="truncate system-xs-regular text-text-secondary" title={enabledContent}>
+              {enabledContent}
+            </div>
           </div>
         </div>
       ) : (

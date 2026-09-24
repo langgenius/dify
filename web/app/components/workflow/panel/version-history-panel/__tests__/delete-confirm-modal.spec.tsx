@@ -55,4 +55,19 @@ describe('DeleteConfirmModal', () => {
     expect(onClose).toHaveBeenCalled()
     expect(onDelete).toHaveBeenCalledWith('version-1', expect.anything())
   })
+
+  it('renders the default name for a legacy version without a version number', () => {
+    render(
+      <DeleteConfirmModal
+        isOpen
+        versionInfo={createVersionInfo({ marked_name: '', version_number: null })}
+        onClose={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByText('common.operation.delete workflow.versionHistory.defaultName'),
+    ).toBeInTheDocument()
+  })
 })

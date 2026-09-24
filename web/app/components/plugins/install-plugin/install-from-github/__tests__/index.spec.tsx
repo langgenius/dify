@@ -5,7 +5,7 @@ import type {
   UpdateFromGitHubPayload,
 } from '../../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../../types'
 import {
   convertRepoToUrl,
@@ -84,7 +84,7 @@ const createUpdatePayload = (
 
 // Mock external dependencies
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign((props: { type: string; message: string }) => mockNotify(props), {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -290,11 +290,12 @@ describe('InstallFromGitHub', () => {
   // Rendering Tests
   // ================================
   describe('Rendering', () => {
-    it('should render modal with correct initial state for new installation', () => {
+    it('should render and focus the URL for a new installation', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       expect(getRepoUrlInput()).toBeInTheDocument()
       expect(getRepoUrlInput()).toHaveValue('')
+      await waitFor(() => expect(getRepoUrlInput()).toHaveFocus())
     })
 
     it('should render modal with selectPackage step when updatePayload is provided', () => {
@@ -312,13 +313,6 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       expect(screen.getByText('plugin.installFromGitHub.installNote')).toBeInTheDocument()
-    })
-
-    it('should apply modal className from useHideLogic', () => {
-      // Verify useHideLogic provides modalClassName
-      // The actual className application is handled by Modal component internally
-      // We verify the hook integration by checking that it returns the expected class
-      expect(mockHideLogicState.modalClassName).toBe('test-modal-class')
     })
   })
 
@@ -566,6 +560,7 @@ describe('InstallFromGitHub', () => {
       await waitFor(() => {
         expect(getRepoUrlInput()).toBeInTheDocument()
       })
+      expect(getRepoUrlInput()).not.toHaveFocus()
     })
 
     it('should go back from readyToInstall to selectPackage', async () => {
@@ -620,6 +615,42 @@ describe('InstallFromGitHub', () => {
 
       await waitFor(() => {
         expect(defaultProps.onSuccess).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('waits for an async onSuccess callback before showing installation success', async () => {
+      let resolveSuccess: (() => void) | undefined
+      const onSuccess = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSuccess = resolve
+          }),
+      )
+      render(
+        <InstallFromGitHub
+          onClose={vi.fn()}
+          onSuccess={onSuccess}
+          updatePayload={createUpdatePayload()}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId('trigger-upload-btn'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loaded-step')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('install-success-btn'))
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledTimes(1)
+      })
+      expect(screen.queryByTestId('installed-step')).not.toBeInTheDocument()
+
+      resolveSuccess?.()
+
+      await waitFor(() => {
+        expect(screen.getByTestId('installed-step')).toBeInTheDocument()
       })
     })
 
@@ -698,30 +729,6 @@ describe('InstallFromGitHub', () => {
 
       await waitFor(() => {
         expect(mockHideLogicState.setIsInstalling).toHaveBeenCalledWith(false)
-      })
-    })
-  })
-
-  // ================================
-  // Callback Stability Tests (Memoization)
-  // ================================
-  describe('Callback Stability', () => {
-    it('should maintain stable handleUploadFail callback reference', async () => {
-      const { rerender } = render(
-        <InstallFromGitHub {...defaultProps} updatePayload={createUpdatePayload()} />,
-      )
-
-      const firstRender = screen.getByTestId('select-package-step')
-      expect(firstRender).toBeInTheDocument()
-
-      // Rerender with same props
-      rerender(<InstallFromGitHub {...defaultProps} updatePayload={createUpdatePayload()} />)
-
-      // The component should still work correctly
-      fireEvent.click(screen.getByTestId('trigger-upload-fail-btn'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('installed-step')).toBeInTheDocument()
       })
     })
   })

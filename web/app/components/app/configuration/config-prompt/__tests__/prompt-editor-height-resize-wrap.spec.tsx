@@ -1,62 +1,69 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import PromptEditorHeightResizeWrap from '../prompt-editor-height-resize-wrap'
 
+function Editor({ hideResize = false }: { hideResize?: boolean }) {
+  const [height, setHeight] = useState(200)
+  return (
+    <PromptEditorHeightResizeWrap
+      height={height}
+      minHeight={120}
+      onHeightChange={setHeight}
+      hideResize={hideResize}
+    >
+      <textarea aria-label="Prompt" />
+    </PromptEditorHeightResizeWrap>
+  )
+}
+
 describe('PromptEditorHeightResizeWrap', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
+  it('supports keyboard height changes without intercepting editor keys or imposing a maximum', async () => {
+    const user = userEvent.setup()
+    render(<Editor />)
+    const handle = screen.getByRole('button', { name: 'common.resize.editor' })
+    const editor = document.getElementById(handle.getAttribute('aria-controls')!)!
+    await user.tab()
+    await user.keyboard('{ArrowDown}')
+    expect(editor).toHaveStyle({ height: '200px' })
+    await user.tab()
+    expect(handle).toHaveFocus()
+    await user.keyboard('{ArrowDown}{Shift>}{ArrowDown}{/Shift}')
+    expect(editor).toHaveStyle({ height: '240px' })
+    await user.keyboard('{ArrowUp}{End}')
+    expect(editor).toHaveStyle({ height: '232px' })
+    await user.keyboard('{Home}{ArrowUp}')
+    expect(editor).toHaveStyle({ height: '120px' })
+    await user.keyboard('{ArrowDown}{Enter}')
+    expect(editor).toHaveStyle({ height: '120px' })
+    await user.tab({ shift: true })
+    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveFocus()
   })
 
-  afterEach(() => {
-    vi.runOnlyPendingTimers()
-    vi.useRealTimers()
-  })
+  it.each([true, false])(
+    'continues resizing by keyboard after a mouse drag (click on release: %s)',
+    async (clickOnRelease) => {
+      const user = userEvent.setup()
+      render(<Editor />)
+      const handle = screen.getByRole('button', { name: 'common.resize.editor' })
+      const editor = document.getElementById(handle.getAttribute('aria-controls')!)!
+      fireEvent.mouseDown(handle, { clientY: 200 })
+      fireEvent.mouseMove(document, { clientY: 260 })
+      await waitFor(() => expect(editor).toHaveStyle({ height: '260px' }))
+      fireEvent.mouseUp(document)
+      if (clickOnRelease) fireEvent.click(handle, { detail: 1 })
+      expect(editor).toHaveStyle({ height: '260px' })
+      await user.tab()
+      await user.tab()
+      await user.keyboard('{ArrowDown}')
+      expect(editor).toHaveStyle({ height: '268px' })
+      await user.keyboard('{Enter}')
+      expect(editor).toHaveStyle({ height: '120px' })
+    },
+  )
 
-  it('should render children, footer, and hide resize handler when requested', () => {
-    const { container } = render(
-      <PromptEditorHeightResizeWrap
-        className="wrapper"
-        height={150}
-        minHeight={100}
-        onHeightChange={vi.fn()}
-        footer={<div>footer</div>}
-        hideResize
-      >
-        <div>content</div>
-      </PromptEditorHeightResizeWrap>,
-    )
-
-    expect(screen.getByText('content')).toBeInTheDocument()
-    expect(screen.getByText('footer')).toBeInTheDocument()
-    expect(container.querySelector('.cursor-row-resize')).toBeNull()
-  })
-
-  it('should resize height with mouse events and clamp to minHeight', () => {
-    const onHeightChange = vi.fn()
-
-    const { container } = render(
-      <PromptEditorHeightResizeWrap height={150} minHeight={100} onHeightChange={onHeightChange}>
-        <div>content</div>
-      </PromptEditorHeightResizeWrap>,
-    )
-
-    const handle = container.querySelector('.cursor-row-resize')
-    expect(handle).not.toBeNull()
-
-    fireEvent.mouseDown(handle as Element, { clientY: 100 })
-    expect(document.body.style.userSelect).toBe('none')
-
-    fireEvent.mouseMove(document, { clientY: 130 })
-    vi.runAllTimers()
-    expect(onHeightChange).toHaveBeenLastCalledWith(180)
-
-    onHeightChange.mockClear()
-    fireEvent.mouseMove(document, { clientY: -100 })
-    vi.runAllTimers()
-    expect(onHeightChange).toHaveBeenLastCalledWith(100)
-
-    fireEvent.mouseUp(document)
-    expect(document.body.style.userSelect).toBe('')
+  it('does not expose a resize control when resizing is hidden', () => {
+    render(<Editor hideResize />)
+    expect(screen.queryByRole('button', { name: 'common.resize.editor' })).not.toBeInTheDocument()
   })
 })

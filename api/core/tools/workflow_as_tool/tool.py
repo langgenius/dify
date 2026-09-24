@@ -281,7 +281,7 @@ class WorkflowTool(Tool):
             user_stmt = select(Account).where(Account.id == user_id)
             user = session.scalar(user_stmt)
             if user:
-                user.current_tenant = tenant
+                user.set_current_tenant_with_session(tenant, session=session)
                 session.expunge(user)
                 return user
 

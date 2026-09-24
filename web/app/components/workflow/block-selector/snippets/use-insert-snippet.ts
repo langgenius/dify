@@ -1,17 +1,29 @@
-import type { Edge, Node, OnNodeAdd } from '../../types'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { AssignerNodeType } from '../../nodes/assigner/types'
+import type { IterationNodeType } from '../../nodes/iteration/types'
+import type { LoopNodeType } from '../../nodes/loop/types'
+import type { Edge, Node, OnNodeAdd, ValueSelector } from '../../types'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
-import { useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks'
+import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
+import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workflow-history'
+import { getNodeUsedVars, updateNodeVars } from '../../nodes/_base/components/variable/utils'
+import { hasAgentV2OutputRoutes } from '../../nodes/agent-v2/types'
+import { AssignerNodeInputType } from '../../nodes/assigner/types'
 import { BlockEnum } from '../../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../../utils'
 
 type SnippetInsertPayload = Parameters<OnNodeAdd>[1]
+
+type LegacyAssignerNodeType = Node['data'] & {
+  assigned_variable_selector?: ValueSelector
+  input_variable_selector?: ValueSelector
+}
 
 const getSnippetGraph = (graph: Record<string, unknown> | undefined) => {
   if (!graph) return { nodes: [] as Node[], edges: [] as Edge[] }
@@ -54,6 +66,7 @@ const canConnectFromSource = (node: Node) => {
   return (
     node.data.type !== BlockEnum.IfElse &&
     node.data.type !== BlockEnum.QuestionClassifier &&
+    !hasAgentV2OutputRoutes(node.data) &&
     node.data.type !== BlockEnum.HumanInput &&
     node.data.type !== BlockEnum.LoopEnd
   )
@@ -80,6 +93,114 @@ const getInsertAnchor = (currentNodes: Node[], insertPayload?: SnippetInsertPayl
       y: prevNode.position.y,
     }
   }
+}
+
+const remapSnippetNodeVariableReferences = (node: Node, idMapping: Map<string, string>) => {
+  return getNodeUsedVars(node).reduce((currentNode, selector) => {
+    if (!Array.isArray(selector) || !selector.length) return currentNode
+
+    const mappedNodeId = idMapping.get(selector[0]!)
+    if (!mappedNodeId) return currentNode
+
+    return updateNodeVars(currentNode, selector, [mappedNodeId, ...selector.slice(1)])
+  }, node)
+}
+
+const remapSnippetNodeId = (nodeId: string | undefined, idMapping: Map<string, string>) => {
+  if (!nodeId) return nodeId
+
+  return idMapping.get(nodeId) ?? nodeId
+}
+
+const remapSnippetValueSelector = (
+  selector: ValueSelector | undefined,
+  idMapping: Map<string, string>,
+) => {
+  if (!Array.isArray(selector) || !selector.length) return selector
+
+  const mappedNodeId = idMapping.get(selector[0]!)
+  if (!mappedNodeId) return selector
+
+  return [mappedNodeId, ...selector.slice(1)]
+}
+
+const remapSnippetAssignerReferences = (node: Node, idMapping: Map<string, string>): Node => {
+  if (node.data.type !== BlockEnum.Assigner) return node
+
+  const assignerData = node.data as AssignerNodeType
+  if (assignerData.version === '2') {
+    const data: AssignerNodeType = {
+      ...assignerData,
+      items: (assignerData.items ?? []).map((item) => ({
+        ...item,
+        variable_selector: remapSnippetValueSelector(item.variable_selector, idMapping)!,
+        value:
+          item.input_type === AssignerNodeInputType.variable
+            ? remapSnippetValueSelector(item.value, idMapping)
+            : item.value,
+      })),
+    }
+
+    return {
+      ...node,
+      data,
+    }
+  }
+
+  const legacyAssignerData = node.data as LegacyAssignerNodeType
+  const data: LegacyAssignerNodeType = {
+    ...legacyAssignerData,
+    assigned_variable_selector: remapSnippetValueSelector(
+      legacyAssignerData.assigned_variable_selector,
+      idMapping,
+    ),
+    input_variable_selector: remapSnippetValueSelector(
+      legacyAssignerData.input_variable_selector,
+      idMapping,
+    ),
+  }
+
+  return {
+    ...node,
+    data,
+  }
+}
+
+const remapSnippetNodeStructuralReferences = (node: Node, idMapping: Map<string, string>): Node => {
+  const data = {
+    ...node.data,
+    iteration_id: remapSnippetNodeId(node.data.iteration_id, idMapping),
+    loop_id: remapSnippetNodeId(node.data.loop_id, idMapping),
+  }
+
+  if (data.type === BlockEnum.Iteration) {
+    const iterationData = data as IterationNodeType
+    const remappedIterationData: IterationNodeType = {
+      ...iterationData,
+      start_node_id: remapSnippetNodeId(iterationData.start_node_id, idMapping)!,
+      output_selector: remapSnippetValueSelector(iterationData.output_selector, idMapping)!,
+    }
+
+    return {
+      ...node,
+      data: remappedIterationData,
+    }
+  }
+
+  if (data.type === BlockEnum.Loop) {
+    const loopData = data as LoopNodeType
+    const remappedLoopData: LoopNodeType = {
+      ...loopData,
+      start_node_id: remapSnippetNodeId(loopData.start_node_id, idMapping)!,
+    }
+
+    return {
+      ...node,
+      data: remappedLoopData,
+    }
+  }
+
+  return { ...node, data }
 }
 
 const remapSnippetGraph = (
@@ -119,7 +240,7 @@ const remapSnippetGraph = (
     const nextParentId = node.parentId ? idMapping.get(node.parentId) : undefined
     const isRootNode = !node.parentId
 
-    return {
+    const remappedNode = {
       ...node,
       id: idMapping.get(node.id)!,
       parentId: nextParentId,
@@ -147,6 +268,14 @@ const remapSnippetGraph = (
         })),
       },
     }
+
+    const structurallyRemappedNode = remapSnippetNodeStructuralReferences(remappedNode, idMapping)
+
+    const variableRemappedNode = remapSnippetNodeVariableReferences(
+      structurallyRemappedNode,
+      idMapping,
+    )
+    return remapSnippetAssignerReferences(variableRemappedNode, idMapping)
   })
 
   const edges = snippetEdges.map((edge) => ({
@@ -274,7 +403,7 @@ const createBoundaryEdges = ({
 }
 
 export const useInsertSnippet = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['snippet'])
   const queryClient = useQueryClient()
   const store = useStoreApi()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -284,7 +413,7 @@ export const useInsertSnippet = () => {
   const handleInsertSnippet = useCallback(
     async (snippetId: string, insertPayload?: SnippetInsertPayload) => {
       try {
-        const workflow = await queryClient.fetchQuery(
+        const workflow = await queryClient.query(
           consoleQuery.snippets.bySnippetId.workflows.publish.get.queryOptions({
             input: {
               params: { snippet_id: snippetId },

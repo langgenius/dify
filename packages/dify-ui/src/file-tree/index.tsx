@@ -5,6 +5,7 @@ import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
 import * as React from 'react'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const FileTreeLevelContext = React.createContext(1)
 
@@ -12,15 +13,11 @@ function useFileTreeLevel() {
   return React.useContext(FileTreeLevelContext)
 }
 
-function getLabelText(children: React.ReactNode) {
-  return typeof children === 'string' || typeof children === 'number' ? String(children) : undefined
-}
-
 function renderGuides(level: number) {
   return Array.from({ length: Math.max(level - 1, 0) }, (_, index) => <FileTreeGuide key={index} />)
 }
 
-type FileTreeRowState = {
+type FileTreeFileState = {
   selected: boolean
   disabled: boolean
   level: number
@@ -30,16 +27,16 @@ function fileTreeRowClassName({ className }: { className?: string }) {
   return cn(
     'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md ps-2 pe-1.5 text-start outline-hidden select-none',
     'hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-    'data-[selected]:bg-state-base-active',
+    'data-selected:bg-state-base-active',
     'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
     'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
     className,
   )
 }
 
-export type FileTreeProps = useRender.ComponentProps<'section'>
+type FileTreeProps = useRender.ComponentProps<'section'>
 
-export function FileTree({ render, className, children, ...props }: FileTreeProps) {
+function FileTree({ render, className, children, ...props }: FileTreeProps) {
   const defaultProps: useRender.ElementProps<'section'> = {
     className: cn('flex min-w-0 flex-col gap-px p-1', className),
     children: <FileTreeLevelContext.Provider value={1}>{children}</FileTreeLevelContext.Provider>,
@@ -52,9 +49,9 @@ export function FileTree({ render, className, children, ...props }: FileTreeProp
   })
 }
 
-export type FileTreeListProps = useRender.ComponentProps<'ul'>
+type FileTreeListProps = useRender.ComponentProps<'ul'>
 
-export function FileTreeList({ render, className, ...props }: FileTreeListProps) {
+function FileTreeList({ render, className, ...props }: FileTreeListProps) {
   const defaultProps: useRender.ElementProps<'ul'> = {
     className: cn('m-0 flex min-w-0 list-none flex-col gap-px p-0', className),
   }
@@ -66,20 +63,25 @@ export function FileTreeList({ render, className, ...props }: FileTreeListProps)
   })
 }
 
-export type FileTreeFolderProps = Omit<BaseCollapsible.Root.Props, 'render'> & {
+type FileTreeFolderProps = Omit<BaseCollapsible.Root.Props, 'render'> & {
   render?: BaseCollapsible.Root.Props['render']
 }
 
-export function FileTreeFolder({ render = <li />, className, ...props }: FileTreeFolderProps) {
-  return <BaseCollapsible.Root render={render} className={cn('min-w-0', className)} {...props} />
+function FileTreeFolder({ render = <li />, className, ...props }: FileTreeFolderProps) {
+  return (
+    <BaseCollapsible.Root
+      render={render}
+      className={(state) => cn('min-w-0', resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-export type FileTreeFolderTriggerProps = Omit<BaseCollapsible.Trigger.Props, 'className'> & {
-  className?: string
+type FileTreeFolderTriggerProps = BaseCollapsible.Trigger.Props & {
   level?: number
 }
 
-export function FileTreeFolderTrigger({
+function FileTreeFolderTrigger({
   className,
   children,
   disabled,
@@ -91,7 +93,7 @@ export function FileTreeFolderTrigger({
 
   return (
     <BaseCollapsible.Trigger
-      className={fileTreeRowClassName({ className })}
+      className={(state) => fileTreeRowClassName({ className: resolveClassName(className, state) })}
       disabled={disabled}
       data-disabled={disabled || undefined}
       {...props}
@@ -102,11 +104,11 @@ export function FileTreeFolderTrigger({
   )
 }
 
-export type FileTreeFolderPanelProps = Omit<BaseCollapsible.Panel.Props, 'render'> & {
+type FileTreeFolderPanelProps = Omit<BaseCollapsible.Panel.Props, 'render'> & {
   render?: BaseCollapsible.Panel.Props['render']
 }
 
-export function FileTreeFolderPanel({
+function FileTreeFolderPanel({
   render = <ul />,
   className,
   children,
@@ -117,7 +119,9 @@ export function FileTreeFolderPanel({
   return (
     <BaseCollapsible.Panel
       render={render}
-      className={cn('m-0 flex min-w-0 list-none flex-col gap-px p-0', className)}
+      className={(state) =>
+        cn('m-0 flex min-w-0 list-none flex-col gap-px p-0', resolveClassName(className, state))
+      }
       {...props}
     >
       <FileTreeLevelContext.Provider value={level + 1}>{children}</FileTreeLevelContext.Provider>
@@ -125,15 +129,12 @@ export function FileTreeFolderPanel({
   )
 }
 
-export type FileTreeFileProps = Omit<
-  useRender.ComponentProps<'button', FileTreeRowState>,
-  'type'
-> & {
+type FileTreeFileProps = Omit<useRender.ComponentProps<'button', FileTreeFileState>, 'type'> & {
   level?: number
   selected?: boolean
 }
 
-export function FileTreeFile({
+function FileTreeFile({
   render,
   className,
   children,
@@ -144,7 +145,7 @@ export function FileTreeFile({
 }: FileTreeFileProps) {
   const contextLevel = useFileTreeLevel()
   const level = levelProp ?? contextLevel
-  const state: FileTreeRowState = {
+  const state: FileTreeFileState = {
     selected,
     disabled,
     level,
@@ -174,13 +175,13 @@ export function FileTreeFile({
   return <li className="min-w-0">{file}</li>
 }
 
-export type FileTreeGuideProps = useRender.ComponentProps<'span'>
+type FileTreeGuideProps = useRender.ComponentProps<'span'>
 
-export function FileTreeGuide({ render, className, ...props }: FileTreeGuideProps) {
+function FileTreeGuide({ render, className, ...props }: FileTreeGuideProps) {
   const defaultProps: useRender.ElementProps<'span'> = {
     'aria-hidden': true,
     className: cn(
-      'relative h-6 w-5 shrink-0 before:absolute before:top-0 before:bottom-[-1px] before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-divider-subtle',
+      'relative h-6 w-5 shrink-0 before:absolute before:top-0 before:-bottom-px before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-divider-subtle',
       className,
     ),
   }
@@ -192,7 +193,7 @@ export function FileTreeGuide({ render, className, ...props }: FileTreeGuideProp
   })
 }
 
-export type FileTreeIconType =
+type FileTreeIconType =
   | 'folder'
   | 'file'
   | 'markdown'
@@ -218,18 +219,12 @@ const fileTreeIconClassNames: Record<Exclude<FileTreeIconType, 'folder'>, string
   archive: 'i-ri-file-zip-fill text-[#A4AABF]',
 }
 
-export type FileTreeIconProps = Omit<useRender.ComponentProps<'span'>, 'children'> & {
+type FileTreeIconProps = Omit<useRender.ComponentProps<'span'>, 'children'> & {
   type?: FileTreeIconType
   children?: React.ReactNode
 }
 
-export function FileTreeIcon({
-  type = 'file',
-  render,
-  className,
-  children,
-  ...props
-}: FileTreeIconProps) {
+function FileTreeIcon({ type = 'file', render, className, children, ...props }: FileTreeIconProps) {
   const defaultProps: useRender.ElementProps<'span'> = {
     'aria-hidden': true,
     className: cn(
@@ -258,24 +253,17 @@ export function FileTreeIcon({
   })
 }
 
-export type FileTreeLabelProps = useRender.ComponentProps<'span'>
-type FileTreeLabelElementProps = useRender.ElementProps<'span'> & {
-  'data-label'?: string
-}
+type FileTreeLabelProps = useRender.ComponentProps<'span'>
 
-export function FileTreeLabel({ render, className, children, ...props }: FileTreeLabelProps) {
-  const labelText = getLabelText(children)
+function FileTreeLabel({ render, className, children, ...props }: FileTreeLabelProps) {
   const defaultProps = {
-    'data-label': labelText,
     className: cn(
       'w-0 min-w-0 flex-1 truncate rounded-[5px] px-1 py-0.5',
-      labelText &&
-        'after:invisible after:block after:h-0 after:overflow-hidden after:system-sm-medium after:content-[attr(data-label)]',
-      'system-sm-regular text-text-secondary group-data-[selected]/file-tree-row:system-sm-medium group-data-[selected]/file-tree-row:text-text-primary',
+      'system-sm-regular text-text-secondary group-data-selected/file-tree-row:system-sm-medium group-data-selected/file-tree-row:text-text-primary',
       className,
     ),
     children,
-  } satisfies FileTreeLabelElementProps
+  } satisfies useRender.ElementProps<'span'>
 
   return useRender({
     defaultTagName: 'span',
@@ -284,9 +272,9 @@ export function FileTreeLabel({ render, className, children, ...props }: FileTre
   })
 }
 
-export type FileTreeMetaProps = useRender.ComponentProps<'span'>
+type FileTreeMetaProps = useRender.ComponentProps<'span'>
 
-export function FileTreeMeta({ render, className, ...props }: FileTreeMetaProps) {
+function FileTreeMeta({ render, className, ...props }: FileTreeMetaProps) {
   const defaultProps: useRender.ElementProps<'span'> = {
     className: cn('min-w-0 shrink truncate system-xs-regular text-text-tertiary', className),
   }
@@ -298,9 +286,9 @@ export function FileTreeMeta({ render, className, ...props }: FileTreeMetaProps)
   })
 }
 
-export type FileTreeBadgeProps = useRender.ComponentProps<'span'>
+type FileTreeBadgeProps = useRender.ComponentProps<'span'>
 
-export function FileTreeBadge({ render, className, ...props }: FileTreeBadgeProps) {
+function FileTreeBadge({ render, className, ...props }: FileTreeBadgeProps) {
   const defaultProps: useRender.ElementProps<'span'> = {
     className: cn(
       'ms-1 inline-flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary',
@@ -313,4 +301,32 @@ export function FileTreeBadge({ render, className, ...props }: FileTreeBadgeProp
     render,
     props: mergeProps<'span'>(defaultProps, props),
   })
+}
+
+export {
+  FileTree,
+  FileTreeBadge,
+  FileTreeFile,
+  FileTreeFolder,
+  FileTreeFolderPanel,
+  FileTreeFolderTrigger,
+  FileTreeGuide,
+  FileTreeIcon,
+  FileTreeLabel,
+  FileTreeList,
+  FileTreeMeta,
+}
+export type {
+  FileTreeBadgeProps,
+  FileTreeFileProps,
+  FileTreeFolderPanelProps,
+  FileTreeFolderProps,
+  FileTreeFolderTriggerProps,
+  FileTreeGuideProps,
+  FileTreeIconProps,
+  FileTreeIconType,
+  FileTreeLabelProps,
+  FileTreeListProps,
+  FileTreeMetaProps,
+  FileTreeProps,
 }

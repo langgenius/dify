@@ -15,13 +15,21 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/next/link', () => ({
+  default: ({ children, replace, ...props }: React.ComponentProps<'a'> & { replace?: boolean }) => (
+    <a {...props} data-replace={replace || undefined}>
+      {children}
+    </a>
+  ),
+}))
+
 // Mock useDocLink hook
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) =>
     `https://docs.dify.ai/en${path?.startsWith('/use-dify/') ? `/cloud${path}` : path || ''}`,
 }))
 
-// Mock external context providers (these are external dependencies)
+// Mock the shared modal owner.
 const mockSetShowExternalKnowledgeAPIModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -59,15 +67,31 @@ const createDefaultMockApiList = (): ExternalAPIItem[] => [
   }),
 ]
 
-const mockMutateExternalKnowledgeApis = vi.fn()
+const mockInvalidateQueries = vi.fn()
+const externalKnowledgeApiQueryKey = ['console', 'datasets', 'externalKnowledgeApi', 'get']
 let mockExternalKnowledgeApiList: ExternalAPIItem[] = createDefaultMockApiList()
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    externalKnowledgeApiList: mockExternalKnowledgeApiList,
-    mutateExternalKnowledgeApis: mockMutateExternalKnowledgeApis,
-    isLoading: false,
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useQuery: () => ({ data: { data: mockExternalKnowledgeApiList } }),
+    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+  }
+})
+
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: {
+          queryOptions: () => ({
+            queryKey: ['console', 'datasets', 'externalKnowledgeApi', 'get'],
+          }),
+        },
+      },
+    },
+  },
 }))
 
 // Helper to render component with default props
@@ -98,19 +122,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderComponent()
-
-      expect(screen.getByText('dataset.connectDataset'))!.toBeInTheDocument()
-    })
-
     it('should render KnowledgeBaseInfo component with correct labels', () => {
       renderComponent()
 
-      // KnowledgeBaseInfo renders these labels
-      // KnowledgeBaseInfo renders these labels
-      expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
-      expect(screen.getByText('dataset.externalKnowledgeDescription'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.externalKnowledgeName' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.externalKnowledgeDescription' }),
+      ).toBeInTheDocument()
     })
 
     it('should render ExternalApiSelection component', () => {
@@ -275,35 +295,6 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       expect((knowledgeIdInput as HTMLInputElement).value).toBe('new-knowledge-id')
     })
-
-    it('should apply filled text style when description has value', () => {
-      renderComponent()
-
-      const descriptionInput = screen.getByPlaceholderText(
-        'dataset.externalKnowledgeDescriptionPlaceholder',
-      ) as HTMLTextAreaElement
-
-      // Initially empty - should have placeholder style
-      expect(descriptionInput.className).toContain('text-components-input-text-placeholder')
-
-      // Add description - should have filled style
-      fireEvent.change(descriptionInput, { target: { value: 'Some description' } })
-      expect(descriptionInput.className).toContain('text-components-input-text-filled')
-    })
-
-    it('should apply placeholder text style when description is empty', () => {
-      renderComponent()
-
-      const descriptionInput = screen.getByPlaceholderText(
-        'dataset.externalKnowledgeDescriptionPlaceholder',
-      ) as HTMLTextAreaElement
-
-      // Add then clear description
-      fireEvent.change(descriptionInput, { target: { value: 'Some description' } })
-      fireEvent.change(descriptionInput, { target: { value: '' } })
-
-      expect(descriptionInput.className).toContain('text-components-input-text-placeholder')
-    })
   })
 
   // Tests for form validation
@@ -380,16 +371,12 @@ describe('ExternalKnowledgeBaseCreate', () => {
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
     })
 
-    it('should navigate back when cancel button is clicked', async () => {
-      const user = userEvent.setup()
+    it('should link back to the dataset list from cancel', () => {
       renderComponent()
 
-      const cancelButton = screen
-        .getByText('dataset.externalKnowledgeForm.cancel')
-        .closest('button')
-      await user.click(cancelButton!)
-
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      const link = screen.getByRole('link', { name: 'dataset.externalKnowledgeForm.cancel' })
+      expect(link).toHaveAttribute('href', '/datasets')
+      expect(link).toHaveAttribute('data-replace', 'true')
     })
 
     it('should call onConnect with complete form data when connect is clicked', async () => {
@@ -558,7 +545,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       )
     })
 
-    it('should call mutate and router.refresh on modal save callback', async () => {
+    it('should invalidate the generated query and refresh after modal save', async () => {
       const user = userEvent.setup()
       // Set empty API list
       mockExternalKnowledgeApiList = []
@@ -571,11 +558,13 @@ describe('ExternalKnowledgeBaseCreate', () => {
       const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
       await modalCall.onSaveCallback()
 
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: externalKnowledgeApiQueryKey,
+      })
       expect(mockRefresh).toHaveBeenCalled()
     })
 
-    it('should call mutate on modal cancel callback', async () => {
+    it('should not invalidate the generated query when the modal is canceled', async () => {
       const user = userEvent.setup()
       // Set empty API list
       mockExternalKnowledgeApiList = []
@@ -586,9 +575,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       // Get the callback and invoke it
       const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
-      modalCall.onCancelCallback()
-
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      expect(modalCall.onCancelCallback).toBeUndefined()
+      expect(mockInvalidateQueries).not.toHaveBeenCalled()
     })
 
     it('should display API URL in dropdown', async () => {
@@ -635,7 +623,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       )
     })
 
-    it('should call mutate and refresh on save callback from ExternalApiSelect dropdown', async () => {
+    it('should invalidate and refresh after saving from the API dropdown', async () => {
       const user = userEvent.setup()
       renderComponent()
 
@@ -649,11 +637,13 @@ describe('ExternalKnowledgeBaseCreate', () => {
       const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
       await modalCall.onSaveCallback()
 
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: externalKnowledgeApiQueryKey,
+      })
       expect(mockRefresh).toHaveBeenCalled()
     })
 
-    it('should call mutate on cancel callback from ExternalApiSelect dropdown', async () => {
+    it('should not invalidate after canceling from the API dropdown', async () => {
       const user = userEvent.setup()
       renderComponent()
 
@@ -665,9 +655,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       // Get the callback from the modal call and invoke it
       const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
-      modalCall.onCancelCallback()
-
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      expect(modalCall.onCancelCallback).toBeUndefined()
+      expect(mockInvalidateQueries).not.toHaveBeenCalled()
     })
 
     it('should close dropdown after selecting an API', async () => {

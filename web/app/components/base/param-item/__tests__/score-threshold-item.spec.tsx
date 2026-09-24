@@ -31,7 +31,9 @@ describe('ScoreThresholdItem', () => {
     it('should render tooltip trigger', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
 
-      expect(screen.getByLabelText('appDebug.datasetConfig.score_thresholdTip')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'appDebug.datasetConfig.score_threshold' }),
+      ).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {
@@ -43,12 +45,6 @@ describe('ScoreThresholdItem', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<ScoreThresholdItem {...defaultProps} className="custom-cls" />)
-
-      expect(container.firstChild).toHaveClass('custom-cls')
-    })
-
     it('should render switch when hasSwitch is true', () => {
       render(<ScoreThresholdItem {...defaultProps} hasSwitch />)
 

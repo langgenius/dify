@@ -3,11 +3,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiFontSize } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { useFontSize } from './hooks'
 
 const FontSizeSelector = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const FONT_SIZE_LIST = [
     {
       key: '12px',
@@ -46,9 +45,9 @@ const FontSizeSelector = () => {
       <PopoverContent
         placement="bottom-start"
         sideOffset={2}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
-        <div className="w-[120px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 text-text-secondary shadow-xl">
+        <div className="w-30 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 text-text-secondary shadow-xl">
           {FONT_SIZE_LIST.map((font) => (
             <div
               key={font.key}
@@ -60,7 +59,12 @@ const FontSizeSelector = () => {
               }}
             >
               <div style={{ fontSize: font.key }}>{font.value}</div>
-              {fontSize === font.key && <Check className="size-4 text-text-accent" />}
+              {fontSize === font.key && (
+                <span
+                  aria-hidden
+                  className="i-custom-vender-line-general-check size-4 text-text-accent"
+                />
+              )}
             </div>
           ))}
         </div>

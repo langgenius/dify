@@ -34,13 +34,18 @@ vi.mock('@/service/use-tools', () => ({
   useAllMCPTools: () => ({ data: [] }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useIsChatMode: () => false,
-  useWorkflow: () => ({
-    getLoopNodeChildren: (...args: unknown[]) => mockGetLoopNodeChildren(...args),
-  }),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+    useIsChatMode: () => false,
+    useWorkflow: () => ({
+      getLoopNodeChildren: (...args: unknown[]) => mockGetLoopNodeChildren(...args),
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<LoopNodeType>(mockSetInputs),
