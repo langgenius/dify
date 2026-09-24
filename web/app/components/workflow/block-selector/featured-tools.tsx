@@ -14,6 +14,7 @@ import {
   PreviewCard,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
+import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -24,7 +25,6 @@ import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/
 import Action from '@/app/components/workflow/block-selector/marketplace-plugin/action'
 import { useFeaturedToolsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import { useGetLanguage } from '@/context/i18n'
-import dynamic from 'next/dynamic'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
