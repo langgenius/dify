@@ -107,8 +107,17 @@ function TryApp({
         <DialogTitle className="sr-only">
           {templateName ?? appDetail?.name ?? t(($) => $['apps.title'], { ns: 'explore' })}
         </DialogTitle>
+        <IconButton
+          size="lg"
+          variant="tertiary"
+          className="absolute top-2 right-2"
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          onClick={onClose}
+        >
+          <span aria-hidden className="i-ri-close-line size-5" />
+        </IconButton>
         <Tabs defaultValue={TypeEnum.DETAIL} className="flex h-full flex-col">
-          <div className="flex shrink-0 justify-between pl-4">
+          <div className="flex shrink-0 pr-10 pl-4">
             <TabsList>
               <TabsTab
                 ref={detailTabRef}
@@ -131,14 +140,6 @@ function TryApp({
                 </TabsTab>
               )}
             </TabsList>
-            <IconButton
-              size="lg"
-              variant="tertiary"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              onClick={onClose}
-            >
-              <span aria-hidden className="i-ri-close-line size-5" />
-            </IconButton>
           </div>
           <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:overflow-hidden">
             <TabsPanel
