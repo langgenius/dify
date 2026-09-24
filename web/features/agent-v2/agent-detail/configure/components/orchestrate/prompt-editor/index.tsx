@@ -1200,6 +1200,11 @@ export function AgentTemplatePromptEditor() {
   const { t } = useTranslation(['agentV2'])
   const labelId = useId()
   const value = useAtomValue(agentComposerPromptAtom)
+  const tools = useAtomValue(agentComposerToolsAtom)
+  const providerTypes = new Set(
+    tools.filter((tool) => tool.kind === 'provider').map((tool) => tool.providerType),
+  )
+  const { getConfiguredToolIcon } = useAgentPromptToolIconResolver(providerTypes)
 
   return (
     <section
@@ -1224,7 +1229,20 @@ export function AgentTemplatePromptEditor() {
         editable={false}
         value={value}
         variableBlock={{ show: true }}
-        rosterReferenceBlock={{ show: true }}
+        rosterReferenceBlock={{
+          show: true,
+          renderIcon: (token) => {
+            if (!getProviderToolFromToken(token, tools)) return null
+
+            return (
+              <AgentPromptRosterReferenceIcon
+                token={token}
+                tools={tools}
+                getConfiguredToolIcon={getConfiguredToolIcon}
+              />
+            )
+          },
+        }}
         disableSlashPicker
         disableBracePicker
         wrapperClassName="rounded-[10px] bg-components-input-bg-normal px-3"

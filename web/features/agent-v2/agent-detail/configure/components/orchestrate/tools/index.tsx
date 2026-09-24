@@ -35,11 +35,11 @@ import {
   useAllWorkflowTools,
   useInvalidateAllBuiltInTools,
 } from '@/service/use-tools'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
 import {
   createAgentToolProviderCatalog,
   getAgentProviderPluginId,
   getAgentProviderToolDisplayName,
+  getAgentProviderToolIcon,
   getLocalizedText,
   getProviderCredentialType,
   getProviderCredentialVariant,
@@ -188,8 +188,7 @@ function useDisplayTools(
             marketplacePlugin,
             tool,
           }),
-          icon:
-            tool.icon ?? (providerPluginId ? getIconFromMarketPlace(providerPluginId) : undefined),
+          icon: getAgentProviderToolIcon(tool),
         }
       }
 
@@ -202,7 +201,7 @@ function useDisplayTools(
         ...tool,
         isInstalled: true,
         displayName: getAgentProviderToolDisplayName({ language, provider, tool }),
-        icon: tool.icon ?? provider.icon,
+        icon: getAgentProviderToolIcon(tool, provider),
         iconDark: tool.iconDark ?? provider.icon_dark,
         providerType: tool.providerType,
         allowDelete: tool.allowDelete ?? provider.allow_delete,
