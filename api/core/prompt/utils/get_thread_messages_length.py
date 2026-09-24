@@ -17,8 +17,10 @@ def get_thread_messages_length(conversation_id: str, *, session: Session) -> int
     # Extract thread messages
     thread_messages = extract_thread_messages(messages)
 
-    # Exclude the newly created message with an empty answer
-    if thread_messages and not thread_messages[0].answer:
+    # Exclude only a freshly created placeholder message: one with an empty
+    # answer AND no produced tokens yet. An in-progress message whose answer is
+    # still streaming (empty answer but answer_tokens > 0) must be kept.
+    if thread_messages and not thread_messages[0].answer and thread_messages[0].answer_tokens == 0:
         thread_messages.pop(0)
 
     return len(thread_messages)
