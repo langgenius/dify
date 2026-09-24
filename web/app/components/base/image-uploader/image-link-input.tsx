@@ -9,9 +9,9 @@ type ImageLinkInputProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
 }
-const regex = /^(https?|ftp):\/\//
+const regex = /^(?:https?|ftp):\/\//
 const ImageLinkInput: FC<ImageLinkInputProps> = ({ onUpload, disabled }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [imageLink, setImageLink] = useState('')
 
   const placeholder = t(($) => $['imageUploader.pasteImageLinkInputPlaceholder'], { ns: 'common' })

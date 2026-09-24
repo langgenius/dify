@@ -5,6 +5,7 @@ import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { consoleClient } from '@/service/console'
 import {
   del as consoleDel,
   get as consoleGet,
@@ -17,13 +18,16 @@ import {
   ssePost,
   upload,
 } from './base'
-import { getWebAppAccessToken } from './webapp-auth'
+import { resolveWebAppAddress } from './webapp-address'
+import { getOrCreateWebAppSessionId, getWebAppAccessToken } from './webapp-auth'
 
-export enum AppSourceType {
-  webApp = 'webApp',
-  installedApp = 'installedApp',
-  tryApp = 'tryApp',
-}
+export const AppSourceType = {
+  webApp: 'webApp',
+  installedApp: 'installedApp',
+  tryApp: 'tryApp',
+} as const
+
+export type AppSourceType = (typeof AppSourceType)[keyof typeof AppSourceType]
 
 const apiPrefix = {
   [AppSourceType.webApp]: '',
@@ -407,17 +411,28 @@ export const textToAudioStream = (
     message_id?: string
     text?: string | null | undefined
   },
-) => {
-  return getAction('post', appSourceType)(url, { body }, { needAllResponseContent: true })
+): Promise<Response> => {
+  const agentId =
+    appSourceType !== AppSourceType.webApp && /^\/agent\/([^/]+)\/text-to-audio$/.exec(url)?.[1]
+  if (agentId) {
+    return (
+      consoleClient.agent.byAgentId.textToAudio
+        .post({
+          params: { agent_id: agentId },
+          body: { ...body, text: body.text ?? '' },
+        })
+        // The shared player consumes Response streams; generated binary calls return Blobs.
+        .then((audio) => new Response(audio))
+    )
+  }
+  return getAction('post', appSourceType)<Response>(url, { body }, { needAllResponseContent: true })
 }
 
-export const fetchAccessToken = async ({
-  userId,
-  appCode,
-}: {
-  userId?: string
-  appCode: string
-}) => {
+type AccessTokenResponse = { access_token: string }
+
+const environmentPassportRequests = new Map<string, Promise<AccessTokenResponse>>()
+
+const requestAccessToken = ({ userId, appCode }: { userId?: string; appCode: string }) => {
   const headers = new Headers()
   headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
   const accessToken = getWebAppAccessToken()
@@ -425,7 +440,29 @@ export const fetchAccessToken = async ({
   const params = new URLSearchParams()
   if (userId) params.append('user_id', userId)
   const url = `/passport?${params.toString()}`
-  return get<{ access_token: string }>(url, { headers }) as Promise<{ access_token: string }>
+  return get<AccessTokenResponse>(url, { headers }) as Promise<AccessTokenResponse>
+}
+
+export const fetchAccessToken = (params: { userId?: string; appCode: string }) => {
+  const address = resolveWebAppAddress()
+  if (address?.kind !== 'environment') return requestAccessToken(params)
+
+  const environmentParams = {
+    ...params,
+    userId: params.userId || getOrCreateWebAppSessionId(address),
+  }
+
+  const currentRequest = environmentPassportRequests.get(address.code)
+  if (currentRequest) return currentRequest
+
+  const request = requestAccessToken(environmentParams)
+  environmentPassportRequests.set(address.code, request)
+  const clearRequest = () => {
+    if (environmentPassportRequests.get(address.code) === request)
+      environmentPassportRequests.delete(address.code)
+  }
+  request.then(clearRequest, clearRequest)
+  return request
 }
 
 export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {

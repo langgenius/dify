@@ -15,6 +15,7 @@ import {
   ComboboxPositioner,
   ComboboxTrigger,
   ComboboxValue,
+  createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -39,7 +40,7 @@ const baseChipClassName =
   'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -71,27 +72,19 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
     () => new Map(creatorOptions.map((creator) => [creator.id, creator])),
     [creatorOptions],
   )
-  const selectedCreatorValues = useMemo(() => {
-    return value.map(
-      (id) =>
-        creatorMap.get(id) ?? {
-          id,
-          name: id,
-          avatarUrl: null,
-          isYou: false,
-        },
-    )
-  }, [creatorMap, value])
+  const creatorItems = useMemo(
+    () =>
+      createComboboxItems(creatorOptions, {
+        getValue: (creator) => creator.id,
+        getLabel: (creator) => creator.name,
+      }),
+    [creatorOptions],
+  )
   const selectedCreators = useMemo(() => {
     return value
       .map((id) => creatorMap.get(id))
       .filter((creator): creator is CreatorOption => Boolean(creator))
   }, [creatorMap, value])
-
-  const handleValueChange = useCallback(
-    (creators: CreatorOption[]) => onChange(creators.map((creator) => creator.id)),
-    [onChange],
-  )
 
   const clearCreatorQuery = useCallback(() => {
     setKeywords('')
@@ -117,17 +110,14 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
       : ''
 
   return (
-    <Combobox<CreatorOption, true>
+    <Combobox<string, true, CreatorOption>
       multiple
       autoHighlight
-      items={creatorOptions}
-      value={selectedCreatorValues}
+      items={creatorItems}
+      value={value}
       inputValue={keywords}
-      isItemEqualToValue={(creator, selectedCreator) => creator.id === selectedCreator.id}
-      itemToStringLabel={(creator) => creator.name}
-      itemToStringValue={(creator) => creator.id}
       onInputValueChange={setKeywords}
-      onValueChange={handleValueChange}
+      onValueChange={(nextValue) => onChange(nextValue)}
     >
       <div className="relative inline-flex h-8 items-stretch">
         <ComboboxTrigger
@@ -139,7 +129,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
             'peer/creators-trigger w-auto min-w-0 border-components-button-secondary-border bg-components-button-secondary-bg pr-8 shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
           )}
         >
-          <ComboboxValue<CreatorOption, true>>
+          <ComboboxValue<string, true>>
             <span aria-hidden className="flex min-w-0 items-center">
               <span className="px-1 text-text-tertiary group-data-popup-open/combobox-trigger:text-text-secondary">
                 {creatorFilterLabel}
@@ -170,7 +160,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           <IconButton
             size="sm"
             aria-label={resetLabel}
-            className="absolute top-1/2 right-1 size-5 -translate-y-1/2 text-text-tertiary peer-data-popup-open/creators-trigger:text-text-secondary"
+            className="absolute top-1/2 right-1 -translate-y-1/2 peer-data-popup-open/creators-trigger:text-text-secondary"
             onClick={handleSelectionClear}
           >
             <span aria-hidden className="i-ri-close-circle-fill h-3.5 w-3.5" />
@@ -212,9 +202,9 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
             </div>
             <ComboboxList<CreatorOption> className="max-h-60 px-1 pt-0 pb-1">
               {(creator) => (
-                <ComboboxItem
+                <ComboboxItem<string>
                   key={creator.id}
-                  value={creator}
+                  value={creator.id}
                   className="group/creator-option grid-cols-[auto_1fr] gap-1 rounded-md"
                 >
                   <span

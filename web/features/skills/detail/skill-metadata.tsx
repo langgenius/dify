@@ -15,24 +15,28 @@ import {
   ComboboxPortal,
   ComboboxPositioner,
   ComboboxTrigger,
+  createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { toast } from '@/app/notifications'
 import { isCreateTagOption } from '@/features/tag-management/components/tag-combobox-item'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import { TagSearchContentView } from '@/features/tag-management/components/tag-search-content'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { SkillPublishShortcut } from './publish-bar'
 import {
   invalidateSkillDetail,
   runSkillFileMutation,
+  setSkillDetailCache,
   SKILL_TAG_CREATE_OPTION_PREFIX,
 } from './shared'
+
+const getSkillTagOptionId = (tag: string) => `skill-tag:${tag.trim().toLocaleLowerCase()}`
 
 export function SkillTagsEditor({
   detail,
@@ -45,15 +49,17 @@ export function SkillTagsEditor({
   readonly: boolean
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [addOpen, setAddOpen] = useState(false)
   const [showTagManagement, setShowTagManagement] = useState(false)
   const [tagSearch, setTagSearch] = useState('')
-  const [draftTags, setDraftTags] = useState<string[]>([])
+  const [draftTags, setDraftTags] = useState<string[] | null>(null)
+  const [isSavingTags, setIsSavingTags] = useState(false)
   const persistedTags = useMemo(() => detail?.tags ?? [], [detail?.tags])
   const tags = persistedTags
+  const visibleTags = draftTags ?? tags
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions(),
   )
@@ -69,7 +75,7 @@ export function SkillTagsEditor({
 
       seenTags.add(tagKey)
       options.push({
-        id: `skill-tag:${tagKey}`,
+        id: getSkillTagOptionId(normalizedTag),
         name: normalizedTag,
         type: 'skill',
         binding_count: '0',
@@ -78,7 +84,7 @@ export function SkillTagsEditor({
 
     for (const tag of tags) addOption(tag)
     for (const tag of tagsQuery.data?.data ?? []) addOption(tag.tag)
-    for (const tag of draftTags) addOption(tag)
+    for (const tag of draftTags ?? []) addOption(tag)
     const hasExactMatch = options.some(
       (tag) => tag.name.toLocaleLowerCase() === normalizedTagSearch.toLocaleLowerCase(),
     )
@@ -94,9 +100,20 @@ export function SkillTagsEditor({
 
     return options
   }, [draftTags, normalizedTagSearch, tags, tagsQuery.data?.data])
+  const tagOptionById = useMemo(() => new Map(tagOptions.map((tag) => [tag.id, tag])), [tagOptions])
+  const tagItems = useMemo(
+    () =>
+      createComboboxItems(tagOptions, {
+        getValue: (tag) => tag.id,
+        getLabel: (tag) => tag.name,
+      }),
+    [tagOptions],
+  )
+  const draftTagIds = useMemo(() => visibleTags.map(getSkillTagOptionId), [visibleTags])
 
   const saveTags = (nextTags: string[]) => {
-    if (!detail || metadataMutation.isPending) return
+    if (!detail || isSavingTags) return
+    setIsSavingTags(true)
 
     void runSkillFileMutation(fileMutationCoordinator, (expectedUpdatedAt) =>
       metadataMutation.mutateAsync({
@@ -109,7 +126,8 @@ export function SkillTagsEditor({
         },
       }),
     )
-      .then(() => {
+      .then((nextDetail) => {
+        setSkillDetailCache(queryClient, skillId, nextDetail)
         const addedTag = nextTags.some((tag) => !tags.includes(tag))
         toast.success(
           addedTag
@@ -128,9 +146,15 @@ export function SkillTagsEditor({
         invalidateSkillDetail(queryClient, skillId)
         toast.error(t(($) => $['skillManagement.detail.updateTagsFailed']))
       })
+      .finally(() => {
+        setDraftTags(null)
+        setIsSavingTags(false)
+      })
   }
 
   const handleOpenChange = (open: boolean) => {
+    if (isSavingTags) return
+
     if (open) {
       setDraftTags(tags)
       setTagSearch('')
@@ -140,10 +164,13 @@ export function SkillTagsEditor({
 
     setAddOpen(false)
     setTagSearch('')
+    if (!draftTags) return
+
     const draftTagSet = new Set(draftTags)
     const tagsChanged =
       tags.length !== draftTags.length || tags.some((tag) => !draftTagSet.has(tag))
     if (tagsChanged) saveTags(draftTags)
+    else setDraftTags(null)
   }
 
   const renderTagBadge = (tag: string) => (
@@ -155,6 +182,7 @@ export function SkillTagsEditor({
       {!readonly && (
         <button
           type="button"
+          disabled={addOpen || isSavingTags}
           aria-label={t(($) => $['skillManagement.detail.removeTag'], { tag })}
           className="flex h-3 max-w-0 shrink-0 cursor-pointer items-center justify-center overflow-hidden text-text-quaternary opacity-0 outline-hidden transition-[max-width,margin,opacity] group-hover/tag:ml-0.5 group-hover/tag:max-w-3 group-hover/tag:opacity-100 hover:text-text-secondary focus-visible:ml-0.5 focus-visible:max-w-3 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={() => saveTags(tags.filter((currentTag) => currentTag !== tag))}
@@ -168,46 +196,51 @@ export function SkillTagsEditor({
   return (
     <>
       <div className="mt-3 flex flex-wrap items-center gap-1">
-        {tags.map(renderTagBadge)}
+        {visibleTags.map(renderTagBadge)}
         {!readonly && (
-          <Combobox<TagComboboxItem, true>
-            items={tagOptions}
+          <Combobox<string, true, TagComboboxItem>
+            items={tagItems}
             multiple
             open={addOpen}
             onOpenChange={handleOpenChange}
-            value={tagOptions.filter(
-              (tag) => !isCreateTagOption(tag) && draftTags.includes(tag.name),
-            )}
-            onValueChange={(nextTags) => {
-              const createOption = nextTags.find(isCreateTagOption)
-              if (createOption) {
-                setDraftTags((currentTags) => [...currentTags, createOption.name])
+            value={draftTagIds}
+            onValueChange={(nextTagIds) => {
+              const createOptionId = nextTagIds.find((tagId) => {
+                const tag = tagOptionById.get(tagId)
+                return tag ? isCreateTagOption(tag) : false
+              })
+              const createOption = createOptionId ? tagOptionById.get(createOptionId) : undefined
+              if (createOption && isCreateTagOption(createOption)) {
+                setDraftTags((currentTags) => [...(currentTags ?? tags), createOption.name])
                 setTagSearch('')
                 return
               }
 
-              setDraftTags(nextTags.filter((tag) => !isCreateTagOption(tag)).map((tag) => tag.name))
+              setDraftTags(
+                nextTagIds.flatMap((tagId) => {
+                  const tag = tagOptionById.get(tagId)
+                  return tag && !isCreateTagOption(tag) ? [tag.name] : []
+                }),
+              )
             }}
             inputValue={tagSearch}
             onInputValueChange={setTagSearch}
             filter={(tag, query) =>
               tag.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
             }
-            itemToStringLabel={(tag) => tag.name}
-            isItemEqualToValue={(item, value) => item.id === value.id}
           >
             <ComboboxTrigger
               icon={false}
-              disabled={!detail}
+              disabled={!detail || isSavingTags}
               aria-label={t(($) => $['skillManagement.detail.addTag'])}
               className={cn(
                 'h-4.5 w-auto min-w-4.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm p-0 text-text-tertiary hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover',
-                tags.length === 0 && 'border-dashed px-1.25',
+                visibleTags.length === 0 && 'border-dashed px-1.25',
               )}
             >
               <span className="flex items-center justify-center gap-0.5 system-2xs-medium-uppercase">
                 <span aria-hidden className="i-ri-add-line size-3 shrink-0" />
-                {tags.length === 0 && t(($) => $['skillManagement.detail.addTag'])}
+                {visibleTags.length === 0 && t(($) => $['skillManagement.detail.addTag'])}
               </span>
             </ComboboxTrigger>
             <ComboboxPortal>
@@ -268,7 +301,7 @@ export function SkillReferencesPanel({
   testId?: string
   visibleLimit?: number
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
       input: {
@@ -294,7 +327,7 @@ export function SkillReferencesPanel({
           embedded ? 'w-full px-1' : 'w-max',
         )}
       >
-        {t(($) => $['skillManagement.detail.referencedBy_other'], { count: 0 })}
+        {t(($) => $['skillManagement.detail.referencedBy'], { count: 0 })}
       </div>
     )
   }
@@ -348,7 +381,7 @@ export function SkillReferencesList({
   testId?: string
   visibleLimit?: number
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const [expanded, setExpanded] = useState(false)
   const hasMoreReferences = visibleLimit != null && references.length > visibleLimit
   const visibleReferences =
@@ -409,8 +442,8 @@ export function SkillPublishConfirmPanel({
   referenceCount: number
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   if (!open) return null
 
   return (
@@ -428,13 +461,9 @@ export function SkillPublishConfirmPanel({
           {t(($) => $['skillManagement.detail.publishReferencesTitle'])}
         </h2>
         <p className="mt-0.5 px-1 system-xs-regular text-util-colors-warning-warning-600">
-          {t(
-            ($) =>
-              referenceCount === 1
-                ? $['skillManagement.detail.publishReferencesDescription_one']
-                : $['skillManagement.detail.publishReferencesDescription_other'],
-            { count: referenceCount },
-          )}
+          {t(($) => $['skillManagement.detail.publishReferencesDescription'], {
+            count: referenceCount,
+          })}
         </p>
       </div>
       <div className="px-4 py-2">
@@ -546,7 +575,12 @@ function SkillReferenceItem({
           }
         />
       </span>
-      <span className="max-w-63 min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+      <span
+        className={cn(
+          'min-w-0 flex-1 truncate system-sm-regular text-text-secondary',
+          !compact && 'max-w-63',
+        )}
+      >
         {workflowName}
       </span>
       <span

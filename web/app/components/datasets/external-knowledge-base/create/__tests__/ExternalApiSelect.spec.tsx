@@ -32,7 +32,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     datasets: {
       externalKnowledgeApi: {
@@ -44,10 +44,6 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/solid/development', () => ({
-  ApiConnectionMod: (props: Record<string, unknown>) => <span data-testid="api-icon" {...props} />,
 }))
 
 const { default: ExternalApiSelect } = await import('../ExternalApiSelect')
@@ -64,6 +60,21 @@ describe('ExternalApiSelect', () => {
   })
 
   describe('rendering', () => {
+    it('uses the referenced visible label to name the trigger', () => {
+      render(
+        <>
+          <span id="external-api-label">External API</span>
+          <ExternalApiSelect
+            aria-labelledby="external-api-label"
+            items={items}
+            onSelect={onSelect}
+          />
+        </>,
+      )
+
+      expect(screen.getByRole('button', { name: 'External API' })).toBeInTheDocument()
+    })
+
     it('should show placeholder when no value selected', () => {
       render(<ExternalApiSelect items={items} onSelect={onSelect} />)
       expect(screen.getByText('dataset.selectExternalKnowledgeAPI.placeholder')).toBeInTheDocument()

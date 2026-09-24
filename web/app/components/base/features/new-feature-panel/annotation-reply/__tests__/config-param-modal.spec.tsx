@@ -1,5 +1,5 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import ConfigParamModal from '../config-param-modal'
 
 let mockHooksReturn: {
@@ -252,7 +252,9 @@ describe('ConfigParamModal', () => {
     const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
-    expect(toastErrorSpy).toHaveBeenCalledWith('common.modelProvider.embeddingModel.required')
+    expect(toastErrorSpy).toHaveBeenCalledWith(
+      'modelProvider.modelProvider.embeddingModel.required',
+    )
   })
 
   it('should call onHide when cancel is clicked and not loading', () => {

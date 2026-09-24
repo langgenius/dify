@@ -1,12 +1,12 @@
 'use client'
 
-import type { AccessPoint } from '@/app/components/app/deploy/access-point'
+import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -33,7 +33,7 @@ export function BuiltInAccessPoints({
   canReleaseAndVersion,
   highlightedAccessPoint,
 }: BuiltInAccessPointsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
   const docLink = useDocLink()
   const appInfo = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -51,7 +51,7 @@ export function BuiltInAccessPoints({
   })
   const actions = useAccessPointActions(appId, canManageAccessPoint)
 
-  if (!appInfo) return <Loading />
+  if (!appInfo) return <LoadingPlaceholder />
 
   const workflowState = getPublishedWorkflowState(appInfo, workflow)
   const builtInLoading = workflowState.isWorkflowApp && workflowLoading
@@ -109,10 +109,8 @@ export function BuiltInAccessPoints({
           appInfo={appInfo}
           availability={appCardAvailability}
           canDeploy={canDeploy}
-          canManageAccess={canReleaseAndVersion}
           canManageAccessPoint={canManageAccessPoint}
           showAccessControl={systemFeatures.webapp_auth.enabled}
-          onAppStateChanged={actions.handleAppStateChanged}
           onRefreshApp={actions.refreshAppDetail}
           onSaveSiteConfig={actions.saveSiteConfig}
           workflow={workflow}
@@ -122,7 +120,6 @@ export function BuiltInAccessPoints({
           appInfo={appInfo}
           availability={appCardAvailability}
           canManage={canManageAccessPoint}
-          onAppStateChanged={actions.handleAppStateChanged}
           highlighted={highlightedAccessPoint === 'serviceApi'}
         />
         <MCPAccessPointCard
@@ -138,7 +135,6 @@ export function BuiltInAccessPoints({
             appInfo={appInfo}
             availability={triggerAvailability}
             canManageAccessPoint={canManageAccessPoint}
-            onToggleResult={actions.handleResult}
             highlighted={highlightedAccessPoint === 'trigger'}
           />
         )}

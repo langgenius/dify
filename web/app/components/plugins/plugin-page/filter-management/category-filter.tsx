@@ -15,8 +15,7 @@ type CategoriesFilterProps = {
   onChange: (categories: string[]) => void
 }
 const CategoriesFilter = ({ value, onChange }: CategoriesFilterProps) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['plugin'])
   const [searchText, setSearchText] = useState('')
   const searchLabel = t(($) => $.searchCategories, { ns: 'plugin' })
   const { categories: options, categoriesMap } = useCategories()
@@ -26,7 +25,7 @@ const CategoriesFilter = ({ value, onChange }: CategoriesFilterProps) => {
   const selectedTagsLength = value.length
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         nativeButton={false}
         render={

@@ -195,6 +195,19 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
     assert "default" in conversation_id
     assert conversation_id["default"] is None
 
+    schemas = service_payload["components"]["schemas"]
+    document_detail = schemas["DocumentDetailResponse"]
+    validator = Draft202012Validator(service_payload)
+    for schema in (document_detail, *schemas["DocumentTextUpdate"]["anyOf"]):
+        for property_schema in schema["properties"].values():
+            if "default" in property_schema:
+                validator.evolve(schema=property_schema).validate(property_schema["default"])
+
+    assert document_detail["required"] == ["id"]
+    assert document_detail["properties"]["enabled"]["type"] == "boolean"
+    assert "default" not in document_detail["properties"]["enabled"]
+    assert document_detail["properties"]["tokens"]["default"] is None
+
 
 def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
@@ -674,6 +687,25 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert file_upload_schema["properties"]["file"]["type"] == "string"
     assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
 
+    package_import = paths["/apps/imports"]["post"]
+    assert _request_schema(package_import, "multipart/form-data")["required"] == ["file"]
+    assert _request_schema(package_import, "multipart/form-data")["properties"]["app_id"]["type"] == "string"
+    assert _request_schema(package_import, "application/json")["$ref"] == "#/components/schemas/AppImportPayload"
+    assert "mode" in schemas["AppImportPayload"]["required"]
+    conflict = package_import["responses"]["409"]["content"]["application/json"]["schema"]
+    assert conflict["$ref"] == "#/components/schemas/RosterAgentPackageConflictResponse"
+    assert "leaked_dependencies" in schemas["RosterAgentPackageConflictResponse"]["properties"]
+    assert "403" in package_import["responses"]
+    export = paths["/apps/{app_id}/export"]["get"]
+    assert export["responses"]["200"]["content"]["application/zip"]["schema"] == {"type": "string", "format": "binary"}
+    assert export["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/AppExportResponse"
+    )
+    export_format = next(param for param in export["parameters"] if param["name"] == "format")
+    assert set(export_format["schema"]["enum"]) == {"yaml", "ifpkg"}
+    assert export_format["schema"].get("default") is None
+    assert "defaults to ifpkg for all Apps" in export_format["description"]
+
     api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
     assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
     assert schemas["ApiKeyAuthBindingPayload"]["properties"]["credentials"]["$ref"] == (
@@ -717,6 +749,25 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
         "#/components/schemas/SyncDraftWorkflowResponse"
     )
     assert sync_draft_workflow["properties"]["updated_at"]["type"] == "integer"
+    trigger_run_request = _request_schema(paths["/apps/{app_id}/workflows/draft/trigger/run"]["post"])
+    assert trigger_run_request["$ref"] == "#/components/schemas/DraftWorkflowTriggerRunPayload"
+    assert "DraftWorkflowTriggerRunRequest" not in schemas
+
+    draft_variable_list_ref = "#/components/schemas/WorkflowDraftVariableListWithoutValueResponse"
+    for path in (
+        "/apps/{app_id}/workflows/draft/variables",
+        "/snippets/{snippet_id}/workflows/draft/variables",
+        "/rag/pipelines/{pipeline_id}/workflows/draft/variables",
+    ):
+        assert _response_schema(paths[path]["get"])["$ref"] == draft_variable_list_ref
+    assert schemas["WorkflowDraftVariableListResponse"]["properties"]["items"]["items"]["$ref"] == (
+        "#/components/schemas/WorkflowDraftVariableResponse"
+    )
+    full_content = schemas["WorkflowDraftVariableFullContentResponse"]
+    assert set(full_content["properties"]) == {"size_bytes", "value_type", "length", "download_url"}
+    assert "WorkflowDraftVariable" not in schemas
+    assert "WorkflowDraftVariableList" not in schemas
+    assert "WorkflowDraftVariableWithoutValue" not in schemas
     tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
     assert {"type": "string"} in tool_icon_schema["anyOf"]
     assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]
@@ -761,6 +812,14 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     )
     assert {"enabled", "model", "prompt"} <= set(schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"])
     assert {"enabled", "language", "voice", "autoPlay"} <= set(schemas["WorkflowTextToSpeechPayload"]["properties"])
+    assert schemas["WorkflowTextToSpeechPayload"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
+    assert schemas["AgentTextToSpeechFeatureConfig"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
     assert {"enabled", "type", "config"} <= set(schemas["WorkflowSensitiveWordAvoidancePayload"]["properties"])
     file_upload = schemas["WorkflowFileUploadPayload"]["properties"]
     assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)

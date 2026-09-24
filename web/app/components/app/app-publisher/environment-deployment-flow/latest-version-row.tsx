@@ -1,4 +1,4 @@
-import type { DeploymentVersion } from '@/app/components/app/deploy/version'
+import type { DeploymentVersion } from '@/app/components/app/deploy/utils/version'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { PublisherDeployingMarker } from '../publisher-deploying-marker'
@@ -17,7 +17,7 @@ export function PublisherLatestVersionRow({
   latestVersion?: DeploymentVersion | null
   onShowAllVersions: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['deployments'])
 
   return (
     <div className="flex items-center gap-1 py-0.5 pr-0.5 pl-1">

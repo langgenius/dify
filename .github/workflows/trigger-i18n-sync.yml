@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'web/i18n/en-US/*.json'
+      - 'web/i18n/locales/en-US/*.json'
 
 permissions:
   contents: write
@@ -36,9 +36,9 @@ jobs:
           HEAD_SHA="${{ github.sha }}"
 
           if [ -n "$BASE_SHA" ]; then
-            CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'web/i18n/en-US/*.json' 2>/dev/null | sed -n 's@^.*/@@p' | sed 's/\.json$//' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+            CHANGED_FILES=$(git diff --name-only --find-renames=100% --diff-filter=AMDT "$BASE_SHA" "$HEAD_SHA" -- 'web/i18n/' 2>/dev/null | sed -n '\@^web/i18n/locales/en-US/[^/]*\.json$@p' | sed -n 's@^.*/@@p' | sed 's/\.json$//' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
           else
-            CHANGED_FILES=$(find web/i18n/en-US -maxdepth 1 -type f -name '*.json' -print | sed -n 's@^.*/@@p' | sed 's/\.json$//' | sort | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+            CHANGED_FILES=$(find web/i18n/locales/en-US -maxdepth 1 -type f -name '*.json' -print | sed -n 's@^.*/@@p' | sed 's/\.json$//' | sort | tr '\n' ' ' | sed 's/[[:space:]]*$//')
           fi
 
           export BASE_SHA HEAD_SHA CHANGED_FILES

@@ -17,7 +17,7 @@ const render = (ui: ReactElement) =>
     wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
   })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockToastError(message),
   },
@@ -116,7 +116,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
 
     fireEvent.change(
       screen.getByRole('textbox', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subject',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.subject',
       }),
       {
         target: { value: 'Budget alert' },
@@ -126,7 +126,11 @@ describe('human-input/delivery-method/email-configure-modal', () => {
       target: { value: 'Please review {{#url#}} now' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'set-workspace-recipient' }))
-    fireEvent.click(screen.getByRole('switch'))
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.debugMode',
+      }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(handleConfirm).toHaveBeenCalledWith({
@@ -147,12 +151,12 @@ describe('human-input/delivery-method/email-configure-modal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(mockToastError).toHaveBeenCalledWith(
-      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectRequired',
+      'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.subjectRequired',
     )
 
     fireEvent.change(
       screen.getByRole('textbox', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subject',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.subject',
       }),
       {
         target: { value: 'Subject ready' },
@@ -164,7 +168,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'set-workspace-recipient' }))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(mockToastError).toHaveBeenCalledWith(
-      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.bodyRequired',
+      'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.bodyRequired',
     )
 
     fireEvent.change(screen.getByLabelText('mail-body-input'), {
@@ -173,7 +177,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(mockToastError).toHaveBeenCalledWith(
       expect.stringContaining(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.bodyMustContainRequestURL',
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.bodyMustContainRequestURL',
       ),
     )
 
@@ -183,7 +187,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'clear-recipient' }))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(mockToastError).toHaveBeenCalledWith(
-      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.recipientsRequired',
+      'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.recipientsRequired',
     )
     expect(handleConfirm).not.toHaveBeenCalled()
   })

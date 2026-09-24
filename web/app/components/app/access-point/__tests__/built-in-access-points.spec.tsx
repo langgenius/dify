@@ -57,7 +57,6 @@ vi.mock('@/service/use-workflow', () => ({
 
 vi.mock('../shared/use-access-point-actions', () => ({
   useAccessPointActions: () => ({
-    handleAppStateChanged: vi.fn(),
     handleResult: vi.fn(),
     refreshAppDetail: vi.fn(),
     saveSiteConfig: vi.fn(),
@@ -181,7 +180,7 @@ describe('BuiltInAccessPoints', () => {
     )
 
     expect(mocks.webCard).toHaveBeenCalledWith(
-      expect.objectContaining({ canManageAccess: false, canManageAccessPoint: true }),
+      expect.objectContaining({ canManageAccessPoint: true }),
     )
     expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ canManage: true }))
     expect(mocks.mcpCard).toHaveBeenCalledWith(

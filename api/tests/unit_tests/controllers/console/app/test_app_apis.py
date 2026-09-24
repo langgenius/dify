@@ -15,7 +15,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.console import console_ns
 from controllers.console.app import (
     annotation as annotation_module,
 )
@@ -53,7 +52,11 @@ from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import (
+    AppNotFoundError,
+    TracingConfigNotFoundError,
+    TracingConfigVerificationFailedError,
+)
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
 from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
 from controllers.console.app.site import AppSiteUpdatePayload
@@ -77,7 +80,10 @@ from services.app_site_service import (
     AppSiteCommandResult,
     AppSiteNotFoundError,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from services.app_tracing_config_service import (
+    AppTracingConfigNotFoundError,
+    AppTracingConfigVerificationFailedError,
+)
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -250,131 +256,6 @@ class TestCompletionEndpoints:
             )
 
 
-class TestAppEndpoints:
-    def test_publish_to_creators_platform_issues_oauth_code_through_application_service(
-        self,
-        database_app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        api = app_module.AppPublishToCreatorsPlatformApi()
-        method = unwrap(api.post)
-        oauth_server = MagicMock()
-        oauth_server.issue_authorization_code.return_value = MagicMock(code="oauth-code-1")
-        services = MagicMock(oauth_server=oauth_server)
-
-        apply_config_overrides(
-            monkeypatch,
-            CREATORS_PLATFORM_FEATURES_ENABLED=True,
-            CREATORS_PLATFORM_OAUTH_CLIENT_ID="client-1",
-        )
-        monkeypatch.setattr(app_module, "application_services", lambda: services)
-        monkeypatch.setattr(app_module.AppDslService, "export_dsl", MagicMock(return_value="app: demo"))
-
-        with (
-            database_app.test_request_context(),
-            patch("core.helper.creators.upload_dsl", return_value="claim-1"),
-            patch("core.helper.creators.get_redirect_url", return_value="https://creators.example.com") as redirect,
-        ):
-            response = method(api, USER_ID, _make_app())
-
-        assert response == {"redirect_url": "https://creators.example.com"}
-        oauth_server.issue_authorization_code.assert_called_once_with(
-            client_id="client-1",
-            account_id=USER_ID,
-        )
-        redirect.assert_called_once_with("claim-1", oauth_code="oauth-code-1")
-
-    def test_app_put_should_preserve_icon_type_when_payload_omits_it(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
-        api = app_module.AppApi()
-        method = unwrap(api.put)
-        payload = {
-            "name": "Updated App",
-            "description": "Updated description",
-            "icon": "🤖",
-            "icon_background": "#FFFFFF",
-        }
-        app_service = MagicMock()
-        app_service.update_app.return_value = _make_app()
-        response_model = MagicMock()
-        response_model.model_dump.return_value = {"id": "app-1"}
-
-        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
-        monkeypatch.setattr(app_module.AppDetailWithSite, "model_validate", MagicMock(return_value=response_model))
-
-        with (
-            app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-        ):
-            response = method(
-                api,
-                app_module.UpdateAppPayload(
-                    name="Updated App",
-                    description="Updated description",
-                    icon="🤖",
-                    icon_background="#FFFFFF",
-                ),
-                unbound_session,
-                app_model=_make_app(icon_type=app_module.IconType.EMOJI),
-            )
-
-        assert response == {"id": "app-1"}
-        assert app_service.update_app.call_args.args[1]["icon_type"] is None
-
-    def test_update_app_payload_should_reject_empty_icon_type(self):
-        with pytest.raises(ValidationError):
-            app_module.UpdateAppPayload.model_validate(
-                {
-                    "name": "Updated App",
-                    "description": "Updated description",
-                    "icon_type": "",
-                    "icon": "🤖",
-                    "icon_background": "#FFFFFF",
-                }
-            )
-
-    def test_app_icon_post_should_forward_icon_type(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
-        api = app_module.AppIconApi()
-        method = unwrap(api.post)
-        payload = {
-            "icon": "https://example.com/icon.png",
-            "icon_type": "image",
-            "icon_background": "#FFFFFF",
-        }
-        app_service = MagicMock()
-        app_service.update_app_icon.return_value = _make_app()
-        response_model = MagicMock()
-        response_model.model_dump.return_value = {"id": "app-1"}
-
-        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
-        monkeypatch.setattr(app_module.AppDetail, "model_validate", MagicMock(return_value=response_model))
-
-        with (
-            app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-        ):
-            response = method(
-                api,
-                app_module.AppIconPayload(
-                    icon="https://example.com/icon.png",
-                    icon_type=app_module.IconType.IMAGE,
-                    icon_background="#FFFFFF",
-                ),
-                unbound_session,
-                app_model=_make_app(),
-            )
-
-        assert response == {"id": "app-1"}
-        assert app_service.update_app_icon.call_args.args[1:] == (
-            payload["icon"],
-            payload["icon_background"],
-            app_module.IconType.IMAGE,
-        )
-
-
 class TestOpsTraceEndpoints:
     def test_ops_trace_query_basic(self):
         query = TraceProviderQuery(tracing_provider="langfuse")
@@ -387,52 +268,71 @@ class TestOpsTraceEndpoints:
     def test_trace_app_config_get_empty(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = unwrap(api.get)
-
+        tracing_configs = MagicMock()
+        tracing_configs.get.return_value = None
         monkeypatch.setattr(
-            ops_trace_module.OpsService,
-            "get_tracing_app_config",
-            lambda **_kwargs: None,
+            ops_trace_module,
+            "application_services",
+            lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
+            result = method(
+                api,
+                TraceProviderQuery(tracing_provider="langfuse"),
+                _make_request_context(),
+                uuid.UUID(APP_ID),
+            )
 
         assert result == {"has_not_configured": True}
+        tracing_configs.get.assert_called_once_with(
+            context=_make_request_context(),
+            app_id=APP_ID,
+            tracing_provider="langfuse",
+        )
 
     def test_trace_app_config_post_invalid(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = unwrap(api.post)
-
+        tracing_configs = MagicMock()
+        tracing_configs.create.side_effect = AppTracingConfigVerificationFailedError()
         monkeypatch.setattr(
-            ops_trace_module.OpsService,
-            "create_tracing_app_config",
-            lambda **_kwargs: {"error": True},
+            ops_trace_module,
+            "application_services",
+            lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
         with app.test_request_context(
             "/",
             json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
         ):
-            with pytest.raises(BadRequest):
+            with pytest.raises(TracingConfigVerificationFailedError):
                 method(
                     api,
                     TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
-                    _make_app(),
+                    _make_request_context(),
+                    uuid.UUID(APP_ID),
                 )
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = unwrap(api.delete)
-
+        tracing_configs = MagicMock()
+        tracing_configs.delete.side_effect = AppTracingConfigNotFoundError()
         monkeypatch.setattr(
-            ops_trace_module.OpsService,
-            "delete_tracing_app_config",
-            lambda **_kwargs: False,
+            ops_trace_module,
+            "application_services",
+            lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            with pytest.raises(BadRequest):
-                method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
+            with pytest.raises(TracingConfigNotFoundError):
+                method(
+                    api,
+                    TraceProviderQuery(tracing_provider="langfuse"),
+                    _make_request_context(),
+                    uuid.UUID(APP_ID),
+                )
 
 
 class TestSiteEndpoints:
@@ -573,21 +473,36 @@ class TestWorkflowAppLogEndpoints:
     def test_workflow_app_log_api_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = workflow_app_log_module.WorkflowAppLogApi()
         method = unwrap(api.get)
-
-        def fake_get_paginate(self, *, session: Session, **_kwargs):
-            assert session.get_bind() is db.engine
-            return {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
-
-        monkeypatch.setattr(
-            workflow_app_log_module.WorkflowAppService,
-            "get_paginate_workflow_app_logs",
-            fake_get_paginate,
-        )
+        workflow_app_logs = MagicMock()
+        workflow_app_logs.list_logs.return_value = {
+            "page": 1,
+            "limit": 20,
+            "total": 0,
+            "has_more": False,
+            "data": [],
+        }
+        services = MagicMock(workflow_app_logs=workflow_app_logs)
+        monkeypatch.setattr(workflow_app_log_module, "application_services", lambda: services)
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+        app_model = _make_app("app-1")
 
         with database_app.test_request_context("/?page=1&limit=20"):
-            result = method(api, WorkflowAppLogQuery(page=1, limit=20), app_model=_make_app("app-1"))
+            result = method(api, WorkflowAppLogQuery(page=1, limit=20), context, app_model=app_model)
 
         assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
+        workflow_app_logs.list_logs.assert_called_once_with(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            keyword=None,
+            status=None,
+            created_at_before=None,
+            created_at_after=None,
+            page=1,
+            limit=20,
+            detail=False,
+            created_by_end_user_session_id=None,
+            created_by_account=None,
+        )
 
 
 class TestWorkflowDraftVariableEndpoints:
@@ -878,6 +793,7 @@ class TestWorkflowTriggerEndpoints:
     def test_webhook_trigger_api_get(
         self,
         database_app: Flask,
+        sqlite_session: Session,
     ) -> None:
         api = workflow_trigger_module.WebhookTriggerApi()
         method = unwrap(api.get)
@@ -888,11 +804,11 @@ class TestWorkflowTriggerEndpoints:
             webhook_id="webhook-1",
             created_by=USER_ID,
         )
-        db.session.add(trigger)
-        db.session.commit()
+        sqlite_session.add(trigger)
+        sqlite_session.commit()
 
         with database_app.test_request_context("/?node_id=node-1"):
-            result = method(api, Parser(node_id="node-1"), app_model=_make_app())
+            result = method(api, Parser(node_id="node-1"), sqlite_session, app_model=_make_app())
 
         assert isinstance(result, dict)
         assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())

@@ -2,12 +2,12 @@ from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import MagicMock, Mock, call
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import console_ns
 from controllers.console.agent import composer as composer_controller
@@ -24,8 +24,6 @@ from controllers.console.agent.composer import (
 )
 from controllers.console.agent.roster import (
     AgentApiAccessApi,
-    AgentApiKeyApi,
-    AgentApiKeyListApi,
     AgentApiStatusApi,
     AgentApiStatusPayload,
     AgentAppApi,
@@ -63,10 +61,11 @@ from controllers.console.app.message import (
     AgentMessageSuggestedQuestionApi,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums import CloudPlan, DeploymentEdition
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
-from models.enums import ApiTokenType, ConversationFromSource
-from models.model import ApiToken, App, AppMode, Conversation, IconType, Message
+from models.enums import ApiTokenType, ConversationFromSource, CustomizeTokenStrategy, TagType
+from models.model import ApiToken, App, AppMode, Conversation, IconType, Message, Site, Tag, TagBinding
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -75,6 +74,7 @@ from services.entities.agent_entities import (
     WorkflowComposerCopyFromRosterPayload,
 )
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 
 def _persist_conversation_message(
@@ -216,9 +216,9 @@ def _app_detail_obj(**overrides) -> App:
         "tracing": None,
         "use_icon_as_answer_icon": False,
         "created_by": "account-1",
-        "created_at": None,
+        "created_at": datetime(2025, 1, 1),
         "updated_by": "account-1",
-        "updated_at": None,
+        "updated_at": datetime(2025, 1, 1),
         "max_active_requests": 0,
     }
     overrides.pop("bound_agent_id", None)
@@ -228,12 +228,13 @@ def _app_detail_obj(**overrides) -> App:
 
 
 def _account(*, account_id: str = "account-1", privileged: bool = False, timezone: str | None = None) -> Account:
-    account = Account(name="Agent Controller Tester", email=f"{account_id}@example.com")
-    account.id = account_id
-    account.timezone = timezone
-    if privileged:
-        account.role = TenantAccountRole.OWNER
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Agent Controller Tester",
+        email=f"{account_id}@example.com",
+        timezone=timezone,
+        role=TenantAccountRole.OWNER if privileged else None,
+    )
 
 
 def _candidates_response(variant: str) -> dict:
@@ -302,6 +303,16 @@ def test_agent_app_write_routes_do_not_reuse_app_billing_quota() -> None:
         assert '@cloud_edition_billing_resource_check("apps")' not in getsource(route_class)
 
 
+def test_agent_list_reads_do_not_require_workspace_preview() -> None:
+    for route_class in (AgentAppListApi, AgentInviteOptionsApi):
+        assert "RBACPermission.AGENT_PREVIEW, Workspace()" not in getsource(route_class.get)
+
+
+def test_agent_app_permission_keys_are_required_response_fields() -> None:
+    assert roster_controller.AgentAppPartial.model_fields["permission_keys"].is_required()
+    assert roster_controller.AgentAppDetailWithSite.model_fields["permission_keys"].is_required()
+
+
 @pytest.fixture
 def account_id() -> str:
     return "account-1"
@@ -311,11 +322,53 @@ def test_agent_app_list_and_create_use_agent_route(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
 ) -> None:
     captured: dict[str, object] = {}
+    listed_app = _app_detail_obj(id="app-list")
+    created_app = _app_detail_obj(id="app-created", enable_site=True)
+    tag = Tag(tenant_id="tenant-1", type=TagType.APP, name="Agent tag", created_by=account_id)
+    sqlite_session.add_all([listed_app, created_app, tag])
+    sqlite_session.flush()
+    sqlite_session.add_all(
+        [
+            Site(
+                app_id=created_app.id,
+                code="agent-site-code",
+                title="Agent web app",
+                default_language="en-US",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            ),
+            TagBinding(tenant_id="tenant-1", tag_id=tag.id, target_id=listed_app.id, created_by=account_id),
+        ]
+    )
+    sqlite_session.flush()
+    permissions = roster_controller.enterprise_rbac_service.MyPermissionsResponse(
+        agent=roster_controller.enterprise_rbac_service.ResourcePermissionSnapshot(
+            overrides=[
+                roster_controller.enterprise_rbac_service.ResourcePermissionKeys(
+                    resource_id="agent-list",
+                    permission_keys=["agent.acl.preview"],
+                )
+            ]
+        )
+    )
+
+    class FakeAgentAccessFilter:
+        def apply_to_app_params(self, params, *, tenant_id: str, session: object) -> None:
+            captured["access_filter"] = {"tenant_id": tenant_id, "session": session}
+            params.accessible_app_ids = ["app-list"]
+
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.MyPermissions,
+        "get",
+        lambda *_args, **_kwargs: permissions,
+    )
+    monkeypatch.setattr(
+        roster_controller,
+        "resolve_agent_access_filter",
+        lambda *_args, **_kwargs: FakeAgentAccessFilter(),
+    )
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
 
     class FakeAppService:
-        def get_app(self, app_obj: object, *, session: object) -> object:
-            return app_obj
-
         def get_paginate_apps(self, user_id: str, tenant_id: str, params, session) -> object:
             captured["list"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
             return SimpleNamespace(
@@ -323,7 +376,7 @@ def test_agent_app_list_and_create_use_agent_route(
                 per_page=10,
                 total=1,
                 has_next=False,
-                items=[_app_detail_obj(id="app-list", bound_agent_id="agent-list")],
+                items=[listed_app],
             )
 
         def get_agent_publication_counts(self, user_id: str, tenant_id: str, params, session):
@@ -333,7 +386,7 @@ def test_agent_app_list_and_create_use_agent_route(
 
         def create_app(self, tenant_id: str, params, current_user: object, *, session: object) -> object:
             captured["create"] = {"tenant_id": tenant_id, "params": params, "current_user": current_user}
-            return _app_detail_obj(id="app-created", bound_agent_id="agent-created")
+            return created_app
 
     monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
     monkeypatch.setattr(
@@ -427,7 +480,9 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["data"][0]["id"] == "agent-list"
     assert listed["data"][0]["app_id"] == "app-list"
     assert listed["data"][0]["debug_conversation_id"] == "debug-conversation-list"
+    assert listed["data"][0]["permission_keys"] == ["agent.acl.preview"]
     assert listed["data"][0]["role"] == "List role"
+    assert listed["data"][0]["tags"] == [{"id": tag.id, "name": "Agent tag", "type": "app"}]
     assert listed["data"][0]["active_config_is_published"] is False
     assert listed["data"][0]["reference_count"] == 2
     assert listed["data"][0]["published_reference_count"] == 1
@@ -448,6 +503,8 @@ def test_agent_app_list_and_create_use_agent_route(
     assert list_params.is_created_by_me is True
     assert list_params.agent_is_published is True
     assert list_params.status == "normal"
+    assert list_params.accessible_app_ids == ["app-list"]
+    assert captured["access_filter"] == {"tenant_id": "tenant-1", "session": sqlite_session}
     count_call = cast(dict[str, object], captured["counts"])
     count_params = cast(Any, count_call["params"])
     assert count_params.agent_is_published is True
@@ -469,6 +526,10 @@ def test_agent_app_list_and_create_use_agent_route(
     assert created["app_id"] == "app-created"
     assert created["debug_conversation_id"] == "debug-conversation-created"
     assert created["role"] == "Created role"
+    assert created["enable_site"] is True
+    assert created["site"]["code"] == "agent-site-code"
+    assert created["site"]["access_token"] == "agent-site-code"
+    assert created["site"]["title"] == "Agent web app"
     assert "active_config_is_published" not in created
     assert "bound_agent_id" not in created
     create_call = cast(dict[str, object], captured["create"])
@@ -574,12 +635,17 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "agent_has_workflow_callable_active_snapshot",
         lambda **_kwargs: False,
     )
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.MyPermissions,
+        "get",
+        lambda *_args, **_kwargs: roster_controller.enterprise_rbac_service.MyPermissionsResponse(
+            agent=roster_controller.enterprise_rbac_service.ResourcePermissionSnapshot(
+                default_permission_keys=["agent.acl.preview"]
+            )
+        ),
+    )
 
     class FakeAppService:
-        def get_app(self, app_obj: object, *, session: object) -> object:
-            captured["get_app"] = {"app": app_obj, "session": session}
-            return app_obj
-
         def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
             return _app_detail_obj(id=app_id, tenant_id=tenant_id, name=args["name"], bound_agent_id=agent_id)
@@ -597,10 +663,10 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert detail["debug_conversation_has_messages"] is True
     assert detail["debug_conversation_message_count"] == 2
     assert detail["role"] == "Resolved role"
+    assert detail["permission_keys"] == ["agent.acl.preview"]
     assert detail["access_ready"] is False
     assert "active_config_is_published" not in detail
     assert "bound_agent_id" not in detail
-    assert captured["get_app"] == {"app": app_model, "session": session}
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
         json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
@@ -900,11 +966,10 @@ def test_agent_api_key_count_scopes_tenant_and_keeps_legacy_tokens(sqlite_sessio
     assert roster_controller._agent_api_key_count(sqlite_session, app_model) == 2
 
 
-def test_agent_api_status_and_key_routes_resolve_backing_app(
+def test_agent_api_status_resolves_backing_app(
     app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
-    api_key_id = "00000000-0000-0000-0000-000000000002"
     app_model = _app_detail_obj(
         id="app-1",
         tenant_id="tenant-1",
@@ -926,34 +991,6 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(
 
     monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
 
-    def fake_get_api_key_list(self, resource_id: str, tenant_id: str, *, session: object):
-        captured["list_keys"] = {"session": session, "resource_id": resource_id, "tenant_id": tenant_id}
-        return roster_controller.ApiKeyList(data=[])
-
-    def fake_create_api_key(self, resource_id: str, tenant_id: str, *, session: object):
-        captured["create_key"] = {"session": session, "resource_id": resource_id, "tenant_id": tenant_id}
-        return ApiToken(id=api_key_id, type="app", token="app-test-token", last_used_at=None, created_at=None)
-
-    def fake_delete_api_key(
-        self,
-        resource_id: str,
-        key_id: str,
-        tenant_id: str,
-        current_user: object,
-        *,
-        session: object,
-    ) -> None:
-        captured["delete_key"] = {
-            "session": session,
-            "resource_id": resource_id,
-            "api_key_id": key_id,
-            "tenant_id": tenant_id,
-            "current_user": current_user,
-        }
-
-    monkeypatch.setattr(AgentApiKeyListApi, "_get_api_key_list", fake_get_api_key_list)
-    monkeypatch.setattr(AgentApiKeyListApi, "_create_api_key", fake_create_api_key)
-    monkeypatch.setattr(AgentApiKeyApi, "_delete_api_key", fake_delete_api_key)
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/api-enable", json={"enable_api": True}
     ):
@@ -962,40 +999,7 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(
         )
     assert enabled["enabled"] is True
     assert captured["enable"] == {"app": app_model, "enable_api": True}
-    keys = unwrap(AgentApiKeyListApi.get)(AgentApiKeyListApi(), unbound_session, "tenant-1", agent_id)
-    assert keys == {"data": []}
-    assert captured["list_keys"] == {
-        "session": unbound_session,
-        "resource_id": "app-1",
-        "tenant_id": "tenant-1",
-    }
-    created, status = unwrap(AgentApiKeyListApi.post)(AgentApiKeyListApi(), unbound_session, "tenant-1", agent_id)
-    assert status == 201
-    assert created["id"] == api_key_id
-    assert created["token"] == "app-test-token"
-    assert captured["create_key"] == {
-        "session": unbound_session,
-        "resource_id": "app-1",
-        "tenant_id": "tenant-1",
-    }
-    current_user = _account(privileged=True)
-    deleted, delete_status = unwrap(AgentApiKeyApi.delete)(
-        AgentApiKeyApi(), unbound_session, "tenant-1", current_user, agent_id, api_key_id
-    )
-    assert (deleted, delete_status) == ("", 204)
-    assert captured["delete_key"] == {
-        "session": unbound_session,
-        "resource_id": "app-1",
-        "api_key_id": api_key_id,
-        "tenant_id": "tenant-1",
-        "current_user": current_user,
-    }
-    assert resolve_app.call_args_list == [
-        call(unbound_session, tenant_id="tenant-1", agent_id=agent_id),
-        call(unbound_session, tenant_id="tenant-1", agent_id=agent_id),
-        call(unbound_session, tenant_id="tenant-1", agent_id=agent_id),
-        call(unbound_session, tenant_id="tenant-1", agent_id=agent_id),
-    ]
+    resolve_app.assert_called_once_with(unbound_session, tenant_id="tenant-1", agent_id=agent_id)
 
 
 def test_agent_app_update_allows_empty_role(
@@ -1031,9 +1035,6 @@ def test_agent_app_update_allows_empty_role(
     )
 
     class FakeAppService:
-        def get_app(self, app_obj: object, *, session: object) -> object:
-            return app_obj
-
         def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
             return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)
@@ -1066,15 +1067,67 @@ def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.Monkey
     monkeypatch.setattr(roster_controller.AgentRosterService, "list_invite_options", list_invite_options)
     with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10&app_id=app-1"):
         result = unwrap(AgentInviteOptionsApi.get)(
-            AgentInviteOptionsApi(), AgentInviteOptionsQuery(page=1, limit=10, app_id="app-1"), MagicMock(), "tenant-1"
+            AgentInviteOptionsApi(),
+            AgentInviteOptionsQuery(page=1, limit=10, app_id="app-1"),
+            MagicMock(),
+            "tenant-1",
+            _account(),
         )
     assert result == {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
-    assert captured == {"tenant_id": "tenant-1", "page": 1, "limit": 10, "keyword": None, "app_id": "app-1"}
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "page": 1,
+        "limit": 10,
+        "keyword": None,
+        "app_id": "app-1",
+        "accessible_agent_ids": None,
+    }
 
 
-def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_invite_options_get_applies_resource_visibility(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+    permissions = roster_controller.enterprise_rbac_service.MyPermissionsResponse()
+
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.MyPermissions,
+        "get",
+        lambda *_args, **_kwargs: permissions,
+    )
+    monkeypatch.setattr(
+        roster_controller,
+        "resolve_agent_access_filter",
+        lambda *_args, **_kwargs: SimpleNamespace(accessible_agent_ids={"agent-2", "agent-1"}),
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "list_invite_options",
+        lambda _self, **kwargs: (
+            captured.update(kwargs) or {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
+        ),
+    )
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+
+    with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10"):
+        unwrap(AgentInviteOptionsApi.get)(
+            AgentInviteOptionsApi(),
+            AgentInviteOptionsQuery(page=1, limit=10),
+            MagicMock(),
+            "tenant-1",
+            _account(),
+        )
+
+    assert captured["accessible_agent_ids"] == ["agent-1", "agent-2"]
+
+
+def test_agent_version_queries_do_not_require_paid_plan(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     version_id = "00000000-0000-0000-0000-000000000002"
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    get_plan = Mock(return_value=CloudPlan.SANDBOX)
+    monkeypatch.setattr(roster_controller.FeatureService, "get_workspace_plan", get_plan)
     monkeypatch.setattr(
         roster_controller.AgentRosterService, "list_agent_versions", lambda _self, **kwargs: [_version_response()]
     )
@@ -1100,13 +1153,6 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
             ],
         },
     )
-    captured_restore: dict[str, object] = {}
-
-    def restore_agent_version(_self, **kwargs):
-        captured_restore.update(kwargs)
-        return {"result": "success", "active_config_snapshot_id": kwargs["version_id"]}
-
-    monkeypatch.setattr(roster_controller.AgentRosterService, "restore_agent_version", restore_agent_version)
     assert (
         unwrap(AgentRosterVersionsApi.get)(AgentRosterVersionsApi(), MagicMock(), "tenant-1", agent_id)["data"][0]["id"]
         == "version-1"
@@ -1116,21 +1162,60 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
     )
     assert version_detail["id"] == version_id
     assert version_detail["agent_id"] == agent_id
-    restored = unwrap(AgentRosterVersionRestoreApi.post)(
-        AgentRosterVersionRestoreApi(), MagicMock(), "tenant-1", _account(), agent_id, version_id
-    )
-    assert restored == {
-        "result": "success",
-        "active_config_snapshot_id": version_id,
-        "draft_config_id": None,
-        "restored_version_id": None,
-    }
-    assert captured_restore == {
-        "tenant_id": "tenant-1",
-        "agent_id": agent_id,
-        "version_id": version_id,
-        "account_id": "account-1",
-    }
+    get_plan.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("edition", "plan", "allowed"),
+    [
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True),
+    ],
+)
+def test_agent_version_restore_requires_cloud_paid_plan(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    plan: CloudPlan,
+    allowed: bool,
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    version_id = "00000000-0000-0000-0000-000000000002"
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
+    get_plan = Mock(return_value=plan)
+    monkeypatch.setattr(roster_controller.FeatureService, "get_workspace_plan", get_plan)
+    restore = Mock(return_value={"result": "success", "active_config_snapshot_id": version_id})
+    monkeypatch.setattr(roster_controller.AgentRosterService, "restore_agent_version", restore)
+    session = MagicMock(spec=Session)
+    api = AgentRosterVersionRestoreApi()
+
+    if not allowed:
+        with pytest.raises(Forbidden, match="This feature requires a paid plan.") as exc_info:
+            unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
+        assert exc_info.value.code == 403
+        restore.assert_not_called()
+        assert session.mock_calls == []
+    else:
+        restored = unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
+        assert restored == {
+            "result": "success",
+            "active_config_snapshot_id": version_id,
+            "draft_config_id": None,
+            "restored_version_id": None,
+        }
+        restore.assert_called_once_with(
+            tenant_id="tenant-1",
+            agent_id=agent_id,
+            version_id=version_id,
+            account_id="account-1",
+        )
+
+    if edition == DeploymentEdition.CLOUD:
+        get_plan.assert_called_once_with("tenant-1")
+    else:
+        get_plan.assert_not_called()
 
 
 def test_agent_observability_routes_resolve_app_from_agent_id(
@@ -1547,6 +1632,21 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
     )
     assert candidates["variant"] == "agent_app"
     assert cast(dict[str, object], captured["candidates"])["agent_id"] == agent_id
+
+
+def test_agent_composer_get_uses_read_only_session() -> None:
+    assert "@with_session(write=False)\n    def get" in getsource(AgentComposerApi)
+
+
+def test_agent_composer_get_accepts_missing_draft(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _agent_app_composer_response()
+    payload["draft"] = None
+    payload["agent_soul"] = {"prompt": {"system_prompt": "read-only snapshot"}}
+    monkeypatch.setattr(composer_controller.AgentComposerService, "load_agent_composer", lambda **_kwargs: payload)
+    with app.test_request_context():
+        result = unwrap(AgentComposerApi.get)(AgentComposerApi(), MagicMock(), "tenant-1", "agent-1")
+    assert result["draft"] is None
+    assert result["agent_soul"]["prompt"]["system_prompt"] == "read-only snapshot"
 
 
 def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
@@ -2141,14 +2241,24 @@ def test_agent_chat_message_routes_resolve_app_from_agent_id(
     monkeypatch.setattr(message_controller, "_get_message_suggested_questions", get_message_suggested_questions)
     monkeypatch.setattr(message_controller, "_get_message_detail", get_message_detail)
     assert unwrap(AgentChatMessageListApi.get)(
-        AgentChatMessageListApi(), unbound_session, "tenant-1", current_user, agent_id
+        AgentChatMessageListApi(),
+        message_controller.ChatMessagesQuery(conversation_id="00000000-0000-0000-0000-000000000010"),
+        unbound_session,
+        "tenant-1",
+        current_user,
+        agent_id,
     ) == {"data": []}
     list_call = cast(dict[str, object], captured["list"])
     assert list_call["session"] is unbound_session
     assert list_call["app_model"] is app_model
     with app.test_request_context(json={"message_id": message_id, "rating": "like"}):
         assert unwrap(AgentMessageFeedbackApi.post)(
-            AgentMessageFeedbackApi(), unbound_session, "tenant-1", current_user, agent_id
+            AgentMessageFeedbackApi(),
+            message_controller.MessageFeedbackPayload(message_id=message_id, rating="like"),
+            unbound_session,
+            "tenant-1",
+            current_user,
+            agent_id,
         ) == {"result": "success"}
     feedback_call = cast(dict[str, object], captured["feedback"])
     assert feedback_call["session"] is unbound_session
@@ -2221,7 +2331,13 @@ def test_list_chat_messages_supports_first_id_pagination(
         f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}&first_id={first_message_id}&limit=1"
     ):
         result = message_controller._list_chat_messages(
-            session=sqlite_session, app_model=_app_detail_obj(id=app_id, mode=AppMode.CHAT)
+            args=message_controller.ChatMessagesQuery(
+                conversation_id=conversation_id,
+                first_id=first_message_id,
+                limit=1,
+            ),
+            session=sqlite_session,
+            app_model=_app_detail_obj(id=app_id, mode=AppMode.CHAT),
         )
     assert result == {"data": [older_message_id], "limit": 1, "has_more": True}
 
@@ -2263,7 +2379,10 @@ def test_list_agent_chat_messages_uses_current_user_conversation(
     monkeypatch.setattr(message_controller, "MessageInfiniteScrollPaginationResponse", FakeMessagePaginationResponse)
     with app.test_request_context(f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}"):
         result = message_controller._list_chat_messages(
-            session=sqlite_session, app_model=app_model, current_user=current_user
+            args=message_controller.ChatMessagesQuery(conversation_id=conversation_id),
+            session=sqlite_session,
+            app_model=app_model,
+            current_user=current_user,
         )
     assert result == {"data": [message_id], "limit": 20, "has_more": False}
     assert captured.pop("session") is sqlite_session
@@ -2282,6 +2401,7 @@ def test_list_agent_chat_messages_rejects_foreign_conversation(
     with app.test_request_context(f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}"):
         with pytest.raises(NotFound):
             message_controller._list_chat_messages(
+                args=message_controller.ChatMessagesQuery(conversation_id=conversation_id),
                 session=unbound_session,
                 app_model=_app_detail_obj(id="app-1", mode=AppMode.AGENT),
                 current_user=_account(),
@@ -2303,6 +2423,7 @@ def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
     with app.test_request_context(json={"message_id": message_id, "rating": None}):
         with pytest.raises(ValueError, match="rating cannot be None"):
             message_controller._update_message_feedback(
+                args=message_controller.MessageFeedbackPayload(message_id=message_id, rating=None),
                 session=sqlite_session,
                 current_user=_account(),
                 app_model=_app_detail_obj(id=app_id),

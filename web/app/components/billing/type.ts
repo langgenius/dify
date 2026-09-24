@@ -18,18 +18,3 @@ export type PlanInfo = {
   triggerEvents: number
   annotatedResponse: number
 }
-
-export type UsagePlanInfo = {
-  buildApps: number
-  teamMembers: number
-  annotatedResponse: number
-  documentsUploadQuota: number
-  apiRateLimit: number
-  triggerEvents: number
-  vectorSpace: number
-}
-
-export type UsageResetInfo = {
-  apiRateLimit?: number | null
-  triggerEvents?: number | null
-}

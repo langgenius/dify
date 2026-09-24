@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models import Account
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
-from models.enums import DataSourceType, DocumentCreatedFrom
+from models.enums import DocumentCreatedFrom
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -18,6 +18,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
+from tests.unit_tests.model_factories import make_account, make_dataset, make_document
 
 DOCUMENT_ID = "11111111-1111-1111-1111-111111111111"
 FOREIGN_DOCUMENT_ID = "22222222-2222-2222-2222-222222222222"
@@ -26,9 +27,7 @@ FOREIGN_METADATA_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 
 
 def _account() -> Account:
-    account = Account(name="User", email="user@example.com")
-    account.id = "account-1"
-    return account
+    return make_account(name="User", email="user@example.com")
 
 
 def test_create_metadata_flushes_without_committing_caller_session(sqlite_session: Session) -> None:
@@ -50,28 +49,17 @@ def test_create_metadata_flushes_without_committing_caller_session(sqlite_sessio
 
 
 def _dataset(*, built_in_field_enabled: bool) -> Dataset:
-    return Dataset(
-        id="dataset-1",
-        tenant_id="tenant-1",
-        name="Dataset",
+    return make_dataset(
         description="",
         provider="vendor",
-        created_by="account-1",
         built_in_field_enabled=built_in_field_enabled,
     )
 
 
 def _document() -> Document:
-    return Document(
-        id=DOCUMENT_ID,
-        tenant_id="tenant-1",
-        dataset_id="dataset-1",
-        position=1,
-        data_source_type=DataSourceType.UPLOAD_FILE,
-        batch="batch-1",
-        name="Document",
+    return make_document(
+        document_id=DOCUMENT_ID,
         created_from=DocumentCreatedFrom.API,
-        created_by="account-1",
         created_at=datetime(2026, 1, 1),
         updated_at=datetime(2026, 1, 2),
         doc_metadata={},

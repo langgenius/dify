@@ -285,26 +285,8 @@ class AccountService:
 
     @staticmethod
     def get_account_by_email(email: str, *, session: Session) -> Account | None:
-        """Plain ``Account`` getter keyed by email. Case-sensitive — use
-        :meth:`has_active_account_with_email` for the case-insensitive
-        existence check that backs the SSO collision rule.
-        """
+        """Plain ``Account`` getter keyed by case-sensitive email."""
         return session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
-
-    @staticmethod
-    def has_active_account_with_email(email: str, *, session: Session) -> bool:
-        if not email:
-            return False
-        normalized = email.strip().lower()
-        if not normalized:
-            return False
-        row = session.execute(
-            select(Account.id).where(
-                func.lower(Account.email) == normalized,
-                Account.status == AccountStatus.ACTIVE,
-            )
-        ).scalar_one_or_none()
-        return row is not None
 
     @staticmethod
     def has_account_with_normalized_email(email: str, *, session: Session) -> bool:
@@ -321,9 +303,9 @@ class AccountService:
     @staticmethod
     def get_account_by_id(account_id: str, *, session: Session) -> Account | None:
         """Plain ``Account`` getter — no banned check, no tenant rotation,
-        no ``last_active_at`` write. Use this from read-only identity
-        endpoints (``/openapi/v1/account``) where ``load_user``'s
-        side-effects (current-tenant assignment, commit) are unwanted.
+        no ``last_active_at`` write. Use this from authentication and read
+        paths where ``load_user``'s current-tenant assignment and commit are
+        unwanted.
 
         ``session`` is injected by the caller so this service stays free
         of a Flask-scoped session import.
@@ -838,16 +820,24 @@ class AccountService:
     @staticmethod
     def get_account_by_email_with_case_fallback(email: str, *, session: Session) -> Account | None:
         """
-        Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
+        Retrieve an account by email, matching case-insensitively.
 
-        This keeps backward compatibility for older records that stored uppercase emails while the
-        rest of the system gradually normalizes new inputs.
+        SSO-provisioned accounts keep the identity provider's original casing, while other entry
+        points (invites, registration, login) normalize input to lowercase before looking up an
+        account. An exact match is tried first since it uses the plain email index; the fallback
+        compares normalized_email so either direction of case mismatch still resolves to the same
+        account.
         """
         account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
-        if account or email == email.lower():
+        if account:
             return account
 
-        return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+        return session.execute(
+            select(Account)
+            .where(Account.normalized_email == normalize_email(email))
+            .order_by(Account.created_at)
+            .limit(1)
+        ).scalar_one_or_none()
 
     @staticmethod
     @redis_fallback(default_return=None)
@@ -1213,35 +1203,11 @@ class TenantService:
         )
 
     @staticmethod
-    def get_account_memberships(account_id: str, *, session: Session) -> list[Row[tuple[TenantAccountJoin, Tenant]]]:
-        """Return ``(TenantAccountJoin, Tenant)`` rows for every workspace
-        the account belongs to. Unlike :meth:`get_join_tenants` this keeps
-        the join row so callers can read ``role``/``current`` alongside the
-        tenant — used by ``/openapi/v1/account`` to render workspace
-        membership + pick the default workspace.
-
-        ``session`` is injected by the caller so this service stays free
-        of a Flask-scoped session import.
-
-        No tenant-status filter: parity with the legacy controller query
-        (the openapi identity endpoint listed all joined tenants).
-        """
-        return (
-            session.query(TenantAccountJoin, Tenant)
-            .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
-            .filter(TenantAccountJoin.account_id == account_id)
-            .all()
-        )
-
-    @staticmethod
     def get_workspaces_for_account(account_id: str, *, session: Session) -> list[Row[tuple[Tenant, TenantAccountJoin]]]:
         """``(Tenant, TenantAccountJoin)`` rows for every workspace the
         account belongs to, ordered by ``Tenant.created_at`` ASC — the
-        canonical ordering for ``/openapi/v1/workspaces``.
-
-        Distinct from :meth:`get_account_memberships`: tuple order is
-        flipped (tenant first) and rows are sorted, so the workspace
-        listing is stable across requests.
+        canonical ordering for ``/openapi/v1/workspaces``. Rows keep the
+        tenant first so callers can serialize the workspace directly.
         """
         return list(
             session.execute(
@@ -1255,8 +1221,8 @@ class TenantService:
     @staticmethod
     def account_belongs_to_tenant(account_id: uuid.UUID | str | None, tenant_id: str, *, session: Session) -> bool:
         """Existence check for ``TenantAccountJoin(account_id, tenant_id)``.
-        Backs the CE-deployment membership fallback in
-        ``controllers.openapi.auth.strategies.MembershipStrategy``.
+        Membership without the role: where the openapi auth layer needs the role
+        itself it reads ``Context.workspace_role`` instead.
 
         ``None``/empty ``account_id`` short-circuits to ``False`` so SSO
         bearers (no account) and missing identity collapse cleanly.
@@ -1277,9 +1243,9 @@ class TenantService:
     ) -> TenantAccountRole | None:
         """Return the caller's role in ``tenant_id``, or ``None`` if not a member.
 
-        Backs the openapi auth pipeline's ``load_workspace_role`` prepare step:
-        ``None`` is treated as non-member (the pipeline maps it to 404 — no
-        cross-tenant ID leak) and an out-of-set role to 403.
+        Backs the openapi auth layer's ``Context.workspace_role``: ``None`` is
+        treated as non-member (mapped to 404 — no cross-tenant ID leak) and an
+        out-of-set role to 403.
 
         ``None``/empty ``account_id`` short-circuits to ``None`` so SSO
         bearers (no account) collapse to the non-member path. Mirrors the
@@ -1703,12 +1669,6 @@ class TenantService:
         else:
             target_member_join.role = new_tenant_role
         session.commit()
-
-    @staticmethod
-    def get_custom_config(tenant_id: str):
-        tenant = db.get_or_404(Tenant, tenant_id)
-
-        return tenant.custom_config_dict
 
     @staticmethod
     def is_owner(account: Account, tenant: Tenant, *, session: Session) -> bool:

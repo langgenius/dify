@@ -1,17 +1,20 @@
 'use client'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { toast } from '@/app/notifications'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
 
-export enum CreateFromDSLModalTab {
-  FROM_FILE = 'from-file',
-  FROM_URL = 'from-url',
-}
+export const CreateFromDSLModalTab = {
+  FROM_FILE: 'from-file',
+  FROM_URL: 'from-url',
+} as const
+
+export type CreateFromDSLModalTab =
+  (typeof CreateFromDSLModalTab)[keyof typeof CreateFromDSLModalTab]
 type UseDSLImportOptions = {
   activeTab?: CreateFromDSLModalTab
   dslUrl?: string
@@ -51,7 +54,7 @@ export const useDSLImport = ({
   onClose,
 }: UseDSLImportOptions) => {
   const { push } = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'datasetPipeline'])
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)

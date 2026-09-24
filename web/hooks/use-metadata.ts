@@ -31,7 +31,7 @@ type MetadataMap = Record<
 const fieldPrefix = 'metadata.field'
 
 export const useMetadataMap = (): MetadataMap => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetDocuments'])
   const { formatTime: formatTimestamp } = useTimestamp()
 
   return {
@@ -443,7 +443,7 @@ export const useMetadataMap = (): MetadataMap => {
 const langPrefix = 'metadata.languageMap.'
 
 export const useLanguages = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   return {
     zh: t(($) => $[`${langPrefix}zh`], { ns: 'datasetDocuments' }),
     en: t(($) => $[`${langPrefix}en`], { ns: 'datasetDocuments' }),

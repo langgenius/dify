@@ -180,7 +180,7 @@ describe('VarReferenceVars', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.debug.lastOutput')).toBeInTheDocument()
+    expect(screen.getByText('workflowDebug.debug.lastOutput')).toBeInTheDocument()
     expect(screen.getByText('current_prompt')).toBeInTheDocument()
   })
 

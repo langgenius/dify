@@ -9,20 +9,21 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import GridMask from '@/app/components/base/grid-mask'
-import { Infotip } from '@/app/components/base/infotip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
@@ -53,15 +54,19 @@ const ModelLoadBalancingConfigs = ({
   onUpdate,
   onRemove,
 }: ModelLoadBalancingConfigsProps) => {
-  const { t } = useTranslation()
+  const loadBalancingLabelId = useId()
+
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
   const providerFormSchemaPredefined =
     configurationMethod === ConfigurationMethodEnum.predefinedModel
-  const modelLoadBalancingEnabled = useProviderContextSelector(
-    (state) => state.modelLoadBalancingEnabled,
+  const { data: modelLoadBalancingEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.model_load_balancing_enabled,
+    }),
   )
 
   const updateConfigEntry = useCallback(
@@ -169,38 +174,50 @@ const ModelLoadBalancingConfigs = ({
     <>
       <div
         className={cn(
-          'min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
+          'relative min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
           withSwitch || !draftConfig.enabled
             ? 'border-components-panel-border'
             : 'border-util-colors-blue-blue-600',
-          withSwitch || draftConfig.enabled ? 'cursor-default' : 'cursor-pointer',
           className,
         )}
-        onClick={!withSwitch && !draftConfig.enabled ? () => toggleModalBalancing(true) : undefined}
         data-testid="load-balancing-main-panel"
       >
+        {!withSwitch && !draftConfig.enabled && modelLoadBalancingEnabled && (
+          <button
+            type="button"
+            className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+            aria-labelledby={loadBalancingLabelId}
+            onClick={() => toggleModalBalancing(true)}
+            data-testid="load-balancing-select-mode"
+          />
+        )}
         <div className="flex items-center gap-2 px-3.75 py-3 select-none">
           <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-util-colors-indigo-indigo-100 bg-util-colors-indigo-indigo-50 text-util-colors-blue-blue-600">
             <div className="i-custom-vender-line-financeAndECommerce-balance h-4 w-4" />
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
-              {t(($) => $['modelProvider.loadBalancing'], { ns: 'common' })}
-              <Infotip
-                aria-label={t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
-                className="size-3"
-                iconSize="small"
-                popupClassName="max-w-[300px]"
-              >
-                {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
+              <span id={loadBalancingLabelId}>
+                {t(($) => $['modelProvider.loadBalancing'], { ns: 'modelProvider' })}
+              </span>
+              <Infotip>
+                <InfotipTrigger
+                  aria-labelledby={loadBalancingLabelId}
+                  className="relative z-20 size-3"
+                  iconSize="small"
+                />
+                <InfotipContent aria-labelledby={loadBalancingLabelId}>
+                  {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'modelProvider' })}
+                </InfotipContent>
               </Infotip>
             </div>
             <div className="text-xs text-text-tertiary">
-              {t(($) => $['modelProvider.loadBalancingDescription'], { ns: 'common' })}
+              {t(($) => $['modelProvider.loadBalancingDescription'], { ns: 'modelProvider' })}
             </div>
           </div>
           {withSwitch && (
             <Switch
+              aria-labelledby={loadBalancingLabelId}
               checked={Boolean(draftConfig.enabled)}
               size="lg"
               className="ml-3 justify-self-end"
@@ -214,6 +231,8 @@ const ModelLoadBalancingConfigs = ({
           <div className="flex flex-col gap-1 px-3 pb-3">
             {validDraftConfigList.map((config, index) => {
               const isProviderManaged = config.name === '__inherit__'
+              const entryLabelId = `${loadBalancingLabelId}-entry-${index}`
+              const removeLabelId = `${loadBalancingLabelId}-remove-${index}`
               const credential = modelCredential.available_credentials.find(
                 (c) => c.credential_id === config.credential_id,
               )
@@ -239,19 +258,21 @@ const ModelLoadBalancingConfigs = ({
                             }
                           />
                           <TooltipContent>
-                            {t(($) => $['modelProvider.apiKeyStatusNormal'], { ns: 'common' })}
+                            {t(($) => $['modelProvider.apiKeyStatusNormal'], {
+                              ns: 'modelProvider',
+                            })}
                           </TooltipContent>
                         </Tooltip>
                       )}
                     </div>
-                    <div className="mr-1 text-[13px] text-text-secondary">
+                    <div id={entryLabelId} className="mr-1 text-[13px] text-text-secondary">
                       {isProviderManaged
-                        ? t(($) => $['modelProvider.defaultConfig'], { ns: 'common' })
+                        ? t(($) => $['modelProvider.defaultConfig'], { ns: 'modelProvider' })
                         : config.name}
                     </div>
                     {isProviderManaged && providerFormSchemaPredefined && (
                       <Badge className="ml-2">
-                        {t(($) => $['modelProvider.providerManaged'], { ns: 'common' })}
+                        {t(($) => $['modelProvider.providerManaged'], { ns: 'modelProvider' })}
                       </Badge>
                     )}
                     {credential?.from_enterprise && <Badge className="ml-2">Enterprise</Badge>}
@@ -259,23 +280,31 @@ const ModelLoadBalancingConfigs = ({
                   <div className="flex items-center gap-1">
                     {!isProviderManaged && (
                       <>
-                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
                           <Tooltip>
                             <TooltipTrigger
                               render={
-                                <span
-                                  className="flex size-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
+                                <IconButton
+                                  size="lg"
+                                  aria-labelledby={`${removeLabelId} ${entryLabelId}`}
+                                  className="bg-components-button-secondary-bg text-text-tertiary hover:bg-components-button-secondary-bg-hover"
                                   onClick={() => updateConfigEntry(index, () => undefined)}
                                   data-testid={`load-balancing-remove-${config.id || index}`}
                                 >
-                                  <div className="i-ri-indeterminate-circle-line size-4" />
-                                </span>
+                                  <span
+                                    aria-hidden="true"
+                                    className="i-ri-indeterminate-circle-line size-4"
+                                  />
+                                </IconButton>
                               }
                             />
                             <TooltipContent>
                               {t(($) => $['operation.remove'], { ns: 'common' })}
                             </TooltipContent>
                           </Tooltip>
+                          <span id={removeLabelId} className="sr-only">
+                            {t(($) => $['operation.remove'], { ns: 'common' })}
+                          </span>
                         </div>
                       </>
                     )}
@@ -283,6 +312,7 @@ const ModelLoadBalancingConfigs = ({
                       <>
                         <span className="mr-2 h-3 border-r border-r-divider-subtle" />
                         <Switch
+                          aria-labelledby={entryLabelId}
                           checked={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
                           size="md"
                           className="justify-self-end"
@@ -310,16 +340,16 @@ const ModelLoadBalancingConfigs = ({
         {draftConfig.enabled && validDraftConfigList.length < 2 && (
           <div className="flex h-8.5 items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
             <div className="mr-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#f79009]" />
-            {t(($) => $['modelProvider.loadBalancingLeastKeyWarning'], { ns: 'common' })}
+            {t(($) => $['modelProvider.loadBalancingLeastKeyWarning'], { ns: 'modelProvider' })}
           </div>
         )}
       </div>
 
-      {!modelLoadBalancingEnabled && deploymentEdition === 'CLOUD' && (
+      {modelLoadBalancingEnabled === false && deploymentEdition === 'CLOUD' && (
         <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div className={cn('text-gradient text-sm/tight font-semibold', s.textGradient)}>
-              {t(($) => $['modelProvider.upgradeForLoadBalancing'], { ns: 'common' })}
+              {t(($) => $['modelProvider.upgradeForLoadBalancing'], { ns: 'modelProvider' })}
             </div>
             <UpgradeBtn />
           </div>

@@ -1,5 +1,6 @@
 import type { SortType } from '@/service/datasets'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -36,7 +37,6 @@ describe('DocumentsHeader', () => {
     canManageMetadata: true,
     canAddDocument: true,
     canEditDocument: true,
-    isFreePlan: false,
     statusFilterValue: 'all',
     sortValue: 'created_at' as SortType,
     inputValue: '',
@@ -64,7 +64,7 @@ describe('DocumentsHeader', () => {
   describe('Rendering', () => {
     it('should render title', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/list\.title/i)
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/list\.title/i)
     })
 
     it('should render description text', () => {
@@ -75,7 +75,7 @@ describe('DocumentsHeader', () => {
     it('should render learn more link', () => {
       render(<DocumentsHeader {...defaultProps} />)
       const link = screen.getByRole('link')
-      expect(link).toHaveTextContent(/list\.learnMore/i)
+      expect(link.textContent).toMatch(/list\.learnMore/i)
       expect(link).toHaveAttribute('href', expect.stringContaining('use-dify/knowledge'))
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
@@ -104,16 +104,6 @@ describe('DocumentsHeader', () => {
   })
 
   describe('AutoDisabledDocument', () => {
-    it('should show AutoDisabledDocument when not free plan', () => {
-      render(<DocumentsHeader {...defaultProps} isFreePlan={false} />)
-      expect(screen.getByTestId('auto-disabled-document')).toBeInTheDocument()
-    })
-
-    it('should not show AutoDisabledDocument when on free plan', () => {
-      render(<DocumentsHeader {...defaultProps} isFreePlan={true} />)
-      expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
-    })
-
     it('should not show AutoDisabledDocument without document edit permission', () => {
       render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
       expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
@@ -177,6 +167,22 @@ describe('DocumentsHeader', () => {
       render(<DocumentsHeader {...defaultProps} isShowEditMetadataModal={false} />)
       expect(screen.queryByTestId('metadata-drawer')).not.toBeInTheDocument()
     })
+  })
+
+  it('keeps a stable status label while exposing the selected filter value', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<DocumentsHeader {...defaultProps} />)
+    const filter = screen.getByRole('combobox', {
+      name: 'datasetDocuments.list.table.header.status',
+    })
+    expect(filter).toHaveTextContent('datasetDocuments.list.index.all')
+    await user.click(screen.getByText('datasetDocuments.list.table.header.status'))
+    expect(filter).toHaveAttribute('aria-expanded', 'true')
+    await user.keyboard('{Escape}')
+    rerender(<DocumentsHeader {...defaultProps} statusFilterValue="available" />)
+    expect(
+      screen.getByRole('combobox', { name: 'datasetDocuments.list.table.header.status' }),
+    ).toHaveTextContent('datasetDocuments.list.status.available')
   })
 
   describe('User Interactions', () => {

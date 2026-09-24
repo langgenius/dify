@@ -1,9 +1,12 @@
 import base64
 import hashlib
 import os
+import posixpath
 import uuid
 from collections.abc import Generator, Sequence  # Changed Iterator to Generator
 from contextlib import contextmanager, suppress
+from dataclasses import dataclass
+from datetime import datetime
 from tempfile import NamedTemporaryFile
 from typing import Literal
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -30,9 +33,30 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 
-from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
+from .errors.file import BlockedFileExtensionError, FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
+
+
+@dataclass(frozen=True, slots=True)
+class FileUploadActor:
+    """Creator identity, independent of the tenant receiving the upload."""
+
+    id: str
+    creator_role: CreatorUserRole
+
+
+@dataclass(frozen=True, slots=True)
+class FileUploadResult:
+    id: str
+    name: str
+    size: int
+    extension: str
+    mime_type: str
+    created_by: str
+    created_at: datetime
+    tenant_id: str
+    source_url: str
 
 
 class FileService:
@@ -53,12 +77,26 @@ class FileService:
         filename: str,
         content: bytes,
         mimetype: str,
-        user: Account | EndUser,
+        user: Account | EndUser | FileUploadActor,
         tenant_id: str | None = None,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
         default_file_size_limit: int | None = None,
     ) -> UploadFile:
+        """Persist a file with the given creator and resource tenant.
+
+        For Account or EndUser, tenant_id=None (including when omitted) uses
+        the account's current workspace or the end user's tenant. An explicit
+        tenant_id takes precedence. FileUploadActor carries no tenant, so it
+        requires an explicit tenant_id.
+
+        default_file_size_limit is the non-media limit in MiB; None uses
+        dify_config.UPLOAD_FILE_SIZE_LIMIT, and 0 permits only empty files.
+        Images, video and audio always use their dedicated configured limits.
+        """
+        if isinstance(user, FileUploadActor) and tenant_id is None:
+            raise TypeError("tenant_id is required when uploading with FileUploadActor")
+
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
 
@@ -91,7 +129,12 @@ class FileService:
         # generate file key
         file_uuid = str(uuid.uuid4())
 
-        resource_tenant_id = tenant_id if tenant_id is not None else extract_tenant_id(user)
+        if isinstance(user, FileUploadActor):
+            resource_tenant_id = tenant_id
+            creator_role = user.creator_role
+        else:
+            resource_tenant_id = tenant_id if tenant_id is not None else extract_tenant_id(user)
+            creator_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         file_key = "upload_files/" + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
 
@@ -107,7 +150,7 @@ class FileService:
             size=file_size,
             extension=extension,
             mime_type=mimetype,
-            created_by_role=(CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER),
+            created_by_role=creator_role,
             created_by=user.id,
             created_at=naive_utc_now(),
             used=False,
@@ -124,6 +167,46 @@ class FileService:
 
         return upload_file
 
+    def upload_file_for_actor(
+        self,
+        *,
+        actor: FileUploadActor,
+        resource_tenant_id: str,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        source: Literal["datasets"] | None = None,
+        source_url: str = "",
+        default_file_size_limit: int | None = None,
+    ) -> FileUploadResult:
+        """Upload into the explicitly admitted tenant and return detached values.
+
+        default_file_size_limit overrides the non-media limit in MiB, including
+        0 for empty files only. None uses dify_config.UPLOAD_FILE_SIZE_LIMIT.
+        Images, video and audio retain their dedicated configured limits.
+        """
+        upload_file = self.upload_file(
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+            user=actor,
+            tenant_id=resource_tenant_id,
+            source=source,
+            source_url=source_url,
+            default_file_size_limit=default_file_size_limit,
+        )
+        return FileUploadResult(
+            id=upload_file.id,
+            name=upload_file.name,
+            size=upload_file.size,
+            extension=upload_file.extension,
+            mime_type=upload_file.mime_type,
+            created_by=upload_file.created_by,
+            created_at=upload_file.created_at,
+            tenant_id=upload_file.tenant_id,
+            source_url=upload_file.source_url,
+        )
+
     @staticmethod
     def is_file_size_within_limit(
         *,
@@ -131,21 +214,38 @@ class FileService:
         file_size: int,
         default_file_size_limit: int | None = None,
     ) -> bool:
+        return file_size <= FileService.file_size_limit(
+            extension=extension,
+            default_file_size_limit=default_file_size_limit,
+        )
+
+    @staticmethod
+    def file_size_limit(
+        *,
+        extension: str,
+        default_file_size_limit: int | None = None,
+    ) -> int:
+        """Return the size an extension is allowed, in bytes.
+
+        default_file_size_limit is a non-media override in MiB. None uses
+        dify_config.UPLOAD_FILE_SIZE_LIMIT; 0 allows only empty files.
+        Images, video and audio use their dedicated limits regardless of this
+        override.
+        """
+
         if extension in IMAGE_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT
         elif extension in VIDEO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT
         elif extension in AUDIO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT
         else:
             # Context-specific uploads may override the default limit without changing media-specific limits.
             file_size_limit = (
-                (default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT)
-                * 1024
-                * 1024
+                default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT
             )
 
-        return file_size <= file_size_limit
+        return file_size_limit * 1024 * 1024
 
     def get_file_base64(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
@@ -160,14 +260,7 @@ class FileService:
     def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
         """Generate a direct storage URL for a tenant-owned upload file."""
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(
-                select(UploadFile)
-                .where(
-                    UploadFile.id == file_id,
-                    UploadFile.tenant_id == tenant_id,
-                )
-                .limit(1)
-            )
+            upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
             if upload_file is None:
                 raise NotFound("File not found")
 
@@ -181,10 +274,17 @@ class FileService:
         )
 
     def get_icon_url(self, file_id: str, tenant_id: str) -> str:
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
-            StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
-        ):
-            return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
+        try:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+                StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+            ):
+                return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
+            with self._session_maker(expire_on_commit=False) as session:
+                upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
+            if upload_file is None:
+                raise NotFound("File not found")
+        except NotFound as exc:
+            raise FileNotExistsError("File reference not found") from exc
         return file_helpers.get_signed_file_url(upload_file_id=file_id)
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
@@ -241,58 +341,6 @@ class FileService:
         text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
         return text[0:PREVIEW_WORDS_LIMIT] if text else ""
 
-    def get_image_preview(self, file_id: str, timestamp: str, nonce: str, sign: str):
-        result = file_helpers.verify_image_signature(
-            upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
-        )
-        if not result:
-            raise NotFound("File not found or signature is invalid")
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-
-        if not upload_file:
-            raise NotFound("File not found or signature is invalid")
-
-        # extract text from file
-        extension = upload_file.extension
-        if extension.lower() not in IMAGE_EXTENSIONS:
-            raise UnsupportedFileTypeError()
-
-        generator = storage.load(upload_file.key, stream=True)
-
-        return generator, upload_file.mime_type
-
-    def get_file_generator_by_file_id(self, file_id: str, timestamp: str, nonce: str, sign: str):
-        result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
-        if not result:
-            raise NotFound("File not found or signature is invalid")
-
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-
-        if not upload_file:
-            raise NotFound("File not found or signature is invalid")
-
-        generator = storage.load(upload_file.key, stream=True)
-
-        return generator, upload_file
-
-    def get_public_image_preview(self, file_id: str):
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-
-        if not upload_file:
-            raise NotFound("File not found or signature is invalid")
-
-        # extract text from file
-        extension = upload_file.extension
-        if extension.lower() not in IMAGE_EXTENSIONS:
-            raise UnsupportedFileTypeError()
-
-        generator = storage.load(upload_file.key)
-
-        return generator, upload_file.mime_type
-
     def get_file_content(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
             upload_file: UploadFile | None = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
@@ -311,6 +359,17 @@ class FileService:
                 return
             storage.delete(upload_file.key)
             session.delete(upload_file)
+
+    @staticmethod
+    def get_upload_file_by_id(tenant_id: str, upload_file_id: str, *, session: Session) -> UploadFile | None:
+        return session.scalar(
+            select(UploadFile)
+            .where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.id == upload_file_id,
+            )
+            .limit(1)
+        )
 
     @staticmethod
     def get_upload_files_by_ids(
@@ -345,8 +404,9 @@ class FileService:
         We keep this conservative: the upload flow already rejects `/` and `\\`, but older rows (or imported data)
         could still contain unsafe names.
         """
-        # Drop any directory components and prevent empty names.
-        base = os.path.basename(name).strip() or "file"
+        # Drop any directory components and prevent empty names. ZIP names are always POSIX-style, so split on
+        # `/` explicitly rather than through `os.path`, whose separators differ on Windows hosts.
+        base = posixpath.basename(name).strip() or "file"
 
         # ZIP uses forward slashes as separators; remove any residual separator characters.
         return base.replace("/", "_").replace("\\", "_")

@@ -281,7 +281,7 @@ class SegmentApi(DatasetApiResource):
             use_defaults_for_malformed_ints=True,
         )
         page = args.page
-        limit = args.limit
+        limit = min(args.limit, 100)
         dataset_id_str = str(dataset_id)
         dataset = session.scalar(
             select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str).limit(1)
@@ -331,7 +331,7 @@ class SegmentApi(DatasetApiResource):
             "data": segment_responses_with_summaries(segments, summaries, session=session),
             "doc_form": document.doc_form,
             "total": total,
-            "has_more": len(segments) == limit,
+            "has_more": page * limit < total,
             "limit": limit,
             "page": page,
         }

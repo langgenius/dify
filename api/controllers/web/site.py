@@ -7,6 +7,7 @@ from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
+from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import build_icon_url, dump_response
@@ -102,7 +103,7 @@ class WebAppSiteResponse(ResponseModel):
 
         site_response = WebSiteResponse.model_validate(site, from_attributes=True)
         site_response.icon_url = icon_url if icon_url is not None else build_icon_url(site.icon_type, site.icon)
-        if features.billing.enabled and not features.webapp_copyright_enabled:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not features.webapp_copyright_enabled:
             site_response.copyright = None
             site_response.input_placeholder = None
 

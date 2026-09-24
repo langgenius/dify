@@ -11,7 +11,7 @@ from core.workflow.nodes.agent.exceptions import ToolFileNotFoundError
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import StreamCompletedEvent
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.variables.segments import ArrayFileSegment
 
 
@@ -194,3 +194,80 @@ def test_transform_keeps_plain_link_as_text() -> None:
 
     assert text == "Link: https://dify.ai\n"
     assert files.value == []
+
+
+def _text(content: str) -> ToolInvokeMessage:
+    return ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.TEXT,
+        message=ToolInvokeMessage.TextMessage(text=content),
+    )
+
+
+def _log(*, message_id: str = "log-1", label: str = "ROUND 1") -> ToolInvokeMessage:
+    return ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LOG,
+        message=ToolInvokeMessage.LogMessage(
+            id=message_id,
+            label=label,
+            status=ToolInvokeMessage.LogMessage.LogStatus.START,
+            data={},
+        ),
+    )
+
+
+def test_transform_closes_think_tag_before_nested_open() -> None:
+    text, _ = _run_transform(
+        [
+            _text("<think>first pass\n"),
+            _text("<think>second pass"),
+        ]
+    )
+
+    assert text == "<think>first pass\n</think><think>second pass</think>"
+
+
+def test_transform_closes_think_tag_when_tool_log_interrupts() -> None:
+    text, _ = _run_transform(
+        [
+            _text("<think>need to search"),
+            _log(label="CALL search"),
+            _text("search result summary"),
+        ]
+    )
+
+    assert text == "<think>need to search</think>search result summary"
+
+
+def test_transform_streams_close_tag_before_post_tool_text() -> None:
+    events = list(
+        AgentMessageTransformer().transform(
+            messages=_message_stream(
+                [
+                    _text("<think>need to search"),
+                    _log(label="CALL search"),
+                    _text("visible reply"),
+                ]
+            ),
+            tool_info={},
+            parameters_for_log={},
+            user_id="user-id",
+            tenant_id="tenant-id",
+            conversation_id=None,
+            node_type=BuiltinNodeTypes.AGENT,
+            node_id="node-id",
+            node_execution_id="execution-id",
+        )
+    )
+    text_chunks = [
+        event.chunk for event in events if isinstance(event, StreamChunkEvent) and event.selector == ["node-id", "text"]
+    ]
+
+    assert text_chunks == ["<think>need to search", "</think>", "visible reply", ""]
+
+
+def test_close_unclosed_think_tags_helper() -> None:
+    from core.workflow.nodes.agent.think_tags import close_unclosed_think_tags, has_unclosed_think
+
+    assert has_unclosed_think("<think>open")
+    assert not has_unclosed_think("<think>open</think>done")
+    assert close_unclosed_think_tags("<think>a\n<think>b") == "<think>a\n</think><think>b</think>"

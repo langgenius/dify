@@ -1,5 +1,6 @@
 import type {
   ModelProviderPluginSummaryResponse,
+  ModelProviderSummaryListResponse,
   ModelProviderSummaryResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
@@ -11,14 +12,16 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import UpdateSettingDialog from '../update-setting-dialog'
 import { ModelTypeEnum } from './declarations'
 import { useDefaultModel } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
 import SystemModelSelector from './system-model-selector'
+
+const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryListResponse['data'] = []
+const EMPTY_MODEL_PROVIDER_PLUGINS: ModelProviderSummaryListResponse['plugins'] = {}
 
 type SystemModelConfigStatus =
   | 'no-provider'
@@ -51,7 +54,7 @@ const ModelProviderPage = ({
   hideSystemModelSelectorProviderSettingsFooter,
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
   const { canSetPluginPreferences } = usePluginSettingsAccess()
   const defaultModelQueryOptions = { enabled: canSetPluginPreferences }
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =
@@ -68,11 +71,11 @@ const ModelProviderPage = ({
     ModelTypeEnum.tts,
     defaultModelQueryOptions,
   )
-  const {
-    modelProviders: providers,
-    modelProviderPlugins = {},
-    isLoadingModelProviders,
-  } = useProviderContext()
+  const { data: providerSummary, isLoading: isLoadingModelProviders } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
+  )
+  const providers = providerSummary?.data ?? EMPTY_MODEL_PROVIDERS
+  const modelProviderPlugins = providerSummary?.plugins ?? EMPTY_MODEL_PROVIDER_PLUGINS
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const marketplacePluginIds = useMemo(
@@ -216,7 +219,7 @@ const ModelProviderPage = ({
     >
       <SearchInput
         className="w-50 shrink-0"
-        placeholder={t(($) => $['modelProvider.searchModels'], { ns: 'common' })}
+        placeholder={t(($) => $['modelProvider.searchModels'], { ns: 'modelProvider' })}
         value={searchText}
         onValueChange={onSearchTextChange ?? noop}
       />
@@ -231,9 +234,9 @@ const ModelProviderPage = ({
               />
               <span
                 className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary"
-                title={t(($) => $[warningTextKey], { ns: 'common' })}
+                title={t(($) => $[warningTextKey], { ns: 'modelProvider' })}
               >
-                {t(($) => $[warningTextKey], { ns: 'common' })}
+                {t(($) => $[warningTextKey], { ns: 'modelProvider' })}
               </span>
             </div>
             <div className="relative shrink-0">

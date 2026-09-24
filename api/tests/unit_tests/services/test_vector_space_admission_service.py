@@ -26,6 +26,7 @@ from services.vector_space_admission_service import (
     get_vector_space_admission_error_fields,
     parse_vector_space_estimate_limits,
 )
+from tests.unit_tests.model_factories import make_dataset
 
 _MEBIBYTE = 1024 * 1024
 _ESTIMATE_LIMITS = "sandbox:60,professional:6400,team:25600"
@@ -74,10 +75,8 @@ class _FakeRedis:
 
 
 def _dataset(session: Session) -> Dataset:
-    dataset = Dataset(
-        id=str(uuid4()),
-        tenant_id="tenant-1",
-        name="Dataset",
+    dataset = make_dataset(
+        dataset_id=str(uuid4()),
         created_by=str(uuid4()),
         indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider="provider",
@@ -549,9 +548,22 @@ def test_billing_plan_lookup_excludes_vector_space_and_is_cached() -> None:
     service = VectorSpaceAdmissionService()
     with patch(
         "services.vector_space_admission_service.BillingService.get_info",
-        return_value={"enabled": True, "subscription": {"plan": "professional"}},
+        return_value={"subscription": {"plan": "professional"}},
     ) as get_info:
         assert service._get_plan("tenant-1") == CloudPlan.PROFESSIONAL
         assert service._get_plan("tenant-1") == CloudPlan.PROFESSIONAL
 
     get_info.assert_called_once_with("tenant-1", exclude_vector_space=True)
+
+
+def test_unknown_billing_plan_is_not_logged(caplog: pytest.LogCaptureFixture) -> None:
+    service = VectorSpaceAdmissionService()
+    upstream_plan = "unexpected-private-plan"
+    with patch(
+        "services.vector_space_admission_service.BillingService.get_info",
+        return_value={"subscription": {"plan": upstream_plan}},
+    ):
+        assert service._get_plan("tenant-1") is None
+
+    assert "unknown plan tenant_id=tenant-1" in caplog.text
+    assert upstream_plan not in caplog.text

@@ -34,7 +34,7 @@ const PluginMutationModal: FC<Props> = ({
   mutate,
   modalBottomLeft,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog
@@ -70,12 +70,7 @@ const PluginMutationModal: FC<Props> = ({
           <div>{modalBottomLeft}</div>
           <div className="ml-auto flex gap-2">
             {!mutation.isPending && <Button onClick={onCancel}>{cancelButtonText}</Button>}
-            <Button
-              variant="primary"
-              loading={mutation.isPending}
-              onClick={mutate}
-              disabled={mutation.isPending}
-            >
+            <Button variant="primary" loading={mutation.isPending} onClick={mutate}>
               {confirmButtonText}
             </Button>
           </div>

@@ -1,4 +1,4 @@
-import type { AccessPoint } from '@/app/components/app/deploy/access-point'
+import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { screen, within } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import { DeployedEnvironmentAccessPoints } from '../deployed-environment-access-points'
@@ -40,7 +40,6 @@ describe('DeployedEnvironmentAccessPoints', () => {
           appId="app-1"
           environmentId="staging"
           canManageAccessPoint
-          canReleaseAndVersion
           highlightedAccessPoint={highlightedAccessPoint}
         />,
       )
@@ -60,7 +59,6 @@ describe('DeployedEnvironmentAccessPoints', () => {
         appId="app-1"
         environmentId="staging"
         canManageAccessPoint
-        canReleaseAndVersion
       />,
     )
 
@@ -82,20 +80,18 @@ describe('DeployedEnvironmentAccessPoints', () => {
     }
   })
 
-  it('passes the Built-in permission split to deployed environment cards', () => {
+  it('passes Access Point management to deployed environment cards', () => {
     render(
       <DeployedEnvironmentAccessPoints
         appId="app-1"
         environmentId="staging"
         canManageAccessPoint
-        canReleaseAndVersion={false}
       />,
     )
 
     expect(mocks.webAppCard).toHaveBeenCalledWith(
       expect.objectContaining({
         canManageAccessPoint: true,
-        canReleaseAndVersion: false,
       }),
     )
     expect(mocks.serviceApiCard).toHaveBeenCalledWith(

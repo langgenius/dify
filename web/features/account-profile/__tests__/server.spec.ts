@@ -1,7 +1,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { resolveServerConsoleApiUrl } from '@/service/server'
+import { resolveServerConsoleApiUrl } from '@/service/console/server'
 import { userProfileQueryOptions } from '../client'
 
 const headersMock = vi.fn()

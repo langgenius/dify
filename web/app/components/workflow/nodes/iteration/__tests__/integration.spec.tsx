@@ -1,9 +1,9 @@
 import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { BlockEnum, VarType } from '../../../types'
 import Node from '../node'
 import Panel from '../panel'
@@ -13,7 +13,7 @@ const mockHandleNodeAdd = vi.fn()
 const mockHandleNodeIterationRerender = vi.fn()
 let mockNodesReadOnly = false
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -157,17 +157,17 @@ describe('iteration path', () => {
     expect(screen.getByRole('button', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
     expect(screen.getByTestId('iteration-background-iteration-node')).toBeInTheDocument()
     expect(mockHandleNodeIterationRerender).toHaveBeenCalledWith('iteration-node')
-    expect(mockToastWarning).toHaveBeenCalledWith('workflow.nodes.iteration.answerNodeWarningDesc')
+    expect(mockToastWarning).toHaveBeenCalledWith(
+      'workflowLogic.nodes.iteration.answerNodeWarningDesc',
+    )
   })
 
-  it('should wire panel input, output, parallel, numeric, error mode, and flatten actions', async () => {
+  it('should wire panel input, output, numeric, and error mode actions', async () => {
     const user = userEvent.setup()
     const handleInputChange = vi.fn()
     const handleOutputVarChange = vi.fn()
-    const changeParallel = vi.fn()
     const changeParallelNums = vi.fn()
     const changeErrorResponseMode = vi.fn()
-    const changeFlattenOutput = vi.fn()
 
     mockUseConfig.mockReturnValueOnce(
       createConfigResult({
@@ -177,10 +177,8 @@ describe('iteration path', () => {
         }),
         handleInputChange,
         handleOutputVarChange,
-        changeParallel,
         changeParallelNums,
         changeErrorResponseMode,
-        changeFlattenOutput,
       }),
     )
 
@@ -188,13 +186,17 @@ describe('iteration path', () => {
 
     await user.click(screen.getByRole('button', { name: 'pick-input-var' }))
     await user.click(screen.getByRole('button', { name: 'pick-output-var' }))
-    await user.click(screen.getAllByRole('switch')[0]!)
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } })
+    const parallelInput = screen.getByRole('textbox', {
+      name: 'workflowLogic.nodes.iteration.MaxParallelismTitle',
+    })
+    await user.clear(parallelInput)
+    await user.type(parallelInput, '7')
     await user.click(screen.getByRole('combobox'))
     await user.click(
-      screen.getByRole('option', { name: 'workflow.nodes.iteration.ErrorMethod.continueOnError' }),
+      screen.getByRole('option', {
+        name: 'workflowLogic.nodes.iteration.ErrorMethod.continueOnError',
+      }),
     )
-    await user.click(screen.getAllByRole('switch')[1]!)
 
     expect(handleInputChange).toHaveBeenCalledWith(['node-1', 'items'], 'variable', {
       type: VarType.arrayString,
@@ -202,14 +204,12 @@ describe('iteration path', () => {
     expect(handleOutputVarChange).toHaveBeenCalledWith(['child-node', 'text'], 'variable', {
       type: VarType.string,
     })
-    expect(changeParallel).toHaveBeenCalledWith(false)
     expect(changeParallelNums).toHaveBeenCalledWith(7)
     expect(changeErrorResponseMode).toHaveBeenCalledWith(
       expect.objectContaining({
         value: ErrorHandleMode.ContinueOnError,
       }),
     )
-    expect(changeFlattenOutput).toHaveBeenCalledWith(true)
   })
 
   it('should hide parallel controls when parallel mode is disabled', () => {
@@ -223,6 +223,44 @@ describe('iteration path', () => {
 
     render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
 
-    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'workflowLogic.nodes.iteration.MaxParallelismTitle' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not save an empty parallel count and restores the configured value on blur', async () => {
+    const user = userEvent.setup()
+    const changeParallelNums = vi.fn()
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        inputs: createData({ is_parallel: true }),
+        changeParallelNums,
+      }),
+    )
+    render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
+    const input = screen.getByRole('textbox', {
+      name: 'workflowLogic.nodes.iteration.MaxParallelismTitle',
+    })
+    await user.clear(input)
+    await user.tab()
+    expect(changeParallelNums).not.toHaveBeenCalled()
+    expect(input).toHaveValue('3')
+  })
+
+  it('disables both parallel count controls in readonly mode', () => {
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        inputs: createData({ is_parallel: true }),
+        readOnly: true,
+      }),
+    )
+    render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
+    expect(
+      screen.getByRole('textbox', { name: 'workflowLogic.nodes.iteration.MaxParallelismTitle' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('slider', { name: 'workflowLogic.nodes.iteration.MaxParallelismTitle' }),
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Increment value' })).toBeDisabled()
   })
 })

@@ -45,7 +45,7 @@ export const TagSearchContentView = ({
   showTagManagement = true,
   canManageTags,
 }: TagSearchContentViewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const inputRef = useRef<HTMLInputElement>(null)
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter((tag) => !isCreateTagOption(tag)).length
@@ -89,7 +89,7 @@ export const TagSearchContentView = ({
           if (isCreateTagOption(tag) && canManageTags) {
             return (
               <Fragment key={tag.id}>
-                <ComboboxItem value={tag}>
+                <ComboboxItem<string> value={tag.id}>
                   <ComboboxItemText className="flex items-center gap-x-1 px-0">
                     <span
                       aria-hidden="true"
@@ -107,9 +107,9 @@ export const TagSearchContentView = ({
           }
 
           return (
-            <ComboboxItem
+            <ComboboxItem<string>
               key={tag.id}
-              value={tag}
+              value={tag.id}
               disabled={!canBindOrUnbindTags && !canManageTags}
             >
               <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>

@@ -1,6 +1,9 @@
 'use client'
-import type { StrategyDetail } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+
+import type {
+  AgentStrategyEntity,
+  AgentStrategyProviderIdentity,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
@@ -8,19 +11,12 @@ import { useRenderI18nObject } from '@/hooks/use-i18n'
 import StrategyDetailPanel from './strategy-detail'
 
 type Props = Readonly<{
-  provider: {
-    author: string
-    name: string
-    description: Record<Locale, string>
-    tenant_id: string
-    icon: string
-    label: Record<Locale, string>
-    tags: string[]
-  }
-  detail: StrategyDetail
+  provider: AgentStrategyProviderIdentity
+  tenantId: string
+  detail: AgentStrategyEntity
 }>
 
-const StrategyItem = ({ provider, detail }: Props) => {
+const StrategyItem = ({ provider, tenantId, detail }: Props) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const [showDetail, setShowDetail] = useState(false)
 
@@ -42,6 +38,7 @@ const StrategyItem = ({ provider, detail }: Props) => {
       {showDetail && (
         <StrategyDetailPanel
           provider={provider}
+          tenantId={tenantId}
           detail={detail}
           onHide={() => setShowDetail(false)}
         />

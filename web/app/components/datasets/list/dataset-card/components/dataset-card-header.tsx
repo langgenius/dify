@@ -5,7 +5,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
+import { DOC_FORM_ICON_CLASS_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 
 const EXTERNAL_PROVIDER = 'external'
 const docModeInfoClassName =
@@ -13,6 +13,7 @@ const docModeInfoClassName =
 
 type DatasetCardHeaderProps = {
   dataset: DataSet
+  nameId?: string
 }
 
 // DocModeInfo component - placed before usage
@@ -23,7 +24,7 @@ type DocModeInfoProps = {
 }
 
 const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocModeInfoProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const isPipeline = dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline'
 
@@ -80,7 +81,7 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
 }
 
 // Main DatasetCardHeader component
-const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
+const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
 
   const isShowChunkingModeIcon =
@@ -93,9 +94,9 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
   )
 
   const chunkingModeIcon = dataset.doc_form
-    ? DOC_FORM_ICON_WITH_BG[dataset.doc_form]
+    ? DOC_FORM_ICON_CLASS_WITH_BG[dataset.doc_form]
     : React.Fragment
-  const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : chunkingModeIcon
+  const iconClassName = isExternalProvider ? DOC_FORM_ICON_CLASS_WITH_BG.external : chunkingModeIcon
 
   const iconInfo = useMemo(
     () =>
@@ -111,7 +112,7 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
   return (
     <div
       className={cn(
-        'flex items-center gap-x-3 px-4 pt-4 pb-2',
+        'flex items-center gap-x-3 pt-4 pr-14 pb-2 pl-4',
         !dataset.embedding_available && 'opacity-30',
       )}
     >
@@ -125,12 +126,16 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
         />
         {(isShowChunkingModeIcon || isExternalProvider) && (
           <div className="absolute -right-1 -bottom-1 z-5">
-            <Icon className="size-4" />
+            <span aria-hidden className={cn(iconClassName, 'size-4')} />
           </div>
         )}
       </div>
       <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
-        <div className="truncate system-md-semibold text-text-secondary" title={dataset.name}>
+        <div
+          id={nameId}
+          className="truncate system-md-semibold text-text-secondary"
+          title={dataset.name}
+        >
           {dataset.name}
         </div>
         <DocModeInfo

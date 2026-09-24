@@ -1,13 +1,12 @@
-import type { AppInfoActions } from './use-app-info-actions'
 import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
+import { useAppInfoActions } from './use-app-info-actions'
 
 type AppInfoViewProps = {
   expand: boolean
-  actions: AppInfoActions
 }
 
-export const AppInfoView = ({ expand, actions }: AppInfoViewProps) => {
+export const AppInfoView = ({ expand }: AppInfoViewProps) => {
   const {
     appDetail,
     activeModal,
@@ -22,7 +21,7 @@ export const AppInfoView = ({ expand, actions }: AppInfoViewProps) => {
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
-  } = actions
+  } = useAppInfoActions()
 
   if (!appDetail) return null
 

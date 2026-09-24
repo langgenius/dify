@@ -6,10 +6,10 @@ import type { AppIconType } from '@/types/app'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useHover } from 'ahooks'
 import { useId } from 'react'
@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { MCPAuthMethod } from '@/app/components/tools/types'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
 import { isValidServerID, isValidUrl, useMCPModalForm } from './hooks/use-mcp-modal-form'
@@ -63,7 +64,7 @@ type MCPModalContentProps = {
 }
 
 const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const serverUrlInputId = useId()
   const nameInputId = useId()
   const serverIdentifierInputId = useId()
@@ -199,36 +200,42 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
             />
           </div>
           <div className="pt-2" ref={appIconRef}>
-            <AppIcon
-              iconType={state.appIcon.type}
-              icon={state.appIcon.type === 'emoji' ? state.appIcon.icon : state.appIcon.fileId}
-              background={state.appIcon.type === 'emoji' ? state.appIcon.background : undefined}
-              imageUrl={state.appIcon.type === 'image' ? state.appIcon.url : undefined}
-              innerIcon={
-                shouldUseMcpIconForAppIcon(
-                  state.appIcon.type,
-                  state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
-                ) ? (
-                  <span
-                    aria-hidden
-                    className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
-                  />
-                ) : undefined
-              }
-              size="xxl"
-              className="relative cursor-pointer rounded-2xl"
-              coverElement={
-                isHovering ? (
-                  <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt">
+            <IconButton
+              aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
+              className="size-14 rounded-2xl p-0"
+              onClick={() => actions.setShowAppIconPicker(true)}
+            >
+              <AppIcon
+                decorative
+                iconType={state.appIcon.type}
+                icon={state.appIcon.type === 'emoji' ? state.appIcon.icon : state.appIcon.fileId}
+                background={state.appIcon.type === 'emoji' ? state.appIcon.background : undefined}
+                imageUrl={state.appIcon.type === 'image' ? state.appIcon.url : undefined}
+                innerIcon={
+                  shouldUseMcpIconForAppIcon(
+                    state.appIcon.type,
+                    state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
+                  ) ? (
                     <span
                       aria-hidden
-                      className="i-ri-edit-line size-6 text-text-primary-on-surface"
+                      className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
                     />
-                  </div>
-                ) : null
-              }
-              onClick={() => actions.setShowAppIconPicker(true)}
-            />
+                  ) : undefined
+                }
+                size="xxl"
+                className="relative rounded-2xl"
+                coverElement={
+                  isHovering ? (
+                    <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt">
+                      <span
+                        aria-hidden
+                        className="i-ri-edit-line size-6 text-text-primary-on-surface"
+                      />
+                    </div>
+                  ) : null
+                }
+              />
+            </IconButton>
           </div>
         </div>
 

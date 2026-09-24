@@ -10,11 +10,16 @@ import type { ParameterValue } from './parameter-item'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import { ModelStatusEnum } from '../declarations'
@@ -27,6 +32,7 @@ import { getSupportedPresetConfig } from './presets-parameter-utils'
 
 export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & {
   trigger?: ReactElement<ComponentPropsWithRef<'button'>>
+  triggerContainerClassName?: string
   popupClassName?: string
   modelSelectorPopupClassName?: string
   isAdvancedMode: boolean
@@ -51,6 +57,7 @@ export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & 
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   modelList?: ModelSelectorProvider[]
+  modelListLoading?: boolean
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
@@ -58,6 +65,7 @@ export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & 
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   trigger,
+  triggerContainerClassName,
   popupClassName,
   modelSelectorPopupClassName,
   placement,
@@ -76,16 +84,23 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   nodesOutputVars,
   availableNodes,
   modelList,
+  modelListLoading,
   showModelMeta,
   modelPredicate,
   modelSuggestionPredicate,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const [open, setOpen] = useState(false)
-  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
-  const isRulesLoading = !!provider && !!modelId && isLoading
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
+  const canFetchParameterRules =
+    !!currentProvider && currentModel?.status === ModelStatusEnum.active
+  const { data: parameterRulesData, isLoading } = useModelParameterRules(
+    provider,
+    modelId,
+    canFetchParameterRules,
+  )
+  const isRulesLoading = canFetchParameterRules && !!provider && !!modelId && isLoading
   const selectableModelList = modelList ?? activeTextGenerationModelList
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
@@ -156,10 +171,16 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       {trigger ? (
         <PopoverTrigger render={trigger} />
       ) : (
-        <div className="isolate flex h-8 min-w-74 items-center gap-px rounded-lg">
+        <div
+          className={cn(
+            'isolate flex h-8 min-w-74 items-center gap-px rounded-lg',
+            triggerContainerClassName,
+          )}
+        >
           <SplitModelSelector
             value={hasSelectedModel ? { provider, model: modelId } : undefined}
             models={selectableModelList}
+            loading={modelListLoading}
             popupClassName={modelSelectorPopupClassName}
             disabled={readonly || modelSelectorReadonly}
             showModelMeta={showModelMeta}
@@ -180,9 +201,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         className={cn(popupClassName, 'w-100 rounded-2xl')}
       >
         <div className="relative px-3 pt-3.5 pb-1">
-          <div className="pr-8 pl-1 system-xl-semibold text-text-primary">
-            {t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
-          </div>
+          <PopoverTitle className="pr-8 pl-1 system-xl-semibold text-text-primary">
+            {t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
+          </PopoverTitle>
           <PopoverClose
             render={
               <IconButton
@@ -202,6 +223,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               <ModelSelector
                 value={hasSelectedModel ? { provider, model: modelId } : undefined}
                 models={selectableModelList}
+                loading={modelListLoading}
                 disabled={modelSelectorReadonly}
                 onValueChange={handleChangeModel}
                 onHide={() => setOpen(false)}
@@ -217,7 +239,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             >
               <div className="flex items-center gap-1">
                 <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">
-                  {t(($) => $['modelProvider.parameters'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.parameters'], { ns: 'modelProvider' })}
                 </div>
                 {PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                   <PresetsParameter
@@ -228,7 +250,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               </div>
               {isRulesLoading ? (
                 <div className="py-5">
-                  <Loading />
+                  <LoadingPlaceholder />
                 </div>
               ) : (
                 [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map(
@@ -252,7 +274,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           )}
           {!parameterRules.length && isRulesLoading && (
             <div className="px-4 py-5">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>
@@ -265,7 +287,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             {debugWithMultipleModel
               ? t(($) => $.debugAsSingleModel, { ns: 'appDebug' })
               : t(($) => $.debugAsMultipleModel, { ns: 'appDebug' })}
-            <ArrowNarrowLeft aria-hidden className="size-3 rotate-180" />
+            <span
+              aria-hidden
+              className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
+            />
           </button>
         )}
       </PopoverContent>

@@ -16,7 +16,7 @@ export type InputFieldEditorProps = {
 }
 
 const InputFieldEditorPanel = ({ onClose, onSubmit, initialData }: InputFieldEditorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
 
   const { floatingRight, floatingRightWidth } = useFloatingRight(400)
 

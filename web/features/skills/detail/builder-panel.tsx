@@ -1,33 +1,27 @@
 'use client'
-
-/* oxlint-disable eslint-react/set-state-in-effect -- The builder resets its local transcript when the authoritative detail snapshot changes. */
-
 import type {
+  ProviderWithModelsResponse,
   SkillDetailResponse,
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } from './shared'
-import type {
-  FormValue,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { Button } from '@langgenius/dify-ui/button'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { toast } from '@/app/notifications'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
+import { consoleQuery } from '@/service/console'
 import { sendSkillAssistMessage, uploadSkillFile } from '../client'
 import { SkillBuilderGridTexture } from './builder-grid-texture'
 import {
@@ -60,7 +54,7 @@ function isSkillBuilderProgressStage(stage: unknown): stage is SkillBuilderProgr
 }
 
 function SkillBuilderProgressStageLabel({ stage }: { stage: SkillBuilderProgressStage }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
 
   if (stage === 'reading_draft')
     return <>{t(($) => $['skillManagement.detail.builder.progress.readingDraft'])}</>
@@ -78,11 +72,11 @@ function BuilderModelSelector({
   onSelect,
 }: {
   isLoading: boolean
-  modelList: Model[]
+  modelList: ProviderWithModelsResponse[]
   selectedModel: SkillBuilderModel | undefined
   onSelect: (model: SkillBuilderModel) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="flex w-fit max-w-full min-w-0 items-center gap-px">
@@ -122,7 +116,7 @@ function BuilderModelSelector({
           trigger={
             <button
               type="button"
-              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
+              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
               className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
@@ -157,7 +151,7 @@ function SkillBuilderThinkingMessage({
   reasoningContent?: string
   seconds: number
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
   const duration = minutes > 0 ? `${minutes}m${remainingSeconds}s` : `${remainingSeconds}s`
@@ -302,8 +296,9 @@ export function SkillBuilderPanel({
   selectedFile: SkillFileResponse | undefined
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
+  const titleId = useId()
   const [prompt, setPrompt] = useState('')
   const initialBuilderModeRef = useRef({
     isEditMode: !isDefaultSkillBuilderDraft(detail),
@@ -331,7 +326,7 @@ export function SkillBuilderPanel({
   )
   const [messages, setMessages] = useState<BuilderChatMessage[]>(initialMessages)
   const messagesRef = useRef<BuilderChatMessage[]>(initialMessages)
-  const rawAssistantMessagesRef = useRef(new Map<string, string>())
+  const rawAssistantMessagesRef = useRefWithInit(() => new Map<string, string>())
   const [attachments, setAttachments] = useState<SkillBuilderAttachment[]>([])
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
   const attachmentInputRef = useRef<HTMLInputElement>(null)
@@ -345,8 +340,13 @@ export function SkillBuilderPanel({
   const selectedFileRef = useRef(selectedFile)
   const assistAbortControllerRef = useRef<AbortController | null>(null)
   const { data: defaultTextGenerationModel } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const { data: textGenerationModelList, isLoading: isTextGenerationModelListLoading } =
-    useModelList(ModelTypeEnum.textGeneration)
+  const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
+    useQuery(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+        input: { params: { model_type: ModelTypeEnum.textGeneration } },
+        select: (response) => response.data,
+      }),
+    )
   const fallbackModel = useMemo<SkillBuilderModel | undefined>(() => {
     for (const provider of textGenerationModelList) {
       if (provider.status !== ModelStatusEnum.active) continue
@@ -371,7 +371,18 @@ export function SkillBuilderPanel({
       }
     : undefined
   const [selectedModel, setSelectedModel] = useState<SkillBuilderModel | undefined>()
-  const activeSelectedModel = selectedModel ?? defaultBuilderModel ?? fallbackModel
+  const activeSelectedModel = [selectedModel, defaultBuilderModel, fallbackModel].find(
+    (candidate) =>
+      candidate &&
+      textGenerationModelList.some(
+        (provider) =>
+          provider.provider === candidate.provider &&
+          provider.status === ModelStatusEnum.active &&
+          provider.models.some(
+            (model) => model.model === candidate.model && model.status === ModelStatusEnum.active,
+          ),
+      ),
+  )
   const canSendBuilderMessage = !!activeSelectedModel?.provider && !!activeSelectedModel?.model
   const suggestions = [
     t(($) => $['skillManagement.detail.builder.exampleIssueTriage']),
@@ -420,7 +431,7 @@ export function SkillBuilderPanel({
     messagesRef.current = initialMessages
     rawAssistantMessagesRef.current.clear()
     setMessages(initialMessages)
-  }, [initialMessages])
+  }, [initialMessages, rawAssistantMessagesRef])
 
   useEffect(() => {
     messagesRef.current = messages
@@ -804,7 +815,10 @@ export function SkillBuilderPanel({
   }
 
   return (
-    <aside className="relative my-1 mr-1 flex w-99 shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle">
+    <section
+      aria-labelledby={titleId}
+      className="relative my-1 mr-1 flex w-99 shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle"
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-0 bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2"
@@ -818,7 +832,7 @@ export function SkillBuilderPanel({
         className="pointer-events-none absolute bottom-0 left-0 z-1 origin-center scale-y-[-1]"
       />
       <div className="relative z-10 flex h-12 shrink-0 items-center justify-between gap-2 pr-3 pl-4">
-        <h2 className="system-xs-semibold-uppercase text-text-secondary">
+        <h2 id={titleId} className="system-xs-semibold-uppercase text-text-secondary">
           {t(($) => $['skillManagement.detail.builder.title'])}
         </h2>
         <div className="flex h-8 items-center gap-1">
@@ -1092,10 +1106,11 @@ export function SkillBuilderPanel({
                       />
                     </button>
                   </div>
-                  <Button
+                  <IconButton
                     aria-label={t(($) => $['skillManagement.detail.builder.send'])}
                     variant="primary"
-                    className="size-8 px-0 focus-visible:ring-inset"
+                    size="lg"
+                    className="focus-visible:ring-inset"
                     disabled={
                       !canSendBuilderMessage ||
                       (!prompt.trim() && attachments.length === 0) ||
@@ -1113,13 +1128,13 @@ export function SkillBuilderPanel({
                         'size-4',
                       )}
                     />
-                  </Button>
+                  </IconButton>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </aside>
+    </section>
   )
 }

@@ -1,6 +1,7 @@
 import type { VersionHistory } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 import VersionHistoryItem from '../version-history-item'
 
@@ -67,7 +68,7 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      expect(screen.getByText('workflow.versionHistory.currentDraft')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.currentDraft')).toBeInTheDocument()
 
       await waitFor(() => {
         expect(onClick).toHaveBeenCalledWith(
@@ -147,13 +148,13 @@ describe('VersionHistoryItem', () => {
       const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
 
-      expect(screen.getByText('workflow.versionHistory.latest')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.latest')).toBeInTheDocument()
       expect(screen.getByText('Initial release')).toBeInTheDocument()
       expect(screen.getByText(/Alice$/)).toBeInTheDocument()
       expect(screen.getByText('workflow.common.restore')).toBeInTheDocument()
-      expect(screen.getByText('workflow.versionHistory.editVersionInfo')).toBeInTheDocument()
-      expect(screen.getByText('app.export')).toBeInTheDocument()
-      expect(screen.getByText('workflow.versionHistory.copyId')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.editVersionInfo')).toBeInTheDocument()
+      expect(screen.getByText('app.exportApp')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.copyId')).toBeInTheDocument()
       expect(screen.getByText('version-1')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
 
@@ -189,8 +190,8 @@ describe('VersionHistoryItem', () => {
       const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
 
-      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
-      expect(screen.getByText('workflow.versionHistory.copyId')).toBeInTheDocument()
+      expect(screen.queryByText('app.exportApp')).not.toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.copyId')).toBeInTheDocument()
     })
 
     it('should ignore clicks when the item is already selected', async () => {

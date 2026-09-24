@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
@@ -43,9 +43,9 @@ const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslatio
     return t(($) => $['appMenus.annotations'], { ns: 'common' })
   if (pathname.endsWith('/overview')) return t(($) => $['appMenus.overview'], { ns: 'common' })
   if (pathname.endsWith('/access-config'))
-    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+    return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
 
-  return t(($) => $['menus.appDetail'], { ns: 'common' })
+  return t(($) => $['menus.appDetail'], { ns: 'navigation' })
 }
 
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -53,7 +53,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     children,
     appId, // get appId in path
   } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'navigation'])
   const router = useRouter()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -95,7 +95,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       : false
   const shouldBlockAccessPointAccess = pathname.endsWith('/access-point') && !canViewAccessPoint
 
-  useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
+  useDocumentTitle(
+    `${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'navigation' })}`,
+  )
 
   useEffect(() => {
     let ignore = false
@@ -166,7 +168,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         (routeAppDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
       (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
       (isDeployPath &&
-        (routeAppDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy))
+        ((routeAppDetail.mode !== AppModeEnum.WORKFLOW &&
+          routeAppDetail.mode !== AppModeEnum.ADVANCED_CHAT) ||
+          !appACLCapabilities.canDeploy))
     ) {
       router.replace(
         getRedirectionPath(routeAppDetail, {
@@ -193,8 +197,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return
     }
 
-    if (appDetailRes && appDetail?.id !== appDetailRes.id)
-      setAppDetail({ ...appDetailRes, enable_sso: false })
+    if (appDetailRes && appDetail?.id !== appDetailRes.id) setAppDetail(appDetailRes)
   }, [
     appDetail?.id,
     appDetailRes,
@@ -216,7 +219,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const content =
     !appDetail || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
       <div className="flex min-w-0 grow items-center justify-center bg-background-body">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     ) : (
       <div

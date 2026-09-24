@@ -52,7 +52,7 @@ const MCPList = ({
   onCreatedProviderHandled,
   showCreateCard = true,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const canManageMCP = useCanManageMCP()
   const fallbackMCPToolsQuery = useAllMCPTools(providers === undefined)
   const list = providers ?? fallbackMCPToolsQuery.data ?? EMPTY_MCP_TOOLS
@@ -215,11 +215,7 @@ const MCPList = ({
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                loading={isDeleting}
-                disabled={isDeleting}
-                onClick={handleDeleteConfirm}
-              >
+              <AlertDialogConfirmButton loading={isDeleting} onClick={handleDeleteConfirm}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogActions>

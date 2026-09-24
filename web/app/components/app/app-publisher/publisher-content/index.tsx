@@ -2,7 +2,7 @@ import type { AppPublisherProps } from '../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { toDeploymentVersion } from '@/app/components/app/deploy/version'
+import { toDeploymentVersion } from '@/app/components/app/deploy/utils/version'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -64,7 +64,7 @@ export function PublisherContent({
   toolPublished,
   workflowToolAvailable = true,
 }: PublisherContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow', 'workflowHistory'])
   const appDetail = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -115,6 +115,7 @@ export function PublisherContent({
   const marketplace = useMarketplacePublish(appDetail?.id)
   const versionInfo = useVersionInfo({
     appId: appDetail?.id,
+    appMode: appDetail?.mode,
     publishedWorkflow: publish.publishedWorkflow,
     onClosePublisher: closePublisher,
   })
@@ -169,7 +170,7 @@ export function PublisherContent({
     ? publish.publishedWorkflow
       ? toDeploymentVersion(
           publish.publishedWorkflow,
-          t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+          t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
           publish.publishedWorkflow.id,
         )
       : null

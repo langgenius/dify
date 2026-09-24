@@ -1,16 +1,20 @@
 import type { PopoverTriggerProps } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 
-export enum ViewType {
-  date = 'date',
-  yearMonth = 'yearMonth',
-  time = 'time',
-}
+export const ViewType = {
+  date: 'date',
+  yearMonth: 'yearMonth',
+  time: 'time',
+} as const
 
-export enum Period {
-  AM = 'AM',
-  PM = 'PM',
-}
+export type ViewType = (typeof ViewType)[keyof typeof ViewType]
+
+export const Period = {
+  AM: 'AM',
+  PM: 'PM',
+} as const
+
+export type Period = (typeof Period)[keyof typeof Period]
 
 type PopoverTriggerRender = Exclude<NonNullable<PopoverTriggerProps['render']>, React.ReactElement>
 type TriggerRenderProps = Parameters<PopoverTriggerRender>[0]
@@ -20,13 +24,13 @@ export type TriggerProps = {
   value: Dayjs | undefined
   selectedDate: Dayjs | undefined
   handleClear: (e: React.MouseEvent) => void
-  handleClickTrigger: (e: React.MouseEvent) => void
 }
 
 export type DatePickerProps = {
   value: Dayjs | undefined
   timezone?: string
   placeholder?: string
+  disabled?: boolean
   needTimePicker?: boolean
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
@@ -62,6 +66,7 @@ export type TriggerParams = {
   onClick: (e: React.MouseEvent) => void
 }
 export type TimePickerProps = {
+  id?: string
   value: Dayjs | string | undefined
   timezone?: string
   placeholder?: string

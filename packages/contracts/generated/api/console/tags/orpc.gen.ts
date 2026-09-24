@@ -12,7 +12,7 @@ import {
   zPatchTagsByTagIdResponse,
   zPostTagsBody,
   zPostTagsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const delete_ = oc
   .route({

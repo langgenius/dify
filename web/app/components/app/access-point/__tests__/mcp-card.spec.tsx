@@ -1,8 +1,12 @@
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
-import { screen } from '@testing-library/react'
+import type { PublishedWorkflow } from '../shared/utils'
+import type { App } from '@/types/app'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
 import { MCPAccessPointCard } from '../built-in-access-points/mcp-card'
 
@@ -17,16 +21,36 @@ const mocks = vi.hoisted(() => ({
   updateServer: vi.fn(),
 }))
 
+vi.mock('@/app/notifications', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        server: {
+          put: {
+            mutationOptions: (options = {}) => ({
+              mutationFn: mocks.updateServer,
+              ...options,
+            }),
+          },
+        },
+      },
+    },
+  },
+}))
+
 vi.mock('@/service/use-tools', () => ({
   useInvalidateMCPServerDetail: () => mocks.invalidateServerDetail,
   useMCPServerDetail: () => mocks.serverDetail,
   useRefreshMCPServerCode: () => ({
     isPending: false,
     mutateAsync: mocks.refreshServerCode,
-  }),
-  useUpdateMCPServer: () => ({
-    isPending: false,
-    mutateAsync: mocks.updateServer,
   }),
 }))
 
@@ -53,13 +77,13 @@ const appInfo = {
       },
     ],
   },
-} as AccessPointAppInfo
+} as App
 
 const workflowAppInfo = {
   ...appInfo,
   mode: AppModeEnum.WORKFLOW,
   model_config: null,
-} as unknown as AccessPointAppInfo
+} as unknown as App
 
 const publishedWorkflow = {
   graph: {
@@ -74,11 +98,39 @@ const publishedWorkflow = {
   },
 } as unknown as PublishedWorkflow
 
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, reject, resolve }
+}
+
+function renderCard(cardAppInfo: App = appInfo, workflow?: PublishedWorkflow) {
+  const queryClient = createTestQueryClient()
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MCPAccessPointCard
+        appInfo={cardAppInfo}
+        canManageAccessPoint
+        triggerModeDisabled={false}
+        workflow={workflow}
+        workflowLoading={false}
+      />
+    </QueryClientProvider>,
+  )
+}
+
 describe('MCPAccessPointCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.serverDetail.data = undefined
     mocks.serverDetail.isPending = false
+    mocks.updateServer.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -91,15 +143,7 @@ describe('MCPAccessPointCard', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('{}', { status: 200 }))
 
-    render(
-      <MCPAccessPointCard
-        appInfo={appInfo}
-        canManageAccessPoint
-        triggerModeDisabled={false}
-        workflow={undefined}
-        workflowLoading={false}
-      />,
-    )
+    renderCard()
 
     await user.click(screen.getByRole('button', { name: /addDescription/ }))
 
@@ -122,15 +166,7 @@ describe('MCPAccessPointCard', () => {
   it('uses workflow inputs when the app model config is null', async () => {
     const user = userEvent.setup()
 
-    render(
-      <MCPAccessPointCard
-        appInfo={workflowAppInfo}
-        canManageAccessPoint
-        triggerModeDisabled={false}
-        workflow={publishedWorkflow}
-        workflowLoading={false}
-      />,
-    )
+    renderCard(workflowAppInfo, publishedWorkflow)
 
     await user.click(screen.getByRole('button', { name: /addDescription/ }))
 
@@ -144,15 +180,7 @@ describe('MCPAccessPointCard', () => {
   it('shows loading without reporting an environment failure', () => {
     mocks.serverDetail.isPending = true
 
-    render(
-      <MCPAccessPointCard
-        appInfo={workflowAppInfo}
-        canManageAccessPoint
-        triggerModeDisabled={false}
-        workflow={publishedWorkflow}
-        workflowLoading={false}
-      />,
-    )
+    renderCard(workflowAppInfo, publishedWorkflow)
 
     const card = screen.getByRole('region', { name: /mcp\.server\.title/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
@@ -160,5 +188,69 @@ describe('MCPAccessPointCard', () => {
     expect(
       screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
     ).not.toBeInTheDocument()
+  })
+
+  it('rolls back a failed status change and shows only an error toast', async () => {
+    const user = userEvent.setup()
+    const toggle = createDeferredPromise<void>()
+    mocks.serverDetail.data = {
+      id: 'server-1',
+      server_code: 'server-code',
+      status: 'active',
+    }
+    mocks.updateServer.mockReturnValueOnce(toggle.promise)
+    renderCard()
+
+    const accessSwitch = screen.getByRole('switch')
+    await user.click(accessSwitch)
+
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+
+    toggle.reject(new Error('request failed'))
+
+    await waitFor(() => {
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+    })
+    expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('optimistically serializes rapid status changes without a busy switch', async () => {
+    const user = userEvent.setup()
+    const firstToggle = createDeferredPromise<void>()
+    const secondToggle = createDeferredPromise<void>()
+    mocks.serverDetail.data = {
+      id: 'server-1',
+      server_code: 'server-code',
+      status: 'active',
+    }
+    mocks.updateServer
+      .mockReturnValueOnce(firstToggle.promise)
+      .mockReturnValueOnce(secondToggle.promise)
+    renderCard()
+
+    const accessSwitch = screen.getByRole('switch')
+    await user.click(accessSwitch)
+
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(accessSwitch).toBeEnabled()
+
+    await user.click(accessSwitch)
+
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(mocks.updateServer).toHaveBeenCalledTimes(1)
+
+    firstToggle.resolve()
+
+    await waitFor(() => {
+      expect(mocks.updateServer).toHaveBeenCalledTimes(2)
+    })
+
+    secondToggle.resolve()
+
+    await waitFor(() => {
+      expect(mocks.invalidateServerDetail).toHaveBeenCalledTimes(2)
+    })
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
   })
 })

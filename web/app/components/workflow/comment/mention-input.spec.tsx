@@ -23,7 +23,7 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {
@@ -99,7 +99,7 @@ describe('MentionInput', () => {
     render(<ControlledMentionInput onSubmit={onSubmit} />)
 
     const textarea = screen.getByPlaceholderText(
-      'workflow.comments.placeholder.add',
+      'workflowComments.comments.placeholder.add',
     ) as HTMLTextAreaElement
     textarea.focus()
     textarea.setSelectionRange(4, 4)
@@ -152,7 +152,7 @@ describe('MentionInput', () => {
       )
 
       const textarea = screen.getByPlaceholderText(
-        'workflow.comments.placeholder.add',
+        'workflowComments.comments.placeholder.add',
       ) as HTMLTextAreaElement
 
       act(() => {

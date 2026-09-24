@@ -1,14 +1,11 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactElement } from 'react'
 import type { CreateAppModalProps } from '../index'
-import type { UsagePlanInfo } from '@/app/components/billing/type'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import {
-  createMockPlan,
-  createMockPlanTotal,
-  createMockPlanUsage,
-} from '@/__mocks__/provider-context'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
 import CreateAppModal from '../index'
 
@@ -32,43 +29,14 @@ const triggerHotkey = (hotkey: string) => {
   registration?.handler()
 }
 
-vi.mock('emoji-mart', () => ({
-  init: vi.fn(),
-  SearchIndex: { search: vi.fn().mockResolvedValue([]) },
-}))
-vi.mock('@emoji-mart/data', () => ({
-  default: {
-    categories: [{ id: 'people', emojis: ['😀'] }],
-  },
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-const createPlanInfo = (buildApps: number): UsagePlanInfo => ({
-  vectorSpace: 0,
-  buildApps,
-  teamMembers: 0,
-  annotatedResponse: 0,
-  documentsUploadQuota: 0,
-  apiRateLimit: 0,
-  triggerEvents: 0,
-})
-
-let mockEnableBilling = false
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlanType: CloudPlan = 'team'
-let mockUsagePlanInfo: UsagePlanInfo = createPlanInfo(1)
-let mockTotalPlanInfo: UsagePlanInfo = createPlanInfo(10)
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => {
-    const withPlan = createMockPlan(mockPlanType)
-    const withUsage = createMockPlanUsage(mockUsagePlanInfo, withPlan)
-    const withTotal = createMockPlanTotal(mockTotalPlanInfo, withUsage)
-    return { ...withTotal, enableBilling: mockEnableBilling }
-  },
-}))
+let mockAppCount = 1
+const mockAppLimit = 10
 
 type ConfirmPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
@@ -114,13 +82,22 @@ const openAppIconPicker = () => {
   return screen.getByRole('dialog', { name: 'app.iconPicker.emoji' })
 }
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: {
+      billing: { subscription: { plan: mockPlanType } },
+      apps: { size: mockAppCount, limit: mockAppLimit },
+    },
+  })
+}
+
 describe('CreateAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
     mockPlanType = 'team'
-    mockUsagePlanInfo = createPlanInfo(1)
-    mockTotalPlanInfo = createPlanInfo(10)
+    mockAppCount = 1
     hotkeyMocks.handlers.clear()
   })
 
@@ -222,10 +199,9 @@ describe('CreateAppModal', () => {
 
   describe('Quota Gating', () => {
     it('should show AppsFull and disable create when apps quota is reached', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
-      mockUsagePlanInfo = createPlanInfo(10)
-      mockTotalPlanInfo = createPlanInfo(10)
+      mockAppCount = 10
 
       await setup({ isEditModal: false })
 
@@ -234,10 +210,9 @@ describe('CreateAppModal', () => {
     })
 
     it('should allow saving when apps quota is reached in edit mode', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
-      mockUsagePlanInfo = createPlanInfo(10)
-      mockTotalPlanInfo = createPlanInfo(10)
+      mockAppCount = 10
 
       await setup({ isEditModal: true })
 
@@ -280,10 +255,9 @@ describe('CreateAppModal', () => {
     })
 
     it('should not submit when apps quota is reached in create mode', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
-      mockUsagePlanInfo = createPlanInfo(10)
-      mockTotalPlanInfo = createPlanInfo(10)
+      mockAppCount = 10
 
       const { onConfirm, onHide } = await setup({ isEditModal: false })
 
@@ -297,10 +271,9 @@ describe('CreateAppModal', () => {
     })
 
     it('should submit when apps quota is reached in edit mode', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
-      mockUsagePlanInfo = createPlanInfo(10)
-      mockTotalPlanInfo = createPlanInfo(10)
+      mockAppCount = 10
 
       const { onConfirm, onHide } = await setup({ isEditModal: true })
 
@@ -327,7 +300,7 @@ describe('CreateAppModal', () => {
   })
 
   describe('App Icon Picker', () => {
-    it('should open and close the picker when cancel is clicked', async () => {
+    it('should open and close the picker when Escape is pressed', async () => {
       await setup({
         appIconType: 'image',
         appIcon: 'file-123',
@@ -337,48 +310,41 @@ describe('CreateAppModal', () => {
       const pickerDialog = openAppIconPicker()
 
       expect(
-        within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }),
+        within(pickerDialog).getByRole('button', { name: 'app.iconPicker.tryYourLuck' }),
       )!.toBeInTheDocument()
 
-      fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }))
+      await userEvent.setup().keyboard('{Escape}')
 
       await waitFor(() => {
         expect(
-          screen.queryByRole('button', { name: 'app.iconPicker.cancel' }),
+          screen.queryByRole('dialog', { name: 'app.iconPicker.emoji' }),
         ).not.toBeInTheDocument()
       })
     })
 
     it('should update icon payload when selecting emoji and confirming', async () => {
-      vi.useFakeTimers()
-      try {
-        const { onConfirm } = await setup({
-          appIconType: 'image',
-          appIcon: 'file-123',
-          appIconUrl: 'https://example.com/icon.png',
-        })
+      const { onConfirm } = await setup({
+        appIconType: 'image',
+        appIcon: 'file-123',
+        appIconUrl: 'https://example.com/icon.png',
+      })
 
-        const pickerDialog = openAppIconPicker()
+      const pickerDialog = openAppIconPicker()
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: '😀' }))
+      fireEvent.click(await within(pickerDialog).findByRole('gridcell', { name: 'Grinning face' }))
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
+      fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
 
-        fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
-        await act(async () => {
-          vi.advanceTimersByTime(300)
-        })
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+      await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1))
 
-        expect(onConfirm).toHaveBeenCalledTimes(1)
-        const payload = onConfirm.mock.calls[0]![0]
-        expect(payload).toMatchObject({
-          icon_type: 'emoji',
-          icon: '😀',
-          icon_background: '#FFEAD5',
-        })
-      } finally {
-        vi.useRealTimers()
-      }
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+      const payload = onConfirm.mock.calls[0]![0]
+      expect(payload).toMatchObject({
+        icon_type: 'emoji',
+        icon: '😀',
+        icon_background: '#FEF3F2',
+      })
     })
 
     it('should allow changing only the background for the current emoji icon', async () => {
@@ -392,7 +358,7 @@ describe('CreateAppModal', () => {
 
         const pickerDialog = openAppIconPicker()
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: '#E4FBCC' }))
+        fireEvent.click(within(pickerDialog).getByRole('button', { name: '#F3FEE7' }))
         fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
 
         fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
@@ -405,7 +371,7 @@ describe('CreateAppModal', () => {
         expect(payload).toMatchObject({
           icon_type: 'emoji',
           icon: '🤖',
-          icon_background: '#E4FBCC',
+          icon_background: '#F3FEE7',
         })
       } finally {
         vi.useRealTimers()
@@ -555,3 +521,26 @@ describe('CreateAppModal', () => {
     })
   })
 })
+
+it('edits an existing app without waiting for application quota data', async () => {
+  const onConfirm = vi.fn()
+  renderWithConsoleQuery(
+    <CreateAppModal
+      isEditModal
+      show
+      appName="Existing"
+      appDescription=""
+      appIconType="emoji"
+      appIcon="🤖"
+      onConfirm={onConfirm}
+      onHide={vi.fn()}
+    />,
+    { systemFeatures: { deployment_edition: 'CLOUD' } },
+  )
+  const save = screen.getByRole('button', { name: /operation.save/ })
+  expect(save).toBeEnabled()
+  await userEvent.setup().click(save)
+  await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
+})
+
+mockEmojiData()

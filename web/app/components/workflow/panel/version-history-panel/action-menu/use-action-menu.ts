@@ -1,16 +1,25 @@
 import type { ActionMenuProps } from './index'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useActionMenu = (props: ActionMenuProps) => {
   const { workflowId, isNamedVersion, canImportExportDSL } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow', 'workflowHistory'])
   const pipelineId = useStore((s) => s.pipelineId)
-  const { plan, enableBilling } = useProviderContext()
-  const shouldShowUpgrade = enableBilling && plan.type === 'sandbox'
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const shouldShowUpgrade = deploymentEdition === 'CLOUD' && plan === 'sandbox'
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
@@ -22,34 +31,45 @@ const useActionMenu = (props: ActionMenuProps) => {
       {
         key: VersionHistoryContextMenuOptions.restore,
         name: t(($) => $['common.restore'], { ns: 'workflow' }),
+        disabled: deploymentEdition === 'CLOUD' && plan === undefined,
         ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
       },
       isNamedVersion
         ? {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflow' }),
+            name: t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflowHistory' }),
           }
         : {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflow' }),
+            name: t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflowHistory' }),
           },
       // todo: pipeline support export specific version DSL
       ...(canImportExportDSL && !pipelineId
         ? [
             {
               key: VersionHistoryContextMenuOptions.exportDSL,
-              name: t(($) => $.export, { ns: 'app' }),
+              name: t(($) => $.exportApp, { ns: 'app' }),
+              disabled: deploymentEdition === 'CLOUD' && plan === undefined,
               ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
             },
           ]
         : []),
       {
         key: VersionHistoryContextMenuOptions.copyId,
-        name: t(($) => $['versionHistory.copyId'], { ns: 'workflow' }),
+        name: t(($) => $['versionHistory.copyId'], { ns: 'workflowHistory' }),
         description: workflowId,
       },
     ]
-  }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, t, workflowId])
+  }, [
+    deploymentEdition,
+    plan,
+    canImportExportDSL,
+    isNamedVersion,
+    pipelineId,
+    shouldShowUpgrade,
+    t,
+    workflowId,
+  ])
 
   return {
     deleteOperation,

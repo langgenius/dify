@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine, RiNodeTree, RiUploadCloud2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { formatFileSize } from '@/utils/format'
 
 type Props = Readonly<{
@@ -15,7 +15,7 @@ type Props = Readonly<{
   className?: string
 }>
 const Uploader: FC<Props> = ({ file, updateFile, className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'datasetCreation'])
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)

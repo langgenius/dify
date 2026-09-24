@@ -44,16 +44,10 @@ vi.mock('@/service/base', () => ({
   request: (...args: unknown[]) => queryMocks.request(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => queryMocks.toastError(message),
   },
-}))
-
-// Permission-dependent selector actions are covered by agent-selector.spec.tsx;
-// this suite is about block insertion.
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
 }))
 
 const createBlock = (
@@ -158,7 +152,7 @@ describe('Blocks', () => {
     expect(llmButton).toBeInTheDocument()
     expect(llmButton).toHaveAccessibleDescription('LLM description')
     expect(screen.getByText('Exit Loop')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.loop.loopNode')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.loop.loopNode')).toBeInTheDocument()
     expect(screen.queryByText('Knowledge Retrieval')).not.toBeInTheDocument()
 
     await user.click(llmButton)
@@ -211,12 +205,12 @@ describe('Blocks', () => {
     )
 
     const agentBlock = screen.getByRole('button', { name: /Agent/ })
-    expect(agentBlock).toHaveTextContent('common.menus.status')
+    expect(agentBlock).toHaveTextContent('navigation.menus.status')
 
     await user.hover(agentBlock)
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
   })
 
@@ -269,9 +263,11 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'agentRoster.roster.searchLabel' }),
+    ).toBeInTheDocument()
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('Researcher')).toBeInTheDocument()
 
@@ -351,11 +347,11 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
+    await user.click(screen.getByRole('combobox', { name: 'agentRoster.roster.searchLabel' }))
     await user.keyboard('{Escape}')
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
       ).not.toBeInTheDocument()
     })
 
@@ -451,13 +447,15 @@ describe('Blocks', () => {
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     const consoleLink = await screen.findByRole('link', {
-      name: 'agentV2.roster.nodeSelector.manageInAgentConsole',
+      name: 'agentRoster.roster.nodeSelector.manageInAgentConsole',
     })
     expect(consoleLink).toHaveAttribute('href', '/agents')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     await user.click(
-      await screen.findByRole('button', { name: 'agentV2.roster.nodeSelector.startFromScratch' }),
+      await screen.findByRole('button', {
+        name: 'agentRoster.roster.nodeSelector.startFromScratch',
+      }),
     )
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
@@ -503,15 +501,15 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
+    await user.click(screen.getByRole('combobox', { name: 'agentRoster.roster.searchLabel' }))
     await user.keyboard('{Escape}')
 
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
       ).not.toBeInTheDocument()
     })
   })

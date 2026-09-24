@@ -1,8 +1,9 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
@@ -70,7 +71,7 @@ describe('app-publisher sections', () => {
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
     expect(handleRestore).toHaveBeenCalled()
-    expect(screen.getByRole('status')).toHaveTextContent(/common\.currentDraft\b/)
+    expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
 
   it('should disable publish and restore after publishing in the current open session', async () => {
@@ -99,7 +100,7 @@ describe('app-publisher sections', () => {
     })
     expect(restoreButton).toBeDisabled()
     expect(screen.getByRole('button', { name: /common\.published\b/ })).toBeDisabled()
-    expect(screen.getByRole('status')).toHaveTextContent(/common\.upToDate\b/)
+    expect(screen.getByRole('status').textContent).toMatch(/common\.upToDate\b/)
     await user.click(restoreButton)
     expect(handleRestore).not.toHaveBeenCalled()
   })
@@ -125,7 +126,7 @@ describe('app-publisher sections', () => {
     expect(screen.getByText(/(?:^|\.)common\.notPublishedYet(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText('P')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(/common\.currentDraft\b/)
+    expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
 
   it('should expose naming and keep publishing available for an unnamed published workflow', () => {
@@ -226,7 +227,7 @@ describe('app-publisher sections', () => {
     expect(screen.queryByText('#5')).not.toBeInTheDocument()
     expect(screen.queryByText(/versionHistory\.nameIt\b/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /common\.publishUpdate\b/ })).toBeEnabled()
-    expect(screen.getByRole('status')).toHaveTextContent(/common\.currentDraft\b/)
+    expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
 
   it('should keep multiple-model publishing available without publish config changes', () => {
@@ -594,7 +595,9 @@ describe('app-publisher sections', () => {
 
     await user.hover(screen.getByRole('button', { name: /common\.openWebApp\b/ }))
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Open web app unavailable')
+    expect(
+      await screen.findByText('Open web app unavailable', { selector: '[data-open]' }),
+    ).toBeVisible()
   })
 
   it('should keep an unavailable action with a tooltip keyboard focusable', async () => {
@@ -622,6 +625,19 @@ describe('app-publisher sections', () => {
     expect(action).toHaveFocus()
     expect(action).toHaveAttribute('aria-disabled', 'true')
     expect(action).toHaveAccessibleDescription('Open web app unavailable')
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Open web app unavailable')
+    expect(
+      await screen.findByText('Open web app unavailable', { selector: '[data-open]' }),
+    ).toBeVisible()
   })
 })
+
+function render(ui: React.ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}

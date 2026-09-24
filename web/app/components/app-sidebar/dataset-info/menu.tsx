@@ -1,8 +1,8 @@
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine, RiLock2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import Divider from '../../base/divider'
 import MenuItem from './menu-item'
 
 type MenuProps = {
@@ -26,7 +26,7 @@ const Menu = ({
   detectIsUsedByApp,
   openAccessConfig,
 }: MenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline', 'navigation'])
   const runtimeMode = useDatasetDetailContextWithSelector((state) => state.dataset?.runtime_mode)
 
   return (
@@ -49,14 +49,14 @@ const Menu = ({
         {showAccessConfig && (
           <MenuItem
             Icon={RiLock2Line}
-            name={t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+            name={t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
             handleClick={openAccessConfig}
           />
         )}
       </div>
       {showDelete && (
         <>
-          <Divider type="horizontal" className="my-0 bg-divider-subtle" />
+          <Separator orientation="horizontal" className="my-0 h-[0.5px] bg-divider-subtle" />
           <div className="flex flex-col p-1">
             <MenuItem
               Icon={RiDeleteBinLine}
