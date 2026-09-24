@@ -140,7 +140,8 @@ describe('CredentialItem', () => {
     expect(onDelete).toHaveBeenCalledWith(credential)
   })
 
-  it('should block delete action for the currently selected credential when delete is disabled', () => {
+  it('keeps the selected credential delete action focusable but disabled', async () => {
+    const user = userEvent.setup()
     const onDelete = vi.fn()
 
     render(
@@ -158,7 +159,10 @@ describe('CredentialItem', () => {
       .find((b) => b.querySelector('.i-ri-delete-bin-line'))!
 
     expect(deleteButton).toHaveAttribute('aria-disabled', 'true')
-    fireEvent.click(deleteButton)
+    await user.tab()
+    await user.tab()
+    expect(deleteButton).toHaveFocus()
+    await user.click(deleteButton)
 
     expect(onDelete).not.toHaveBeenCalled()
   })
@@ -201,6 +205,7 @@ describe('CredentialItem', () => {
     const deleteButton = screen
       .getAllByRole('button')
       .find((b) => b.querySelector('.i-ri-delete-bin-line'))!
+    expect(deleteButton).toBeDisabled()
     fireEvent.click(deleteButton)
 
     expect(onDelete).not.toHaveBeenCalled()

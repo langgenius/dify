@@ -131,11 +131,10 @@ const CredentialItem = ({
                   <IconButton
                     aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
                     className="hover:bg-transparent"
-                    disabled={disabled}
-                    aria-disabled={disableDeleteWhenSelected || undefined}
+                    disabled={disabled || disableDeleteWhenSelected}
+                    focusableWhenDisabled={!!disableDeleteWhenSelected && !disabled}
                     onClick={(e) => {
                       e.stopPropagation()
-                      if (disableDeleteWhenSelected) return
                       onDelete?.(credential)
                     }}
                   >
