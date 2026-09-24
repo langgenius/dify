@@ -20,6 +20,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
+import { useGetLanguage } from '@/context/i18n'
 import {
   addProviderToolsAtom,
   agentComposerToolsAtom,
@@ -159,7 +160,10 @@ function useDisplayTools(
   tools: AgentTool[],
   providerById: Map<string, ToolWithProvider>,
   resolvedProviderTypes: Set<AgentProviderTool['providerType']>,
-  toolPresentation: ReturnType<typeof useAgentToolPresentation>,
+  toolPresentation: {
+    language: string
+    marketplacePluginById?: ReturnType<typeof useAgentToolPresentation>['marketplacePluginById']
+  },
 ) {
   const { language, marketplacePluginById } = toolPresentation
 
@@ -171,7 +175,7 @@ function useDisplayTools(
 
       if (!provider) {
         const providerPluginId = getAgentProviderPluginId(tool)
-        const marketplacePlugin = marketplacePluginById.get(providerPluginId)
+        const marketplacePlugin = marketplacePluginById?.get(providerPluginId)
 
         return {
           ...tool,
@@ -185,10 +189,7 @@ function useDisplayTools(
             tool,
           }),
           icon:
-            tool.icon ??
-            (marketplacePlugin && providerPluginId
-              ? getIconFromMarketPlace(providerPluginId)
-              : undefined),
+            tool.icon ?? (providerPluginId ? getIconFromMarketPlace(providerPluginId) : undefined),
         }
       }
 
@@ -597,6 +598,7 @@ export function AgentTools() {
 
 export function AgentTemplateTools() {
   const { t } = useTranslation(['agentV2'])
+  const language = useGetLanguage()
   const labelId = useId()
   const tools = useAtomValue(agentComposerToolsAtom)
   const visibleTools = ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')
@@ -613,12 +615,11 @@ export function AgentTemplateTools() {
     () => createAgentToolProviderCatalog({ buildInTools, customTools, workflowTools, mcpTools }),
     [buildInTools, customTools, workflowTools, mcpTools],
   )
-  const presentation = useAgentToolPresentation(visibleTools, catalog)
   const displayTools = useDisplayTools(
     visibleTools,
     catalog.providerById,
     catalog.resolvedProviderTypes,
-    presentation,
+    { language },
   )
 
   return (
