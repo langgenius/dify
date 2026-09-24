@@ -135,7 +135,14 @@ class ProviderConfiguration(BaseModel):
                 )
                 and ConfigurateMethod.PREDEFINED_MODEL not in self.provider.configurate_methods
             ):
-                self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
+                self.provider = self.provider.model_copy(
+                    update={
+                        "configurate_methods": [
+                            *self.provider.configurate_methods,
+                            ConfigurateMethod.PREDEFINED_MODEL,
+                        ]
+                    },
+                )
         return self
 
     def bind_model_runtime(self, model_runtime: ModelRuntime) -> None:

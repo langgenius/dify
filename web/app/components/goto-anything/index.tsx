@@ -226,7 +226,7 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
 }
 
 export function GotoAnything() {
-  const { t } = useTranslation(['agentV2', 'app', 'common', 'skill', 'modelProvider'])
+  const { t } = useTranslation(['app', 'common', 'skill', 'modelProvider', 'agentRoster'])
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
@@ -459,7 +459,7 @@ export function GotoAnything() {
 
   function getGroupLabel(type: string) {
     if (type === 'skill') return t(($) => $['skillManagement.title'], { ns: 'skill' })
-    if (type === 'agent') return t(($) => $['roster.title'], { ns: 'agentV2' })
+    if (type === 'agent') return t(($) => $['roster.title'], { ns: 'agentRoster' })
 
     return t(($) => $[groupLabelKeys[type as keyof typeof groupLabelKeys] || `${type}s`], {
       ns: 'app',

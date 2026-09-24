@@ -11,7 +11,7 @@ type Props = Readonly<{
   className?: string
 }>
 const PromptToast = ({ message, className }: Props) => {
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['appGeneration'])
   const [isFold, { toggle: toggleFold }] = useBoolean(false)
   // const message = `
   // list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1
@@ -39,7 +39,7 @@ const PromptToast = ({ message, className }: Props) => {
         <div className="flex items-center space-x-1">
           <RiSparklingFill className="size-3.5 text-components-input-border-active-prompt-1" />
           <span className={cn(s.optimizationNoteText, 'system-xs-semibold-uppercase')}>
-            {t(($) => $['generate.optimizationNote'], { ns: 'appDebug' })}
+            {t(($) => $['generate.optimizationNote'], { ns: 'appGeneration' })}
           </span>
         </div>
         <RiArrowDownSLine
