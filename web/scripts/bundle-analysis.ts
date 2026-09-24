@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { gzipSync } from 'node:zlib'
 
@@ -169,6 +169,15 @@ export function parseSnapshot(text: string): Snapshot {
   return v as Snapshot
 }
 const kib = (n: number) => `${(n / 1024).toFixed(2)} KiB`
+export function shouldComment(a: Snapshot, b: Snapshot): boolean {
+  return (
+    Math.abs(b.totals.js.gzip - a.totals.js.gzip) >= 5 * 1024 ||
+    Math.abs(b.totals.css.gzip - a.totals.css.gzip) >= 1024 ||
+    Object.keys(a.entries).some(
+      (key) => b.entries[key] && Math.abs(b.entries[key].gzip - a.entries[key]!.gzip) >= 2 * 1024,
+    )
+  )
+}
 const delta = (a: number, b: number) => {
   if (a === b) return '⚪ No change'
   const change = b - a
@@ -338,16 +347,18 @@ async function main() {
     throw new Error(
       'Usage: instrument <web> | collect <web> <sha> <json> | compare <base.json> <merge.json> <report.md>',
     )
-  const result =
-    command === 'collect'
-      ? `${JSON.stringify(await collect(first, second), null, 2)}\n`
-      : command === 'compare'
-        ? compare(
-            parseSnapshot(await readFile(first, 'utf8')),
-            parseSnapshot(await readFile(second, 'utf8')),
-          )
-        : null
-  if (result === null) throw new Error('Unknown command.')
+  let result: string
+  if (command === 'collect') {
+    result = `${JSON.stringify(await collect(first, second), null, 2)}\n`
+  } else if (command === 'compare') {
+    const base = parseSnapshot(await readFile(first, 'utf8'))
+    const merged = parseSnapshot(await readFile(second, 'utf8'))
+    result = compare(base, merged)
+    if (process.env.GITHUB_OUTPUT)
+      await appendFile(process.env.GITHUB_OUTPUT, `should-comment=${shouldComment(base, merged)}\n`)
+  } else {
+    throw new Error('Unknown command.')
+  }
   await mkdir(dirname(resolve(output)), { recursive: true })
   await writeFile(output, result)
 }
