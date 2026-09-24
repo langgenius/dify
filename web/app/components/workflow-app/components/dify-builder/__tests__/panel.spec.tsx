@@ -308,7 +308,9 @@ describe('DifyBuilderPanel', () => {
     const form = composer.closest('form')
 
     expect(composer).toBeEnabled()
-    expect(composer).toHaveAccessibleDescription('workflow.workflowGenerator.modelRequired')
+    expect(composer).toHaveAccessibleDescription(
+      'workflowGenerator.workflowGenerator.modelRequired',
+    )
     expect(sendButton).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Model selector' })).toBeEnabled()
     expect(form).not.toBeNull()

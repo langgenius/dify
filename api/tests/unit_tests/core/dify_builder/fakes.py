@@ -35,6 +35,7 @@ import threading
 import uuid
 from collections.abc import Callable, Mapping
 
+from core.dify_builder import node_defaults
 from core.dify_builder.contract import ConversationPage
 from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import (
@@ -61,7 +62,6 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
-from services.dify_builder import node_defaults
 from services.dify_builder.graph_ops import (
     apply_connect,
     apply_create_node,
@@ -440,7 +440,7 @@ class StubAgent:
     def bind_resources(self, _plan_items, _resource_ids):
         return []
 
-    def build_nodes(self, _plan_items, _resource_ids=None):
+    def build_nodes(self, _plan_items, _resource_ids=None, *, trusted_text=""):  # noqa: ARG002
         return BuildNodesResult(intents=[])
 
     def learn_from_build(self, _goal_text, _requirements, _plan_items, _built_node_ids):
@@ -453,7 +453,9 @@ class StubAgent:
     def propose_edit_plan(self, _edit_rules, _graph):
         return []
 
-    def build_edit_intents(self, _edit_rules, _graph):
+    def build_edit_intents(self, _edit_rules, _graph, *, edit_target_node_ids=(), last_edit_rejection=None):
+        self.edit_intent_calls = getattr(self, "edit_intent_calls", [])
+        self.edit_intent_calls.append((list(edit_target_node_ids), last_edit_rejection))
         return []
 
     def respond_to_message(self, _state, _context, history, _graph, text, on_delta=None):
@@ -623,7 +625,7 @@ _EDIT_SEED_INTENTS = [
         op="create_node",
         args={
             "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-            "config": node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
+            "config": {**node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL), "dataset_ids": []},
             "node_id": "knowledge_retrieval",
         },
     ),
@@ -641,7 +643,7 @@ _EDIT_SEED_INTENTS = [
         op="create_node",
         args={
             "node_type": BuiltinNodeTypes.END,
-            "config": node_defaults.default_config(BuiltinNodeTypes.END),
+            "config": {**node_defaults.default_config(BuiltinNodeTypes.END), "outputs": []},
             "node_id": "end",
         },
     ),

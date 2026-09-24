@@ -63,7 +63,7 @@ export const FormCard = memo(
     onActionValidityChange?: DifyBuilderActionValidityChange
     onSubmit?: () => void
   }) => {
-    const { t } = useTranslation(['workflow', 'common'])
+    const { t } = useTranslation(['workflow', 'common', 'workflowAgent'])
     const fileUploadConfig = useStore((state) => state.fileUploadConfig)
     const errorId = useId()
     const fields = item.payload.fields ?? EMPTY_FORM_FIELDS
@@ -115,7 +115,7 @@ export const FormCard = memo(
       if (error === 'required')
         return t(($) => $['errorMsg.fieldRequired'], { ns: 'workflow', field: field.label })
       if (error === 'invalid-json-object')
-        return `${field.label}: ${t(($) => $['nodes.agent.outputVars.defaultValueObjectInvalid'], { ns: 'workflow' })}`
+        return `${field.label}: ${t(($) => $['nodes.agent.outputVars.defaultValueObjectInvalid'], { ns: 'workflowAgent' })}`
       if (error === 'invalid-json')
         return t(($) => $['errorMsg.invalidJson'], { ns: 'workflow', field: field.label })
       if (error === 'invalid-number') return `${field.label} must be a number.`

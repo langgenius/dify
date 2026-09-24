@@ -20,8 +20,8 @@ from core.dify_builder.models import (
 )
 from core.model_manager import ModelInstance
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
-from services.dify_builder import graph_ops
-from services.dify_builder.agent import llm
+from services.dify_builder import credentials, graph_ops, preflight
+from services.dify_builder.agent import graph_prompt, llm
 
 _SEVERITIES = {"low", "medium", "high"}
 
@@ -35,14 +35,14 @@ _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
 # can auto-apply.
 _EXTERNAL_SIDE_EFFECT_TYPES: set[str] = {str(BuiltinNodeTypes.HTTP_REQUEST), str(BuiltinNodeTypes.TOOL)}
 
-_OP_SCHEMA = (
-    'Allowed ops (each as {"op": ..., "args": {...}}):\n'
-    "- set_node_config: {node_id, path, value}\n"
-    "- create_node: {node_type, config, node_id?}\n"
-    "- delete_node: {node_id}\n"
-    "- connect: {from_node, to_node}\n"
-    "- insert_between: {edge: {source, target}, node_type, config}\n"
-)
+# Shared with Edit (``graph_prompt``): both agents write the same five ops
+# through the same ``graph_ops`` apply functions, so the rules the port refuses
+# on -- a branch connect's source_handle, an indexed array path, the engine's
+# comparison literals, the redaction sentinel -- are one text for both.
+# Edit's "follow a new branch to the aggregator it rejoins" clause is NOT here:
+# Fix repairs the one node it diagnosed, and a structural op of its own already
+# forces the change to a human.
+_OP_SCHEMA = graph_prompt.OP_LIST + graph_prompt.CONDITION_OPERATOR_RULES + graph_prompt.REDACTION_RULE
 
 
 def _truncate(value: Any, limit: int = 300) -> str:
@@ -51,14 +51,19 @@ def _truncate(value: Any, limit: int = 300) -> str:
 
 
 def _graph_context(graph: Graph) -> str:
-    """Compact LLM-readable view: each node as 'id (type): title' + edges."""
+    """Compact LLM-readable view: each node as 'id (type): title' plus the
+    source handles it declares, each edge plus a non-default source handle.
+
+    Rendered by ``graph_prompt`` so Fix and Edit show a branch node the same
+    way. Without the handles a repair could not see which arm to connect to,
+    ``apply_connect`` refused every connect it proposed from an if-else /
+    question-classifier / human-input node, and that refusal spent the single
+    corrective re-prompt.
+    """
     lines = ["NODES:"]
-    for node in graph.get("nodes", []):
-        data = node.get("data") or {}
-        lines.append(f"  {node.get('id')} ({data.get('type', '?')}): {data.get('title', '')}")
+    lines.extend(graph_prompt.node_line(node) for node in graph.get("nodes", []))
     lines.append("EDGES:")
-    for edge in graph.get("edges", []):
-        lines.append(f"  {edge.get('source')} -> {edge.get('target')}")
+    lines.extend(graph_prompt.edge_line(edge) for edge in graph.get("edges", []))
     return "\n".join(lines)
 
 
@@ -181,18 +186,68 @@ def diagnose_checklist(
     return _diagnosis_from_json(data, graph, fallback_node=fallback)
 
 
-def _no_fix() -> tuple[list[MutationIntent], Risk]:
-    return [], Risk(
-        level="high",
-        reason="No safe automatic fix found — please review the diagnosis and edit the canvas manually, or reject.",
-        has_external_side_effect=False,
-    )
+# What the gate says when Fix has nothing to stage and nothing specific to
+# blame. Every other dead end in this module -- no model, unparseable output, an
+# engine refusal the re-prompt could not answer -- ends here.
+_NO_FIX_REASON = "No safe automatic fix found — please review the diagnosis and edit the canvas manually, or reject."
+
+# ...and what it says when there IS something specific. A would-run-wrong
+# verdict is the only refusal that describes the batch STILL ON THE TABLE rather
+# than one intent that was dropped, so it is the only one worth putting in front
+# of the human in place of the sentence above.
+_WOULD_RUN_WRONG_REASON = "No safe automatic fix found — the repair would have applied cleanly and then not worked:\n"
+
+
+def _no_fix(reason: str = "") -> tuple[list[MutationIntent], Risk]:
+    """Fix's one surface-to-human result: nothing staged, high risk, and a
+    reason the gate shows.
+
+    ``reason`` replaces the generic sentence when this module knows something
+    specific -- which today means a ``would_run_wrong`` verdict. Parameterised
+    rather than joined by a second dead-end path, so there stays exactly one
+    place that says "no fix" and one shape for callers to recognise.
+    """
+    return [], Risk(level="high", reason=reason or _NO_FIX_REASON, has_external_side_effect=False)
+
+
+def _judged_wrong_reason(vetted: preflight.VettedIntents) -> str:
+    """The surface text for a batch the semantic guards condemned, or ``""``
+    when they had nothing to say (leaving ``_no_fix`` its generic sentence).
+
+    Read off ``would_run_wrong``, never off the rejection prose: the guards'
+    lines carry only node ids, paths, handle names and element ids, so this is
+    safe to show, while the structural rejections beside them inline whole
+    ``intent.args`` and belong in a re-prompt, not on a card.
+    """
+    if not vetted.would_run_wrong:
+        return ""
+    return _WOULD_RUN_WRONG_REASON + "\n".join(vetted.would_run_wrong)
 
 
 def _culprit_config(node_id: str, graph: Graph) -> str:
+    """The culprit node's own ``data``, with its secrets withheld.
+
+    A failing http-request node is one of the likeliest culprits there is, and
+    its ``data`` is where a live bearer token or API key sits -- so the config
+    that goes into the repair prompt goes through ``redact_node_config`` first.
+    The model still sees which header exists and how the node authenticates,
+    never the secret itself. ``graph_ops.validate_intent_args`` is the other
+    half: it refuses any repair intent that hands the placeholder back, so a
+    redacted value cannot be written over the real one.
+
+    Rendered by ``graph_prompt.config_block``, the same way Edit renders a
+    node: JSON, and an over-budget config loses its last key ENTIRELY and says
+    which one. It used to be ``_truncate``'d -- a Python repr cut at 1500
+    characters -- which the shared op schema turned into a trap: it tells the
+    model to re-send an array's existing elements byte-identical "as GRAPH
+    shows them", so a ``cases`` array cut mid-value would have come back
+    completed from imagination, obediently, over the case nobody could see.
+    """
     for node in graph.get("nodes", []):
         if node.get("id") == node_id:
-            return _truncate(node.get("data") or {}, limit=1500)
+            data = node.get("data")
+            config = credentials.redact_node_config(data) if isinstance(data, dict) else {}
+            return graph_prompt.config_block(config)
     return "(culprit node not found in graph)"
 
 
@@ -285,16 +340,35 @@ def propose_repair(
     intents, risk = _invoke_repair(model, system, user, on_reasoning)
     if intents is None:
         return _no_fix()
-    applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
-    if rejected:
-        reasons = "\n".join(f"- {i.op} {i.args}: {why}" for i, why in rejected)
+    # Structure AND node data, the same two checks ``apply_repair`` makes: a
+    # repair that applies cleanly but leaves a node ``Graph.init`` refuses is the
+    # worst outcome there is here -- it reaches the approval gate as a real fix,
+    # the human approves it, and the write dies. One corrective re-prompt, then
+    # surface to the human; a proposal the engine still refuses is not a fix.
+    vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+    if vetted.rejections:
+        reasons = "\n".join(vetted.rejections)
         retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
-        intents, risk = _invoke_repair(model, system, retry_user, on_reasoning)
-        if intents is None:
-            return _no_fix()
-        applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
-        if rejected:
-            return _no_fix()
-    if not applicable:
+        retried, retried_risk = _invoke_repair(model, system, retry_user, on_reasoning)
+        if retried is None:
+            # Nothing usable came back, so the verdict that stands is the one on
+            # the FIRST attempt -- which is also the batch the human would have
+            # been asked about. Say what was wrong with it.
+            return _no_fix(_judged_wrong_reason(vetted))
+        intents, risk = retried, retried_risk
+        vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+    # Parity with Edit (``agent.edit._refuse_a_batch_already_judged_wrong``), and
+    # written as its own check rather than left to the broader one below.
+    # ``would_run_wrong`` is the one refusal the ENGINE DOES NOT MAKE: the draft
+    # would start, run green and do the wrong thing, so ``apply_repair`` has
+    # nothing to veto and this is the only thing standing between the guard and
+    # a written batch. Fix happens to refuse ANY remaining rejection today,
+    # which makes this redundant -- but that is a property of the line below,
+    # not of the guard, and if Fix is ever loosened the way Edit was, this is
+    # what still holds. It also carries the reason, which the generic exit does
+    # not.
+    if vetted.would_run_wrong:
+        return _no_fix(_judged_wrong_reason(vetted))
+    if vetted.rejections or not vetted.applicable:
         return _no_fix()
-    return applicable, _shape_risk(applicable, graph, risk)
+    return vetted.applicable, _shape_risk(vetted.applicable, graph, risk)

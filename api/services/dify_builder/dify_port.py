@@ -60,6 +60,7 @@ from core.dify_builder.models import (
     PublishResult,
     Run,
 )
+from core.workflow import graph_normalizers
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
@@ -70,11 +71,14 @@ from models.workflow import Workflow
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
-from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
+from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.identity import load_app, resolve_account
+from services.dify_builder.preflight import new_preflight_problems
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.run_mapping import (
+    error_from_stream_chunk,
     is_unfinished_run_status,
+    map_error_frame_run,
     map_run_result,
     map_unknown_run_outcome,
     node_event_from_stream_chunk,
@@ -242,31 +246,25 @@ class WorkflowServiceDifyPort:
             # (before_graph) as the reference, so an in-batch duplicate of a NEW id
             # still reaches graph_ops and raises (validation preserved).
             #
-            # Mirror handlers_build.py's M2 guard: ids targeted by a delete_node in
-            # THIS SAME batch must not count as "already present" for the filter
-            # above. A from-scratch build sends delete_node(placeholder_start) +
-            # create_node(same id) in one batch (recreating the id the placeholder
-            # occupied); without this exclusion the create_node would be dropped as
-            # already-present while the delete_node still runs, deleting the node
-            # with no re-create.
-            _deleted_ids = {i.args.get("node_id") for i in intents if i.op == "delete_node"}
-            _present_node_ids = {n.get("id") for n in before_graph.get("nodes", [])} - _deleted_ids
-            _present_edges = {
-                (e.get("source"), e.get("target"))
-                for e in before_graph.get("edges", [])
-                if e.get("source") not in _deleted_ids and e.get("target") not in _deleted_ids
-            }
-
-            def _already_present(intent: MutationIntent) -> bool:
-                if intent.op == "create_node":
-                    return intent.args.get("node_id") in _present_node_ids
-                if intent.op == "connect":
-                    return (intent.args.get("from_node"), intent.args.get("to_node")) in _present_edges
-                return False
-
+            # The rule itself lives in graph_ops (including handlers_build.py's M2
+            # guard for a delete_node + create_node of the same id in one batch),
+            # because graph_ops.filter_applicable's dry run has to skip exactly what
+            # this drops: otherwise the dry run rejects a duplicate create_node the
+            # write would have quietly no-op'd, and burns the corrective re-prompt.
+            _already_present = graph_ops.already_present_predicate(before_graph, intents)
             intents = [intent for intent in intents if not _already_present(intent)]
 
             changed_nodes: list[str] = []
+            # The nodes whose DATA this batch wrote, which is a narrower set
+            # than the change set and is kept separately for that reason: the
+            # preflight below gives a node in it no exemption at all, so an id
+            # that lands here wrongly turns someone else's pre-existing defect
+            # into a veto. ``connect`` writes an EDGE -- ``apply_connect``
+            # reports both endpoints, correctly for a diff, but adding an edge
+            # cannot change either endpoint's ``validate_node_config`` verdict.
+            # Mirrors ``graph_ops.filter_applicable``, which must produce the
+            # same set or the dry run would be predicting a different write.
+            written_nodes: list[str] = []
             for intent in intents:
                 apply_fn = graph_ops.APPLY_FNS.get(intent.op)
                 if apply_fn is None:
@@ -274,6 +272,8 @@ class WorkflowServiceDifyPort:
                 graph_ops.validate_intent_args(intent)
                 graph, changed = apply_fn(graph, **intent.args)
                 changed_nodes.extend(changed)
+                if intent.op != "connect":
+                    written_nodes.extend(changed)
                 if on_canvas is not None:
                     on_canvas(_canvas_payload(intent, changed))
 
@@ -285,6 +285,42 @@ class WorkflowServiceDifyPort:
                     scope="",
                     structure_fingerprint=graph_ops.structural_fingerprint(before_graph),
                 )
+
+            # ``written_nodes`` is complete at this point and is deliberately
+            # NOT extended by the heal below: the healer scans the whole graph,
+            # so a node it merely normalized is not one this batch is
+            # answerable for.
+            #
+            # The deterministic heal set every pre-preflight caller shares
+            # (core.workflow.graph_normalizers.heal_nodes_for_preflight), for
+            # the intents the generator never saw: a Fix/Edit repair that
+            # writes an ASCII comparison operator (F4's ``>=``) or a condition
+            # value as a JSON number (ESQ1-285's flip-flop), an http body item
+            # without ``type``, or a parameter-extractor ``query`` written as
+            # an array of selector arrays (Blocker A). Must run BEFORE the
+            # preflight, which would reject them. It scans every node in
+            # ``graph``, not just the ones the intents named, so a node it
+            # heals may not be in ``changed_nodes`` yet -- fold its returned
+            # ids in (order-preserving, deduped) so it agrees with
+            # ``diff_graphs`` below, which sees the healed node too.
+            healed_ids = graph_normalizers.heal_nodes_for_preflight(graph.get("nodes", []))
+            for node_id in healed_ids:
+                if node_id not in changed_nodes:
+                    changed_nodes.append(node_id)
+
+            # Dry-validate what the draft would become. Whatever raises here
+            # would raise at Graph.init and kill the very first test run
+            # (ESQ1-302 and ESQ1-303 both died there). A node this batch WROTE
+            # must be startable -- a repair that leaves its own culprit refused
+            # is not a repair, however little it changed about why. Every other
+            # node keeps the new-problems-only exemption: one the repair did not
+            # touch must not veto an unrelated fix, and a repair that heals it
+            # passes. The same function the Edit/Fix dry run predicts this
+            # refusal with (``preflight.vet_intents``), on the same ``touched``
+            # set, so the two cannot answer differently.
+            new_problems = new_preflight_problems(before_graph, graph, written_nodes)
+            if new_problems:
+                raise PreflightError("the draft would not start: " + "; ".join(new_problems))
 
             changes, scope = graph_ops.diff_graphs(before_graph, graph)
 
@@ -354,6 +390,10 @@ class WorkflowServiceDifyPort:
 
         final: dict[str, Any] = {}
         stream_run_id = ""
+        # The first explicit ``event: error`` frame, if any. It is NOT a
+        # terminal frame (no run status), so it is only consulted when no
+        # terminal frame arrives -- see ``_finish_run``.
+        error_frame: dict[str, str] | None = None
 
         # A completed mapping response carries terminal data directly. Iterating
         # its keys as stream chunks would lose the run ID and final status.
@@ -382,6 +422,7 @@ class WorkflowServiceDifyPort:
                 terminal = run_result_data_from_terminal_chunk(payload)
                 if terminal is not None:
                     final = terminal
+                error_frame = error_frame or error_from_stream_chunk(payload)
         finally:
             # In streaming mode ``_run_with_guardrails`` does NOT release the
             # app's rate-limit slot; only closing the generator does. Normal
@@ -391,11 +432,24 @@ class WorkflowServiceDifyPort:
             if callable(close):
                 close()
 
-        return self._finish_run(tenant_id, app_id, final, stream_run_id)
+        return self._finish_run(tenant_id, app_id, final, stream_run_id, error_frame=error_frame)
 
-    def _finish_run(self, tenant_id: str, app_id: str, final: dict[str, Any], stream_run_id: str) -> Run:
+    def _finish_run(
+        self,
+        tenant_id: str,
+        app_id: str,
+        final: dict[str, Any],
+        stream_run_id: str,
+        *,
+        error_frame: dict[str, str] | None = None,
+    ) -> Run:
         """Turn the run's terminal data into a ``Run``. Shared by the blocking
-        and streaming paths so they can never disagree about the outcome."""
+        and streaming paths so they can never disagree about the outcome.
+
+        Precedence: terminal frame > error frame > nothing. A stream that ended
+        on an explicit error frame is a FAILED run carrying that error; only a
+        stream that ended with neither is an unknown outcome.
+        """
         run_id = str(final.get("id") or stream_run_id or "")
 
         # Backend diagnosis still uses persisted node-execution rows to build
@@ -410,6 +464,12 @@ class WorkflowServiceDifyPort:
 
         if final:
             return map_run_result(final, node_execs)
+
+        # The pipeline said the run threw (ESQ1-302: Graph.init rejected a node
+        # before workflow_started, so there is no run row at all). That is a
+        # failure with a reason, not an outcome we lost sight of.
+        if error_frame is not None:
+            return map_error_frame_run(error_frame, run_id, node_execs)
 
         # The stream ended without a terminal frame. The stream is no longer
         # the authority on how the run went; the database is. Synthesising

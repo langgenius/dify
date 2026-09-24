@@ -555,7 +555,13 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
     reverted's retry_after_revert) must clear fc.test_input_ref and
     fc.verify_run_id -- otherwise the retest after a rebuild reuses the
     FIRST build's stale mock inputs instead of regenerating fresh
-    schema-shaped ones."""
+    schema-shaped ones. They must also reset the repair breaker's counter
+    (fc.repair_attempts / fc.last_repair_error), same as Build's parallel
+    handlers -- otherwise a count left over from an earlier repair cycle
+    survives into the next adjustment and the breaker can trip one round
+    early. The unknown-outcome count resets too: after the cap (2) ->
+    keep_draft -> review -> re_fix, the new cycle's FIRST unknown outcome
+    would otherwise re-cap with "twice in a row"."""
     from core.dify_builder.handlers_edit import handle_reverted, handle_review
 
     env, repo = _new_env()
@@ -566,11 +572,17 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         edit_target_node_ids=["llm"],
         test_input_ref="ti-old",
         verify_run_id="run-old",
+        repair_attempts=1,
+        last_repair_error="llm|boom",
+        unknown_outcome_count=2,
     )
     turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res = handle_review(env, turn, *repo.get_session(s.id))
     assert res.context.test_input_ref == ""
     assert res.context.verify_run_id == ""
+    assert res.context.repair_attempts == 0
+    assert res.context.last_repair_error == ""
+    assert res.context.unknown_outcome_count == 0
 
     env2, repo2 = _new_env()
     s2 = _seed_edit_session(
@@ -579,11 +591,17 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
         edit_rules={"risk_threshold": "high"},
         test_input_ref="ti-old",
         verify_run_id="run-old",
+        repair_attempts=1,
+        last_repair_error="llm|boom",
+        unknown_outcome_count=2,
     )
     turn2 = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     res2 = handle_reverted(env2, turn2, *repo2.get_session(s2.id))
     assert res2.context.test_input_ref == ""
     assert res2.context.verify_run_id == ""
+    assert res2.context.repair_attempts == 0
+    assert res2.context.last_repair_error == ""
+    assert res2.context.unknown_outcome_count == 0
 
 
 def test_edit_await_repair_approve_applies_and_waits_for_retest():
@@ -643,6 +661,34 @@ def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_sessio
     assert not any(i.kind == "error" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert "Couldn't apply the fix" in assistant.payload["reply_text"]
+    assert result.context.staged_repair == []
+
+
+def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix():
+    """A fix the preflight rejected applied fine; it would leave a draft that
+    fails at Graph.init. Same recovery as a stale intent, true reason."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_edit import handle_await_repair
+
+    env, _ = _new_env()
+
+    def _would_not_start(*_args, **_kwargs):
+        raise DraftWouldNotStartError("the draft would not start: node 'llm' (llm): 1 validation error")
+
+    env.dify.apply_repair = _would_not_start  # type: ignore[method-assign]
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
+    fc = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "code", "value": ""})],
+        test_input_ref="ti-1",
+    )
+
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "The workflow can't start" in assistant.payload["reply_text"]
+    assert "the draft would not start: node 'llm' (llm): 1 validation error" in assistant.payload["reply_text"]
+    assert assistant.payload["execution"]["status"] == "error"
     assert result.context.staged_repair == []
 
 
@@ -855,6 +901,71 @@ def test_edit_await_testdata_mock_prepares_and_advances():
     assert result.context.test_input_ref
 
 
+def _endpoint_graph() -> dict:
+    """What ``_ground_placeholder_endpoints`` leaves of the ESQ1-302 draft: its
+    invented ``https://api.example.com/ppt/generate`` re-pointed at a required
+    start variable."""
+    return {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "type": "text-input", "required": True},
+                        {"variable": "h_url", "type": "text-input", "required": True, "max_length": 2048},
+                    ],
+                },
+            },
+            {"id": "h", "data": {"type": "http-request", "title": "Call PPT API", "url": "{{#s.h_url#}}"}},
+            {"id": "e", "data": {"type": "end", "outputs": []}},
+        ],
+        "edges": [],
+    }
+
+
+def _mock_with_an_invented_endpoint(_schema, _prior):
+    return {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
+
+
+def test_edit_await_testdata_mock_leaves_the_endpoint_for_the_form():
+    """A mocked endpoint URL is accepted at launch and fails on connection -- a
+    config failure that feeds the repair loop (ESQ1-302). Left out, the missing
+    required key fails the launch as an input the form then asks for."""
+    from core.dify_builder.handlers_edit import handle_await_testdata
+
+    env, _ = _new_env()
+    env.dify.graph = _endpoint_graph()
+    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_TESTDATA)
+
+    result = handle_await_testdata(
+        env,
+        Turn(actor=_actor(), action=Action(kind="provide_testdata", payload={"mode": "mock"})),
+        s,
+        DifyBuilderContext(),
+    )
+
+    assert result.next == PcState.EDIT_TEST_AFFECTED_PATHS
+    assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "quarterly report"}
+
+
+def test_edit_test_affected_paths_defensive_mock_leaves_the_endpoint_for_the_form():
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+
+    env, _ = _new_env()
+    env.dify.graph = _endpoint_graph()
+    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+
+    result = handle_test_affected_paths(
+        env, Turn(actor=_actor()), s, DifyBuilderContext(edit_target_node_ids=["h"], test_input_ref="")
+    )
+
+    assert env.dify.run_draft_inputs == {"topic": "quarterly report"}
+    assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "quarterly report"}
+
+
 def test_edit_await_testdata_is_waiting_and_projected():
     from core.dify_builder.state import PcState, is_waiting
     from services.dify_builder.service import Phase, _actions_for, _phase_for
@@ -893,3 +1004,699 @@ def test_revert_then_retry_after_revert_reapprove_is_idempotent():
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_APPLY_CHANGES
     assert len(dify.graph["nodes"]) == 4
+
+
+def test_a_launch_error_frame_is_diagnosed_not_bounced_as_unknown():
+    """Edit discarded ``Run.error`` exactly like Build did. With the port now
+    reporting the ESQ1-302 error frame as a failed Run, the failure must reach
+    diagnose and the repair gate, carrying its error."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import Run, TestInput
+
+    launch_error = "node 'node4' (http-request): body.data.0.type Field required [invalid_param]"
+
+    def launch_failed(*_a, **_k) -> Run:
+        return Run(kind="verify", immutable=True, dify_run_id="", status="failed", per_node=[], error=launch_error)
+
+    env, repo = _new_env(agent=StubAgent())
+    env.dify.run_draft = launch_failed
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+
+    res = handle_test_affected_paths(env, Turn(actor=_actor()), s, DifyBuilderContext(test_input_ref="ti-1"))
+
+    assert res.next == PcState.EDIT_AWAIT_REPAIR
+    assert res.run.status == "failed"
+    assert res.run.error == launch_error
+    assert "notice" not in [i.kind for i in res.items]
+
+
+def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing():
+    """Same preflight rejection as Build's: ``apply_repair`` raises a
+    ``DraftWouldNotStartError`` for an edit whose result would fail at
+    Graph.init. The edit session must survive it with a reply and stay at the
+    plan gate."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    dify = FakeEditDifyPort()
+
+    def would_not_start(*_a, **_k):
+        raise DraftWouldNotStartError("the draft would not start: node 'llm' (llm): 1 validation error for LLMNodeData")
+
+    dify.apply_repair = would_not_start
+    env, repo = _new_env(dify=dify)
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        checkpoint_id="cp-1",
+    )
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert res.next == PcState.EDIT_PLAN_APPROVAL
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert "The workflow can't start" in assistant.payload["reply_text"]
+    assert "node 'llm' (llm)" in assistant.payload["reply_text"]
+    assert "Continue adjusting" in assistant.payload["reply_text"]
+
+
+def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot_start():
+    """A graph_ops rejection ("node not found") never reached the startability
+    check -- the edit intents just did not apply. Same recovery as the
+    preflight reply (nothing written, plan still approvable), honest reason."""
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    dify = FakeEditDifyPort()
+
+    def does_not_apply(*_a, **_k):
+        raise ValueError("node not found: x")
+
+    dify.apply_repair = does_not_apply
+    env, repo = _new_env(dify=dify)
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        checkpoint_id="cp-1",
+    )
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert res.next == PcState.EDIT_PLAN_APPROVAL
+    assert res.context.staged_repair == []
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert assistant.payload["execution"]["status"] == "error"
+    assert "Couldn't apply the workflow" in assistant.payload["reply_text"]
+    assert "node not found: x" in assistant.payload["reply_text"]
+    assert "Continue adjusting" in assistant.payload["reply_text"]
+
+
+def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import NodeOutput, Run, TestInput
+
+    dify = FakeEditDifyPort()
+    dify.graph = {
+        "nodes": [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node2",
+                "data": {"type": "question-classifier", "title": "Route", "classes": [{"id": "1", "name": "A"}]},
+            },
+            {"id": "node6", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"source": "node1", "target": "node2"},
+            {"source": "node2", "target": "node6", "sourceHandle": "billing"},
+        ],
+    }
+    dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify",
+        immutable=True,
+        dify_run_id="run-e",
+        status="succeeded",
+        per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
+    )
+    env, repo = _new_env(dify=dify)
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+
+    res = handle_test_affected_paths(env, Turn(actor=_actor()), s, DifyBuilderContext(test_input_ref="ti-1"))
+
+    assert res.next == PcState.EDIT_AWAIT_REPAIR
+    assert res.context.staged_repair == []
+    test_result = next(i for i in res.items if i.kind == "test_result")
+    assert test_result.payload["status"] == "failed"
+    assert "reached no End node" in test_result.payload["failure_reason"]
+    assert res.run.culprit_node_id == "node2"
+
+
+def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import Diagnosis, Run, TestInput
+    from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
+
+    env, repo = _new_env()
+    env.dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    )
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    # A diagnosis + staged repair left over from an earlier failure: the gate
+    # the cap lands on must not offer to apply a fix for a run it never saw.
+    fc = DifyBuilderContext(
+        test_input_ref="ti-1",
+        diagnosis=Diagnosis(culprit_node_id="llm", root_cause="old failure"),
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "code", "value": ""})],
+    )
+
+    first = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+    assert first.next == PcState.EDIT_APPLY_CHANGES
+    second = handle_test_affected_paths(env, Turn(actor=_actor()), s, first.context)
+
+    assert second.next == PcState.EDIT_AWAIT_REPAIR
+    assert second.context.unknown_outcome_count == 2
+    assert second.context.staged_repair == []
+    assert second.context.diagnosis is None
+    assert "twice in a row" in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+
+
+def test_the_same_failing_affected_path_test_trips_the_breaker_on_the_third_repeat():
+    """Edit had no repair breaker at all: the same engine failure could be
+    diagnosed, repaired and re-run indefinitely. It now shares Build's."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.handlers_fix import MAX_REPEATED_REPAIRS
+    from core.dify_builder.models import TestInput
+
+    dify = FakeEditDifyPort()
+    dify.verify_pass = False  # the engine fails the same way every time
+    env, repo = _new_env(dify=dify, agent=StubAgent())
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(test_input_ref="ti-1")
+
+    snapshots = []  # the handler mutates the SAME context object; snapshot per call
+    result = None
+    for _ in range(MAX_REPEATED_REPAIRS + 1):
+        result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+        fc = result.context
+        snapshots.append((fc.repair_attempts, len(fc.staged_repair)))
+
+    assert snapshots == [(0, 1), (1, 1), (2, 0)]
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert "stopped retrying" in next(i for i in result.items if i.kind == "assistant_turn").payload["reply_text"]
+
+
+def test_sending_a_new_edit_goal_resets_the_breaker():
+    from core.dify_builder.handlers_edit import handle_capability_check
+
+    env, repo = _new_env()
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK, repair_attempts=3, last_repair_error="llm|boom")
+    turn = Turn(
+        action=Action(kind="send_edit_goal", payload={"text": "Make it faster"}, base_version=1), actor=_actor()
+    )
+
+    res = handle_capability_check(env, turn, *repo.get_session(s.id))
+
+    assert res.context.repair_attempts == 0
+    assert res.context.last_repair_error == ""
+
+
+def test_plan_approval_threads_edit_targets_into_build_edit_intents():
+    """The nodes impact analysis named reach the cognition.
+
+    Without them ``build_edit_intents`` cannot show the model the config it is
+    about to rewrite, and the model regenerates whole arrays from scratch --
+    triage ``edit-branch-failure-2026-09-22`` cause (c).
+    """
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    seen: dict = {}
+
+    class _RecordingAgent(PlaceholderAgent):
+        def build_edit_intents(
+            self,
+            edit_rules,
+            graph,
+            *,
+            edit_target_node_ids=(),
+            last_edit_rejection=None,  # noqa: ARG002
+        ):
+            seen["targets"] = list(edit_target_node_ids)
+            return super().build_edit_intents(edit_rules, graph)
+
+    env, repo = _new_env(agent=_RecordingAgent())
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        checkpoint_id="cp-1",
+    )
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert seen["targets"] == ["llm"]
+
+
+# ---- a refused edit tells the next attempt what the engine said -------------
+#
+# Triage edit-branch-failure-2026-09-22, "Why every retry is blind": the gate
+# re-reads an unchanged draft, so ``edit_rules`` and ``graph`` are byte-identical
+# on every re-approval. The live user approved the same plan three times and got
+# a byte-identical card each time because nothing recorded WHY the write was
+# refused.
+
+_PREFLIGHT_PREFIX = "the draft would not start: node 'node2' (if-else): 1 validation error for IfElseNodeData\n"
+_KLINGON = (
+    _PREFLIGHT_PREFIX + "cases.0.conditions.0.comparison_operator\n"
+    "  Input should be 'is', '=', '≥' [type=literal_error, input_value='klingon', input_type=str]"
+)
+_MARTIAN = (
+    _PREFLIGHT_PREFIX + "cases.0.conditions.0.comparison_operator\n"
+    "  Input should be 'is', '=', '≥' [type=literal_error, input_value='martian', input_type=str]"
+)
+
+
+class _RejectionRecordingAgent(PlaceholderAgent):
+    """Records the ``last_edit_rejection`` each ``build_edit_intents`` call got."""
+
+    def __init__(self):
+        self.rejections: list = []
+
+    def build_edit_intents(self, edit_rules, graph, *, edit_target_node_ids=(), last_edit_rejection=None):
+        self.rejections.append(last_edit_rejection)
+        return super().build_edit_intents(edit_rules, graph, edit_target_node_ids=edit_target_node_ids)
+
+
+def _refusing_port(*errors):
+    """A ``FakeEditDifyPort`` whose ``apply_repair`` raises ``errors`` in turn."""
+    dify = FakeEditDifyPort()
+    remaining = list(errors)
+
+    def refuse(*_a, **_k):
+        raise remaining.pop(0)
+
+    dify.apply_repair = refuse
+    return dify
+
+
+def _approve(env, session, fc):
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    return handle_plan_approval(env, turn, session, fc)
+
+
+def test_a_refused_edit_remembers_the_engines_own_reason():
+    from core.dify_builder.errors import DraftWouldNotStartError
+
+    env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError(_KLINGON)))
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert res.context.staged_repair == []
+    # verbatim, engine-sourced -- no summary, no model prose
+    assert res.context.last_edit_rejection == _KLINGON
+
+
+def test_an_edit_that_simply_did_not_apply_is_remembered_too():
+    """A ``graph_ops`` refusal never reached the startability check, but it is
+    just as blind on re-approval, so it is carried forward the same way."""
+    env, repo = _new_env(dify=_refusing_port(ValueError("node not found: x")))
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert res.context.last_edit_rejection == "node not found: x"
+
+
+def test_the_next_approval_shows_the_agent_what_the_engine_said():
+    agent = _RejectionRecordingAgent()
+    env, repo = _new_env(dify=FakeEditDifyPort(), agent=agent)
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        last_edit_rejection=_KLINGON,
+    )
+
+    _approve(env, *repo.get_session(s.id))
+
+    assert agent.rejections == [_KLINGON]
+
+
+def test_a_first_approval_passes_no_rejection_at_all():
+    agent = _RejectionRecordingAgent()
+    env, repo = _new_env(dify=FakeEditDifyPort(), agent=agent)
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["llm"]
+    )
+
+    _approve(env, *repo.get_session(s.id))
+
+    assert agent.rejections == [None]  # "" would read as a refusal with no text
+
+
+def test_a_second_refusal_at_the_same_location_replaces_the_first():
+    """The case the dry run's own key cannot cover.
+
+    ``preflight.new_preflight_problems`` is keyed on pydantic error LOCATIONS,
+    so a second attempt that leaves the culprit invalid at the SAME location
+    with a DIFFERENT bad value is not a new problem to it. The engine's text is
+    the only record fine enough to tell the two apart, so it is stored
+    unconditionally: attempt 2 is told about ``klingon``, attempt 3 about
+    ``martian``. Were the store deduplicated or written only once, attempt 3
+    would be re-prompted about a value it had already stopped writing.
+    """
+    from core.dify_builder.errors import DraftWouldNotStartError
+
+    agent = _RejectionRecordingAgent()
+    env, repo = _new_env(
+        dify=_refusing_port(DraftWouldNotStartError(_KLINGON), DraftWouldNotStartError(_MARTIAN)), agent=agent
+    )
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    session, fc = repo.get_session(s.id)
+    first = _approve(env, session, fc)
+    second = _approve(env, session, first.context)
+
+    assert agent.rejections == [None, _KLINGON]  # attempt 2 was told about klingon...
+    assert second.context.last_edit_rejection == _MARTIAN  # ...and attempt 3 will hear about martian
+    assert "klingon" not in second.context.last_edit_rejection
+
+
+def test_an_applied_edit_forgets_the_engines_earlier_refusal():
+    env, repo = _new_env(dify=FakeEditDifyPort())
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        checkpoint_id="cp-1",
+        last_edit_rejection=_KLINGON,
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert res.next == PcState.EDIT_APPLY_CHANGES
+    assert res.context.last_edit_rejection == ""
+
+
+def test_a_new_edit_goal_forgets_a_refusal_from_the_previous_one():
+    from core.dify_builder.handlers_edit import edit_registry
+
+    env, repo = _new_env()
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK, last_edit_rejection=_KLINGON)
+
+    Runner(env, edit_registry()).advance(
+        s.id,
+        Turn(
+            action=Action(kind="send_edit_goal", payload={"text": "Add a review gate"}, base_version=1),
+            actor=_actor(),
+        ),
+    )
+
+    _, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == ""
+
+
+def test_a_recovery_reset_forgets_the_refusal_of_a_batch_that_is_gone():
+    from core.dify_builder.recovery import _reset_working_fields
+
+    fc = DifyBuilderContext(last_edit_rejection=_KLINGON)
+
+    _reset_working_fields(fc)
+
+    assert fc.last_edit_rejection == ""
+
+
+def test_a_huge_refusal_is_capped_before_it_is_persisted_and_re_prompted():
+    """A batch refusal concatenates one message per node, and this text is both
+    stored in the session context blob and prepended to the next prompt."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_edit import _MAX_REJECTION_CHARS, _REJECTION_TRUNCATED_MARKER
+
+    env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError("x" * (_MAX_REJECTION_CHARS + 500))))
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert res.context.last_edit_rejection == "x" * _MAX_REJECTION_CHARS + _REJECTION_TRUNCATED_MARKER
+
+
+# -- Task 7: the plan gate is no longer a one-button dead end ------------------
+
+
+def _gate_turn(kind: str) -> Turn:
+    return Turn(action=Action(kind=kind, base_version=1), actor=_actor())
+
+
+def test_a_refused_edit_can_be_adjusted_instead_of_only_re_approved():
+    """The dead end this closes: a refused approval left the user at the gate
+    with ``approve_plan`` as the only move, while the card told them to adjust
+    (triage edit-branch-failure-2026-09-22)."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError(_KLINGON)))
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["node2"],
+        form_fields=[{"key": "risk_threshold", "label": "Risk threshold", "type": "text"}],
+    )
+    session, fc = repo.get_session(s.id)
+    refused = handle_plan_approval(env, _gate_turn("approve_repair"), session, fc)
+    assert refused.next == PcState.EDIT_PLAN_APPROVAL
+    assert refused.context.last_edit_rejection == _KLINGON
+
+    res = handle_plan_approval(env, _gate_turn("re_fix"), session, refused.context)
+
+    assert res.next == PcState.EDIT_IMPACT_ANALYSIS
+    form = next(i for i in res.items if i.kind == "form")
+    assert form.payload["variant"] == "edit_rules"
+    assert form.payload["values"] == {"risk_threshold": "high"}  # repopulated, not blank
+    assert [f["key"] for f in form.payload["fields"]] == ["risk_threshold"]
+    assert form.payload["frozen"] is False  # editable, which is the whole point
+
+
+def test_routing_back_to_the_form_does_not_forget_the_refusal():
+    """Offering the form is not editing it: the user may change nothing and
+    resubmit, and until they do, the engine's text still describes exactly what
+    the next approval would try. Only handle_impact_analysis, which owns the
+    mutation of fc.edit_rules, may clear it."""
+    from core.dify_builder.handlers_edit import handle_plan_approval, handle_review
+
+    env, repo = _new_env()
+    at_gate = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        last_edit_rejection=_KLINGON,
+    )
+    review_env, review_repo = _new_env()
+    at_review = _seed_edit_session(
+        review_repo,
+        PcState.EDIT_REVIEW,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        last_edit_rejection=_KLINGON,
+    )
+
+    from_gate = handle_plan_approval(env, _gate_turn("re_fix"), *repo.get_session(at_gate.id))
+    from_review = handle_review(review_env, _gate_turn("re_fix"), *review_repo.get_session(at_review.id))
+
+    assert from_gate.next == PcState.EDIT_IMPACT_ANALYSIS
+    assert from_gate.context.last_edit_rejection == _KLINGON
+    assert from_review.next == PcState.EDIT_IMPACT_ANALYSIS
+    assert from_review.context.last_edit_rejection == _KLINGON
+
+
+def _refuse_once_then_apply(error):
+    """A ``FakeEditDifyPort`` that refuses the first ``apply_repair`` and then
+    behaves normally -- the shape of the loop these sequences live in."""
+    dify = FakeEditDifyPort()
+    real_apply = dify.apply_repair
+    refused: list[bool] = []
+
+    def apply(*args, **kwargs):
+        if not refused:
+            refused.append(True)
+            raise error
+        return real_apply(*args, **kwargs)
+
+    dify.apply_repair = apply
+    return dify
+
+
+def _refused_at_the_gate(agent):
+    """Drive a real Edit session to a refused approval parked at the gate."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.handlers_edit import edit_registry
+
+    env, repo = _new_env(dify=_refuse_once_then_apply(DraftWouldNotStartError(_KLINGON)), agent=agent)
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="send_edit_goal", payload={"text": "x"}, base_version=1), actor=_actor())
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL  # refused, nothing written
+    _s, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == _KLINGON
+    return runner, repo, s, out
+
+
+def _submit(runner, s, out, kind, payload=None):
+    return runner.advance(
+        s.id, Turn(action=Action(kind=kind, payload=payload or {}, base_version=out.version), actor=_actor())
+    )
+
+
+def test_a_gate_revert_keeps_the_refusal_its_retry_still_needs():
+    """The ONE path that reaches edit.reverted carrying a refusal. A revert
+    taken at the plan gate wrote nothing, so the restored draft IS the refused
+    draft and the rules are unchanged -- and edit.reverted offers only Retry,
+    which re-proposes the identical plan. Clearing here would guarantee the
+    identical refusal and throw away the whole point of remembering it."""
+    agent = _RejectionRecordingAgent()
+    runner, repo, s, out = _refused_at_the_gate(agent)
+
+    out = _submit(runner, s, out, "undo")
+    assert out.current_state == PcState.EDIT_REVERTED
+    out = _submit(runner, s, out, "re_fix")  # Retry, the only action offered there
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+
+    _s, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == _KLINGON
+
+    _submit(runner, s, out, "approve_repair")
+    assert agent.rejections == [None, _KLINGON]  # the retry was told what the engine said
+
+
+def test_changing_the_rules_forgets_the_refusal_the_old_ones_earned():
+    """The mirror case: once the rules the engine refused are gone, its
+    complaint describes nothing the next approval will try."""
+    agent = _RejectionRecordingAgent()
+    runner, repo, s, out = _refused_at_the_gate(agent)
+
+    out = _submit(runner, s, out, "re_fix")  # continue adjusting
+    assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+    _s, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == _KLINGON  # routed to the form, rules untouched
+    assert fc.edit_rules["risk_threshold"] == "medium"
+
+    out = _submit(runner, s, out, "submit_edit_rules", {"risk_threshold": "critical"})
+
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+    _s, fc = repo.get_session(s.id)
+    assert fc.edit_rules["risk_threshold"] == "critical"
+    assert fc.last_edit_rejection == ""
+
+    _submit(runner, s, out, "approve_repair")
+    assert agent.rejections == [None, None]  # nothing stale quoted at the new rules
+
+
+def test_resubmitting_the_very_same_rules_keeps_the_refusal():
+    """Reaching the form and pressing submit without editing anything leaves
+    the inputs byte-identical, so the refusal still describes them."""
+    agent = _RejectionRecordingAgent()
+    runner, repo, s, out = _refused_at_the_gate(agent)
+
+    out = _submit(runner, s, out, "re_fix")
+    out = _submit(runner, s, out, "submit_edit_rules", {"risk_threshold": "medium"})
+
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+    _s, fc = repo.get_session(s.id)
+    assert fc.last_edit_rejection == _KLINGON
+
+
+def test_the_plan_gate_reverts_through_the_checkpoint_it_already_minted():
+    """No second revert path: the gate reuses perform_revert against the
+    checkpoint handle_impact_analysis mints when it proposes the plan."""
+    from core.dify_builder.handlers_edit import edit_registry
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="send_edit_goal", payload={"text": "x"}, base_version=1), actor=_actor())
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+    _s, fc = repo.get_session(s.id)
+    assert fc.checkpoint_id  # the restore point the gate's Revert uses
+
+    out = runner.advance(s.id, Turn(action=Action(kind="undo", base_version=out.version), actor=_actor()))
+
+    assert out.current_state == PcState.EDIT_REVERTED
+    _s, fc = repo.get_session(s.id)
+    assert fc.checkpoint_id == ""  # consumed by perform_revert
+    assert any(e["event"] == "revert_checkpoint" for e in events)
+    # and edit.reverted's own Retry still leads back to the gate
+    out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+
+
+def turn_activities(result) -> dict:
+    """``{activity id: state}`` off the assistant turn's execution timeline."""
+    turn = next(i for i in result.items if i.kind == "assistant_turn")
+    return {a["id"]: a["state"] for a in turn.payload["execution"]["activities"]}
+
+
+class _JudgesItsOwnProposalWrongAgent(PlaceholderAgent):
+    """An agent that refuses to hand on the batch it just proposed, the way
+    ``services.dify_builder.agent.edit`` does when its final attempt still
+    carries a semantic-guard verdict."""
+
+    def __init__(self, reason: str):
+        self._reason = reason
+        self.calls = 0
+
+    def build_edit_intents(self, _edit_rules, _graph, **_kwargs):
+        from core.dify_builder.errors import ProposalWouldRunWrongError
+
+        self.calls += 1
+        raise ProposalWouldRunWrongError(self._reason)
+
+
+_WOULD_RUN_EMPTY = (
+    "the new branch node7 -> node5 would run and produce nothing: node5 is a variable-aggregator "
+    "and none of its selectors is rooted at node7."
+)
+
+
+def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing():
+    """The last hole the two semantic guards had. Their defects are ones the
+    ENGINE ACCEPTS, so ``apply_repair`` has nothing to veto: if the agent
+    handed the condemned batch over anyway it would simply be written. The
+    agent refuses instead, and this is the receiving end -- the plan stays at
+    its gate with the reason in the reply, and nothing reached the port."""
+    agent = _JudgesItsOwnProposalWrongAgent(_WOULD_RUN_EMPTY)
+    dify = FakeEditDifyPort()
+    written: list = []
+    dify.apply_repair = lambda *a, **k: written.append((a, k))
+    env, repo = _new_env(dify=dify, agent=agent)
+    s = _seed_edit_session(
+        repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
+    )
+
+    res = _approve(env, *repo.get_session(s.id))
+
+    assert written == []  # the port was never called
+    assert res.next == PcState.EDIT_PLAN_APPROVAL  # ...and the plan is still at its gate
+    assert res.context.staged_repair == []
+    assert res.context.last_edit_rejection == _WOULD_RUN_EMPTY  # carried into the next attempt
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert _WOULD_RUN_EMPTY in assistant.payload["reply_text"]
+    assert "The change wouldn't do what you asked" in assistant.payload["reply_text"]
+
+    # The failure is marked on the step that was actually running. Marked on the
+    # write instead, the timeline showed a LATER step failed while an earlier one
+    # was still running, and the step between never resolved at all. A step that
+    # was never revealed is simply absent (``ProgressReporter._snapshot`` drops
+    # pending activities), which is the right rendering for work not reached.
+    activities = turn_activities(res)
+    assert activities == {"edit-prepare": "failed"}

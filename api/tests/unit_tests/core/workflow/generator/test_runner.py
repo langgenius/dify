@@ -8,16 +8,19 @@ readable error envelope.
 """
 
 import json
+import re
 import threading
 import time
 from copy import deepcopy
+from itertools import permutations
 from typing import Any, cast, override
 from unittest.mock import MagicMock, patch
 
 import pytest
 from jinja2 import Template
 
-from core.workflow.generator.runner import WorkflowGenerator, _find_planned_tool_entry
+from core.workflow.generator.prompts.node_builder_prompts import format_node_outputs_section
+from core.workflow.generator.runner import WorkflowGenerator, _find_planned_tool_entry, _parse_node_outputs
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
 from tests.unit_tests.config_override import apply_config_overrides
@@ -866,6 +869,288 @@ class TestParallelNodeBuilder:
         assert planner_calls == 2
         retry_prompt = str(model.invoke_llm.call_args_list[1].kwargs["prompt_messages"][-1].content)
         assert "required topology schema" in retry_prompt
+
+
+class TestPlanDeclaredNodeOutputs:
+    """B1: the planner declares each producer's output names so the isolated
+    parallel builders stop inventing them.
+
+    ``_parse_node_outputs`` is the gate — the value comes straight from an LLM,
+    so every shape but ``{"<planned producer id>": ["<name>", ...]}`` is
+    dropped rather than trusted or raised on.
+    """
+
+    _PLAN_NODES = [
+        {"id": "node1", "node_type": "start"},
+        {"id": "node2", "node_type": "code"},
+        {"id": "node3", "node_type": "end"},
+        {"id": "node4", "node_type": "parameter-extractor"},
+        {"id": "node5", "node_type": "http-request"},
+    ]
+
+    def test_declared_producer_outputs_are_kept(self):
+        assert _parse_node_outputs({"node2": ["slides_json", "count"], "node4": ["topic"]}, self._PLAN_NODES) == {
+            "node2": ["slides_json", "count"],
+            "node4": ["topic"],
+        }
+
+    def test_a_type_with_fixed_outputs_may_not_redeclare_them(self):
+        # An http-request node exposes body / status_code / headers / files no
+        # matter what the planner says; honouring a declaration here would tell
+        # every consumer to reference a name the engine never publishes.
+        assert _parse_node_outputs({"node5": ["response"], "node3": ["result"]}, self._PLAN_NODES) == {}
+
+    def test_an_unplanned_node_id_is_dropped(self):
+        assert _parse_node_outputs({"nodeX": ["whatever"]}, self._PLAN_NODES) == {}
+
+    @pytest.mark.parametrize(
+        "garbage",
+        [
+            None,
+            "node2",
+            ["node2"],
+            42,
+            {"node2": "slides_json"},
+            {"node2": None},
+            {"node2": []},
+            {"node2": [""]},
+            {"node2": [None, 7]},
+            {"": ["slides_json"]},
+            {7: ["slides_json"]},
+        ],
+    )
+    def test_a_missing_or_garbage_declaration_never_raises(self, garbage):
+        assert _parse_node_outputs(garbage, self._PLAN_NODES) == {}
+
+    def test_partial_garbage_keeps_the_usable_names(self):
+        assert _parse_node_outputs({"node2": ["slides_json", "", 7, "  count  "]}, self._PLAN_NODES) == {
+            "node2": ["slides_json", "count"]
+        }
+
+    def test_repeated_names_are_declared_once_in_planner_order(self):
+        # A repeated name would be repeated in every builder prompt that lists
+        # this producer.
+        assert _parse_node_outputs({"node2": ["b", "a", "b", " a "]}, self._PLAN_NODES) == {"node2": ["b", "a"]}
+
+    @pytest.mark.parametrize("unreferenceable", ["x" * 31, "slides-json", "slides json", "2slides", "a.b", "-"])
+    def test_a_name_the_reference_grammar_rejects_is_dropped(self, unreferenceable):
+        """A declared name must be referenceable, or declaring it only makes a
+        producer expose an output nothing can read: the run-time selector
+        pattern is ``[a-zA-Z_][a-zA-Z0-9_]{0,29}`` per segment (graphon
+        ``variable_template_parser``), so a hyphen, a space, a dot, a leading
+        digit or a 31st character makes the name invisible to the walker."""
+        assert _parse_node_outputs({"node2": [unreferenceable, "ok"]}, self._PLAN_NODES) == {"node2": ["ok"]}
+
+    def test_a_name_at_the_grammar_limit_is_kept(self):
+        assert _parse_node_outputs({"node2": ["x" * 30, "_ok2"]}, self._PLAN_NODES) == {"node2": ["x" * 30, "_ok2"]}
+
+    def test_ids_match_after_stripping_on_both_sides(self):
+        assert _parse_node_outputs({" node2 ": ["slides_json"]}, [{"id": " node2 ", "node_type": "code"}]) == {
+            "node2": ["slides_json"]
+        }
+
+    def test_a_padded_plan_id_still_finds_its_own_declaration(self):
+        """``_parse_node_outputs`` keys are stripped, so every lookup built
+        from the plan must strip too — otherwise a padded id silently loses
+        both its producer instruction and its llm reference form."""
+        captured: list[str] = []
+
+        class _Model:
+            def invoke_llm(self, *, prompt_messages, model_parameters, stream):
+                captured.append(str(prompt_messages[-1].content))
+                return _llm_result(json.dumps({"config": {}}))
+
+        WorkflowGenerator._run_node_builder(
+            model_instance=_Model(),
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode_section="",
+            instruction="build it",
+            ideal_output="",
+            target_node={"id": " node2 ", "node_type": "code", "label": "Build", "purpose": "shape it"},
+            plan_json="{}",
+            tool_catalogue_text="",
+            tool_catalogue_entries=[],
+            start_inputs=[],
+            node_outputs={"node2": ["slides_json"], "node3": ["headline"]},
+            node_types={" node2 ": "code", "node3": "llm"},
+            existing_node=None,
+        )
+
+        assert "This node MUST expose exactly these output names" in captured[0]
+        assert "'slides_json'" in captured[0]
+        assert "node3 (llm structured output): 'structured_output.headline'" in captured[0]
+        # Its own entry is the producer half, never repeated in the list.
+        assert "node2: 'slides_json'" not in captured[0]
+
+    # node2 is a code producer (flat names), node3 an llm producer with
+    # structured output (schema fields, referenced through structured_output).
+    _DECLARED = {"node2": ["slides_json"], "node3": ["headline"]}
+    _NODE_TYPES = {"node1": "start", "node2": "code", "node3": "llm", "node4": "end"}
+
+    def _planner(self, *, node_outputs: dict[str, list[str]] | None = None) -> str:
+        plan: dict[str, Any] = {
+            "title": "Deck Builder",
+            "description": "Build a deck.",
+            "start_inputs": [{"variable": "topic", "label": "Topic", "type": "text-input"}],
+            "nodes": [
+                {"label": "Start", "node_type": "start", "purpose": "Take the topic."},
+                {"label": "Build Slides", "node_type": "code", "purpose": "Shape the deck JSON."},
+                {"label": "Write Headline", "node_type": "llm", "purpose": "Title the deck."},
+                {"label": "End", "node_type": "end", "purpose": "Return the deck."},
+            ],
+        }
+        if node_outputs is not None:
+            plan["node_outputs"] = node_outputs
+        return json.dumps(plan)
+
+    def _graph(self) -> str:
+        return json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [
+                                {
+                                    "variable": "topic",
+                                    "label": "Topic",
+                                    "type": "text-input",
+                                    "required": True,
+                                    "max_length": 256,
+                                    "options": [],
+                                }
+                            ],
+                        },
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "code",
+                            "title": "Build Slides",
+                            "code_language": "python3",
+                            "code": "def main(topic: str) -> dict:\n    return {'slides_json': topic}",
+                            "variables": [{"variable": "topic", "value_selector": ["node1", "topic"]}],
+                            "outputs": {"slides_json": {"type": "string", "children": None}},
+                        },
+                    },
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "llm",
+                            "title": "Write Headline",
+                            "model": {
+                                "provider": "openai",
+                                "name": "gpt-4o",
+                                "mode": "chat",
+                                "completion_params": {},
+                            },
+                            "prompt_template": [{"role": "user", "text": "Title {{#node2.slides_json#}}"}],
+                            "structured_output_enabled": True,
+                            "structured_output": {"schema": {"properties": {"headline": {"type": "string"}}}},
+                            "context": {"enabled": False, "variable_selector": []},
+                            "vision": {"enabled": False},
+                        },
+                    },
+                    {
+                        "id": "node4",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [
+                                {"variable": "deck", "value_selector": ["node2", "slides_json"]},
+                                {"variable": "headline", "value_selector": ["node3", "text"]},
+                            ],
+                        },
+                    },
+                ],
+                "edges": [
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "e2", "source": "node2", "target": "node3", "type": "custom"},
+                    {"id": "e3", "source": "node3", "target": "node4", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+
+    def _builder_prompts(self, model_instance) -> dict[str, str]:
+        prompts: dict[str, str] = {}
+        for call in model_instance.invoke_llm.call_args_list:
+            user_prompt = str(call.kwargs["prompt_messages"][-1].content)
+            match = re.search(r"^id=(\w+), type=", user_prompt, re.MULTILINE)
+            if match:
+                prompts[match.group(1)] = user_prompt
+        return prompts
+
+    def _generate(self, planner: str) -> tuple[dict[str, Any], dict[str, str]]:
+        model_instance = _GraphFixtureModel(planner, self._graph())
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Build a deck from a topic",
+        )
+        return result, self._builder_prompts(model_instance)
+
+    def test_declared_outputs_reach_the_producer_and_its_consumers(self):
+        result, prompts = self._generate(self._planner(node_outputs=self._DECLARED))
+
+        assert result["error"] == ""
+        # The producer is told to declare exactly the planned names ...
+        assert "Declared outputs" in prompts["node2"]
+        assert "'slides_json'" in prompts["node2"]
+        # ... and every consumer is told those are the only names it may use.
+        assert "node2: 'slides_json'" in prompts["node4"]
+        # An llm producer's names are schema fields, so the consumer is given
+        # the 3-segment form -- never the flat one the engine cannot resolve.
+        assert "node3 (llm structured output): 'structured_output.headline'" in prompts["node4"]
+        assert "node3: 'headline'" not in prompts["node4"]
+        # The declarations reach the builders ONLY through that type-aware
+        # section: the shared plan payload would have to render them flat.
+        for node_id, prompt in prompts.items():
+            assert "node_outputs" not in prompt
+            if node_id != "node3":
+                # Only node3's own producer half may name its schema field
+                # flat -- that is the name it has to put in its schema.
+                assert "'headline'" not in prompt.replace("'structured_output.headline'", "")
+
+    def test_a_plan_without_the_key_renders_byte_identical_prompts(self):
+        """Fail-open, byte for byte: a declared run's prompts differ from a
+        plain run's by exactly the rendered section — nothing else — so the
+        plain run's prompt is character-for-character the one this feature
+        never touched."""
+        declared_result, declared = self._generate(self._planner(node_outputs=self._DECLARED))
+        plain_result, plain = self._generate(self._planner())
+
+        assert declared_result["error"] == plain_result["error"] == ""
+        assert set(declared) == set(plain) == {"node1", "node2", "node3", "node4"}
+
+        for node_id, prompt in declared.items():
+            section = format_node_outputs_section(self._DECLARED, node_id, self._NODE_TYPES)
+            assert section, f"expected a rendered section for {node_id}"
+            assert prompt.replace(section, "") == plain[node_id]
+
+    def test_a_garbage_declaration_is_indistinguishable_from_no_declaration(self):
+        garbage_result, garbage = self._generate(self._planner(node_outputs=cast(Any, "slides_json")))
+        plain_result, plain = self._generate(self._planner())
+
+        assert garbage_result["error"] == plain_result["error"] == ""
+        assert garbage == plain
 
 
 class TestWorkflowGeneratorWorkflowMode:
@@ -2825,7 +3110,7 @@ class TestWorkflowGeneratorVariableReferences:
                 "type": "if-else",
                 "cases": [{"conditions": [{"variable_selector": ["sys,query"]}]}],
             },
-            {"type": "parameter-extractor", "query": [["sys", "query"]]},
+            {"type": "parameter-extractor", "query": ["sys", "query"]},
             {"type": "variable-aggregator", "variables": [["sys.query"]]},
             {
                 "type": "tool",
@@ -3652,6 +3937,66 @@ class TestWorkflowGeneratorStructuredErrors:
         assert nodes[1]["data"]["prompt_template"][0]["text"] == "Summarize {{#node2.body#}}."
         assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
 
+    def test_repairs_invented_structured_output_reference_to_text_on_a_schemaless_llm(self):
+        # Task 2 / B3a: a schema-less LLM node (structured output planned but
+        # never enabled) gets a reference to the invented structured-output
+        # family -- repair every name in that family to the node's real
+        # (default) output, `text`.
+        nodes = [
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "title": "LLM",
+                    "prompt_template": [{"role": "user", "text": "hi"}],
+                    # The flag is off, but a schema block was left behind by
+                    # an isolated node-builder call -- still schema-less.
+                    "structured_output": {"schema": {"properties": {"answer": {"type": "string"}}}},
+                },
+            },
+            {
+                "id": "node3",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Summarize {{#node2.__structured_output__#}}."}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Summarize {{#node2.text#}}."
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_keeps_structured_output_reference_unresolved_on_a_real_structured_output_llm(self):
+        # The same reference on an LLM node that really has structured
+        # output enabled (and a schema) must NOT be guessed away.
+        nodes = [
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "title": "LLM",
+                    "prompt_template": [{"role": "user", "text": "hi"}],
+                    "structured_output_enabled": True,
+                    "structured_output": {"schema": {"properties": {"answer": {"type": "string"}}}},
+                },
+            },
+            {
+                "id": "node3",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Summarize {{#node2.output#}}."}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Summarize {{#node2.output#}}."
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert [e["code"] for e in errors] == ["UNRESOLVED_REFERENCE"]
+
     def test_planner_json_failure_retries_once_then_recovers(self):
         # First planner response is non-JSON (the LLM wrapped the response in
         # prose) — we retry exactly once with a corrective system message,
@@ -4412,6 +4757,32 @@ class TestWorkflowGeneratorBranchHandleRepair:
 
         assert edges[0]["sourceHandle"] == "source"
 
+    def test_logs_each_re_homed_edge_and_not_the_ones_left_as_they_were(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        nodes = [
+            self._if_else_node(),
+            {"id": "qc", "data": {"type": "question-classifier", "classes": [{"id": "1"}, {"id": "2"}]}},
+            {"id": "branch2", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}},
+        ]
+        edges = [
+            {"source": "branch", "target": "a", "sourceHandle": "true"},  # already declared
+            {"source": "branch", "target": "b", "sourceHandle": "else"},  # alias -> "false"
+            {"source": "qc", "target": "c"},  # no handle -> first unused class
+            {"source": "branch2", "target": "d", "sourceHandle": "maybe"},  # two free arms: ambiguous
+        ]
+
+        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
+
+        infos = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+        assert len(infos) == 2
+        assert "branch -> b" in infos[0]
+        assert "from handle 'else' onto branch handle 'false'" in infos[0]
+        assert "qc -> c" in infos[1]
+        assert "from handle None onto branch handle '1'" in infos[1]
+        warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1
+        assert "branch2 -> d" in warnings[0]
+
 
 class TestWorkflowGeneratorGraphCycleValidation:
     """A workflow graph must be a DAG; cycles hang or error the run."""
@@ -4779,3 +5150,1186 @@ def test_tool_result_is_aliased_to_text():
 
     node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
     assert G._aliased_output(node, "result") == "text"
+
+
+_INVENTED_STRUCTURED_OUTPUT_NAMES = (
+    "__structured_output__",
+    "__structured_output",
+    "structured_output",
+    "output",
+    "result",
+)
+
+
+def _llm_node(node_id="node2", *, structured_output_enabled=None, schema_properties=None):
+    """Build a raw graph ``llm`` node dict. ``structured_output_enabled=None``
+    means the key is omitted entirely (never planned). ``structured_output_enabled``
+    is the only key real graph data ever carries: it's the wire/JSON key
+    graphon's ``LLMNodeData`` serialises, while ``structured_output_switch_on``
+    is only that field's internal Python attribute name and is never a dict
+    key (see ``test_node_factory.py::test_create_node_passes_alias_preserving_llm_data_to_constructor``,
+    which asserts ``"structured_output_switch_on" not in data``)."""
+    data: dict = {"type": "llm", "title": "LLM", "prompt_template": [{"role": "user", "text": "hi"}]}
+    if structured_output_enabled is not None:
+        data["structured_output_enabled"] = structured_output_enabled
+    if schema_properties is not None:
+        data["structured_output"] = {"schema": {"properties": schema_properties}}
+    return {"id": node_id, "data": data}
+
+
+@pytest.mark.parametrize("invented_name", _INVENTED_STRUCTURED_OUTPUT_NAMES)
+def test_invented_structured_output_name_aliases_to_text_when_never_planned(invented_name):
+    """B3a: no structured-output key at all -- a schema-less LLM node's only
+    real output is ``text``."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _llm_node()
+    assert G._aliased_output(node, invented_name) == "text"
+
+
+@pytest.mark.parametrize("invented_name", _INVENTED_STRUCTURED_OUTPUT_NAMES)
+def test_invented_structured_output_name_aliases_to_text_when_flag_off_despite_a_leftover_schema(invented_name):
+    """The enable flag, not just schema presence, decides schema-less-ness:
+    a disabled node with a leftover/planned schema is still schema-less, so
+    the invented name still resolves to `text` rather than staying
+    unresolved. (Distinct from the pre-existing sole-output fallback, which
+    only looks at the schema and would leave this case ambiguous.)"""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _llm_node(structured_output_enabled=False, schema_properties={"answer": {"type": "string"}})
+    assert G._aliased_output(node, invented_name) == "text"
+
+
+@pytest.mark.parametrize("invented_name", _INVENTED_STRUCTURED_OUTPUT_NAMES)
+def test_invented_structured_output_name_is_not_aliased_when_really_enabled(invented_name):
+    """A real structured-output LLM node may mean one of these names as an
+    actual schema property; the alias must not paper over that."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _llm_node(structured_output_enabled=True, schema_properties={"answer": {"type": "string"}})
+    assert G._aliased_output(node, invented_name) is None
+
+
+def test_llm_unrelated_invented_name_is_not_aliased():
+    """The alias table is scoped to the known structured-output family --
+    an unrelated invented name is still left for the caller to report."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = _llm_node()
+    assert G._aliased_output(node, "presentation") is None
+
+
+def test_code_node_reference_is_untouched_by_the_llm_alias_table():
+    """The new LLM entries must not leak onto other node types."""
+    from core.workflow.generator.runner import WorkflowGenerator as G
+
+    node = {"id": "node2", "data": {"type": "code", "outputs": {"summary": {"type": "string"}}}}
+    assert G._aliased_output(node, "result") is None
+    assert G._aliased_output(node, "output") is None
+
+
+class TestLlmNodeDeclaresTheEngineOutputs:
+    """B2: what an ``llm`` node really exposes is what graphon publishes.
+
+    ``LLMNode._build_run_outputs`` (graphon nodes/llm/node.py ~721-740) ALWAYS
+    sets ``text`` / ``reasoning_content`` / ``usage`` / ``finish_reason``, adds
+    ``files`` when the node saved any, and adds ``structured_output`` -- an
+    OBJECT, addressed as ``{{#<id>.structured_output.<field>#}}`` -- only when
+    structured output is enabled with a schema. A schema property is never a
+    top-level output, so the old flat ``<llm>.<property>`` acceptance said yes
+    to a reference the engine can never resolve.
+    """
+
+    _SCHEMA = {"answer": {"type": "string"}}
+
+    @pytest.mark.parametrize("var", ["text", "reasoning_content", "usage", "finish_reason", "files"])
+    def test_the_always_present_engine_outputs_are_declared(self, var):
+        assert WorkflowGenerator._declares_variable(_llm_node(), var) is True
+        assert (
+            WorkflowGenerator._declares_variable(
+                _llm_node(structured_output_enabled=True, schema_properties=self._SCHEMA), var
+            )
+            is True
+        )
+
+    def test_structured_output_is_declared_only_when_really_enabled_with_a_schema(self):
+        real = _llm_node(structured_output_enabled=True, schema_properties=self._SCHEMA)
+
+        assert WorkflowGenerator._declares_variable(real, "structured_output") is True
+        # The walker hands us the whole dotted tail of a 3-segment
+        # placeholder, which is how the engine addresses a schema field.
+        assert WorkflowGenerator._declares_variable(real, "structured_output.answer") is True
+
+        # Never planned, flag off with a leftover schema, or enabled with no
+        # schema: no structured_output output exists on any of them.
+        assert WorkflowGenerator._declares_variable(_llm_node(), "structured_output") is False
+        assert (
+            WorkflowGenerator._declares_variable(
+                _llm_node(structured_output_enabled=False, schema_properties=self._SCHEMA), "structured_output"
+            )
+            is False
+        )
+        assert (
+            WorkflowGenerator._declares_variable(_llm_node(structured_output_enabled=True), "structured_output")
+            is False
+        )
+
+    def test_a_schema_property_is_not_a_flat_output(self):
+        """The deliberate half of B2: this used to return True, so a graph
+        referencing ``{{#node2.answer#}}`` saved clean and failed at run time.
+        It is now a loud generation failure instead."""
+        real = _llm_node(structured_output_enabled=True, schema_properties=self._SCHEMA)
+
+        assert WorkflowGenerator._declares_variable(real, "answer") is False
+
+    def test_an_invented_name_is_still_undeclared(self):
+        assert WorkflowGenerator._declares_variable(_llm_node(), "presentation") is False
+
+    def test_the_schemaless_default_output_is_unchanged(self):
+        """``_sole_declared_variable`` still names ``text`` as the output an
+        unresolvable reference gets repaired to on a schema-less node, and
+        still refuses to guess on a real structured-output node."""
+        assert WorkflowGenerator._sole_declared_variable(_llm_node()) == "text"
+        assert (
+            WorkflowGenerator._sole_declared_variable(
+                _llm_node(structured_output_enabled=True, schema_properties=self._SCHEMA)
+            )
+            is None
+        )
+
+    @pytest.mark.parametrize("enabled", [None, False])
+    def test_a_leftover_schema_still_repairs_to_text(self, enabled):
+        """The documented drift: an isolated builder call leaves a schema
+        behind without turning the flag on. Such a node produces nothing but
+        ``text``, so a reference to an invented name must still be repaired to
+        it -- reading schema PRESENCE alone would leave it unresolved and turn
+        a repairable graph into a 'couldn't build the workflow' card."""
+        node = _llm_node(structured_output_enabled=enabled, schema_properties=self._SCHEMA)
+
+        assert WorkflowGenerator._sole_declared_variable(node) == "text"
+
+    def test_an_invented_name_on_a_drifted_node_is_repaired_end_to_end(self):
+        nodes = [
+            _llm_node("node2", schema_properties=self._SCHEMA),
+            {
+                "id": "node3",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Use {{#node2.presentation#}}."}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Use {{#node2.text#}}."
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    @classmethod
+    def _graph_referencing_selector(
+        cls, selector: list[str], *, schema_properties: dict | None, enabled: bool | None
+    ) -> GraphDict:
+        graph = cls._graph_referencing("text", schema_properties=schema_properties)
+        nodes = cast(list[dict[str, Any]], graph["nodes"])
+        llm_data = nodes[1]["data"]
+        if enabled is None:
+            llm_data.pop("structured_output_enabled", None)
+        else:
+            llm_data["structured_output_enabled"] = enabled
+        nodes[2]["data"]["outputs"][0]["value_selector"] = selector
+        return graph
+
+    @staticmethod
+    def _graph_referencing(var: str, *, schema_properties: dict | None) -> GraphDict:
+        llm = _llm_node("node2", structured_output_enabled=True, schema_properties=schema_properties)
+        llm.update({"type": "custom", "position": {"x": 0, "y": 0}})
+        return cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start", "variables": []},
+                    },
+                    llm,
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [{"variable": "out", "value_selector": ["node2", var]}],
+                        },
+                    },
+                ],
+                "edges": [
+                    {"source": "node1", "target": "node2"},
+                    {"source": "node2", "target": "node3"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+    def test_a_three_segment_structured_output_selector_is_a_reference(self):
+        """The builder head now teaches ``["node2","structured_output","f"]``,
+        so the walker has to see it. It used to harvest 2-element lists only,
+        which made the taught form invisible: an end node pointing at a
+        DRIFTED llm passed validation silently while the equivalent
+        placeholder was repaired."""
+        refs: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(
+            {"outputs": [{"variable": "out", "value_selector": ["node2", "structured_output", "headline"]}]},
+            refs,
+        )
+
+        assert refs == {("node2", "structured_output.headline")}
+
+    def test_a_structured_output_selector_is_harvested_whatever_the_target_is(self):
+        """The harvest is deliberately type-blind: only an ``llm`` publishes a
+        ``structured_output`` object, so this selector aimed at anything else
+        cannot resolve and has to be REPORTED, not skipped. Gating the harvest
+        on the target being an llm silently dropped
+        ``["start", "structured_output", "x"]`` -- a start node is never an llm
+        -- which is exactly the invented reference this walk exists to catch.
+        The type check belongs on the rewrite instead; see
+        ``test_a_structured_output_shaped_tag_on_a_code_node_is_not_rewritten``."""
+        refs: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data({"tags": ["n2", "structured_output", "x"]}, refs)
+
+        assert refs == {("n2", "structured_output.x")}
+
+    def test_a_structured_output_shaped_tag_on_a_code_node_is_not_rewritten(self):
+        """The damage the ``llm`` gate prevents is the REWRITE, not the report:
+        this tag used to be collapsed to ``["n2", "a"]`` against the code
+        node's sole output, silently editing data. It is now left exactly as
+        written and reported, which is loud and recoverable."""
+        nodes = [
+            {"id": "n2", "data": {"type": "code", "title": "Code", "outputs": {"a": {"type": "string"}}}},
+            {
+                "id": "n3",
+                "data": {"type": "end", "title": "End", "tags": ["n2", "structured_output", "x"], "outputs": []},
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["tags"] == ["n2", "structured_output", "x"]
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert [e["code"] for e in errors] == ["UNRESOLVED_REFERENCE"]
+
+    def test_a_three_element_list_that_is_not_structured_output_is_not_a_reference(self):
+        # Unchanged: only the engine's structured-output addressing is a
+        # 3-segment selector; every other 3-string list stays plain data.
+        refs: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(
+            {
+                "outputs": [{"variable": "out", "value_selector": ["node2", "text", "headline"]}],
+                "tags": ["a", "b", "c"],
+            },
+            refs,
+        )
+
+        assert refs == set()
+
+    def test_a_structured_output_selector_resolves_on_a_real_structured_output_node(self):
+        graph = self._graph_referencing_selector(
+            ["node2", "structured_output", "answer"], schema_properties=self._SCHEMA, enabled=True
+        )
+
+        assert WorkflowGenerator._validate_structure(graph=graph, mode="workflow") == []
+
+    def test_a_structured_output_selector_on_a_drifted_llm_is_repaired_like_the_placeholder(self):
+        # Flag never turned on, schema left behind: the node produces `text`
+        # only, so the selector is rewritten to it -- exactly what happens to
+        # `{{#node2.structured_output.answer#}}`.
+        graph = self._graph_referencing_selector(
+            ["node2", "structured_output", "answer"], schema_properties=self._SCHEMA, enabled=None
+        )
+        nodes = cast(list[dict[str, Any]], graph["nodes"])
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[2]["data"]["outputs"][0]["value_selector"] == ["node2", "text"]
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_a_dotted_reference_to_the_start_node_is_never_injected_as_an_input(self):
+        """Widening the walker to dotted names made this reachable from a
+        selector too: a start node cannot carry a variable called
+        ``structured_output.answer`` -- the run-time grammar has no dot inside
+        a segment -- so injecting it would add a form input that can never
+        resolve. And the root names nothing the start node declares, so there
+        is nothing to repair it to: report it.
+
+        The START-NODE shape specifically. A start node is never an ``llm``, so
+        gating the 3-element harvest on the target's type made this selector
+        vanish from validation entirely."""
+        nodes = [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node2",
+                "data": {
+                    "type": "end",
+                    "outputs": [{"variable": "out", "value_selector": ["node1", "structured_output", "answer"]}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[0]["data"]["variables"] == []
+        assert nodes[1]["data"]["outputs"][0]["value_selector"] == ["node1", "structured_output", "answer"]
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert [e["code"] for e in errors] == ["UNRESOLVED_REFERENCE"]
+
+    def test_the_placeholder_form_of_that_start_reference_is_reported_too(self):
+        """Both taught reference forms travel one path, so the placeholder
+        equivalent of the selector above must land on the same verdict."""
+        nodes = [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Use {{#node1.structured_output.answer#}}"}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[0]["data"]["variables"] == []
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert [e["code"] for e in errors] == ["UNRESOLVED_REFERENCE"]
+
+    def test_validate_structure_accepts_a_structured_output_reference(self):
+        graph = self._graph_referencing("structured_output", schema_properties=self._SCHEMA)
+
+        assert WorkflowGenerator._validate_structure(graph=graph, mode="workflow") == []
+
+    def test_validate_structure_rejects_a_flat_schema_property_reference(self):
+        graph = self._graph_referencing("answer", schema_properties=self._SCHEMA)
+
+        errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
+
+        assert [e["code"] for e in errors] == ["UNRESOLVED_REFERENCE"]
+        assert errors[0]["node_id"] == "node2"
+
+
+class TestAnIterationPublishesItemAndIndex:
+    """Live-verification defect (FINDINGS.md B8), verified against graphon.
+
+    ``IterationNode._create_graph_engine`` (nodes/iteration/iteration_node.py
+    :827-828) adds ``[<node_id>, "index"]`` and ``[<node_id>, "item"]`` to a
+    DEEP COPY of the pool that only the child engine sees, so those two names
+    resolve for a node INSIDE the iteration. The node's own result publishes
+    ``outputs={"output": flattened_outputs}`` (:551, :565, :631), which is what
+    a consumer outside reads.
+
+    ``_declares_variable`` accepted ``output`` only, so a CORRECT
+    ``{{#node4.item#}}`` was treated as unresolved and silently rewritten to
+    ``{{#node4.output#}}`` -- the container's whole array instead of this
+    item's value. It fired on 9 of 9 live attempts. Silently rewriting a
+    reference the engine resolves is the one thing the repair path must never
+    do; it is worse than the loud failure it replaces.
+
+    A ``loop`` is NOT the same shape: it publishes each declared
+    ``loop_variables[].label`` into the MAIN pool
+    (nodes/loop/loop_node.py:279-286, visible inside and out) and reports
+    ``loop_round`` plus those labels as its outputs (:489-492). It never
+    publishes ``item`` or ``index``.
+    """
+
+    @staticmethod
+    def _iteration_graph(reference: str) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": "node1",
+                "data": {
+                    "type": "start",
+                    "title": "Start",
+                    "variables": [{"variable": "slides", "label": "Slides", "type": "paragraph"}],
+                },
+            },
+            {
+                "id": "node4",
+                "data": {
+                    "type": "iteration",
+                    "title": "Per Slide",
+                    "iterator_selector": ["node1", "slides"],
+                    "output_selector": ["node5", "text"],
+                    "start_node_id": "node4start",
+                },
+            },
+            {
+                "id": "node5",
+                "parentId": "node4",
+                "data": {
+                    "type": "llm",
+                    "title": "Writer",
+                    "prompt_template": [{"role": "user", "text": f"Write {reference}"}],
+                },
+            },
+        ]
+
+    @pytest.mark.parametrize("published", ["item", "index", "output"])
+    def test_a_real_iteration_output_survives_the_repair_path_untouched(self, published: str):
+        nodes = self._iteration_graph(f"{{{{#node4.{published}#}}}}")
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[2]["data"]["prompt_template"][0]["text"] == f"Write {{{{#node4.{published}#}}}}"
+        assert WorkflowGenerator._declares_variable(nodes[1], published) is True
+
+    def test_an_invented_name_on_an_iteration_is_reported_not_guessed(self):
+        """An iteration exposes THREE names now, so it no longer has a "sole
+        declared output" to fall back on -- guessing ``output`` is exactly the
+        "which value did the workflow mean?" the repairer refuses to answer
+        everywhere else. Reported instead."""
+        nodes = self._iteration_graph("{{#node4.slide#}}")
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[2]["data"]["prompt_template"][0]["text"] == "Write {{#node4.slide#}}"
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert [(e["code"], e["node_id"]) for e in errors] == [("UNRESOLVED_REFERENCE", "node4")]
+
+    @staticmethod
+    def _loop_graph(reference: str) -> list[dict[str, Any]]:
+        return [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node5",
+                "data": {
+                    "type": "loop",
+                    "title": "Until Done",
+                    "loop_count": 5,
+                    "loop_variables": [{"label": "tally", "var_type": "number", "value_type": "constant", "value": 0}],
+                    "outputs": {"summary": None},
+                    "start_node_id": "node5start",
+                },
+            },
+            {
+                "id": "node6",
+                "parentId": "node5",
+                "data": {
+                    "type": "llm",
+                    "title": "Step",
+                    "prompt_template": [{"role": "user", "text": f"Use {reference}"}],
+                },
+            },
+        ]
+
+    @pytest.mark.parametrize("published", ["tally", "loop_round", "summary"])
+    def test_a_real_loop_output_survives_the_repair_path_untouched(self, published: str):
+        # A declared loop variable's label, the engine's own ``loop_round``,
+        # and a configured ``outputs`` key -- none of them ``item`` / ``index``.
+        nodes = self._loop_graph(f"{{{{#node5.{published}#}}}}")
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[2]["data"]["prompt_template"][0]["text"] == f"Use {{{{#node5.{published}#}}}}"
+        assert WorkflowGenerator._declares_variable(nodes[1], published) is True
+
+    def test_a_loop_does_not_publish_an_iterations_item(self):
+        assert WorkflowGenerator._declares_variable(self._loop_graph("x")[1], "item") is False
+        assert WorkflowGenerator._declares_variable(self._loop_graph("x")[1], "index") is False
+
+    def test_a_non_container_node_still_has_its_invented_name_repaired(self):
+        # Regression guard for dropping the container types from
+        # ``_sole_declared_variable``: every OTHER single-output type keeps the
+        # rewrite it has always had.
+        nodes = [
+            {"id": "node1", "data": {"type": "template-transform", "title": "T", "template": "hi"}},
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "title": "Writer",
+                    "prompt_template": [{"role": "user", "text": "Use {{#node1.rendered#}}"}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Use {{#node1.output#}}"
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+
+class TestReferenceRepairDoesNotDependOnWalkOrder:
+    """``_reconcile_variable_references`` MUTATES the start node's declarations
+    while it walks, and the dotted-reference repair READS them ("is the root a
+    declared input?"), so the walk order decided the outcome. The harvest is a
+    ``set`` of string tuples, so the order was ``PYTHONHASHSEED``: on a graph
+    carrying both ``{{#node1.docs#}}`` and ``{{#node1.docs.url#}}`` with
+    ``docs`` undeclared, seeds 0-6 repaired the dotted form and 7-9 returned
+    UNRESOLVED_REFERENCE -- the exact cmd+K abort the repair exists to remove,
+    arriving at random, which is worse than the deterministic bug it replaced.
+
+    The fix is structural, not a sort: missing start INPUTS are declared in a
+    first pass, and only then does a second pass evaluate dotted roots against
+    the completed declarations. These tests drive the order explicitly rather
+    than hoping for a lucky seed, so they fail if either pass is folded back
+    into the other.
+    """
+
+    _REFS = [("node1", "docs"), ("node1", "docs.url")]
+
+    @staticmethod
+    def _graph() -> list[dict[str, Any]]:
+        return [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Read {{#node1.docs.url#}} and {{#node1.docs#}}"}],
+                },
+            },
+        ]
+
+    def test_the_walk_is_handed_a_sorted_list_not_a_set(self):
+        # Production order is pinned too: a set would reintroduce the coin
+        # flip for any future body that reads what an earlier iteration wrote.
+        assert WorkflowGenerator._ordered_refs(self._graph()) == self._REFS
+
+    @pytest.mark.parametrize("order", sorted(permutations(_REFS)))
+    def test_every_walk_order_produces_the_same_repair(self, order: tuple[tuple[str, str], ...]):
+        """Exhaustive over both orders the set could have yielded."""
+        nodes = self._graph()
+
+        with patch.object(WorkflowGenerator, "_ordered_refs", classmethod(lambda _cls, _nodes: list(order))):
+            WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Read {{#node1.docs#}} and {{#node1.docs#}}"
+        assert [v["variable"] for v in nodes[0]["data"]["variables"]] == ["docs"]
+        # Unpatched: the real walk must agree with every driven one.
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_the_reported_errors_come_out_in_a_stable_order(self):
+        # ``_collect_unresolved_refs`` builds a user-visible list; a set would
+        # shuffle it per process and make the failure card non-reproducible.
+        nodes = [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "{{#zz.b#}} {{#aa.b#}} {{#aa.a#}}"}],
+                },
+            },
+        ]
+
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+
+        assert [e["node_id"] for e in errors] == ["aa", "aa", "zz"]
+        assert "aa.a" in errors[0]["detail"]
+        assert "aa.b" in errors[1]["detail"]
+
+
+class TestDottedReferencesResolveByTheirRoot:
+    """A dotted reference is a path INTO an output, so it is validated by its
+    ROOT segment — the engine owns the depth.
+
+    ``VariablePool.get`` (graphon runtime/variable_pool.py ~211-231) resolves a
+    selector longer than 2 segments against the SEGMENT it found: a
+    ``FileSegment`` through ``_get_file_attribute_segment`` (the
+    ``FileAttribute`` set: type / size / name / mime_type / transfer_method /
+    url / extension / related_id), anything else through
+    ``_get_nested_segment``, which walks a mapping's keys. So a ``file`` start
+    variable's ``{{#node1.doc.url#}}`` is engine-valid and must not be reported.
+    """
+
+    @staticmethod
+    def _start(**variables: str) -> dict[str, Any]:
+        return {
+            "id": "node1",
+            "data": {
+                "type": "start",
+                "title": "Start",
+                "variables": [{"variable": name, "label": name, "type": type_} for name, type_ in variables.items()],
+            },
+        }
+
+    @pytest.mark.parametrize("attribute", ["url", "name", "size", "mime_type", "transfer_method", "extension"])
+    def test_a_file_start_variables_attributes_are_declared(self, attribute):
+        node = self._start(doc="file")
+
+        assert WorkflowGenerator._declares_variable(node, f"doc.{attribute}") is True
+
+    def test_a_json_object_start_variable_is_addressable_too(self):
+        # `VariableEntityType.JSON_OBJECT` lands in the pool as an
+        # ObjectSegment, which `_get_nested_segment` walks by key.
+        assert WorkflowGenerator._declares_variable(self._start(payload="json_object"), "payload.items") is True
+
+    def test_a_file_list_start_variables_attributes_do_not_resolve(self):
+        """`ArrayFileSegment` subclasses `ArraySegment`, NOT `FileSegment`
+        (graphon variables/segments.py:141,190), so `VariablePool.get`'s
+        `case FileSegment()` never matches it and it falls to
+        `_get_nested_segment`, whose `_get_nested_attribute` needs a dict and
+        returns None. `{{#node1.docs.url#}}` therefore renders as its own
+        literal text at run time: a graph that builds, runs and produces
+        garbage. Engine-verified non-resolution, so it must be reported."""
+        node = self._start(docs="file-list")
+
+        assert WorkflowGenerator._declares_variable(node, "docs") is True
+        assert WorkflowGenerator._declares_variable(node, "docs.url") is False
+
+    def test_a_file_list_attribute_reference_is_repaired_to_its_root(self):
+        """The root IS a declared input, it just cannot be addressed a segment
+        deeper, and the root form resolves — so this is a normalizer repair,
+        not a generation failure. Reporting it aborted the whole generation,
+        and cmd+K ``/create`` / ``/refine`` never retry: the user got an error
+        envelope where they used to get a workflow."""
+        nodes = [
+            self._start(docs="file-list"),
+            {
+                "id": "node2",
+                "data": {"type": "llm", "prompt_template": [{"role": "user", "text": "Read {{#node1.docs.url#}}"}]},
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert [v["variable"] for v in nodes[0]["data"]["variables"]] == ["docs"]
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Read {{#node1.docs#}}"
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_a_scalar_start_variable_has_nothing_to_address(self):
+        # A text input is a string: `{{#node1.topic.url#}}` resolves to nothing
+        # at run time, and injecting a variable literally named "topic.url"
+        # (the pre-guard behaviour) only added a junk form field.
+        node = self._start(topic="text-input")
+
+        assert WorkflowGenerator._declares_variable(node, "topic") is True
+        assert WorkflowGenerator._declares_variable(node, "topic.url") is False
+
+    def test_an_unknown_root_is_still_undeclared(self):
+        assert WorkflowGenerator._declares_variable(self._start(doc="file"), "missing.url") is False
+
+    def test_a_file_attribute_reference_survives_reconciliation_untouched(self):
+        nodes = [
+            self._start(doc="file"),
+            {
+                "id": "node2",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [
+                        {"role": "user", "text": "Read {{#node1.doc.url#}} named {{#node1.doc.name#}}"}
+                    ],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert [v["variable"] for v in nodes[0]["data"]["variables"]] == ["doc"]
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == ("Read {{#node1.doc.url#}} named {{#node1.doc.name#}}")
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_a_dotted_reference_to_a_scalar_start_variable_is_repaired_to_its_root(self):
+        nodes = [
+            self._start(topic="text-input"),
+            {
+                "id": "node2",
+                "data": {"type": "llm", "prompt_template": [{"role": "user", "text": "Use {{#node1.topic.url#}}"}]},
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert [v["variable"] for v in nodes[0]["data"]["variables"]] == ["topic"]
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Use {{#node1.topic#}}"
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_a_json_object_attribute_reference_survives_reconciliation_untouched(self):
+        # `json_object` and `file` are the two start types the pool CAN
+        # traverse, so their dotted references are already valid and the repair
+        # must leave them exactly as written.
+        nodes = [
+            self._start(payload="json_object"),
+            {
+                "id": "node2",
+                "data": {"type": "llm", "prompt_template": [{"role": "user", "text": "Use {{#node1.payload.id#}}"}]},
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert [v["variable"] for v in nodes[0]["data"]["variables"]] == ["payload"]
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Use {{#node1.payload.id#}}"
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_a_dotted_root_that_names_nothing_is_still_reported(self):
+        """The repair is keyed on the root being a DECLARED input. A root that
+        names nothing is a genuinely invented reference — there is no value to
+        fall back to — so the loud failure stays."""
+        nodes = [
+            self._start(topic="text-input"),
+            {
+                "id": "node2",
+                "data": {"type": "llm", "prompt_template": [{"role": "user", "text": "Use {{#node1.missing.url#}}"}]},
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert [v["variable"] for v in nodes[0]["data"]["variables"]] == ["topic"]
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Use {{#node1.missing.url#}}"
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert [e["code"] for e in errors] == ["UNRESOLVED_REFERENCE"]
+
+    @pytest.mark.parametrize(
+        ("declared", "reference"),
+        [
+            ({"docs": "file-list"}, "{{#node1.docs.url#}}"),
+            ({"topic": "text-input"}, "{{#node1.topic.url#}}"),
+            ({"doc": "file"}, "{{#node1.doc.url#}}"),
+            ({"payload": "json_object"}, "{{#node1.payload.id#}}"),
+            ({"topic": "text-input"}, "{{#node1.missing.url#}}"),
+        ],
+    )
+    def test_no_dotted_start_reference_ever_injects_a_form_input(self, declared, reference):
+        """Whatever the outcome — repaired, left alone or reported — a dotted
+        name is NEVER added to the start node. The run-time grammar has no dot
+        inside a segment, so a variable literally named ``docs.url`` is a form
+        field that can never resolve (the pre-plan behaviour this replaces)."""
+        nodes = [
+            self._start(**declared),
+            {
+                "id": "node2",
+                "data": {"type": "llm", "prompt_template": [{"role": "user", "text": f"Use {reference}"}]},
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert [v["variable"] for v in nodes[0]["data"]["variables"]] == list(declared)
+
+    def test_an_object_output_named_structured_output_is_addressed_not_repaired(self):
+        """The 3-element harvest is type-blind, so a code node whose declared
+        output IS an object called ``structured_output`` used to have its
+        perfectly valid selector rewritten to the object itself."""
+        nodes = [
+            {
+                "id": "node2",
+                "data": {"type": "code", "outputs": {"structured_output": {"type": "object", "children": None}}},
+            },
+            {
+                "id": "node3",
+                "data": {
+                    "type": "end",
+                    "outputs": [
+                        {"variable": "out", "value_selector": ["node2", "structured_output", "headline"]},
+                    ],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["outputs"][0]["value_selector"] == ["node2", "structured_output", "headline"]
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_a_padded_selector_is_repaired_not_just_reported(self):
+        """The walker strips each segment when it harvests, so the rewriter has
+        to strip too — otherwise a padded selector is harvested, found
+        unresolved, and then silently left alone."""
+        nodes = [
+            {"id": "node2", "data": {"type": "code", "outputs": {"summary": {"type": "string", "children": None}}}},
+            {
+                "id": "node3",
+                "data": {
+                    "type": "end",
+                    "outputs": [{"variable": "out", "value_selector": [" node2 ", " presentation "]}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["outputs"][0]["value_selector"] == ["node2", "summary"]
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    def test_a_padded_three_element_structured_selector_is_repaired(self):
+        nodes = [
+            _llm_node("node2", schema_properties={"answer": {"type": "string"}}),
+            {
+                "id": "node3",
+                "data": {
+                    "type": "end",
+                    "outputs": [{"variable": "out", "value_selector": ["node2 ", " structured_output", "answer "]}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["outputs"][0]["value_selector"] == ["node2", "text"]
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+
+class TestPostprocessGraphNormalizers:
+    """The shared postprocess applies the pure ``core.workflow.graph_normalizers``
+    so cmd+K ``/create`` / ``/refine`` and the Builder heal the same defects the
+    same way. Driven by the REAL ESQ1-303 dev draft (value 60, invented
+    handles) and the REAL ESQ1-302 http-request node (body items without type)."""
+
+    _FIXTURES = __import__("pathlib").Path(__file__).resolve().parent.parent / "fixtures"
+
+    def _esq1_303(self) -> dict:
+        return json.loads((self._FIXTURES / "esq1_303_draft_graph.json").read_text(encoding="utf-8"))
+
+    def test_postprocess_heals_the_esq1_303_draft(self):
+        graph = self._esq1_303()
+
+        out = WorkflowGenerator._postprocess_graph(graph=cast(GraphDict, graph), mode="workflow")
+
+        node2 = next(n for n in out["nodes"] if n["id"] == "node2")
+        condition = node2["data"]["cases"][0]["conditions"][0]
+        assert condition["value"] == "60"  # was the JSON number 60: graphon refused to start
+        assert condition["varType"] == "number"  # ``score`` is a number start variable
+        by_target = {e["target"]: e["sourceHandle"] for e in out["edges"] if e["source"] == "node2"}
+        assert by_target == {"node3": "true", "node4": "false"}  # was score_equals_60 / else
+        # edge ids are derived from the REPAIRED handles
+        assert {e["id"] for e in out["edges"] if e["source"] == "node2"} == {
+            "node2-true-node3-target",
+            "node2-false-node4-target",
+        }
+
+    def test_postprocess_fills_the_esq1_302_body_item_types_but_does_not_collapse_items(self):
+        graph = {
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {
+                    "id": "node4",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "http-request",
+                        "title": "Call PPT API",
+                        "method": "post",
+                        "url": "https://api.example.com/ppt/generate",
+                        "authorization": {"config": None, "type": "no-auth"},
+                        "headers": "",
+                        "params": "",
+                        "body": {
+                            "type": "json",
+                            "data": [
+                                {"value": "{{#node3.text#}}", "key": "slides"},
+                                {"value": "{{#node1.output_filename#}}", "key": "filename"},
+                            ],
+                        },
+                    },
+                },
+            ],
+            "edges": [{"source": "node1", "target": "node4"}],
+        }
+
+        out = WorkflowGenerator._postprocess_graph(graph=cast(GraphDict, graph), mode="workflow")
+
+        items = next(n for n in out["nodes"] if n["id"] == "node4")["data"]["body"]["data"]
+        assert [i["type"] for i in items] == ["text", "text"]
+        assert len(items) == 2  # two items stay two items -- the validator rejects, nothing guesses
+
+    def test_repair_branch_edge_handles_classmethod_keeps_its_contract(self):
+        # Existing callers/tests use the classmethod with keyword args; it now
+        # delegates to graph_normalizers and also heals named-but-wrong handles.
+        nodes = [{"id": "branch", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}}]
+        edges = [
+            {"source": "branch", "target": "a", "sourceHandle": "score_equals_60"},
+            {"source": "branch", "target": "b", "sourceHandle": "else"},
+        ]
+
+        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
+
+        assert [e["sourceHandle"] for e in edges] == ["true", "false"]
+
+
+class TestValidateStructureBranchHandlesAndHttpBodies:
+    """Fail-closed structural checks for two defects that used to reach the
+    canvas silently: an edge leaving a branch node on a handle the node does not
+    declare (ESQ1-303 -- the run "succeeds" with every arm skipped) and a
+    json / raw-text / binary http-request body with a number of items other
+    than one (ESQ1-302 -- rejected by the executor at run time).
+
+    Both change what cmd+K /create and /refine return: a graph that used to
+    come back clean now comes back with a structured error."""
+
+    @staticmethod
+    def _graph(nodes, edges) -> GraphDict:
+        return cast(GraphDict, {"nodes": nodes, "edges": edges, "viewport": {"x": 0, "y": 0, "zoom": 0.7}})
+
+    _START = {
+        "id": "node1",
+        "type": "custom",
+        "position": {"x": 0, "y": 0},
+        "data": {"type": "start", "title": "Start", "variables": []},
+    }
+    _END = {
+        "id": "node6",
+        "type": "custom",
+        "position": {"x": 0, "y": 0},
+        "data": {"type": "end", "title": "End", "outputs": []},
+    }
+
+    def test_an_unrepairable_branch_handle_is_an_invalid_branch_handle_error_naming_the_node(self):
+        branch = {
+            "id": "node2",
+            "type": "custom",
+            "position": {"x": 0, "y": 0},
+            "data": {
+                "type": "if-else",
+                "title": "Check",
+                "cases": [{"case_id": "true", "logical_operator": "and", "conditions": []}],
+            },
+        }
+        # "pass" / "fail": no alias, both unknown -- postprocess must NOT guess,
+        # so the validator must reject.
+        edges = [
+            {"source": "node1", "target": "node2", "sourceHandle": "source"},
+            {"source": "node2", "target": "node6", "sourceHandle": "pass"},
+            {"source": "node2", "target": "node6", "sourceHandle": "fail"},
+        ]
+
+        errors = WorkflowGenerator._validate_structure(
+            graph=self._graph([self._START, branch, self._END], edges), mode="workflow"
+        )
+
+        branch_errors = [e for e in errors if e["code"] == "INVALID_BRANCH_HANDLE"]
+        assert len(branch_errors) == 2
+        assert all(e["node_id"] == "node2" for e in branch_errors)
+        assert "'pass'" in branch_errors[0]["detail"]
+        assert "['true', 'false']" in branch_errors[0]["detail"]
+
+    def test_declared_handles_pass(self):
+        branch = {
+            "id": "node2",
+            "type": "custom",
+            "position": {"x": 0, "y": 0},
+            "data": {
+                "type": "if-else",
+                "title": "Check",
+                "cases": [{"case_id": "true", "logical_operator": "and", "conditions": []}],
+            },
+        }
+        edges = [
+            {"source": "node1", "target": "node2", "sourceHandle": "source"},
+            {"source": "node2", "target": "node6", "sourceHandle": "true"},
+            {"source": "node2", "target": "node6", "sourceHandle": "false"},
+        ]
+
+        errors = WorkflowGenerator._validate_structure(
+            graph=self._graph([self._START, branch, self._END], edges), mode="workflow"
+        )
+
+        assert [e for e in errors if e["code"] == "INVALID_BRANCH_HANDLE"] == []
+
+    def test_the_esq1_302_json_body_is_an_invalid_http_body_error_naming_the_node(self):
+        http = {
+            "id": "node4",
+            "type": "custom",
+            "position": {"x": 0, "y": 0},
+            "data": {
+                "type": "http-request",
+                "title": "Call PPT API",
+                "method": "post",
+                "url": "https://api.example.com/ppt/generate",
+                "authorization": {"config": None, "type": "no-auth"},
+                "headers": "",
+                "params": "",
+                "body": {
+                    "type": "json",
+                    "data": [
+                        {"type": "text", "value": "{{#node1.slides#}}", "key": "slides"},
+                        {"type": "text", "value": "{{#node1.filename#}}", "key": "filename"},
+                    ],
+                },
+            },
+        }
+        start = {
+            **self._START,
+            "data": {
+                **self._START["data"],
+                "variables": [
+                    {"variable": "slides", "type": "paragraph"},
+                    {"variable": "filename", "type": "text-input"},
+                ],
+            },
+        }
+        edges = [{"source": "node1", "target": "node4"}, {"source": "node4", "target": "node6"}]
+
+        errors = WorkflowGenerator._validate_structure(
+            graph=self._graph([start, http, self._END], edges), mode="workflow"
+        )
+
+        body_errors = [e for e in errors if e["code"] == "INVALID_HTTP_BODY"]
+        assert len(body_errors) == 1
+        assert body_errors[0]["node_id"] == "node4"
+        assert "exactly one item" in body_errors[0]["detail"]
+
+    def test_the_error_codes_are_stable_enum_members(self):
+        from core.workflow.generator.types import WorkflowGenerateErrorCode
+
+        assert WorkflowGenerateErrorCode.INVALID_BRANCH_HANDLE == "INVALID_BRANCH_HANDLE"
+        assert WorkflowGenerateErrorCode.INVALID_HTTP_BODY == "INVALID_HTTP_BODY"
+
+
+class TestAJsonSchemaArrayIsNotAValueSelector:
+    """Live-verification defect (docs/superpowers/triage/live-verify-2026-09-22/FINDINGS.md).
+
+    The walker read ANY two-element list of strings as a
+    ``["node_id", "variable"]`` selector. Once the llm snippet started teaching
+    structured output, an ordinary JSON Schema reached the walker for the first
+    time, and its ``required: ["content", "speaker_notes"]`` was harvested as a
+    reference to a node called ``content`` -- aborting the whole generation
+    with ``UNKNOWN_NODE_REFERENCE: points at unknown node 'content'``. Arity 2
+    is the entire trigger: one name or three names harvest nothing.
+    ``enum: ["formal", "casual"]`` and ``type: ["string", "null"]`` are exposed
+    the same way, which is why the fix is on the keywords and the
+    ``structured_output`` subtree, not on ``required`` alone.
+    """
+
+    @staticmethod
+    def _llm_with_schema(schema: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "id": "node3",
+            "type": "custom",
+            "position": {"x": 0, "y": 0},
+            "data": {
+                "type": "llm",
+                "title": "Writer",
+                "prompt_template": [{"role": "user", "text": "Write about {{#node1.topic#}}"}],
+                "structured_output_enabled": True,
+                "structured_output": {"schema": schema},
+            },
+        }
+
+    @staticmethod
+    def _refs(node: dict[str, Any]) -> set[tuple[str, str]]:
+        out: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(node["data"], out)
+        return out
+
+    def test_a_two_name_required_array_is_not_a_reference(self):
+        node = self._llm_with_schema(
+            {
+                "type": "object",
+                "properties": {"content": {"type": "string"}, "speaker_notes": {"type": "string"}},
+                "required": ["content", "speaker_notes"],
+            }
+        )
+
+        assert self._refs(node) == {("node1", "topic")}
+
+    def test_a_two_value_enum_is_not_a_reference(self):
+        node = self._llm_with_schema(
+            {"type": "object", "properties": {"tone": {"type": "string", "enum": ["formal", "casual"]}}}
+        )
+
+        assert self._refs(node) == {("node1", "topic")}
+
+    def test_a_two_member_type_union_is_not_a_reference(self):
+        node = self._llm_with_schema({"type": "object", "properties": {"note": {"type": ["string", "null"]}}})
+
+        assert self._refs(node) == {("node1", "topic")}
+
+    def test_the_keywords_are_excluded_wherever_they_appear(self):
+        # Belt and braces: the walker is generic, so the next schema-bearing
+        # node type must not reintroduce this. These are outside any
+        # ``structured_output`` subtree.
+        out: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(
+            {
+                "output_schema": {"required": ["a", "b"], "enum": ["x", "y"], "type": ["string", "null"]},
+                "parameters": [{"schema": {"required": ["p", "q"]}}],
+            },
+            out,
+        )
+
+        assert out == set()
+
+    def test_a_genuine_selector_in_the_same_node_is_still_harvested(self):
+        """THE regression guard. The exclusion must remove the false positive
+        and nothing else -- a real ``[node_id, variable]`` selector sitting
+        beside the schema has to stay visible to the walker, and stay
+        validated. An exclusion that swallowed real references would quietly
+        undo the walker's whole job."""
+        node = self._llm_with_schema(
+            {
+                "type": "object",
+                "properties": {"content": {"type": "string"}, "speaker_notes": {"type": "string"}},
+                "required": ["content", "speaker_notes"],
+            }
+        )
+        node["data"]["vision"] = {"configs": {"variable_selector": ["node2", "image"]}}
+        node["data"]["context"] = {"variable_selector": ["node2", "chunks"]}
+
+        assert self._refs(node) == {("node1", "topic"), ("node2", "image"), ("node2", "chunks")}
+
+        # …and still VALIDATED: pointing at a node that does not exist is
+        # still an error, so the exclusion has not blinded the validator.
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=[node], mode="workflow")
+        assert {e["code"] for e in errors} == {"UNKNOWN_NODE_REFERENCE"}
+        assert {e["node_id"] for e in errors} == {"node1", "node2"}
+
+    def test_the_production_error_string_is_gone_from_a_whole_graph(self):
+        """The byte-for-byte failure from the live run:
+        ``Reference {#bullet_content.speaker_notes#} points at unknown node
+        'bullet_content'``."""
+        llm = self._llm_with_schema(
+            {
+                "type": "object",
+                "properties": {"bullet_content": {"type": "string"}, "speaker_notes": {"type": "string"}},
+                "required": ["bullet_content", "speaker_notes"],
+            }
+        )
+        llm["data"]["prompt_template"] = [{"role": "user", "text": "Write slide {{#node1.topic#}}"}]
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [{"variable": "topic", "label": "Topic", "type": "paragraph"}],
+                        },
+                    },
+                    llm,
+                    {
+                        "id": "node9",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [
+                                {"variable": "r", "value_selector": ["node3", "structured_output", "bullet_content"]}
+                            ],
+                        },
+                    },
+                ],
+                "edges": [
+                    {"id": "e1", "source": "node1", "target": "node3"},
+                    {"id": "e2", "source": "node3", "target": "node9"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 1},
+            },
+        )
+
+        errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
+
+        assert errors == []
+        assert not any("bullet_content" in e["detail"] for e in errors)

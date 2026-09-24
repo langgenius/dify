@@ -8,6 +8,7 @@ the build itself rides on ``handle_plan_approval`` (approve_plan) because
 no handler; completion and publish receipts are emitted as assistant text.
 """
 
+import json
 import logging
 import uuid
 
@@ -19,7 +20,13 @@ from core.dify_builder.contract import (
     ResourceSelectCard,
     TestResultCard,
 )
+from core.dify_builder.errors import DraftWouldNotStartError
 from core.dify_builder.handlers_fix import (
+    MAX_REPEATED_REPAIRS,
+    NO_OUTPUT_BODY,
+    NO_OUTPUT_REPLY,
+    UNKNOWN_OUTCOME_STUCK_BODY,
+    UNKNOWN_OUTCOME_STUCK_REPLY,
     UNKNOWN_TEST_OUTCOME_NOTICE,
     action_kind,
     action_string,
@@ -27,17 +34,25 @@ from core.dify_builder.handlers_fix import (
     append_card,
     build_change_set,
     build_form_fields,
+    dead_end_branch_node_id,
+    drop_unapplied_repair,
     emit_canvas,
+    failure_signature,
     first_failed_node,
     is_input_failure,
     launch_error_text,
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
+    note_repair_error,
+    note_unknown_outcome,
     perform_revert,
+    repair_is_repeating,
+    run_finished_without_output,
     start_schema,
     test_failure_reason,
     testdata_form_fields,
+    without_endpoint_values,
     without_upload_values,
 )
 from core.dify_builder.models import (
@@ -327,6 +342,33 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     )
 
 
+def _graph_not_applied(
+    env: Env,
+    s: Session,
+    fc: DifyBuilderContext,
+    progress: ProgressReporter,
+    *,
+    title: str,
+    body: str,
+    reply_text: str,
+) -> StepResult:
+    """apply_repair refused the generated graph and wrote nothing: say why and
+    keep the plan approvable (re-approving regenerates the graph).
+
+    apply_repair streams a canvas marker per applied intent BEFORE it raises
+    (on_canvas=env.emit_canvas), so the client has already seen add_*/apply_*
+    markers for mutations that were never written. The draft is still the
+    checkpoint taken at plan approval (create_checkpoint), so tell the client
+    to revert to it, same signal perform_revert uses."""
+    emit_canvas(env, "revert_checkpoint")
+    progress.fail_step("build-apply-graph")
+    execution = progress.finish(status="error")
+    turn_items = append_assistant(
+        env, s, fc, f"{title}: {body}\n{reply_text}", execution=execution, turn_id=progress.operation_id
+    )
+    return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc, items=turn_items)
+
+
 def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) THE BUILD. Only ``approve_repair`` (resolved from approve_plan)
     builds: drive apply_repair once with all create_node/connect intents
@@ -373,7 +415,14 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     # built nodes (not the Builder's session model). resource_ids were already
     # string-filtered when stored (handle_resource_recommendation).
     selected_resource_ids = list(fc.resource_selection.get("resource_ids") or [])
-    build_result = env.agent.build_nodes(list(fc.plan_items), selected_resource_ids)
+    # The text the user actually typed (goal + the requirements form as they
+    # submitted it) -- core/dify_builder cannot import services, so this is
+    # built inline, matching services.dify_builder.agent.user_supplied's
+    # trusted_text_for byte-for-byte (see test_plan_approval_passes_trusted_
+    # text_matching_user_supplied_trusted_text_for). Lets build_nodes tell an
+    # endpoint the user actually gave from one the model invented (ESQ1-302/S5b).
+    trusted_text = f"{fc.goal_text}\n{json.dumps(dict(fc.requirements), ensure_ascii=False)}"
+    build_result = env.agent.build_nodes(list(fc.plan_items), selected_resource_ids, trusted_text=trusted_text)
     intents = build_result.intents
 
     if not any(intent.op == "create_node" for intent in intents):
@@ -483,9 +532,42 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         )
 
     progress.activate("build-apply-graph")
-    result = env.dify.apply_repair(
-        s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
-    )
+    try:
+        result = env.dify.apply_repair(
+            s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
+        )
+    except DraftWouldNotStartError as exc:
+        # The generator's own checks passed, but the draft would fail at
+        # Graph.init (apply_repair's preflight; ESQ1-302/303 both died there
+        # on the first test run). Nothing was written. Say which node and why,
+        # and keep the plan approvable: re-approving regenerates the graph.
+        logger.warning("Dify Builder: generated graph rejected before write for app %s: %s", s.app_id, exc)
+        return _graph_not_applied(
+            env,
+            s,
+            fc,
+            progress,
+            title="The workflow can't start",
+            body=f"The generated workflow would fail before its first node: {exc}",
+            reply_text=(
+                "I didn't apply the workflow: it would fail before its first node. Adjust the plan and approve again."
+            ),
+        )
+    except ValueError as exc:
+        # graph_ops refused an intent (e.g. "node not found") before the
+        # startability check ever ran. Nothing was written either, so the
+        # same recovery -- but "can't start" would send the user hunting for
+        # a broken node that does not exist.
+        logger.warning("Dify Builder: generated graph could not be applied for app %s: %s", s.app_id, exc)
+        return _graph_not_applied(
+            env,
+            s,
+            fc,
+            progress,
+            title="Couldn't apply the workflow",
+            body=f"The generated workflow couldn't be applied to the draft: {exc}",
+            reply_text="I couldn't apply the workflow -- see the error above. Adjust the plan and approve again.",
+        )
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     fc.built_node_ids = [
@@ -535,8 +617,12 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
             # invent them: the cost is one click, not N fields. Still SHOW
             # them -- a green check produced by inputs nobody ever saw is weak
             # evidence about the workflow. Upload fields stay empty because
-            # nothing can mock a file, so the form asks for those alone.
-            prefill = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
+            # nothing can mock a file. Endpoint fields -- a start variable an
+            # http-request node reads its URL from (ESQ1-302's placeholder
+            # grounding) -- stay empty too: a mocked endpoint is just another
+            # invented URL, so the form asks for those alone as well.
+            mocked = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
+            prefill = without_endpoint_values(graph, mocked)
             form_items = append_card(
                 fc,
                 FormCard(
@@ -577,7 +663,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         )
         progress.activate("build-generate-test-inputs")
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        # An endpoint is left out, never mocked: its missing required key fails
+        # the launch as an input, which routes back to this gate.
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
         progress.finish()
     else:
         inputs = {}
@@ -610,7 +698,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     if fc.test_input_ref:
         inputs = env.repo.get_test_input(fc.test_input_ref).inputs
     else:  # defensive: the gate normally prepares inputs first
-        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
         ti = TestInput(session_id=s.id, source="mock", inputs=inputs)
         env.repo.save_test_input(ti)
         fc.test_input_ref = ti.id
@@ -622,7 +710,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 
     try:
         raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
-        status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, ""
+        status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, raw.error
     except Exception as exc:
         # Never crash the advance; capture the launch error (log + store) instead
         # of swallowing it, so diagnose/routing have something to act on.
@@ -645,6 +733,41 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    if status != "running":
+        fc.unknown_outcome_count = 0
+
+    if status == "succeeded" and run_finished_without_output(graph, per_node):
+        # A branch node ran and none of its arms did -- the engine skipped
+        # every one (ESQ1-303: both if-else edges on undeclared handles) --
+        # and no End node ran either, so the run "succeeded" with nothing to
+        # show. Not green; not an engine error to diagnose either, so it
+        # waits at the gate with no staged repair for the user to edit,
+        # keep, or revert.
+        fc.verify_run_id = run.id
+        fc.diagnosis = None
+        fc.staged_repair = []
+        run.culprit_node_id = dead_end_branch_node_id(graph, per_node)
+        emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
+        test_items = append_card(
+            fc,
+            TestResultCard(
+                status="failed",
+                failure_reason=NO_OUTPUT_BODY,
+                dify_run_id=run.dify_run_id,
+            ),
+        )
+        execution = progress.finish()
+        turn_items = append_assistant(
+            env, s, fc, NO_OUTPUT_REPLY, execution=execution, cards=["test_result"], turn_id=progress.operation_id
+        )
+        return StepResult(
+            next=PcState.BUILD_AWAIT_REPAIR,
+            context=fc,
+            items=[*test_items, *turn_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
 
     if status == "succeeded":
         emit_canvas(env, "mark_test_success", dify_run_id=run.dify_run_id)
@@ -680,7 +803,28 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         # Diagnosing/staging a repair here would edit the draft under a run
         # that may still be executing -- surface a neutral notice instead and
         # return to build.execution (re-runnable), without ever calling
-        # diagnose or propose_repair.
+        # diagnose or propose_repair. The second consecutive unknown outcome
+        # stops the re-run loop at the gate (no staged repair) instead.
+        if note_unknown_outcome(fc):
+            fc.verify_run_id = run.id
+            fc.diagnosis = None
+            fc.staged_repair = []
+            execution = progress.finish()
+            turn_items = append_assistant(
+                env,
+                s,
+                fc,
+                f"{UNKNOWN_OUTCOME_STUCK_REPLY}\n{UNKNOWN_OUTCOME_STUCK_BODY}",
+                execution=execution,
+                turn_id=progress.operation_id,
+            )
+            return StepResult(
+                next=PcState.BUILD_AWAIT_REPAIR,
+                context=fc,
+                items=turn_items,
+                run=run,
+                run_id_sink=[run.id],
+            )
         execution = progress.finish()
         turn_items = append_assistant(
             env,
@@ -874,61 +1018,12 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
 
 
-_MAX_REPEATED_REPAIRS = 2
-
-
-def _failure_signature(run: Run) -> str:
-    """A STABLE key for "this is the same failure again", built from the
-    ENGINE's own output: the first failed node's id plus its error text, or the
-    launch error when the run threw before any node ran. Whitespace is
-    collapsed so formatting alone cannot look like a new failure. Returns ""
-    when the run carries nothing identifying -- an unknown failure must never
-    compare equal to another unknown one.
-
-    Deliberately NOT ``diagnosis.root_cause``. That is LLM prose, regenerated
-    on every diagnosis call: in one observed session it was reworded on each of
-    four turns and switched to Chinese on one of them. Keying on it meant
-    ``error == fc.last_repair_error`` could never hold, so ``repair_attempts``
-    reset forever and ``_repair_is_repeating`` was unreachable -- that session
-    burned 9 failed runs and 8 repair approvals with this guard in place.
-    """
-    for node in run.per_node:
-        if node.status == "failed":
-            node_error = " ".join((node.error or "").split())
-            if node.node_id or node_error:
-                return f"{node.node_id}|{node_error}"
-    launch_error = " ".join((run.error or "").split())
-    return f"|{launch_error}" if launch_error else ""
-
-
-def _note_repair_error(fc: DifyBuilderContext, run: Run) -> None:
-    """Record this failure's signature and count CONSECUTIVE repeats of it.
-
-    ``repair_attempts`` is not a global budget: a different failure means the
-    loop is still making progress, however slowly, so the count restarts.
-    The same failure again means the repair that just ran did not address the
-    cause, so the count advances. Call this once per diagnosis, before
-    ``_repair_is_repeating``.
-
-    Takes the ``Run`` rather than a message so the key comes from the engine
-    (see ``_failure_signature``) and not from anything an LLM wrote.
-    """
-    signature = _failure_signature(run)
-    if signature and signature == fc.last_repair_error:
-        fc.repair_attempts += 1
-    else:
-        fc.repair_attempts = 0
-    fc.last_repair_error = signature
-
-
-def _repair_is_repeating(fc: DifyBuilderContext) -> bool:
-    """Has the SAME error now survived ``_MAX_REPEATED_REPAIRS`` repairs?
-
-    Reads the counter ``_note_repair_error`` maintains; the identical error
-    that many times over means the repair agent is aiming at something that
-    isn't the cause, and another round will not find it.
-    """
-    return fc.repair_attempts >= _MAX_REPEATED_REPAIRS
+# The repair breaker is shared with Edit and owned by handlers_fix; these
+# names stay for the existing call sites and tests in this module.
+_MAX_REPEATED_REPAIRS = MAX_REPEATED_REPAIRS
+_failure_signature = failure_signature
+_note_repair_error = note_repair_error
+_repair_is_repeating = repair_is_repeating
 
 
 def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -966,6 +1061,22 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 on_canvas=env.emit_canvas,
                 expected_revision=fc.last_snapshot_hash,
             )
+        except DraftWouldNotStartError as exc:
+            # The fix applied, but apply_repair's preflight found the result
+            # would fail at Graph.init, so nothing was written. Not a stale
+            # fix: say so, then the same no-safe-fix surface as below.
+            logger.warning(
+                "Dify Builder: staged repair would leave a draft that cannot start for app %s: %s", s.app_id, exc
+            )
+            items = drop_unapplied_repair(
+                env,
+                s,
+                fc,
+                progress,
+                title="The workflow can't start",
+                body=f"The proposed fix would leave a workflow that fails before its first node: {exc}",
+            )
+            return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
         except ValueError as exc:
             # The repair was validated against the graph as it stood at
             # propose time; apply_repair re-validates against the draft as it
@@ -973,15 +1084,13 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             # intent stale. A bad intent must not kill the session (ESQ1-271)
             # -- degrade to the no-safe-fix surface and let the user decide.
             logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
-            fc.staged_repair = []
-            execution = progress.finish()
-            items = append_assistant(
+            items = drop_unapplied_repair(
                 env,
                 s,
                 fc,
-                f"Couldn't apply the fix. The proposed fix no longer applies to the current draft: {exc}",
-                execution=execution,
-                turn_id=progress.operation_id,
+                progress,
+                title="Couldn't apply the fix",
+                body=f"The proposed fix no longer applies to the current draft: {exc}",
             )
             return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
         fc.last_snapshot_hash = result.new_hash
@@ -1052,6 +1161,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         fc.verify_run_id = ""
         fc.repair_attempts = 0
         fc.last_repair_error = ""
+        fc.unknown_outcome_count = 0
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         execution = progress.finish()
         turn_items = append_assistant(
@@ -1121,6 +1231,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.verify_run_id = ""
     fc.repair_attempts = 0
     fc.last_repair_error = ""
+    fc.unknown_outcome_count = 0
     execution = progress.finish()
     turn_items = append_assistant(
         env,

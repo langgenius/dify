@@ -37,9 +37,11 @@ from typing import Any, ClassVar, cast
 import json_repair
 
 from configs import dify_config
+from core.workflow import graph_normalizers
 from core.workflow.generator.prompts.node_builder_prompts import (
     NODE_BUILDER_USER_PROMPT,
     format_mode_section,
+    format_node_outputs_section,
     format_parallel_plan,
     format_start_inputs_section,
     get_node_builder_system_prompt,
@@ -133,6 +135,35 @@ def _node_builder_max_workers() -> int:
     return dify_config.WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS
 
 
+# What an ``llm`` node publishes no matter how it is configured -- graphon's
+# ``LLMNode._build_run_outputs``. ``files`` is only set when the node saved
+# files, but a reference to it is legitimate either way, so it belongs here.
+# ``structured_output`` is the one conditional output and is handled
+# separately: it exists only with structured output enabled AND a schema.
+_LLM_ENGINE_OUTPUTS = frozenset({"text", "reasoning_content", "usage", "finish_reason", "files"})
+
+# The one llm output that is an OBJECT: its fields are addressed one segment
+# deeper, as ``{{#<id>.structured_output.<field>#}}`` or the equivalent
+# 3-element selector.
+_STRUCTURED_OUTPUT = "structured_output"
+
+# Start-node input types a reference may address one segment deeper. A ``file``
+# resolves the engine's ``FileAttribute`` set (url / name / size / mime_type /
+# transfer_method / extension / type / related_id) through
+# ``VariablePool._get_file_attribute_segment``, and a ``json_object`` resolves
+# nested keys through ``_get_nested_segment``.
+#
+# ``file-list`` is deliberately NOT here: ``ArrayFileSegment`` subclasses
+# ``ArraySegment``, not ``FileSegment`` (graphon variables/segments.py:141,190),
+# so the pool's ``case FileSegment()`` never matches it and
+# ``_get_nested_attribute`` — which needs a mapping — returns None. A
+# ``{{#start.docs.url#}}`` therefore renders as its own literal text at run
+# time, which is the silently-broken graph we exist to catch. Every remaining
+# input type (text-input, paragraph, number, select, checkbox) is a scalar, so
+# a dotted reference to it is not a path into anything either.
+_ADDRESSABLE_START_VARIABLE_TYPES = frozenset({"file", "json_object"})
+
+
 _MODEL_NODE_TYPES = frozenset(
     {
         BuiltinNodeTypes.LLM,
@@ -140,6 +171,29 @@ _MODEL_NODE_TYPES = frozenset(
         BuiltinNodeTypes.PARAMETER_EXTRACTOR,
     }
 )
+
+
+# The only node types whose output NAMES are chosen by the node's own config:
+# a code node's ``outputs`` keys, a parameter-extractor's ``parameters[].name``,
+# a human-input's ``inputs[].output_variable_name``, and an llm's
+# ``structured_output`` schema fields. Every other type publishes a fixed set
+# the engine owns, so the planner has nothing to declare for it.
+_DECLARABLE_OUTPUT_NODE_TYPES = frozenset(
+    {
+        BuiltinNodeTypes.CODE,
+        BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+        BuiltinNodeTypes.HUMAN_INPUT,
+        BuiltinNodeTypes.LLM,
+    }
+)
+
+# A declared output name has to be REFERENCEABLE or declaring it only makes a
+# producer expose something nothing can read. This is the run time's own
+# per-segment grammar (graphon ``variable_template_parser.SELECTOR_PATTERN`` /
+# the walker's ``_VAR_REF_RE``): a hyphen, a space, a dot or a leading digit
+# makes the name invisible to both, and the 30-character bound doubles as the
+# sanity cap on a runaway LLM payload.
+_DECLARED_OUTPUT_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]{0,29}")
 
 
 # Appended as a trailing user message on the SECOND (and only) attempt when
@@ -317,6 +371,63 @@ def _build_plan_event(
         ],
         "start_inputs": start_inputs,
     }
+
+
+def _parse_node_outputs(raw: Any, plan_nodes: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Normalize the planner's optional ``node_outputs`` declaration.
+
+    The value comes straight out of an LLM, so nothing about its shape is
+    guaranteed: anything that is not ``{"<node id>": ["<name>", …]}`` whose
+    names satisfy ``_DECLARED_OUTPUT_NAME_RE`` is dropped rather than
+    trusted, and the whole key is optional — a plan without it degrades to
+    the behaviour that predates it (every isolated node builder guessing the
+    producers' output names).
+
+    Declarations are also restricted to ``_DECLARABLE_OUTPUT_NODE_TYPES``.
+    Every other node type publishes fixed engine outputs, so honouring a
+    declaration on one would actively point consumers at a name the engine
+    never exposes (an http-request node "declaring" ``response``, say).
+    """
+    if not isinstance(raw, dict):
+        if raw is not None:
+            logger.debug("Workflow generator: ignoring node_outputs of type %s", type(raw).__name__)
+        return {}
+    declarable_ids = {
+        str(node.get("id") or "").strip()
+        for node in plan_nodes
+        if isinstance(node, dict) and str(node.get("node_type") or "").strip() in _DECLARABLE_OUTPUT_NODE_TYPES
+    }
+    declarable_ids.discard("")
+    parsed: dict[str, list[str]] = {}
+    for node_id, names in raw.items():
+        key = node_id.strip() if isinstance(node_id, str) else ""
+        if key not in declarable_ids:
+            logger.debug("Workflow generator: ignoring declared outputs for %r (not a planned producer)", node_id)
+            continue
+        if not isinstance(names, list):
+            logger.debug("Workflow generator: ignoring declared outputs for %r (not a list)", key)
+            continue
+        usable = [
+            name.strip() for name in names if isinstance(name, str) and _DECLARED_OUTPUT_NAME_RE.fullmatch(name.strip())
+        ]
+        if len(usable) != len(names):
+            logger.debug(
+                "Workflow generator: dropped %d unreferenceable declared output name(s) on node %r",
+                len(names) - len(usable),
+                key,
+            )
+        # ``dict.fromkeys`` de-duplicates while preserving the planner's order:
+        # a repeated name would otherwise be repeated in every builder prompt.
+        cleaned = list(dict.fromkeys(usable))
+        if len(cleaned) != len(usable):
+            logger.debug(
+                "Workflow generator: collapsed %d repeated declared output name(s) on node %r",
+                len(usable) - len(cleaned),
+                key,
+            )
+        if cleaned:
+            parsed[key] = cleaned
+    return parsed
 
 
 def _find_planned_tool_entry(node: dict[str, Any], entries: list[ToolCatalogueEntry]) -> ToolCatalogueEntry | None:
@@ -574,6 +685,13 @@ class WorkflowGenerator:
             if isinstance(item, dict) and (item.get("variable") or "").strip()
         ]
 
+        # Planner-declared producer outputs, so the isolated node builders
+        # agree on the names a code / parameter-extractor / human-input /
+        # structured-output llm node will expose. Optional and defensively
+        # parsed — an omitted or unusable value yields ``{}`` and every
+        # builder prompt is exactly the one it was before this key existed.
+        node_outputs = _parse_node_outputs(plan.get("node_outputs"), plan_nodes)
+
         # First event the stream sees: the high-level plan, before the slower
         # builder call. Non-streaming callers ignore it.
         yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=resolved_mode)
@@ -596,6 +714,7 @@ class WorkflowGenerator:
                 tool_catalogue_text=planner_tool_catalogue_text,
                 tool_catalogue_entries=full_tool_catalogue_entries,
                 start_inputs=start_inputs,
+                node_outputs=node_outputs,
                 current_graph=current_graph,
             )
 
@@ -1030,6 +1149,7 @@ class WorkflowGenerator:
         tool_catalogue_text: str,
         tool_catalogue_entries: list[ToolCatalogueEntry],
         start_inputs: list[dict[str, Any]],
+        node_outputs: dict[str, list[str]],
         current_graph: dict[str, Any] | None,
     ) -> GraphDict:
         """Build changed node configs concurrently and expand them into a graph.
@@ -1053,6 +1173,14 @@ class WorkflowGenerator:
         # Shared across every builder call in this request — compute once.
         plan_json = format_parallel_plan(plan_nodes, plan_edges, start_inputs)
         mode_section = format_mode_section(mode)
+        # An llm producer's declared names are structured-output schema fields,
+        # which consumers must reference through ``structured_output`` — the
+        # rendered section needs the types to say so. Ids are stripped exactly
+        # as ``_parse_node_outputs`` strips its keys, so both sides of the
+        # lookup agree.
+        node_types = {
+            str(node.get("id") or "").strip(): str(node.get("node_type") or "").strip() for node in plan_nodes
+        }
 
         configs_by_id: dict[str, dict[str, Any]] = {}
         if nodes_to_build:
@@ -1074,6 +1202,8 @@ class WorkflowGenerator:
                         tool_catalogue_text=tool_catalogue_text,
                         tool_catalogue_entries=tool_catalogue_entries,
                         start_inputs=start_inputs,
+                        node_outputs=node_outputs,
+                        node_types=node_types,
                         existing_node=existing_by_id.get(str(node.get("id"))),
                     ): str(node.get("id"))
                     for node in nodes_to_build
@@ -1116,6 +1246,8 @@ class WorkflowGenerator:
         tool_catalogue_text: str,
         tool_catalogue_entries: list[ToolCatalogueEntry],
         start_inputs: list[dict[str, Any]],
+        node_outputs: dict[str, list[str]],
+        node_types: dict[str, str],
         existing_node: dict[str, Any] | None,
     ) -> dict[str, Any]:
         """Generate only the semantic config for one normalized plan node."""
@@ -1155,6 +1287,10 @@ class WorkflowGenerator:
                 format_start_inputs_section(start_inputs) if node_type == BuiltinNodeTypes.START else ""
             ),
             existing_config_section=existing_config_section,
+            # Stripped for the same reason ``node_types`` is: the declaration's
+            # keys are stripped, so a padded plan id must still find its own
+            # entry instead of silently losing its producer instruction.
+            node_outputs_section=format_node_outputs_section(node_outputs, node_id.strip(), node_types),
             plan_json=plan_json,
         )
         parsed = cls._invoke_and_parse_json(
@@ -1462,10 +1598,14 @@ class WorkflowGenerator:
             if n.get("id") in inner_node_to_parent.values():
                 parent_type[n["id"]] = n.get("data", {}).get("type", "")
 
-        # Branch nodes (if-else / question-classifier) emit one handle per
-        # case; an edge leaving them on the default "source" handle dangles
-        # off a handle that doesn't exist on the canvas. Repair the
-        # unambiguous cases before edge ids are computed from the handles.
+        # Branch nodes (if-else / question-classifier / human-input, and any
+        # node with error_strategy "fail-branch") route only on the handles
+        # they declare. An edge on any other handle -- the default "source"
+        # on an if-else, or a named-but-wrong one like the planner's "else"
+        # against case "true" -- dangles off a handle that doesn't exist and
+        # its arm never runs. Re-home only what is forced (fail-closed:
+        # ambiguous edges are left as they are), before edge ids are
+        # computed from the handles.
         cls._repair_branch_edge_handles(nodes=nodes, edges=edges)
 
         # Dedupe edges (LLMs sometimes emit the same edge twice).
@@ -1542,6 +1682,26 @@ class WorkflowGenerator:
         # dropdown in the test form -> repair it to a text-input.
         cls._normalize_start_select_variables(nodes=nodes)
 
+        # The deterministic heal set every pre-preflight caller shares
+        # (``core.workflow.graph_normalizers.heal_nodes_for_preflight``), called
+        # as the ONE list rather than re-spelled member by member: an operator
+        # written the ASCII way (``>=`` -> ``≥``) and a condition value written
+        # as a JSON number (ESQ1-303's ``"value": 60``), the ``type`` an
+        # http-request body item cannot default (ESQ1-302), an ``authorization``
+        # with no ``type``, and a parameter-extractor ``query`` written as an
+        # array of selector arrays (Blocker A). A normalizer added there reaches
+        # this path with it, so the generator and the Builder's apply_repair
+        # chokepoint cannot drift.
+        #
+        # ``derive_if_else_var_types`` is called separately because the shared
+        # set deliberately EXCLUDES it: ``varType`` is a frontend-only operator
+        # hint the engine ignores, so it is not something a preflight can turn
+        # on -- but a generated draft is handed straight to the canvas, which
+        # wants it.
+        for changed_id in graph_normalizers.heal_nodes_for_preflight(nodes):
+            logger.info("Workflow generator: applied the shared pre-preflight heals to node %s", changed_id)
+        graph_normalizers.derive_if_else_var_types(nodes)
+
         return cast(GraphDict, {"nodes": nodes, "edges": deduped_edges, "viewport": viewport})
 
     # ------------------------------------------------------------------
@@ -1588,10 +1748,16 @@ class WorkflowGenerator:
     ) -> Any:
         """Rewrite query placeholders and selectors at any node-data depth.
 
-        Some node schemas store selectors inside another list, for example a
-        parameter extractor's ``query`` or a variable aggregator's
-        ``variables``. Literal string-list fields opt out so an option list
-        such as ``["sys", "query"]`` is preserved.
+        Some node schemas genuinely store a selector inside another list --
+        a variable aggregator's ``variables`` (graphon: ``list[list[str]]``).
+        A parameter extractor's ``query`` is NOT one of these: graphon wants
+        ``query: list[str]``, one selector, same as a question-classifier's
+        ``query_variable_selector``. This walker still recurses into any
+        list, so a nested ``[["sys", "query"]]`` it is handed comes out
+        still nested (``[[target_node_id, "query"]]``); unwrapping that is
+        ``core.workflow.graph_normalizers.normalize_parameter_extractor_queries``'s
+        job, run later in ``_postprocess_graph``. Literal string-list fields
+        opt out so an option list such as ``["sys", "query"]`` is preserved.
         """
         target_placeholder = f"{{{{#{target_node_id}.query#}}}}"
         if isinstance(value, str):
@@ -1680,11 +1846,24 @@ class WorkflowGenerator:
     # remapping when we defensively sanitize LLM-emitted ids.
     _ID_FIELDS: ClassVar = frozenset({"start_node_id", "iteration_id", "loop_id", "parentId"})
 
-    # ``data`` keys whose value is a plain string list, never a
-    # ``[node_id, var]`` value-selector — so the reference walker must not read
-    # a 2-element one as a selector. ``default`` holds an input's default value;
-    # ``options`` holds select choices; the ``allowed_file_*`` keys hold a file
-    # variable's upload config (types / extensions / methods).
+    # ``data`` keys whose SUBTREE holds no ``[node_id, var]`` value-selector —
+    # so the reference walker must not read a 2-element string list inside one
+    # as a selector. The gate is inherited by everything below the key.
+    #
+    # Node config: ``default`` holds an input's default value; ``options``
+    # holds select choices; the ``allowed_file_*`` keys hold a file variable's
+    # upload config (types / extensions / methods).
+    #
+    # JSON Schema: ``structured_output`` is an llm node's whole schema wrapper,
+    # and ``required`` / ``enum`` / ``type`` are the schema keywords that hold
+    # string arrays. A schema is DATA, never a selector, but the walker is
+    # generic and read ``required: ["content", "speaker_notes"]`` as a
+    # reference to a node called ``content`` — which aborted the entire
+    # generation with UNKNOWN_NODE_REFERENCE. Arity 2 was the whole trigger.
+    # The subtree and the keywords are both listed on purpose: the subtree
+    # covers everything a structured-output schema will ever grow, and the
+    # keywords cover the next schema-bearing node type, whose schema will not
+    # live under ``structured_output`` (a tool's ``output_schema``, say).
     _NON_SELECTOR_LIST_KEYS: ClassVar = frozenset(
         {
             "default",
@@ -1692,6 +1871,10 @@ class WorkflowGenerator:
             "allowed_file_types",
             "allowed_file_extensions",
             "allowed_file_upload_methods",
+            "structured_output",
+            "required",
+            "enum",
+            "type",
         }
     )
 
@@ -1700,11 +1883,13 @@ class WorkflowGenerator:
         """
         Apply deterministic repairs to unresolved variable references.
 
-        Missing start-node inputs are added as ``paragraph`` variables. For
-        non-start nodes, a mistaken output name is rewritten only when the
-        source exposes exactly one declared output. Sources with zero or
-        multiple outputs remain untouched so validation fails closed instead
-        of guessing which value the workflow should consume.
+        Missing start-node inputs are added as ``paragraph`` variables. A
+        DOTTED reference to a start input that cannot be addressed one segment
+        deeper is repaired to its root. For non-start nodes, a mistaken output
+        name is rewritten only when the source exposes exactly one declared
+        output. Sources with zero or multiple outputs remain untouched so
+        validation fails closed instead of guessing which value the workflow
+        should consume.
 
         For Advanced-Chat mode, ``sys.query`` and ``sys.files`` are always
         treated as resolved without any declaration. Tool nodes' parameter
@@ -1716,13 +1901,35 @@ class WorkflowGenerator:
             (n for n in nodes if n.get("data", {}).get("type") == BuiltinNodeTypes.START),
             None,
         )
+        ordered_refs = cls._ordered_refs(nodes)
 
-        # Collect every (node_id, var) reference the builder emitted.
-        refs: set[tuple[str, str]] = set()
-        for node in nodes:
-            cls._collect_refs_in_data(node.get("data") or {}, refs)
+        # PASS 1 — every missing start INPUT is declared first, before anything
+        # reads the start node's declarations.
+        #
+        # Pass 2 keys the dotted-reference repair on whether the root names a
+        # declared input, and this pass is what declares it. Doing both in one
+        # loop made the outcome depend on which reference the loop happened to
+        # reach first: a graph carrying both ``{{#start.docs#}}`` and
+        # ``{{#start.docs.url#}}`` with ``docs`` undeclared repaired cleanly
+        # when the flat form came first and aborted on UNRESOLVED_REFERENCE
+        # when the dotted one did. The harvest is a set, so "first" was
+        # ``PYTHONHASHSEED`` — the cmd+K abort this repair exists to remove,
+        # arriving at random. Nothing here may read what a later iteration of
+        # the same loop writes.
+        if start_node is not None:
+            for node_id, var in ordered_refs:
+                if mode == "advanced-chat" and node_id == "sys":
+                    continue
+                if nodes_by_id.get(node_id) is not start_node or "." in var:
+                    continue
+                if cls._declares_variable(start_node, var):
+                    continue
+                cls._inject_start_variable(start_node, var)
+                logger.info("Workflow generator: auto-injected missing start variable %r", var)
 
-        for node_id, var in refs:
+        # PASS 2 — repair what is still unresolved against the now-complete
+        # declarations.
+        for node_id, var in ordered_refs:
             # Advanced-Chat system variables are always resolved.
             if mode == "advanced-chat" and node_id == "sys":
                 continue
@@ -1734,15 +1941,38 @@ class WorkflowGenerator:
             if cls._declares_variable(target, var):
                 continue
             if start_node is not None and target is start_node:
-                cls._inject_start_variable(start_node, var)
-                logger.info("Workflow generator: auto-injected missing start variable %r", var)
-                continue
-
-            # Prefer a known output-name alias (e.g. HTTP-request `response` -> `body`);
-            # otherwise fall back to a rewrite only when the source has a sole output.
-            replacement = cls._aliased_output(target, var) or cls._sole_declared_variable(target)
+                root, _, tail = var.partition(".")
+                if not tail:
+                    # Pass 1 owns the tail-less form; still undeclared here
+                    # means the injection was declined, and there is nothing
+                    # left to repair it to.
+                    continue
+                # A DOTTED name on the start node. It is never injected: the
+                # run time's grammar has no dot inside a segment, so a form
+                # input literally called ``docs.url`` could never resolve.
+                #
+                # When the ROOT names a declared input we are here only because
+                # that input's type has nothing to address one segment deeper
+                # (``file-list`` and every scalar — see
+                # ``_ADDRESSABLE_START_VARIABLE_TYPES``). The dotted form never
+                # resolves and the root form always does, so repair it to the
+                # root and let the change log carry it, exactly like every
+                # other reference repair. Reporting it instead aborted the
+                # whole generation, and cmd+K ``/create`` / ``/refine`` do not
+                # retry.
+                #
+                # A root that names NOTHING is a genuinely invented reference
+                # with no value to fall back to: that one stays reported.
+                if not cls._declares_variable(start_node, root):
+                    continue
+                replacement: str | None = root
+            else:
+                # Prefer a known output-name alias (e.g. HTTP-request `response` -> `body`);
+                # otherwise fall back to a rewrite only when the source has a sole output.
+                replacement = cls._aliased_output(target, var) or cls._sole_declared_variable(target)
             if replacement is None:
                 continue
+            target_is_llm = (target.get("data") or {}).get("type") == BuiltinNodeTypes.LLM
             for node in nodes:
                 data = node.get("data")
                 if isinstance(data, dict):
@@ -1751,6 +1981,7 @@ class WorkflowGenerator:
                         node_id=node_id,
                         old_variable=var,
                         new_variable=replacement,
+                        target_is_llm=target_is_llm,
                     )
             logger.info(
                 "Workflow generator: rewrote unresolved reference %s.%s to declared output %s.%s",
@@ -1761,6 +1992,26 @@ class WorkflowGenerator:
             )
 
     @classmethod
+    def _ordered_refs(cls, nodes: list[dict[str, Any]]) -> list[tuple[str, str]]:
+        """Every ``(node_id, var)`` reference in the graph, in a DETERMINISTIC
+        order.
+
+        The harvest itself is a set — the same reference reached through two
+        nodes is one reference — but nothing downstream may inherit a set's
+        iteration order. ``_reconcile_variable_references`` mutates the start
+        node's declarations while it walks, and ``_collect_unresolved_refs``
+        builds a user-visible error list, so in both cases the order decides
+        the output. A set of string tuples orders by ``PYTHONHASHSEED``, which
+        is how a repair became a coin flip between a clean graph and an
+        UNRESOLVED_REFERENCE abort. Sorting costs nothing and makes both
+        reproducible.
+        """
+        refs: set[tuple[str, str]] = set()
+        for node in nodes:
+            cls._collect_refs_in_data(node.get("data") or {}, refs)
+        return sorted(refs)
+
+    @classmethod
     def _rewrite_variable_reference_in_data(
         cls,
         value: Any,
@@ -1769,8 +2020,14 @@ class WorkflowGenerator:
         old_variable: str,
         new_variable: str,
         allow_selector: bool = True,
+        target_is_llm: bool = False,
     ) -> Any:
-        """Rewrite one exact placeholder or selector at any data depth."""
+        """Rewrite one exact placeholder or selector at any data depth.
+
+        ``target_is_llm`` mirrors the walker's gate on the 3-element selector:
+        only an ``llm`` node publishes a ``structured_output`` object, so only
+        there is a 3-string list a selector rather than plain data.
+        """
         if isinstance(value, str):
             return cls._VAR_REF_RE.sub(
                 lambda match: (
@@ -1788,11 +2045,36 @@ class WorkflowGenerator:
                     old_variable=old_variable,
                     new_variable=new_variable,
                     allow_selector=allow_selector and key not in cls._NON_SELECTOR_LIST_KEYS,
+                    target_is_llm=target_is_llm,
                 )
             return value
         if isinstance(value, list):
-            if allow_selector and value == [node_id, old_variable]:
-                return [node_id, new_variable]
+            if allow_selector and all(isinstance(item, str) for item in value):
+                # Stripped on both sides: the walker strips every segment when
+                # it harvests a selector, so comparing raw here would find a
+                # padded selector unresolved and then never repair it.
+                segments = [item.strip() for item in value]
+                if len(segments) == 2 and segments == [node_id, old_variable]:
+                    return [node_id, new_variable]
+                if (
+                    target_is_llm
+                    and len(segments) == 3
+                    and segments[1] == _STRUCTURED_OUTPUT
+                    and [segments[0], f"{segments[1]}.{segments[2]}"] == [node_id, old_variable]
+                ):
+                    # The 3-segment structured-output selector the walker
+                    # harvests as ``structured_output.<field>``. A replacement
+                    # is always a plain output name, so the repaired selector
+                    # is 2 segments — exactly what the equivalent placeholder
+                    # becomes.
+                    #
+                    # Gated EXACTLY like the harvest (``llm`` target, middle
+                    # segment ``structured_output``) — an ungated rewrite
+                    # collapsed a plain 3-string list such as an end node's
+                    # ``["n2", "structured_output", "x"]`` data tag to 2
+                    # elements, silently editing data the walker never
+                    # considered a reference.
+                    return [node_id, new_variable]
             for index, item in enumerate(value):
                 value[index] = cls._rewrite_variable_reference_in_data(
                     item,
@@ -1800,6 +2082,7 @@ class WorkflowGenerator:
                     old_variable=old_variable,
                     new_variable=new_variable,
                     allow_selector=allow_selector,
+                    target_is_llm=target_is_llm,
                 )
         return value
 
@@ -1827,42 +2110,107 @@ class WorkflowGenerator:
                 )
             return
         if isinstance(value, list):
-            if allow_selector and len(value) == 2 and all(isinstance(item, str) for item in value):
-                node_id, var = value[0].strip(), value[1].strip()
-                if node_id and var:
-                    out.add((node_id, var))
+            if allow_selector and all(isinstance(item, str) for item in value):
+                if len(value) == 2:
+                    node_id, var = value[0].strip(), value[1].strip()
+                    if node_id and var:
+                        out.add((node_id, var))
+                elif len(value) == 3 and value[1].strip() == _STRUCTURED_OUTPUT:
+                    # The engine addresses an llm's structured output with a
+                    # 3-segment selector, and the builder head now teaches that
+                    # form — so it must be validated, not skipped. Harvested as
+                    # the same dotted name the equivalent placeholder produces
+                    # (``structured_output.<field>``) so both forms travel one
+                    # path through ``_declares_variable`` and the repairer.
+                    #
+                    # Harvested WHATEVER the target's type: only an ``llm`` node
+                    # publishes a ``structured_output`` object, so this selector
+                    # pointed anywhere else cannot resolve and must be reported
+                    # rather than skipped — ``["start", "structured_output",
+                    # "x"]`` is exactly the invented reference this walk exists
+                    # to catch. The type check lives on the REWRITE instead
+                    # (``_rewrite_variable_reference_in_data``'s
+                    # ``target_is_llm``), which is where reading a plain
+                    # 3-string list as a selector did damage: an end node's
+                    # ``["n2", "structured_output", "x"]`` data tag was
+                    # collapsed to ``["n2", "a"]`` against a code node.
+                    # Reporting is loud and recoverable; that edit was silent.
+                    # Every OTHER 3-string list stays plain data, as before.
+                    node_id, field = value[0].strip(), value[2].strip()
+                    if node_id and field:
+                        out.add((node_id, f"{_STRUCTURED_OUTPUT}.{field}"))
             for item in value:
                 cls._collect_refs_in_data(item, out, allow_selector=allow_selector)
+
+    @staticmethod
+    def _llm_schema_properties(data: dict[str, Any]) -> dict[str, Any]:
+        """
+        An ``llm`` node's structured-output schema properties, or ``{}``
+        when there is none. Structured-output keys land under
+        ``structured_output.schema.properties`` (graphon's
+        ``LLMNodeData``) when structured output is enabled. Read once here
+        and shared by every caller that needs to know the node's declared
+        schema properties or whether it has a real (non-empty) one.
+        """
+        return ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
 
     @classmethod
     def _declares_variable(cls, node: dict[str, Any], var: str) -> bool:
         """
         Does ``node`` expose a variable named ``var``? Each node type
         publishes outputs differently — start exposes ``data.variables``,
-        llm exposes ``text``, code exposes ``data.outputs`` keys, etc.
-        Tool parameters are validated at run time, not here.
+        llm exposes the engine's fixed set (see ``_LLM_ENGINE_OUTPUTS``),
+        code exposes ``data.outputs`` keys, etc. Tool parameters are
+        validated at run time, not here.
+
+        ``var`` may be DOTTED, because the walker hands us the whole tail of a
+        multi-segment reference (``{{#node1.doc.url#}}``,
+        ``["node2", "structured_output", "title"]``). The engine resolves such
+        a reference against the segment the first two elements name
+        (``VariablePool.get``), so we validate the ROOT and leave the depth to
+        the run time. Start and llm are stricter: they know which of their
+        outputs are objects at all.
         """
         data = node.get("data") or {}
         node_type = data.get("type")
+        root, _, tail = var.partition(".")
         if node_type == BuiltinNodeTypes.START:
-            return any(isinstance(v, dict) and v.get("variable") == var for v in (data.get("variables") or []))
+            declared = next(
+                (v for v in (data.get("variables") or []) if isinstance(v, dict) and v.get("variable") == root),
+                None,
+            )
+            if declared is None:
+                return False
+            # Only a file / file-list / json_object input holds something to
+            # address one segment deeper; every other type is a scalar, so a
+            # dotted reference to it resolves to nothing at run time.
+            return not tail or str(declared.get("type") or "") in _ADDRESSABLE_START_VARIABLE_TYPES
         if node_type == BuiltinNodeTypes.LLM:
-            # Default LLM output is ``text``. Structured-output keys land
-            # under ``structured_output.schema.properties`` when enabled.
-            if var == "text":
+            # graphon's ``LLMNode._build_run_outputs`` (nodes/llm/node.py
+            # ~721-740) always publishes text / reasoning_content / usage /
+            # finish_reason, adds ``files`` when the node saved any, and adds
+            # ``structured_output`` -- ONE object, addressed as
+            # ``{{#<id>.structured_output.<field>#}}`` -- only when structured
+            # output is enabled with a schema. A schema property is NEVER a
+            # top-level output, so ``<llm>.<property>`` is rejected: the engine
+            # can't resolve it, and accepting it let a broken graph reach the
+            # canvas silently.
+            if var in _LLM_ENGINE_OUTPUTS:
                 return True
-            schema = ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
-            return var in schema
+            # ``structured_output`` is the node's ONLY object output, so it is
+            # the only root a dotted reference may address here; how deep the
+            # schema goes is the run time's business.
+            return root == _STRUCTURED_OUTPUT and not cls._llm_is_schema_less(data)
         if node_type == BuiltinNodeTypes.CODE:
-            return var in (data.get("outputs") or {})
+            return root in (data.get("outputs") or {})
         if node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
-            return var == "result"
+            return root == "result"
         if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-            return any(isinstance(p, dict) and p.get("name") == var for p in (data.get("parameters") or []))
+            return any(isinstance(p, dict) and p.get("name") == root for p in (data.get("parameters") or []))
         if node_type == BuiltinNodeTypes.HTTP_REQUEST:
-            return var in {"body", "status_code", "headers", "files"}
+            return root in {"body", "status_code", "headers", "files"}
         if node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:
-            return var == "output"
+            return root == "output"
         if node_type == BuiltinNodeTypes.TOOL:
             # A tool's outputs are NOT opaque: tool_node.py fixes the envelope
             # to text/files/json plus the provider's declared variables, and
@@ -1874,28 +2222,62 @@ class WorkflowGenerator:
             # as it did before. We reject only references we can prove wrong.
             # An unreadable schema shape (not a dict, or a `properties` that
             # isn't a dict) also fails open rather than raising.
-            if var in {"text", "files", "json"}:
+            if root in {"text", "files", "json"}:
                 return True
             output_schema = data.get("output_schema")
             properties = output_schema.get("properties") if isinstance(output_schema, dict) else None
             if not isinstance(properties, dict) or not properties:
                 return True
-            return var in properties
-        if node_type in (BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP):
-            return var == "output"
+            return root in properties
+        if node_type == BuiltinNodeTypes.ITERATION:
+            # graphon's ``IterationNode`` publishes THREE names, not one:
+            #   - ``output``: the node's own result
+            #     (``outputs={"output": flattened_outputs}``,
+            #     nodes/iteration/iteration_node.py:551/565/631) -- what a
+            #     consumer OUTSIDE the container reads.
+            #   - ``item`` / ``index``: added to a deep COPY of the pool that
+            #     only the child engine sees (``_create_graph_engine``, :827-828),
+            #     so they resolve for a node INSIDE the sub-pipeline.
+            #
+            # Accepting ``output`` alone meant a CORRECT ``{{#node4.item#}}``
+            # was read as unresolved and silently rewritten to
+            # ``{{#node4.output#}}`` -- this item's value replaced by the whole
+            # array. Scope is not enforced here because the walker carries only
+            # the TARGET of a reference, never the node that made it; the
+            # alternative to accepting all three is that silent rewrite, which
+            # is strictly worse than an out-of-scope ``item`` failing loudly at
+            # run time.
+            return root in {"output", "item", "index"}
+        if node_type == BuiltinNodeTypes.LOOP:
+            # A loop is NOT the same shape as an iteration: it never publishes
+            # ``item`` / ``index``. It adds each declared
+            # ``loop_variables[].label`` to the MAIN pool
+            # (nodes/loop/loop_node.py:279-286, so visible inside AND outside),
+            # and its result is those labels plus ``loop_round``
+            # (:489-492), alongside whatever ``data.outputs`` already declares.
+            #
+            # ``output`` stays accepted although the engine does not publish it
+            # under that name: dropping it would turn graphs that generate
+            # today into failures, which is a tightening, not this fix. This
+            # fix only stops a CORRECT reference being rewritten.
+            if root in {"output", "loop_round"}:
+                return True
+            if root in (data.get("outputs") or {}):
+                return True
+            return any(isinstance(v, dict) and v.get("label") == root for v in (data.get("loop_variables") or []))
         if node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
-            return var in {"class_id", "class_name"}
+            return root in {"class_id", "class_name"}
         if node_type == BuiltinNodeTypes.DOCUMENT_EXTRACTOR:
             # Single ``text`` output: a string, or an array of strings when
             # ``is_array_file`` is set.
-            return var == "text"
+            return root == "text"
         if node_type in (BuiltinNodeTypes.VARIABLE_AGGREGATOR, BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR):
-            return var == "output"
+            return root == "output"
         if node_type == BuiltinNodeTypes.LIST_OPERATOR:
-            return var in {"result", "first_record", "last_record"}
+            return root in {"result", "first_record", "last_record"}
         if node_type == BuiltinNodeTypes.HUMAN_INPUT:
             return any(
-                isinstance(item, dict) and item.get("output_variable_name") == var
+                isinstance(item, dict) and item.get("output_variable_name") == root
                 for item in (data.get("inputs") or [])
             )
         # Other node types (if-else, iteration-start, loop-start, ...) don't
@@ -1912,15 +2294,53 @@ class WorkflowGenerator:
         # `result` is the output name models reach for on a tool node; the
         # real one is `text`. Rewriting beats failing the build over it.
         (BuiltinNodeTypes.TOOL, "result"): "text",
+        # The structured-output family a builder invents when it planned
+        # structured output for this LLM node but the node ended up
+        # schema-less (never enabled, or enabled with an empty schema -- see
+        # ``_llm_is_schema_less``). Gated in ``_aliased_output``: a node
+        # that genuinely has structured output enabled keeps these names
+        # unresolved rather than guessing at a schema property.
+        (BuiltinNodeTypes.LLM, "__structured_output__"): "text",
+        (BuiltinNodeTypes.LLM, "__structured_output"): "text",
+        (BuiltinNodeTypes.LLM, "structured_output"): "text",
+        (BuiltinNodeTypes.LLM, "output"): "text",
+        (BuiltinNodeTypes.LLM, "result"): "text",
     }
+
+    @classmethod
+    def _llm_is_schema_less(cls, data: dict[str, Any]) -> bool:
+        """
+        Whether an ``llm`` node's ``data`` describes a node with no usable
+        structured output. True when the enable flag,
+        ``structured_output_enabled`` (the wire/JSON key graphon's
+        ``LLMNodeData`` serialises -- its internal attribute name,
+        ``structured_output_switch_on``, is never the dict key a raw graph
+        carries), is falsy, OR the ``structured_output`` schema carries no
+        properties. Either condition alone makes the structured-output
+        family not a real output here (e.g. a schema block left behind by
+        an isolated node-builder call that never turned the flag on), so an
+        invented reference to it should fall back to the node's actual
+        (default) output instead of staying unresolved.
+        """
+        if not data.get("structured_output_enabled"):
+            return True
+        return not cls._llm_schema_properties(data)
 
     @classmethod
     def _aliased_output(cls, node: dict[str, Any], var: str) -> str | None:
         """Map a known-wrong output name to the correct one for this node type,
         but only when that correct output is actually declared (safety)."""
-        node_type = (node.get("data") or {}).get("type")
+        data = node.get("data") or {}
+        node_type = data.get("type")
         replacement = cls._OUTPUT_ALIASES.get((node_type, var))
-        if replacement is not None and cls._declares_variable(node, replacement):
+        if replacement is None:
+            return None
+        if node_type == BuiltinNodeTypes.LLM and not cls._llm_is_schema_less(data):
+            # A real structured-output LLM node may genuinely mean one of
+            # these names as a schema property; only a schema-less node
+            # gets the invented name rewritten.
+            return None
+        if cls._declares_variable(node, replacement):
             return replacement
         return None
 
@@ -1930,8 +2350,13 @@ class WorkflowGenerator:
         data = node.get("data") or {}
         node_type = data.get("type")
         if node_type == BuiltinNodeTypes.LLM:
-            schema = ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
-            return "text" if not schema else None
+            # Schema-less means the enable FLAG is off or the schema is empty
+            # (``_llm_is_schema_less``), not merely "carries no properties": a
+            # node left with a leftover schema by an isolated builder call
+            # still produces nothing but ``text``, and reading schema presence
+            # alone left its consumers' references unresolved -- now a
+            # generation failure rather than a silent run-time break.
+            return "text" if cls._llm_is_schema_less(data) else None
         if node_type == BuiltinNodeTypes.CODE:
             outputs = [key for key in (data.get("outputs") or {}) if isinstance(key, str)]
             return outputs[0] if len(outputs) == 1 else None
@@ -1953,11 +2378,16 @@ class WorkflowGenerator:
             return human_outputs[0] if len(human_outputs) == 1 else None
         if not isinstance(node_type, str):
             return None
+        # ``iteration`` and ``loop`` are deliberately absent: an iteration
+        # publishes ``output`` / ``item`` / ``index`` and a loop publishes
+        # ``loop_round`` plus each declared loop variable, so neither has a
+        # SOLE output to fall back on. Guessing ``output`` for them is exactly
+        # the "which value did the workflow mean?" this helper refuses to
+        # answer for every other multi-output type -- and it is how a correct
+        # ``{{#node4.item#}}`` got silently rewritten to the whole array.
         single_output_by_type: dict[str, str] = {
             BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: "result",
             BuiltinNodeTypes.TEMPLATE_TRANSFORM: "output",
-            BuiltinNodeTypes.ITERATION: "output",
-            BuiltinNodeTypes.LOOP: "output",
             BuiltinNodeTypes.DOCUMENT_EXTRACTOR: "text",
             BuiltinNodeTypes.VARIABLE_AGGREGATOR: "output",
             BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR: "output",
@@ -2205,62 +2635,50 @@ class WorkflowGenerator:
     @classmethod
     def _repair_branch_edge_handles(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
         """
-        Re-home edges that leave a branch node on the default "source" handle.
+        Re-home edges that leave a branch node on a handle it does not declare.
 
         if-else exposes one source handle per ``case_id`` plus the implicit
-        "false" (ELSE) handle; question-classifier exposes one per class id.
-        The builder prompt documents this, but LLMs still emit the default
-        handle, which renders as an edge hanging off a handle that doesn't
-        exist and the branch silently never runs.
+        "false" (ELSE) handle; question-classifier one per class id; human-input
+        one per action id plus the implicit "__timeout" arm; a node with
+        ``error_strategy: "fail-branch"`` adds a "fail-branch" arm (a plain
+        node's success arm stays on "source"). The builder prompt documents
+        this, but the planner names the handles BEFORE the node builder picks
+        the ids (ESQ1-303: ``score_equals_60`` / ``else`` against a case named
+        ``true``) and LLMs still emit the default handle -- either renders as
+        an edge hanging off a handle that doesn't exist, and the arm silently
+        never runs.
 
-        Repair only when unambiguous: default-handle edges are assigned to the
-        node's UNUSED branch handles in declaration order, and only when there
-        are at least as many unused handles as edges to fix. Anything
-        ambiguous is left alone — a wrong guess that swaps the IF and ELSE
-        arms is worse than a visible dangling edge.
+        Delegates to ``core.workflow.graph_normalizers.repair_branch_edge_handles``
+        (shared with the Builder). Repairs only what is forced -- exact / alias /
+        name matches, one arm fanning out under an invented name, default-handle
+        edges onto unused handles in declaration order. Anything ambiguous is
+        left exactly as it was (the shared function returns it; this method
+        logs each one as a warning), so a validator can still see it and fail
+        closed -- the INVALID_BRANCH_HANDLE check, when enabled. A wrong guess
+        that swaps the IF and ELSE arms is worse than an edge left for that
+        check.
         """
-        for node in nodes:
-            data = node.get("data") or {}
-            node_type = data.get("type")
-            if node_type == BuiltinNodeTypes.IF_ELSE:
-                branch_handles = [
-                    str(case["case_id"])
-                    for case in (data.get("cases") or [])
-                    if isinstance(case, dict) and case.get("case_id")
-                ]
-                # ELSE is implicit — it has a handle even though no case
-                # declares it.
-                branch_handles.append("false")
-            elif node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                branch_handles = [
-                    str(klass["id"])
-                    for klass in (data.get("classes") or [])
-                    if isinstance(klass, dict) and klass.get("id")
-                ]
-            elif node_type == BuiltinNodeTypes.HUMAN_INPUT:
-                branch_handles = [
-                    str(action["id"])
-                    for action in (data.get("user_actions") or [])
-                    if isinstance(action, dict) and action.get("id")
-                ]
-            else:
-                continue
-
-            node_id = node.get("id")
-            outgoing = [e for e in edges if e.get("source") == node_id]
-            taken = {e.get("sourceHandle") for e in outgoing if e.get("sourceHandle") in branch_handles}
-            unused = [h for h in branch_handles if h not in taken]
-            defaulted = [e for e in outgoing if e.get("sourceHandle") in (None, "", "source")]
-            if not defaulted or len(defaulted) > len(unused):
-                continue
-            for edge, handle in zip(defaulted, unused):
-                edge["sourceHandle"] = handle
+        # The shared repair reports only what it could NOT re-home; snapshot
+        # the handles (by edge object) so every edge it did move is logged too.
+        before = [(edge, edge.get("sourceHandle")) for edge in edges if isinstance(edge, dict)]
+        unresolved = graph_normalizers.repair_branch_edge_handles(nodes, edges)
+        for edge, old_handle in before:
+            if edge.get("sourceHandle") != old_handle:
                 logger.info(
-                    "Workflow generator: re-homed default-handle edge %s -> %s onto branch handle %r",
-                    node_id,
+                    "Workflow generator: re-homed edge %s -> %s from handle %r onto branch handle %r",
+                    edge.get("source"),
                     edge.get("target"),
-                    handle,
+                    old_handle,
+                    edge.get("sourceHandle"),
                 )
+        for item in unresolved:
+            logger.warning(
+                "Workflow generator: cannot re-home edge %s -> %s (handle %r; node declares %s)",
+                item["node_id"],
+                item["target"],
+                item["handle"],
+                item["declared"],
+            )
 
     @classmethod
     def _layout_top_level_nodes(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
@@ -2591,6 +3009,28 @@ class WorkflowGenerator:
         if installed_tools is not None:
             errors.extend(cls._collect_unknown_tools(nodes=nodes, installed_tools=installed_tools))
 
+        # Branch edges must leave on a handle the node declares. Postprocess
+        # re-homed every edge it could do so unambiguously; whatever is left
+        # would hang off a handle that does not exist and its arm would never
+        # run, while the run still reports "succeeded" (ESQ1-303).
+        edges_raw = list(cast(list[dict[str, Any]], graph.get("edges", [])))
+        for bad in graph_normalizers.undeclared_branch_handles(nodes, edges_raw):
+            errors.append(
+                _err(
+                    WorkflowGenerateErrorCode.INVALID_BRANCH_HANDLE,
+                    f"Edge {bad['node_id']} -> {bad['target']} uses handle {bad['handle']!r}, "
+                    f"which the branch node does not declare; it declares {bad['declared']}",
+                    node_id=bad["node_id"],
+                )
+            )
+
+        # A json / raw-text / binary http-request body is sent as ONE rendered
+        # template; the executor rejects any other item count at run time
+        # (ESQ1-302). There is no correct automatic collapse of several
+        # key/value items into one JSON template, so this is a rejection.
+        for node_id, detail in graph_normalizers.http_request_body_errors(nodes):
+            errors.append(_err(WorkflowGenerateErrorCode.INVALID_HTTP_BODY, detail, node_id=node_id))
+
         # Variable-reference resolution — walks ``{{#node.var#}}`` placeholders
         # and value selectors and flags anything pointing at a node that
         # doesn't declare the variable. Start-node refs are auto-fixed
@@ -2809,11 +3249,9 @@ class WorkflowGenerator:
         out: list[WorkflowGenerateErrorDict] = []
         by_id: dict[str, dict[str, Any]] = {n.get("id", ""): n for n in nodes if n.get("id")}
 
-        refs: set[tuple[str, str]] = set()
-        for node in nodes:
-            cls._collect_refs_in_data(node.get("data") or {}, refs)
-
-        for node_id, var in refs:
+        # Ordered, so the same graph always produces the same error list —
+        # a set's order would shuffle the user-visible errors per process.
+        for node_id, var in cls._ordered_refs(nodes):
             if mode == "advanced-chat" and node_id == "sys":
                 continue
             target = by_id.get(node_id)

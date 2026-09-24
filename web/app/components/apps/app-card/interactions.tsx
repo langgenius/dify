@@ -40,6 +40,7 @@ import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
@@ -54,7 +55,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
-import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -121,7 +121,7 @@ function AppCardOperationsMenuItems({
   onDelete,
   onAccessConfig,
 }: AppCardOperationsMenuItemsProps) {
-  const { t } = useTranslation(['app', 'common'])
+  const { t } = useTranslation(['app', 'common', 'navigation'])
   const openAsyncWindow = useAsyncWindowOpen()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
@@ -231,7 +231,7 @@ function AppCardOperationsMenuItems({
           onClick={(event) => handleMenuAction(event, onAccessConfig)}
         >
           <span className="text-sm/5 text-text-secondary">
-            {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+            {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
           </span>
         </MenuItem>
       )}

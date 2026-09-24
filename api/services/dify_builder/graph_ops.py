@@ -10,9 +10,13 @@ mutation only — no DB, no services, no I/O.
 import copy
 import hashlib
 import json
-from typing import Any
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
 from core.dify_builder.models import Graph, MutationIntent
+from core.dify_builder.node_defaults import default_config_or_empty
+from core.workflow.graph_normalizers import declared_branch_handles, heal_nodes_for_preflight
+from services.dify_builder import credentials
 
 MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
     "set_node_config": ("node_id", "path", "value"),
@@ -37,12 +41,38 @@ _NODE_ID_ARGS = ("node_id", "from_node", "to_node")
 # message instead of an actionable one.
 _STRING_ARGS = ("path",)
 
+# The args that carry a node's data into the draft, and so the args through
+# which a redaction placeholder could overwrite a real credential:
+# set_node_config's `value`, create_node's and insert_between's `config`.
+_REDACTABLE_ARGS = ("value", "config")
+
+# Inside a node's config, the one key that REINTERPRETS its siblings rather
+# than sitting beside them: an http-request `authorization` is `{type, config}`
+# and a `body` is `{type, data}`, and `type` decides whether the sibling is read
+# at all. `_build_node`'s deeper defaults merge never fills it in behind a
+# caller who wrote the siblings without it -- `{"config": {"type": "bearer",
+# "api_key": ...}}` merged under `{"type": "no-auth", ...}` is a node that
+# LOOKS authorized, sends no credential, and was written in silence. This is
+# `node_defaults`' "a default may fill a blank, never invent a purpose" rule,
+# one level down.
+_MODE_KEY = "type"
+
 
 def validate_intent_args(intent: MutationIntent) -> None:
     """Raise ``ValueError`` if ``intent.args`` is missing a required key for
     ``intent.op``, or if ``intent.op`` isn't one of ``MUTATION_ARG_KEYS``'s
     five recognized verbs. Optional keys (marked ``?`` on ``MutationIntent``)
     are not checked here -- each ``apply_*`` function defaults them itself.
+
+    Also refuses any ``value`` / ``config`` carrying ``credentials.REDACTED``.
+    The agents show a node's config with its secrets replaced by that sentinel;
+    a model that then rewrites the surrounding field hands the placeholder
+    straight back, and writing it would destroy a live credential. Raising
+    here is the whole guard: this function is the one chokepoint both the
+    ``filter_applicable`` dry run and ``dify_port.apply_repair``'s write loop
+    pass every intent through, so a refused value is rejected with a reason
+    the corrective re-prompt can read and the stored credential stands
+    untouched. Keyed on the exact generated string, never on model prose.
     """
     required = MUTATION_ARG_KEYS.get(intent.op)
     if required is None:
@@ -64,6 +94,22 @@ def validate_intent_args(intent: MutationIntent) -> None:
         value = intent.args[key]
         if not isinstance(value, str) or not value:
             raise ValueError(f"{key} must be a non-empty string for op {intent.op!r}, got {value!r}")
+
+    # KNOWN AND ACCEPTED, deliberately not closed here: this stops the model
+    # handing the PLACEHOLDER back, not a rewrite that simply OMITS the
+    # Authorization line. That write carries no sentinel, passes, and clobbers
+    # the credential. The difference is that its failure is LOUD -- the next
+    # verify run fails authentication and lands in the repair loop with a real
+    # error -- where the leak this guard closes was silent and unrecoverable.
+    # Closing it would need merge semantics for a free-text `headers` blob,
+    # which is a larger design change and would break legitimate deletion.
+    for key in _REDACTABLE_ARGS:
+        if key in intent.args and credentials.carries_redaction(intent.args[key]):
+            raise ValueError(
+                f"{key} for op {intent.op!r} contains the redaction placeholder "
+                f"{credentials.REDACTED!r}: that is not the real secret. Leave the field "
+                "unchanged, or set it to a real value."
+            )
 
 
 def _resolve_path(container: dict[str, Any], path: str) -> tuple[Any, str | int]:
@@ -114,6 +160,24 @@ def _resolve_path(container: dict[str, Any], path: str) -> tuple[Any, str | int]
     return cursor, last
 
 
+def value_at_path(data: dict[str, Any], path: str) -> tuple[bool, Any]:
+    """``(True, value)`` for the value ``path`` addresses inside a node's
+    ``data``, or ``(False, None)`` when nothing is there.
+
+    The read half of ``apply_set_node_config``, through the same
+    ``_resolve_path`` walk, so a caller comparing what a path held BEFORE a
+    write against what it holds after cannot disagree with the write about
+    which slot the path names. ``_resolve_path`` returns the parent for a final
+    segment that does not exist yet -- that is the key being created -- so the
+    read is attempted and its absence reported rather than raised.
+    """
+    try:
+        parent, key = _resolve_path(data, path)
+        return True, parent[key]
+    except (ValueError, KeyError, IndexError, TypeError):
+        return False, None
+
+
 def apply_set_node_config(graph: Graph, node_id: str, path: str, value: Any) -> tuple[Graph, list[str]]:
     """Set the value at ``path`` inside ``node["data"]`` for the node whose
     ``id == node_id``. ``path`` is dot-separated (``"code"``,
@@ -126,13 +190,20 @@ def apply_set_node_config(graph: Graph, node_id: str, path: str, value: Any) -> 
     Returns a ``(new_graph, changed_node_ids)`` tuple. ``graph`` is
     deep-copied first and never mutated. Raises ``ValueError`` if no node in
     ``graph["nodes"]`` has a matching ``id``.
+
+    ``value`` is deep-copied too, so the new graph shares no structure with the
+    caller's argument. It is normally ``intent.args["value"]``, and the graph it
+    lands in is then healed in place (``heal_nodes_for_preflight`` rewrites
+    ``">="`` to ``"≥"`` and ``60`` to ``"60"``): without the copy the caller's
+    own intent would change under it, so a dry run would silently rewrite the
+    very intents it was asked to judge.
     """
     new_graph = copy.deepcopy(graph)
 
     for node in new_graph.get("nodes", []):
         if node.get("id") == node_id:
             parent, key = _resolve_path(node.setdefault("data", {}), path)
-            parent[key] = value
+            parent[key] = copy.deepcopy(value)
             return new_graph, [node_id]
 
     raise ValueError(f"node not found: {node_id}")
@@ -194,6 +265,33 @@ def _build_node(
     generic ``"custom"`` (the default), but iteration/loop start markers carry
     ``"custom-iteration-start"`` / ``"custom-loop-start"`` and the canvas has
     no component for them under ``"custom"`` (React error #130, ESQ1-288).
+
+    ``node_type``'s registered defaults (``core.dify_builder.node_defaults``)
+    are merged UNDER ``config``: a key the caller supplied always wins, and a
+    key it omitted is filled with the value Dify's own editor would have
+    created the node with. Several node types have engine-required fields with
+    no default -- a ``template-transform`` without ``variables`` makes the draft
+    preflight refuse the whole repair batch -- and an LLM writes only the fields
+    it was thinking about. This is the one chokepoint every created node passes
+    through, so it covers Build, Edit and Fix, ``create_node`` and
+    ``insert_between``, and the ``filter_applicable`` dry run alike.
+
+    The merge goes ONE level into a default whose value is a dict, for the same
+    reason: an LLM writing ``model: {provider, name}`` was thinking about the
+    provider and the model name, not about ``mode`` or ``completion_params``,
+    and a shallow merge dropped those with the rest of the block -- so the
+    engine refused the node for ``model.mode`` and the one corrective re-prompt
+    was spent on a field the default was already carrying. One level, not a
+    recursive merge: a caller value that is not a dict replaces the default
+    outright, and a dict nested deeper is still the caller's word entirely.
+
+    With one exclusion, and it is the reason this is not a blanket deep merge
+    (see ``_MODE_KEY``): a default block whose ``type`` the caller did not write
+    keeps today's shallow behaviour, because ``type`` reinterprets its siblings
+    instead of sitting beside them. Merging it in turns a partial
+    ``authorization`` -- the caller's ``config`` with a bearer token in it --
+    into a ``no-auth`` node that sends no credential and is written in silence,
+    which is exactly the failure a default is forbidden from creating.
     """
     existing_ids = {n.get("id") for n in graph.get("nodes", [])}
     if node_id is not None:
@@ -203,7 +301,15 @@ def _build_node(
     else:
         new_id = _next_node_id(node_type, existing_ids)
 
-    data = copy.deepcopy(config)
+    defaults = default_config_or_empty(node_type)
+    data = {**defaults, **copy.deepcopy(config)}
+    for key, default_value in defaults.items():
+        supplied = data.get(key)
+        if not isinstance(default_value, dict) or not isinstance(supplied, dict):
+            continue
+        if _MODE_KEY in default_value and _MODE_KEY not in supplied:
+            continue
+        data[key] = {**default_value, **supplied}
     data["type"] = node_type  # data.type is the real node type -- never overridden by config
     data.setdefault("title", new_id)
     data.setdefault("desc", "")
@@ -299,16 +405,28 @@ def apply_connect(
 
     Raises ``ValueError`` if either ``from_node`` or ``to_node`` is not a
     node id present in ``graph["nodes"]`` (the Slice 1 dangling-ref
-    validation). Handles default to "source"/"target" (mirrors the
-    generator's ``_fill_edge_defaults``). Returns
-    ``(new_graph, [from_node, to_node])``.
+    validation), or if ``from_node`` is a branch node (if-else /
+    question-classifier / human-input / fail-branch) and ``source_handle``
+    (or the default "source") is not one of its declared handles. Handles
+    default to "source"/"target" (mirrors the generator's
+    ``_fill_edge_defaults``). Returns ``(new_graph, [from_node, to_node])``.
     """
     new_graph = copy.deepcopy(graph)
-    node_ids = {n.get("id") for n in new_graph.get("nodes", [])}
-    if from_node not in node_ids:
+    nodes_by_id = {n.get("id"): n for n in new_graph.get("nodes", [])}
+    if from_node not in nodes_by_id:
         raise ValueError(f"node not found: {from_node}")
-    if to_node not in node_ids:
+    if to_node not in nodes_by_id:
         raise ValueError(f"node not found: {to_node}")
+
+    # A branch node (if-else / question-classifier / human-input / fail-branch)
+    # only routes along the handles it declares. An edge on any other handle
+    # -- including the default "source" -- hangs off nothing: its arm never
+    # runs and the run still reports "succeeded" (ESQ1-303). Reject it here
+    # like a dangling node ref; the caller's ``except ValueError`` shows it.
+    declared = declared_branch_handles(nodes_by_id[from_node])
+    handle = source_handle or "source"
+    if declared and handle not in declared:
+        raise ValueError(f"branch node {from_node!r} has no handle {handle!r}; it declares {declared}")
 
     existing_edge_ids = {e.get("id") for e in new_graph.get("edges", [])}
     edge = _make_edge(from_node, to_node, source_handle, target_handle, existing_edge_ids)
@@ -438,26 +556,133 @@ APPLY_FNS: dict[str, Any] = {
 }
 
 
+def already_present_predicate(graph: Graph, intents: list[MutationIntent]) -> Callable[[MutationIntent], bool]:
+    """The idempotent-re-entry rule: ``True`` for an intent ``graph`` already
+    satisfies.
+
+    An interrupted step's Retry re-sends the same batch against an
+    already-mutated draft, so a ``create_node`` for an id that is now present and
+    a ``connect`` for an edge that is now present are clean no-ops rather than
+    errors. ``dify_port.apply_repair`` drops them before its apply loop, and
+    ``filter_applicable`` skips them in its dry run for the same reason: without
+    this the dry run rejects a duplicate ``create_node`` ("node id already
+    exists") that the port would have quietly dropped, and burns the one
+    corrective re-prompt on a batch that was going to apply cleanly.
+
+    Ids targeted by a ``delete_node`` in THIS SAME batch do not count as present:
+    a from-scratch build sends ``delete_node(placeholder_start)`` +
+    ``create_node(same id)`` in one batch, and without the exclusion the create
+    would be dropped as already-present while the delete still ran.
+
+    An edge is keyed on ``(source, target, sourceHandle)``, not on the pair
+    alone. Two edges between the same nodes on DIFFERENT handles are different
+    edges -- they leave different arms of a branch -- so a repair that re-routes
+    an arm is not something the draft already satisfies. Keyed on the pair, it
+    matched the edge already there and was dropped as a no-op here AND at
+    ``dify_port.apply_repair``, which runs this same predicate: a legitimate
+    repair silently discarded. Both sides default a missing handle to
+    ``"source"``, which is how graphon reads one (``edge_config.get
+    ("sourceHandle", "source")``), so an intent that omits it still matches an
+    edge persisted with it.
+    """
+    deleted_ids = {i.args.get("node_id") for i in intents if i.op == "delete_node"}
+    present_node_ids = {n.get("id") for n in graph.get("nodes") or []} - deleted_ids
+    present_edges = {
+        (e.get("source"), e.get("target"), e.get("sourceHandle") or "source")
+        for e in graph.get("edges") or []
+        if e.get("source") not in deleted_ids and e.get("target") not in deleted_ids
+    }
+
+    def already_present(intent: MutationIntent) -> bool:
+        if intent.op == "create_node":
+            return intent.args.get("node_id") in present_node_ids
+        if intent.op == "connect":
+            return (
+                intent.args.get("from_node"),
+                intent.args.get("to_node"),
+                intent.args.get("source_handle") or "source",
+            ) in present_edges
+        return False
+
+    return already_present
+
+
+class DryRun(NamedTuple):
+    """What ``filter_applicable`` learned from dry-running a batch of intents.
+
+    ``applicable`` and ``rejected`` are the pair this function has always
+    returned. ``graph`` is the working copy those applicable intents produced --
+    the graph ``dify_port.apply_repair`` would be about to write, healed the same
+    way. It is returned rather than discarded so ``preflight.vet_intents`` can
+    put it through the node-data validation the port's own preflight performs,
+    while there is still a corrective re-prompt left to spend on the answer.
+
+    ``changed_nodes`` is the ids those applicable intents wrote NODE DATA to, in
+    order, which is what ``preflight.new_preflight_problems`` needs to tell a
+    node this batch is answerable for from one it merely left alone. It is
+    narrower than a change set in two deliberate ways, and both matter because
+    a node in it loses its pre-existing-defect exemption entirely:
+
+    * ``connect`` is EXCLUDED. ``apply_connect`` reports both endpoints as
+      changed -- correct for a diff, wrong here: adding an edge cannot change
+      either endpoint's ``validate_node_config`` verdict, so counting them would
+      let merely WIRING an already-broken node make that node's pre-existing
+      defect veto the whole batch. Nothing is given up by leaving it out.
+    * the heal is not folded in. ``heal_nodes_for_preflight`` scans EVERY node,
+      not only the ones the intents named, so its ids would make an unrelated
+      node the healer normalized count as written by this batch. Same pre-heal
+      point in the sequence as ``dify_port.apply_repair``'s own copy.
+    """
+
+    applicable: list[MutationIntent]
+    rejected: list[tuple[MutationIntent, str]]
+    graph: Graph
+    changed_nodes: list[str]
+
+
 def filter_applicable(
     graph: Graph,
     intents: list[MutationIntent],
     allowed_node_types: set[str] | None = None,
-) -> tuple[list[MutationIntent], list[tuple[MutationIntent, str]]]:
+) -> DryRun:
     """Dry-run each intent through the real validate_intent_args + apply_* on a
     working deep copy, in order (so a connect sees a node an earlier create_node
-    added). Returns (applicable, rejected) where each rejected entry is
-    (intent, reason).
+    added). Returns a ``DryRun``: ``(applicable, rejected, graph, changed_nodes)``,
+    where each rejected entry is ``(intent, reason)``, ``graph`` is the mutated
+    working copy and ``changed_nodes`` is the ids whose node DATA those intents
+    wrote (see ``DryRun``).
 
     Catches every failure the live apply_repair would hit -- unknown op, missing
     required arg / extra arg key, dangling node/edge ref, duplicate id -- and
     additionally rejects a create_node / insert_between whose node_type is not in
     allowed_node_types (a check apply_* does not do). Applicable intents advance
     the working copy; a rejected intent does not.
+
+    An intent the graph already satisfies is neither applied nor rejected, and
+    stays in ``applicable`` for the port to drop the same way
+    (``already_present_predicate``, which the port runs before its own apply
+    loop). The working copy already reflects it -- that is what "already
+    present" means -- so the graph returned here is still what the port would
+    write.
+
+    The working copy then goes through the shared deterministic heal set
+    (``core.workflow.graph_normalizers.heal_nodes_for_preflight``), exactly as
+    ``dify_port.apply_repair`` runs it over the real draft after its own apply
+    loop. Same normalizers, same place in the sequence, one definition: a dry run
+    that healed less than the write chokepoint would report a defect the write
+    was going to fix, and one that healed more would pass a batch the write would
+    refuse. Both make the answer this function gives about the port a guess.
     """
     working = copy.deepcopy(graph)
+    is_already_present = already_present_predicate(graph, intents)
     applicable: list[MutationIntent] = []
     rejected: list[tuple[MutationIntent, str]] = []
+    changed_nodes: list[str] = []
     for intent in intents:
+        # Before validate_intent_args, exactly where the port drops it.
+        if is_already_present(intent):
+            applicable.append(intent)
+            continue
         try:
             validate_intent_args(intent)
             if allowed_node_types is not None and intent.op in ("create_node", "insert_between"):
@@ -465,9 +690,14 @@ def filter_applicable(
                 if node_type not in allowed_node_types:
                     rejected.append((intent, f"node_type not allowed: {node_type!r}"))
                     continue
-            working, _changed = APPLY_FNS[intent.op](working, **intent.args)
+            working, changed = APPLY_FNS[intent.op](working, **intent.args)
         except Exception as exc:
             rejected.append((intent, str(exc)))
             continue
+        # A connect writes an EDGE; its endpoints' node data is untouched (see
+        # ``DryRun.changed_nodes``). Mirrored in ``dify_port.apply_repair``.
+        if intent.op != "connect":
+            changed_nodes.extend(changed)
         applicable.append(intent)
-    return applicable, rejected
+    heal_nodes_for_preflight(working.get("nodes") or [])
+    return DryRun(applicable, rejected, working, changed_nodes)

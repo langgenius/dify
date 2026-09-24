@@ -88,6 +88,17 @@ def _mock_db():
 
 
 @pytest.fixture(autouse=True)
+def _skip_preflight():
+    """``apply_repair`` dry-validates the mutated graph
+    (``new_preflight_problems``). The ``apply_repair`` tests in THIS module build
+    nodes from bare ``config={}`` stand-ins that are not valid node data, so the
+    check is bypassed here; ``test_dify_port_preflight.py`` exercises the real
+    one."""
+    with patch("services.dify_builder.dify_port.new_preflight_problems", return_value=[]):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def _mock_sessionmaker(mock_session: MagicMock):
     """Every ``sessionmaker(...)`` call in the adapter yields ``mock_session``."""
     with patch("services.dify_builder.dify_port.sessionmaker") as mock_sessionmaker_ctor:
@@ -1125,3 +1136,142 @@ def test_run_draft_does_not_enqueue_a_second_celery_task(mock_session: MagicMock
     assert kwargs["workflow_execution_mode"] == "in_process", (
         "Builder streaming must execute in process to avoid waiting for a second Celery worker slot"
     )
+
+
+# ---- run_draft: an explicit error frame is a FAILED run, not an unknown one ----
+
+
+# (ESQ1-302) The frame below is the exact one the session received four times
+# (trace seq 52); until this fix the stream ended without a terminal frame, the
+# run mapped to "running", and the handler bounced the user back to re-run.
+
+ESQ1_302_ERROR_FRAME = {
+    "event": "error",
+    "workflow_run_id": None,
+    "code": "invalid_param",
+    "status": 400,
+    "message": (
+        "2 validation errors for HttpRequestNodeData\nbody.data.0.type\n  Field required "
+        "[type=missing, input_value={'value': '{{#node3.text#}}', 'key': 'slides'}, input_type=dict]\n"
+        "    For further information visit https://errors.pydantic.dev/2.12/v/missing\nbody.data.1.type\n"
+        "  Field required [type=missing, input_value={'value': '{{#node1.outpu...#}}', 'key': 'filename'}, "
+        "input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+    ),
+}
+
+
+def _run_stream(chunks: list, *, node_execs: list | None = None, run_row=None):
+    """Drive ``run_draft`` over ``chunks`` with the repositories stubbed; returns
+    ``(run, forwarded_frames, node_exec_repo)``."""
+    forwarded: list = []
+    with (
+        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
+    ):
+        mock_ags.generate.return_value = iter(chunks)
+        node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        node_repo.get_executions_by_workflow_run.return_value = node_execs or []
+        run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
+        run_repo.get_workflow_run_by_id.return_value = run_row
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _e: None, on_workflow_event=forwarded.append
+        )
+    return run, forwarded, node_repo
+
+
+def test_the_esq1_302_launch_error_frame_is_a_failed_run_carrying_the_message(mock_session: MagicMock):
+    _configure_default_identity(mock_session)
+
+    run, forwarded, node_repo = _run_stream([_sse(ESQ1_302_ERROR_FRAME)])
+
+    assert run.status == "failed"
+    assert run.dify_run_id == ""  # the frame arrived before workflow_started: no run exists
+    assert run.per_node == []
+    assert "body.data.0.type Field required" in run.error
+    assert run.error.endswith("[invalid_param]")
+    assert forwarded[0]["event"] == "error"  # the frontend still receives the frame unchanged
+    node_repo.get_executions_by_workflow_run.assert_not_called()  # no run id -> nothing to read
+
+
+def test_an_error_frame_after_workflow_started_keeps_the_run_id_and_its_rows(mock_session: MagicMock):
+    _configure_default_identity(mock_session)
+    chunks = [
+        _sse({"event": "workflow_started", "workflow_run_id": "run-9", "data": {"id": "run-9"}}),
+        _sse({"event": "node_started", "workflow_run_id": "run-9", "data": {"node_id": "node-1", "title": "Code"}}),
+        _sse({"event": "error", "workflow_run_id": "run-9", "code": "internal", "status": 500, "message": "boom"}),
+    ]
+    failed_row = SimpleNamespace(
+        node_id="node-1", node_type="code", title="Code", status="failed", error="boom", inputs_dict={}, outputs_dict={}
+    )
+
+    run, _, node_repo = _run_stream(chunks, node_execs=[failed_row])
+
+    assert run.status == "failed"
+    assert run.dify_run_id == "run-9"
+    assert [n.node_id for n in run.per_node] == ["node-1"]
+    assert run.culprit_node_id == "node-1"
+    assert run.error == "boom [internal]"
+    node_repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-9")
+
+
+def test_chatflow_ordering_finished_failed_then_error_prefers_the_terminal_frame(mock_session: MagicMock):
+    """advanced_chat's pipeline yields workflow_finished(failed) AND THEN an error
+    frame for the same failure. The terminal frame is the authority."""
+    _configure_default_identity(mock_session)
+    chunks = [
+        _sse({"event": "workflow_started", "workflow_run_id": "run-2", "data": {"id": "run-2"}}),
+        _sse(
+            {
+                "event": "workflow_finished",
+                "workflow_run_id": "run-2",
+                "data": {
+                    "id": "run-2",
+                    "status": "failed",
+                    "outputs": {},
+                    "error": "node4: timeout",
+                    "elapsed_time": 2.5,
+                    "total_tokens": 7,
+                },
+            }
+        ),
+        _sse(
+            {
+                "event": "error",
+                "workflow_run_id": "run-2",
+                "code": "internal",
+                "status": 500,
+                "message": "Run failed: node4: timeout",
+            }
+        ),
+    ]
+
+    run, _, _ = _run_stream(chunks)
+
+    assert run.status == "failed"
+    assert run.dify_run_id == "run-2"
+    assert run.error == "node4: timeout"  # from the terminal frame, not the error frame
+    assert run.elapsed_ms == 2500
+    assert run.tokens == 7
+
+
+def test_an_error_frame_never_overrides_a_terminal_success_frame(mock_session: MagicMock):
+    _configure_default_identity(mock_session)
+    chunks = [
+        _sse({"event": "workflow_started", "workflow_run_id": "run-3", "data": {"id": "run-3"}}),
+        _sse({"event": "error", "workflow_run_id": "run-3", "code": "x", "status": 500, "message": "spurious"}),
+        _sse(_FINISHED_CHUNK),
+    ]
+
+    run, _, _ = _run_stream(chunks)
+
+    assert run.status == "succeeded"
+    assert run.error == ""
+
+
+def test_no_terminal_frame_and_no_error_frame_is_still_unknown(mock_session: MagicMock):
+    _configure_default_identity(mock_session)
+
+    run, _, _ = _run_stream(["event: ping\n\n", "ping"])
+
+    assert run.status == "running"
+    assert run.error == run_mapping.TRUNCATED_STREAM_ERROR

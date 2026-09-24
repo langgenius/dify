@@ -96,11 +96,7 @@ class InstalledAppWorkflowTaskStopApi(Resource):
         """
         Stop workflow task
         """
-        try:
-            app_mode = application_services().app_definitions.get_mode(installed_app.app_id)
-        except AppDefinitionUnavailableError:
-            raise NotWorkflowAppError() from None
-        if app_mode != "workflow":
+        if installed_app.app_mode != "workflow":
             raise NotWorkflowAppError()
 
         application_services().app_tasks.stop_workflow_task_no_user_check(task_id=task_id)

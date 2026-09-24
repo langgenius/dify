@@ -188,6 +188,170 @@ def test_build_nodes_retries_with_corrective_instruction_on_terminal_error():
     assert any(i.op == "create_node" for i in intents)  # the retry's graph was used
 
 
+def test_terminal_retry_instruction_includes_every_error_and_reference_guidance():
+    """The retry must feed back EVERY structured error (not just the first) and,
+    for UNRESOLVED_REFERENCE, name the fix in the generator's own vocabulary --
+    the producing node must declare that exact output name, or the consumer must
+    reference one of the producer's real outputs."""
+    result = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "UNRESOLVED_REFERENCE",
+                "detail": "Reference {#node3.deck#} not declared on node 'node3'",
+                "node_id": "node3",
+            },
+            {
+                "code": "UNKNOWN_TOOL",
+                "detail": "Tool acme/render is not installed for this tenant",
+                "node_id": "node5",
+            },
+        ],
+    }
+
+    instruction = build._terminal_retry_instruction("PLAN TEXT", result)
+
+    # every error's detail and node id -- not just the first
+    assert "Reference {#node3.deck#} not declared on node 'node3'" in instruction
+    assert "node3" in instruction
+    assert "Tool acme/render is not installed for this tenant" in instruction
+    assert "node5" in instruction
+    # error codes are carried too, so the model can see the machine-readable class
+    assert "UNRESOLVED_REFERENCE" in instruction
+    assert "UNKNOWN_TOOL" in instruction
+    # reference-specific guidance in the generator's own vocabulary
+    assert "outputs" in instruction  # code node's outputs map
+    assert "parameters" in instruction  # parameter-extractor's parameters[].name
+    assert "structured" in instruction.lower()  # llm structured output
+    assert "'text'" in instruction  # a schema-less llm's only real output
+    assert "PLAN TEXT" in instruction  # base instruction preserved
+
+
+def test_terminal_retry_instruction_keeps_topology_text_for_a_topology_error():
+    """A pure topology failure (no UNRESOLVED_REFERENCE) still gets the
+    start/end/answer guidance the retry has always carried."""
+    result = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "MISSING_START",
+                "detail": "Workflow must have exactly one 'start' node (found 0)",
+            }
+        ],
+    }
+
+    instruction = build._terminal_retry_instruction("PLAN TEXT", result)
+
+    assert "Workflow must have exactly one 'start' node (found 0)" in instruction
+    assert "'start' node" in instruction
+    assert "'end' node" in instruction
+    assert "answer" in instruction.lower()
+    assert "PLAN TEXT" in instruction
+    # the reference-specific guidance is keyed on the error CODE -- absent when
+    # no error is UNRESOLVED_REFERENCE
+    assert build._UNRESOLVED_REFERENCE_GUIDANCE not in instruction
+
+
+def test_build_nodes_retries_twice_then_succeeds_within_budget():
+    """Two corrective retries are allowed (three generations total). A stub
+    that fails on the first two attempts and succeeds on the third must use
+    that third attempt's graph."""
+    unresolved = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "UNRESOLVED_REFERENCE",
+                "detail": "Reference {#node3.deck#} not declared on node 'node3'",
+                "node_id": "node3",
+            }
+        ],
+    }
+    missing_terminal = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [{"code": "MISSING_TERMINAL", "detail": "Workflow must end with at least one 'end' node"}],
+    }
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            side_effect=[unresolved, missing_terminal, _GEN_GRAPH],
+        ) as gen,
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
+        ),
+    ):
+        result = build.build_nodes("t1", {}, ["Say hello and return result"])
+
+    assert gen.call_count == 3
+    assert result.error == ""
+    assert any(i.op == "create_node" for i in result.intents)  # the 3rd attempt's graph was used
+
+
+def test_build_nodes_stops_after_three_attempts_and_reports_every_error():
+    """The retry budget is at most 3 generations total (first + 2 retries). A
+    stub that keeps failing must stop there, and the error card must carry
+    every error of the final attempt, not just the first."""
+    attempt1 = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "UNRESOLVED_REFERENCE",
+                "detail": "Reference {#node3.deck#} not declared on node 'node3'",
+                "node_id": "node3",
+            }
+        ],
+    }
+    attempt2 = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [{"code": "MISSING_TERMINAL", "detail": "Workflow must end with at least one 'end' node"}],
+    }
+    attempt3 = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "",
+        "errors": [
+            {
+                "code": "UNKNOWN_TOOL",
+                "detail": "Tool acme/render is not installed for this tenant",
+                "node_id": "h",
+            },
+            {"code": "DANGLING_EDGE", "detail": "Edge target node not found: 'e9'"},
+        ],
+    }
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            side_effect=[attempt1, attempt2, attempt3],
+        ) as gen,
+    ):
+        result = build.build_nodes("t1", {}, ["x"])
+
+    assert gen.call_count == 3  # budget respected: no 4th attempt
+    assert result.intents == []
+    # the final attempt's errors are ALL present in the card -- not truncated to the first
+    assert "Tool acme/render is not installed for this tenant" in result.error
+    assert "Edge target node not found: 'e9'" in result.error
+    # the offending node id travels with its error, so a build with several tool
+    # nodes tells the user WHICH one -- not just that "a" tool is missing
+    assert "'h'" in result.error
+    # Assert the CARD TEXT, not the join argument: each error is already
+    # bullet-prefixed, so joining them with "; " rendered
+    # "- X (node 'h'); - Y" -- one run-on line with a stray bullet mid-sentence.
+    assert result.error == (
+        "- UNKNOWN_TOOL: Tool acme/render is not installed for this tenant (node 'h')\n"
+        "- DANGLING_EDGE: Edge target node not found: 'e9'"
+    )
+    assert len(result.diagnostics) == 3
+
+
 def test_build_nodes_degrades_to_empty_on_generator_error():
     with (
         patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
@@ -295,12 +459,14 @@ def test_build_nodes_dataset_ids_are_independent_lists_per_node():
 
 
 def test_build_nodes_logs_when_generator_reports_error(caplog):
-    with patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")), \
-         patch(
-             "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
-             return_value={"graph": {}, "error": "generator boom", "errors": []},
-         ), \
-         caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.build"):
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value={"graph": {}, "error": "generator boom", "errors": []},
+        ),
+        caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.build"),
+    ):
         out = build.build_nodes("t1", {}, ["do a thing"]).intents
 
     assert out == []
@@ -311,12 +477,14 @@ def test_build_nodes_logs_when_generator_reports_error(caplog):
 
 
 def test_build_nodes_logs_traceback_when_generation_raises(caplog):
-    with patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")), \
-         patch(
-             "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
-             side_effect=RuntimeError("kaboom"),
-         ), \
-         caplog.at_level(logging.ERROR, logger="services.dify_builder.agent.build"):
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            side_effect=RuntimeError("kaboom"),
+        ),
+        caplog.at_level(logging.ERROR, logger="services.dify_builder.agent.build"),
+    ):
         out = build.build_nodes("t1", {}, ["do a thing"]).intents
 
     assert out == []
@@ -407,8 +575,8 @@ def test_build_nodes_records_structured_diagnostics_for_the_debug_export():
         result = build.build_nodes("t1", {}, ["call the GitHub API and summarize"])
 
     assert result.intents == []
-    # one diagnostic per generation attempt (initial + the single corrective retry)
-    assert len(result.diagnostics) == 2
+    # one diagnostic per generation attempt (initial + up to two corrective retries)
+    assert len(result.diagnostics) == 3
     first = result.diagnostics[0]
     assert first["source"] == "workflow-generator"
     # the same text the server logged as the "%s" of "structural validation failed: %s"
@@ -416,6 +584,7 @@ def test_build_nodes_records_structured_diagnostics_for_the_debug_export():
     assert first["codes"] == ["UNRESOLVED_REFERENCE"]
     assert first["attempt"] == 1
     assert result.diagnostics[1]["attempt"] == 2
+    assert result.diagnostics[2]["attempt"] == 3
     # structured detail survives -- code AND the offending node id
     assert first["errors"][0]["code"] == "UNRESOLVED_REFERENCE"
     assert first["errors"][0]["node_id"] == "node2"
@@ -442,3 +611,708 @@ def test_build_nodes_records_diagnostic_when_generation_raises():
     assert d["exception"] == "RuntimeError"
     assert "credit_balance_exhausted" in d["message"]
     datetime.fromisoformat(d["at"])
+
+
+def test_build_nodes_keeps_the_applicable_intents_and_records_a_partial_reject(caplog):
+    """An edge the generator's postprocess could not re-home (the if-else below
+    declares only "true" / "false") is refused by apply_connect in the dry run.
+    The rest of the build still applies, but the dropped connect must leave a
+    warning and a debug-export diagnostic instead of vanishing."""
+    graph = {
+        "graph": {
+            "nodes": [
+                {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "branch",
+                    "type": "custom",
+                    "data": {
+                        "type": "if-else",
+                        "title": "Check",
+                        "cases": [{"case_id": "true", "logical_operator": "and", "conditions": []}],
+                    },
+                },
+                {"id": "yes", "type": "custom", "data": {"type": "end", "title": "Yes", "outputs": []}},
+                {"id": "no", "type": "custom", "data": {"type": "end", "title": "No", "outputs": []}},
+            ],
+            "edges": [
+                {"source": "s", "target": "branch"},
+                {"source": "branch", "target": "yes", "sourceHandle": "true"},
+                {"source": "branch", "target": "no", "sourceHandle": "maybe"},
+            ],
+        },
+        "error": "",
+        "errors": [],
+    }
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value=graph,
+        ),
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
+        ),
+        caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.build"),
+    ):
+        result = build.build_nodes("t1", {}, ["Branch on a check"])
+
+    # the applicable intents survive: 4 creates + the 2 connects on declared handles
+    assert result.error == ""
+    assert [i.op for i in result.intents].count("create_node") == 4
+    connects = [(i.args["from_node"], i.args["to_node"]) for i in result.intents if i.op == "connect"]
+    assert connects == [("s", "branch"), ("branch", "yes")]
+
+    # ...and the dropped connect is named in a diagnostic
+    assert len(result.diagnostics) == 1
+    diagnostic = result.diagnostics[0]
+    assert diagnostic["source"] == "build_nodes"
+    datetime.fromisoformat(diagnostic["at"])
+    assert len(diagnostic["rejected"]) == 1
+    rejected = diagnostic["rejected"][0]
+    assert rejected["intent"] == "connect"
+    assert rejected["args"] == {"from_node": "branch", "to_node": "no", "source_handle": "maybe"}
+    assert "has no handle 'maybe'" in rejected["reason"]
+
+    # ...and in a server warning
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "connect" in warnings[0]
+    assert "'maybe'" in warnings[0]
+    assert "has no handle" in warnings[0]
+
+
+# ---- ESQ1-302: placeholder endpoints -----------------------------------------
+
+_HTTP_BODY = {"type": "json", "data": [{"type": "text", "key": "", "value": "{}"}]}
+
+
+def _gen_graph_with_http(url: str) -> dict:
+    return {
+        "graph": {
+            "nodes": [
+                {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "h",
+                    "type": "custom",
+                    "data": {
+                        "type": "http-request",
+                        "title": "Call PPT API",
+                        "method": "post",
+                        "url": url,
+                        "authorization": {"type": "no-auth", "config": None},
+                        "headers": "",
+                        "params": "",
+                        "body": _HTTP_BODY,
+                    },
+                },
+                {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+            ],
+            "edges": [{"id": "e1", "source": "s", "target": "h"}, {"id": "e2", "source": "h", "target": "e"}],
+        },
+        "error": "",
+        "errors": [],
+    }
+
+
+def _build_with(gen_graph: dict, *, trusted_text: str = ""):
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value=gen_graph,
+        ),
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
+        ),
+    ):
+        return build.build_nodes("t1", {}, ["Call the PPT API"], trusted_text=trusted_text).intents
+
+
+def test_build_nodes_grounds_a_placeholder_endpoint_into_a_required_start_variable():
+    """The ESQ1-302 draft called ``https://api.example.com/ppt/generate`` -- an
+    endpoint the model invented. A placeholder URL now becomes a required start
+    variable, so the test-data gate asks the user for the real endpoint instead
+    of the run failing against a host that does not exist."""
+    intents = _build_with(_gen_graph_with_http("https://api.example.com/ppt/generate"))
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
+    assert var["type"] == "text-input"
+    assert var["required"] is True
+    assert "Call PPT API" in var["label"]
+
+
+def _http_node(
+    node_id: str,
+    title: str,
+    url: str,
+    *,
+    headers: str = "",
+    params: str = "",
+    authorization: dict | None = None,
+) -> dict:
+    return {
+        "id": node_id,
+        "type": "custom",
+        "data": {
+            "type": "http-request",
+            "title": title,
+            "method": "post",
+            "url": url,
+            "authorization": authorization or {"type": "no-auth", "config": None},
+            "headers": headers,
+            "params": params,
+            "body": _HTTP_BODY,
+        },
+    }
+
+
+def _gen_graph_with_http_full(
+    url: str,
+    *,
+    headers: str = "",
+    params: str = "",
+    authorization: dict | None = None,
+) -> dict:
+    return {
+        "graph": {
+            "nodes": [
+                {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+                _http_node("h", "Call PPT API", url, headers=headers, params=params, authorization=authorization),
+                {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+            ],
+            "edges": [{"id": "e1", "source": "s", "target": "h"}, {"id": "e2", "source": "h", "target": "e"}],
+        },
+        "error": "",
+        "errors": [],
+    }
+
+
+def test_build_nodes_grounds_each_placeholder_endpoint_into_its_own_start_variable():
+    gen_graph = _gen_graph_with_http("https://api.example.com/ppt/generate")
+    nodes = gen_graph["graph"]["nodes"]
+    nodes.insert(2, _http_node("h2", "Upload PPT", "https://your-api.com/v1/upload"))
+    gen_graph["graph"]["edges"] = [
+        {"id": "e1", "source": "s", "target": "h"},
+        {"id": "e2", "source": "h", "target": "h2"},
+        {"id": "e3", "source": "h2", "target": "e"},
+    ]
+
+    intents = _build_with(gen_graph)
+
+    urls = {i.args["node_id"]: i.args["config"]["url"] for i in intents if i.args.get("node_type") == "http-request"}
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert urls == {"h": "{{#s.h_url#}}", "h2": "{{#s.h2_url#}}"}
+    assert [v["variable"] for v in start.args["config"]["variables"]] == ["h_url", "h2_url"]
+    assert all(v["required"] is True for v in start.args["config"]["variables"])
+
+
+def test_build_nodes_does_not_duplicate_an_endpoint_variable_the_start_node_already_declares():
+    gen_graph = _gen_graph_with_http("https://api.example.com/ppt/generate")
+    start_node = gen_graph["graph"]["nodes"][0]
+    start_node["data"]["variables"] = [
+        {"variable": "h_url", "label": "PPT API URL", "type": "text-input", "required": True, "max_length": 2048}
+    ]
+
+    intents = _build_with(gen_graph)
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}"
+    assert [v["variable"] for v in start.args["config"]["variables"]] == ["h_url"]
+    assert start.args["config"]["variables"][0]["label"] == "PPT API URL"  # the declared one is kept
+
+
+def test_build_nodes_leaves_a_real_endpoint_and_a_templated_url_alone():
+    for url in ("https://api.openai.com/v1/chat", "{{#s.endpoint#}}/generate"):
+        intents = _build_with(_gen_graph_with_http(url))
+        http = next(i for i in intents if i.args.get("node_type") == "http-request")
+        start = next(i for i in intents if i.args.get("node_type") == "start")
+        assert http.args["config"]["url"] == url
+        assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_an_endpoint_the_user_never_supplied_even_when_not_placeholder_shaped():
+    """A plausible, real-looking host the model invented (S5b/ESQ1-302's shape
+    one step earlier: ``api.pptrender.io``) must still be grounded once
+    trusted_text is available -- ``_is_placeholder_endpoint`` alone would miss
+    it, since nothing about the URL LOOKS invented the way ``example.com`` or
+    ``your-api.com`` do."""
+    goal = "Build a workflow that renders a slide deck from bullet points and returns a download link."
+    intents = _build_with(_gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=goal)
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
+    assert var["required"] is True
+
+
+def test_build_nodes_leaves_an_endpoint_alone_when_the_user_actually_supplied_its_host():
+    """The mirror case: trusted_text literally names the same host the
+    generated URL uses, so it is not a fabrication and must be left alone."""
+    goal = "Call https://api.pptrender.io to render a slide deck from bullet points."
+    intents = _build_with(_gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=goal)
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "https://api.pptrender.io/v1/render"
+    assert start.args["config"]["variables"] == []
+
+
+def test_is_placeholder_endpoint_recognises_the_usual_inventions():
+    assert build._is_placeholder_endpoint("https://api.example.com/ppt/generate")
+    assert build._is_placeholder_endpoint("http://example.org/x")
+    assert build._is_placeholder_endpoint("https://your-api.com/v1")
+    assert build._is_placeholder_endpoint("https://<your-domain>/generate")
+    assert build._is_placeholder_endpoint("https://api.acme.com/{tenant}/x")
+    assert build._is_placeholder_endpoint("")
+    assert build._is_placeholder_endpoint("http://localhost:11434/api")  # the host IS localhost
+    assert not build._is_placeholder_endpoint("https://api.openai.com/v1")
+    assert not build._is_placeholder_endpoint("{{#s.endpoint#}}/x")  # a Dify template is a real reference
+    assert not build._is_placeholder_endpoint(
+        "https://abc123.localhost.run/webhook"
+    )  # a real tunnel domain, not the localhost host
+
+
+# ---- Task 3: invented credentials become an input ---------------------------
+
+
+def test_build_nodes_grounds_an_invented_credential_header_into_a_required_start_variable():
+    """S5b/F2: requirements analysis invented an ``Authorization: Bearer
+    YOUR_API_KEY`` header the goal never supplied. Grounding it into a start
+    variable means the test-data gate asks the user for the real key instead
+    of the workflow shipping a header the run can never satisfy. The
+    Content-Type line is not a credential and must pass through byte-identical."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Content-Type: application/json\nAuthorization: Bearer YOUR_API_KEY",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == ("Content-Type: application/json\nAuthorization: Bearer {{#s.h_api_key#}}")
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["type"] == "text-input"
+    assert var["required"] is True
+    assert var["max_length"] == 2048
+    assert "Call PPT API" in var["label"]
+
+
+def test_build_nodes_leaves_a_header_credential_alone_when_the_user_actually_supplied_it():
+    """The mirror case: the goal literally names the secret, so it is not a
+    fabrication and must be left alone."""
+    goal = "Call https://api.acme.com/v1/render with Authorization: Bearer sk-live-abc123."
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer sk-live-abc123",
+        ),
+        trusted_text=goal,
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer sk-live-abc123"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_an_invented_api_key_authorization_config():
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            authorization={"type": "api-key", "config": {"type": "bearer", "api_key": "YOUR_TOKEN"}},
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["authorization"]["config"]["api_key"] == "{{#s.h_api_key#}}"
+    assert http.args["config"]["authorization"]["config"]["type"] == "bearer"  # untouched
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_grounds_an_invented_api_key_param():
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            params="api_key: xxxxxxxx",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["params"] == "api_key: {{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+# ---- Task 3 review fix round 1 ------------------------------------------
+
+
+def test_build_nodes_grounds_a_bare_key_param():
+    """Review item 2: a raw ``?key=...`` param is a common way an API names
+    its key; ``is_credential_key("key")`` alone is False (its last-segment
+    rule needs a qualifying prefix), so params get a params-only rule that
+    also treats a bare, whole ``key`` as a credential."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            params="key: YOUR_API_KEY",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["params"] == "key: {{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_leaves_cache_key_and_key_points_params_alone():
+    """The params-only bare-``key`` rule must not fire on a key that merely
+    ENDS in "key" as part of a longer word/segment."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            params="cache_key: YOUR_API_KEY\nkey_points: YOUR_API_KEY",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["params"] == "cache_key: YOUR_API_KEY\nkey_points: YOUR_API_KEY"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_an_empty_api_key_authorization_config():
+    """Review item 3: an empty ``config.api_key`` is never a valid credential
+    either -- it must ground exactly like a placeholder one, not pass through
+    and fail every run."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            authorization={"type": "api-key", "config": {"type": "bearer", "api_key": ""}},
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["authorization"]["config"]["api_key"] == "{{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_grounds_an_empty_credential_header_line():
+    """Review item 3, header/param side: ``Authorization:`` with nothing
+    after the colon is an empty credential, not a real one -- it must
+    ground too."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization:",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization:{{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_leaves_an_already_templated_credential_header_alone():
+    """Review item 4: a header that already reads a start variable (e.g.
+    from an earlier grounding pass, or one the model wrote itself) must
+    never be re-grounded -- even though the variable NAME can itself look
+    placeholder-shaped (``your_api_key`` matches CREDENTIAL_PLACEHOLDER_RE's
+    ``YOUR...KEY`` pattern). The template check must run BEFORE the
+    placeholder-shape check."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer {{#s.your_api_key#}}",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.your_api_key#}}"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_a_bare_scheme_word_keeping_it():
+    """Review minor (b): a value that is EXACTLY a scheme word (nothing
+    after it -- ``strip_auth_scheme`` only strips a scheme FOLLOWED by
+    whitespace, so a bare word isn't recognised as empty by that helper
+    alone) is grounded while keeping the scheme word."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_grounds_a_credential_header_preserving_crlf_line_endings():
+    """Review minor (a): ``_replace_credential_value`` used to strip only
+    `` \\t``, so a ``\\r\\n``-terminated line's trailing ``\\r`` was treated
+    as part of the secret and silently dropped instead of preserved as a
+    line-ending character."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Content-Type: application/json\r\nAuthorization: Bearer YOUR_API_KEY\r\n",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["headers"] == (
+        "Content-Type: application/json\r\nAuthorization: Bearer {{#s.h_api_key#}}\r\n"
+    )
+
+
+def test_build_nodes_grounds_an_invented_secret_absent_from_trusted_text():
+    """Review minor (c), test 1: in trusted mode, a non-placeholder-shaped
+    but still invented secret (absent from what the user actually typed)
+    must ground -- not just an obviously placeholder-shaped one."""
+    goal = "Call https://api.acme.com/v1/render to render a slide deck."
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer sk-invented",
+        ),
+        trusted_text=goal,
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_api_key")
+    assert var["required"] is True
+
+
+def test_build_nodes_leaves_a_non_placeholder_secret_alone_in_placeholder_only_mode():
+    """Review minor (c), test 2: with no trusted_text at all, only an
+    unmistakably placeholder-shaped credential grounds -- a real-looking
+    secret is left alone rather than treated as invented just because there
+    is no goal text to check it against (mirrors the URL grounding's own
+    placeholder-only-mode behaviour)."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="Authorization: Bearer sk-live-abc123",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["headers"] == "Authorization: Bearer sk-live-abc123"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_grounds_both_an_invented_url_and_an_invented_header_on_the_same_node():
+    """Review minor (c), test 3: a node with both an invented URL and an
+    invented credential header gets BOTH a ``<node>_url`` and a
+    ``<node>_api_key`` start variable -- the two grounding passes share the
+    start-variable insertion write without clobbering each other."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.example.com/ppt/generate",
+            headers="Authorization: Bearer YOUR_API_KEY",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}"
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
+    assert {v["variable"] for v in start.args["config"]["variables"]} == {"h_url", "h_api_key"}
+
+
+# ---- Final review F1: a templated path/query must not hide an invented host --
+
+_NO_URL_GOAL = "Build a workflow that renders a slide deck from bullet points and returns a download link."
+
+
+def _as_graph(intents) -> dict:
+    """The node dicts ``endpoint_variable_names`` reads, built from the intents."""
+    nodes = [
+        {"id": i.args["node_id"], "data": {"type": i.args["node_type"], **(i.args.get("config") or {})}}
+        for i in intents
+        if i.op == "create_node"
+    ]
+    return {"nodes": nodes, "edges": []}
+
+
+def test_build_nodes_grounds_only_the_origin_of_an_invented_url_with_a_templated_query():
+    """The S5b URL with the topic in its query string: the host is still
+    invented, so it must be grounded -- but only ``scheme://host`` becomes the
+    input; the path, the query and the data template in it stay verbatim."""
+    intents = _build_with(
+        _gen_graph_with_http("https://api.pptrender.io/v1/render?topic={{#node1.topic#}}"),
+        trusted_text=_NO_URL_GOAL,
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}/v1/render?topic={{#node1.topic#}}"
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
+    assert var["required"] is True
+    assert var["label"] == "Call PPT API base URL"
+
+
+def test_build_nodes_grounds_only_the_origin_of_an_invented_url_with_a_templated_path():
+    intents = _build_with(
+        _gen_graph_with_http("https://api.pptrender.io/v1/{{#node1.topic#}}/render"),
+        trusted_text=_NO_URL_GOAL,
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}/v1/{{#node1.topic#}}/render"
+
+
+def test_build_nodes_grounds_only_the_origin_of_a_placeholder_url_with_a_templated_path():
+    """Placeholder-only mode (no trusted text) too: the whole-URL replacement
+    would silently drop the data template the node reads."""
+    intents = _build_with(_gen_graph_with_http("https://api.example.com/ppt/{{#s.topic#}}"))
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["url"] == "{{#s.h_url#}}/ppt/{{#s.topic#}}"
+
+
+def test_build_nodes_keeps_the_whole_url_label_for_a_url_without_templates():
+    intents = _build_with(_gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=_NO_URL_GOAL)
+
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
+    assert var["label"] == "Call PPT API URL"
+
+
+def test_build_nodes_leaves_a_url_whose_host_is_a_template_alone():
+    for url in ("{{#s.h_url#}}/v1/render", "https://{{#s.host#}}/v1", "{{#s.h_url#}}/{tenant}/x"):
+        intents = _build_with(_gen_graph_with_http(url), trusted_text=_NO_URL_GOAL)
+        http = next(i for i in intents if i.args.get("node_type") == "http-request")
+        start = next(i for i in intents if i.args.get("node_type") == "start")
+        assert http.args["config"]["url"] == url
+        assert start.args["config"]["variables"] == []
+
+
+def test_grounding_a_templated_url_is_idempotent():
+    intents = _build_with(
+        _gen_graph_with_http("https://api.pptrender.io/v1/render?topic={{#node1.topic#}}"),
+        trusted_text=_NO_URL_GOAL,
+    )
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    url_before = http.args["config"]["url"]
+    variables_before = list(start.args["config"]["variables"])
+
+    assert build._ground_placeholder_endpoints(intents, trusted_text=_NO_URL_GOAL) == []
+    assert http.args["config"]["url"] == url_before
+    assert start.args["config"]["variables"] == variables_before
+
+
+def test_every_variable_url_grounding_creates_is_excluded_from_mocks_and_path_data_is_not():
+    """Reviewer check (a): the grounding side and ``endpoint_variable_names``
+    agree after the origin-only substitution -- the grounded ``h_url`` is a
+    value a human must supply, the ``topic`` in the path/query stays mockable."""
+    from core.dify_builder.handlers_fix import endpoint_variable_names
+
+    for url in (
+        "https://api.pptrender.io/v1/render?topic={{#s.topic#}}",
+        "https://api.pptrender.io/v1/{{#s.topic#}}/render",
+        "https://api.pptrender.io/v1/render",
+    ):
+        intents = _build_with(_gen_graph_with_http(url), trusted_text=_NO_URL_GOAL)
+        start = next(i for i in intents if i.args.get("node_type") == "start")
+        created = {v["variable"] for v in start.args["config"]["variables"]}
+
+        assert created == {"h_url"}
+        assert endpoint_variable_names(_as_graph(intents)) == created
+
+
+# ---- Final review F2: a host the user typed without a scheme is not invented --
+
+
+def test_build_nodes_leaves_a_url_whose_host_the_goal_names_without_a_scheme():
+    from services.dify_builder.agent.user_supplied import trusted_text_for
+
+    goal = "Render a slide deck from bullet points. Our renderer is at api.pptrender.io/v1/render."
+    intents = _build_with(
+        _gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=trusted_text_for(goal, {})
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    start = next(i for i in intents if i.args.get("node_type") == "start")
+    assert http.args["config"]["url"] == "https://api.pptrender.io/v1/render"
+    assert start.args["config"]["variables"] == []
+
+
+def test_build_nodes_leaves_a_url_whose_host_a_requirement_names_without_a_scheme():
+    from services.dify_builder.agent.user_supplied import trusted_text_for
+
+    trusted = trusted_text_for(_NO_URL_GOAL, {"render_api_url": "api.pptrender.io/v1/render"})
+    intents = _build_with(_gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=trusted)
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["url"] == "https://api.pptrender.io/v1/render"
+
+
+# ---- Final review minors ------------------------------------------------------
+
+
+def test_build_nodes_grounds_a_bearer_key_the_goal_only_mentions_as_a_word():
+    """M1: ``Bearer key`` is not user-supplied just because the goal says "key"."""
+    intents = _build_with(
+        _gen_graph_with_http_full("https://api.acme.com/v1/render", headers="Authorization: Bearer key"),
+        trusted_text="Call https://api.acme.com/v1/render with my API key.",
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
+
+
+def test_build_nodes_grounds_an_invented_azure_subscription_key_header():
+    """M2: ``Ocp-Apim-Subscription-Key`` is a credential header."""
+    intents = _build_with(
+        _gen_graph_with_http_full("https://api.acme.com/v1/render", headers="Ocp-Apim-Subscription-Key: abc123"),
+        trusted_text="Call https://api.acme.com/v1/render.",
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["headers"] == "Ocp-Apim-Subscription-Key: {{#s.h_api_key#}}"
+
+
+def test_build_nodes_replaces_a_bare_scheme_word_wholesale_off_an_authorization_line():
+    """M3: a bare ``Bearer``/``Basic``/``Token`` is an auth SCHEME only on an
+    ``Authorization``/``Proxy-Authorization`` line; under any other credential
+    key it is just an invented value and is replaced whole."""
+    intents = _build_with(
+        _gen_graph_with_http_full(
+            "https://api.acme.com/v1/render",
+            headers="X-Auth-Token: token\nProxy-Authorization: Basic",
+            params="api_key: token",
+        )
+    )
+
+    http = next(i for i in intents if i.args.get("node_type") == "http-request")
+    assert http.args["config"]["headers"] == (
+        "X-Auth-Token: {{#s.h_api_key#}}\nProxy-Authorization: Basic {{#s.h_api_key#}}"
+    )
+    assert http.args["config"]["params"] == "api_key: {{#s.h_api_key#}}"

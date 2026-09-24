@@ -11,7 +11,7 @@ export function CurrentDraftItem({
   isLast: boolean
   onSelect: () => void
 }) {
-  const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
 
   return (
     <button
@@ -31,7 +31,7 @@ export function CurrentDraftItem({
             isActive ? 'text-text-accent' : 'text-text-secondary',
           )}
         >
-          {tWorkflow(($) => $['versionHistory.currentDraft'])}
+          {tWorkflow(($) => $['versionHistory.currentDraft'], { ns: 'workflowHistory' })}
         </p>
       </div>
     </button>

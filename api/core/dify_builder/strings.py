@@ -52,7 +52,21 @@ PLAIN: frozenset[str] = frozenset(
         "Test failed — no safe automatic fix; edit or keep draft.",
         "No automatic fix found — review the diagnosis and edit the canvas manually, or reject.",
         "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test.",
+        "The run finished but reached no End node, so it produced no output. Check the branch handles "
+        "and the edges after the last node that ran, then edit the canvas, keep the draft, or revert.",
+        "The test finished without producing any output — see the notice.",
+        "The test's outcome couldn't be determined twice in a row, so I've stopped re-running it. "
+        "Open the run in the app's logs to see how it ended, then edit the canvas, keep the draft, or revert.",
+        "I couldn't determine the test's outcome twice in a row — see the notice.",
         "No fix is staged for this failure -- keep the draft or revert.",
+        "I didn't apply the workflow: it would fail before its first node. Adjust the plan and approve again.",
+        "I didn't apply the change: the workflow would fail before its first node. "
+        "Continue adjusting to change the rules, approve again, or discard the plan.",
+        "I couldn't apply the workflow -- see the error above. Adjust the plan and approve again.",
+        "I couldn't apply the change -- see the error above. "
+        "Continue adjusting to change the rules, approve again, or discard the plan.",
+        "I didn't apply the change: it would have run without doing what you asked -- see above. "
+        "Continue adjusting to change the rules, approve again, or discard the plan.",
         # card titles
         "Test run",
         "Review",
@@ -69,8 +83,15 @@ PLAIN: frozenset[str] = frozenset(
         "Model not configured",
         "Nothing was applied to the canvas",
         "Couldn't apply the fix",
+        "Couldn't apply the workflow",
         "Proceeding with sensible defaults",
         "Repeated failure",
+        "The workflow can't start",
+        "The change wouldn't do what you asked",
+        "No safe automatic fix",
+        "No output produced",
+        "Test outcome unknown",
+        "Finished without output",
         "Test failed",
         "Validation",
         "Review the requirements",
@@ -136,6 +157,29 @@ PLAIN: frozenset[str] = frozenset(
 
 
 TEMPLATES: list[Template] = [
+    Template(
+        pattern=re.compile(r"^The generated workflow would fail before its first node: (?P<value>.+)$", re.DOTALL),
+        template="The generated workflow would fail before its first node: {value}",
+        translate_fields=frozenset(),  # value is the engine's node error, kept verbatim
+    ),
+    Template(
+        pattern=re.compile(r"^The generated workflow couldn't be applied to the draft: (?P<value>.+)$", re.DOTALL),
+        template="The generated workflow couldn't be applied to the draft: {value}",
+        translate_fields=frozenset(),  # value is a validation message; re-inserted verbatim
+    ),
+    Template(
+        pattern=re.compile(r"^The change would have applied cleanly and then not worked: (?P<value>.+)$", re.DOTALL),
+        template="The change would have applied cleanly and then not worked: {value}",
+        translate_fields=frozenset(),  # value is the guard's own engine-grounded reason, kept verbatim
+    ),
+    Template(
+        pattern=re.compile(
+            r"^The proposed fix would leave a workflow that fails before its first node: (?P<value>.+)$",
+            re.DOTALL,
+        ),
+        template="The proposed fix would leave a workflow that fails before its first node: {value}",
+        translate_fields=frozenset(),  # value is the engine's node error, kept verbatim
+    ),
     Template(
         pattern=re.compile(r"^Workflow built \((?P<count>\d+) nodes\)$"),
         template="Workflow built ({count} nodes)",

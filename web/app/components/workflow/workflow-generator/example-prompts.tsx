@@ -31,23 +31,23 @@ const SKELETONS = [
  * the row is never empty. Create-only — the parent hides it in refine mode.
  */
 const ExamplePrompts = ({ mode, onSelect }: Props) => {
-  const { t, i18n } = useTranslation(['workflow'])
+  const { t, i18n } = useTranslation(['workflow', 'workflowGenerator'])
 
   // Curated fallback, shown until AI suggestions arrive and whenever generation
   // is unavailable. The spread per mode covers a range of workflow shapes.
   const staticPrompts = useMemo(() => {
     if (mode === 'workflow') {
       return [
-        t(($) => $['workflowGenerator.examples.workflow.summarize']),
-        t(($) => $['workflowGenerator.examples.workflow.translate']),
-        t(($) => $['workflowGenerator.examples.workflow.rag']),
-        t(($) => $['workflowGenerator.examples.workflow.classify']),
+        t(($) => $['workflowGenerator.examples.workflow.summarize'], { ns: 'workflowGenerator' }),
+        t(($) => $['workflowGenerator.examples.workflow.translate'], { ns: 'workflowGenerator' }),
+        t(($) => $['workflowGenerator.examples.workflow.rag'], { ns: 'workflowGenerator' }),
+        t(($) => $['workflowGenerator.examples.workflow.classify'], { ns: 'workflowGenerator' }),
       ]
     }
     return [
-      t(($) => $['workflowGenerator.examples.chatflow.support']),
-      t(($) => $['workflowGenerator.examples.chatflow.tutor']),
-      t(($) => $['workflowGenerator.examples.chatflow.triage']),
+      t(($) => $['workflowGenerator.examples.chatflow.support'], { ns: 'workflowGenerator' }),
+      t(($) => $['workflowGenerator.examples.chatflow.tutor'], { ns: 'workflowGenerator' }),
+      t(($) => $['workflowGenerator.examples.chatflow.triage'], { ns: 'workflowGenerator' }),
     ]
   }, [mode, t])
 
@@ -104,12 +104,14 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
     <div className="mt-3">
       <div className="mb-1.5 flex items-center gap-1">
         <span className="system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['workflowGenerator.examples.label'])}
+          {t(($) => $['workflowGenerator.examples.label'], { ns: 'workflowGenerator' })}
         </span>
         <button
           type="button"
-          aria-label={t(($) => $['workflowGenerator.examples.refresh'])}
-          title={t(($) => $['workflowGenerator.examples.refresh'])}
+          aria-label={t(($) => $['workflowGenerator.examples.refresh'], {
+            ns: 'workflowGenerator',
+          })}
+          title={t(($) => $['workflowGenerator.examples.refresh'], { ns: 'workflowGenerator' })}
           className="flex size-4 cursor-pointer items-center justify-center rounded text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => {
             void fetchSuggestions()

@@ -26,9 +26,11 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 """
 
 import logging
+import re
 import uuid
 from typing import Any
 
+from core.dify_builder import credentials, urls
 from core.dify_builder.contract import (
     DecisionItem,
     ExecutionProgress,
@@ -37,6 +39,7 @@ from core.dify_builder.contract import (
     NoticeItem,
     TestResultCard,
 )
+from core.dify_builder.errors import DraftWouldNotStartError
 from core.dify_builder.models import (
     ApplyResult,
     ChangeSet,
@@ -62,6 +65,12 @@ from core.dify_builder.state import PcState
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "MAX_REPEATED_REPAIRS",
+    "MAX_UNKNOWN_OUTCOMES",
+    "NO_OUTPUT_BODY",
+    "NO_OUTPUT_REPLY",
+    "UNKNOWN_OUTCOME_STUCK_BODY",
+    "UNKNOWN_OUTCOME_STUCK_REPLY",
     "UNKNOWN_TEST_OUTCOME_NOTICE",
     "action_kind",
     "action_string",
@@ -70,8 +79,12 @@ __all__ = [
     "append_item",
     "build_change_set",
     "build_form_fields",
+    "dead_end_branch_node_id",
     "decode_checklist_errors",
+    "drop_unapplied_repair",
     "emit_canvas",
+    "endpoint_variable_names",
+    "failure_signature",
     "first_failed_node",
     "fix_registry",
     "handle_apply",
@@ -90,11 +103,16 @@ __all__ = [
     "mint_checkpoint",
     "model_config_error_text",
     "needs_upload_inputs",
+    "note_repair_error",
+    "note_unknown_outcome",
     "perform_revert",
+    "repair_is_repeating",
+    "run_finished_without_output",
     "start_schema",
     "test_failure_reason",
     "testdata_form_fields",
     "upload_variable_names",
+    "without_endpoint_values",
     "without_upload_values",
 ]
 
@@ -107,8 +125,160 @@ UNKNOWN_TEST_OUTCOME_NOTICE = (
     "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test."
 )
 
+# A run that reports ``succeeded`` after taking a branch node and reaching no
+# End node produced nothing (ESQ1-303: both if-else edges used undeclared
+# handles, so the engine skipped both arms and finished with outputs={}).
+# Shown instead of "All checks passed"; nothing is diagnosed or repaired
+# because the engine reported no error to diagnose.
+NO_OUTPUT_BODY = (
+    "The run finished but reached no End node, so it produced no output. Check the branch handles "
+    "and the edges after the last node that ran, then edit the canvas, keep the draft, or revert."
+)
+NO_OUTPUT_REPLY = "The test finished without producing any output — see the notice."
+
+# How many CONSECUTIVE unknown outcomes a flow tolerates before it stops
+# offering a re-run. The first is genuinely re-runnable (a transient early end
+# of the stream); the second in a row means something structural and the user
+# must look at the run itself.
+MAX_UNKNOWN_OUTCOMES = 2
+UNKNOWN_OUTCOME_STUCK_BODY = (
+    "The test's outcome couldn't be determined twice in a row, so I've stopped re-running it. "
+    "Open the run in the app's logs to see how it ended, then edit the canvas, keep the draft, or revert."
+)
+UNKNOWN_OUTCOME_STUCK_REPLY = "I couldn't determine the test's outcome twice in a row — see the notice."
+
+
+def note_unknown_outcome(fc: DifyBuilderContext) -> bool:
+    """Count one more unknown outcome; True when the cap is reached."""
+    fc.unknown_outcome_count += 1
+    return fc.unknown_outcome_count >= MAX_UNKNOWN_OUTCOMES
+
+
+# Node statuses that mean "this node ran to completion": the engine's
+# ``WorkflowNodeExecutionStatus.SUCCEEDED`` and the fakes' ``success``.
+_RAN_OK = frozenset({"succeeded", "success"})
+_BRANCH_NODE_TYPES = frozenset({"if-else", "question-classifier", "human-input"})
+
+
+def _branch_node_ids(graph: Graph) -> set[str]:
+    """Nodes that pick one of several outgoing edges at run time: the branch
+    node types. (Not ``error_strategy == "fail-branch"``: a node that actually
+    took its fail branch reports status ``"exception"``, outside ``_RAN_OK``,
+    so that clause never protected anything -- it only misclassified an
+    ordinary succeeded fail-branch node as a router and false-flagged a
+    perfectly linear success.)"""
+    return {
+        str(node.get("id") or "")
+        for node in graph.get("nodes", [])
+        if (node.get("data") or {}).get("type") in _BRANCH_NODE_TYPES
+    }
+
+
+def dead_end_branch_node_id(graph: Graph, per_node: list[NodeOutput]) -> str:
+    """The LAST branch node that ran OK where none of its outgoing edges'
+    targets show up in ``per_node`` at all (any status) -- i.e. the engine
+    skipped every arm (the ESQ1-303 mechanism). Returns "" when no such
+    dead end exists.
+
+    A target that appears in ``per_node`` with ANY status -- even
+    ``"failed"`` -- means the engine did emit a row for that arm, so the
+    branch routed somewhere; only a target with NO row at all means its arm
+    was never entered. A branch node with no outgoing edges counts as
+    routing nowhere (there is nothing it could have reached).
+    """
+    branch_ids = _branch_node_ids(graph)
+    ran_ids = {n.node_id for n in per_node}
+    targets_by_source: dict[str, list[str]] = {}
+    for edge in graph.get("edges", []):
+        source = str(edge.get("source") or "")
+        targets_by_source.setdefault(source, []).append(str(edge.get("target") or ""))
+    for n in reversed(per_node):
+        if n.node_id not in branch_ids or n.status not in _RAN_OK:
+            continue
+        targets = targets_by_source.get(n.node_id, [])
+        if not any(target in ran_ids for target in targets):
+            return n.node_id
+    return ""
+
+
+def run_finished_without_output(graph: Graph, per_node: list[NodeOutput]) -> bool:
+    """True only when: the graph has at least one End node; no End node ran
+    OK; and some branch node ran OK and routed nowhere (see
+    ``dead_end_branch_node_id``) -- the ESQ1-303 mechanism itself, not merely
+    "a branch ran and no End did".
+
+    This is what tells the defect (every arm skipped) apart from a legitimate
+    side-effect-only arm that ran to completion with no End node of its own:
+    that arm's nodes DO show up in ``per_node``, so ``dead_end_branch_node_id``
+    finds no dead end and this stays green. A graph with no End node has
+    nothing to require, so that also stays green.
+    """
+    end_ids = {str(n.get("id") or "") for n in graph.get("nodes", []) if (n.get("data") or {}).get("type") == "end"}
+    if not end_ids:
+        return False
+    if any(n.node_id in end_ids and n.status in _RAN_OK for n in per_node):
+        return False
+    return dead_end_branch_node_id(graph, per_node) != ""
+
 
 # ---- helpers ---------------------------------------------------------------
+
+
+MAX_REPEATED_REPAIRS = 2
+
+
+def failure_signature(run: Run) -> str:
+    """A STABLE key for "this is the same failure again", built from the
+    ENGINE's own output: the first failed node's id plus its error text, or the
+    launch error when the run threw before any node ran. Whitespace is
+    collapsed so formatting alone cannot look like a new failure. Returns ""
+    when the run carries nothing identifying -- an unknown failure must never
+    compare equal to another unknown one.
+
+    Deliberately NOT ``diagnosis.root_cause``. That is LLM prose, regenerated
+    on every diagnosis call: in one observed session it was reworded on each of
+    four turns and switched to Chinese on one of them. Keying on it meant
+    ``error == fc.last_repair_error`` could never hold, so ``repair_attempts``
+    reset forever and ``repair_is_repeating`` was unreachable -- that session
+    burned 9 failed runs and 8 repair approvals with this guard in place.
+    """
+    for node in run.per_node:
+        if node.status == "failed":
+            node_error = " ".join((node.error or "").split())
+            if node.node_id or node_error:
+                return f"{node.node_id}|{node_error}"
+    launch_error = " ".join((run.error or "").split())
+    return f"|{launch_error}" if launch_error else ""
+
+
+def note_repair_error(fc: DifyBuilderContext, run: Run) -> None:
+    """Record this failure's signature and count CONSECUTIVE repeats of it.
+
+    ``repair_attempts`` is not a global budget: a different failure means the
+    loop is still making progress, however slowly, so the count restarts.
+    The same failure again means the repair that just ran did not address the
+    cause, so the count advances. Call this once per diagnosis, before
+    ``repair_is_repeating``.
+
+    Takes the ``Run`` rather than a message so the key comes from the engine
+    (see ``failure_signature``) and not from anything an LLM wrote.
+    """
+    signature = failure_signature(run)
+    if signature and signature == fc.last_repair_error:
+        fc.repair_attempts += 1
+    else:
+        fc.repair_attempts = 0
+    fc.last_repair_error = signature
+
+
+def repair_is_repeating(fc: DifyBuilderContext) -> bool:
+    """Has the SAME error now survived ``MAX_REPEATED_REPAIRS`` repairs?
+
+    Reads the counter ``note_repair_error`` maintains; the identical error
+    that many times over means the repair agent is aiming at something that
+    isn't the cause, and another round will not find it.
+    """
+    return fc.repair_attempts >= MAX_REPEATED_REPAIRS
 
 
 def append_item(fc: DifyBuilderContext, kind: str, payload: dict[str, Any]) -> list[ConversationItem]:
@@ -272,6 +442,18 @@ def perform_revert(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     fc.checkpoint_id = ""
 
 
+def drop_unapplied_repair(
+    env: Env, s: Session, fc: DifyBuilderContext, progress: ProgressReporter, *, title: str, body: str
+) -> list[ConversationItem]:
+    """The staged repair was refused before anything was written: drop it
+    (so the empty-repair guard stops a re-approve of the same intents), close
+    the progress, and say why in the assistant reply. Shared by every repair-apply
+    gate (Fix's apply, Build's and Edit's await_repair)."""
+    fc.staged_repair = []
+    execution = progress.finish(status="error")
+    return append_assistant(env, s, fc, f"{title}. {body}", execution=execution, turn_id=progress.operation_id)
+
+
 def first_failed_node(nodes: list[NodeOutput]) -> str:
     for n in nodes:
         if n.status == "failed":
@@ -306,6 +488,108 @@ def upload_variable_names(schema: StartSchema) -> set[str]:
     }
 
 
+# ``{{#<node_id>.<var>#}}`` -- the Dify template reference syntax -- may sit
+# anywhere inside a string (e.g. ``https://x.com/{{#s.path#}}``), so this
+# searches the whole string rather than anchoring to it, except where a
+# caller below deliberately anchors it with ``.match``.
+_ENDPOINT_TEMPLATE_RE = re.compile(r"\{\{#([^.#{}]+)\.([^.#{}]+)#\}\}")
+
+
+def _start_var_names(text: str, start_id: str) -> set[str]:
+    """Every start-node template's variable name occurring ANYWHERE in
+    ``text`` -- used where the field IS the credential/endpoint itself (an
+    ``authorization.config.api_key``, or the value half of a credential-keyed
+    header/param line), so position within it doesn't matter."""
+    return {var_name for node_id, var_name in _ENDPOINT_TEMPLATE_RE.findall(text or "") if node_id == start_id}
+
+
+def _leading_start_var_name(text: str, start_id: str) -> str | None:
+    """The variable name of a start-node template occupying the HOST
+    position: ``text``, stripped of whitespace, STARTS with the template --
+    not merely containing one later, e.g. in a path or query
+    (``https://wttr.in/{{#s.city#}}``'s ``city`` is an ordinary data input,
+    not an endpoint). Returns None when there is no such leading template.
+    """
+    match = _ENDPOINT_TEMPLATE_RE.match((text or "").strip())
+    if match and match.group(1) == start_id:
+        return match.group(2)
+    return None
+
+
+def _host_start_var_names(url: str, start_id: str) -> set[str]:
+    """Start-node template variable names occupying ``url``'s HOST position
+    (``urls.host_is_templated``): the leading template of a url that starts
+    with one (``{{#s.h_url#}}/v1/render`` -- what grounding writes for an
+    invented host with a templated path/query), plus any template inside the
+    parsed host (``https://{{#s.host#}}/v1``). A template in the path or
+    query is never collected."""
+    names: set[str] = set()
+    leading = _leading_start_var_name(url, start_id)
+    if leading:
+        names.add(leading)
+    parts = urls.split_origin(url)
+    if parts is not None:
+        names |= _start_var_names(parts.host, start_id)
+    return names
+
+
+def _credential_line_var_names(text: str, start_id: str, key_is_credential) -> set[str]:
+    """Start-variable templates in the VALUE half of each ``Key: Value`` line
+    of a ``headers``/``params`` text block whose KEY names a credential per
+    ``key_is_credential`` -- an ordinary data field read via a header/param
+    (a search query, an ``Accept-Language``) must stay mockable, so only a
+    credential-keyed line's value counts."""
+    names: set[str] = set()
+    for line in (text or "").split("\n"):
+        if ":" not in line:
+            continue
+        key, _sep, value = line.partition(":")
+        if key_is_credential(key.strip()):
+            names |= _start_var_names(value, start_id)
+    return names
+
+
+def endpoint_variable_names(graph: Graph) -> set[str]:
+    """Names of the start variables an http-request node reads a real
+    endpoint or credential from: the url's HOST position, a credential-keyed
+    ``headers``/``params`` line, or an ``api-key`` authorization's
+    ``config.api_key``.
+
+    Nothing can invent a real endpoint or credential any more than it can
+    invent an upload (ESQ1-302 / build.py's ``_ground_placeholder_endpoints``
+    and Task 3's credential grounding), so these are values a human still has
+    to supply even when every other field is mocked for them. An ORDINARY
+    data input the workflow happens to read via the url path/query, or via a
+    non-credential header/param (a search query, an ``Accept-Language``), is
+    NOT collected -- it stays mockable, same as any other start variable.
+    Only a reference to the graph's own START node counts at all -- a
+    reference to some other node's output is an ordinary wired value.
+    """
+    start_id = ""
+    for node in graph.get("nodes", []):
+        data = node.get("data") or {}
+        if data.get("type") == "start":
+            start_id = str(node.get("id") or "")
+            break
+    if not start_id:
+        return set()
+    names: set[str] = set()
+    for node in graph.get("nodes", []):
+        data = node.get("data") or {}
+        if data.get("type") != "http-request":
+            continue
+        names |= _host_start_var_names(str(data.get("url") or ""), start_id)
+        names |= _credential_line_var_names(str(data.get("headers") or ""), start_id, credentials.is_credential_key)
+        names |= _credential_line_var_names(
+            str(data.get("params") or ""), start_id, credentials.is_credential_param_key
+        )
+        authorization = data.get("authorization")
+        auth_config = authorization.get("config") if isinstance(authorization, dict) else None
+        if isinstance(authorization, dict) and authorization.get("type") == "api-key" and isinstance(auth_config, dict):
+            names |= _start_var_names(str(auth_config.get("api_key") or ""), start_id)
+    return names
+
+
 def needs_upload_inputs(schema: StartSchema) -> bool:
     """Whether any declared start variable takes a file."""
     return bool(upload_variable_names(schema))
@@ -320,6 +604,22 @@ def without_upload_values(schema: StartSchema, inputs: Inputs) -> Inputs:
     ask for them instead.
     """
     dropped = upload_variable_names(schema)
+    return {key: value for key, value in inputs.items() if key not in dropped}
+
+
+def without_endpoint_values(graph: Graph, inputs: Inputs) -> Inputs:
+    """``inputs`` minus anything bound to an endpoint variable
+    (``endpoint_variable_names``).
+
+    A mocked URL is just another invented endpoint, and unlike a mocked file
+    the engine ACCEPTS it at launch: the http-request node then fails on
+    connection, which ``is_input_failure`` rightly reads as a config failure,
+    so the flow thrashes in config repair (ESQ1-302). Without the key, the
+    launch fails with "<var> is required in input form" -- an input failure
+    that routes back to the test-data gate, where the user supplies the real
+    endpoint.
+    """
+    dropped = endpoint_variable_names(graph)
     return {key: value for key, value in inputs.items() if key not in dropped}
 
 
@@ -541,6 +841,8 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         )
     else:
         reply_text = "No automatic fix found — review the diagnosis and edit the canvas manually, or reject."
+        if risk.reason:
+            reply_text += f"\nReason: {risk.reason}"
     execution = progress.finish()
     items = append_assistant(
         env,
@@ -597,19 +899,33 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
         result = env.dify.apply_repair(
             s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
         )
+    except DraftWouldNotStartError as exc:
+        # The fix applied, but apply_repair's preflight found the result would
+        # fail at Graph.init, so nothing was written. Not a stale fix: say so.
+        logger.warning(
+            "Dify Builder: staged repair would leave a draft that cannot start for app %s: %s", s.app_id, exc
+        )
+        items = drop_unapplied_repair(
+            env,
+            s,
+            fc,
+            progress,
+            title="The workflow can't start",
+            body=f"The proposed fix would leave a workflow that fails before its first node: {exc}",
+        )
+        return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     except ValueError as exc:
         # Same stale-intent window as Build's/Edit's gate: apply_repair
         # re-validates against the draft as it is NOW, and a bad intent must
         # not kill the session (ESQ1-271).
         logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
-        fc.staged_repair = []
-        progress.finish()
-        items = append_assistant(
+        items = drop_unapplied_repair(
             env,
             s,
             fc,
-            f"Couldn't apply the fix. The proposed fix no longer applies to the current draft: {exc}",
-            execution=ExecutionProgress(status="error"),
+            progress,
+            title="Couldn't apply the fix",
+            body=f"The proposed fix no longer applies to the current draft: {exc}",
         )
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     fc.last_snapshot_hash = result.new_hash
@@ -683,7 +999,7 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         )
         progress.activate("fix-generate-test-inputs")
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
         progress.finish()
     else:
         # upload / reuse: payload carries the inputs directly for the slice.
@@ -714,6 +1030,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         ],
     )
     progress.activate("fix-prepare-validation")
+    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     inputs: dict[str, Any] = {}
     if fc.test_input_ref != "":
         ti = env.repo.get_test_input(fc.test_input_ref)
@@ -724,7 +1041,13 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     def emit(event: NodeEvent) -> None:
         progress.observe_node("fix-run-validation", event)
 
-    result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
+    try:
+        result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
+    except Exception as exc:
+        # Same degrade as Build/Edit: never crash the advance; the launch error
+        # is captured on the Run (log + store) so the decision gate can show it.
+        logger.exception("dify_builder verify run failed to launch (session=%s, app=%s)", s.id, s.app_id)
+        result = Run(kind="verify", status="failed", per_node=[], error=launch_error_text(exc))
     if result.status == "succeeded":
         progress.complete("fix-run-validation")
     else:
@@ -743,6 +1066,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         dify_run_id=result.dify_run_id,
         status=result.status,
         per_node=result.per_node,
+        error=result.error,
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
@@ -753,8 +1077,21 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         # publish (or re-fix) against a run that may still be executing --
         # surface a neutral notice instead and return to fix.await_testdata
         # (re-runnable), never diagnosing or staging a repair against an
-        # unknown result.
+        # unknown result. The second consecutive unknown outcome stops the
+        # re-run loop at the decision gate instead.
         fc.verify_run_id = run.id
+        if note_unknown_outcome(fc):
+            execution = progress.finish()
+            items = append_assistant(
+                env, s, fc, UNKNOWN_OUTCOME_STUCK_BODY, execution=execution, turn_id=progress.operation_id
+            )
+            return StepResult(
+                next=PcState.FIX_AWAIT_DECISION,
+                context=fc,
+                items=items,
+                run=run,
+                run_id_sink=[run.id],
+            )
         items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
         progress.finish()
         return StepResult(
@@ -764,11 +1101,36 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             run=run,
             run_id_sink=[run.id],
         )
+    fc.unknown_outcome_count = 0
 
     if result.status != "succeeded":
         run.culprit_node_id = first_failed_node(result.per_node)
 
     fc.verify_run_id = run.id
+    if result.status == "succeeded" and run_finished_without_output(graph, result.per_node):
+        # A branch node ran and every one of its arms was skipped, and no End
+        # node ran either: not a pass, and not an engine error to diagnose.
+        # Point at the branch node and let the user decide.
+        run.culprit_node_id = dead_end_branch_node_id(graph, result.per_node)
+        items = append_card(
+            fc,
+            TestResultCard(
+                status="failed",
+                failure_reason=NO_OUTPUT_BODY,
+                dify_run_id=run.dify_run_id,
+            ),
+        )
+        execution = progress.finish()
+        items += append_assistant(
+            env, s, fc, NO_OUTPUT_REPLY, execution=execution, cards=["test_result"], turn_id=progress.operation_id
+        )
+        return StepResult(
+            next=PcState.FIX_AWAIT_DECISION,
+            context=fc,
+            items=items,
+            run=run,
+            run_id_sink=[run.id],
+        )
     items = append_card(
         fc,
         TestResultCard(
@@ -799,6 +1161,7 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         fc.change_set = None
         fc.test_input_ref = ""
         fc.verify_run_id = ""
+        fc.unknown_outcome_count = 0
         return StepResult(next=PcState.FIX_DIAGNOSE, context=fc)
     if kind == "undo":
         perform_revert(env, turn, s, fc)

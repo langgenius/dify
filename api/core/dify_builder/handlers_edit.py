@@ -18,7 +18,11 @@ from core.dify_builder.contract import (
     PlanCard,
     TestResultCard,
 )
+from core.dify_builder.errors import DraftWouldNotStartError, ProposalWouldRunWrongError
 from core.dify_builder.handlers_fix import (
+    NO_OUTPUT_BODY,
+    NO_OUTPUT_REPLY,
+    UNKNOWN_OUTCOME_STUCK_BODY,
     UNKNOWN_TEST_OUTCOME_NOTICE,
     action_kind,
     action_string,
@@ -26,6 +30,8 @@ from core.dify_builder.handlers_fix import (
     append_card,
     build_change_set,
     build_form_fields,
+    dead_end_branch_node_id,
+    drop_unapplied_repair,
     emit_canvas,
     first_failed_node,
     is_input_failure,
@@ -33,10 +39,15 @@ from core.dify_builder.handlers_fix import (
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
+    note_repair_error,
+    note_unknown_outcome,
     perform_revert,
+    repair_is_repeating,
+    run_finished_without_output,
     start_schema,
     test_failure_reason,
     testdata_form_fields,
+    without_endpoint_values,
 )
 from core.dify_builder.models import Diagnosis, DifyBuilderContext, NodeEvent, Risk, Run, Session, TestInput, Turn
 from core.dify_builder.progress import ProgressReporter
@@ -73,6 +84,12 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     text, ok = action_string(turn, "text")
     if ok and text:
         fc.goal_text = text
+    # A new goal is a new repair loop: the breaker's counter must not carry
+    # over from whatever the previous edit was stuck on, and neither may the
+    # engine's refusal of a change this goal has nothing to do with.
+    fc.repair_attempts = 0
+    fc.last_repair_error = ""
+    fc.last_edit_rejection = ""
 
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
@@ -135,7 +152,8 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
 def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) On ``submit_edit_rules`` merge the form payload, propose the
     change plan, self-mint the backend pre-edit checkpoint, and transition to
-    edit.plan_approval."""
+    edit.plan_approval. A stored engine refusal is cleared when the submitted
+    rules change, because it no longer describes the next proposed edit."""
     kind = action_kind(turn)
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
@@ -156,7 +174,23 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 
     if turn.action is not None and isinstance(turn.action.payload, dict):
         keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
+        previous_rules = fc.edit_rules
         fc.edit_rules = merge_known_keys(fc.edit_rules, turn.action.payload, keys)
+        if fc.edit_rules != previous_rules:
+            # ``last_edit_rejection`` describes the batch the engine refused,
+            # and that batch is a function of the rules and the graph. Here --
+            # and, besides a brand-new goal in handle_capability_check, ONLY
+            # here -- the rules stop being the ones it refused, so its
+            # complaint stops describing what the next approval will try.
+            #
+            # Deliberately NOT cleared by the actions that merely route the
+            # user here (plan_approval/review's continue_adjusting) nor by
+            # edit.reverted's Retry: those leave the rules untouched, so a
+            # refusal earned by them is still exactly what the next attempt
+            # needs to hear. A gate revert in particular writes nothing, so
+            # the restored draft IS the refused draft and Retry would otherwise
+            # re-propose the identical plan blind.
+            fc.last_edit_rejection = ""
 
     progress.activate("edit-draft-plan")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
@@ -190,9 +224,135 @@ _EDIT_EXECUTION_STEPS = [
     ("edit-apply", "Apply the change plan"),
 ]
 
+# A pydantic message quotes a truncated repr of the input it refused, so one
+# node's refusal is normally a few hundred characters -- but a batch refusal
+# concatenates one per node, and this text is persisted in the session's
+# context blob AND prepended to the next prompt. Capped with a visible marker
+# for the same reason the terminal-output preview is
+# (handlers_build._MAX_TERMINAL_OUTPUT_CHARS).
+_MAX_REJECTION_CHARS = 2000
+_REJECTION_TRUNCATED_MARKER = "\n… (truncated)"
+
+
+def _rejection_text(exc: Exception) -> str:
+    """The engine's OWN words for why it refused the write, capped.
+
+    ``str(exc)`` and nothing else: the ``PreflightError`` the Dify port raises
+    is built from ``preflight.new_preflight_problems``, whose every message is
+    produced by re-validating a ``credentials.redact_node_config`` copy of the
+    node, and the ``ValueError`` alternative comes from ``graph_ops``, whose
+    messages carry only paths, node ids, indexes and type names. So it is
+    engine-sourced: no model prose is ever mixed in, and nothing branches on
+    this string.
+
+    Credentials are withheld to REDACTION'S DECLARED SCOPE and no further --
+    an http-request node's ``authorization`` block and its ``headers`` /
+    ``params`` lines. A secret typed into a request ``body`` value is NOT
+    covered and reaches this string, and therefore the session's context blob
+    and the next prompt, verbatim. See ``services.dify_builder.credentials``
+    for why that is deliberate and what closing it would take.
+    """
+    text = str(exc)
+    if len(text) > _MAX_REJECTION_CHARS:
+        return text[:_MAX_REJECTION_CHARS] + _REJECTION_TRUNCATED_MARKER
+    return text
+
+
+def _change_not_applied(
+    env: Env,
+    s: Session,
+    fc: DifyBuilderContext,
+    progress: ProgressReporter,
+    *,
+    title: str,
+    body: str,
+    reply_text: str,
+    rejection: str,
+    failed_step: str = "edit-apply",
+) -> StepResult:
+    """apply_repair refused the edit and wrote nothing: say why and keep the
+    change plan at its gate. (Edit applies with on_canvas=None, so no canvas
+    marker streamed and there is nothing to revert on the client.)
+
+    ``rejection`` is remembered so the NEXT approval is not blind: the gate
+    offers re-approval, the draft is unchanged, and without this the agent is
+    re-prompted with byte-identical inputs and hands back the same refused
+    batch (triage edit-branch-failure-2026-09-22). Stored unconditionally, so a
+    second refusal at the same error location with a different bad value
+    replaces the first rather than being folded into it.
+
+    Re-approval is one of three exits the gate now offers (see
+    ``handle_plan_approval``), and none of the three clears this store on its
+    own: only ``handle_impact_analysis`` does, and only when the rules it was
+    submitted differ from the ones this refusal was earned on. Continue-adjusting
+    routes THROUGH there, so it clears only if the user actually changed
+    something; a gate revert writes nothing at all, so the restored draft IS the
+    refused draft and its Retry needs this text more than anything else does.
+    ``test_a_gate_revert_keeps_the_refusal_its_retry_still_needs`` and
+    ``test_routing_back_to_the_form_does_not_forget_the_refusal`` pin both.
+
+    ``failed_step`` is the activity that gets the failure, and it defaults to
+    the write because that is where the usual refusal happens. A caller that
+    gives up EARLIER must say so: marking a step that was never revealed leaves
+    the ones between it and the failure streaming as pending underneath it, so
+    the timeline shows work still to come below work that already failed."""
+    fc.staged_repair = []
+    fc.last_edit_rejection = rejection
+    progress.fail_step(failed_step)
+    execution = progress.finish(status="error")
+    turn_items = append_assistant(
+        env, s, fc, f"{title}: {body}\n{reply_text}", execution=execution, turn_id=progress.operation_id
+    )
+    return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=turn_items)
+
+
+def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, *, cancel_publish: bool) -> StepResult:
+    """Leave an Edit gate for edit.impact_analysis with the edit-rules form
+    repopulated and unfrozen, so the user changes the RULES instead of
+    re-submitting the same ones.
+
+    Shared by edit.review's "Continue adjusting" (where a publish decision is
+    being taken back, hence ``cancel_publish``) and edit.plan_approval's (where
+    nothing has been applied and no publish is pending, hence not).
+
+    Routing the user to the form is not the same as changing the rules -- they
+    may edit nothing and resubmit -- so ``last_edit_rejection`` is left alone
+    here and cleared by handle_impact_analysis if and when the submitted
+    payload actually changes ``fc.edit_rules``."""
+    if cancel_publish:
+        emit_canvas(env, "cancel_publish")
+    for node_id in fc.edit_target_node_ids:
+        emit_canvas(env, "highlight_edit_target", node_id=node_id)
+    fc.test_input_ref = ""
+    fc.verify_run_id = ""
+    fc.repair_attempts = 0
+    fc.last_repair_error = ""
+    fc.unknown_outcome_count = 0
+    decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
+    form_items = append_card(
+        fc,
+        FormCard(
+            variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
+        ),
+    )
+    target_text = ", ".join(fc.edit_target_node_ids) or "none identified"
+    turn_items = append_assistant(
+        env,
+        s,
+        fc,
+        f"Let's adjust the change. Affected nodes: {target_text}. "
+        "The rules may change branching or output, so review them before applying.",
+        cards=["form"],
+    )
+    return StepResult(
+        next=PcState.EDIT_IMPACT_ANALYSIS,
+        context=fc,
+        items=[*decision_items, *form_items, *turn_items],
+    )
+
 
 def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) THE EDIT. Only ``approve_repair`` (resolved from approve_plan)
+    """(waiting) THE EDIT. ``approve_repair`` (resolved from approve_plan)
     applies: read the current graph, get the canned set_node_config intents,
     highlight the targets, apply once (on_canvas=None -- Edit narrates its own
     coarse apply_edit_plan rather than the Fix-flavored per-intent apply_error_
@@ -201,8 +361,22 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
     Naturally idempotent on loop-back re-approve: re-applying the same
     set_node_config value overwrites the node's data (no ValueError, unlike
-    Build's create_node); a re-approve simply yields an empty diff."""
+    Build's create_node); a re-approve simply yields an empty diff.
+
+    Approval is not the only exit. ``re_fix`` (continue_adjusting) goes back to
+    edit.impact_analysis with the rules editable, and ``undo`` (revert) restores
+    the pre-edit draft from the checkpoint handle_impact_analysis minted and
+    lands on edit.reverted. Without those two, an approval the engine refuses
+    parks the user at this gate with nothing to press but the same button
+    (triage edit-branch-failure-2026-09-22, "Hard dead end")."""
     kind = action_kind(turn)
+    if kind == "re_fix":  # continue_adjusting -> re-open the edit rules
+        return _resume_adjusting(env, turn, s, fc, cancel_publish=False)
+    if kind == "undo":  # revert -> abandon the change plan at its gate
+        perform_revert(env, turn, s, fc)
+        fc.staged_repair = []
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     if kind != "approve_repair":
         return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc)
 
@@ -216,7 +390,43 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     progress.activate("edit-prepare")
     emit_canvas(env, "create_checkpoint")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-    intents = env.agent.build_edit_intents(dict(fc.edit_rules), graph)
+    try:
+        intents = env.agent.build_edit_intents(
+            dict(fc.edit_rules),
+            graph,
+            edit_target_node_ids=list(fc.edit_target_node_ids),
+            # What the engine said last time it refused this write, if anything.
+            # The graph and the rules are byte-identical across re-approvals, so
+            # this is the only input that changes -- and the only reason a second
+            # approval can produce a different batch.
+            last_edit_rejection=fc.last_edit_rejection or None,
+        )
+    except ProposalWouldRunWrongError as exc:
+        # The agent judged its own final proposal wrong and refused to hand it
+        # on. Nothing was written and nothing was even attempted -- this is the
+        # one refusal with no engine error behind it, because the defect is one
+        # the engine ACCEPTS: a draft that would start, run green and produce
+        # nothing. Same recovery as a refused write: the plan stays at its gate
+        # with the reason on a card, and the reason goes into the next attempt.
+        logger.warning("Dify Builder: edit proposal judged wrong before write for app %s: %s", s.app_id, exc)
+        return _change_not_applied(
+            env,
+            s,
+            fc,
+            progress,
+            title="The change wouldn't do what you asked",
+            body=f"The change would have applied cleanly and then not worked: {exc}",
+            reply_text=(
+                "I didn't apply the change: it would have run without doing what you asked -- see above. "
+                "Continue adjusting to change the rules, approve again, or discard the plan."
+            ),
+            rejection=_rejection_text(exc),
+            # Given up during "prepare": nothing was highlighted and nothing was
+            # applied, so the failure belongs to the step that was actually
+            # running. Failing the write instead would leave edit-highlight
+            # pending BELOW a failed edit-apply.
+            failed_step="edit-prepare",
+        )
     fc.staged_repair = list(intents)
 
     progress.activate("edit-highlight")
@@ -224,11 +434,50 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
     progress.activate("edit-apply")
-    result = env.dify.apply_repair(
-        s.app_id, turn.actor, intents, on_canvas=None, expected_revision=fc.last_snapshot_hash
-    )
+    try:
+        result = env.dify.apply_repair(
+            s.app_id, turn.actor, intents, on_canvas=None, expected_revision=fc.last_snapshot_hash
+        )
+    except DraftWouldNotStartError as exc:
+        # apply_repair's preflight: the edited draft would fail at Graph.init.
+        # Nothing was written; keep the change plan at its gate as a card.
+        logger.warning("Dify Builder: edit rejected before write for app %s: %s", s.app_id, exc)
+        return _change_not_applied(
+            env,
+            s,
+            fc,
+            progress,
+            title="The workflow can't start",
+            body=f"The generated workflow would fail before its first node: {exc}",
+            reply_text=(
+                "I didn't apply the change: the workflow would fail before its first node. "
+                "Continue adjusting to change the rules, approve again, or discard the plan."
+            ),
+            rejection=_rejection_text(exc),
+        )
+    except ValueError as exc:
+        # graph_ops refused an intent (e.g. "node not found") before the
+        # startability check ever ran. Nothing was written either -- same
+        # recovery, but not "can't start".
+        logger.warning("Dify Builder: edit could not be applied for app %s: %s", s.app_id, exc)
+        return _change_not_applied(
+            env,
+            s,
+            fc,
+            progress,
+            title="Couldn't apply the workflow",
+            body=f"The generated workflow couldn't be applied to the draft: {exc}",
+            reply_text=(
+                "I couldn't apply the change -- see the error above. "
+                "Continue adjusting to change the rules, approve again, or discard the plan."
+            ),
+            rejection=_rejection_text(exc),
+        )
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
+    # The write went through: whatever the engine refused before is answered,
+    # and must not be quoted at the next edit.
+    fc.last_edit_rejection = ""
     emit_canvas(env, "apply_edit_plan")
 
     changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="no changes")
@@ -305,7 +554,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         )
         progress.activate("edit-generate-test-inputs")
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        # An endpoint is left out, never mocked: its missing required key fails
+        # the launch as an input, which routes back to this gate.
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
         progress.finish()
     else:
         inputs = {}
@@ -337,7 +588,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     if fc.test_input_ref:
         inputs = env.repo.get_test_input(fc.test_input_ref).inputs
     else:  # defensive: the gate normally prepares inputs first
-        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
         ti = TestInput(session_id=s.id, source="mock", inputs=inputs)
         env.repo.save_test_input(ti)
         fc.test_input_ref = ti.id
@@ -349,7 +600,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
 
     try:
         raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
-        status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, ""
+        status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, raw.error
     except Exception as exc:
         # Never crash the advance; capture the launch error (log + store) instead
         # of swallowing it, so diagnose/routing have something to act on.
@@ -372,6 +623,38 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    if status != "running":
+        fc.unknown_outcome_count = 0
+
+    if status == "succeeded" and run_finished_without_output(graph, per_node):
+        # Same as Build's: a branch node ran and every one of its arms was
+        # skipped, and no End node ran either. Not green, not an engine error
+        # to diagnose; wait at the gate with no staged repair.
+        fc.verify_run_id = run.id
+        fc.diagnosis = None
+        fc.staged_repair = []
+        run.culprit_node_id = dead_end_branch_node_id(graph, per_node)
+        emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
+        test_items = append_card(
+            fc,
+            TestResultCard(
+                status="failed",
+                failure_reason=NO_OUTPUT_BODY,
+                dify_run_id=run.dify_run_id,
+            ),
+        )
+        execution = progress.finish()
+        turn_items = append_assistant(
+            env, s, fc, NO_OUTPUT_REPLY, execution=execution, cards=["test_result"], turn_id=progress.operation_id
+        )
+        return StepResult(
+            next=PcState.EDIT_AWAIT_REPAIR,
+            context=fc,
+            items=[*test_items, *turn_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
 
     if status == "succeeded":
         emit_canvas(env, "mark_test_success", dify_run_id=run.dify_run_id)
@@ -403,14 +686,26 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
 
     if status == "running":
         # A truncated stream cannot establish failure or justify another repair.
+        # The second consecutive unknown outcome stops the re-run loop at the
+        # gate (no staged repair) instead of bouncing to edit.apply_changes again.
+        if note_unknown_outcome(fc):
+            fc.verify_run_id = run.id
+            fc.diagnosis = None
+            fc.staged_repair = []
+            execution = progress.finish()
+            stuck_items = append_assistant(
+                env, s, fc, UNKNOWN_OUTCOME_STUCK_BODY, execution=execution, turn_id=progress.operation_id
+            )
+            return StepResult(
+                next=PcState.EDIT_AWAIT_REPAIR,
+                context=fc,
+                items=stuck_items,
+                run=run,
+                run_id_sink=[run.id],
+            )
         execution = progress.finish()
         notice_items = append_assistant(
-            env,
-            s,
-            fc,
-            UNKNOWN_TEST_OUTCOME_NOTICE,
-            execution=execution,
-            turn_id=progress.operation_id,
+            env, s, fc, UNKNOWN_TEST_OUTCOME_NOTICE, execution=execution, turn_id=progress.operation_id
         )
         return StepResult(
             next=PcState.EDIT_APPLY_CHANGES,
@@ -519,6 +814,35 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     )
     progress.activate("edit-diagnose-failure")
     diagnosis = env.agent.diagnose(run, graph, per_node)
+    note_repair_error(fc, run)
+    if repair_is_repeating(fc):
+        # Same breaker as Build's: the identical engine failure has survived
+        # MAX_REPEATED_REPAIRS repairs, so another round would aim at the same
+        # wrong thing. Stop and hand the decision back (no staged repair).
+        fc.diagnosis = diagnosis
+        fc.staged_repair = []
+        test_items = append_card(
+            fc, TestResultCard(status="failed", failure_reason=test_failure_reason(run), dify_run_id=run.dify_run_id)
+        )
+        execution = progress.finish()
+        stuck_items = append_assistant(
+            env,
+            s,
+            fc,
+            f"{diagnosis.root_cause or 'The run failed.'}\n\n"
+            "The same error survived the last repairs, so I've stopped retrying. "
+            "Edit the node directly and test again, or revert.",
+            execution=execution,
+            cards=["test_result"],
+            turn_id=progress.operation_id,
+        )
+        return StepResult(
+            next=PcState.EDIT_AWAIT_REPAIR,
+            context=fc,
+            items=[*test_items, *stuck_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
     progress.activate("edit-prepare-repair")
     intents, risk = env.agent.propose_repair(diagnosis, graph)
     fc.diagnosis = diagnosis
@@ -596,20 +920,34 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 on_canvas=env.emit_canvas,
                 expected_revision=fc.last_snapshot_hash,
             )
+        except DraftWouldNotStartError as exc:
+            # The fix applied, but apply_repair's preflight found the result
+            # would fail at Graph.init, so nothing was written. Not a stale
+            # fix: say so, then the same surface as below.
+            logger.warning(
+                "Dify Builder: staged repair would leave a draft that cannot start for app %s: %s", s.app_id, exc
+            )
+            items = drop_unapplied_repair(
+                env,
+                s,
+                fc,
+                progress,
+                title="The workflow can't start",
+                body=f"The proposed fix would leave a workflow that fails before its first node: {exc}",
+            )
+            return StepResult(next=PcState.EDIT_AWAIT_REPAIR, context=fc, items=items)
         except ValueError as exc:
             # Same stale-intent window as Build's gate: apply_repair
             # re-validates against the draft as it is NOW, and a bad intent
             # must not kill the session (ESQ1-271).
             logger.warning("Dify Builder: staged repair no longer applies for app %s: %s", s.app_id, exc)
-            fc.staged_repair = []
-            execution = progress.finish()
-            items = append_assistant(
+            items = drop_unapplied_repair(
                 env,
                 s,
                 fc,
-                f"Couldn't apply the fix. The proposed fix no longer applies to the current draft: {exc}",
-                execution=execution,
-                turn_id=progress.operation_id,
+                progress,
+                title="Couldn't apply the fix",
+                body=f"The proposed fix no longer applies to the current draft: {exc}",
             )
             return StepResult(next=PcState.EDIT_AWAIT_REPAIR, context=fc, items=items)
         fc.last_snapshot_hash = result.new_hash
@@ -659,37 +997,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         )
         return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*decision_items, *turn_items])
     if kind == "re_fix":  # continue_adjusting -> re-analyze impact
-        emit_canvas(env, "cancel_publish")
-        for node_id in fc.edit_target_node_ids:
-            emit_canvas(env, "highlight_edit_target", node_id=node_id)
-        fc.test_input_ref = ""
-        fc.verify_run_id = ""
-        decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
-        form_items = append_card(
-            fc,
-            FormCard(
-                variant="edit_rules",
-                title="Review the change rules",
-                description="Adjust any values before Builder applies the change plan.",
-                fields=build_form_fields(fc.form_fields),
-                values=dict(fc.edit_rules),
-                frozen=False,
-            ),
-        )
-        target_text = ", ".join(fc.edit_target_node_ids) or "none identified"
-        turn_items = append_assistant(
-            env,
-            s,
-            fc,
-            f"Let's adjust the change. Affected nodes: {target_text}. "
-            "The rules may change branching or output, so review them before applying.",
-            cards=["form"],
-        )
-        return StepResult(
-            next=PcState.EDIT_IMPACT_ANALYSIS,
-            context=fc,
-            items=[*decision_items, *form_items, *turn_items],
-        )
+        return _resume_adjusting(env, turn, s, fc, cancel_publish=True)
     if kind == "undo":  # revert
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
@@ -724,7 +1032,13 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
 def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) After a revert. ``retry_after_revert`` (resolved to re_fix)
     re-proposes the change plan, self-mints a fresh pre-edit checkpoint, and
-    returns to edit.plan_approval (spec §7.2)."""
+    returns to edit.plan_approval (spec §7.2).
+
+    ``last_edit_rejection`` is deliberately carried through untouched. A revert
+    taken at the plan gate wrote nothing, so the restored draft is the refused
+    draft and the rules are unchanged -- and Retry is the only action offered
+    here, so forgetting the engine's text would re-propose the identical plan
+    blind and earn the identical refusal."""
     kind = action_kind(turn)
     if kind != "re_fix":
         return StepResult(next=PcState.EDIT_REVERTED, context=fc)
@@ -745,6 +1059,9 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
     fc.test_input_ref = ""
     fc.verify_run_id = ""
+    fc.repair_attempts = 0
+    fc.last_repair_error = ""
+    fc.unknown_outcome_count = 0
     progress.activate("edit-create-checkpoint")
     mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
     plan_items = append_card(fc, PlanCard(title="Change plan", items=list(fc.plan_items)))

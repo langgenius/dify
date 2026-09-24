@@ -37,7 +37,7 @@ type Props = Readonly<{
 }>
 
 const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: Props) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHumanInput'])
   const contentList = splitByOutputVar(data.form_content)
   const renderedFormInputs = getRenderedFormInputs(data.inputs, data.form_content)
   const defaultInputs = initializeInputs(renderedFormInputs, data.resolved_default_values || {})
@@ -71,7 +71,7 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
                 onClick={handleBack}
               >
                 <span className="i-ri-arrow-left-line size-4" aria-hidden />
-                {t(($) => $['nodes.humanInput.singleRun.back'], { ns: 'workflow' })}
+                {t(($) => $['nodes.humanInput.singleRun.back'], { ns: 'workflowHumanInput' })}
               </button>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="mx-1 system-xs-regular text-divider-deep" />

@@ -15,7 +15,7 @@ const DifyBuilderModelSelector = ({
   selection: model,
   modelList,
 }: DifyBuilderModelSelectorProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const readonly = useAtomValue(difyBuilderModelReadonlyAtom)
   const selectModel = useSetAtom(difyBuilderSelectModelAtom)
 
@@ -60,7 +60,7 @@ const DifyBuilderModelSelector = ({
           className="flex min-w-0 items-center gap-0.5 rounded-md p-1 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className="max-w-36 truncate">
-            {model?.name || t(($) => $['modelProvider.model'], { ns: 'common' })}
+            {model?.name || t(($) => $['modelProvider.model'], { ns: 'modelProvider' })}
           </span>
           <span
             aria-hidden

@@ -97,6 +97,8 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     },
     onVarsAndFeaturesUpdate: () => () => {},
     onWorkflowUpdate: () => () => {},
+    onServerDraftRequest: () => () => {},
+    onServerDraftApplied: () => () => {},
     onSyncRequest: () => () => {},
     onGraphReloadRequired: () => () => {},
     emitWorkflowUpdate: vi.fn(),

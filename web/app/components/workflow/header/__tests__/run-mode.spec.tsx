@@ -198,7 +198,7 @@ describe('RunMode', () => {
 
     expect(screen.getByText(/running/i))!.toBeInTheDocument()
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
     )
 
     expect(mockHandleStopRun).toHaveBeenCalledWith('task-1')
@@ -232,7 +232,7 @@ describe('RunMode', () => {
     expect(screen.getByRole('button', { name: /run/i })).toBeDisabled()
     expect(screen.queryByTestId('trigger-option')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      screen.queryByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
     ).not.toBeInTheDocument()
     expect(mockHandleWorkflowStartRunInWorkflow).not.toHaveBeenCalled()
   })

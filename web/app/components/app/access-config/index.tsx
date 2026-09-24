@@ -35,7 +35,7 @@ type AppAccessConfigContentProps = {
 }
 
 const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentProps) => {
-  const { t } = useTranslation(['common', 'permission'])
+  const { t } = useTranslation(['permission', 'navigation'])
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const [currentPage, setCurrentPage] = useState(1)
@@ -196,7 +196,7 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background-default-subtle">
       <header className="flex min-h-15.5 shrink-0 flex-col justify-center px-6 py-3">
         <h1 className="system-xl-semibold text-text-primary">
-          {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+          {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
         </h1>
         <p className="mt-0.5 system-sm-regular text-text-tertiary">
           {t(($) => $['accessRule.appDescription'], { ns: 'permission' })}

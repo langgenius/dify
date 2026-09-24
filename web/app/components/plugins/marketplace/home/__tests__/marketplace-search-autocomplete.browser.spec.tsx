@@ -150,7 +150,7 @@ describe('Marketplace search autocomplete layout', () => {
     await expect.element(screen.getByRole('tablist', { name: 'Header catalog tabs' })).toBeVisible()
 
     const catalogNavigation = screen
-      .getByRole('region', { name: 'common.mainNav.marketplace' })
+      .getByRole('region', { name: 'navigation.mainNav.marketplace' })
       .element()
     const scrollTopBefore = scrollContainer.scrollTop
     const inputTopBefore = input.element().getBoundingClientRect().top

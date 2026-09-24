@@ -3,7 +3,6 @@ import type { HeaderItem } from '../headers-input'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { getDomain } from 'tldts'
 import { v4 as uuid } from 'uuid'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
@@ -101,6 +100,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [headers, setHeaders] = useState<HeaderItem[]>(() => getInitialHeaders(data))
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
+  const urlBlurGenerationRef = useRef(0)
   // Auth state
   const [authMethod, setAuthMethod] = useState<MCPAuthMethod>(MCPAuthMethod.authentication)
   const [isDynamicRegistration, setIsDynamicRegistration] = useState(() =>
@@ -117,13 +117,26 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
     async (urlValue: string) => {
       if (data) return
       if (!isValidUrl(urlValue)) return
-      const domain = getDomain(urlValue)
-      const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
+
+      const blurGeneration = ++urlBlurGenerationRef.current
+      const isStale = () => blurGeneration !== urlBlurGenerationRef.current
+
       setIsFetchingIcon(true)
       try {
+        const { getDomain } = await import('tldts')
+        if (isStale()) return
+
+        const domain = getDomain(urlValue)
+        if (!domain) return
+
+        const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
         const res = await uploadRemoteFileInfo(remoteIcon, undefined, true)
+        if (isStale()) return
+
         setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
       } catch (e) {
+        if (isStale()) return
+
         let errorMessage = 'Failed to fetch remote icon'
         if (e instanceof Response) {
           try {
@@ -138,7 +151,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
         console.error('Failed to fetch remote icon:', e)
         toast.warning(errorMessage)
       } finally {
-        setIsFetchingIcon(false)
+        if (!isStale()) setIsFetchingIcon(false)
       }
     },
     [data],

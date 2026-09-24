@@ -19,7 +19,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
   ``seam_test.go``'s ``TestSeam_AnyConformingAgent_DrivesFlowToTerminal``).
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Protocol, runtime_checkable
 
 from core.dify_builder.contract import ConversationPage, ResourceOption
@@ -92,7 +92,9 @@ class DifyBuilderAgent(Protocol):
 
     def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]: ...
 
-    def build_nodes(self, plan_items: list[str], resource_ids: list[str] | None = None) -> BuildNodesResult: ...
+    def build_nodes(
+        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+    ) -> BuildNodesResult: ...
 
     def learn_from_build(
         self,
@@ -108,7 +110,26 @@ class DifyBuilderAgent(Protocol):
 
     def propose_edit_plan(self, edit_rules: dict[str, Any], graph: Graph) -> list[str]: ...
 
-    def build_edit_intents(self, edit_rules: dict[str, Any], graph: Graph) -> list[MutationIntent]: ...
+    # ``edit_target_node_ids``: the nodes analyze_impact said the change
+    # touches; an implementation may show the model their current config so it
+    # can leave what it was not asked about alone. ``last_edit_rejection``:
+    # why the previous attempt was refused, for a corrective re-prompt. Both
+    # are keyword-only and optional -- an agent is free to ignore either.
+    #
+    # MAY raise ``errors.ProposalWouldRunWrongError`` instead of returning, when
+    # the implementation has judged its own final proposal wrong -- a batch that
+    # would apply cleanly, start, run green and not do what was asked. Nothing
+    # has been written; the handler surfaces the reason at the approval gate and
+    # carries it into the next attempt. An agent with no such judgement (the
+    # placeholder) simply never raises it, so this stays optional.
+    def build_edit_intents(
+        self,
+        edit_rules: dict[str, Any],
+        graph: Graph,
+        *,
+        edit_target_node_ids: Sequence[str] = (),
+        last_edit_rejection: str | None = None,
+    ) -> list[MutationIntent]: ...
 
     def respond_to_message(
         self,

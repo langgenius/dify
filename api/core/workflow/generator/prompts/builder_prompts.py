@@ -80,7 +80,14 @@ _NODE_SNIPPETS: dict[str, str] = {
             values are the translations.
             Input: {{#node1.text#}}
       * Each placeholder only resolves the variable from its source node —
-        it cannot be a Jinja template or call a function.""",
+        it cannot be a Jinja template or call a function.
+
+    Structured output: a schema-less LLM node exposes "text",
+    "reasoning_content" and "usage". To expose extra fields, set
+    "structured_output_enabled": true and "structured_output":
+    {"schema": <json-schema-object>} on the node's data; each schema field
+    then becomes a 3-segment reference {{#<node>.structured_output.<field>#}}
+    — never a flat {{#<node>.<field>#}}.""",
     "knowledge-retrieval": """\
 - knowledge-retrieval:
     {"query_variable_selector": ["<src>", "<var>"],
@@ -98,7 +105,9 @@ _NODE_SNIPPETS: dict[str, str] = {
     "template-transform": """\
 - template-transform:
     {"template": "Hello {{ name }}",
-     "variables": [{"variable": "name", "value_selector": ["<src>", "<var>"]}]}""",
+     "variables": [{"variable": "name", "value_selector": ["<src>", "<var>"]}]}
+    ``variables`` is REQUIRED (no default) — a template that references no
+    variables must still set ``"variables": []``, never omit the field.""",
     "http-request": """\
 - http-request  (escape hatch — only if no installed tool fits):
     {"variables": [], "method": "get", "url": "https://example.com",
@@ -138,7 +147,19 @@ _NODE_SNIPPETS: dict[str, str] = {
                         "comparison_operator": "is",
                         "value": "<value>"}]}
      ]}
-    Source handle for downstream edges = the case_id ("true" / "false").""",
+    comparison_operator MUST be exactly one of (verbatim strings): "contains",
+    "not contains", "start with", "end with", "is", "is not", "empty",
+    "not empty", "in", "not in", "all of", "null", "not null", "exists",
+    "not exists", "=", ">", "<", "≥", "≤", "≠". The number comparisons are
+    ALWAYS the unicode forms "≥" / "≤" / "≠" — never ">=" / "<=" / "!=".
+    Source handle for downstream edges = the case_id ("true" / "false").
+    HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
+    outgoing ``source_handle`` values. Each declared ``case_id`` (and its
+    ``_targetBranches`` id) MUST be exactly one of those planned
+    ``source_handle`` values. The ELSE arm is implicit: its handle is always
+    "false" and it must never be declared as a case. A planned handle such as
+    "else" / "otherwise" / "default" is the ELSE arm -- do not declare a case
+    for it.""",
     "question-classifier": """\
 - question-classifier:
     {"query_variable_selector": ["<src>", "<var>"],
@@ -149,10 +170,14 @@ _NODE_SNIPPETS: dict[str, str] = {
      "_targetBranches": [{"id": "1", "name": ""}, {"id": "2", "name": ""}],
      "vision": {"enabled": false},
      "instruction": ""}
-    Source handle for downstream edges = the class_id ("1" / "2" / ...).""",
+    Source handle for downstream edges = the class_id ("1" / "2" / ...).
+    HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
+    outgoing ``source_handle`` values. Each class ``id`` (and its
+    ``_targetBranches`` id) MUST be exactly one of those planned
+    ``source_handle`` values, one class per planned handle.""",
     "parameter-extractor": """\
 - parameter-extractor:
-    {"query": [["<src>", "<var>"]],          # array of value_selector arrays
+    {"query": ["<src>", "<var>"],            # ONE value_selector, not an array of them
      "model": {"provider": "<p>", "name": "<m>", "mode": "chat",
                "completion_params": {"temperature": 0.7}},
      "parameters": [{"name": "topic", "type": "string",
@@ -189,9 +214,16 @@ _NODE_SNIPPETS: dict[str, str] = {
      "extract_by": {"enabled": false, "serial": "1"},
      "order_by": {"enabled": false, "key": "", "value": "asc"},
      "limit": {"enabled": false, "size": 10}}
-    Enable only the sub-features you need; ``conditions`` reuse the if-else
-    condition shape (key / comparison_operator / value). Outputs: ``result``
-    (the processed array), ``first_record``, ``last_record``.""",
+    Enable only the sub-features you need. Each ``filter_by`` condition has the
+    fields key / comparison_operator / value, and comparison_operator MUST be
+    exactly one of these 16 (verbatim strings — a filter takes FEWER operators
+    than an if-else, and anything outside this list is refused when the
+    workflow starts): "contains", "not contains", "start with", "end with",
+    "is", "is not", "in", "not in", "empty", "not empty", "=", "≠", "<", ">",
+    "≥", "≤". The number comparisons are ALWAYS the unicode forms
+    "≥" / "≤" / "≠", never ">=" / "<=" / "!=".
+    Outputs: ``result`` (the processed array), ``first_record``,
+    ``last_record``.""",
     "assigner": """\
 - assigner  (write to an existing conversation / loop variable):
     {"version": "2",
@@ -212,7 +244,12 @@ _NODE_SNIPPETS: dict[str, str] = {
                        "button_style": "primary"}],
      "timeout": 3, "timeout_unit": "day"}
     Each ``inputs[].output_variable_name`` is an output variable. Outgoing
-    edges use the matching user-action id as ``sourceHandle``.""",
+    edges use the matching user-action id as ``sourceHandle``.
+    HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
+    outgoing ``source_handle`` values. Each ``user_actions[].id`` MUST be
+    exactly one of those planned ``source_handle`` values, one action per
+    planned handle. The timeout arm is implicit: its handle is always
+    "__timeout" and it must never be declared as a user action.""",
 }
 
 

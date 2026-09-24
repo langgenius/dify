@@ -122,10 +122,14 @@ def test_context_roundtrip_preserves_edit_fields():
     fc = DifyBuilderContext(
         edit_rules={"risk_threshold": "high", "preserve_summary": True},
         edit_target_node_ids=["llm", "knowledge_retrieval"],
+        # multi-line, quoted, non-ASCII: a real pydantic refusal, which is what
+        # actually lands in the JSONB column.
+        last_edit_rejection="the draft would not start: node 'node2' (if-else):\n  Input should be '\u2265'",
     )
     out = context_from_dict(context_to_dict(fc))
     assert out.edit_rules == {"risk_threshold": "high", "preserve_summary": True}
     assert out.edit_target_node_ids == ["llm", "knowledge_retrieval"]
+    assert out == fc  # every edit field, last_edit_rejection included
 
 
 def test_context_from_dict_defaults_edit_fields_when_absent():
@@ -134,6 +138,7 @@ def test_context_from_dict_defaults_edit_fields_when_absent():
     out = context_from_dict({})  # an older row with no edit_* keys
     assert out.edit_rules == {}
     assert out.edit_target_node_ids == []
+    assert out.last_edit_rejection == ""
 
 
 def test_context_roundtrip_preserves_lifecycle_fields():
@@ -235,3 +240,13 @@ def test_repair_loop_fields_default_when_absent():
     out = context_from_dict({})  # an older row with no repair_attempts/last_repair_error keys
     assert out.repair_attempts == 0
     assert out.last_repair_error == ""
+
+
+def test_unknown_outcome_count_round_trips_and_defaults_to_zero():
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext(unknown_outcome_count=2)
+    assert context_from_dict(context_to_dict(fc)).unknown_outcome_count == 2
+    # a context persisted before the field existed
+    assert context_from_dict({}).unknown_outcome_count == 0

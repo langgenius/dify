@@ -312,14 +312,10 @@ class ProviderConfiguration(BaseModel):
         )
 
         with Session(db.engine) as session:
-            # Prefer the actual provider record name if exists (to handle aliased provider names)
-            provider_record = self._get_provider_record(session)
-            provider_name = provider_record.provider_name if provider_record else self.provider.provider
-
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
                 ProviderCredential.tenant_id == self.tenant_id,
-                ProviderCredential.provider_name == provider_name,
+                ProviderCredential.provider_name.in_(self._get_provider_names()),
             )
 
             credential = session.execute(stmt).scalar_one_or_none()

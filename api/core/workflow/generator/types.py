@@ -37,6 +37,13 @@ class WorkflowGenerateErrorCode(StrEnum):
     MISSING_TERMINAL = "MISSING_TERMINAL"
     MISSING_START = "MISSING_START"
     DANGLING_EDGE = "DANGLING_EDGE"
+    # An edge leaving a branch node (if-else / question-classifier /
+    # human-input / fail-branch) on a handle the node does not declare: the
+    # arm would silently never run (ESQ1-303).
+    INVALID_BRANCH_HANDLE = "INVALID_BRANCH_HANDLE"
+    # A json / raw-text / binary http-request body with a number of items
+    # other than one: the executor rejects it at run time (ESQ1-302).
+    INVALID_HTTP_BODY = "INVALID_HTTP_BODY"
     MODEL_ERROR = "MODEL_ERROR"
 
 
@@ -101,6 +108,12 @@ class PlannerResultDict(TypedDict):
     app_name: NotRequired[str]
     icon: NotRequired[str]
     start_inputs: NotRequired[list[PlannerStartInputDict]]
+    # ``{"<node id>": ["<output name>", …]}`` for the producers whose output
+    # names their own config chooses (code / parameter-extractor /
+    # human-input / structured-output llm). Optional — a plan without it
+    # builds exactly as it did before, with each isolated node builder
+    # guessing the names again.
+    node_outputs: NotRequired[dict[str, list[str]]]
     nodes: list[PlannerNodeDict]
     edges: NotRequired[list[PlannerEdgeDict]]
 

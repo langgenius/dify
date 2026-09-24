@@ -7,17 +7,21 @@ rather than crashing the advance. build_nodes lives in the same module
 
 import json
 import logging
+import re
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from core.app.app_config.entities import ModelConfig
+from core.dify_builder import urls
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, MutationIntent
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import graph_ops
-from services.dify_builder.agent import form_schema, graph_translate, llm, resources
+from services.dify_builder.agent import form_schema, graph_translate, llm, resources, user_supplied
 from services.dify_builder.agent.model_resolver import resolve_model_instance
+from services.dify_builder.agent.resources import ResourceRef
 from services.workflow_generator_service import WorkflowGeneratorService
 
 logger = logging.getLogger(__name__)
@@ -38,7 +42,9 @@ def analyze_goal(
     system = (
         "You are a Dify workflow requirements analyst. Given a build goal, propose 3-6 "
         "clarifying requirement fields SHAPED BY THE GOAL, and a sensible default value per "
-        f"field. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
+        "field. Never invent a URL/endpoint, API key, token, password, or account/resource id "
+        "the goal does not state -- give such a field an empty string as its default so the "
+        f"user fills it in. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
         'Reply with ONLY JSON: {"fields": [{"key": "...", "label": "...", "type": "...", '
         '"options": ["..."]}], "values": {"<key>": <default>}}.'
     ) + llm.json_language_instruction("field labels and values")
@@ -50,7 +56,63 @@ def analyze_goal(
     values = data.get("values")
     if not isinstance(fields, list) or not isinstance(values, dict):
         return _degraded_form(goal_text)
-    return {"fields": form_schema.reconcile_form_fields(fields, values), "values": values}
+    scrubbed_values = _scrub_invented_defaults(values, goal_text)
+    return {"fields": form_schema.reconcile_form_fields(fields, scrubbed_values), "values": scrubbed_values}
+
+
+def _is_invented_literal(value: Any, key: str | None, goal_text: str) -> bool:
+    """True when ``value`` (found under ``key``, possibly nested inside a
+    field's dict/list default) is a URL or credential the LLM invented
+    rather than one the goal actually states.
+
+    An off-goal URL -- one whose host the goal never names, with or without a
+    scheme (``user_supplied.is_user_supplied_host``) -- blanks the field
+    regardless of key. A credential-shaped placeholder (``<...>``,
+    ``YOUR_API_KEY``, ...) only blanks it when the
+    value is under a credential-named key (``user_supplied.is_credential_key``,
+    decided by the key's LAST segment -- not by containing "token" or
+    "password" anywhere) or the value itself starts with an auth scheme
+    (``Bearer ``/``Basic ``/``Token ``); otherwise an ordinary default like
+    ``"Dear <customer_name>,"`` would be blanked for no reason. A
+    credential-keyed value that isn't placeholder-shaped but also never
+    appears in the goal (e.g. an invented ``sk-live-...`` string) is still
+    caught via ``is_user_supplied_secret``.
+    """
+    if isinstance(value, dict):
+        return any(_is_invented_literal(v, k, goal_text) for k, v in value.items())
+    if isinstance(value, list):
+        return any(_is_invented_literal(item, None, goal_text) for item in value)
+    if not isinstance(value, str):
+        return False
+    if any(not user_supplied.is_user_supplied_host(host, goal_text) for host in user_supplied.url_hosts(value)):
+        return True
+    credential_key = key is not None and user_supplied.is_credential_key(key)
+    stripped = user_supplied.strip_auth_scheme(value)
+    if (credential_key or stripped != value) and user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(stripped):
+        return True
+    if credential_key and not user_supplied.is_user_supplied_secret(value, goal_text):
+        return True
+    return False
+
+
+def _scrub_invented_defaults(values: dict[str, Any], goal_text: str) -> dict[str, Any]:
+    """Blank any top-level field whose default is an invented URL or
+    credential rather than one the goal states (S5b/F2: analysis prefilled
+    ``render_api_url=https://api.yourcompany.com/...`` and
+    ``Authorization: Bearer YOUR_API_KEY`` for a goal that named neither).
+
+    The whole field is replaced with ``""`` -- even one whose default was a
+    dict -- so the user is prompted to fill it in themselves rather than the
+    workflow running against a host or secret that doesn't exist.
+    """
+    blanked = [key for key, value in values.items() if _is_invented_literal(value, key, goal_text)]
+    if not blanked:
+        return values
+    scrubbed = dict(values)
+    for key in blanked:
+        scrubbed[key] = ""
+    logger.info("dify_builder: blanked invented default(s) for %s", ", ".join(sorted(blanked)))
+    return scrubbed
 
 
 def propose_app_name(
@@ -128,10 +190,49 @@ _DIFY_NODE_VOCABULARY = """\
 - "human-input"         — pause for a person to review, approve, or enter data."""
 
 
+# How many ready tools the Builder's planner is shown. The ESQ1-302 tenant had
+# 35; a cap keeps the prompt bounded on tenants with hundreds. Sorted by id so
+# the listing is stable across calls.
+_MAX_PLANNER_TOOLS = 40
+
+
+def ready_tool_catalogue(tenant_id: str) -> list[ResourceRef]:
+    """The installed tools the planner may name: ``ready`` ones only (an
+    installed-but-unauthorized tool cannot cover a step), capped and sorted.
+    A listing failure yields ``[]`` -- the plan then just cannot name tools,
+    which is the pre-existing behaviour, never a crashed advance."""
+    try:
+        tools = resources.list_tenant_resources(tenant_id).tools
+    except Exception:
+        logger.warning("dify_builder: tool listing failed; planning without a tool catalogue", exc_info=True)
+        return []
+    ready = sorted((t for t in tools if t.readiness == "ready"), key=lambda t: t.id)
+    return ready[:_MAX_PLANNER_TOOLS]
+
+
+def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
+    if not tools:
+        return ""
+    listing = "\n".join(f"- {t.id} — {t.label}" for t in tools)
+    # "as a separate word": the generator pins a tool only on its id bounded by
+    # non-word characters (tool_catalogue's identifier boundary), and CJK counts
+    # as a word character -- "使用bowenliang123/..." never pins.
+    return (
+        "\n\n# Installed tools you may name (ready to use)\n"
+        "When one of these covers a step, plan that step as a `tool` node and name the tool "
+        "by its id -- write the id exactly as listed, as a separate word (with a space on "
+        "each side, even in Chinese or Japanese text). Plan an `http-request` step only for "
+        "an endpoint the user actually gave you -- never invent one.\n"
+        f"{listing}"
+    )
+
+
 def propose_plan_v1(
     model,
     requirements: dict[str, Any],
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    tools: Sequence[ResourceRef] = (),
 ) -> list[str]:
     if model is None:
         return _degraded_plan()
@@ -146,8 +247,9 @@ def propose_plan_v1(
         "-- that names a product, not a node.\n\n"
         "Dify has no scheduler, database, email or messaging node. A step that needs one of "
         "those is either a `tool` node (when an installed plugin provides it), an "
-        "`http-request` node, or outside the workflow entirely -- say so in the step rather "
-        "than inventing a node.\n\n"
+        "`http-request` node for an endpoint the user supplied, or outside the workflow "
+        "entirely -- say so in the step rather than inventing a node or an endpoint."
+        f"{_planner_tool_section(tools)}\n\n"
         'Reply with ONLY JSON: {"plan": ["step", ...]}.'
     ) + llm.json_language_instruction("plan steps")
     try:
@@ -250,19 +352,106 @@ def assess_capability_gap(model, plan_items: list[str], options: list[ResourceOp
     return str(gap).strip() if isinstance(gap, str) else ""
 
 
+# Which plan step a resource kind covers, by the node vocabulary the planner
+# writes its steps in (see _DIFY_NODE_VOCABULARY). Matched case-insensitively,
+# as a whole word/phrase, because steps mix scripts ("tool节点：...").
+_STEP_KEYWORDS_BY_KIND: dict[str, tuple[str, ...]] = {
+    "model": ("llm", "question-classifier", "parameter-extractor"),
+    "knowledge": ("knowledge-retrieval", "knowledge"),
+    "plugin": ("tool",),
+}
+
+
+def _term_in_step(item: str, term: str) -> bool:
+    """Whether ``term`` names ``item``: case-insensitive, and bounded on both
+    sides by a non-ASCII-alphanumeric character (or the string edge) so
+    "tool" doesn't match inside "toolkit" and "llm" doesn't match inside
+    "fulfillment". CJK characters, hyphens, colons and punctuation all count
+    as boundaries, so "llm节点" and "tool节点" still match.
+    """
+    if not term:
+        return False
+    pattern = rf"(?<![a-z0-9]){re.escape(term.lower())}(?![a-z0-9])"
+    return re.search(pattern, item.lower()) is not None
+
+
+def _covering_step(plan_items: list[str], kind: str, ref: ResourceRef) -> int:
+    """Index of the first step a resource covers: one naming the resource's
+    id, else one naming its label, else one naming its kind's node type;
+    ``-1`` when none does.
+
+    The id comes first because the planner is told to name a tool by its id
+    (``_planner_tool_section``): with two tool steps, the "tool" keyword alone
+    would bind both tools to the first of them.
+    """
+    for term in (ref.id, ref.label):
+        for index, item in enumerate(plan_items):
+            if _term_in_step(item, term):
+                return index
+    for index, item in enumerate(plan_items):
+        if any(_term_in_step(item, keyword) for keyword in _STEP_KEYWORDS_BY_KIND.get(kind, ())):
+            return index
+    return -1
+
+
+def _bound_name(kind: str, ref: ResourceRef) -> str:
+    """How a bound resource is named in its step's "(using ...)" suffix.
+
+    A tool carries its ``provider/tool`` id in ASCII brackets after the label:
+    the shared generator pins a tool deterministically only on that identifier
+    (``tool_catalogue._find_explicit_tool_keys``), never on the label, and its
+    boundary treats '[' / ']' as non-word characters. A model's label already is
+    its full id, and a dataset is grounded by its name (``_ground``), so those
+    keep the label alone.
+    """
+    return f"{ref.label} [{ref.id}]" if kind == "plugin" else ref.label
+
+
+# A binder-produced suffix, or several stacked from repeated binds, trailing
+# a plan item. Stripped before each bind so a loop-back re-bind reflects only
+# the current selection instead of accumulating every past one. A tool's
+# "[provider/tool]" id sits inside the parentheses and holds no parenthesis
+# itself, so ``[^()]*`` strips it along with the label.
+_TRAILING_USING_SUFFIX = re.compile(r"(\s*\(using [^()]*\))+\s*$")
+
+
 def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: list[str]) -> list[str]:
+    """Name each selected resource on the plan step it covers.
+
+    Used to append every label to the LAST step -- in the ESQ1-302 session the
+    end-node step read "(using langgenius/tokener/tokener/deepseek-v4-flash,
+    Code Interpreter)" while the step that needed a tool said nothing. The
+    last step is now only the fallback for a resource no step names. A tool
+    is named with its id (``_bound_name``) so the generator pins exactly that
+    tool.
+
+    A loop-back (build.review / build.reverted -> re-walk resources ->
+    approve_plan) feeds the already-bound plan back in here, so every item's
+    trailing "(using ...)" suffix is stripped before binding fresh: a
+    deselected resource must not keep its old suffix, and a re-bind of the
+    same selection must not pile a duplicate on top of it.
+    """
     inv = resources.list_tenant_resources(tenant_id)
+    kinds: dict[str, str] = {}
+    kinds.update({r.id: "knowledge" for r in inv.datasets})
+    kinds.update({r.id: "plugin" for r in inv.tools})
+    kinds.update({r.id: "model" for r in inv.models})
     by_id = {r.id: r for r in (*inv.datasets, *inv.tools, *inv.models)}
-    labels = [by_id[rid].label for rid in resource_ids if rid in by_id]
-    if not labels:
-        return list(plan_items)
-    suffix = f" (using {', '.join(labels)})"
-    # Deterministic, clean binding: name the resources on the retrieval/process step.
-    bound = list(plan_items)
-    if bound:
-        bound[-1] = bound[-1] + suffix if suffix not in bound[-1] else bound[-1]
-    else:
-        bound = [f"Use {', '.join(labels)}"]
+    chosen = [by_id[rid] for rid in resource_ids if rid in by_id]
+    stripped = [_TRAILING_USING_SUFFIX.sub("", item) for item in plan_items]
+    if not chosen:
+        return stripped
+    if not plan_items:
+        return [f"Use {', '.join(_bound_name(kinds[r.id], r) for r in chosen)}"]
+    names_by_step: dict[int, list[str]] = {}
+    for ref in chosen:
+        index = _covering_step(stripped, kinds[ref.id], ref)
+        names_by_step.setdefault(index if index >= 0 else len(stripped) - 1, []).append(_bound_name(kinds[ref.id], ref))
+    bound = list(stripped)
+    for index, names in names_by_step.items():
+        suffix = f" (using {', '.join(names)})"
+        if suffix not in bound[index]:
+            bound[index] = bound[index] + suffix
     return bound
 
 
@@ -363,39 +552,96 @@ _WORKFLOW_TOPOLOGY_DIRECTIVE = (
     "reference. Do not wire a container's body as sibling top-level nodes.\n"
     "- Compare like with like in 'if-else': a numeric variable needs a numeric operator, a "
     "string variable a string operator.\n"
-    "- Use a 'tool' node for a third-party service only when the plan names an installed tool; "
-    "otherwise use 'http-request' and expose its changing inputs as start-node variables rather "
-    "than hardcoding them."
+    "- Prefer a 'tool' node whenever an installed tool covers the step (the installed tools are "
+    "listed for you). 'http-request' is only for an endpoint the user actually supplied: never "
+    "invent one and never use a placeholder such as example.com -- when no real URL is known, read "
+    "it from a start-node variable. Expose an http-request's changing inputs as start-node "
+    "variables rather than hardcoding them."
+)
+
+# Total generation attempts build_nodes will make for one build: the first
+# attempt plus at most two corrective retries, stopping at the first success.
+_MAX_GENERATION_ATTEMPTS = 3
+
+
+# Guidance for UNRESOLVED_REFERENCE, named in the generator's own vocabulary (see
+# FINDINGS.md Blocker B): each node's config is generated by an isolated LLM call
+# that never sees the producer's chosen output names, so a consumer invents a
+# reference no producer declares. Keyed on the error CODE, never on message
+# wording -- no control flow branches on LLM prose.
+_UNRESOLVED_REFERENCE_GUIDANCE = (
+    "For every UNRESOLVED_REFERENCE error above, the reference is invalid because no node "
+    "declares that exact output name. Fix it one of two ways: (1) make the PRODUCING node "
+    "declare that exact name -- a 'code' node's 'outputs' map, a 'parameter-extractor' node's "
+    "'parameters[].name', or an 'llm' node's structured-output schema -- or (2) change the "
+    "consumer to reference one of the producer's REAL outputs (an 'llm' node with no "
+    "structured output exposes only 'text'). Never invent an output name that matches neither."
 )
 
 
-def _terminal_retry_instruction(base_instruction: str, error: str) -> str:
-    """Corrective instruction for the single retry after a topology-validation
-    failure -- feed the specific generator error back with an explicit fix."""
+def _valid_errors(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """The generator's structured ``errors`` list, filtered to well-formed dict
+    entries -- shared by every reader of ``result["errors"]`` (the retry
+    instruction, the error-card text, and the debug-log diagnostic) so a
+    malformed/degraded entry can't be treated as one three separate ways."""
+    errors = result.get("errors")
+    return [e for e in errors if isinstance(e, dict)] if isinstance(errors, list) else []
+
+
+def _format_generator_error(error: dict[str, Any]) -> str:
+    """One line for a structured generator error: its code, detail, and (when
+    present) the offending node id -- so both the retry instruction and the
+    error card name WHERE to fix it, not just what went wrong."""
+    code = str(error.get("code") or "").strip()
+    detail = str(error.get("detail") or error.get("message") or "").strip()
+    node_id = error.get("node_id")
+    node_part = f" (node {node_id!r})" if node_id else ""
+    label = f"{code}: {detail}" if code else detail
+    return f"- {label}{node_part}"
+
+
+def _terminal_retry_instruction(base_instruction: str, result: dict[str, Any]) -> str:
+    """Corrective instruction for a generation retry after a validation failure --
+    feeds back EVERY structured error (``result["errors"]``: code, detail, node id)
+    rather than only the first, adds UNRESOLVED_REFERENCE-specific guidance when
+    that code is present, and keeps the topology guidance the retry has always
+    carried (start/end/answer) regardless of which error(s) triggered the retry."""
+    errors = _valid_errors(result)
+    if errors:
+        error_text = "\n".join(_format_generator_error(e) for e in errors)
+    else:
+        error_text = str(result.get("error") or "").strip() or "the generated graph had no nodes"
+
+    guidance = ""
+    if any(str(e.get("code")) == "UNRESOLVED_REFERENCE" for e in errors):
+        guidance = f"\n\n{_UNRESOLVED_REFERENCE_GUIDANCE}"
+
     return (
-        f"Your previous attempt was rejected: {error}. Regenerate the COMPLETE workflow graph "
-        "with exactly one 'start' node and at least one 'end' node wired from the final step. "
-        f"Do NOT use 'answer' nodes.\n\n{base_instruction}"
+        f"Your previous attempt was rejected:\n{error_text}{guidance}\n\n"
+        "Regenerate the COMPLETE workflow graph with exactly one 'start' node and at least one "
+        "'end' node wired from the final step. Do NOT use 'answer' nodes.\n\n"
+        f"{base_instruction}"
     )
 
 
 def _generation_error_text(result: dict[str, Any]) -> str:
-    """Best human-readable failure reason from a generator result -- the top-level
-    ``error`` (e.g. "UNRESOLVED_REFERENCE: Reference {#node4.x#} not declared"), else
-    the joined ``errors`` details, else a generic fallback. Surfaced to the user so
-    a failed build shows WHY, not a hardcoded 'couldn't build' message."""
+    """Best human-readable failure reason from a generator result -- EVERY
+    structured ``errors`` entry rendered (via ``_format_generator_error``, so the
+    card names the offending node the same way the retry instruction does) and
+    joined (so a multi-error failure isn't truncated to the first), else the
+    top-level ``error`` string, else a generic fallback. Surfaced to the user so
+    a failed build shows WHY -- and WHERE -- not a hardcoded 'couldn't build'
+    message.
+
+    Joined with a NEWLINE, like the retry instruction: ``_format_generator_error``
+    already prefixes each line with ``- ``, so joining with ``"; "`` rendered a
+    two-error failure as the run-on ``- X (node 'h'); - Y``."""
+    errors = _valid_errors(result)
+    if errors:
+        return "\n".join(_format_generator_error(e) for e in errors)
     err = result.get("error")
     if isinstance(err, str) and err.strip():
         return err.strip()
-    errors = result.get("errors")
-    if isinstance(errors, list) and errors:
-        parts = [
-            str(e.get("detail") or e.get("message") or e.get("code"))
-            for e in errors
-            if isinstance(e, dict) and (e.get("detail") or e.get("message") or e.get("code"))
-        ]
-        if parts:
-            return "; ".join(parts)
     return "the generator returned no usable graph"
 
 
@@ -413,8 +659,7 @@ def _generation_diagnostic(result: dict[str, Any], *, attempt: int) -> dict[str,
     """Capture one failed generation attempt: the generator's structured errors
     (``code`` / ``detail`` / ``node_id`` -- e.g. UNRESOLVED_REFERENCE on node2),
     which is strictly more than the server-side log line carries."""
-    errors = result.get("errors")
-    errors = [e for e in errors if isinstance(e, dict)] if isinstance(errors, list) else []
+    errors = _valid_errors(result)
     return _diagnostic(
         source="workflow-generator",
         attempt=attempt,
@@ -429,6 +674,8 @@ def build_nodes(
     model_config: dict[str, Any],
     plan_items: list[str],
     resource_ids: Sequence[str] = (),
+    *,
+    trusted_text: str = "",
 ) -> BuildNodesResult:
     try:
         mc = _generator_model_config(tenant_id, model_config)
@@ -446,21 +693,27 @@ def build_nodes(
         diagnostics: list[dict[str, Any]] = []
         result = _generate(base_instruction)
         graph = result.get("graph") or {}
-        if result.get("error") or not graph.get("nodes"):
-            diagnostics.append(_generation_diagnostic(result, attempt=1))
-            # The generator's own retry only covers invalid-JSON / bad-schema, NOT a
-            # structurally-valid graph that fails topology validation (e.g. no 'end'
-            # node). Retry ONCE with the specific error fed back as a corrective nudge.
-            retry_error = result.get("error") or "the generated graph had no nodes"
-            result = _generate(_terminal_retry_instruction(base_instruction, retry_error))
+        attempt = 1
+        # The generator's own retry only covers invalid-JSON / bad-schema, NOT a
+        # structurally-valid graph that fails topology/reference validation (e.g.
+        # no 'end' node, or an UNRESOLVED_REFERENCE from a node builder inventing
+        # an upstream output name -- see FINDINGS.md Blocker B). Retry with the
+        # specific errors fed back as a corrective nudge, up to
+        # _MAX_GENERATION_ATTEMPTS total, stopping at the first success.
+        while (result.get("error") or not graph.get("nodes")) and attempt < _MAX_GENERATION_ATTEMPTS:
+            diagnostics.append(_generation_diagnostic(result, attempt=attempt))
+            attempt += 1
+            result = _generate(_terminal_retry_instruction(base_instruction, result))
             graph = result.get("graph") or {}
         if result.get("error") or not graph.get("nodes"):
-            diagnostics.append(_generation_diagnostic(result, attempt=len(diagnostics) + 1))
+            diagnostics.append(_generation_diagnostic(result, attempt=attempt))
             error = _generation_error_text(result)
             logger.warning(
-                "Dify Builder: build_nodes produced no graph for tenant %s (%d plan items): error=%s",
+                "Dify Builder: build_nodes produced no graph for tenant %s (%d plan items) after "
+                "%d attempt(s): error=%s",
                 tenant_id,
                 len(plan_items),
+                attempt,
                 error,
             )
             return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
@@ -471,7 +724,20 @@ def build_nodes(
         # runtime model follows the user's choice.
         grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
         _ground(intents, grounding_mc, tenant_id, plan_items)
-        applicable, rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
+        for node_id in _ground_placeholder_endpoints(intents, trusted_text=trusted_text):
+            logger.info("Dify Builder: http-request %s had a placeholder URL; now read from a start variable", node_id)
+        for node_id in _ground_placeholder_credentials(intents, trusted_text=trusted_text):
+            logger.info(
+                "Dify Builder: http-request %s had a placeholder credential; now read from a start variable", node_id
+            )
+        # Structure only, deliberately: these intents BUILD the graph, so a node
+        # the preflight would refuse is the generator's own retry loop's business
+        # (``_terminal_retry_instruction`` above), not a reason to drop one intent
+        # out of a whole new workflow. ``apply_repair``'s preflight is still the
+        # backstop that stops a refused draft being written.
+        applicable, rejected, _dry_run_graph, _changed = graph_ops.filter_applicable(
+            {"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES
+        )
         if not applicable:
             reason = rejected[0][1] if rejected else "no applicable node intents"
             error = f"the generated nodes were rejected by validation: {reason}"
@@ -484,6 +750,34 @@ def build_nodes(
                 )
             )
             return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
+        if rejected:
+            # A partial reject still builds what applies, but the dropped intents
+            # must not vanish: e.g. a connect on a branch handle the node does not
+            # declare (one postprocess could not re-home unambiguously) leaves that
+            # arm unwired on the canvas.
+            summary = [
+                {
+                    "intent": str(intent.op),
+                    # a create_node's config is the whole node body -- name the node, not its body
+                    "args": {key: value for key, value in intent.args.items() if key != "config"},
+                    "reason": str(reason),
+                }
+                for intent, reason in rejected
+            ]
+            logger.warning(
+                "Dify Builder: build_nodes dropped %d of %d intents for tenant %s: %s",
+                len(rejected),
+                len(intents),
+                tenant_id,
+                "; ".join(f"{item['intent']} {item['args']}: {item['reason']}" for item in summary),
+            )
+            diagnostics.append(
+                _diagnostic(
+                    source="build_nodes",
+                    message=f"{len(rejected)} generated intent(s) were rejected by validation and not applied",
+                    rejected=summary,
+                )
+            )
         # Retries that eventually succeeded still leave their breadcrumbs behind.
         return BuildNodesResult(intents=applicable, diagnostics=diagnostics)
     except Exception as exc:  # any generation/translation failure -> honest empty build
@@ -500,6 +794,316 @@ def build_nodes(
             error=message,
             diagnostics=[_diagnostic(source="build_nodes", message=message, exception=type(exc).__name__)],
         )
+
+
+# Hosts / tokens an LLM writes when it does not know the real endpoint. A Dify
+# template (``{{#node.var#}}``) is a real reference and is NOT a placeholder;
+# a bare ``{tenant}`` or ``<your-domain>`` is. ``localhost`` is deliberately NOT
+# here -- it names the *host*, not any substring, so it is checked separately
+# against the parsed hostname (see ``_is_localhost_host``): a real tunnel host
+# like ``abc123.localhost.run`` must not match just because "localhost" is a
+# substring of it.
+_PLACEHOLDER_URL_RE = re.compile(
+    r"(^|[./-])example\.(com|org|net)\b"  # api.example.com, example.org
+    r"|your[-_]?(api|domain|server|host|company)"  # your-api.com
+    r"|placeholder"
+    r"|<[^>]+>"  # <your-domain>
+    r"|(?<!\{)\{(?!\{)[^{}#]*\}(?!\})",  # {tenant}, but not {{#s.x#}}
+    re.IGNORECASE,
+)
+
+
+def _is_localhost_host(url: str) -> bool:
+    """True when the URL's HOST -- not merely a substring of the URL -- is
+    ``localhost`` or a ``*.localhost`` name, ignoring any port. A hostname
+    like ``abc123.localhost.run`` is a real, routable tunnel domain (the
+    reserved ``.localhost`` TLD requires it to be the final label) and must
+    not match."""
+    try:
+        host = urlsplit(url).hostname
+    except ValueError:
+        return False
+    return host is not None and (host == "localhost" or host.endswith(".localhost"))
+
+
+def _is_placeholder_endpoint(url: str) -> bool:
+    """True for a URL the model invented rather than one the user supplied."""
+    text = (url or "").strip()
+    if not text:
+        return True
+    return _PLACEHOLDER_URL_RE.search(text) is not None or _is_localhost_host(text)
+
+
+def _add_required_start_variable(variables: list[dict], var_name: str, label: str) -> None:
+    """Append a REQUIRED text-input start variable (max 2048 chars) named
+    ``var_name`` to ``variables`` if not already present -- the write shared
+    by every grounding pass that turns an invented literal (URL, credential)
+    into a start-node input, so it is not duplicated per pass."""
+    if any(isinstance(v, dict) and v.get("variable") == var_name for v in variables):
+        return
+    variables.append(
+        {
+            "variable": var_name,
+            "label": label,
+            "type": "text-input",
+            "required": True,
+            "max_length": 2048,
+        }
+    )
+
+
+def _ground_placeholder_endpoints(intents: list[MutationIntent], *, trusted_text: str = "") -> list[str]:
+    """Replace every http-request URL the user didn't supply with a REQUIRED
+    start-node variable and a template reference to it.
+
+    ESQ1-302 called ``https://api.example.com/ppt/generate``: the model had no
+    endpoint, so it invented one, and every test run failed against a host that
+    does not exist. Turning the URL into an input makes the test-data gate ask
+    the user for the real endpoint -- or, when they have none, tells them what
+    the step needs. Builder-only; the shared generator's own http-request
+    example is ``https://example.com``, so cmd+K keeps its placeholders.
+
+    A URL is grounded when it LOOKS invented (``_is_placeholder_endpoint``) OR,
+    with ``trusted_text`` non-empty, when its host never actually appears in
+    what the user typed (``user_supplied.is_user_supplied_url``) -- a
+    plausible, real-looking host the model invented (S5b:
+    ``api.pptrender.io``) is just as much a fabrication as
+    ``api.example.com``, only harder to spot by shape alone.
+    ``trusted_text == ""`` (no caller-supplied text) keeps exactly today's
+    placeholder-only behaviour.
+
+    A URL whose HOST is already a template (``urls.host_is_templated``) reads
+    its endpoint from a variable and is never re-grounded, which also makes a
+    second pass a no-op. A URL with templates only in its path/query (e.g.
+    ``https://api.pptrender.io/v1/render?topic={{#node1.topic#}}``) has only
+    its ``scheme://host[:port]`` replaced -- the path, the query and the data
+    templates in them are kept verbatim, and the start variable is labelled
+    "<title> base URL". A URL with no templates is replaced whole ("<title>
+    URL"), as is one with no ``scheme://`` to split at. Returns the ids of the
+    http-request nodes it re-pointed.
+    """
+    start = next((i for i in intents if i.op == "create_node" and i.args.get("node_type") == "start"), None)
+    if start is None:
+        return []
+    start_id = str(start.args.get("node_id") or "")
+    if not start_id:
+        return []
+    config = dict(start.args.get("config") or {})
+    variables = list(config.get("variables") or [])
+    grounded: list[str] = []
+    for intent in intents:
+        if intent.op != "create_node" or intent.args.get("node_type") != "http-request":
+            continue
+        node_config = dict(intent.args.get("config") or {})
+        url = str(node_config.get("url") or "")
+        if urls.host_is_templated(url):
+            continue
+        not_user_supplied = bool(trusted_text) and not user_supplied.is_user_supplied_url(url, trusted_text)
+        if not (_is_placeholder_endpoint(url) or not_user_supplied):
+            continue
+        node_id = str(intent.args.get("node_id") or "")
+        var_name = f"{node_id}_url"
+        template_ref = f"{{{{#{start_id}.{var_name}#}}}}"
+        title = node_config.get("title") or node_id
+        parts = urls.split_origin(url)
+        if parts is not None and urls.TEMPLATE_MARKER in parts.rest:
+            _add_required_start_variable(variables, var_name, f"{title} base URL")
+            node_config["url"] = f"{template_ref}{parts.rest}"
+        else:
+            _add_required_start_variable(variables, var_name, f"{title} URL")
+            node_config["url"] = template_ref
+        intent.args["config"] = node_config
+        grounded.append(node_id)
+    if grounded:
+        config["variables"] = variables
+        start.args["config"] = config
+    return grounded
+
+
+# A value that IS one of these words and nothing else (no content after it)
+# is a bare auth-scheme with no credential attached -- ``strip_auth_scheme``
+# alone does not catch this: its regex only strips a scheme word FOLLOWED BY
+# whitespace, so a bare "Bearer" (nothing after it) comes back unstripped,
+# not empty.
+_BARE_SCHEME_WORDS = frozenset({"bearer", "basic", "token"})
+
+# The only keys whose value is ``<scheme> <credentials>``, so the only ones on
+# which a bare scheme word is kept when grounding (``_replace_credential_value``).
+_AUTHORIZATION_KEYS = frozenset({"authorization", "proxy-authorization"})
+
+# Mirrors user_supplied._TEMPLATE_MARKER: a Dify template reference names a
+# variable, not a literal, so it is never "invented" and must never be
+# re-grounded -- checked BEFORE the placeholder-shape check below, since a
+# grounded variable's own NAME (e.g. "your_api_key") can coincidentally match
+# CREDENTIAL_PLACEHOLDER_RE's "YOUR...KEY" pattern.
+_TEMPLATE_MARKER = "{{#"
+
+
+def _is_invented_credential(value: str, trusted_text: str) -> bool:
+    """Mirrors ``_ground_placeholder_endpoints``'s OR-of-two-checks shape, but
+    for a credential value (a header/param 'Value' half, or an
+    ``authorization.config.api_key``):
+
+    1. Already a Dify template reference (contains ``{{#``) -- a real
+       reference, never re-grounded, checked first (see ``_TEMPLATE_MARKER``).
+    2. Empty, or nothing beyond a bare ``Bearer``/``Basic``/``Token`` scheme
+       word -- never a valid credential either way, so it grounds
+       unconditionally.
+    3. An unmistakable placeholder (``CREDENTIAL_PLACEHOLDER_RE``) -- grounds
+       even in placeholder-only mode (``trusted_text == ""``, mirroring how a
+       shaped-like-invented URL grounds with no goal text at all).
+    4. Otherwise, with ``trusted_text`` non-empty, a value that never appears
+       verbatim in it also grounds (S5b-style plausible-looking secret the
+       model invented).
+    """
+    stripped_value = value.strip()
+    remainder = user_supplied.strip_auth_scheme(stripped_value)
+    if _TEMPLATE_MARKER in remainder:
+        return False
+    if not remainder or remainder.lower() in _BARE_SCHEME_WORDS:
+        return True
+    if user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(remainder):
+        return True
+    return bool(trusted_text) and not user_supplied.is_user_supplied_secret(stripped_value, trusted_text)
+
+
+def _replace_credential_value(value: str, template_ref: str, *, keep_bare_scheme: bool) -> str:
+    """Rebuild a header/param 'Value' half with its secret swapped for
+    ``template_ref``, preserving surrounding whitespace (including a ``\\r``
+    left by a ``\\r\\n`` line ending) and a leading ``Bearer ``/``Basic ``/
+    ``Token `` auth-scheme prefix exactly as written (e.g. ``" Bearer
+    YOUR_API_KEY"`` -> ``" Bearer {{#s.h_api_key#}}"``).
+
+    A BARE scheme word with nothing after it (``"Bearer"``) is an auth scheme
+    only on an ``Authorization``/``Proxy-Authorization`` line
+    (``keep_bare_scheme``): there it keeps the word, adding the separating
+    space the grounded value now needs. Under any other credential key
+    (``X-Auth-Token: token``, ``api_key: token``) the word IS the invented
+    value, so it is replaced whole."""
+    lstripped = value.lstrip(" \t\r")
+    leading_ws = value[: len(value) - len(lstripped)]
+    core = lstripped.rstrip(" \t\r")
+    trailing_ws = lstripped[len(core) :]
+    remainder = user_supplied.strip_auth_scheme(core)
+    if remainder == core and core.lower() in _BARE_SCHEME_WORDS:
+        scheme_prefix = f"{core} " if keep_bare_scheme else ""
+    else:
+        scheme_prefix = core[: len(core) - len(remainder)]
+    return f"{leading_ws}{scheme_prefix}{template_ref}{trailing_ws}"
+
+
+def _ground_credential_text(text: str, template_ref: str, *, trusted_text: str, key_is_credential) -> tuple[str, bool]:
+    """Ground each ``Key: Value`` line of an http-request ``headers``/
+    ``params`` text block whose key names a credential per
+    ``key_is_credential`` (``user_supplied.is_credential_key`` for headers;
+    ``user_supplied.is_credential_param_key`` for params, which also treats a
+    bare ``key`` as one) and whose value the user didn't supply
+    (``_is_invented_credential``), replacing only the secret part of that
+    line with ``template_ref``. Every other line -- including a credential
+    line the user DID supply -- passes through byte-identical. Returns
+    ``(new_text, changed)``.
+    """
+    if not text:
+        return text, False
+    lines = text.split("\n")
+    changed = False
+    new_lines: list[str] = []
+    for line in lines:
+        if ":" not in line:
+            new_lines.append(line)
+            continue
+        key, _sep, value = line.partition(":")
+        if not key_is_credential(key.strip()) or not _is_invented_credential(value, trusted_text):
+            new_lines.append(line)
+            continue
+        keep_bare_scheme = key.strip().lower() in _AUTHORIZATION_KEYS
+        new_lines.append(f"{key}:{_replace_credential_value(value, template_ref, keep_bare_scheme=keep_bare_scheme)}")
+        changed = True
+    return "\n".join(new_lines), changed
+
+
+def _ground_placeholder_credentials(intents: list[MutationIntent], *, trusted_text: str = "") -> list[str]:
+    """Replace every http-request credential literal the user didn't supply
+    -- a header/param whose key names a credential, or an ``api-key``
+    authorization's ``config.api_key`` -- with a REQUIRED start-node variable
+    and a template reference to it. Sibling to ``_ground_placeholder_endpoints``,
+    called right after it in ``build_nodes`` and sharing its start-variable
+    insertion write (``_add_required_start_variable``); reads the start
+    node's config fresh, so a variable that pass already added (e.g.
+    ``<node>_url``) is seen and not clobbered.
+
+    S5b/F2: requirements analysis invented an ``Authorization: Bearer
+    YOUR_API_KEY`` header for a goal that named no credential. Turning it
+    into an input makes the test-data gate ask the user for the real key --
+    or, when mocked, drop it (``without_endpoint_values`` -> now
+    ``endpoint_variable_names``, extended to also scan headers/params/
+    authorization) so the run fails on a missing required input instead of
+    an invented secret the target API rejects.
+
+    A single ``<node>_api_key`` variable covers every credential grounded on
+    that node, however many lines/fields triggered it. Returns the ids of the
+    http-request nodes it re-pointed.
+    """
+    start = next((i for i in intents if i.op == "create_node" and i.args.get("node_type") == "start"), None)
+    if start is None:
+        return []
+    start_id = str(start.args.get("node_id") or "")
+    if not start_id:
+        return []
+    config = dict(start.args.get("config") or {})
+    variables = list(config.get("variables") or [])
+    grounded: list[str] = []
+    for intent in intents:
+        if intent.op != "create_node" or intent.args.get("node_type") != "http-request":
+            continue
+        node_config = dict(intent.args.get("config") or {})
+        node_id = str(intent.args.get("node_id") or "")
+        var_name = f"{node_id}_api_key"
+        template_ref = f"{{{{#{start_id}.{var_name}#}}}}"
+        changed = False
+
+        new_headers, headers_changed = _ground_credential_text(
+            str(node_config.get("headers") or ""),
+            template_ref,
+            trusted_text=trusted_text,
+            key_is_credential=user_supplied.is_credential_key,
+        )
+        if headers_changed:
+            node_config["headers"] = new_headers
+            changed = True
+
+        new_params, params_changed = _ground_credential_text(
+            str(node_config.get("params") or ""),
+            template_ref,
+            trusted_text=trusted_text,
+            key_is_credential=user_supplied.is_credential_param_key,
+        )
+        if params_changed:
+            node_config["params"] = new_params
+            changed = True
+
+        authorization = node_config.get("authorization")
+        auth_config = authorization.get("config") if isinstance(authorization, dict) else None
+        if (
+            isinstance(authorization, dict)
+            and authorization.get("type") == "api-key"
+            and isinstance(auth_config, dict)
+            and _is_invented_credential(str(auth_config.get("api_key") or ""), trusted_text)
+        ):
+            new_auth_config = dict(auth_config)
+            new_auth_config["api_key"] = template_ref
+            node_config["authorization"] = {**authorization, "config": new_auth_config}
+            changed = True
+
+        if not changed:
+            continue
+        _add_required_start_variable(variables, var_name, f"{node_config.get('title') or node_id} API key")
+        intent.args["config"] = node_config
+        grounded.append(node_id)
+    if grounded:
+        config["variables"] = variables
+        start.args["config"] = config
+    return grounded
 
 
 def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan_items: list[str]) -> None:

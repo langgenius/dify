@@ -717,22 +717,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
-          delete: {
-            mutationOptions: {
-              onSuccess: (_response, variables, _onMutateResult, context) => {
-                context.client.removeQueries({
-                  queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
-                    input: {
-                      params: variables.params,
-                    },
-                  }),
-                })
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.installedApps.get.key(),
-                })
-              },
-            },
-          },
           patch: {
             mutationOptions: {
               onSuccess: (_response, variables, _onMutateResult, context) => {

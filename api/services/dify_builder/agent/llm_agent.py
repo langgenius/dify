@@ -116,6 +116,7 @@ class LlmBuilderAgent:
             self.model_or_none(),
             requirements,
             self._reasoning_for("propose-build-plan"),
+            tools=build.ready_tool_catalogue(self._tenant_id),
         )
 
     def discover_resources(self, plan_items):
@@ -132,8 +133,10 @@ class LlmBuilderAgent:
     def bind_resources(self, plan_items, resource_ids):
         return build.bind_resources(self.model_or_none(), self._tenant_id, plan_items, resource_ids)
 
-    def build_nodes(self, plan_items, resource_ids=None):
-        return build.build_nodes(self._tenant_id, self._model_config, plan_items, resource_ids or ())
+    def build_nodes(self, plan_items, resource_ids=None, *, trusted_text=""):
+        return build.build_nodes(
+            self._tenant_id, self._model_config, plan_items, resource_ids or (), trusted_text=trusted_text
+        )
 
     def learn_from_build(self, goal_text, requirements, plan_items, built_node_ids):
         return build.learn_from_build(
@@ -162,12 +165,14 @@ class LlmBuilderAgent:
             self._reasoning_for("propose-edit-plan"),
         )
 
-    def build_edit_intents(self, edit_rules, graph):
+    def build_edit_intents(self, edit_rules, graph, *, edit_target_node_ids=(), last_edit_rejection=None):
         return edit.build_edit_intents(
             self.model_or_none(),
             edit_rules,
             graph,
             self._reasoning_for("build-edit-intents"),
+            edit_target_node_ids=edit_target_node_ids,
+            last_edit_rejection=last_edit_rejection,
         )
 
     def respond_to_message(self, state, context, history, graph, text, on_delta=None):

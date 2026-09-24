@@ -89,7 +89,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   modelPredicate,
   modelSuggestionPredicate,
 }) => {
-  const { t } = useTranslation(['appDebug', 'common'])
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const [open, setOpen] = useState(false)
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
@@ -202,7 +202,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       >
         <div className="relative px-3 pt-3.5 pb-1">
           <PopoverTitle className="pr-8 pl-1 system-xl-semibold text-text-primary">
-            {t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
+            {t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
           </PopoverTitle>
           <PopoverClose
             render={
@@ -239,7 +239,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             >
               <div className="flex items-center gap-1">
                 <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">
-                  {t(($) => $['modelProvider.parameters'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.parameters'], { ns: 'modelProvider' })}
                 </div>
                 {PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                   <PresetsParameter

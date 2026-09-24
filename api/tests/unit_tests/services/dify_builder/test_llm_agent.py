@@ -54,8 +54,8 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     self._tenant_id/self._model_config directly instead)."""
     seen = {}
 
-    def mock_propose_plan_v1(model, requirements, _reasoning=None):
-        seen["propose_plan_v1"] = (model, requirements)
+    def mock_propose_plan_v1(model, requirements, _reasoning=None, *, tools=()):
+        seen["propose_plan_v1"] = (model, requirements, list(tools))
         return []
 
     def mock_discover_resources(model, tenant_id, plan_items, _reasoning=None):
@@ -70,8 +70,8 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         seen["bind_resources"] = (model, tenant_id, plan_items, resource_ids)
         return []
 
-    def mock_build_nodes(tenant_id, model_config, plan_items, resource_ids=()):
-        seen["build_nodes"] = (tenant_id, model_config, plan_items, resource_ids)
+    def mock_build_nodes(tenant_id, model_config, plan_items, resource_ids=(), *, trusted_text=""):
+        seen["build_nodes"] = (tenant_id, model_config, plan_items, resource_ids, trusted_text)
         return []
 
     def mock_learn_from_build(model, goal_text, requirements, plan_items, built_node_ids, _reasoning=None):
@@ -79,6 +79,9 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         return "skill"
 
     monkeypatch.setattr(build_mod, "propose_plan_v1", mock_propose_plan_v1)
+    # The wrapper now hands the planner the tenant's READY tools (Plan 3 Task 2);
+    # stub the listing so this test never reaches the plugin daemon.
+    monkeypatch.setattr(build_mod, "ready_tool_catalogue", lambda _tenant_id: ["catalogue-stub"])
     monkeypatch.setattr(build_mod, "discover_resources", mock_discover_resources)
     monkeypatch.setattr(build_mod, "assess_capability_gap", mock_assess_capability_gap)
     monkeypatch.setattr(build_mod, "bind_resources", mock_bind_resources)
@@ -90,7 +93,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
 
     agent.propose_plan_v1({"x": 1})
-    assert seen["propose_plan_v1"] == ("MODEL", {"x": 1})
+    assert seen["propose_plan_v1"] == ("MODEL", {"x": 1}, ["catalogue-stub"])
 
     agent.discover_resources(["step"])
     assert seen["discover_resources"] == ("MODEL", "t1", ["step"])
@@ -102,7 +105,13 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     assert seen["bind_resources"] == ("MODEL", "t1", ["step"], ["rid"])
 
     agent.build_nodes(["step"])
-    assert seen["build_nodes"] == ("t1", model_config, ["step"], ())
+    assert seen["build_nodes"] == ("t1", model_config, ["step"], (), "")
+
+    # trusted_text forwards through the wrapper unchanged (ESQ1-302/S5b: the
+    # handler threads the user's own goal+requirements text down to
+    # build.build_nodes so it can tell a supplied endpoint from an invented one).
+    agent.build_nodes(["step"], trusted_text="goal text and requirements")
+    assert seen["build_nodes"] == ("t1", model_config, ["step"], (), "goal text and requirements")
 
     agent.learn_from_build("goal", {"x": 1}, ["step"], ["n1"])
     assert seen["learn_from_build"] == ("MODEL", "goal", {"x": 1}, ["step"], ["n1"])
@@ -181,7 +190,7 @@ def test_llm_agent_edit_methods_delegate_to_edit(monkeypatch):
             "target_node_ids": [],
         },
     )
-    monkeypatch.setattr(edit_mod, "build_edit_intents", lambda _m, _r, _graph, _reasoning=None: [])
+    monkeypatch.setattr(edit_mod, "build_edit_intents", lambda _m, _r, _graph, _reasoning=None, **_kw: [])
     agent = LlmBuilderAgent("t1", {})
     assert agent.analyze_impact("g", {"nodes": [], "edges": []}) == {
         "fields": [],
@@ -205,8 +214,9 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
         seen["propose_edit_plan"] = (model, edit_rules, graph)
         return ["step"]
 
-    def mock_build_edit_intents(model, edit_rules, graph, _reasoning=None):
+    def mock_build_edit_intents(model, edit_rules, graph, _reasoning=None, **kwargs):
         seen["build_edit_intents"] = (model, edit_rules, graph)
+        seen["build_edit_intents_kwargs"] = kwargs
         return []
 
     monkeypatch.setattr(edit_mod, "analyze_impact", mock_analyze_impact)
@@ -223,8 +233,9 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
     agent.propose_edit_plan({"tone": "formal"}, graph)
     assert seen["propose_edit_plan"] == ("MODEL", {"tone": "formal"}, graph)
 
-    agent.build_edit_intents({"tone": "formal"}, graph)
+    agent.build_edit_intents({"tone": "formal"}, graph, edit_target_node_ids=["n1"])
     assert seen["build_edit_intents"] == ("MODEL", {"tone": "formal"}, graph)
+    assert seen["build_edit_intents_kwargs"] == {"edit_target_node_ids": ["n1"], "last_edit_rejection": None}
 
 
 def test_model_or_none_logs_resolution_failure_once(caplog):

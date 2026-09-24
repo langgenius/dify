@@ -2,41 +2,144 @@
 
 Surgical config change on an existing graph. build_edit_intents follows the
 Fix pattern: the LLM proposes targeted intents which are dry-run-validated
-through graph_ops.filter_applicable before they can reach apply_repair.
+through preflight.vet_intents -- structure AND node data, the same two checks
+apply_repair makes -- before they can reach the approval gate.
 Degrades to an honest result on model-None / provider-error / parse-fail."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
+from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import MutationIntent
+from core.dify_builder.node_defaults import default_config_or_empty
+from core.workflow.graph_normalizers import declared_branch_handles
 from graphon.enums import BUILT_IN_NODE_TYPES
-from services.dify_builder import graph_ops
-from services.dify_builder.agent import form_schema, llm
+from services.dify_builder import credentials, preflight
+from services.dify_builder.agent import form_schema, graph_prompt, llm
 
 _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
 
-_OP_SCHEMA = (
-    'Allowed ops (each as {"op": ..., "args": {...}}):\n'
-    "- set_node_config: {node_id, path, value}\n"
-    "- create_node: {node_type, config, node_id?}\n"
-    "- delete_node: {node_id}\n"
-    "- connect: {from_node, to_node}\n"
-    "- insert_between: {edge: {source, target}, node_type, config}\n"
+# Keys the summary line above the block already carries; a config with nothing
+# but these says nothing and is not worth a line.
+_SUMMARY_LINE_KEYS = frozenset({"type", "title"})
+
+# The one clause that is Edit's alone: a plan that grows a branch has to say
+# where that branch rejoins. Fix repairs the single node it diagnosed and is
+# deliberately not told to reach across the graph like this.
+_REJOIN_RULE = (
+    "Follow a new branch to where it rejoins the graph. If the node on the new branch feeds an "
+    "existing variable-aggregator, that aggregator's variables array does not list it yet -- also "
+    "append that node's selector to it, re-sending the existing selectors byte-identical. The "
+    'selector is ["<new node id>", "<that node\'s own output variable>"], and the variable name '
+    "differs by node type: an llm's is text, a template-transform's is output, a tool's is "
+    "text (or files / json), a code node's is whatever its own outputs declare, a "
+    "question-classifier's is class_name. The selectors already in that aggregator's variables "
+    "show you the spelling a node of the same type uses -- copy it. A selector the run cannot "
+    "resolve is skipped in silence, so the wrong variable name leaves the workflow running green "
+    "and producing nothing, which is the very failure this step exists to prevent.\n"
 )
+
+# The ops, the branch-handle rule, the operator literals and the redaction
+# sentinel are Fix's too, and are stated once in ``graph_prompt`` for both.
+_OP_SCHEMA = graph_prompt.OP_LIST + graph_prompt.CONDITION_OPERATOR_RULES + _REJOIN_RULE + graph_prompt.REDACTION_RULE
 
 
 def _node_ids(graph: dict) -> set[str]:
     return {str(n.get("id")) for n in graph.get("nodes", []) if n.get("id") is not None}
 
 
-def _graph_context(graph: dict) -> str:
-    lines = ["NODES:"]
-    for n in graph.get("nodes", []):
-        d = n.get("data") or {}
-        lines.append(f"  {n.get('id')} ({d.get('type', '?')}): {d.get('title', '')}")
-    lines.append("EDGES:")
+def _authored_config(node: dict) -> dict[str, Any]:
+    """The node's ``data`` minus every key still sitting at its type default.
+
+    ``node_defaults`` is the single source of what "default" means here, so
+    this drops exactly the keys ``graph_ops._build_node`` would have supplied
+    on its own -- an http-request node's two dozen method/auth/timeout/retry
+    keys -- and keeps what an author actually chose. Without the subtraction
+    the scaffolding crowds the field the edit is ABOUT out of the prompt.
+    """
+    data = node.get("data")
+    if not isinstance(data, dict):
+        return {}
+    defaults = default_config_or_empty(str(data.get("type", "")))
+    return {k: v for k, v in data.items() if k not in defaults or defaults[k] != v}
+
+
+def _config_block(node: dict) -> str:
+    """One node's authored config as ``graph_prompt.config_block`` renders it:
+    JSON, secrets withheld, over-budget keys dropped BY NAME.
+
+    The rendering is shared with ``fix._culprit_config``. What is Edit's alone
+    is what goes into it: the type defaults are subtracted first, and that
+    subtraction is exactly what un-hides a secret -- a live token never equals
+    the ``no-auth`` / ``""`` default -- so ``redact_node_config`` runs after it,
+    over a target AND every neighbour rather than Fix's one culprit.
+
+    Returns ``""`` when nothing survives that the summary line above does not
+    already say.
+    """
+    config = credentials.redact_node_config(_authored_config(node))
+    if not set(config) - _SUMMARY_LINE_KEYS:
+        return ""
+    return graph_prompt.config_block(config)
+
+
+def _detailed_ids(graph: dict, target_node_ids: Sequence[str]) -> set[str]:
+    """Which nodes get their config inlined: the targets, their direct
+    neighbours, and one hop further past a BRANCH target's successors.
+
+    Neighbours are in because an edit to one node is usually only half the
+    change. The extra hop is in because a branch's arms reconverge: in the
+    live F4 failure the if-else target fed two template-transforms that fed a
+    variable-aggregator, whose ``variables`` is what says whether the new arm
+    reaches the End node at all. At one hop that aggregator rendered as a bare
+    one-liner and the model could not extend it -- triage cause (d), the one
+    that ends in "All checks passed" on empty output. The extra hop is taken
+    ONLY past a branch node, so a long linear chain does not drag the whole
+    graph into the prompt.
+    """
+    targets = {str(t) for t in target_node_ids}
+    if not targets:
+        return set()
+    nodes_by_id = {str(n.get("id")): n for n in graph.get("nodes", []) if n.get("id") is not None}
+    successors: dict[str, set[str]] = {}
+    neighbours: dict[str, set[str]] = {}
     for e in graph.get("edges", []):
-        lines.append(f"  {e.get('source')} -> {e.get('target')}")
+        source, target = str(e.get("source")), str(e.get("target"))
+        successors.setdefault(source, set()).add(target)
+        neighbours.setdefault(source, set()).add(target)
+        neighbours.setdefault(target, set()).add(source)
+
+    detailed = set(targets)
+    for node_id in targets:
+        detailed |= neighbours.get(node_id, set())
+        if not declared_branch_handles(nodes_by_id.get(node_id) or {}):
+            continue
+        for successor in successors.get(node_id, set()):
+            detailed |= successors.get(successor, set())
+    return detailed
+
+
+def _graph_context(graph: dict, target_node_ids: Sequence[str] = ()) -> str:
+    detailed = _detailed_ids(graph, target_node_ids)
+    node_lines: list[str] = []
+    rendered_any_config = False
+    for n in graph.get("nodes", []):
+        node_lines.append(graph_prompt.node_line(n))
+        if str(n.get("id")) in detailed:
+            block = _config_block(n)
+            if block:
+                node_lines.append(f"    config: {block}")
+                rendered_any_config = True
+    lines = ["NODES:"]
+    if rendered_any_config:
+        lines.append(
+            "  (config = that node's CURRENT data; keys still at their type default are omitted. "
+            f"A value shown as {credentials.REDACTED} is a secret withheld from you -- never write "
+            "it back; leave that field alone.)"
+        )
+    lines.extend(node_lines)
+    lines.append("EDGES:")
+    lines.extend(graph_prompt.edge_line(e) for e in graph.get("edges", []))
     return "\n".join(lines)
 
 
@@ -109,12 +212,43 @@ def propose_edit_plan(
     return [str(p) for p in plan] if isinstance(plan, list) and plan else ["Apply the requested edit"]
 
 
+# Heads the verbatim engine refusal block appended to the user prompt. Kept a
+# constant so a test can pin the exact framing the model is shown.
+_REJECTION_HEADER = "PREVIOUS ATTEMPT REJECTED BY THE ENGINE:"
+
+
 def build_edit_intents(
     model,
     edit_rules: dict[str, Any],
     graph: dict,
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    edit_target_node_ids: Sequence[str] = (),
+    last_edit_rejection: str | None = None,
 ) -> list[MutationIntent]:
+    """Propose the mutations that apply ``edit_rules`` to an existing graph.
+
+    ``edit_target_node_ids`` are the nodes ``analyze_impact`` said the change
+    touches; their config (and their neighbours') is inlined into the prompt so
+    the model can rewrite the one field it was asked about and leave the rest
+    byte-identical. An empty list is legal and simply yields today's
+    title/type/handles-only context.
+
+    ``last_edit_rejection`` is what the ENGINE said when it refused the
+    previous attempt's write (``handlers_edit._change_not_applied``), quoted
+    verbatim into the prompt. The gate re-reads an unchanged draft on every
+    re-approval, so ``edit_rules`` and ``graph`` are byte-identical each time
+    and this is the only input that can make a second attempt differ from the
+    first. It is also finer-grained than the dry run's own key: the preflight
+    is keyed on pydantic error LOCATIONS, so replacing one bad value with
+    another bad value at the same path is not a new problem to it, while the
+    engine's message names the value.
+
+    Raises ``ProposalWouldRunWrongError`` when the batch it would otherwise
+    return still carries a whole-batch semantic verdict from ``vet_intents``
+    (see ``_refuse_a_batch_already_judged_wrong``). Nothing has been written at
+    that point; the caller surfaces the reason at the approval gate.
+    """
     if model is None:
         return []
     system = (
@@ -126,21 +260,61 @@ def build_edit_intents(
         + ", ".join(sorted(_ALLOWED_NODE_TYPES))
         + ".\n"
     )
-    user = f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph)}"
+    user = f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph, edit_target_node_ids)}"
+    if last_edit_rejection:
+        user += f"\n\n{_REJECTION_HEADER}\n{last_edit_rejection}\nDo not repeat it."
     intents = _invoke_intents(model, system, user, on_reasoning)
     if intents is None:
         return []
-    applicable, rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
-    # A partial reject still leaves usable intents -- keep them, no re-prompt needed. Only a
-    # TOTAL reject (nothing survived the dry run) burns the one corrective re-prompt.
-    if not applicable and rejected:
-        reasons = "\n".join(f"- {i.op} {i.args}: {why}" for i, why in rejected)
-        retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
-        intents = _invoke_intents(model, system, retry_user, on_reasoning)
-        if intents is None:
-            return []
-        applicable, _rejected = graph_ops.filter_applicable(graph, intents, _ALLOWED_NODE_TYPES)
-    return applicable
+    first = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+    # ANY rejection -- partial, total, or a node the engine would refuse to start
+    # -- burns the one corrective re-prompt: a partial reject can silently drop
+    # the one intent that mattered (e.g. a connect from a branch node missing its
+    # required source_handle), so it is not safe to just keep what survived
+    # without giving the model a chance to supply the rest; and a batch that
+    # applies cleanly but leaves a node ``Graph.init`` refuses is worse than one
+    # that does not apply -- it reaches the approval gate looking healthy and
+    # dies at the write. If the retry itself yields nothing usable, fall back to
+    # the first attempt's applicable intents rather than losing them.
+    if not first.rejections:
+        return first.applicable
+
+    reasons = "\n".join(first.rejections)
+    retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
+    retried = _invoke_intents(model, system, retry_user, on_reasoning)
+    vetted = preflight.vet_intents(graph, retried, _ALLOWED_NODE_TYPES) if retried is not None else None
+    chosen = vetted if vetted is not None and vetted.applicable else first
+    _refuse_a_batch_already_judged_wrong(chosen)
+    return chosen.applicable
+
+
+def _refuse_a_batch_already_judged_wrong(vetted: preflight.VettedIntents) -> None:
+    """Stop here rather than hand on a batch this agent has itself judged
+    wrong.
+
+    The fallback above exists so a model that half-answers the re-prompt does
+    not cost the user their whole change. It was also the last hole in the two
+    semantic guards: those describe defects the ENGINE ACCEPTS -- a new branch
+    wired into a variable-aggregator that was never told about it, an array
+    re-sent with an element quietly dropped -- so there is no
+    ``DraftWouldNotStartError`` behind them and ``apply_repair`` has nothing to
+    veto. The guard would fire, the model would fail to answer it, and the
+    fallback would write the condemned batch anyway, landing in exactly the
+    green-run-empty-output failure the guard was built to stop.
+
+    So a whole-batch semantic verdict surfaces to the human instead. That is a
+    real exit now and not a dead end: the gate offers a revert and a
+    keep-adjusting action, and the reason travels into the next attempt through
+    ``last_edit_rejection``, so the user can change the rules and the next
+    proposal is not blind.
+
+    Only ``would_run_wrong`` does this, never ``rejections`` at large. A
+    structural refusal dropped its own intent, so the batch left over is one
+    nobody has judged wrong -- keeping it is the deliberate choice above. Read
+    off the structured list, never off the rejection text.
+    """
+    if vetted.would_run_wrong:
+        raise ProposalWouldRunWrongError("\n".join(vetted.would_run_wrong))
 
 
 def _invoke_intents(

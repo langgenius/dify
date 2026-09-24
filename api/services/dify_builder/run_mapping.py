@@ -53,6 +53,42 @@ _TERMINAL_STREAM_EVENTS = {"workflow_finished", "workflow_paused"}
 # the node-execution id instead, so it must never be read as a run id.
 _RUN_ID_DATA_EVENTS = {"workflow_started", "workflow_finished", "workflow_paused"}
 
+# The frame ``ErrorStreamResponse`` becomes on the wire (see
+# ``WorkflowAppGenerateResponseConverter.convert_stream_full_response``):
+# top-level ``message`` / ``code`` / ``status`` and NO ``data``. It ends the
+# stream but carries no run status, so it is not a terminal frame. ``run_draft``
+# keeps it aside and consults it only when no terminal frame arrived --
+# precedence is terminal frame > error frame > nothing (unknown). Chatflow
+# emits ``workflow_finished(failed)`` AND an error frame for one failure, so
+# the terminal frame must win when both are present.
+_ERROR_STREAM_EVENT = "error"
+
+
+def error_from_stream_chunk(chunk: Mapping[str, Any]) -> dict[str, str] | None:
+    """The ``message`` / ``code`` an ``event: error`` frame carries, else ``None``."""
+    if str(chunk.get("event") or "") != _ERROR_STREAM_EVENT:
+        return None
+    return {"message": str(chunk.get("message") or ""), "code": str(chunk.get("code") or "")}
+
+
+def map_error_frame_run(error: Mapping[str, str], run_id: str, node_execs: Sequence[Any]) -> Run:
+    """A run whose stream ended on an explicit ``error`` frame: FAILED, with the
+    frame's message (and code) as ``Run.error``.
+
+    ``per_node`` is whatever rows exist for ``run_id``: empty for a launch
+    failure (the ESQ1-302 frame arrives before ``workflow_started``, so there is
+    no run id and no row) and populated for a mid-run error. Whitespace is
+    collapsed so the text is a stable repair-breaker signature
+    (``handlers_build._failure_signature``).
+    """
+    message = " ".join((error.get("message") or "").split())
+    code = (error.get("code") or "").strip()
+    if not message:
+        message = f"workflow run failed ({code})" if code else "workflow run failed"
+    elif code and code not in message:
+        message = f"{message} [{code}]"
+    return map_run_result({"id": run_id, "status": "failed", "error": message}, node_execs)
+
 
 def _status_value(status: Any) -> Any:
     """Unwrap a ``StrEnum``'s ``.value`` if present, else pass through as-is.
@@ -220,6 +256,10 @@ def map_run_result(data: Mapping[str, Any], node_execs: Sequence[Any]) -> Run:
         status=status,
         per_node=per_node,
         culprit_node_id=culprit_node_id,
+        # The engine's run-level error text. A succeeded run never carries one;
+        # a launch failure has no rows at all, so this is then the only
+        # evidence the repair breaker and diagnose have.
+        error="" if status == "succeeded" else str(data.get("error") or ""),
         tokens=data.get("total_tokens", 0),
         elapsed_ms=int(data.get("elapsed_time", 0) * 1000),
     )

@@ -7,9 +7,10 @@ always provided by ``LlmBuilderAgent``. The deterministic implementation stays
 as a compact fixture for state-machine tests that do not exercise model calls.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
+from core.dify_builder import node_defaults
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import (
     BuildNodesResult,
@@ -27,7 +28,6 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
-from services.dify_builder import node_defaults
 
 __all__ = [
     "BUILD_END_ID",
@@ -139,47 +139,60 @@ class PlaceholderAgent:
             "Emit the final report",
         ]
 
-    def build_nodes(self, plan_items: list[str], resource_ids: list[str] | None = None) -> BuildNodesResult:
+    def build_nodes(
+        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+    ) -> BuildNodesResult:
         # Start -> Knowledge-Retrieval -> LLM -> End. Creates and connects are
         # interleaved so each connect's endpoints already exist when
         # apply_connect validates them.
-        return BuildNodesResult(intents=[
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": BuiltinNodeTypes.START,
-                    "config": node_defaults.default_config(BuiltinNodeTypes.START),
-                    "node_id": BUILD_START_ID,
-                },
-            ),
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-                    "config": node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
-                    "node_id": BUILD_KNOWLEDGE_ID,
-                },
-            ),
-            MutationIntent(op="connect", args={"from_node": BUILD_START_ID, "to_node": BUILD_KNOWLEDGE_ID}),
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": BuiltinNodeTypes.LLM,
-                    "config": node_defaults.default_config(BuiltinNodeTypes.LLM),
-                    "node_id": BUILD_LLM_ID,
-                },
-            ),
-            MutationIntent(op="connect", args={"from_node": BUILD_KNOWLEDGE_ID, "to_node": BUILD_LLM_ID}),
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": BuiltinNodeTypes.END,
-                    "config": node_defaults.default_config(BuiltinNodeTypes.END),
-                    "node_id": BUILD_END_ID,
-                },
-            ),
-            MutationIntent(op="connect", args={"from_node": BUILD_LLM_ID, "to_node": BUILD_END_ID}),
-        ])
+        #
+        # ``node_defaults`` deliberately refuses to fabricate a node's PURPOSE
+        # fields, so this agent -- which builds a blank skeleton for the user to
+        # fill in on the canvas, and genuinely means "no dataset, no output" --
+        # spells those two blanks out itself. A default that said them for every
+        # caller would let an LLM's forgotten field through as a silent success.
+        return BuildNodesResult(
+            intents=[
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": BuiltinNodeTypes.START,
+                        "config": node_defaults.default_config(BuiltinNodeTypes.START),
+                        "node_id": BUILD_START_ID,
+                    },
+                ),
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                        "config": {
+                            **node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
+                            "dataset_ids": [],
+                        },
+                        "node_id": BUILD_KNOWLEDGE_ID,
+                    },
+                ),
+                MutationIntent(op="connect", args={"from_node": BUILD_START_ID, "to_node": BUILD_KNOWLEDGE_ID}),
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": BuiltinNodeTypes.LLM,
+                        "config": node_defaults.default_config(BuiltinNodeTypes.LLM),
+                        "node_id": BUILD_LLM_ID,
+                    },
+                ),
+                MutationIntent(op="connect", args={"from_node": BUILD_KNOWLEDGE_ID, "to_node": BUILD_LLM_ID}),
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": BuiltinNodeTypes.END,
+                        "config": {**node_defaults.default_config(BuiltinNodeTypes.END), "outputs": []},
+                        "node_id": BUILD_END_ID,
+                    },
+                ),
+                MutationIntent(op="connect", args={"from_node": BUILD_LLM_ID, "to_node": BUILD_END_ID}),
+            ]
+        )
 
     def learn_from_build(
         self,
@@ -231,7 +244,14 @@ class PlaceholderAgent:
             "Preserve the existing summary contract",
         ]
 
-    def build_edit_intents(self, edit_rules: dict[str, Any], graph: Graph) -> list[MutationIntent]:
+    def build_edit_intents(
+        self,
+        edit_rules: dict[str, Any],
+        graph: Graph,
+        *,
+        edit_target_node_ids: Sequence[str] = (),
+        last_edit_rejection: str | None = None,
+    ) -> list[MutationIntent]:
         # Canned config-level edits (set_node_config) on the existing LLM node,
         # matching the edit_rules semantics. Deterministic target selection:
         # prefer the canned LLM id, else the lexicographically-first node id.

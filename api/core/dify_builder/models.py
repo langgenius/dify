@@ -96,7 +96,11 @@ class Run:
     status: str = ""  # running | succeeded | failed
     per_node: list[NodeOutput] = field(default_factory=list)
     culprit_node_id: str = ""
-    # Launch-failure text (run threw before any node executed); "" once a node ran.
+    # The run-level error text: the launch failure when the run threw before
+    # any node executed (then ``per_node`` is empty and this is the only
+    # evidence), or the engine's run error for a failed run. "" for a
+    # succeeded run and for an unknown outcome other than the truncated-stream
+    # notice (``run_mapping.TRUNCATED_STREAM_ERROR``).
     error: str = ""
     inputs_ref: str = ""
     tokens: int = 0
@@ -265,6 +269,11 @@ class DifyBuilderContext:
     # handlers_build._failure_signature), NOT human-readable prose -- it is
     # compared for equality to detect a repair loop and is never displayed.
     last_repair_error: str = ""
+    # Consecutive verify runs whose outcome could not be established (stream
+    # ended with neither a terminal nor an error frame). Reset by any
+    # determinate outcome; ``handlers_fix.MAX_UNKNOWN_OUTCOMES`` caps it so a
+    # stream that keeps ending early cannot be re-run forever.
+    unknown_outcome_count: int = 0
     risk: Risk | None = None
     change_set: ChangeSet | None = None
     checkpoint_id: str = ""
@@ -298,6 +307,25 @@ class DifyBuilderContext:
     # -- Edit fields (Slice 3, additive) --
     edit_rules: dict[str, Any] = field(default_factory=dict)
     edit_target_node_ids: list[str] = field(default_factory=list)
+    # Why the ENGINE refused the last edit write, verbatim (the
+    # ``DraftWouldNotStartError``/``ValueError`` the Dify port raised), capped
+    # at ``handlers_edit._MAX_REJECTION_CHARS``. Never prose the model wrote
+    # about its own proposal, and never branched on -- it is corrective prompt
+    # text only. Credentials are withheld only to redaction's declared scope
+    # (see ``handlers_edit._rejection_text``): an http-request ``body`` value is
+    # not covered, so this field is persisted state that can carry one.
+    #
+    # Without it every re-approval at ``edit.plan_approval`` re-reads the same
+    # unchanged draft and re-prompts the agent with byte-identical inputs, so
+    # the user can approve the same plan forever and get the same refusal card
+    # (triage edit-branch-failure-2026-09-22, "Why every retry is blind").
+    # It is also the only record fine enough to tell two refusals at the SAME
+    # pydantic error location apart -- ``preflight.new_preflight_problems`` is
+    # keyed on locations, so one bad value replaced by another bad value at the
+    # same path is not a new problem to it, but the two engine messages differ.
+    # Cleared the moment a write succeeds, and by every path that starts a new
+    # edit, so a refusal can never be quoted at an unrelated later change.
+    last_edit_rejection: str = ""
 
     # -- Lifecycle fields (Slice 4, additive) --
     paused: bool = False
