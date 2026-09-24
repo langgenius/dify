@@ -16,16 +16,13 @@ import {
   difyBuilderInteractionBusyAtom,
   difyBuilderInteractionRefAtom,
   difyBuilderLocalInteractionResponseAtom,
-  difyBuilderPhaseAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRecoveryAtom,
   difyBuilderRetryCanvasRefreshAtom,
-  difyBuilderRunStatusAtom,
   difyBuilderSessionIdAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderViewVersionAtom,
 } from '../store'
-import { DifyBuilderStatusBar } from './status-bar'
 
 const AnimatedInteractionDock = ({
   children,
@@ -69,10 +66,8 @@ export const DifyBuilderPanelFooter = () => {
   const error = useAtomValue(difyBuilderErrorAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
   const localInteractionResponse = useAtomValue(difyBuilderLocalInteractionResponseAtom)
-  const phase = useAtomValue(difyBuilderPhaseAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const recovery = useAtomValue(difyBuilderRecoveryAtom)
-  const runStatus = useAtomValue(difyBuilderRunStatusAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
@@ -120,7 +115,6 @@ export const DifyBuilderPanelFooter = () => {
           </Button>
         </div>
       )}
-      <DifyBuilderStatusBar phase={phase} runStatus={runStatus} />
       <div className="relative">
         {interactionPending && (
           <AnimatedInteractionDock key={interactionKey} visible={interactionVisible}>
