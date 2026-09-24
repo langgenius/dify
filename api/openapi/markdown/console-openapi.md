@@ -10333,6 +10333,12 @@ Update a plugin endpoint
 | credential_id | query |  | Yes | string |
 | provider | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  No | **application/json**: [ParserCredentialDelete](#parsercredentialdelete)<br> |
+
 #### Responses
 
 | Code | Description |

@@ -245,6 +245,10 @@ export type ModelProviderPaymentCheckoutUrlResponse = {
   payment_link: string
 }
 
+export type ParserCredentialDelete = {
+  credential_id: string
+}
+
 export type ProviderCredentialsResponse = {
   credentials?: {
     [key: string]: unknown
