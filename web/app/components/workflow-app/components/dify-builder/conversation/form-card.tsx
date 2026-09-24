@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { MAX_FILE_UPLOAD_LIMIT } from '@/app/components/base/file-uploader/constants'
@@ -63,6 +63,9 @@ export const FormCard = memo(
     const [values, setValues] = useState<Record<string, unknown>>(() =>
       initialFormValues(fields, item.payload.values),
     )
+    const [changedFields, setChangedFields] = useState<Set<string>>(() => new Set())
+    const [invalidSubmitAttempts, setInvalidSubmitAttempts] = useState(0)
+    const formRef = useRef<HTMLFormElement>(null)
     const actionId =
       item.payload.variant === 'build_requirements'
         ? 'submit_requirements'
@@ -100,7 +103,19 @@ export const FormCard = memo(
       actionValidityChangeRef.current?.(actionId, prepared.valid)
     }, [actionId, fields, item.payload.frozen, prepared])
 
+    useLayoutEffect(() => {
+      if (invalidSubmitAttempts === 0) return
+      const invalidField = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      const focusableSelector =
+        'input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])'
+      const focusTarget = invalidField?.matches(focusableSelector)
+        ? invalidField
+        : invalidField?.querySelector<HTMLElement>(focusableSelector)
+      focusTarget?.focus()
+    }, [invalidSubmitAttempts])
+
     const updateValues = (key: string, value: unknown) => {
+      setChangedFields((current) => new Set(current).add(key))
       setValues((current) => ({ ...current, [key]: value }))
     }
 
@@ -122,6 +137,7 @@ export const FormCard = memo(
 
     const form = (
       <form
+        ref={formRef}
         id={formId}
         aria-label={category}
         className="flex flex-col gap-3"
@@ -129,21 +145,17 @@ export const FormCard = memo(
         onSubmit={(event) => {
           event.preventDefault()
           if (!prepared.valid) {
-            const invalidField =
-              event.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')
-            const focusableSelector =
-              'input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])'
-            const focusTarget = invalidField?.matches(focusableSelector)
-              ? invalidField
-              : invalidField?.querySelector<HTMLElement>(focusableSelector)
-            focusTarget?.focus()
+            setInvalidSubmitAttempts((current) => current + 1)
             return
           }
           onSubmit?.()
         }}
       >
         {fields.map((field, index) => {
-          const validationError = prepared.errors[field.key]
+          const validationError =
+            invalidSubmitAttempts > 0 || changedFields.has(field.key)
+              ? prepared.errors[field.key]
+              : undefined
           const fieldErrorId = `${errorId}-${index}-error`
           const labelContent = (
             <>
