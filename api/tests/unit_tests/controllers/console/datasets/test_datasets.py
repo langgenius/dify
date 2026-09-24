@@ -499,3 +499,10 @@ def test_api_key_create_rejects_non_string_dataset_ids_with_the_standard_error(a
     with app.test_request_context("/", method="POST", json={"dataset_ids": [123]}), pytest.raises(BadRequest) as error:
         unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)
     assert error.value.description == "dataset_ids must be a list of strings."
+
+
+def test_dataset_queries_requires_retrieval_recall_permission() -> None:
+    [check] = rbac_checks(DatasetQueryApi.get)
+
+    assert check.scene is RBACPermission.DATASET_RETRIEVAL_RECALL
+    assert isinstance(check.locator, DatasetId)
