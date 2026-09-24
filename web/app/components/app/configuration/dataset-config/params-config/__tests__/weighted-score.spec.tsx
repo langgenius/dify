@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import WeightedScore from '../weighted-score'
 
 describe('WeightedScore', () => {
-  const getSliderInput = () => screen.getByLabelText('dataset.weightedScore.semantic')
+  const getSliderInput = () =>
+    screen.getByRole('slider', { name: 'dataset.weightedScore.semantic' })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -20,10 +21,14 @@ describe('WeightedScore', () => {
       render(<WeightedScore value={value} onChange={onChange} />)
 
       // Assert
-      expect(screen.getByText('dataset.weightedScore.semantic')).toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.keyword')).toBeInTheDocument()
+      expect(screen.getByTitle('dataset.weightedScore.semantic')).toBeInTheDocument()
+      expect(screen.getByTitle('dataset.weightedScore.keyword')).toBeInTheDocument()
       expect(screen.getByText('0.3')).toBeInTheDocument()
       expect(screen.getByText('0.7')).toBeInTheDocument()
+      expect(getSliderInput()).toHaveAttribute(
+        'aria-valuetext',
+        'dataset.weightedScore.semantic: 0.3, dataset.weightedScore.keyword: 0.7',
+      )
     })
 
     it('should format a weight of 1 as 1.0', () => {

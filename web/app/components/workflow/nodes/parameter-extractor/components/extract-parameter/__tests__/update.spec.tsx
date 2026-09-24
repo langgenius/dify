@@ -1,11 +1,11 @@
 import type { Param } from '../../../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { ParamType } from '../../../types'
 import Update from '../update'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -45,9 +45,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
       return nextDialogs
     })
     const dialog = dialogs.at(-1)!
-    const nameInput = within(dialog).getByPlaceholderText(
-      'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-    )
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: 'workflow.nodes.parameterExtractor.addExtractParameterContent.name',
+    })
     const descriptionInput = within(dialog).getByPlaceholderText(
       'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
     )
@@ -98,9 +98,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
     const dialog = dialogs.at(-1)!
 
     fireEvent.change(
-      within(dialog).getByPlaceholderText(
-        'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-      ),
+      within(dialog).getByRole('textbox', {
+        name: 'workflow.nodes.parameterExtractor.addExtractParameterContent.name',
+      }),
       {
         target: { value: '1bad' },
       },
@@ -109,9 +109,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
     expect(handleSave).not.toHaveBeenCalled()
     expect(mockToast.error).toHaveBeenCalled()
     expect(
-      within(dialog).getByPlaceholderText(
-        'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-      ),
+      within(dialog).getByRole('textbox', {
+        name: 'workflow.nodes.parameterExtractor.addExtractParameterContent.name',
+      }),
     ).toHaveValue('')
   })
 

@@ -28,8 +28,15 @@ describe('AgentLogNavMore', () => {
 
     render(<AgentLogNavMore options={[option]} onShowAgentOrToolLog={onShowAgentOrToolLog} />)
 
-    await user.click(screen.getByRole('button'))
-    await user.click(screen.getByText('Intermediate Tool'))
+    const menuButton = screen.getByRole('button', {
+      name: 'common.operation.more',
+      expanded: false,
+    })
+    await user.click(menuButton)
+    expect(
+      screen.getByRole('button', { name: 'common.operation.more', expanded: true }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'Intermediate Tool' }))
 
     expect(onShowAgentOrToolLog).toHaveBeenCalledWith(option)
   })

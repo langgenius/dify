@@ -63,7 +63,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
       },
     )
   }
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   // Guard against null/undefined uniqueIdentifier to prevent app crash
   if (!uniqueIdentifier || !pluginId || !canUpdatePlugin) return null
@@ -155,7 +155,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         }
         render={content}
       />
-      <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+      <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
         {tooltip}
       </PopoverContent>
     </Popover>

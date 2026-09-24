@@ -6,7 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useState, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import { useRouter } from '@/next/navigation'
@@ -26,13 +26,12 @@ const getServerHydrationSnapshot = () => true
 
 export default function AccountDropdown({ trigger }: AccountDropdownProps) {
   const router = useRouter()
-  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const isHydrating = useSyncExternalStore(
     subscribeHydrationState,
     getHydrationSnapshot,
     getServerHydrationSnapshot,
   )
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const { mutateAsync: logout } = useLogout()
 
@@ -46,7 +45,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
 
   return (
     <div>
-      <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           disabled={isHydrating}
           render={trigger({
@@ -57,7 +56,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
           placement="top-start"
           sideOffset={6}
           alignOffset={4}
-          popupClassName={mainNavMenuPopupClassName}
+          className={mainNavMenuPopupClassName}
         >
           <MainNavMenuContent onLogout={handleLogout} />
         </DropdownMenuContent>

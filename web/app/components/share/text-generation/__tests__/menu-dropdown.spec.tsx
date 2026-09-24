@@ -1,6 +1,7 @@
 import type { SiteInfo } from '@/models/share'
+import type { WebAppAddress } from '@/service/webapp-address'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuDropdown from '../menu-dropdown'
 
 vi.mock('../info-modal', () => ({
@@ -35,6 +36,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const mockShareCode = 'test-share-code'
+const webAppAddress: WebAppAddress = { kind: 'default', code: mockShareCode }
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
@@ -48,6 +50,10 @@ vi.mock('@/context/web-app-context', () => ({
 const mockWebAppLogout = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: (...args: unknown[]) => mockWebAppLogout(...args),
+}))
+
+vi.mock('@/service/webapp-address', () => ({
+  resolveWebAppAddress: () => webAppAddress,
 }))
 
 afterEach(() => {
@@ -189,7 +195,7 @@ describe('MenuDropdown', () => {
       })
 
       await waitFor(() => {
-        expect(mockWebAppLogout).toHaveBeenCalledWith(mockShareCode)
+        expect(mockWebAppLogout).toHaveBeenCalledWith(webAppAddress)
         expect(mockReplace).toHaveBeenCalledWith(`/webapp-signin?redirect_url=${mockPathname}`)
       })
     })
@@ -231,15 +237,6 @@ describe('MenuDropdown', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('info-modal')).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe('placement prop', () => {
-    it('should accept custom placement', () => {
-      render(<MenuDropdown data={baseSiteInfo} placement="top-start" />)
-
-      const triggerButton = screen.getByRole('button')
-      expect(triggerButton).toBeInTheDocument()
     })
   })
 

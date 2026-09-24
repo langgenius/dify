@@ -1,13 +1,15 @@
 'use client'
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  WorkflowResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum, Resolution } from '@/types/app'
@@ -24,7 +26,10 @@ const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
 
 const FILE_INPUT_TYPES = new Set(['file-list', 'file'])
 
-const WORKFLOW_FILE_VAR_TYPES = new Set([InputVarType.multiFiles, InputVarType.singleFile])
+const WORKFLOW_FILE_VAR_TYPES = new Set<InputVarType>([
+  InputVarType.multiFiles,
+  InputVarType.singleFile,
+])
 
 type InputSchemaItem = {
   label?: string
@@ -33,6 +38,13 @@ type InputSchemaItem = {
   required: boolean
   fileUploadConfig?: FileUploadConfigResponse
   [key: string]: unknown
+}
+
+type WorkflowNodeWithVariables = {
+  data: {
+    type: BlockEnum
+    variables?: Array<Record<string, unknown>>
+  }
 }
 
 function isBasicAppMode(mode: string): boolean {
@@ -134,12 +146,15 @@ function buildBasicAppSchema(
 }
 
 function buildWorkflowSchema(
-  workflow: FetchWorkflowDraftResponse,
+  workflow: Pick<WorkflowResponse, 'graph'>,
   fileUploadConfig?: FileUploadConfigResponse,
 ): InputSchemaItem[] {
-  const startNode = workflow.graph?.nodes.find((node) => node.data.type === BlockEnum.Start) as
-    | { data: { variables: Array<Record<string, unknown>> } }
-    | undefined
+  const nodes = workflow.graph.nodes
+  if (!Array.isArray(nodes)) return []
+
+  const startNode = (nodes as WorkflowNodeWithVariables[]).find(
+    (node) => node.data.type === BlockEnum.Start,
+  )
 
   if (!startNode?.data.variables) return []
 

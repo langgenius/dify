@@ -139,10 +139,10 @@ class WorkflowCollaborationRepository:
         self._redis.delete(self.sid_key(sid))
 
     def session_exists(self, workflow_id: str, sid: str) -> bool:
-        return bool(self._redis.hexists(self.workflow_key(workflow_id), sid))
+        return self._redis.hexists(self.workflow_key(workflow_id), sid)
 
     def sid_mapping_exists(self, sid: str) -> bool:
-        return bool(self._redis.exists(self.sid_key(sid)))
+        return self._redis.exists(self.sid_key(sid))
 
     def get_session_sids(self, workflow_id: str) -> list[str]:
         raw_sids = self._redis.hkeys(self.workflow_key(workflow_id))
@@ -237,7 +237,7 @@ class WorkflowCollaborationRepository:
         self._redis.set(self.server_key(server_id), "1", ex=SERVER_HEARTBEAT_TTL_SECONDS)
 
     def server_heartbeat_exists(self, server_id: str) -> bool:
-        return bool(self._redis.exists(self.server_key(server_id)))
+        return bool(self._redis.exists(self.server_key(server_id)))  # tests assert `is True`
 
     def refresh_server_sessions(self, server_id: str) -> None:
         """Refresh Redis TTLs for sessions owned by a live websocket worker."""

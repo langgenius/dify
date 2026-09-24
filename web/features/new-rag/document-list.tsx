@@ -13,10 +13,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { sourceName } from './document-model'
@@ -49,7 +49,7 @@ function TaskTrigger({
   tasksButtonLabel: string
   tasksLiveStatus: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   return (
     <>
       <Button aria-label={tasksButtonLabel} data-has-error={hasTaskError} onClick={onOpenTasks}>
@@ -109,8 +109,8 @@ const DocumentRow = memo(
     status: DocumentDisplayStatus
     statusPending: boolean
   }) => {
-    const { t } = useTranslation('dataset')
-    const { t: tCommon } = useTranslation('common')
+    const { t } = useTranslation(['dataset'])
+    const { t: tCommon } = useTranslation(['common'])
     const titleId = `new-document-${document.id}`
     const revision = document.activeRevision ?? document.active?.revision
     const updatedTime = Date.parse(document.updatedAt)
@@ -198,7 +198,7 @@ const DocumentRow = memo(
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-44">
               <DropdownMenuItem
                 className="gap-2 px-3"
                 onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
@@ -248,7 +248,7 @@ export function DocumentsEmpty({
   tasksLiveStatus: string
   uploading: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const tasksVisible = activeTaskCount > 0 || Boolean(attentionTaskBadge) || hasTaskError
 
   return (
@@ -275,7 +275,6 @@ export function DocumentsEmpty({
       <Button
         className="mt-4"
         variant="primary"
-        aria-busy={uploading}
         disabled={!canEdit}
         loading={uploading}
         aria-describedby={!canEdit ? readOnlyReasonId : undefined}
@@ -378,8 +377,8 @@ export function DocumentsList({
   tasksLiveStatus: string
   uploading: boolean
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [visibleDocumentLimit, setVisibleDocumentLimit] = useState(DOCUMENT_RENDER_BATCH_SIZE)
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
@@ -454,7 +453,6 @@ export function DocumentsList({
         </Button>
         <Button
           variant="primary"
-          aria-busy={uploading}
           disabled={!canEdit}
           loading={uploading}
           aria-describedby={!canEdit ? readOnlyReasonId : undefined}
@@ -562,7 +560,7 @@ export function DocumentsList({
         )}
         {completingResults && (
           <div className="flex min-h-32 items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
       </div>
@@ -593,7 +591,6 @@ export function DocumentsList({
           <Button
             ref={loadMoreButtonRef}
             aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-            aria-busy={isFetchingNextDocumentPage}
             loading={isFetchingNextDocumentPage}
             onBlur={(event) => {
               if (event.relatedTarget) restoreLoadMoreFocusRef.current = false
@@ -610,7 +607,6 @@ export function DocumentsList({
         <div className="mt-5 flex justify-center">
           <Button
             ref={loadMoreButtonRef}
-            aria-busy={isFetchingNextPage}
             loading={isFetchingNextPage}
             onBlur={(event) => {
               if (event.relatedTarget) restoreLoadMoreFocusRef.current = false
@@ -647,7 +643,7 @@ export function DocumentBulkActions({
   reindexing: boolean
   selectedCount: number
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))]">
       <div
@@ -659,7 +655,6 @@ export function DocumentBulkActions({
       >
         <Button
           aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
-          aria-busy={reindexing}
           className="shrink-0"
           disabled={disabled}
           loading={reindexing}

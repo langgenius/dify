@@ -119,10 +119,6 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: mockDataset }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current)
@@ -215,12 +211,12 @@ describe('DatasetInfo', () => {
       expect(screen.queryByText('dataset.chunkingMode.general')).not.toBeInTheDocument()
     })
 
-    it('should hide detailed fields when collapsed', () => {
+    it('should keep the dataset name available when collapsed and omit detailed fields', () => {
       // Arrange
       render(<DatasetInfo expand={false} />)
 
       // Assert
-      expect(screen.queryByText('Dataset Name')).not.toBeInTheDocument()
+      expect(screen.getByText('Dataset Name')).toBeInTheDocument()
       expect(screen.queryByText('Dataset description')).not.toBeInTheDocument()
     })
   })
@@ -240,33 +236,47 @@ describe('MenuItem', () => {
       render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
 
       // Act
-      await user.click(screen.getByText('Edit'))
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
 
       // Assert
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
 
-    it('should stop propagation before invoking the handler', () => {
-      const parentClick = vi.fn()
+    it.each([
+      ['Enter', '{Enter}'],
+      ['Space', ' '],
+    ])('should be reachable and activate with %s', async (_, key) => {
+      const user = userEvent.setup()
       const handleClick = vi.fn()
+      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
 
-      render(
-        <div role="button" tabIndex={0} onClick={parentClick} onKeyDown={parentClick}>
-          <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
-        </div>,
-      )
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Edit' })).toHaveFocus()
 
-      fireEvent.click(screen.getByText('Edit'))
+      await user.keyboard(key)
+      expect(handleClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should stop propagation before invoking the handler', () => {
+      const handleClick = vi.fn()
+      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
+
+      const menuItem = screen.getByRole('button', { name: 'Edit' })
+      const event = createEvent.click(menuItem)
+      const stopPropagation = vi.spyOn(event, 'stopPropagation')
+
+      fireEvent(menuItem, event)
 
       expect(handleClick).toHaveBeenCalledTimes(1)
-      expect(parentClick).not.toHaveBeenCalled()
+      expect(stopPropagation).toHaveBeenCalledTimes(1)
     })
 
     it('should prevent the default action when no click handler is provided', () => {
       render(<MenuItem name="Edit" Icon={TestEditIcon} />)
 
-      const event = createEvent.click(screen.getByText('Edit'))
-      fireEvent(screen.getByText('Edit'), event)
+      const menuItem = screen.getByRole('button', { name: 'Edit' })
+      const event = createEvent.click(menuItem)
+      fireEvent(menuItem, event)
 
       expect(event.defaultPrevented).toBe(true)
     })

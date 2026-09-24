@@ -157,7 +157,7 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => () => null,
 }))
 
@@ -192,7 +192,7 @@ vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: toastErrorMock,
     info: toastInfoMock,
@@ -675,6 +675,25 @@ describe('Workflow edge event wiring', () => {
     expect(toastErrorMock).toHaveBeenCalledWith('workflow.common.draftSaveFailed', {
       timeout: 0,
     })
+  })
+
+  it('should cancel the pending debounced save before the final unmount sync', () => {
+    vi.useFakeTimers()
+    try {
+      const pendingSync = vi.fn()
+      const { store, unmount } = renderSubject({
+        initialStoreState: { isWorkflowDataLoaded: true },
+      })
+      store.getState().debouncedSyncWorkflowDraft(pendingSync)
+
+      unmount()
+      vi.advanceTimersByTime(5000)
+
+      expect(workflowHookMocks.handleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+      expect(pendingSync).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('should skip the unmount save before workflow data has loaded', () => {

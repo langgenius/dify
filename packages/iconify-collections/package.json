@@ -2,11 +2,11 @@
   "name": "@dify/iconify-collections",
   "version": "0.0.0-private",
   "private": true,
+  "type": "module",
   "exports": {
     "./custom-public": {
       "types": "./custom-public/index.d.ts",
-      "import": "./custom-public/index.mjs",
-      "require": "./custom-public/index.js"
+      "import": "./custom-public/index.mjs"
     },
     "./custom-public/icons.json": "./custom-public/icons.json",
     "./custom-public/info.json": "./custom-public/info.json",
@@ -14,8 +14,7 @@
     "./custom-public/chars.json": "./custom-public/chars.json",
     "./custom-vender": {
       "types": "./custom-vender/index.d.ts",
-      "import": "./custom-vender/index.mjs",
-      "require": "./custom-vender/index.js"
+      "import": "./custom-vender/index.mjs"
     },
     "./custom-vender/icons.json": "./custom-vender/icons.json",
     "./custom-vender/info.json": "./custom-vender/info.json",
@@ -23,11 +22,14 @@
     "./custom-vender/chars.json": "./custom-vender/chars.json"
   },
   "scripts": {
-    "check:dimensions": "tsx ./scripts/check-icon-dimensions.ts",
-    "generate": "tsx ./scripts/generate-collections.ts"
+    "check:dimensions": "node ./scripts/check-icon-dimensions.ts",
+    "generate": "node ./scripts/generate-collections.ts",
+    "type-check": "tsc"
   },
   "devDependencies": {
-    "iconify-import-svg": "catalog:",
-    "tsx": "catalog:"
+    "@dify/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "iconify-import-svg": "catalog:"
   }
 }

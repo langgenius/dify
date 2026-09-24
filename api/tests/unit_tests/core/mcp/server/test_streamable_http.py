@@ -22,6 +22,7 @@ from core.mcp.server.streamable_http import (
 )
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import App, AppMCPServer, AppMode, EndUser
+from services.errors.app import TriggerWorkflowServiceModeUnavailableError
 
 
 class TestHandleMCPRequest:
@@ -158,6 +159,29 @@ class TestHandleMCPRequest:
         mock_app_generate.generate.assert_called_once()
 
     @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_returns_trigger_workflow_business_error(self, mock_app_generate):
+        mock_call_request = Mock(spec=types.CallToolRequest)
+        mock_call_request.params = Mock()
+        mock_call_request.params.arguments = {"query": "test question"}
+        mock_call_request.id = 123
+        self.mock_request.root = mock_call_request
+        mock_app_generate.generate.side_effect = TriggerWorkflowServiceModeUnavailableError()
+
+        result = handle_mcp_request(
+            Mock(),
+            self.app,
+            self.mock_request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+        )
+
+        assert isinstance(result, types.JSONRPCError)
+        assert result.error.code == types.INVALID_REQUEST
+        assert result.error.data == {"code": "trigger_workflow_service_mode_unavailable"}
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request_threads_protocol_version(self, mock_app_generate):
         """The negotiated version reaches handle_call_tool through the dispatcher."""
         mock_call_request = Mock(spec=types.CallToolRequest)
@@ -260,9 +284,7 @@ class TestIndividualHandlers:
 
     def test_handle_initialize_echoes_supported_version(self):
         """A supported requested version is echoed back unchanged."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", "2024-11-05")
+        result = handle_initialize("Test server", "2024-11-05")
 
         assert isinstance(result, types.InitializeResult)
         assert result.protocolVersion == "2024-11-05"
@@ -270,34 +292,26 @@ class TestIndividualHandlers:
 
     def test_handle_initialize_echoes_intermediate_version(self):
         """The intermediate supported version (2025-03-26) is echoed back."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", "2025-03-26")
+        result = handle_initialize("Test server", "2025-03-26")
 
         assert result.protocolVersion == "2025-03-26"
 
     def test_handle_initialize_negotiates_latest_for_modern_client(self):
         """A 2025-06-18 client gets 2025-06-18 back."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", "2025-06-18")
+        result = handle_initialize("Test server", "2025-06-18")
 
         assert result.protocolVersion == "2025-06-18"
 
     def test_handle_initialize_falls_back_for_unknown_version(self):
         """An unsupported requested version falls back to the server latest."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", "1999-01-01")
+        result = handle_initialize("Test server", "1999-01-01")
 
         assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
         assert result.protocolVersion == "2025-06-18"
 
     def test_handle_initialize_non_string_version_falls_back(self):
         """A malformed (non-string) requested version falls back to the server latest."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", 20250618)
+        result = handle_initialize("Test server", 20250618)
 
         assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
 

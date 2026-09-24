@@ -140,17 +140,3 @@ func TestReadEnvironment_Valid(t *testing.T) {
 		t.Errorf("AuthJWE = %q, want %q", env.AuthJWE, "test-token")
 	}
 }
-
-func TestReadDriveBase_Default(t *testing.T) {
-	t.Setenv(EnvDriveBase, "")
-	if got := ReadDriveBase(); got != DefaultDriveBase {
-		t.Errorf("ReadDriveBase() = %q, want %q", got, DefaultDriveBase)
-	}
-}
-
-func TestReadDriveBase_Custom(t *testing.T) {
-	t.Setenv(EnvDriveBase, "/custom/drive")
-	if got := ReadDriveBase(); got != "/custom/drive" {
-		t.Errorf("ReadDriveBase() = %q, want %q", got, "/custom/drive")
-	}
-}

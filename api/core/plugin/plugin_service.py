@@ -58,6 +58,7 @@ from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.endpoint import PluginEndpointClient
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.plugin import PluginInstaller
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
@@ -68,7 +69,7 @@ from services.enterprise.plugin_manager_service import (
 )
 from services.entities.feature_entities import PluginInstallationPermissionModel, PluginInstallationScope
 from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 logger = logging.getLogger(__name__)
 _provider_entities_adapter: TypeAdapter[list[PluginModelProviderDeclaration]] = TypeAdapter(
@@ -666,7 +667,7 @@ class PluginService:
     @staticmethod
     def _get_plugin_installation_permission() -> PluginInstallationPermissionModel:
         """Resolve the validated policy and reject deny-all before any installation side effect."""
-        permission = FeatureService.get_plugin_installation_permission()
+        permission = SystemFeatureService.get_plugin_installation_permission()
         if permission.plugin_installation_scope == PluginInstallationScope.NONE:
             raise PluginInstallationForbiddenError("Installing plugins is not allowed")
         return permission
@@ -1256,7 +1257,7 @@ class PluginService:
                 PluginService.invalidate_plugin_model_providers_cache(tenant_id)
             return result
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             PluginManagerService.try_pre_uninstall_plugin(
                 PreUninstallPluginRequest(
                     tenant_id=tenant_id,

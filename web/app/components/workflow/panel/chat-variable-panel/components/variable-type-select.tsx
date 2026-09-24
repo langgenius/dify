@@ -71,7 +71,7 @@ const VariableTypeSelector = <T extends string>({
       </SelectTrigger>
       <SelectContent
         placement="bottom-start"
-        popupClassName={cn('bg-components-panel-bg-blur', popupClassName)}
+        className={cn('bg-components-panel-bg-blur', popupClassName)}
       >
         {list.map((item) => (
           <SelectItem

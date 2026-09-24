@@ -9,20 +9,20 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import GridMask from '@/app/components/base/grid-mask'
-import { Infotip } from '@/app/components/base/infotip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
@@ -53,15 +53,19 @@ const ModelLoadBalancingConfigs = ({
   onUpdate,
   onRemove,
 }: ModelLoadBalancingConfigsProps) => {
-  const { t } = useTranslation()
+  const loadBalancingLabelId = useId()
+
+  const { t } = useTranslation(['common'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
   const providerFormSchemaPredefined =
     configurationMethod === ConfigurationMethodEnum.predefinedModel
-  const modelLoadBalancingEnabled = useProviderContextSelector(
-    (state) => state.modelLoadBalancingEnabled,
+  const { data: modelLoadBalancingEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.model_load_balancing_enabled,
+    }),
   )
 
   const updateConfigEntry = useCallback(
@@ -128,11 +132,13 @@ const ModelLoadBalancingConfigs = ({
 
   const clearCountdown = useCallback(
     (index: number) => {
-      updateConfigEntry(index, ({ ttl: _, ...entry }) => {
-        return {
+      updateConfigEntry(index, (entry) => {
+        const updatedEntry = {
           ...entry,
           in_cooldown: false,
         }
+        delete updatedEntry.ttl
+        return updatedEntry
       })
     },
     [updateConfigEntry],
@@ -183,14 +189,18 @@ const ModelLoadBalancingConfigs = ({
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
-              {t(($) => $['modelProvider.loadBalancing'], { ns: 'common' })}
-              <Infotip
-                aria-label={t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
-                className="size-3"
-                iconSize="small"
-                popupClassName="max-w-[300px]"
-              >
-                {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
+              <span id={loadBalancingLabelId}>
+                {t(($) => $['modelProvider.loadBalancing'], { ns: 'common' })}
+              </span>
+              <Infotip>
+                <InfotipTrigger
+                  aria-labelledby={loadBalancingLabelId}
+                  className="size-3"
+                  iconSize="small"
+                />
+                <InfotipContent aria-labelledby={loadBalancingLabelId}>
+                  {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
+                </InfotipContent>
               </Infotip>
             </div>
             <div className="text-xs text-text-tertiary">
@@ -313,7 +323,7 @@ const ModelLoadBalancingConfigs = ({
         )}
       </div>
 
-      {!modelLoadBalancingEnabled && deploymentEdition === 'CLOUD' && (
+      {modelLoadBalancingEnabled === false && deploymentEdition === 'CLOUD' && (
         <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div className={cn('text-gradient text-sm/tight font-semibold', s.textGradient)}>

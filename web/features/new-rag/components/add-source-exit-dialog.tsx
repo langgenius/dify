@@ -24,8 +24,8 @@ export function AddSourceExitDialog({
   onConfirm: () => void
   open: boolean
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <AlertDialog
@@ -55,7 +55,7 @@ export function AddSourceExitDialog({
           <AlertDialogCancelButton variant="secondary" disabled={discarding}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton loading={discarding} disabled={discarding} onClick={onConfirm}>
+          <AlertDialogConfirmButton loading={discarding} onClick={onConfirm}>
             {t(($) => $['newKnowledge.discardDraftConfirm'])}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

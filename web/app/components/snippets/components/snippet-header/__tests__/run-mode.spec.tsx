@@ -74,7 +74,9 @@ describe('RunMode', () => {
 
     expect(screen.getByRole('button', { name: /workflow\.common\.running/i })).toBeDisabled()
 
-    await user.click(screen.getAllByRole('button')[1]!)
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.debug\.variableInspect\.trigger\.stop/i }),
+    )
 
     expect(workflowHookMocks.handleStopRun).toHaveBeenCalledWith('task-1')
 
@@ -109,7 +111,9 @@ describe('RunMode', () => {
       },
     })
 
-    await user.click(screen.getAllByRole('button')[1]!)
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.debug\.variableInspect\.trigger\.stop/i }),
+    )
 
     expect(workflowHookMocks.handleStopRun).toHaveBeenCalledWith('')
   })

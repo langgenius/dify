@@ -2,44 +2,37 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from sqlalchemy.orm import Session, scoped_session
+from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.wraps as wraps_module
 import models.model as model_module
 from controllers.console.explore.error import (
     AppAccessDeniedError,
-    TrialAppLimitExceeded,
-    TrialAppNotAllowed,
+    TrialAppFeatureDisabledError,
 )
+from controllers.console.explore.trial_app_admission import trial_feature_enable
 from controllers.console.explore.wraps import (
     InstalledAppResource,
-    TrialAppResource,
     installed_app_required,
-    trial_app_required,
-    trial_feature_enable,
     user_allowed_to_access_app,
 )
-from models import AccountTrialAppRecord, App, AppMode, InstalledApp, TrialApp
+from models import Account, App, InstalledApp
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 def _bind_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    session_proxy = MagicMock(wraps=sqlite_session)
-    session_proxy.return_value = sqlite_session
-    monkeypatch.setattr(wraps_module.db, "session", session_proxy)
-    monkeypatch.setattr(model_module.db, "session", session_proxy)
+    session_registry = scoped_session(lambda: sqlite_session)
+    monkeypatch.setattr(wraps_module.db, "session", session_registry)
+    monkeypatch.setattr(model_module.db, "session", session_registry)
+
+
+def _account(*, account_id: str | None = None) -> Account:
+    return make_account(account_id=account_id, name="Explore user", email="user@example.com")
 
 
 def _app() -> App:
-    app = App(
-        tenant_id=str(uuid4()),
-        name="Explore App",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-    )
-    app.id = str(uuid4())
-    return app
+    return make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), name="Explore App", icon_type=None)
 
 
 def _installed_app(*, app_id: str, tenant_id: str) -> InstalledApp:
@@ -67,7 +60,7 @@ def test_installed_app_required_not_found(
 
     with patch(
         "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(), tenant_id),
+        return_value=(_account(), tenant_id),
     ):
         with pytest.raises(NotFound):
             view(str(uuid4()))
@@ -91,7 +84,7 @@ def test_installed_app_required_app_deleted(
 
     with patch(
         "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(), tenant_id),
+        return_value=(_account(), tenant_id),
     ):
         with pytest.raises(NotFound):
             view(installed_app_id)
@@ -116,33 +109,31 @@ def test_installed_app_required_success(
 
     with patch(
         "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(), app.tenant_id),
+        return_value=(_account(), app.tenant_id),
     ):
         result = view(installed_app.id)
 
     assert result.id == installed_app.id
-    assert result.app is not None
-    assert result.app.id == app.id
+    app_model = result.app_with_session(session=sqlite_session)
+    assert app_model is not None
+    assert app_model.id == app.id
 
 
 def test_user_allowed_to_access_app_denied():
-    installed_app = MagicMock(app_id="app-1")
+    installed_app = _installed_app(app_id="app-1", tenant_id="tenant-1")
 
     @user_allowed_to_access_app
     def view(installed_app):
         return "ok"
 
-    feature = MagicMock()
-    feature.webapp_auth.enabled = True
-
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
-            return_value=(MagicMock(id="user-1"), None),
+            return_value=(_account(account_id="user-1"), None),
         ),
         patch(
-            "controllers.console.explore.wraps.FeatureService.get_system_features",
-            return_value=feature,
+            "controllers.console.explore.wraps.SystemFeatureService.is_webapp_auth_enabled",
+            return_value=True,
         ),
         patch(
             "controllers.console.explore.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
@@ -154,23 +145,20 @@ def test_user_allowed_to_access_app_denied():
 
 
 def test_user_allowed_to_access_app_success():
-    installed_app = MagicMock(app_id="app-1")
+    installed_app = _installed_app(app_id="app-1", tenant_id="tenant-1")
 
     @user_allowed_to_access_app
     def view(installed_app):
         return "ok"
 
-    feature = MagicMock()
-    feature.webapp_auth.enabled = True
-
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
-            return_value=(MagicMock(id="user-1"), None),
+            return_value=(_account(account_id="user-1"), None),
         ),
         patch(
-            "controllers.console.explore.wraps.FeatureService.get_system_features",
-            return_value=feature,
+            "controllers.console.explore.wraps.SystemFeatureService.is_webapp_auth_enabled",
+            return_value=True,
         ),
         patch(
             "controllers.console.explore.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
@@ -180,110 +168,35 @@ def test_user_allowed_to_access_app_success():
         assert view(installed_app) == "ok"
 
 
-@pytest.mark.parametrize("sqlite_session", [(TrialApp, App, AccountTrialAppRecord)], indirect=True)
-def test_trial_app_required_not_allowed(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-):
-    _bind_database(monkeypatch, sqlite_session)
-
-    @trial_app_required
-    def view(app):
-        return "ok"
-
-    with patch(
-        "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(id=str(uuid4())), None),
-    ):
-        with pytest.raises(TrialAppNotAllowed):
-            view(str(uuid4()))
-
-
-@pytest.mark.parametrize("sqlite_session", [(TrialApp, App, AccountTrialAppRecord)], indirect=True)
-def test_trial_app_required_limit_exceeded(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-):
-    account_id = str(uuid4())
-    app = _app()
-    trial_app = TrialApp(app_id=app.id, tenant_id=app.tenant_id, trial_limit=1)
-    record = AccountTrialAppRecord(account_id=account_id, app_id=app.id, count=1)
-    sqlite_session.add_all([app, trial_app, record])
-    sqlite_session.commit()
-    _bind_database(monkeypatch, sqlite_session)
-
-    @trial_app_required
-    def view(app):
-        return "ok"
-
-    with patch(
-        "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(id=account_id), None),
-    ):
-        with pytest.raises(TrialAppLimitExceeded):
-            view(app.id)
-
-
-@pytest.mark.parametrize("sqlite_session", [(TrialApp, App, AccountTrialAppRecord)], indirect=True)
-def test_trial_app_required_success(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-):
-    account_id = str(uuid4())
-    app = _app()
-    trial_app = TrialApp(app_id=app.id, tenant_id=app.tenant_id, trial_limit=2)
-    record = AccountTrialAppRecord(account_id=account_id, app_id=app.id, count=1)
-    sqlite_session.add_all([app, trial_app, record])
-    sqlite_session.commit()
-    _bind_database(monkeypatch, sqlite_session)
-
-    @trial_app_required
-    def view(app):
-        return app
-
-    with patch(
-        "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(id=account_id), None),
-    ):
-        result = view(app.id)
-
-    assert result.id == app.id
-
-
-def test_trial_feature_enable_disabled():
+def test_trial_feature_enable_disabled() -> None:
     @trial_feature_enable
-    def view():
+    def view() -> str:
         return "ok"
 
-    with patch(
-        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
-        return_value=False,
-    ):
-        with pytest.raises(Forbidden):
+    services = MagicMock()
+    services.recommended_app_queries.is_trial_enabled.return_value = False
+    with patch("controllers.console.explore.trial_app_admission.application_services", return_value=services):
+        with pytest.raises(TrialAppFeatureDisabledError) as exc_info:
             view()
 
+    assert exc_info.value.data == {
+        "code": "trial_app_feature_disabled",
+        "message": "Trial app feature is not enabled.",
+        "status": 403,
+    }
 
-def test_trial_feature_enable_enabled():
+
+def test_trial_feature_enable_enabled() -> None:
     @trial_feature_enable
-    def view():
+    def view() -> str:
         return "ok"
 
-    with patch(
-        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
-        return_value=True,
-    ):
+    services = MagicMock()
+    services.recommended_app_queries.is_trial_enabled.return_value = True
+    with patch("controllers.console.explore.trial_app_admission.application_services", return_value=services):
         assert view() == "ok"
 
 
 def test_installed_app_resource_decorators():
     decorators = InstalledAppResource.method_decorators
     assert len(decorators) == 4
-
-
-def test_trial_app_resource_decorators():
-    assert TrialAppResource.method_decorators == [
-        trial_app_required,
-        trial_feature_enable,
-        wraps_module.account_initialization_required,
-        wraps_module.login_required,
-    ]

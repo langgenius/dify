@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 import { marketplaceSearchParamsParsers } from '../search-params'
 
@@ -9,6 +9,7 @@ describe('marketplace search params', () => {
     )
     expect(marketplaceSearchParamsParsers.q.parseServerSide(undefined)).toBe('')
     expect(marketplaceSearchParamsParsers.tags.parseServerSide(undefined)).toEqual([])
+    expect(marketplaceSearchParamsParsers.languages.parseServerSide(undefined)).toEqual([])
   })
 
   it('parses supported query values with the configured parsers', () => {
@@ -22,6 +23,10 @@ describe('marketplace search params', () => {
     expect(marketplaceSearchParamsParsers.tags.parseServerSide('rag,search')).toEqual([
       'rag',
       'search',
+    ])
+    expect(marketplaceSearchParamsParsers.languages.parseServerSide('en,zh-Hans')).toEqual([
+      'en',
+      'zh-Hans',
     ])
   })
 })

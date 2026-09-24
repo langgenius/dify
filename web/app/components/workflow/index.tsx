@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import type { Viewport } from 'reactflow'
 import type { CursorPosition, OnlineUser } from './collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from './hooks-store'
+import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type { ConversationVariable, Edge, EnvironmentVariable, Node } from './types'
 import type { EventEmitterValue } from '@/context/event-emitter'
@@ -18,7 +19,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
@@ -29,6 +29,7 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -45,6 +46,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -70,6 +72,7 @@ import HelpLine from './help-line'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
+import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
 import { useNodesInteractions } from './hooks/use-nodes-interactions'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from './hooks/use-panel-interactions'
@@ -77,6 +80,7 @@ import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useSetWorkflowVarsWithValue } from './hooks/use-set-workflow-vars-with-value'
 import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-workflow'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useWorkflowControlScale } from './hooks/use-workflow-control-scale'
 import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
@@ -181,8 +185,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     myUserId,
     onlineUsers,
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflow'])
     const workflowContainerRef = useRef<HTMLDivElement>(null)
+    useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
     const reactflow = useReactFlow()
     const store = useStoreApi()
@@ -281,7 +286,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [edges, nodes, setEdges, setNodes, store])
 
     useEffect(() => {
-      return collaborationManager.onHistoryAction((_) => {
+      return collaborationManager.onHistoryAction(() => {
         toast.info(t(($) => $['collaboration.historyAction.generic'], { ns: 'workflow' }))
       })
     }, [t])
@@ -372,7 +377,10 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [])
 
     const syncWorkflowDraftOnUnmount = useEffectEvent(() => {
-      if (!workflowStore.getState().isWorkflowDataLoaded) return
+      const { debouncedSyncWorkflowDraft, isWorkflowDataLoaded } = workflowStore.getState()
+      if (!isWorkflowDataLoaded) return
+
+      debouncedSyncWorkflowDraft.cancel?.()
 
       if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
         syncWorkflowDraftWhenPageClose()
@@ -554,6 +562,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleNodeEnter,
       handleNodeLeave,
       handleNodeClick,
+      handleNodeSelect,
       handleNodeConnect,
       handleNodeConnectStart,
       handleNodeConnectEnd,
@@ -561,6 +570,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleHistoryBack,
       handleHistoryForward,
     } = useNodesInteractions()
+    const handleNodeKeyDown = useNodeKeyboardInteractions(handleNodeSelect)
     const { handleEdgeEnter, handleEdgeLeave, handleEdgesChange, handleEdgeContextMenu } =
       useEdgesInteractions()
     const {
@@ -762,6 +772,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             edgeTypes={edgeTypes}
             nodes={nodes}
             edges={edges}
+            onKeyDownCapture={handleNodeKeyDown}
             className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
             onNodeDragStart={handleNodeDragStart}
             onNodeDrag={handleNodeDrag}
@@ -784,6 +795,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             onSelectionContextMenu={handleSelectionContextMenu}
             connectionLineComponent={CustomConnectionLine}
             defaultViewport={viewport}
+            fitView={!viewport}
             multiSelectionKeyCode={null}
             deleteKeyCode={null}
             nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
@@ -848,20 +860,23 @@ const WorkflowHistoryStoreInitializer = ({
   children,
 }: WorkflowWithDefaultContextProps) => {
   const workflowStore = useWorkflowStore()
-  const initializedRef = useRef(false)
+  const initializedWorkflowHistory = useStore((state) => state.initializedWorkflowHistory)
+  const [initialWorkflowHistory] = useState<WorkflowHistoryState>(() => ({
+    nodes,
+    edges,
+    workflowHistoryEvent: undefined,
+    workflowHistoryEventMeta: undefined,
+  }))
 
-  if (!initializedRef.current) {
-    workflowStore.temporal.getState().pause()
-    workflowStore.getState().setWorkflowHistory({
-      nodes,
-      edges,
-      workflowHistoryEvent: undefined,
-      workflowHistoryEventMeta: undefined,
-    })
-    workflowStore.temporal.getState().clear()
-    workflowStore.temporal.getState().resume()
-    initializedRef.current = true
-  }
+  useLayoutEffect(() => {
+    const temporalStore = workflowStore.temporal.getState()
+    temporalStore.pause()
+    workflowStore.getState().initializeWorkflowHistory(initialWorkflowHistory)
+    temporalStore.clear()
+    temporalStore.resume()
+  }, [initialWorkflowHistory, workflowStore])
+
+  if (initializedWorkflowHistory !== initialWorkflowHistory) return null
 
   return children
 }

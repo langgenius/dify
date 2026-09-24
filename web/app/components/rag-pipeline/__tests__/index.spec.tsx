@@ -50,7 +50,9 @@ vi.mock('../components/rag-pipeline-main', () => ({
 }))
 
 vi.mock('@/app/components/workflow', () => ({
-  default: ({ children }: { children: React.ReactNode }) => children,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="workflow-default-context">{children}</div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
@@ -75,7 +77,7 @@ describe('RagPipeline', () => {
 
     render(<RagPipelineWrapper />)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('passes initialized graph data to the pipeline', () => {

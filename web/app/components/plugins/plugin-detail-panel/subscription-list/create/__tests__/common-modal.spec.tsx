@@ -1,7 +1,7 @@
 import type * as React from 'react'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { CommonCreateModal } from '../common-modal'
@@ -138,7 +138,7 @@ vi.mock('@/utils/urlValidation', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign((params: unknown) => mockToastNotify(params), {
     success: (message: unknown) => mockToastNotify({ type: 'success', message }),
     error: (message: unknown) => mockToastNotify({ type: 'error', message }),

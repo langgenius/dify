@@ -1,7 +1,9 @@
+import type { ReactElement } from 'react'
 import type { WorkflowCommentDetail } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { CommentThread } from './thread'
 
 const mockSetCommentPreviewHovering = vi.hoisted(() => vi.fn())
@@ -15,6 +17,11 @@ const mockConsoleState = vi.hoisted(() => ({
     avatar_url: 'alice.png',
   },
 }))
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 const storeState = vi.hoisted(() => ({
   mentionableUsersCache: {
@@ -35,11 +42,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
     flowToScreenPosition: mockFlowToScreenPosition,
@@ -53,10 +55,6 @@ vi.mock('../store', () => ({
 
 vi.mock('@/app/components/workflow/collaboration/utils/user-color', () => ({
   getUserColor: () => '#22c55e',
-}))
-
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
 }))
 
 vi.mock('@/app/components/base/inline-delete-confirm', () => ({

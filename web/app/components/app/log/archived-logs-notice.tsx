@@ -1,34 +1,37 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '@/app/components/billing/type'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 
 export function ArchivedLogsNotice() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const { enableBilling, plan } = useProviderContext()
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   if (
     deploymentEdition !== 'CLOUD' ||
     !isCurrentWorkspaceManager ||
-    !enableBilling ||
-    plan.type === Plan.sandbox
+    (plan !== 'professional' && plan !== 'team')
   )
     return null
 

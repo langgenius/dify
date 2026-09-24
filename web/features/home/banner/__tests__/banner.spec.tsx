@@ -1,9 +1,11 @@
 import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { Banner } from '../banner'
 
 const mockTrackEvent = vi.fn()
@@ -14,6 +16,7 @@ const mockCarouselListeners = new Set<() => void>()
 const mockAutoplayListeners = {
   play: new Set<() => void>(),
   stop: new Set<() => void>(),
+  reInit: new Set<() => void>(),
 }
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
@@ -21,6 +24,11 @@ const mockConsoleState = vi.hoisted(() => ({
     name: 'Evan',
   },
 }))
+
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
+  renderWithConsoleState(ui, {
+    wrapper: createConsoleQueryWrapper({ accountProfile: mockConsoleState.userProfile }).wrapper,
+  })
 
 const emitAutoplay = (event: 'play' | 'stop') => {
   mockAutoplayListeners[event].forEach((listener) => listener())
@@ -44,11 +52,13 @@ const mockApi = {
   on: vi.fn((event: string, listener: () => void) => {
     if (event === 'autoplay:play') mockAutoplayListeners.play.add(listener)
     if (event === 'autoplay:stop') mockAutoplayListeners.stop.add(listener)
+    if (event === 'reInit') mockAutoplayListeners.reInit.add(listener)
     return mockApi
   }),
   off: vi.fn((event: string, listener: () => void) => {
     if (event === 'autoplay:play') mockAutoplayListeners.play.delete(listener)
     if (event === 'autoplay:stop') mockAutoplayListeners.stop.delete(listener)
+    if (event === 'reInit') mockAutoplayListeners.reInit.delete(listener)
     return mockApi
   }),
 }
@@ -57,11 +67,6 @@ const setMockSelectedIndex = (index: number) => {
   mockSelectedIndex = index
   mockCarouselListeners.forEach((listener) => listener())
 }
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
@@ -72,9 +77,7 @@ vi.mock('react-i18next', async () => {
   return {
     useTranslation: () => ({
       i18n: { language: 'en-US' },
-      t: withSelectorKey((key: string, opts?: Record<string, unknown>) => {
-        if (key === 'banner.greeting') return `Welcome back, ${opts?.name}👋`
-        if (key === 'banner.tagline') return 'What if… this is where your next idea begins.'
+      t: withSelectorKey((key: string) => {
         return key
       }),
     }),
@@ -176,6 +179,7 @@ describe('Banner', () => {
     mockCarouselListeners.clear()
     mockAutoplayListeners.play.clear()
     mockAutoplayListeners.stop.clear()
+    mockAutoplayListeners.reInit.clear()
     mockConsoleState.userProfile = { id: 'account-123', name: 'Evan' }
   })
 
@@ -184,10 +188,6 @@ describe('Banner', () => {
   it('renders nothing when there are no banners', () => {
     render(<Banner banners={[]} />)
 
-    expect(screen.queryByText('Welcome back, Evan👋')).not.toBeInTheDocument()
-    expect(
-      screen.queryByText('What if… this is where your next idea begins.'),
-    ).not.toBeInTheDocument()
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
   })
 
@@ -201,7 +201,7 @@ describe('Banner', () => {
       />,
     )
 
-    expect(screen.getByRole('region', { name: 'Featured' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'banner.carouselLabel' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'pagination.pageNumber' })).toBeInTheDocument()
     expect(screen.getAllByTestId('banner-item')).toHaveLength(2)
   })
@@ -244,7 +244,8 @@ describe('Banner', () => {
       />,
     )
 
-    expect(screen.getAllByRole('button')).toHaveLength(2)
+    expect(screen.getAllByRole('button')).toHaveLength(3)
+    expect(screen.getAllByRole('button')[0]).toHaveAccessibleName('banner.stopRotation')
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
     secondBannerButton.focus()
     fireEvent.click(secondBannerButton)
@@ -252,7 +253,7 @@ describe('Banner', () => {
 
     act(() => setMockSelectedIndex(1))
     expect(secondBannerButton).toHaveFocus()
-    expect(screen.getAllByRole('button')).toHaveLength(2)
+    expect(screen.getAllByRole('button')).toHaveLength(3)
   })
 
   it('keeps autoplay running when pointer selection does not move focus', () => {
@@ -288,7 +289,6 @@ describe('Banner', () => {
   })
 
   it('does not control an inactive autoplay plugin during manual selection', () => {
-    mockAutoplayPlaying = false
     render(
       <Banner
         banners={[
@@ -297,6 +297,9 @@ describe('Banner', () => {
         ]}
       />,
     )
+    act(() => mockAutoplay.stop())
+    mockAutoplay.play.mockClear()
+    mockAutoplay.stop.mockClear()
 
     fireEvent.click(screen.getByRole('button', { name: '02 Second banner' }))
 
@@ -323,7 +326,63 @@ describe('Banner', () => {
     expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'off')
   })
 
-  it('pauses rotation while keyboard focus is within the pagination controls', () => {
+  it('keeps the pause action while pointer hover temporarily pauses rotation', () => {
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+        ]}
+      />,
+    )
+
+    fireEvent.pointerOver(screen.getByTestId('carousel'))
+
+    expect(mockAutoplay.stop).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'banner.startRotation' })).not.toBeInTheDocument()
+
+    fireEvent.pointerOut(screen.getByTestId('carousel'))
+
+    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
+  })
+
+  it('keeps an explicit pause until the user starts rotation again', async () => {
+    const user = userEvent.setup()
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+        ]}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'banner.stopRotation' }))
+
+    expect(mockAutoplay.stop).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'banner.startRotation' })).toBeInTheDocument()
+    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'polite')
+
+    const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
+    fireEvent.focus(secondBannerButton)
+    fireEvent.blur(secondBannerButton)
+    expect(mockAutoplay.play).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'banner.startRotation' }))
+
+    expect(mockAutoplay.play).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
+    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'polite')
+
+    await user.unhover(screen.getByTestId('carousel'))
+
+    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'off')
+  })
+
+  it('stops rotation when keyboard focus enters and does not restart on blur', () => {
     render(
       <Banner
         banners={[
@@ -336,13 +395,13 @@ describe('Banner', () => {
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
     fireEvent.focus(secondBannerButton)
     expect(mockAutoplay.stop).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'banner.startRotation' })).toBeInTheDocument()
 
     fireEvent.blur(secondBannerButton)
-    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(mockAutoplay.play).not.toHaveBeenCalled()
   })
 
-  it('does not resume an autoplay plugin that was already inactive before focus', () => {
-    mockAutoplayPlaying = false
+  it('restores enabled rotation after an Embla reinitialization', () => {
     render(
       <Banner
         banners={[
@@ -351,6 +410,30 @@ describe('Banner', () => {
         ]}
       />,
     )
+
+    mockAutoplay.play.mockClear()
+    act(() => {
+      mockAutoplayPlaying = false
+      mockAutoplayListeners.reInit.forEach((listener) => listener())
+    })
+
+    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
+    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'off')
+  })
+
+  it('does not resume an autoplay plugin that was already inactive before focus', () => {
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+        ]}
+      />,
+    )
+    act(() => mockAutoplay.stop())
+    mockAutoplay.play.mockClear()
+    mockAutoplay.stop.mockClear()
 
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
     fireEvent.focus(secondBannerButton)

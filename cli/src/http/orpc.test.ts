@@ -1,7 +1,7 @@
 import type { StubServer } from '@test/fixtures/stub-server'
 import type { HttpClientError } from '@/errors/base'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { isHttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { openAPIBase } from '@/util/host'

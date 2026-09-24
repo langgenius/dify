@@ -5,31 +5,34 @@ import type {
   AppPartial,
   GetAppsData,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RefObject } from 'react'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
-import { AppListInfiniteScrollSentinel } from './app-list-infinite-scroll-sentinel'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
 import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
 import { useAppListTour } from './hooks/use-app-list-tour'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
-import { StarredAppList } from './starred-app-list'
+import { ALL_APPS_HEADING_ID, AppListSectionHeading, StarredAppList } from './starred-app-list'
 
 const STARRED_APP_LIMIT = 100
 const STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT = 4
 const emptyStarredApps: AppPartial[] = []
+
+const getPreloadDistance = (scrollContainer: Element) =>
+  Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 
@@ -39,11 +42,11 @@ type AppListCatalogProps = Readonly<{
   dragging: boolean
   hasActiveFilters: boolean
   onCreateBlank: () => void
-  onCreateLearnDify?: (app: App) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onCreateTemplate: () => void
   onImportDSL: () => void
   onOpenTagManagement: () => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
   scrollViewportRef: RefObject<HTMLDivElement | null>
 }>
 
@@ -52,6 +55,7 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
     appListPages: AppPagination[]
     hasNextPage: boolean
     isFetchNextPageError: boolean
+    isError: boolean
     isFetching: boolean
     isFetchingNextPage: boolean
     isPlaceholderData: boolean
@@ -61,15 +65,13 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
   }>
 
 function CatalogSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
-    <div
-      className={`relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`}
-      role="status"
-      aria-label={t(($) => $.loading, { ns: 'common' })}
-    >
-      <AppCardSkeleton count={6} />
+    <div className="relative grow" role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
+      <ul aria-hidden className={APP_LIST_GRID_CLASS_NAME}>
+        <AppCardSkeleton count={6} />
+      </ul>
     </div>
   )
 }
@@ -81,6 +83,7 @@ function AppListCatalogContent({
   hasActiveFilters,
   hasNextPage,
   isFetchNextPageError,
+  isError,
   isFetching,
   isFetchingNextPage,
   isPlaceholderData,
@@ -95,7 +98,7 @@ function AppListCatalogContent({
   scrollViewportRef,
   systemFeatures,
 }: AppListCatalogContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   const apps = useMemo(() => appListPages.flatMap(({ data: pageApps }) => pageApps), [appListPages])
   const workflowOnlineUserAppIds = useMemo(() => {
@@ -114,6 +117,9 @@ function AppListCatalogContent({
 
   const hasResolvedFirstPage = appListPages.length > 0
   const hasAnyApp = (appListPages[0]?.total ?? 0) > 0
+  const emptyMessage = t(($) => $['filterEmpty.noApps'], { ns: 'app' })
+  const resultStatusMessage =
+    !isError && !isPlaceholderData && hasResolvedFirstPage && !hasAnyApp ? emptyMessage : ''
   const showFirstEmptyState =
     !isPlaceholderData && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
   const showNoCreateEmptyState =
@@ -130,6 +136,9 @@ function AppListCatalogContent({
 
   return (
     <>
+      <span className="sr-only" role="status">
+        {resultStatusMessage}
+      </span>
       {showFirstEmptyState ? (
         <FirstEmptyState
           onCreateBlank={onCreateBlank}
@@ -159,76 +168,101 @@ function AppListCatalogContent({
               }
             />
           )}
+          {starredApps.length > 0 && (
+            <AppListSectionHeading
+              id={ALL_APPS_HEADING_ID}
+              label={t(($) => $['studio.allApps'], { ns: 'app' })}
+            />
+          )}
           <div
-            className={cn(
-              `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
-              !hasAnyApp && 'overflow-hidden',
-            )}
+            aria-busy={isFetching}
+            className={cn('relative grow', !hasAnyApp && 'overflow-hidden')}
           >
             {hasAnyApp ? (
-              apps.map((app, index) => (
-                <AppCard
-                  key={app.id}
-                  app={app}
-                  onlineUsers={workflowOnlineUsersMap[app.id]}
-                  onOpenTagManagement={onOpenTagManagement}
-                  stepByStepTourActionMenuOpen={
-                    index === 0 ? shouldOpenFirstAppActionMenu : undefined
-                  }
-                  stepByStepTourCardTarget={
-                    index === 0
-                      ? shouldHighlightAllAppsRow
-                        ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
-                        : canCreateApp
-                          ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
-                          : undefined
-                      : undefined
-                  }
-                  stepByStepTourCardHighlightPart={
-                    index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT && shouldHighlightAllAppsRow
-                      ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
-                      : undefined
-                  }
-                  stepByStepTourActionMenuHighlightPart={
-                    index === 0 && shouldOpenFirstAppActionMenu
-                      ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
+              <ul
+                // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
+                // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
+                role="list"
+                aria-label={
+                  starredApps.length === 0
+                    ? t(($) => $['studio.allApps'], { ns: 'app' })
+                    : undefined
+                }
+                aria-labelledby={starredApps.length > 0 ? ALL_APPS_HEADING_ID : undefined}
+                className={APP_LIST_GRID_CLASS_NAME}
+              >
+                {apps.map((app, index) => (
+                  <AppCard
+                    key={app.id}
+                    app={app}
+                    onlineUsers={workflowOnlineUsersMap[app.id]}
+                    onOpenTagManagement={onOpenTagManagement}
+                    stepByStepTourActionMenuOpen={
+                      index === 0 ? shouldOpenFirstAppActionMenu : undefined
+                    }
+                    stepByStepTourCardTarget={
+                      index === 0
+                        ? shouldHighlightAllAppsRow
+                          ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
+                          : canCreateApp
+                            ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
+                            : undefined
+                        : undefined
+                    }
+                    stepByStepTourCardHighlightPart={
+                      index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT && shouldHighlightAllAppsRow
+                        ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
+                        : undefined
+                    }
+                    stepByStepTourActionMenuHighlightPart={
+                      index === 0 && shouldOpenFirstAppActionMenu
+                        ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
+                        : undefined
+                    }
+                  />
+                ))}
+                {hasNextPage && <AppCardSkeleton count={3} />}
+              </ul>
+            ) : (
+              <div className={`content-start ${APP_LIST_GRID_CLASS_NAME}`}>
+                <Empty
+                  message={emptyMessage}
+                  stepByStepTourTarget={
+                    showNoCreateEmptyState
+                      ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty
                       : undefined
                   }
                 />
-              ))
-            ) : (
-              <Empty
-                stepByStepTourTarget={
-                  showNoCreateEmptyState ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty : undefined
-                }
-              />
+              </div>
             )}
             {hasNextPage && (
-              <div className="relative col-span-full">
-                <AppListInfiniteScrollSentinel
-                  canLoadMore={!isFetching && !isFetchNextPageError}
-                  fetchNextPage={onFetchNextPage}
-                  scrollViewportRef={scrollViewportRef}
-                />
-                <div className="relative grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
-                  <AppCardSkeleton count={3} />
-                  {isFetchNextPageError && !isFetchingNextPage && (
-                    <div
-                      className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body system-xs-regular text-text-tertiary"
-                      role="alert"
+              <>
+                {isFetchNextPageError && (
+                  <div
+                    className="absolute inset-x-0 bottom-0 flex h-40 items-center justify-center gap-2 bg-background-body system-xs-regular text-text-tertiary"
+                    role="alert"
+                  >
+                    <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
+                    <Button
+                      loading={isFetchingNextPage}
+                      size="small"
+                      variant="secondary"
+                      onClick={() => void onFetchNextPage()}
                     >
-                      <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
-                      <button
-                        type="button"
-                        className="text-text-accent outline-hidden hover:underline focus-visible:underline"
-                        onClick={() => void onFetchNextPage()}
-                      >
-                        {t(($) => $['operation.retry'], { ns: 'common' })}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+                      {t(($) => $['operation.retry'], { ns: 'common' })}
+                    </Button>
+                  </div>
+                )}
+                <InfiniteScrollSentinel
+                  canLoadMore={!isFetching && !isFetchNextPageError}
+                  className="absolute inset-x-0 bottom-0"
+                  onLoadMore={() => {
+                    void onFetchNextPage()
+                  }}
+                  preloadDistance={getPreloadDistance}
+                  scrollContainerRef={scrollViewportRef}
+                />
+              </>
             )}
           </div>
         </>
@@ -237,8 +271,6 @@ function AppListCatalogContent({
       {canCreateApp && !showFirstEmptyState && (
         <div
           className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
-          role="region"
-          aria-label={t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
         >
           <span className="i-ri-drag-drop-line size-4" />
           <span className="system-xs-regular">
@@ -311,6 +343,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       hasActiveFilters={hasActiveFilters}
       hasNextPage={appList.hasNextPage}
       isFetchNextPageError={appList.isFetchNextPageError}
+      isError={appList.isError}
       isFetching={appList.isFetching}
       isFetchingNextPage={appList.isFetchingNextPage}
       isPlaceholderData={appList.isPlaceholderData}

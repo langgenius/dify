@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Core emoji grid with search and style swatches. Use this when embedding the selector inline without a modal frame.',
+          'Core emoji grid with search, recent selections, and recommendations. Use this when embedding the selector inline without a modal frame.',
       },
     },
   },
@@ -26,15 +26,14 @@ const InnerDemo = () => {
   return (
     <div className="flex h-130 flex-col gap-4 rounded-xl border border-divider-subtle bg-components-panel-bg p-6 shadow-lg">
       <EmojiPickerInner
+        emoji={selection?.emoji}
         onSelect={(emoji, background) => setSelection({ emoji, background })}
         className="flex-1 overflow-hidden rounded-xl border border-divider-subtle bg-white"
       />
       <div className="rounded-lg border border-divider-subtle bg-background-default-subtle p-3 text-xs text-text-secondary">
         <div className="font-medium text-text-primary">Latest selection</div>
         <pre className="mt-1 max-h-40 overflow-auto font-mono">
-          {selection
-            ? JSON.stringify(selection, null, 2)
-            : 'Tap an emoji to set background options.'}
+          {selection ? JSON.stringify(selection, null, 2) : 'Tap an emoji to select it.'}
         </pre>
       </div>
     </div>

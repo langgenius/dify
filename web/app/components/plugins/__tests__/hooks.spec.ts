@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PLUGIN_PAGE_TABS_MAP, useCategories, usePluginPageTabs, useTags } from '../hooks'
 
 describe('useTags', () => {

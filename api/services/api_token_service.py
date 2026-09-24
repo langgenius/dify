@@ -43,6 +43,10 @@ class CachedApiToken(BaseModel):
     last_used_at: datetime | None
     created_at: datetime | None
 
+    # Dataset key scoping (DatasetApiTokenBinding) is intentionally NOT cached here:
+    # validate_dataset_token queries the bound dataset ids per request so scope changes
+    # take effect immediately. Unknown fields in older cache entries are ignored.
+
     @override
     def __repr__(self) -> str:
         return f"<CachedApiToken id={self.id} type={self.type}>"

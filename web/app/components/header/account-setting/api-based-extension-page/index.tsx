@@ -9,7 +9,7 @@ import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { Empty } from './empty'
 import { Item } from './item'
@@ -30,7 +30,7 @@ type ApiBasedExtensionPageProps = {
 }
 
 function ApiBasedExtensionListSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
@@ -56,7 +56,7 @@ function ApiBasedExtensionListSkeleton() {
 }
 
 export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {}) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManage = hasPermission(workspacePermissionKeys, 'api_extension.manage')
   const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(

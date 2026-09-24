@@ -1,10 +1,10 @@
 'use client'
 import type { Ref } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useImperativeHandle, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import TagsFilter from './tags-filter'
 
 type SearchBoxProps = {
@@ -14,6 +14,7 @@ type SearchBoxProps = {
   wrapperClassName?: string
   inputClassName?: string
   inputElementClassName?: string
+  searchIconName?: string
   searchIconClassName?: string
   tags: string[]
   onTagsChange: (tags: string[]) => void
@@ -31,6 +32,7 @@ function SearchBox({
   wrapperClassName,
   inputClassName,
   inputElementClassName,
+  searchIconName = 'i-ri-search-line',
   searchIconClassName,
   tags,
   onTagsChange,
@@ -41,7 +43,7 @@ function SearchBox({
   autoFocus = false,
   showTags = true,
 }: SearchBoxProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'tools'])
   const accessibleLabel = placeholder || t(($) => $.searchTools, { ns: 'plugin' })!
   const inputRef = useRef<HTMLInputElement>(null)
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, [])
@@ -68,7 +70,7 @@ function SearchBox({
             {showTags && (
               <>
                 <TagsFilter tags={tags} onTagsChange={onTagsChange} usedInMarketplace />
-                <Divider type="vertical" className="mx-1 h-3.5" />
+                <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
               </>
             )}
             <div className="flex grow items-center gap-x-2 p-1">
@@ -89,18 +91,18 @@ function SearchBox({
                 placeholder={placeholder}
               />
               {search && (
-                <Button
+                <IconButton
                   variant="ghost"
-                  size="small"
+                  size="md"
                   aria-label={t(($) => $.clearSearch, {
                     ns: 'plugin',
                     label: accessibleLabel,
                   })}
                   onClick={handleClear}
-                  className="size-6 min-h-0 shrink-0 p-0 focus-visible:ring-inset"
+                  className="shrink-0 focus-visible:ring-inset"
                 >
                   <span className="i-ri-close-line size-4" aria-hidden />
-                </Button>
+                </IconButton>
               )}
             </div>
           </>
@@ -111,7 +113,7 @@ function SearchBox({
               <span
                 aria-hidden
                 className={cn(
-                  'i-ri-search-line',
+                  searchIconName,
                   'size-4 text-components-input-text-placeholder',
                   searchIconClassName,
                 )}
@@ -136,23 +138,23 @@ function SearchBox({
                 placeholder={placeholder}
               />
               {search && (
-                <Button
+                <IconButton
                   variant="ghost"
-                  size="small"
+                  size="md"
                   aria-label={t(($) => $.clearSearch, {
                     ns: 'plugin',
                     label: accessibleLabel,
                   })}
                   onClick={handleClear}
-                  className="size-6 min-h-0 shrink-0 p-0 focus-visible:ring-inset"
+                  className="shrink-0 focus-visible:ring-inset"
                 >
                   <span className="i-ri-close-line size-4" aria-hidden />
-                </Button>
+                </IconButton>
               )}
             </div>
             {showTags && (
               <>
-                <Divider type="vertical" className="mx-0 mr-0.5 h-3.5" />
+                <Separator decorative orientation="vertical" className="mx-0 mr-0.5 h-3.5" />
                 <TagsFilter tags={tags} onTagsChange={onTagsChange} />
               </>
             )}
@@ -161,15 +163,15 @@ function SearchBox({
       </div>
       {supportAddCustomTool && (
         <div className="flex shrink-0 items-center">
-          <Button
+          <IconButton
             variant="primary"
-            size="small"
+            size="md"
             aria-label={t(($) => $['addToolModal.custom.tip'], { ns: 'tools' })}
-            className="ml-2 size-6 min-h-0 rounded-full p-0"
+            className="ml-2 rounded-full"
             onClick={onShowAddCustomCollectionModal}
           >
             <span className="i-ri-add-line size-4" aria-hidden />
-          </Button>
+          </IconButton>
         </div>
       )}
     </div>

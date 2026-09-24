@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -42,14 +42,6 @@ vi.mock('@/service/use-plugins', () => ({
 
 vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string) => `https://marketplace.example.com${path}`,
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) => (
-    <button data-testid="close-button" onClick={onClick}>
-      {children}
-    </button>
-  ),
 }))
 
 vi.mock('@/app/components/base/badge', () => ({
@@ -219,7 +211,7 @@ describe('DetailHeader', () => {
     render(<DetailHeader detail={createDetail()} onHide={onHide} onUpdate={vi.fn()} />)
 
     fireEvent.click(screen.getByText('plugin.detailPanel.operation.update'))
-    fireEvent.click(screen.getByTestId('close-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockHandleUpdate).toHaveBeenCalledTimes(1)
     expect(onHide).toHaveBeenCalled()

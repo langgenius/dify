@@ -15,7 +15,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import StepTwo from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -24,6 +24,7 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import DatasetDetailContext from '@/context/dataset-detail'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import {
   useDocumentDetail,
@@ -37,7 +38,7 @@ type DocumentSettingsProps = {
 }
 
 const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation', 'datasetPipeline'])
   const router = useRouter()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
@@ -61,6 +62,11 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     documentId,
     params: { metadata: 'without' },
   })
+  const settingsTitle = t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })
+  const documentTitle =
+    documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'common' })
+  useDocumentTitle(`${settingsTitle} · ${documentTitle} · ${datasetTitle}`)
 
   const dataSourceInfo = documentDetail?.data_source_info
 
@@ -178,7 +184,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   return (
     <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
       <div className="grow">
-        {!documentDetail && <Loading type="app" />}
+        {!documentDetail && <LoadingPlaceholder className="h-full" />}
         {dataset && documentDetail && (
           <StepTwo
             isAPIKeySet={!!embeddingsDefaultModel}

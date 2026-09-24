@@ -14,6 +14,7 @@ from contexts.wrapper import RecyclableContextVar
 from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
+from enums import DeploymentEdition
 from extensions.ext_socketio import sio
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus
@@ -104,6 +105,10 @@ def create_flask_app_with_configs() -> DifyApp:
     dify_app = DifyApp(__name__)
     dify_app.config.from_mapping(dify_config.model_dump())
     dify_app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    # flask-restx appends url-map suggestions to 404 bodies: they enumerate routes to
+    # anonymous callers, and a policy 404 on an existing route (edition admission)
+    # ends up suggesting the very path that was just requested.
+    dify_app.config["RESTX_ERROR_404_HELP"] = False
 
     # add before request hook
     @dify_app.before_request
@@ -112,7 +117,7 @@ def create_flask_app_with_configs() -> DifyApp:
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             surface = _match_license_gated_surface(request.path)
             if surface is not None:
                 try:

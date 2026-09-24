@@ -1,6 +1,8 @@
+import type { ReactElement } from 'react'
 import type { EmailConfig } from '../../../types'
 import { fireEvent, screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import EmailConfigureModal from '../email-configure-modal'
 
 const mockToastError = vi.hoisted(() => vi.fn())
@@ -10,16 +12,16 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
+
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockToastError(message),
   },
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('../mail-body-input', () => ({
   default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
@@ -113,9 +115,9 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     )
 
     fireEvent.change(
-      screen.getByPlaceholderText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder',
-      ),
+      screen.getByRole('textbox', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subject',
+      }),
       {
         target: { value: 'Budget alert' },
       },
@@ -124,7 +126,11 @@ describe('human-input/delivery-method/email-configure-modal', () => {
       target: { value: 'Please review {{#url#}} now' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'set-workspace-recipient' }))
-    fireEvent.click(screen.getByRole('switch'))
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.debugMode',
+      }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(handleConfirm).toHaveBeenCalledWith({
@@ -149,9 +155,9 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     )
 
     fireEvent.change(
-      screen.getByPlaceholderText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder',
-      ),
+      screen.getByRole('textbox', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subject',
+      }),
       {
         target: { value: 'Subject ready' },
       },

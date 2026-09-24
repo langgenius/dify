@@ -6,7 +6,7 @@ import type { IOStreams } from '@/sys/io/streams'
 import { AccountSessionsClient } from '@/api/account-sessions'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '@/limit/limit'
+import { fetchAllPages, LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '@/limit/limit'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { promptConfirm } from '@/sys/io/prompt'
 import { runWithSpinner } from '@/sys/io/spinner'
@@ -53,17 +53,7 @@ function resolveLimit(raw: string | undefined, env: (k: string) => string | unde
 export async function listAllSessions(
   client: AccountSessionsClient,
 ): Promise<readonly SessionRow[]> {
-  const out: SessionRow[] = []
-  let page = 1
-  // Hard guard against a misbehaving server that lies about has_more.
-  const MAX_PAGES = 100
-  while (page <= MAX_PAGES) {
-    const env = await client.list({ page, limit: LIMIT_MAX })
-    out.push(...env.data)
-    if (!env.has_more) return out
-    page++
-  }
-  return out
+  return fetchAllPages((page) => client.list({ page, limit: LIMIT_MAX }))
 }
 
 export type DevicesRevokeOptions = {

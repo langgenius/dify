@@ -3,7 +3,7 @@ import type { ChatConfig } from '../../types'
 import type { Theme } from '../theme/theme'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import { screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEmbeddedChatbot } from '../hooks'
@@ -142,7 +142,7 @@ describe('EmbeddedChatbot index', () => {
 
       render(<EmbeddedChatbot />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
       expect(screen.queryByText('chat area')).not.toBeInTheDocument()
     })
 

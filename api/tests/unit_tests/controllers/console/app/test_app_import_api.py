@@ -13,14 +13,13 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 from controllers.console.app import app_import as app_import_module
-from enums.deployment_edition import DeploymentEdition
-from models.account import Account
+from models.account import Account, Tenant
 from models.base import TypeBase
 from models.engine import db
 from models.model import App, AppMode
 from services.app_dsl_service import ImportStatus
 from services.entities.dsl_entities import CheckDependenciesResult
-from services.entities.feature_entities import SystemFeatureModel, WebAppAuthModel
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _unwrap(func):
@@ -48,17 +47,15 @@ class _Result:
 
 
 def _install_features(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
-    features = SystemFeatureModel(
-        deployment_edition=DeploymentEdition.COMMUNITY,
-        webapp_auth=WebAppAuthModel(enabled=enabled),
-    )
-    monkeypatch.setattr(app_import_module.FeatureService, "get_system_features", lambda: features)
+    monkeypatch.setattr(app_import_module.SystemFeatureService, "is_webapp_auth_enabled", lambda: enabled)
 
 
 def _make_account(account_id: str = "u1") -> Account:
     account = Account(name="Test User", email="test@example.com")
     account.id = account_id
-    account._current_tenant = MagicMock(id="tenant-1")
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = "tenant-1"
+    account._current_tenant = tenant
     return account
 
 
@@ -149,7 +146,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = unwrap(api.post)
+        method = unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         app_id = _install_persisting_service_result(
@@ -159,7 +156,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, _make_account())
+            response, status = method(api, app_import_module.AppImportPayload(mode="yaml-content"), _make_account())
 
         assert transaction_events.rollbacks == 1
         assert transaction_events.commits == 0
@@ -175,7 +172,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = unwrap(api.post)
+        method = unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         app_id = _install_persisting_service_result(
@@ -185,7 +182,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, _make_account())
+            response, status = method(api, app_import_module.AppImportPayload(mode="yaml-content"), _make_account())
 
         assert transaction_events.commits == 1
         assert transaction_events.rollbacks == 0
@@ -201,7 +198,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = unwrap(api.post)
+        method = unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=True)
         app_id = _install_persisting_service_result(
@@ -213,7 +210,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, _make_account())
+            response, status = method(api, app_import_module.AppImportPayload(mode="yaml-content"), _make_account())
 
         assert transaction_events.commits == 1
         assert transaction_events.rollbacks == 0
@@ -230,7 +227,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = _unwrap(api.post)
+        method = _unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -238,7 +235,7 @@ class TestAppImportApi:
             "current_account_with_tenant",
             lambda: (_make_account(), "tenant-1"),
         )
-        monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="import_app",
@@ -251,7 +248,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(app_import_module.AppImportPayload(mode="yaml-content"))
 
         assert transaction_events.commits == 1
         _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
@@ -266,7 +263,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = _unwrap(api.post)
+        method = _unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -274,7 +271,7 @@ class TestAppImportApi:
             "current_account_with_tenant",
             lambda: (_make_account(), "tenant-1"),
         )
-        monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="import_app",
@@ -291,7 +288,7 @@ class TestAppImportApi:
             method="POST",
             json={"mode": "yaml-content", "app_id": "existing-app"},
         ):
-            response, status = method()
+            response, status = method(app_import_module.AppImportPayload(mode="yaml-content", app_id="existing-app"))
 
         assert transaction_events.commits == 1
         _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
@@ -346,12 +343,13 @@ class TestAppImportConfirmApi:
         )
         redis_get = MagicMock(
             return_value=(
-                b'{"import_mode":"yaml-content","yaml_content":"app: {}","app_id":null,'
+                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
+                b'"yaml_content":"app: {}","app_id":null,'
                 b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
             )
         )
         monkeypatch.setattr(app_import_module.redis_client, "get", redis_get)
-        monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="confirm_import",
@@ -391,11 +389,12 @@ class TestAppImportConfirmApi:
             app_import_module.redis_client,
             "get",
             lambda *_args, **_kwargs: (
-                b'{"import_mode":"yaml-content","yaml_content":"app: {}","app_id":"existing-app",'
+                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
+                b'"yaml_content":"app: {}","app_id":"existing-app",'
                 b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
             ),
         )
-        monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="confirm_import",

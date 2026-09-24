@@ -404,7 +404,8 @@ def _is_valid_mapping(mapping: Mapping[str, Any]) -> bool:
 
     if mapping.get("transfer_method") == FileTransferMethod.REMOTE_URL:
         url = mapping.get("url") or mapping.get("remote_url")
-        if not url:
+        upload_file_id = resolve_mapping_file_id(mapping, "upload_file_id")
+        if not url and not upload_file_id:
             return False
 
     return True

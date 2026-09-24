@@ -39,7 +39,10 @@ export const useEmbeddingStatus = ({
   const queryClient = useQueryClient()
   const isPolling = useRef(false)
   const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
   const queryKey = useMemo(
     () => [NAME_SPACE, 'indexing-status', datasetId, documentId] as const,

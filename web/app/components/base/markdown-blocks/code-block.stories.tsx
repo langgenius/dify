@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import CodeBlock from './code-block'
+import { CodeBlock } from './code-block'
 
 const SAMPLE_CODE = `const greet = (name: string) => {
   return \`Hello, \${name}\`
@@ -43,6 +43,30 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Playground: Story = {}
+
+export const ECharts: Story = {
+  render: () => (
+    <div className="w-xl">
+      <CodeBlock className="language-echarts">
+        {JSON.stringify({
+          xAxis: { type: 'category', data: ['A', 'B', 'C'] },
+          yAxis: { type: 'value' },
+          series: [{ type: 'bar', data: [12, 20, 15] }],
+        })}
+      </CodeBlock>
+    </div>
+  ),
+}
+
+export const Music: Story = {
+  render: () => (
+    <div className="w-xl">
+      <CodeBlock className="language-abc">
+        {'X:1\nT:Scale\nM:4/4\nL:1/4\nK:C\nC D E F|G A B c|'}
+      </CodeBlock>
+    </div>
+  ),
+}
 
 export const Mermaid: Story = {
   args: {

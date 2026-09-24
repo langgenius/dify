@@ -12,6 +12,32 @@ export const zAccountPayload = z.object({
 })
 
 /**
+ * AdvancedChatRunPayload
+ *
+ * A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version.
+ */
+export const zAdvancedChatRunPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  auto_generate_name: z.boolean().optional().default(true),
+  conversation_id: z.string().nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  inputs: z.record(z.string(), z.unknown()),
+  query: z.string(),
+  workflow_id: z.string().nullish(),
+  workspace_id: z.string().nullish(),
+})
+
+/**
  * AppDescribeInfo
  */
 export const zAppDescribeInfo = z.object({
@@ -51,7 +77,7 @@ export const zAppDescribeResponse = z.object({
  */
 export const zAppDslExportQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.string().nullish(),
+  workflow_id: z.uuid().nullish(),
 })
 
 /**
@@ -118,28 +144,55 @@ export const zAppListRow = z.object({
 })
 
 /**
- * AppListResponse
+ * ChatRunPayload
  */
-export const zAppListResponse = z.object({
-  data: z.array(zAppListRow),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
+export const zChatRunPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  auto_generate_name: z.boolean().optional().default(true),
+  conversation_id: z.string().nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  inputs: z.record(z.string(), z.unknown()),
+  query: z.string(),
+  workspace_id: z.string().nullish(),
 })
 
 /**
- * AppRunRequest
+ * CompletionRunPayload
  */
-export const zAppRunRequest = z.object({
-  auto_generate_name: z.boolean().optional().default(true),
-  conversation_id: z.string().nullish(),
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+export const zCompletionRunPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  query: z.string().nullish(),
-  workflow_id: z.string().nullish(),
+  query: z.string().optional().default(''),
   workspace_id: z.string().nullish(),
 })
+
+/**
+ * DeploymentEdition
+ *
+ * Enum representing the deployment edition of the platform.
+ */
+export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
 
 /**
  * DeviceCodeRequest
@@ -246,12 +299,12 @@ export const zEventStreamResponse = z.string()
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.string().nullish(),
+  conversation_id: z.uuid().nullish(),
   created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
+  created_by: z.uuid().nullish(),
   extension: z.string().nullish(),
   file_key: z.string().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   name: z.string(),
   original_url: z.string().nullish(),
@@ -259,8 +312,15 @@ export const zFileResponse = z.object({
   reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
-  tenant_id: z.string().nullish(),
-  user_id: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
+})
+
+/**
+ * FileUploadPayload
+ */
+export const zFileUploadPayload = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 /**
@@ -292,6 +352,30 @@ export const zHealthResponse = z.object({
 })
 
 /**
+ * Hint
+ *
+ * A next step the caller can hand straight to `call <op> --input <input>`.
+ */
+export const zHint = z.object({
+  form: z.array(z.record(z.string(), z.unknown())).nullish(),
+  input: z.record(z.string(), z.unknown()),
+  op: z.string(),
+  summary: z.string(),
+})
+
+/**
+ * AppListResponse
+ */
+export const zAppListResponse = z.object({
+  data: z.array(zAppListRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * HumanInputFormDefinitionResponse
  */
 export const zHumanInputFormDefinitionResponse = z.object({
@@ -306,6 +390,24 @@ export const zHumanInputFormDefinitionResponse = z.object({
  * ImportStatus
  */
 export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
+
+/**
+ * AppDslImportResponse
+ *
+ * `Import` plus the server-built next step for a pending import.
+ */
+export const zAppDslImportResponse = z.object({
+  app_id: z.string().nullish(),
+  app_mode: z.string().nullish(),
+  current_dsl_version: z.string().optional().default('0.7.0'),
+  error: z.string().optional().default(''),
+  hints: z.array(zHint).optional(),
+  id: z.string(),
+  imported_dsl_version: z.string().optional().default(''),
+  permission_keys: z.array(z.string()).optional(),
+  status: zImportStatus,
+  warnings: z.array(zDslImportWarning).optional(),
+})
 
 /**
  * Import
@@ -323,14 +425,6 @@ export const zImport = z.object({
 })
 
 export const zJsonValue = z.unknown()
-
-/**
- * HumanInputFormSubmitPayload
- */
-export const zHumanInputFormSubmitPayload = z.object({
-  action: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
-})
 
 /**
  * Marketplace
@@ -373,7 +467,7 @@ export const zMemberInviteResponse = z.object({
  * Strict (extra='forbid').
  */
 export const zMemberListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
 
@@ -395,6 +489,7 @@ export const zMemberResponse = z.object({
 export const zMemberListResponse = z.object({
   data: z.array(zMemberResponse),
   has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
   limit: z.int(),
   page: z.int(),
   total: z.int(),
@@ -415,6 +510,7 @@ export const zOpenApiErrorCode = z.enum([
   'app_unavailable',
   'bad_gateway',
   'bad_request',
+  'catalog_stale',
   'completion_request_error',
   'conflict',
   'conversation_completed',
@@ -439,12 +535,31 @@ export const zOpenApiErrorCode = z.enum([
   'request_entity_too_large',
   'too_many_files',
   'too_many_requests',
+  'trigger_workflow_service_mode_unavailable',
   'unauthorized',
   'unknown',
   'unsupported_file_type',
   'unsupported_media_type',
-  'upgrade_required',
 ])
+
+/**
+ * OpenApiFormSubmitPayload
+ *
+ * The console payload plus local file parts; `_files.merge_files` sets them on `inputs`.
+ */
+export const zOpenApiFormSubmitPayload = z.object({
+  action: z.string(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  inputs: z.record(z.string(), zJsonValue),
+})
 
 /**
  * Package
@@ -460,6 +575,7 @@ export const zPackage = z.object({
 export const zPermittedExternalAppsListResponse = z.object({
   data: z.array(zAppListRow),
   has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
   limit: z.int(),
   page: z.int(),
   total: z.int(),
@@ -499,7 +615,7 @@ export const zRevokeResponse = z.object({
  * Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
  */
 export const zServerVersionResponse = z.object({
-  edition: z.enum(['CLOUD', 'SELF_HOSTED']),
+  edition: zDeploymentEdition,
   version: z.string(),
 })
 
@@ -509,7 +625,7 @@ export const zServerVersionResponse = z.object({
  * Pagination for GET /account/sessions. Strict (extra='forbid').
  */
 export const zSessionListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(100),
+  limit: z.int().gte(1).lte(100).optional().default(100),
   page: z.int().gte(1).optional().default(1),
 })
 
@@ -532,6 +648,7 @@ export const zSessionRow = z.object({
 export const zSessionListResponse = z.object({
   data: z.array(zSessionRow),
   has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
   limit: z.int(),
   page: z.int(),
   total: z.int(),
@@ -543,6 +660,11 @@ export const zSessionListResponse = z.object({
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * SubjectType
+ */
+export const zSubjectType = z.enum(['account', 'external_sso'])
 
 /**
  * SupportedAppType
@@ -573,11 +695,11 @@ export const zSupportedAppType = z.enum([
  * mode is a closed enum of listable app types.
  */
 export const zAppListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.string(),
+  workspace_id: z.uuid(),
 })
 
 /**
@@ -586,7 +708,7 @@ export const zAppListQuery = z.object({
  * Strict (extra='forbid').
  */
 export const zPermittedExternalAppsListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
@@ -637,6 +759,27 @@ export const zWorkflowRunData = z.object({
 })
 
 /**
+ * WorkflowRunPayload
+ */
+export const zWorkflowRunPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  inputs: z.record(z.string(), z.unknown()),
+  workflow_id: z.string().nullish(),
+  workspace_id: z.string().nullish(),
+})
+
+/**
  * WorkspaceDetailResponse
  */
 export const zWorkspaceDetailResponse = z.object({
@@ -646,6 +789,16 @@ export const zWorkspaceDetailResponse = z.object({
   name: z.string(),
   role: z.string(),
   status: z.string(),
+})
+
+/**
+ * WorkspaceListQuery
+ *
+ * Strict (extra='forbid').
+ */
+export const zWorkspaceListQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
 })
 
 /**
@@ -665,7 +818,7 @@ export const zAccountResponse = z.object({
   default_workspace_id: z.string().nullish(),
   subject_email: z.string().nullish(),
   subject_issuer: z.string().nullish(),
-  subject_type: z.string(),
+  subject_type: zSubjectType,
   workspaces: z.array(zWorkspacePayload).optional().default([]),
 })
 
@@ -678,7 +831,7 @@ export const zDeviceTokenResponse = z.object({
   expires_at: z.string(),
   subject_email: z.string().nullish(),
   subject_issuer: z.string().nullish(),
-  subject_type: z.enum(['account', 'external_sso']),
+  subject_type: zSubjectType,
   token: z.string(),
   token_id: z.string(),
   workspaces: z.array(zWorkspacePayload).optional().default([]),
@@ -699,8 +852,18 @@ export const zWorkspaceSummaryResponse = z.object({
  * WorkspaceListResponse
  */
 export const zWorkspaceListResponse = z.object({
-  workspaces: z.array(zWorkspaceSummaryResponse),
+  data: z.array(zWorkspaceSummaryResponse),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
+
+/**
+ * Success
+ */
+export const zGetCatalogResponse = z.record(z.string(), z.unknown())
 
 /**
  * Health check
@@ -718,7 +881,7 @@ export const zGetVersionResponse = zServerVersionResponse
 export const zGetAccountResponse = zAccountResponse
 
 export const zGetAccountSessionsQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(100),
+  limit: z.int().gte(1).lte(100).optional().default(100),
   page: z.int().gte(1).optional().default(1),
 })
 
@@ -742,11 +905,11 @@ export const zDeleteAccountSessionsBySessionIdPath = z.object({
 export const zDeleteAccountSessionsBySessionIdResponse = zRevokeResponse
 
 export const zGetAppsQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.string(),
+  workspace_id: z.uuid(),
 })
 
 /**
@@ -767,6 +930,39 @@ export const zGetAppsByAppIdQuery = z.object({
  */
 export const zGetAppsByAppIdResponse = zAppDescribeResponse
 
+export const zPostAppsByAppIdAdvancedChatRunBody = zAdvancedChatRunPayload
+
+export const zPostAppsByAppIdAdvancedChatRunPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Run result (SSE stream)
+ */
+export const zPostAppsByAppIdAdvancedChatRunResponse = zEventStreamResponse
+
+export const zPostAppsByAppIdChatRunBody = zChatRunPayload
+
+export const zPostAppsByAppIdChatRunPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Run result (SSE stream)
+ */
+export const zPostAppsByAppIdChatRunResponse = zEventStreamResponse
+
+export const zPostAppsByAppIdCompletionRunBody = zCompletionRunPayload
+
+export const zPostAppsByAppIdCompletionRunPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Run result (SSE stream)
+ */
+export const zPostAppsByAppIdCompletionRunResponse = zEventStreamResponse
+
 export const zGetAppsByAppIdDependenciesCheckPath = z.object({
   app_id: z.string(),
 })
@@ -782,13 +978,15 @@ export const zGetAppsByAppIdDslPath = z.object({
 
 export const zGetAppsByAppIdDslQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.string().optional(),
+  workflow_id: z.uuid().optional(),
 })
 
 /**
  * Export successful
  */
 export const zGetAppsByAppIdDslResponse = zAppDslExportResponse
+
+export const zPostAppsByAppIdFilesBody = zFileUploadPayload
 
 export const zPostAppsByAppIdFilesPath = z.object({
   app_id: z.string(),
@@ -809,7 +1007,7 @@ export const zGetAppsByAppIdHumanInputFormsByFormTokenPath = z.object({
  */
 export const zGetAppsByAppIdHumanInputFormsByFormTokenResponse = zHumanInputFormDefinitionResponse
 
-export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitBody = zHumanInputFormSubmitPayload
+export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitBody = zOpenApiFormSubmitPayload
 
 export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitPath = z.object({
   app_id: z.string(),
@@ -846,16 +1044,16 @@ export const zPostAppsByAppIdTasksByTaskIdStopPath = z.object({
  */
 export const zPostAppsByAppIdTasksByTaskIdStopResponse = zTaskStopResponse
 
-export const zPostAppsByAppIdRunBody = zAppRunRequest
+export const zPostAppsByAppIdWorkflowRunBody = zWorkflowRunPayload
 
-export const zPostAppsByAppIdRunPath = z.object({
+export const zPostAppsByAppIdWorkflowRunPath = z.object({
   app_id: z.string(),
 })
 
 /**
  * Run result (SSE stream)
  */
-export const zPostAppsByAppIdRunResponse = zEventStreamResponse
+export const zPostAppsByAppIdWorkflowRunResponse = zEventStreamResponse
 
 export const zPostOauthDeviceApproveBody = zDeviceMutateRequest
 
@@ -895,7 +1093,7 @@ export const zPostOauthDeviceTokenBody = zDevicePollRequest
 export const zPostOauthDeviceTokenResponse = zDeviceTokenResponse
 
 export const zGetPermittedExternalAppsQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
@@ -918,6 +1116,11 @@ export const zGetPermittedExternalAppsByAppIdQuery = z.object({
  * Permitted external app description
  */
 export const zGetPermittedExternalAppsByAppIdResponse = zAppDescribeResponse
+
+export const zGetWorkspacesQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
 
 /**
  * Workspace list
@@ -942,7 +1145,7 @@ export const zPostWorkspacesByWorkspaceIdAppsImportsPath = z.object({
 /**
  * Import completed
  */
-export const zPostWorkspacesByWorkspaceIdAppsImportsResponse = zImport
+export const zPostWorkspacesByWorkspaceIdAppsImportsResponse = zAppDslImportResponse
 
 export const zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmPath = z.object({
   import_id: z.string(),
@@ -959,7 +1162,7 @@ export const zGetWorkspacesByWorkspaceIdMembersPath = z.object({
 })
 
 export const zGetWorkspacesByWorkspaceIdMembersQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
 

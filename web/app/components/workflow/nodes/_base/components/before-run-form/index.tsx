@@ -1,20 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import type { Props as FormProps } from './form'
-import type { BeforeRunFormTranslator } from './helpers'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import type { NodeRunningStatus } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import SingleRunForm from '@/app/components/workflow/nodes/human-input/components/single-run-form'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import Form from './form'
 import {
   buildSubmitData,
@@ -62,16 +61,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   handleSubmitHumanInputForm,
   handleAfterHumanInputStepRun,
 }) => {
-  const { t } = useTranslation()
-  const translateFormError: BeforeRunFormTranslator = (selector, options) => t(selector, options)
-
+  const { t } = useTranslation(['appDebug', 'workflow'])
   const isHumanInput = nodeType === BlockEnum.HumanInput
   const showBackButton = filteredExistVarForms.length > 0
 
   const isFileLoaded = isFilesLoaded(forms)
 
   const handleRunOrGenerateForm = () => {
-    const errMsg = getFormErrorMessage(forms, existVarValuesInForms, translateFormError)
+    const errMsg = getFormErrorMessage(forms, existVarValuesInForms, t)
     if (errMsg) {
       toast.error(errMsg)
       return

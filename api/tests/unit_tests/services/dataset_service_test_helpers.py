@@ -19,7 +19,7 @@ from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from models import Account, TenantAccountRole
 from models.dataset import (
@@ -273,10 +273,9 @@ def _make_lock_context() -> MagicMock:
     return context_manager
 
 
-def _make_features(*, enabled: bool, plan: str = CloudPlan.PROFESSIONAL) -> SimpleNamespace:
+def _make_features(*, plan: str = CloudPlan.PROFESSIONAL) -> SimpleNamespace:
     return SimpleNamespace(
         billing=SimpleNamespace(
-            enabled=enabled,
             subscription=SimpleNamespace(plan=plan),
         ),
         documents_upload_quota=SimpleNamespace(limit=1000, size=0),

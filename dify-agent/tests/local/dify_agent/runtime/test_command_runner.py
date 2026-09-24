@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from dify_agent.adapters.shell.protocols import ShellCommandResult
+from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellExecutionMode
 from dify_agent.runtime.command_runner import execute_complete_with_commands
 
 
@@ -16,11 +16,20 @@ class _BlockingCommands:
     wait_forever: asyncio.Event = field(default_factory=asyncio.Event)
     deletes: list[tuple[str, bool]] = field(default_factory=list)
 
-    async def run(self, script: str, *, cwd: str | None, env: dict[str, str] | None, timeout: float):
+    async def run(
+        self,
+        script: str,
+        *,
+        cwd: str | None,
+        env: dict[str, str] | None,
+        timeout: float,
+        mode: ShellExecutionMode = "pty",
+    ):
         assert script == "long-running"
         assert cwd == "/workspace"
         assert env == {"HOME": "/home/agent"}
         assert timeout > 0
+        assert mode == "stdio"
         return ShellCommandResult(
             job_id="job-1",
             status="running",
@@ -66,6 +75,7 @@ async def test_cancellation_deletes_job_returned_before_blocking_wait() -> None:
             env={"HOME": "/home/agent"},
             timeout=60.0,
             max_output_bytes=4096,
+            mode="stdio",
         )
     )
     try:

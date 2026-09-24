@@ -54,9 +54,7 @@ class TestMetadataNullableBug:
         none_name = cast(str, None)
         # This should crash with TypeError when calling len(None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.update_metadata_name(
-                "dataset-123", "metadata-456", none_name, account, "tenant-123", session=sqlite_session
-            )
+            MetadataService.update_metadata_name(Mock(), "metadata-456", none_name, account, session=sqlite_session)
         assert not sqlite_session.in_transaction()
 
     def test_api_layer_now_uses_pydantic_validation(self) -> None:

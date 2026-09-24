@@ -7,13 +7,15 @@ Provides:
 - Test data factories
 """
 
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import MagicMock
 
 import pytest
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import set_tracer_provider
+
+from models import Account, App, EndUser
 
 
 @pytest.fixture
@@ -42,31 +44,22 @@ def tracer_provider_with_memory_exporter(memory_span_exporter):
 
 @pytest.fixture
 def mock_app_model():
-    """Create a mock App model."""
-    app = MagicMock()
-    app.id = "test-app-id"
-    app.tenant_id = "test-tenant-id"
-    return app
+    """Create a real transient App model."""
+    return App(id="test-app-id", tenant_id="test-tenant-id")
 
 
 @pytest.fixture
 def mock_account_user():
-    """Create a mock Account user."""
-    from models.model import Account
-
-    user = create_autospec(Account, instance=True)
+    """Create a real transient Account user."""
+    user = Account(name="Test User", email="otel@example.com")
     user.id = "test-user-id"
     return user
 
 
 @pytest.fixture
 def mock_end_user():
-    """Create a mock EndUser."""
-    from models.model import EndUser
-
-    user = create_autospec(EndUser, instance=True)
-    user.id = "test-end-user-id"
-    return user
+    """Create a real transient EndUser."""
+    return EndUser(id="test-end-user-id", tenant_id="test-tenant-id")
 
 
 @pytest.fixture

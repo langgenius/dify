@@ -16,12 +16,14 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
+from controllers.common.rbac import DatasetId, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
+from controllers.console.wraps import RBACPermission, model_validate, rbac_permission_required
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import (
     LLMBadRequestError,
@@ -54,10 +56,11 @@ from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from libs.pagination import paginate_query
 from models import Account, Document, DocumentSegment, UploadFile
-from models.dataset import DocumentPipelineExecutionLog
+from models.dataset import DatasetPermissionEnum, DocumentPipelineExecutionLog
 from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
@@ -78,6 +81,7 @@ from ..datasets.error import (
 )
 from ..wraps import (
     account_initialization_required,
+    check_knowledge_rate_limit,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     setup_required,
@@ -294,22 +298,22 @@ class DocumentResource(Resource):
     def get_document(
         self, session: Session, dataset_id: str, document_id: str, current_user: Account, current_tenant_id: str
     ) -> Document:
-        dataset = DatasetService.get_dataset(dataset_id, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id, current_tenant_id, session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
 
-        document = DocumentService.get_document(dataset_id, document_id, session=session)
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
+        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
 
         if not document:
             raise NotFound("Document not found.")
-
-        if document.tenant_id != current_tenant_id:
-            raise Forbidden("No permission.")
 
         return document
 
@@ -363,6 +367,13 @@ class GetProcessRuleApi(Resource):
             if not dataset:
                 raise NotFound("Dataset not found.")
 
+            enforce_rbac_checks(
+                tenant_id=dataset.tenant_id,
+                account_id=current_user.id,
+                checks=[RBACCheck(RBACPermission.DATASET_READONLY, DatasetId())],
+                path_args={"dataset_id": dataset.id},
+            )
+
             try:
                 DatasetService.check_dataset_permission(dataset, current_user, session)
             except services.errors.account.NoPermissionError as e:
@@ -401,7 +412,7 @@ class DatasetDocumentListApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -514,10 +525,13 @@ class DatasetDocumentListApi(Resource):
                 document.total_segments = total_segments
         response = {
             "data": document_with_segments_responses(documents, session=session),
-            "has_more": len(documents) == limit,
-            "limit": limit,
+            # The result object already knows: it was built from the page the query
+            # ran with, where `len(documents) == limit` is only ever a guess that a
+            # full page means another one follows.
+            "has_more": paginated_documents.has_next,
+            "limit": paginated_documents.per_page,
             "total": paginated_documents.total,
-            "page": page,
+            "page": paginated_documents.page,
         }
 
         return dump_response(DocumentWithSegmentsListResponse, response)
@@ -530,7 +544,7 @@ class DatasetDocumentListApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_USE, DatasetId()))
     @with_session
     def post(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -578,18 +592,33 @@ class DatasetDocumentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Documents deleted successfully")
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()))
     @with_session
-    def delete(self, session: Session, dataset_id: UUID):
+    def delete(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+    ):
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        # check user's model setting
-        DatasetService.check_dataset_model_setting(dataset)
 
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
+
+        check_knowledge_rate_limit()
         try:
             document_ids = request.args.getlist("document_id")
             dataset_ref = DatasetRefService.create_dataset_ref(dataset)
@@ -662,6 +691,26 @@ class DatasetInitApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
 
+        if dify_config.RBAC_ENABLED:
+            dataset.permission = DatasetPermissionEnum.ALL_TEAM
+        else:
+            dataset.permission = DatasetPermissionEnum.ONLY_ME
+        session.flush()
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                dataset.id,
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+            )
+            enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+                current_tenant_id,
+                current_user.id,
+                enterprise_rbac_service.RBACResourceType.DATASET,
+                dataset.id,
+            )
+
         return dump_response(
             DatasetAndDocumentResponse,
             {"dataset": dataset, "documents": document_responses(documents, session=session), "batch": batch},
@@ -685,7 +734,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_USE, DatasetId()))
     @with_session
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -777,7 +826,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_USE, DatasetId()))
     @with_session
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
@@ -899,32 +948,15 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
         documents = self.get_batch_documents(session, dataset_id_str, batch, current_user)
+        segment_counts = DocumentService.get_document_segment_counts(documents, session=session)
         documents_status = []
         for document in documents:
-            completed_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
-            total_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
+            completed_segments, total_segments = segment_counts.get(str(document.id), (0, 0))
             # Create a dictionary with document attributes and additional fields
             document_dict = {
                 "id": document.id,
@@ -959,7 +991,7 @@ class DocumentIndexingStatusApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1025,7 +1057,7 @@ class DocumentApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1038,56 +1070,59 @@ class DocumentApi(DocumentResource):
 
         metadata_fields = {"doc_type", "doc_metadata"}
         if metadata == "only":
-            response = DocumentDetailResponse.model_validate(
-                {
-                    "id": document.id,
-                    "doc_type": document.doc_type,
-                    "doc_metadata": document.get_doc_metadata_details(session=session),
-                }
+            return (
+                dump_response(
+                    DocumentDetailResponse,
+                    {
+                        "id": document.id,
+                        "doc_type": document.doc_type,
+                        "doc_metadata": document.get_doc_metadata_details(session=session),
+                    },
+                    include={"id", *metadata_fields},
+                    exclude_unset=True,
+                ),
+                200,
             )
-            return response.model_dump(mode="json", include={"id", *metadata_fields}, exclude_unset=True), 200
 
         dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, session)
         document_process_rule = document.get_dataset_process_rule(session=session)
         document_process_rules: Mapping[str, Any] = document_process_rule.to_dict() if document_process_rule else {}
         segment_count = document.get_segment_count(session=session)
-        response = DocumentDetailResponse.model_validate(
-            {
-                "id": document.id,
-                "position": document.position,
-                "data_source_type": document.data_source_type,
-                "data_source_info": document.data_source_info_dict,
-                "data_source_detail_dict": document.get_data_source_detail_dict(session=session),
-                "dataset_process_rule_id": document.dataset_process_rule_id,
-                "dataset_process_rule": dataset_process_rules,
-                "document_process_rule": document_process_rules,
-                "name": document.name,
-                "created_from": document.created_from,
-                "created_by": document.created_by,
-                "created_at": int(document.created_at.timestamp()),
-                "tokens": document.tokens,
-                "indexing_status": document.indexing_status,
-                "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,
-                "updated_at": int(document.updated_at.timestamp()) if document.updated_at else None,
-                "indexing_latency": document.indexing_latency,
-                "error": document.error,
-                "enabled": document.enabled,
-                "disabled_at": int(document.disabled_at.timestamp()) if document.disabled_at else None,
-                "disabled_by": document.disabled_by,
-                "archived": document.archived,
-                "doc_type": document.doc_type,
-                "doc_metadata": document.get_doc_metadata_details(session=session),
-                "segment_count": segment_count,
-                "average_segment_length": (document.word_count or 0) // segment_count if segment_count else 0,
-                "hit_count": document.get_hit_count(session=session),
-                "display_status": document.display_status,
-                "doc_form": document.doc_form,
-                "doc_language": document.doc_language,
-                "need_summary": document.need_summary if document.need_summary is not None else False,
-            }
-        )
+        response_payload = {
+            "id": document.id,
+            "position": document.position,
+            "data_source_type": document.data_source_type,
+            "data_source_info": document.data_source_info_dict,
+            "data_source_detail_dict": document.get_data_source_detail_dict(session=session),
+            "dataset_process_rule_id": document.dataset_process_rule_id,
+            "dataset_process_rule": dataset_process_rules,
+            "document_process_rule": document_process_rules,
+            "name": document.name,
+            "created_from": document.created_from,
+            "created_by": document.created_by,
+            "created_at": int(document.created_at.timestamp()),
+            "tokens": document.tokens,
+            "indexing_status": document.indexing_status,
+            "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,
+            "updated_at": int(document.updated_at.timestamp()) if document.updated_at else None,
+            "indexing_latency": document.indexing_latency,
+            "error": document.error,
+            "enabled": document.enabled,
+            "disabled_at": int(document.disabled_at.timestamp()) if document.disabled_at else None,
+            "disabled_by": document.disabled_by,
+            "archived": document.archived,
+            "doc_type": document.doc_type,
+            "doc_metadata": document.get_doc_metadata_details(session=session),
+            "segment_count": segment_count,
+            "average_segment_length": (document.word_count or 0) // segment_count if segment_count else 0,
+            "hit_count": document.get_hit_count(session=session),
+            "display_status": document.display_status,
+            "doc_form": document.doc_form,
+            "doc_language": document.doc_language,
+            "need_summary": document.need_summary if document.need_summary is not None else False,
+        }
         exclude = metadata_fields if metadata == "without" else None
-        return response.model_dump(mode="json", exclude=exclude, exclude_unset=True), 200
+        return dump_response(DocumentDetailResponse, response_payload, exclude=exclude, exclude_unset=True), 200
 
     @setup_required
     @login_required
@@ -1096,7 +1131,7 @@ class DocumentApi(DocumentResource):
     @console_ns.response(204, "Document deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()))
     @with_session
     def delete(
         self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID
@@ -1132,7 +1167,7 @@ class DocumentDownloadApi(DocumentResource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_DOCUMENT_DOWNLOAD)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, DatasetId()))
     @with_session(write=False)
     def get(
         self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID
@@ -1156,7 +1191,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, DatasetId()))
     @with_session(write=False)
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         """Stream a ZIP archive containing the requested uploaded documents."""
@@ -1208,7 +1243,7 @@ class DocumentProcessingApi(DocumentResource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def patch(
         self,
@@ -1265,7 +1300,7 @@ class DocumentMetadataApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(DocumentMetadataUpdatePayload)
     def put(
@@ -1324,7 +1359,7 @@ class DocumentStatusApi(DocumentResource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def patch(
         self,
@@ -1367,29 +1402,32 @@ class DocumentPauseApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Document paused successfully")
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
-    def patch(self, session: Session, dataset_id: UUID, document_id: UUID):
+    def patch(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         """pause document."""
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
 
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if not dataset:
-            raise NotFound("Dataset not found.")
-
-        document = DocumentService.get_document(dataset.id, document_id_str, session=session)
-
-        # 404 if document not found
-        if document is None:
-            raise NotFound("Document Not Exists.")
+        document = self.get_document(session, dataset_id_str, document_id_str, current_user, current_tenant_id)
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
 
         # 403 if document is archived
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
 
+        check_knowledge_rate_limit()
         try:
             # pause document
             DocumentService.pause_document(document, session)
@@ -1404,26 +1442,31 @@ class DocumentRecoverApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Document resumed successfully")
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
-    def patch(self, session: Session, dataset_id: UUID, document_id: UUID):
+    def patch(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         """recover document."""
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if not dataset:
-            raise NotFound("Dataset not found.")
-        document = DocumentService.get_document(dataset.id, document_id_str, session=session)
 
-        # 404 if document not found
-        if document is None:
-            raise NotFound("Document Not Exists.")
+        document = self.get_document(session, dataset_id_str, document_id_str, current_user, current_tenant_id)
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
 
         # 403 if document is archived
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
+        check_knowledge_rate_limit()
         try:
             # pause document
             DocumentService.recover_document(document, session)
@@ -1438,22 +1481,42 @@ class DocumentRetryApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
     @console_ns.response(204, "Documents retry started successfully")
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
-    def post(self, session: Session, dataset_id: UUID):
+    @model_validate(DocumentRetryPayload)
+    def post(
+        self,
+        req_data: DocumentRetryPayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+    ):
         """retry document."""
-        payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        retry_documents = []
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
-        documents = DocumentService.get_documents_by_ids(dataset.id, payload.document_ids, session)
+
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
+
+        documents = DocumentService.get_documents_by_ids(
+            DatasetRefService.create_dataset_ref(dataset), req_data.document_ids, session
+        )
         documents_by_id = {document.id: document for document in documents}
-        for document_id in payload.document_ids:
+        retry_documents = []
+        for document_id in req_data.document_ids:
             try:
                 document = documents_by_id.get(document_id)
 
@@ -1473,6 +1536,7 @@ class DocumentRetryApi(DocumentResource):
                 logger.exception("Failed to retry document, document id: %s", document_id)
                 continue
         # retry document
+        check_knowledge_rate_limit()
         DocumentService.retry_document(dataset_id_str, retry_documents, session)
 
         return "", 204
@@ -1486,9 +1550,17 @@ class DocumentRenameApi(DocumentResource):
     @console_ns.response(200, "Document renamed successfully", console_ns.models[DocumentResponse.__name__])
     @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
-    def post(self, session: Session, current_user: Account, dataset_id: UUID, document_id: UUID):
+    @model_validate(DocumentRenamePayload)
+    def post(
+        self,
+        req_data: DocumentRenamePayload,
+        session: Session,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -1496,10 +1568,9 @@ class DocumentRenameApi(DocumentResource):
         if not dataset:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_operator_permission(current_user, dataset, session=session)
-        payload = DocumentRenamePayload.model_validate(console_ns.payload or {})
 
         try:
-            document = DocumentService.rename_document(str(dataset_id), str(document_id), payload.name, session)
+            document = DocumentService.rename_document(str(dataset_id), str(document_id), req_data.name, session)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
@@ -1512,28 +1583,34 @@ class WebsiteDocumentSyncApi(DocumentResource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
-    def get(self, session: Session, current_tenant_id: str, dataset_id: UUID, document_id: UUID):
+    def get(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         """sync website document."""
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
         document_id_str = str(document_id)
-        document = DocumentService.get_document(dataset.id, document_id_str, session=session)
-        if not document:
-            raise NotFound("Document not found.")
-        if document.tenant_id != current_tenant_id:
-            raise Forbidden("No permission.")
+        document = self.get_document(session, dataset.id, document_id_str, current_user, current_tenant_id)
         if document.data_source_type != "website_crawl":
             raise ValueError("Document is not a website document.")
         # 403 if document is archived
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
         # sync document
-        DocumentService.sync_website_document(dataset_id_str, document, session)
+        DocumentService.sync_website_document(dataset, document, session)
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
@@ -1548,21 +1625,25 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
-    def get(self, session: Session, dataset_id: UUID, document_id: UUID):
+    def get(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
 
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if not dataset:
-            raise NotFound("Dataset not found.")
-        document = DocumentService.get_document(dataset.id, document_id_str, session=session)
-        if not document:
-            raise NotFound("Document not found.")
+        document = self.get_document(session, dataset_id_str, document_id_str, current_user, current_tenant_id)
         log = session.scalar(
             select(DocumentPipelineExecutionLog)
-            .where(DocumentPipelineExecutionLog.document_id == document_id_str)
+            .where(DocumentPipelineExecutionLog.document_id == document.id)
             .order_by(DocumentPipelineExecutionLog.created_at.desc())
             .limit(1)
         )
@@ -1598,9 +1679,10 @@ class DocumentGenerateSummaryApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
-    def post(self, session: Session, current_user: Account, dataset_id: UUID):
+    @model_validate(GenerateSummaryPayload)
+    def post(self, req_data: GenerateSummaryPayload, session: Session, current_user: Account, dataset_id: UUID):
         """
         Generate summary index for specified documents.
 
@@ -1624,9 +1706,7 @@ class DocumentGenerateSummaryApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        # Validate request payload
-        payload = GenerateSummaryPayload.model_validate(console_ns.payload or {})
-        document_list = payload.document_list
+        document_list = req_data.document_list
 
         if not document_list:
             from werkzeug.exceptions import BadRequest
@@ -1645,7 +1725,9 @@ class DocumentGenerateSummaryApi(Resource):
             raise ValueError("Summary index is not enabled for this dataset. Please enable it in the dataset settings.")
 
         # Verify all documents exist and belong to the dataset
-        documents = DocumentService.get_documents_by_ids(dataset_id_str, document_list, session)
+        documents = DocumentService.get_documents_by_ids(
+            DatasetRefService.create_dataset_ref(dataset), document_list, session
+        )
 
         if len(documents) != len(document_list):
             found_ids = {doc.id for doc in documents}
@@ -1698,7 +1780,7 @@ class DocumentSummaryStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID, document_id: UUID):
         """

@@ -1,8 +1,8 @@
 import type { PropsWithChildren } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum, ControlMode, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import BaseNode from '../node'
 
 const mockHasNodeInspectVars = vi.fn()
@@ -11,20 +11,6 @@ const mockHandleNodeIterationChildSizeChange = vi.fn()
 const mockHandleNodeLoopChildSizeChange = vi.fn()
 const mockUseNodeResizeObserver = vi.fn()
 const mockUseCollaboration = vi.fn()
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    id: 'user-1',
-    name: 'User',
-    email: 'user@example.com',
-    avatar: '',
-    avatar_url: '',
-  },
-}))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('../../../hooks/use-tool-icon', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../hooks/use-tool-icon')>()
@@ -109,10 +95,6 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 vi.mock('@/app/components/workflow/nodes/tool/components/copy-id', () => ({
   default: ({ content }: { content: string }) => <div>{content}</div>,
 }))
-vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
-  selectWorkflowNode: vi.fn(),
-}))
-
 const createData = (overrides: Record<string, unknown> = {}) => ({
   type: BlockEnum.Tool,
   title: 'Node title',
@@ -158,40 +140,32 @@ describe('BaseNode', () => {
     expect(screen.getByTestId('node-target-handle')).toBeInTheDocument()
   })
 
-  it('should expose the node title area as a selectable button', async () => {
-    const { selectWorkflowNode } = await import('@/app/components/workflow/utils/node-navigation')
-
+  it('places node actions before both add-node handles in DOM order', () => {
     renderWorkflowComponent(
       <BaseNode id="node-1" data={toNodeData(createData())}>
         <div>Body</div>
       </BaseNode>,
     )
-
-    const node = screen.getByRole('button', { name: 'Node title' })
-
-    fireEvent.click(node)
-
-    expect(selectWorkflowNode).toHaveBeenCalledWith('node-1')
+    const actions = screen.getByTestId('node-control')
+    for (const handle of ['node-target-handle', 'node-source-handle']) {
+      expect(
+        actions.compareDocumentPosition(screen.getByTestId(handle)) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    }
   })
 
-  it('should not select the node from the title button while in comment mode', async () => {
-    const { selectWorkflowNode } = await import('@/app/components/workflow/utils/node-navigation')
-
+  it('renders the title as text without an additional button', () => {
     renderWorkflowComponent(
       <BaseNode id="node-1" data={toNodeData(createData())}>
         <div>Body</div>
       </BaseNode>,
-      { initialStoreState: { controlMode: ControlMode.Comment } },
     )
-
-    const node = screen.getByRole('button', { name: 'Node title' })
-
-    fireEvent.click(node)
-
-    expect(selectWorkflowNode).not.toHaveBeenCalled()
+    expect(screen.getByText('Node title')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Node title' })).not.toBeInTheDocument()
   })
 
-  it('should keep header metadata outside the selectable button', () => {
+  it('should retain the independent header metadata control', () => {
     renderWorkflowComponent(
       <BaseNode
         id="node-1"
@@ -206,13 +180,12 @@ describe('BaseNode', () => {
       </BaseNode>,
     )
 
-    const titleButton = screen.getByRole('button', { name: 'Node title' })
+    expect(screen.getByText('workflow.nodes.iteration.parallelModeUpper')).toBeInTheDocument()
     const parallelButton = screen.getByRole('button', {
-      name: /workflow\.nodes\.iteration\.parallelModeUpper/,
+      name: /workflow\.nodes\.iteration\.parallelModeEnableTitle/,
     })
 
-    expect(titleButton).not.toContainElement(parallelButton)
-    expect(titleButton.querySelector('button')).toBeNull()
+    expect(parallelButton).toBeInTheDocument()
   })
 
   it('should render entry nodes inside the entry container', () => {

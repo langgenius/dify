@@ -1,5 +1,5 @@
 import type { Viewport } from 'reactflow'
-import type { Metadata } from '@/app/components/base/chat/chat/type'
+import type { Metadata, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { VisionFile } from '@/types/app'
 
@@ -79,7 +79,7 @@ type MessageContent = {
   }>
   message_files: VisionFile[]
   metadata: Metadata
-  agent_thoughts: any[] // TODO
+  agent_thoughts: ThoughtItem[]
   workflow_run_id: string
   parent_message_id: string | null
 }
@@ -205,15 +205,18 @@ export type LogMessageAnnotationsRequest = Omit<LogMessageFeedbacksRequest, 'rat
 
 export type LogMessageAnnotationsResponse = LogMessageFeedbacksResponse
 
-export enum WorkflowRunTriggeredFrom {
-  DEBUGGING = 'debugging',
-  APP_RUN = 'app-run',
-  RAG_PIPELINE_RUN = 'rag-pipeline-run',
-  RAG_PIPELINE_DEBUGGING = 'rag-pipeline-debugging',
-  WEBHOOK = 'webhook',
-  SCHEDULE = 'schedule',
-  PLUGIN = 'plugin',
-}
+export const WorkflowRunTriggeredFrom = {
+  DEBUGGING: 'debugging',
+  APP_RUN: 'app-run',
+  RAG_PIPELINE_RUN: 'rag-pipeline-run',
+  RAG_PIPELINE_DEBUGGING: 'rag-pipeline-debugging',
+  WEBHOOK: 'webhook',
+  SCHEDULE: 'schedule',
+  PLUGIN: 'plugin',
+} as const
+
+export type WorkflowRunTriggeredFrom =
+  (typeof WorkflowRunTriggeredFrom)[keyof typeof WorkflowRunTriggeredFrom]
 
 export type TriggerMetadata = {
   type?: string
@@ -234,7 +237,14 @@ type WorkflowLogDetails = {
 export type WorkflowRunDetail = {
   id: string
   version: string
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status:
+    | 'scheduled'
+    | 'running'
+    | 'succeeded'
+    | 'failed'
+    | 'stopped'
+    | 'partial-succeeded'
+    | 'paused'
   error?: string
   triggered_from?: WorkflowRunTriggeredFrom
   elapsed_time: number
@@ -283,7 +293,14 @@ export type WorkflowRunDetailResponse = {
   }
   inputs: string
   inputs_truncated: boolean
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status:
+    | 'scheduled'
+    | 'running'
+    | 'succeeded'
+    | 'failed'
+    | 'stopped'
+    | 'partial-succeeded'
+    | 'paused'
   outputs?: string
   outputs_truncated: boolean
   outputs_full_content?: {

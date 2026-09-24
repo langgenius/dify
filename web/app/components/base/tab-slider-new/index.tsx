@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 
 type Option = {
   value: string
@@ -7,30 +8,33 @@ type Option = {
   icon?: React.ReactNode
 }
 type TabSliderProps = {
+  ariaLabel: string
   className?: string
   value: string
   onChange: (v: string) => void
   options: Option[]
 }
-const TabSliderNew: FC<TabSliderProps> = ({ className, value, onChange, options }) => {
+const TabSliderNew: FC<TabSliderProps> = ({ ariaLabel, className, value, onChange, options }) => {
   return (
-    <div data-testid="tab-slider-new" className={cn(className, 'relative flex')}>
+    <SegmentedControl
+      aria-label={ariaLabel}
+      data-testid="tab-slider-new"
+      value={value}
+      onValueChange={(value) => onChange(value)}
+      className={cn(className, 'relative flex gap-0 rounded-none bg-transparent p-0')}
+    >
       {options.map((option) => (
-        <div
+        <SegmentedControlItem
           key={option.value}
+          value={option.value}
           data-testid={`tab-item-${option.value}`}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            'mr-1 flex h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-transparent px-3 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary hover:bg-state-base-hover',
-            value === option.value &&
-              'border-components-main-nav-nav-button-border bg-state-base-hover text-components-main-nav-nav-button-text-active shadow-xs',
-          )}
+          className="mr-1 h-8 justify-start gap-0 overflow-visible px-3 py-1.75 text-start text-[13px] leading-4.5 font-medium whitespace-normal text-text-tertiary transition-none hover:bg-state-base-hover hover:text-text-tertiary data-checked:border-components-main-nav-nav-button-border data-checked:bg-state-base-hover data-checked:text-components-main-nav-nav-button-text-active data-checked:shadow-xs"
         >
           {option.icon}
           {option.text}
-        </div>
+        </SegmentedControlItem>
       ))}
-    </div>
+    </SegmentedControl>
   )
 }
 

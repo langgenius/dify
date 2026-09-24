@@ -1,11 +1,10 @@
+import type { EmailCodeLoginPayload } from '@dify/contracts/api/console/email-code-login/types.gen'
 import type {
   PostWorkspacesInfoData,
   PostWorkspacesInfoResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   DefaultModelResponse,
-  Model,
-  ModelItem,
   ModelParameterRule,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -105,9 +104,6 @@ export const ownershipTransfer = (
     { body },
   )
 
-export const fetchFilePreview = ({ fileID }: { fileID: string }): Promise<{ content: string }> => {
-  return get<{ content: string }>(`/files/${fileID}/preview`)
-}
 export const updateWorkspaceInfo = ({
   url,
   body,
@@ -153,26 +149,8 @@ export const activateMember = ({
   return post<LoginResponse>(url, { body })
 }
 
-export const fetchModelProviderModelList = (url: string): Promise<{ data: ModelItem[] }> => {
-  return get<{ data: ModelItem[] }>(url)
-}
-
-export const fetchModelList = (url: string): Promise<{ data: Model[] }> => {
-  return get<{ data: Model[] }>(url)
-}
-
 export const fetchDefaultModal = (url: string): Promise<{ data: DefaultModelResponse }> => {
   return get<{ data: DefaultModelResponse }>(url)
-}
-
-export const updateDefaultModel = ({
-  url,
-  body,
-}: {
-  url: string
-  body: any
-}): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
 }
 
 export const fetchModelParameterRules = (url: string): Promise<{ data: ModelParameterRule[] }> => {
@@ -228,16 +206,18 @@ export const uploadRemoteFileInfo = (
 export const sendEMailLoginCode = (
   email: string,
   language = 'en-US',
+  turnstileToken?: string,
 ): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
+  post<CommonResponse & { data: string }>('/email-code-login', {
+    body: {
+      email,
+      language,
+      ...(turnstileToken === undefined ? {} : { turnstile_token: turnstileToken }),
+    },
+  })
 
-export const emailLoginWithCode = (data: {
-  email: string
-  code: string
-  token: string
-  language: string
-  timezone?: string
-}): Promise<LoginResponse> => post<LoginResponse>('/email-code-login/validity', { body: data })
+export const emailLoginWithCode = (data: EmailCodeLoginPayload): Promise<LoginResponse> =>
+  post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (
   email: string,
@@ -337,6 +317,6 @@ export const getAvatar = async ({
 }: {
   avatar: string
 }): Promise<{ avatar_url: string }> => {
-  const { consoleClient } = await import('./client')
+  const { consoleClient } = await import('@/service/console')
   return consoleClient.account.avatar.get({ query: { avatar } })
 }

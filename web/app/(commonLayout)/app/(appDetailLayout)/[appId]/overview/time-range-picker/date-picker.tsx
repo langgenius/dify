@@ -1,19 +1,10 @@
 'use client'
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
-import type {
-  DatePickerProps,
-  TriggerProps,
-} from '@/app/components/base/date-and-time-picker/types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'
-import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback } from 'react'
-import Picker from '@/app/components/base/date-and-time-picker/date-picker'
-import { useLocale } from '@/context/i18n'
-import { formatToLocalTime } from '@/utils/format'
+import DateRangePicker from '@/app/components/base/date-and-time-picker/date-range-picker'
 
 type Props = Readonly<{
   start: Dayjs
@@ -24,29 +15,6 @@ type Props = Readonly<{
 
 const today = dayjs()
 const DatePicker: FC<Props> = ({ start, end, onStartChange, onEndChange }) => {
-  const locale = useLocale()
-
-  const renderDate = useCallback<NonNullable<DatePickerProps['renderTrigger']>>(
-    (props, _state, { value, handleClickTrigger }: TriggerProps) => {
-      return (
-        <div
-          {...props}
-          className={cn(
-            'flex h-7 cursor-pointer items-center rounded-lg px-1 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
-            props.className,
-          )}
-          onClick={(event) => {
-            handleClickTrigger(event)
-            props.onClick?.(event)
-          }}
-        >
-          {value ? formatToLocalTime(value, locale, 'MMM D') : ''}
-        </div>
-      )
-    },
-    [locale],
-  )
-
   const availableStartDate = end.subtract(30, 'day')
   const startDateDisabled = useCallback(
     (date: Dayjs) => {
@@ -72,30 +40,14 @@ const DatePicker: FC<Props> = ({ start, end, onStartChange, onEndChange }) => {
   )
 
   return (
-    <div className="flex h-8 items-center space-x-0.5 rounded-lg bg-components-input-bg-normal px-2">
-      <div className="p-px">
-        <RiCalendarLine className="size-3.5 text-text-tertiary" />
-      </div>
-      <Picker
-        value={start}
-        onChange={onStartChange}
-        renderTrigger={renderDate}
-        needTimePicker={false}
-        onClear={noop}
-        noConfirm
-        getIsDateDisabled={startDateDisabled}
-      />
-      <span className="system-sm-regular text-text-tertiary">-</span>
-      <Picker
-        value={end}
-        onChange={onEndChange}
-        renderTrigger={renderDate}
-        needTimePicker={false}
-        onClear={noop}
-        noConfirm
-        getIsDateDisabled={endDateDisabled}
-      />
-    </div>
+    <DateRangePicker
+      start={start}
+      end={end}
+      onStartChange={onStartChange}
+      onEndChange={onEndChange}
+      getIsStartDateDisabled={startDateDisabled}
+      getIsEndDateDisabled={endDateDisabled}
+    />
   )
 }
 export default React.memo(DatePicker)

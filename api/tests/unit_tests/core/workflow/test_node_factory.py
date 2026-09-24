@@ -12,6 +12,7 @@ from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
+from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
@@ -306,134 +307,6 @@ class TestCodeExecutorJinja2TemplateRenderer:
             renderer.render_template("{{ broken }}", {})
 
 
-class TestDifyNodeFactoryInit:
-    def test_from_graph_init_context_translates_before_init(self):
-        graph_init_context = MagicMock()
-        graph_init_context.to_graph_init_params.return_value = sentinel.graph_init_params
-
-        with patch.object(node_factory.DifyNodeFactory, "__init__", return_value=None) as init:
-            factory = node_factory.DifyNodeFactory.from_graph_init_context(
-                graph_init_context=graph_init_context,
-                graph_runtime_state=sentinel.graph_runtime_state,
-            )
-
-        assert isinstance(factory, node_factory.DifyNodeFactory)
-        graph_init_context.to_graph_init_params.assert_called_once_with()
-        init.assert_called_once_with(
-            graph_init_params=sentinel.graph_init_params,
-            graph_runtime_state=sentinel.graph_runtime_state,
-        )
-
-    def test_with_runtime_state_rebinds_factory(self):
-        factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.graph_init_params = sentinel.graph_init_params
-
-        with patch.object(node_factory, "DifyNodeFactory", return_value=sentinel.factory) as factory_cls:
-            rebound = factory.with_runtime_state(sentinel.graph_runtime_state)
-
-        assert rebound is sentinel.factory
-        factory_cls.assert_called_once_with(
-            graph_init_params=sentinel.graph_init_params,
-            graph_runtime_state=sentinel.graph_runtime_state,
-        )
-
-    def test_init_builds_default_dependencies(self):
-        graph_init_params = SimpleNamespace(run_context={"context": "value"})
-        graph_runtime_state = sentinel.graph_runtime_state
-        dify_context = SimpleNamespace(tenant_id="tenant-id", app_id="app-id", user_id="user-id")
-        jinja2_template_renderer = sentinel.jinja2_template_renderer
-        unstructured_api_config = sentinel.unstructured_api_config
-        http_request_config = sentinel.http_request_config
-        file_reference_factory = sentinel.file_reference_factory
-        prompt_message_serializer = sentinel.prompt_message_serializer
-        retriever_attachment_loader = sentinel.retriever_attachment_loader
-        llm_file_saver = sentinel.llm_file_saver
-        credentials_provider = sentinel.credentials_provider
-        model_factory = sentinel.model_factory
-        human_input_runtime = sentinel.human_input_runtime
-        tool_runtime = sentinel.tool_runtime
-
-        with (
-            patch.object(
-                node_factory.DifyNodeFactory,
-                "_resolve_dify_context",
-                return_value=dify_context,
-            ) as resolve_dify_context,
-            patch.object(
-                node_factory,
-                "CodeExecutorJinja2TemplateRenderer",
-                return_value=jinja2_template_renderer,
-            ) as renderer_factory,
-            patch.object(
-                node_factory,
-                "UnstructuredApiConfig",
-                return_value=unstructured_api_config,
-            ),
-            patch.object(
-                node_factory,
-                "build_http_request_config",
-                return_value=http_request_config,
-            ),
-            patch.object(
-                node_factory,
-                "DifyFileReferenceFactory",
-                return_value=file_reference_factory,
-            ),
-            patch.object(
-                node_factory,
-                "DifyPromptMessageSerializer",
-                return_value=prompt_message_serializer,
-            ),
-            patch.object(
-                node_factory,
-                "DifyRetrieverAttachmentLoader",
-                return_value=retriever_attachment_loader,
-            ),
-            patch.object(
-                node_factory,
-                "build_dify_llm_file_saver",
-                return_value=llm_file_saver,
-            ),
-            patch.object(
-                node_factory,
-                "DifyHumanInputNodeRuntime",
-                return_value=human_input_runtime,
-            ),
-            patch.object(
-                node_factory,
-                "DifyToolNodeRuntime",
-                return_value=tool_runtime,
-            ),
-            patch.object(
-                node_factory,
-                "build_dify_model_access",
-                return_value=(credentials_provider, model_factory),
-            ) as build_dify_model_access,
-        ):
-            factory = node_factory.DifyNodeFactory(
-                graph_init_params=graph_init_params,
-                graph_runtime_state=graph_runtime_state,
-            )
-
-        resolve_dify_context.assert_called_once_with(graph_init_params.run_context)
-        build_dify_model_access.assert_called_once_with(dify_context)
-        renderer_factory.assert_called_once_with()
-        assert factory.graph_init_params is graph_init_params
-        assert factory.graph_runtime_state is graph_runtime_state
-        assert factory._dify_context is dify_context
-        assert factory._jinja2_template_renderer is jinja2_template_renderer
-        assert factory._document_extractor_unstructured_api_config is unstructured_api_config
-        assert factory._http_request_config is http_request_config
-        assert factory._file_reference_factory is file_reference_factory
-        assert factory._prompt_message_serializer is prompt_message_serializer
-        assert factory._retriever_attachment_loader is retriever_attachment_loader
-        assert factory._llm_file_saver is llm_file_saver
-        assert factory._human_input_runtime is human_input_runtime
-        assert factory._tool_runtime is tool_runtime
-        assert factory._llm_credentials_provider is credentials_provider
-        assert factory._llm_model_factory is model_factory
-
-
 class TestDifyNodeFactoryResolveContext:
     def test_requires_reserved_context_key(self):
         with pytest.raises(ValueError, match=DIFY_RUN_CONTEXT_KEY):
@@ -480,6 +353,8 @@ class TestDifyNodeFactoryCreateNode:
             app_id="app-id",
             user_id="user-id",
             invoke_from=InvokeFrom.DEBUGGER,
+            app_type=None,
+            created_by=None,
         )
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits
@@ -688,7 +563,7 @@ class TestDifyNodeFactoryCreateNode:
                 },
             }
         )
-        wrapped_model_instance = sentinel.wrapped_model_instance
+        wrapped_model_instance = MagicMock(spec=DifyPreparedLLM)
         memory = sentinel.memory
         factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
         factory._build_memory_for_llm_node = MagicMock(return_value=memory)
@@ -717,6 +592,7 @@ class TestDifyNodeFactoryCreateNode:
             request_metadata={"app_id": "app-id"},
         )
         assert kwargs["model_instance"] is wrapped_model_instance
+        assert kwargs["polling_finalizer"] is wrapped_model_instance.finalize_llm_polling
 
     def test_resolve_llm_model_reference_uses_shared_model_and_parameters(self, factory):
         node_data = LLMNodeData.model_validate(
@@ -970,6 +846,44 @@ class TestDifyNodeFactoryCreateNode:
 
         assert node.node_data.structured_output_switch_on is True
         assert node.node_data.structured_output_enabled is True
+
+    def test_create_node_uses_dify_llm_node_for_persisted_version_one(self, monkeypatch, factory):
+        factory.graph_init_params = SimpleNamespace(
+            workflow_id="workflow-id",
+            graph_config={},
+            run_context={},
+            call_depth=0,
+        )
+        monkeypatch.setattr(
+            factory,
+            "_build_llm_compatible_node_init_kwargs",
+            MagicMock(
+                return_value={
+                    "model_instance": sentinel.model_instance,
+                    "llm_file_saver": sentinel.llm_file_saver,
+                    "prompt_message_serializer": sentinel.prompt_message_serializer,
+                    "polling_finalizer": MagicMock(),
+                }
+            ),
+        )
+
+        node = factory.create_node(
+            {
+                "id": "llm-node-id",
+                "data": {
+                    "type": BuiltinNodeTypes.LLM,
+                    "version": "1",
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                },
+            }
+        )
+
+        assert isinstance(node, DifyLLMNode)
+        assert node.version() == "1"
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name", "expected_extra_kwargs"),

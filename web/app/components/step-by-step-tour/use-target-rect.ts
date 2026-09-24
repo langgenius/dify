@@ -142,7 +142,6 @@ export const useStepByStepTourTargetRect = (
     getInitialTargetRects(targetElement, highlightPartSelectors),
   )
   const targetRectsRef = useRef(targetRects)
-  targetRectsRef.current = targetRects
 
   useLayoutEffect(() => {
     let animationFrame = 0

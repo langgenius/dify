@@ -1,10 +1,9 @@
-"""Run a Pydantic AI agent through the Dify plugin-daemon adapter.
+"""Run a Pydantic AI agent through the Dify API LLM gateway.
 
 Prerequisites:
 - Sync the server runtime dependencies first: `uv sync --project dify-agent --extra server`.
-- Start the plugin daemon from `dify-aio/dify/docker/docker-compose.middleware.yaml`.
-- Run the Dify API with `dify-aio/dify/api/.env` so the daemon can resolve tenants/plugins.
-- Fill `dify-agent/.env` with a real tenant, plugin, provider, model, and provider credentials.
+- Run the Dify API with its inner Agent LLM endpoint enabled.
+- Fill `dify-agent/.env` with a real tenant, user, app, plugin, provider, and model.
 
 This example is meant to be run from a source checkout because
 `dify_agent_examples` is not part of the published package.
@@ -17,14 +16,15 @@ Example from the repository root:
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 from pathlib import Path
-from typing import Any
+from uuid import uuid4
 
+import httpx
 from pydantic_ai import Agent
 
-from dify_agent.adapters.llm import DifyLLMAdapterModel, DifyPluginDaemonProvider
+from dify_agent.adapters.llm import DifyApiLLMProvider, DifyLLMAdapterModel
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -50,33 +50,35 @@ def required_env(name: str) -> str:
     raise RuntimeError(f"Missing required environment variable: {name}")
 
 
-def load_credentials() -> dict[str, Any]:
-    raw_credentials = required_env("DIFY_AGENT_MODEL_CREDENTIALS_JSON")
-    credentials = json.loads(raw_credentials)
-    if not isinstance(credentials, dict):
-        raise RuntimeError("DIFY_AGENT_MODEL_CREDENTIALS_JSON must be a JSON object")
-    return credentials
-
-
 async def main() -> None:
     load_env_file(PROJECT_ROOT / ".env")
 
-    model = DifyLLMAdapterModel(
-        required_env("DIFY_AGENT_MODEL_NAME"),
-        DifyPluginDaemonProvider(
-            tenant_id=required_env("DIFY_AGENT_TENANT_ID"),
+    async with httpx.AsyncClient(timeout=600, trust_env=False) as http_client:
+        provider = DifyApiLLMProvider(
             plugin_id=required_env("DIFY_AGENT_PLUGIN_ID"),
-            plugin_daemon_url=required_env("PLUGIN_DAEMON_URL"),
-            plugin_daemon_api_key=required_env("PLUGIN_DAEMON_KEY"),
-        ),
-        model_provider=required_env("DIFY_AGENT_PROVIDER"),
-        credentials=load_credentials(),
-    )
-    agent = Agent(model=model)
-    async with agent.run_stream("Explain the theory of relativity") as run:
-        async for piece in run.stream_output():
-            print(piece, end="", flush=True)
-        print(run.usage())
+            inner_api_url=required_env("DIFY_INNER_API_URL"),
+            inner_api_key=required_env("DIFY_INNER_API_KEY"),
+            execution_context=DifyExecutionContextLayerConfig(
+                tenant_id=required_env("DIFY_AGENT_TENANT_ID"),
+                user_id=required_env("DIFY_AGENT_USER_ID"),
+                user_from="account",
+                app_id=required_env("DIFY_AGENT_APP_ID"),
+                agent_mode="single_step",
+                invoke_from="debugger",
+            ),
+            agent_run_id=str(uuid4()),
+            http_client=http_client,
+        )
+        model = DifyLLMAdapterModel(
+            required_env("DIFY_AGENT_MODEL_NAME"),
+            provider,
+            model_provider=required_env("DIFY_AGENT_PROVIDER"),
+        )
+        agent = Agent(model=model)
+        async with agent.run_stream("Explain the theory of relativity") as run:
+            async for piece in run.stream_output():
+                print(piece, end="", flush=True)
+            print(run.usage)
 
 
 if __name__ == "__main__":

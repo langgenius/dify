@@ -6,7 +6,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client

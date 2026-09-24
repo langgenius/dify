@@ -4,12 +4,12 @@ import type {
   UpdateFromMarketPlacePayload,
   UpdatePluginModalType,
 } from '../../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '../../types'
 import DowngradeWarningModal from '../downgrade-warning'
@@ -131,7 +131,7 @@ const createMockPluginDeclaration = (
   endpoint: { settings: [], endpoints: [] },
   model: {},
   tags: [],
-  agent_strategy: {},
+  agent_strategy: null,
   meta: { version: '1.0.0' },
   trigger: {
     events: [],
@@ -1054,14 +1054,6 @@ describe('update-plugin', () => {
     })
 
     describe('Props', () => {
-      it('should support custom placement', () => {
-        // Act
-        render(<PluginVersionPicker {...defaultProps} isShow={true} placement="top-end" />)
-
-        // Assert
-        expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
-      })
-
       it('should support custom offset', () => {
         // Act
         render(
@@ -1107,32 +1099,6 @@ describe('update-plugin', () => {
 
       // Act & Assert - should throw because payload is required
       expect(() => renderWithQueryClient(<UpdatePlugin {...props} />)).toThrow()
-    })
-
-    it('should handle empty version list in PluginVersionPicker', () => {
-      // Override the mock temporarily
-      vi.mocked(
-        vi.importActual('@/service/use-plugins') as unknown as Record<string, unknown>,
-      ).useVersionListOfPlugin = () => ({
-        data: { data: { versions: [] } },
-      })
-
-      // Act
-      render(
-        <PluginVersionPicker
-          {...{
-            isShow: true,
-            onShowChange: vi.fn(),
-            pluginID: 'test',
-            currentVersion: '1.0.0',
-            trigger: () => <span>Select</span>,
-            onSelect: vi.fn(),
-          }}
-        />,
-      )
-
-      // Assert
-      expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
     })
   })
 })

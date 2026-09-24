@@ -1,24 +1,23 @@
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
-from pydantic import BaseModel, Field
-from sqlalchemy import ColumnElement, select
+from pydantic import BaseModel, Field, JsonValue
+from sqlalchemy import ColumnElement, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
-from core.agent.entities import AgentToolEntity
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ToolParameterConfigurationManager
+from enums import DeploymentEdition
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db  # noqa: F401
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -35,9 +34,13 @@ from models.agent import (
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
-from models.tools import ApiToolProvider
+from models.provider_ids import ModelProviderID
+from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
@@ -46,8 +49,10 @@ from services.agent.workspace_service import AgentWorkspaceService
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
+from services.model_provider_service import ModelProviderService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
+from services.rbac_agent_access_service import initialize_agent_rbac_access
+from services.system_feature_service import SystemFeatureService
 from services.tag_service import TagService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
@@ -71,6 +76,38 @@ RECENT_APP_MODES: tuple[RecentAppMode, ...] = (
 )
 
 
+@dataclass(frozen=True)
+class _CreatedApp:
+    tenant_id: str
+    creator_account_id: str
+    app_id: str
+    backing_agent_id: str | None
+
+
+def _initialize_created_app_access(created: _CreatedApp) -> None:
+    enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+        created.tenant_id,
+        created.creator_account_id,
+        enterprise_rbac_service.RBACResourceType.APP,
+        created.app_id,
+    )
+
+
+def _initialize_created_agent_access(created: _CreatedApp) -> None:
+    if created.backing_agent_id is None:
+        raise ValueError(f"agent app {created.app_id} was created without a backing agent")
+    initialize_agent_rbac_access(
+        tenant_id=created.tenant_id,
+        agent_id=created.backing_agent_id,
+        creator_account_id=created.creator_account_id,
+    )
+
+
+_CREATED_APP_ACCESS_INITIALIZERS: dict[AppMode, Callable[[_CreatedApp], None]] = {
+    AppMode.AGENT: _initialize_created_agent_access,
+}
+
+
 class AppListBaseParams(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
@@ -87,10 +124,17 @@ class AppListBaseParams(BaseModel):
 class AppListParams(AppListBaseParams):
     status: str | None = None
     openapi_visible: bool = False
+    agent_is_published: bool | None = None
 
 
 class StarredAppListParams(AppListBaseParams):
     pass
+
+
+@dataclass(frozen=True)
+class AgentAppPublicationCounts:
+    published: int
+    drafts: int
 
 
 @dataclass(frozen=True)
@@ -186,6 +230,24 @@ class AppResponseView:
 
 class AppService:
     @staticmethod
+    def _agent_app_exists_filter(tenant_id: str, *, is_published: bool | None = None) -> sa.Exists:
+        agent_filters = [
+            Agent.tenant_id == tenant_id,
+            Agent.app_id == App.id,
+            Agent.scope == AgentScope.ROSTER,
+            Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+            Agent.status == AgentStatus.ACTIVE,
+        ]
+        if is_published is not None:
+            has_published_config = sa.and_(
+                Agent.active_config_snapshot_id.is_not(None),
+                Agent.active_config_is_published.is_(True),
+            )
+            agent_filters.append(has_published_config if is_published else sa.not_(has_published_config))
+
+        return sa.exists().where(*agent_filters).correlate(App)
+
+    @staticmethod
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
@@ -203,17 +265,8 @@ class AppService:
             filters.append(App.mode == AppMode.AGENT_CHAT)
         elif params.mode == "agent":
             filters.append(App.mode == AppMode.AGENT)
-            filters.append(
-                sa.exists()
-                .where(
-                    Agent.tenant_id == tenant_id,
-                    Agent.app_id == App.id,
-                    Agent.scope == AgentScope.ROSTER,
-                    Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                    Agent.status == AgentStatus.ACTIVE,
-                )
-                .correlate(App)
-            )
+            publication_filter = params.agent_is_published if isinstance(params, AppListParams) else None
+            filters.append(AppService._agent_app_exists_filter(tenant_id, is_published=publication_filter))
         elif params.mode == "all":
             filters.append(App.mode != AppMode.AGENT)
 
@@ -306,25 +359,6 @@ class AppService:
             return []
         return list(session.execute(apply_openapi_gate(select(App).where(App.id.in_(list(app_ids))))).scalars().all())
 
-    @staticmethod
-    def find_visible_apps_by_name(
-        session: Session,
-        *,
-        name: str,
-        tenant_id: str,
-    ) -> list[App]:
-        return list(
-            session.execute(
-                apply_openapi_gate(
-                    select(App).where(
-                        App.name == name,
-                        App.tenant_id == tenant_id,
-                        App.status == "normal",
-                    )
-                )
-            ).scalars()
-        )
-
     def get_paginate_apps(
         self,
         user_id: str,
@@ -363,6 +397,31 @@ class AppService:
             app.is_starred = str(app.id) in starred_app_ids
 
         return app_models
+
+    def get_agent_publication_counts(
+        self,
+        user_id: str,
+        tenant_id: str,
+        params: AppListParams,
+        session: Session,
+    ) -> AgentAppPublicationCounts:
+        unfiltered_params = params.model_copy(update={"agent_is_published": None})
+        filters = self._build_app_list_filters(user_id, tenant_id, unfiltered_params, session)
+        if not filters:
+            return AgentAppPublicationCounts(published=0, drafts=0)
+
+        published_filter = self._agent_app_exists_filter(tenant_id, is_published=True)
+        draft_filter = self._agent_app_exists_filter(tenant_id, is_published=False)
+        published_count, draft_count = session.execute(
+            sa.select(
+                sa.func.coalesce(sa.func.sum(sa.case((published_filter, 1), else_=0)), 0),
+                sa.func.coalesce(sa.func.sum(sa.case((draft_filter, 1), else_=0)), 0),
+            )
+            .select_from(App)
+            .where(*filters)
+        ).one()
+
+        return AgentAppPublicationCounts(published=int(published_count), drafts=int(draft_count))
 
     def get_recent_apps(
         self,
@@ -507,6 +566,22 @@ class AppService:
         """
         app_mode = AppMode.value_of(params.mode)
         app_template = default_app_templates[app_mode]
+        initial_agent_soul: AgentSoulConfig | None = None
+        if app_mode == AppMode.AGENT:
+            default_model = ModelProviderService().get_default_model_selection(
+                tenant_id, ModelType.LLM, session=session
+            )
+            if default_model is not None:
+                agent_provider, agent_model = default_model
+                try:
+                    provider_id = ModelProviderID(agent_provider)
+                    initial_agent_soul = AgentSoulConfig(
+                        model=AgentSoulModelConfig(
+                            plugin_id=provider_id.plugin_id, model_provider=str(provider_id), model=agent_model
+                        )
+                    )
+                except ValueError:
+                    logger.warning("Invalid Agent default model, tenant_id: %s", tenant_id, exc_info=True)
 
         # get model config
         default_model_config = app_template.get("model_config")
@@ -617,45 +692,76 @@ class AppService:
 
         # Agent App type is backed 1:1 by a roster Agent (linked via Agent.app_id).
         # Created in the same transaction so the App and its backing Agent persist
-        # atomically; the Agent Soul (model/prompt/tools) is configured afterward
-        # in the Composer.
+        # atomically; the Agent Soul starts with the workspace model selection.
+        backing_agent: Agent | None = None
         if app_mode == AppMode.AGENT:
             from services.agent.roster_service import AgentRosterService
 
             icon_type = AgentIconType(params.icon_type) if params.icon_type else None
-            AgentRosterService(session).create_backing_agent_for_app(
-                tenant_id=tenant_id,
-                account_id=account.id,
-                app_id=app.id,
-                name=params.name,
-                description=params.description or "",
-                role=params.agent_role,
-                icon_type=icon_type,
-                icon=params.icon,
-                icon_background=params.icon_background,
-            )
+            try:
+                backing_agent = AgentRosterService(session).create_backing_agent_for_app(
+                    tenant_id=tenant_id,
+                    account_id=account.id,
+                    app_id=app.id,
+                    name=params.name,
+                    description=params.description or "",
+                    role=params.agent_role,
+                    icon_type=icon_type,
+                    icon=params.icon,
+                    icon_background=params.icon_background,
+                    initial_soul=initial_agent_soul,
+                )
+            except IntegrityError as exc:
+                session.rollback()
+                raise AgentNameConflictError() from exc
 
         session.flush()
 
         # Preserve the original commit-before-signal ordering for telemetry.
         session.commit()
-        app_was_created.send(app, account=account, session=session)
+        self.finalize_created_app(
+            app=app,
+            backing_agent_id=backing_agent.id if backing_agent else None,
+            account=account,
+            session=session,
+        )
+        return app
+
+    def finalize_created_app(
+        self,
+        *,
+        app: App,
+        backing_agent_id: str | None,
+        account: Account,
+        session: Session,
+        created_records_initialized: bool = False,
+    ) -> None:
+        """Run post-commit App creation hooks and external access initialization."""
+
+        app_was_created.send(
+            app,
+            account=account,
+            session=session,
+            created_records_initialized=created_records_initialized,
+        )
         session.commit()
-        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
-            tenant_id,
-            account.id,
-            enterprise_rbac_service.RBACResourceType.APP,
-            app.id,
+        app_mode = app.mode
+        initialize_access = _CREATED_APP_ACCESS_INITIALIZERS.get(app_mode, _initialize_created_app_access)
+        initialize_access(
+            _CreatedApp(
+                tenant_id=app.tenant_id,
+                creator_account_id=account.id,
+                app_id=app.id,
+                backing_agent_id=backing_agent_id,
+            )
         )
 
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(app.tenant_id)
-
-        return app
 
     def get_app(self, app: App, *, session: Session) -> App:
         """
@@ -668,42 +774,12 @@ class AppService:
             model_config = app.app_model_config_with_session(session=session)
             if not model_config:
                 return app
-            agent_mode = model_config.agent_mode_dict
-            # decrypt agent tool parameters if it's secret-input
-            for tool in agent_mode.get("tools") or []:
-                if not isinstance(tool, dict) or len(tool.keys()) <= 3:
-                    continue
-                typed_tool = {key: value for key, value in tool.items() if isinstance(key, str)}
-                if len(typed_tool) != len(tool):
-                    continue
-                agent_tool_entity = AgentToolEntity.model_validate(typed_tool)
-                # get tool
-                try:
-                    tool_runtime = ToolManager.get_agent_tool_runtime(
-                        tenant_id=current_user.current_tenant_id,
-                        app_id=app.id,
-                        agent_tool=agent_tool_entity,
-                        user_id=current_user.id,
-                    )
-                    manager = ToolParameterConfigurationManager(
-                        tenant_id=current_user.current_tenant_id,
-                        tool_runtime=tool_runtime,
-                        provider_name=agent_tool_entity.provider_id,
-                        provider_type=agent_tool_entity.provider_type,
-                        identity_id=f"AGENT.{app.id}",
-                    )
-
-                    # get decrypted parameters
-                    if agent_tool_entity.tool_parameters:
-                        parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
-                        masked_parameter = manager.mask_tool_parameters(parameters or {})
-                    else:
-                        masked_parameter = {}
-
-                    # override tool parameters
-                    tool["tool_parameters"] = masked_parameter
-                except Exception:
-                    logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
+            agent_mode = mask_agent_tool_parameters(
+                agent_mode=cast(Mapping[str, JsonValue], model_config.agent_mode_dict),
+                app_id=app.id,
+                tenant_id=current_user.current_tenant_id,
+                user_id=current_user.id,
+            )
 
             # override agent mode
             if model_config:
@@ -717,9 +793,12 @@ class AppService:
                 def __init__(self, app):
                     self.__dict__.update(app.__dict__)
 
-                @property
                 @override
-                def app_model_config(self):
+                def app_model_config_with_session(self, *, session: Session) -> AppModelConfig | None:
+                    # Hand back the in-memory config the masking pass above produced, and
+                    # deliberately ignore `session`: re-reading the row here would undo the
+                    # masking. Response paths resolve the config through this accessor
+                    # (`AppResponseView.app_model_config`), so the override has to sit here.
                     return model_config
 
             app = ModifiedApp(app)
@@ -737,7 +816,7 @@ class AppService:
         role: NotRequired[str | None]
 
     @staticmethod
-    def _get_backing_agent_for_update(app: App, *, session: Session) -> Agent | None:
+    def _get_backing_agent(app: App, *, session: Session) -> Agent | None:
         if app.mode != AppMode.AGENT:
             return None
         return session.scalar(
@@ -780,7 +859,7 @@ class AppService:
         Role omission is intentional: ``role=None`` preserves the backing
         Agent's current role, while ``role=""`` explicitly clears it.
         """
-        agent = self._get_backing_agent_for_update(app, session=session)
+        agent = self._get_backing_agent(app, session=session)
         if agent is None:
             return
 
@@ -984,21 +1063,59 @@ class AppService:
         return app
 
     def delete_app(self, app: App, *, session: Session) -> None:
-        """
-        Delete app
-        :param app: App instance
+        """Delete an App and commit the passed session.
+
+        The transaction releases all of a Workflow App's binding owners across
+        draft and published versions, archives a backing Roster Agent, retires
+        its resources, and deletes the App. Deleting a Roster Agent's backing
+        App does not remove bindings owned by external Workflows.
+
+        After commit, the main App cleanup is published first, followed by
+        workflow-only Agent retirement and the Roster resource collector. Any
+        publication failure propagates.
         """
         app_was_deleted.send(app)
 
-        backing_agent = self._get_backing_agent_for_update(app, session=session)
-        workflow_agent_ids = session.scalars(
-            select(Agent.id).where(
-                Agent.tenant_id == app.tenant_id,
-                Agent.app_id == app.id,
-                Agent.scope == AgentScope.WORKFLOW_ONLY,
-                Agent.status == AgentStatus.ACTIVE,
+        backing_agent = self._get_backing_agent(app, session=session)
+        workflow_agent_ids = set(
+            session.scalars(
+                select(Agent.id).where(
+                    Agent.tenant_id == app.tenant_id,
+                    Agent.app_id == app.id,
+                    Agent.scope == AgentScope.WORKFLOW_ONLY,
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+            ).all()
+        )
+        if app.mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
+            workflow_agent_ids.update(
+                agent_id
+                for agent_id in session.scalars(
+                    select(WorkflowAgentNodeBinding.agent_id).where(
+                        WorkflowAgentNodeBinding.tenant_id == app.tenant_id,
+                        WorkflowAgentNodeBinding.app_id == app.id,
+                        WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.INLINE_AGENT,
+                        WorkflowAgentNodeBinding.agent_id.is_not(None),
+                    )
+                ).all()
+                if agent_id
             )
-        ).all()
+            session.execute(
+                delete(WorkflowAgentNodeBinding).where(
+                    WorkflowAgentNodeBinding.tenant_id == app.tenant_id,
+                    WorkflowAgentNodeBinding.app_id == app.id,
+                )
+            )
+        agent_ids_to_unbind = set(workflow_agent_ids)
+        if backing_agent is not None:
+            agent_ids_to_unbind.add(backing_agent.id)
+        if agent_ids_to_unbind:
+            session.execute(
+                delete(AgentSkillBinding).where(
+                    AgentSkillBinding.tenant_id == app.tenant_id,
+                    AgentSkillBinding.agent_id.in_(agent_ids_to_unbind),
+                )
+            )
         account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()
@@ -1015,17 +1132,16 @@ class AppService:
                 select(AgentWorkspaceBinding).where(
                     AgentWorkspaceBinding.tenant_id == app.tenant_id,
                     AgentWorkspaceBinding.agent_id == backing_agent.id,
-                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                 )
             ).all()
             for binding in bindings:
-                binding_id = AgentWorkspaceService.retire_binding(
-                    session=session,
-                    tenant_id=app.tenant_id,
-                    binding_id=binding.id,
-                )
-                if binding_id is not None:
-                    retired_binding_ids.append(binding_id)
+                if binding.status == AgentWorkingResourceStatus.ACTIVE:
+                    AgentWorkspaceService.retire_binding(
+                        session=session,
+                        tenant_id=app.tenant_id,
+                        binding_id=binding.id,
+                    )
+                retired_binding_ids.append(binding.id)
             retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
                 session=session,
                 tenant_id=app.tenant_id,
@@ -1040,7 +1156,16 @@ class AppService:
         session.delete(app)
         session.commit()
 
-        workflow_binding_ids, workflow_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        try:
+            remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
+        except Exception:
+            logger.exception(
+                "Failed to enqueue App cleanup",
+                extra={"tenant_id": app.tenant_id, "app_id": app.id},
+            )
+            raise
+
+        WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app.tenant_id,
             agent_ids=workflow_agent_ids,
             account_id=account_id,
@@ -1048,84 +1173,17 @@ class AppService:
         enqueue_agent_resource_collection(
             tenant_id=app.tenant_id,
             workspace_ids=retired_workspace_ids,
-            binding_ids=[*retired_binding_ids, *workflow_binding_ids],
-            home_snapshot_ids=[*retired_snapshot_ids, *workflow_snapshot_ids],
+            binding_ids=retired_binding_ids,
+            home_snapshot_ids=retired_snapshot_ids,
+            purge_agent_ids=[backing_agent.id] if backing_agent is not None else [],
         )
 
         # clean up web app settings
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(app.tenant_id)
-
-        # Trigger asynchronous deletion of app and related data
-        remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
-
-    def get_app_meta(self, app_model: App, *, session: Session):
-        """
-        Get app meta info
-        :param app_model: app model
-        :param session: database session
-        :return:
-        """
-        app_mode = AppMode.value_of(app_model.mode)
-
-        meta: dict[str, Any] = {"tool_icons": {}}
-
-        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = session.get(Workflow, app_model.workflow_id) if app_model.workflow_id else None
-            if workflow is None:
-                return meta
-
-            graph = workflow.graph_dict
-            nodes = graph.get("nodes", [])
-            tools = []
-            for node in nodes:
-                if node.get("data", {}).get("type") == "tool":
-                    node_data = node.get("data", {})
-                    tools.append(
-                        {
-                            "provider_type": node_data.get("provider_type"),
-                            "provider_id": node_data.get("provider_id"),
-                            "tool_name": node_data.get("tool_name"),
-                            "tool_parameters": {},
-                        }
-                    )
-        else:
-            app_model_config = (
-                session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
-            )
-
-            if not app_model_config:
-                return meta
-
-            agent_config = app_model_config.agent_mode_dict
-
-            # get all tools
-            tools = cast(list[dict[str, Any]], agent_config.get("tools", []))
-
-        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
-
-        for tool in tools:
-            keys = list(tool.keys())
-            if len(keys) >= 4:
-                # current tool standard
-                provider_type = str(tool.get("provider_type", ""))
-                provider_id = str(tool.get("provider_id", ""))
-                tool_name = str(tool.get("tool_name", ""))
-                if provider_type == "builtin":
-                    meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
-                elif provider_type == "api":
-                    try:
-                        provider: ApiToolProvider | None = session.get(ApiToolProvider, provider_id)
-                        if provider is None:
-                            raise ValueError(f"provider not found for tool {tool_name}")
-                        meta["tool_icons"][tool_name] = json.loads(provider.icon)
-                    except:
-                        meta["tool_icons"][tool_name] = {"background": "#252525", "content": "\ud83d\ude01"}
-
-        return meta
 
     @staticmethod
     def get_app_code_by_id(app_id: str, *, session: Session) -> str:

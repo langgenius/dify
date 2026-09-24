@@ -5,6 +5,7 @@ import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/
 import type { Type } from '@/app/components/workflow/nodes/llm/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -15,8 +16,6 @@ import {
   isParagraphFormInput,
   isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
-import ActionButton from '../../../action-button'
-import { VariableX } from '../../../icons/src/vender/workflow'
 import InputField from './input-field'
 import VariableBlock from './variable-block'
 
@@ -53,7 +52,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   ragVariables,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const resolvedFormInput = formInput || createDefaultParagraphFormInput(varName)
   const paragraphDefault = isParagraphFormInput(resolvedFormInput)
     ? resolvedFormInput.default
@@ -136,7 +135,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
       <div className="absolute -top-3 left-2.5">
         <div className="absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle"></div>
         <div className="relative flex items-center space-x-0.5 px-1 text-text-accent-light-mode-only">
-          <VariableX className="size-3" />
+          <span aria-hidden className="i-custom-vender-workflow-variable-x size-3" />
           <div className="system-xs-medium">{varName}</div>
         </div>
       </div>
@@ -166,18 +165,18 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         {!readonly && (
           <div className="hidden h-full shrink-0 items-center space-x-1 group-hover:flex">
             <div className="flex h-full items-center" ref={editBtnRef}>
-              <ActionButton size="s" aria-label={t(($) => $['operation.edit'], { ns: 'common' })}>
+              <IconButton size="sm" aria-label={t(($) => $['operation.edit'], { ns: 'common' })}>
                 <span className="i-ri-edit-line size-4 text-text-tertiary" aria-hidden="true" />
-              </ActionButton>
+              </IconButton>
             </div>
 
             <div className="flex h-full items-center" ref={removeBtnRef}>
-              <ActionButton size="s" aria-label={t(($) => $['operation.remove'], { ns: 'common' })}>
+              <IconButton size="sm" aria-label={t(($) => $['operation.remove'], { ns: 'common' })}>
                 <span
                   className="i-ri-delete-bin-line size-4 text-text-tertiary"
                   aria-hidden="true"
                 />
-              </ActionButton>
+              </IconButton>
             </div>
           </div>
         )}

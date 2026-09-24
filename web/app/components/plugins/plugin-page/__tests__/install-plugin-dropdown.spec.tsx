@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InstallPluginDropdown from '../install-plugin-dropdown'
 
@@ -23,18 +23,6 @@ vi.mock('@/config', async (importOriginal) => {
 
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: mockSystemFeatures })
-
-vi.mock('@/app/components/base/icons/src/vender/solid/files', () => ({
-  FileZip: () => <span data-testid="file-zip-icon">file</span>,
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/solid/general', () => ({
-  Github: () => <span data-testid="github-icon">github</span>,
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
-  MagicBox: () => <span data-testid="magic-box-icon">magic</span>,
-}))
 
 vi.mock('@remixicon/react', () => ({
   RiAddCircleFill: ({ className }: { className?: string }) => (

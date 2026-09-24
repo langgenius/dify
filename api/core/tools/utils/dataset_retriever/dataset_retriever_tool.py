@@ -123,7 +123,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             for hit_callback in self.hit_callbacks:
                 hit_callback.return_retriever_resource_info(context_list)
 
-            return str("\n".join([item.page_content for item in results]))
+            return "\n".join([item.page_content for item in results])
         else:
             if metadata_condition and not document_ids_filter:
                 return ""
@@ -139,7 +139,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     top_k=self.top_k,
                     document_ids_filter=document_ids_filter,
                 )
-                return str("\n".join([document.page_content for document in documents]))
+                return "\n".join([document.page_content for document in documents])
             else:
                 if self.top_k > 0:
                     # retrieval source
@@ -241,5 +241,5 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     hit_callback.return_retriever_resource_info(retrieval_resource_list)
             if document_context_list:
                 document_context_list = sorted(document_context_list, key=lambda x: x.score or 0.0, reverse=True)
-                return str("\n".join([document_context.content for document_context in document_context_list]))
+                return "\n".join([document_context.content for document_context in document_context_list])
             return ""

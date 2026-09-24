@@ -186,13 +186,9 @@ describe('list-operator/panel', () => {
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
-  it('renders enabled sections and forwards all main interactions', async () => {
+  it('renders enabled sections and handles variable, filter, limit, and sort changes', async () => {
     const user = userEvent.setup()
-    const config = createConfigResult({
-      handleOrderByTypeChange: vi.fn(
-        (value: OrderBy) => () => config.handleOrderByEnabledChange(value === OrderBy.ASC),
-      ),
-    })
+    const config = createConfigResult()
     mockUseConfig.mockReturnValue(config)
 
     renderPanel()
@@ -218,9 +214,6 @@ describe('list-operator/panel', () => {
     await user.click(screen.getByRole('button', { name: 'extract-input:1' }))
     await user.click(screen.getByRole('button', { name: 'limit-config:10' }))
     await user.click(screen.getByRole('button', { name: 'sub-variable:size' }))
-    await user.click(screen.getAllByRole('switch')[0]!)
-    await user.click(screen.getAllByRole('switch')[1]!)
-    await user.click(screen.getAllByRole('switch')[2]!)
     await user.click(screen.getByRole('button', { name: 'workflow.nodes.listFilter.asc:selected' }))
     await user.click(screen.getByRole('button', { name: 'workflow.nodes.listFilter.desc:idle' }))
 
@@ -229,9 +222,6 @@ describe('list-operator/panel', () => {
     expect(config.handleExtractsChange).toHaveBeenCalledWith('2')
     expect(config.handleLimitChange).toHaveBeenCalledWith({ enabled: true, size: 11 })
     expect(config.handleOrderByKeyChange).toHaveBeenCalledWith('name')
-    expect(config.handleFilterEnabledChange).toHaveBeenCalledWith(false)
-    expect(config.handleExtractsEnabledChange).toHaveBeenCalledWith(false)
-    expect(config.handleOrderByEnabledChange).toHaveBeenCalled()
     expect(config.handleOrderByTypeChange).toHaveBeenCalledWith(OrderBy.ASC)
     expect(config.handleOrderByTypeChange).toHaveBeenCalledWith(OrderBy.DESC)
   })

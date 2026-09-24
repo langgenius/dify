@@ -49,7 +49,7 @@ const Line = React.memo(({ className }: LineProps) => {
 Line.displayName = 'Line'
 
 const Empty: FC<IEmptyProps> = ({ onClearFilter }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
     <div className="relative z-0 flex h-full items-center justify-center">

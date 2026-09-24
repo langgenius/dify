@@ -1,10 +1,14 @@
+import type { ReactElement } from 'react'
 import type { ComparisonOperator, MetadataFilteringCondition, MetadataShape } from '../types'
 import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useRef } from 'react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import {
+  createAccountProfileQueryClient,
+  createAccountProfileQueryWrapper,
+} from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
@@ -33,6 +37,11 @@ import {
   MetadataFilteringModeEnum,
   MetadataFilteringVariableType,
 } from '../types'
+
+const renderWithAccountProfile = (ui: ReactElement) =>
+  render(ui, {
+    wrapper: createAccountProfileQueryWrapper(),
+  })
 
 const mockHasEditPermissionForDataset = vi.fn(
   (
@@ -136,10 +145,6 @@ const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
@@ -422,7 +427,7 @@ describe('knowledge-retrieval path', () => {
     it('should render empty and populated dataset lists', () => {
       const onChange = vi.fn()
 
-      const { rerender } = render(<DatasetList list={[]} onChange={onChange} />)
+      const { rerender } = renderWithAccountProfile(<DatasetList list={[]} onChange={onChange} />)
 
       expect(screen.getByText('appDebug.datasetConfig.knowledgeTip')).toBeInTheDocument()
 
@@ -454,7 +459,7 @@ describe('knowledge-retrieval path', () => {
         canAccessConfig: false,
       })
 
-      render(<DatasetList list={[dataset]} onChange={vi.fn()} />)
+      renderWithAccountProfile(<DatasetList list={[dataset]} onChange={vi.fn()} />)
 
       const datasetItem = getDatasetItem()
 
@@ -767,7 +772,7 @@ describe('knowledge-retrieval path', () => {
       store.getState().updateDatasetsDetail([createDataset()])
 
       const renderNode = (datasetIds: string[]) =>
-        render(
+        renderWithAccountProfile(
           <DatasetsDetailContext.Provider value={store}>
             <Node
               id="knowledge-node"

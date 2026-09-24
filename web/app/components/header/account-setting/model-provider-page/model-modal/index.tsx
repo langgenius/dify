@@ -15,14 +15,13 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   useAuth,
   useCredentialData,
@@ -84,7 +83,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const { credentials: formSchemasValue, available_credentials } = credentialData as any
 
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const language = useLanguage()
   const { formSchemas, formValues, modelNameAndTypeFormSchemas, modelNameAndTypeFormValues } =
     useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)
@@ -194,7 +193,7 @@ const ModelModal: FC<ModelModalProps> = ({
   ])
 
   const modalTitle = useMemo(() => {
-    let label = t(($) => $['modelProvider.auth.apiKeyModal.title'], { ns: 'common' })
+    let label: string = t(($) => $['modelProvider.auth.apiKeyModal.title'], { ns: 'common' })
 
     if (
       mode === ModelModalModeEnum.configCustomModel ||
@@ -309,7 +308,17 @@ const ModelModal: FC<ModelModalProps> = ({
         backdropProps={{ forceRender: true }}
         className="flex w-160 max-w-160 flex-col overflow-hidden p-0"
       >
-        <DialogCloseButton className="top-5 right-5 size-8" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-5 right-5"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="shrink-0 p-6 pb-3">
           {modalTitle}
           {modalDesc}
@@ -349,7 +358,7 @@ const ModelModal: FC<ModelModalProps> = ({
           )}
           {isLoading && (
             <div className="mt-3 flex items-center justify-center">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {!isLoading && showCredentialForm && (
@@ -389,7 +398,10 @@ const ModelModal: FC<ModelModalProps> = ({
                 provider.help.url[language] ||
                 provider.help.title?.en_US ||
                 provider.help.url.en_US}
-              <LinkExternal02 className="-mt-0.5 ml-1 inline-block h-3 w-3" />
+              <span
+                aria-hidden
+                className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
+              />
             </a>
           ) : (
             <div />
@@ -418,7 +430,10 @@ const ModelModal: FC<ModelModalProps> = ({
           mode === ModelModalModeEnum.configProviderCredential) && (
           <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
             <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
-              <Lock01 className="mr-1 size-3 text-text-tertiary" />
+              <span
+                aria-hidden
+                className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
+              />
               {t(($) => $['modelProvider.encrypted.front'], { ns: 'common' })}
               <a
                 className="mx-1 text-text-accent"

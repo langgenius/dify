@@ -16,9 +16,21 @@ const routerMock = vi.hoisted(() => ({
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const { default: dataset } = await import('@/i18n/locales/en-US/dataset.json')
+  return createReactI18nextMock({
+    'dataset.newKnowledge.connectProvider': dataset['newKnowledge.connectProvider'],
+    'dataset.newKnowledge.connectionFailed': dataset['newKnowledge.connectionFailed'],
+    'dataset.newKnowledge.connectionNeedsAttention':
+      dataset['newKnowledge.connectionNeedsAttention'],
+    'dataset.newKnowledge.connectionProvisioning': dataset['newKnowledge.connectionProvisioning'],
+  })
+})
+
 const toastInfoMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { info: toastInfoMock },
 }))
 
@@ -94,7 +106,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       postKnowledgeSpacesByIdSourceConnections: clientMock.createConnection,
@@ -182,6 +194,14 @@ const connection = (
   version,
 })
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 describe('AddSourcePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -226,7 +246,7 @@ describe('AddSourcePage', () => {
     })
     expect(options.getNextPageParam({ items: [], nextCursor: 'next' })).toBe('next')
     expect(options.initialPageParam).toBeNull()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('continues loading connection pages automatically', async () => {
@@ -534,7 +554,7 @@ describe('AddSourcePage', () => {
     )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: 'Connect Firecrawl' }))
 
     await waitFor(() =>
       expect(clientMock.createConnection).toHaveBeenCalledWith({
@@ -553,13 +573,41 @@ describe('AddSourcePage', () => {
         params: { id: 'space-1' },
       }),
     )
-    await screen.findByRole('status', { name: 'appApi.loading' })
+    await screen.findByRole('progressbar', { name: 'common.loading' })
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['source-connections'],
     })
     expect(screen.getByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
     expect(screen.queryByDisplayValue('secret-value')).not.toBeInTheDocument()
+  })
+
+  it('keeps the connection action focused and explicitly named while pending', async () => {
+    const user = userEvent.setup()
+    const createConnectionDeferred = createDeferred<ReturnType<typeof connection>>()
+    clientMock.createConnection.mockReturnValue(createConnectionDeferred.promise)
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    )
+    await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
+    const connectButton = screen.getByRole('button', {
+      name: 'Connect Firecrawl',
+    })
+    await user.click(connectButton)
+
+    const pendingButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.connectingProvider',
+    })
+    expect(pendingButton).toBe(connectButton)
+    expect(pendingButton).toHaveAttribute('aria-disabled', 'true')
+    expect(pendingButton).toHaveFocus()
+    await user.click(pendingButton)
+    expect(clientMock.createConnection).toHaveBeenCalledOnce()
+
+    await act(async () => createConnectionDeferred.resolve(connection('active')))
+    await screen.findByRole('progressbar', { name: 'common.loading' })
   })
 
   it('releases the parent history guard before the crawl preview owns navigation', async () => {
@@ -572,7 +620,7 @@ describe('AddSourcePage', () => {
       screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: 'Connect Firecrawl' }))
 
     await waitFor(() => expect(historyBack).toHaveBeenCalledOnce())
     expect(screen.queryByText(/dataset\.newKnowledge\.providerConnected/)).not.toBeInTheDocument()
@@ -645,7 +693,7 @@ describe('AddSourcePage', () => {
     view.rerender(
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
     )
-    await screen.findByRole('status', { name: 'appApi.loading' })
+    await screen.findByRole('progressbar', { name: 'common.loading' })
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
 
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue(
@@ -677,9 +725,13 @@ describe('AddSourcePage', () => {
     )
     await user.type(screen.getByLabelText(/Api Key/), 'do-not-retain')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: 'Connect Firecrawl' }))
 
-    expect(await screen.findByText('dataset.newKnowledge.connectionFailed')).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        "We couldn't connect Firecrawl. Re-enter the credential and try again.",
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByLabelText(/Api Key/)).toHaveValue('')
     expect(screen.getByLabelText('Endpoint')).toHaveValue('https://crawl.example.com')
   })
@@ -696,13 +748,15 @@ describe('AddSourcePage', () => {
       screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: 'Connect Firecrawl' }))
 
     await waitFor(() => expect(clientMock.createConnection).toHaveBeenCalledOnce())
-    await screen.findByRole('status', { name: 'appApi.loading' })
+    await screen.findByRole('progressbar', { name: 'common.loading' })
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.connectionFailed')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText("We couldn't connect Firecrawl. Re-enter the credential and try again."),
+    ).not.toBeInTheDocument()
   })
 
   it('clears an API key when authentication modes are changed and changed back', async () => {
@@ -734,7 +788,7 @@ describe('AddSourcePage', () => {
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-be-sent')
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.endpoint' }))
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: 'Connect Firecrawl' }))
 
     await waitFor(() =>
       expect(clientMock.createConnection).toHaveBeenCalledWith({
@@ -787,6 +841,9 @@ describe('AddSourcePage', () => {
     clientMock.refreshConnection.mockResolvedValue(connection('active'))
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    expect(
+      screen.getByRole('heading', { name: 'Firecrawl connection needs attention' }),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     await waitFor(() =>
@@ -797,6 +854,29 @@ describe('AddSourcePage', () => {
     )
     expect(queryClientMock.invalidateQueries).toHaveBeenCalled()
     expect(screen.getByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
+  })
+
+  it('keeps the refresh action focused and explicitly named while pending', async () => {
+    const user = userEvent.setup()
+    const refreshConnectionDeferred = createDeferred<ReturnType<typeof connection>>()
+    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    clientMock.refreshConnection.mockReturnValue(refreshConnectionDeferred.promise)
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    const refreshButton = screen.getByRole('button', { name: 'common.operation.retry' })
+    await user.click(refreshButton)
+
+    const pendingButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.refreshingConnection',
+    })
+    expect(pendingButton).toBe(refreshButton)
+    expect(pendingButton).toHaveAttribute('aria-disabled', 'true')
+    expect(pendingButton).toHaveFocus()
+    await user.click(pendingButton)
+    expect(clientMock.refreshConnection).toHaveBeenCalledOnce()
+
+    await act(async () => refreshConnectionDeferred.resolve(connection('active')))
+    await screen.findByText(/dataset\.newKnowledge\.providerConnected/)
   })
 
   it('reconciles a refresh version race and retries with the server version', async () => {
@@ -865,9 +945,7 @@ describe('AddSourcePage', () => {
 
     const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(
-      await screen.findByText('dataset.newKnowledge.connectionProvisioning'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Firecrawl is connecting')).toBeInTheDocument()
 
     queryState.connections.data = {
       pages: [

@@ -1,6 +1,6 @@
 import type { Emitter, EventType, Handler, WildcardHandler } from 'mitt'
 import create from 'mitt'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const merge = <T extends Record<string, any>>(...args: Array<T | undefined>): T => {
   return Object.assign({}, ...args)
@@ -35,14 +35,20 @@ const defaultSubscribeOption: UseSubscribeOption = {
 }
 
 function useMitt<Events extends _Events>(mitt?: Emitter<Events>): UseMittReturn<Events> {
-  const emitterRef = useRef<Emitter<Events> | undefined>(undefined)
-  if (!emitterRef.current) emitterRef.current = mitt ?? create<Events>()
+  const [internalEmitter] = useState(() => create<Events>())
+  const emitterRef = useRef(mitt ?? internalEmitter)
 
-  if (mitt && emitterRef.current !== mitt) {
+  useEffect(() => {
+    if (!mitt || emitterRef.current === mitt) return
+
     emitterRef.current.off('*')
     emitterRef.current = mitt
-  }
-  const emitter = emitterRef.current
+  }, [mitt])
+
+  const emit = useCallback(<Key extends keyof Events>(type: Key, event?: Events[Key]) => {
+    emitterRef.current.emit(type, event as Events[Key])
+  }, []) as Emitter<Events>['emit']
+
   const useSubscribe: ExtendedOn<Events> = (
     type: string,
     handler: any,
@@ -51,13 +57,14 @@ function useMitt<Events extends _Events>(mitt?: Emitter<Events>): UseMittReturn<
     const { enabled } = merge(defaultSubscribeOption, option)
     useEffect(() => {
       if (enabled) {
+        const emitter = mitt ?? emitterRef.current
         emitter.on(type, handler)
         return () => emitter.off(type, handler)
       }
     })
   }
   return {
-    emit: emitter.emit,
+    emit,
     useSubscribe,
   }
 }
