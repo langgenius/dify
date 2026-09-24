@@ -205,7 +205,7 @@ describe('Blocks', () => {
     )
 
     const agentBlock = screen.getByRole('button', { name: /Agent/ })
-    expect(agentBlock).toHaveTextContent('common.menus.status')
+    expect(agentBlock).toHaveTextContent('navigation.menus.status')
 
     await user.hover(agentBlock)
 

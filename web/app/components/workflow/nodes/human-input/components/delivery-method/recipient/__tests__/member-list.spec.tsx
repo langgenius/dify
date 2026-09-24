@@ -71,7 +71,7 @@ describe('human-input/delivery-method/recipient/member-list', () => {
     await user.type(searchBox, 'pending')
 
     expect(screen.getByText('Pending User')).toBeInTheDocument()
-    expect(screen.getByText('common.members.pending')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.pending')).toBeInTheDocument()
     await user.click(screen.getByText('Pending User'))
     expect(handleSelect).toHaveBeenCalledWith('member-2')
   })
@@ -90,7 +90,7 @@ describe('human-input/delivery-method/recipient/member-list', () => {
       />,
     )
 
-    expect(screen.getByText('common.members.you')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.you')).toBeInTheDocument()
     expect(
       screen.getByText(
         'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added',

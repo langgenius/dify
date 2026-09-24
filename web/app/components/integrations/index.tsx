@@ -125,7 +125,7 @@ export default function IntegrationsPage({
   section: routeSection,
   syncDocumentTitle = false,
 }: IntegrationsPageProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['navigation', 'modelProvider'])
   const navigationTitleId = useId()
   const docLink = useDocLink()
   const router = useRouter()
@@ -155,7 +155,7 @@ export default function IntegrationsPage({
     secondaryItems,
     toolItems,
   } = useIntegrationNav(section)
-  const integrationsTitle = t(($) => $['mainNav.integrations'], { ns: 'common' })
+  const integrationsTitle = t(($) => $['mainNav.integrations'], { ns: 'navigation' })
   const sectionTitle = integrationHeader?.title ?? activeItem?.label ?? integrationsTitle
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
@@ -192,13 +192,15 @@ export default function IntegrationsPage({
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
   const headerDescription =
     integrationHeader?.description ??
-    (section === 'provider' ? t(($) => $['modelProvider.pageDesc'], { ns: 'common' }) : undefined)
+    (section === 'provider'
+      ? t(($) => $['modelProvider.pageDesc'], { ns: 'modelProvider' })
+      : undefined)
   const headerDescriptionDocPath = headerDescriptionDocPaths[section]
   const headerDescriptionWithLink =
     headerDescription && headerDescriptionDocPath ? (
       <DescriptionWithLearnMore
         href={docLink(headerDescriptionDocPath)}
-        label={t(($) => $['modelProvider.learnMore'], { ns: 'common' })}
+        label={t(($) => $['modelProvider.learnMore'], { ns: 'modelProvider' })}
       >
         {headerDescription}
       </DescriptionWithLearnMore>
@@ -241,7 +243,7 @@ export default function IntegrationsPage({
         <span className="i-ri-arrow-down-s-line hidden size-4 transition-transform duration-100 ease-out group-hover/collapsible:inline-block group-focus-visible/collapsible:inline-block group-data-panel-open/collapsible:rotate-180 motion-reduce:transition-none" />
       </span>
       <span className="min-w-0 flex-1 truncate">
-        {t(($) => $['menus.tools'], { ns: 'common' })}
+        {t(($) => $['menus.tools'], { ns: 'navigation' })}
       </span>
     </>
   )
@@ -273,7 +275,7 @@ export default function IntegrationsPage({
                 id={navigationTitleId}
                 className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary"
               >
-                {t(($) => $['settings.integrations'], { ns: 'common' })}
+                {t(($) => $['settings.integrations'], { ns: 'navigation' })}
               </div>
             </div>
           </div>

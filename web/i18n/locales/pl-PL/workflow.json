@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Zobacz historię uruchomień",
   "common.webhookDebugFailed": "Niepowodzenie debugowania Webhook",
   "common.webhookDebugRequestFailed": "Niepowodzenie żądania debugowania Webhook",
-  "common.workflowAsTool": "Przepływ pracy jako narzędzie",
   "common.workflowAsToolDescription": "Używaj jako narzędzia w innych aplikacjach",
   "common.workflowAsToolDisabledHint": "Opublikuj najnowszy przepływ pracy i upewnij się, że węzeł Wprowadzanie danych użytkownika jest połączony przed skonfigurowaniem go jako narzędzie.",
   "common.workflowAsToolReady": "Gotowe",

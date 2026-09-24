@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const EmailItem = ({ email, data, onDelete, disabled = false, isError }: Props) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['workspaceMembers'])
 
   return (
     <div
@@ -31,7 +31,7 @@ const EmailItem = ({ email, data, onDelete, disabled = false, isError }: Props) 
         {email === data.email ? data.name : data.email}
         {email === data.email && (
           <span className="system-xs-regular text-text-tertiary">
-            {t(($) => $['members.you'], { ns: 'common' })}
+            {t(($) => $['members.you'], { ns: 'workspaceMembers' })}
           </span>
         )}
       </div>

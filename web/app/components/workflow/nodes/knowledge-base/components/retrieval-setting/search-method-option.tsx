@@ -238,13 +238,13 @@ export function SearchMethodOption({
 }: SearchMethodOptionProps) {
   const rerankLabelId = useId()
 
-  const { t } = useTranslation(['common', 'datasetSettings'])
+  const { t } = useTranslation(['datasetSettings', 'modelProvider'])
   const isHybridSearch = option.id === RetrievalSearchMethodEnum.hybrid
   const isHybridSearchWeightedScoreMode = hybridSearch.mode === HybridSearchModeEnum.WeightedScore
   const showRerankModelSelectorSwitch = shouldShowRerankModelSelectorSwitch(option.id)
   const showRerankModelSelector = shouldShowRerankModelSelector(option.id, hybridSearch.mode)
-  const rerankModelLabel = t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })
-  const rerankModelTip = t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })
+  const rerankModelLabel = t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })
+  const rerankModelTip = t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' })
   const scoreThresholdHidden = option.id === RetrievalSearchMethodEnum.keywordSearch
   const config = (
     <div className="space-y-3">

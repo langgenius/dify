@@ -68,7 +68,7 @@ describe('AccountPage', () => {
     renderPage()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
-    const nameInput = await screen.findByRole('textbox', { name: 'common.account.name' })
+    const nameInput = await screen.findByRole('textbox', { name: 'accountSettings.account.name' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Alice Cooper')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))

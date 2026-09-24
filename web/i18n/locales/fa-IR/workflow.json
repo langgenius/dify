@@ -256,7 +256,6 @@
   "common.viewRunHistory": "مشاهده تاریخچه اجرا",
   "common.webhookDebugFailed": "اشکال‌زدایی Webhook ناموفق بود",
   "common.webhookDebugRequestFailed": "درخواست اشکال‌زدایی Webhook ناموفق بود",
-  "common.workflowAsTool": "گردش کار به عنوان ابزار",
   "common.workflowAsToolDescription": "استفاده به‌عنوان ابزار در برنامه‌های دیگر",
   "common.workflowAsToolDisabledHint": "برای تنظیم به عنوان ابزار، ابتدا گردش کار را منتشر کنید و مطمئن شوید که گره ورودی کاربر متصل است.",
   "common.workflowAsToolReady": "آماده",

@@ -231,8 +231,12 @@ describe('ModelModal', () => {
 
     const predefined = renderModal()
 
-    expect(screen.getByText('common.modelProvider.auth.apiKeyModal.title'))!.toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.auth.apiKeyModal.desc'))!.toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.auth.apiKeyModal.title'),
+    )!.toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.auth.apiKeyModal.desc'),
+    )!.toBeInTheDocument()
     expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
 
@@ -240,7 +244,9 @@ describe('ModelModal', () => {
     const customizable = renderModal({
       configurateMethod: ConfigurationMethodEnum.customizableModel,
     })
-    expect(screen.queryByText('common.modelProvider.auth.apiKeyModal.desc')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.auth.apiKeyModal.desc'),
+    ).not.toBeInTheDocument()
     customizable.unmount()
 
     mockState.credentialData = { credentials: {}, available_credentials: [] }
@@ -248,21 +254,27 @@ describe('ModelModal', () => {
       mode: ModelModalModeEnum.configModelCredential,
       model: { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration },
     })
-    expect(screen.getByText('common.modelProvider.auth.addModelCredential'))!.toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.auth.addModelCredential'),
+    )!.toBeInTheDocument()
   })
 
   it('should reveal the credential label when adding a new credential', () => {
     renderModal({ mode: ModelModalModeEnum.addCustomModelToModelList })
 
-    expect(screen.queryByText('common.modelProvider.auth.modelCredential')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.auth.modelCredential'),
+    ).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Add New'))
 
-    expect(screen.getByText('common.modelProvider.auth.modelCredential'))!.toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.auth.modelCredential'),
+    )!.toBeInTheDocument()
   })
 
   it('should show the Responses API tip only for official OpenAI credential forms', () => {
-    const tip = 'common.modelProvider.auth.openAIResponsesAPITip'
+    const tip = 'modelProvider.modelProvider.auth.openAIResponsesAPITip'
     mockState.formSchemas = [
       { variable: 'api_protocol', type: 'select' } as unknown as CredentialFormSchema,
     ]
@@ -292,7 +304,7 @@ describe('ModelModal', () => {
   })
 
   it('should show the Responses API tip when adding a new custom model credential', () => {
-    const tip = 'common.modelProvider.auth.openAIResponsesAPITip'
+    const tip = 'modelProvider.modelProvider.auth.openAIResponsesAPITip'
     mockState.formSchemas = [
       { variable: 'api_protocol', type: 'select' } as unknown as CredentialFormSchema,
     ]
@@ -340,7 +352,7 @@ describe('ModelModal', () => {
     const { onCancel } = renderModal({ credential })
 
     const alertDialog = screen.getByRole('alertdialog', { hidden: true })
-    expect(alertDialog)!.toHaveTextContent('common.modelProvider.confirmDelete')
+    expect(alertDialog)!.toHaveTextContent('modelProvider.modelProvider.confirmDelete')
 
     fireEvent.click(
       within(alertDialog).getByRole('button', { hidden: true, name: 'common.operation.confirm' }),

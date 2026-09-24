@@ -7,9 +7,9 @@ import Header from './header'
 import List from './list'
 
 const CreateFromPipeline = () => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['onboarding'])
   useDocumentTitle(
-    t(($) => $['stepByStepTour.guides.knowledge.empty.pipeline.title'], { ns: 'common' }),
+    t(($) => $['stepByStepTour.guides.knowledge.empty.pipeline.title'], { ns: 'onboarding' }),
   )
 
   return (

@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Voir l'historique des exécutions",
   "common.webhookDebugFailed": "Échec du débogage du Webhook",
   "common.webhookDebugRequestFailed": "Échec de la demande de débogage du Webhook",
-  "common.workflowAsTool": "Flux de travail en tant qu'outil",
   "common.workflowAsToolDescription": "L’utiliser comme outil dans d’autres applications",
   "common.workflowAsToolDisabledHint": "Publiez le dernier flux de travail et assurez-vous qu'un nœud d'entrée utilisateur est connecté avant de le configurer comme outil.",
   "common.workflowAsToolReady": "Prêt",

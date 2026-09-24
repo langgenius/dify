@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Vezi istoricul rulărilor",
   "common.webhookDebugFailed": "Eșec la depanarea Webhook",
   "common.webhookDebugRequestFailed": "Eșec la cererea de depanare Webhook",
-  "common.workflowAsTool": "Flux de lucru ca instrument",
   "common.workflowAsToolDescription": "Folosește-l ca instrument în alte aplicații",
   "common.workflowAsToolDisabledHint": "Publicați fluxul de lucru cel mai recent și asigurați-vă că există un nod de Intrare Utilizator conectat înainte de a-l configura ca instrument.",
   "common.workflowAsToolReady": "Gata",

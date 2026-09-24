@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Poglej zgodovino izvajanja",
   "common.webhookDebugFailed": "Razhroščevanje Webhook ni uspelo",
   "common.webhookDebugRequestFailed": "Zahteva za razhroščevanje Webhook ni uspela",
-  "common.workflowAsTool": "Delovni potek kot orodje",
   "common.workflowAsToolDescription": "Uporabi kot orodje v drugih aplikacijah",
   "common.workflowAsToolDisabledHint": "Objavite najnovejše delovne tokove in zagotovite, da je pred konfiguracijo kot orodje povezan vozel za vnos uporabnika.",
   "common.workflowAsToolReady": "Pripravljeno",

@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Ausführungsverlauf anzeigen",
   "common.webhookDebugFailed": "Webhook-Debugging fehlgeschlagen",
   "common.webhookDebugRequestFailed": "Webhook-Debugging-Anfrage fehlgeschlagen",
-  "common.workflowAsTool": "Workflow als Tool",
   "common.workflowAsToolDescription": "Als Tool in anderen Apps verwenden",
   "common.workflowAsToolDisabledHint": "Veröffentlichen Sie den neuesten Workflow und stellen Sie sicher, dass ein verbundener User-Input-Knoten vorhanden ist, bevor Sie ihn als Werkzeug konfigurieren.",
   "common.workflowAsToolReady": "Bereit",

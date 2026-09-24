@@ -256,7 +256,6 @@
   "common.viewRunHistory": "Lihat riwayat eksekusi",
   "common.webhookDebugFailed": "Debug Webhook gagal",
   "common.webhookDebugRequestFailed": "Permintaan debug Webhook gagal",
-  "common.workflowAsTool": "Alur Kerja sebagai Alat",
   "common.workflowAsToolDescription": "Gunakan sebagai alat di aplikasi lain",
   "common.workflowAsToolDisabledHint": "Terbitkan alur kerja terbaru dan pastikan ada node Input Pengguna yang terhubung sebelum mengonfigurasinya sebagai alat.",
   "common.workflowAsToolReady": "Siap",
