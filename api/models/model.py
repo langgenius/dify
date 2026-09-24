@@ -99,6 +99,13 @@ class EnabledConfig(TypedDict):
     enabled: bool
 
 
+class TextToSpeechConfig(TypedDict):
+    enabled: bool
+    voice: NotRequired[str]
+    language: NotRequired[str]
+    autoPlay: NotRequired[Literal["enabled", "disabled"]]
+
+
 class SuggestedQuestionsAfterAnswerModelConfig(TypedDict):
     provider: str
     name: str
@@ -250,7 +257,7 @@ class AppModelConfigDict(TypedDict):
     suggested_questions: list[str]
     suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig
     speech_to_text: EnabledConfig
-    text_to_speech: EnabledConfig
+    text_to_speech: TextToSpeechConfig
     retriever_resource: EnabledConfig
     annotation_reply: AnnotationReplyConfig
     more_like_this: EnabledConfig
@@ -793,8 +800,8 @@ class AppModelConfig(TypeBase):
         return self._get_enabled_config(self.speech_to_text)
 
     @property
-    def text_to_speech_dict(self) -> EnabledConfig:
-        return self._get_enabled_config(self.text_to_speech)
+    def text_to_speech_dict(self) -> TextToSpeechConfig:
+        return cast(TextToSpeechConfig, self._get_enabled_config(self.text_to_speech))
 
     @property
     def retriever_resource_dict(self) -> EnabledConfig:

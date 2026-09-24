@@ -2440,7 +2440,7 @@ export type WorkflowSuggestedQuestionsAfterAnswerPayload = {
 }
 
 export type WorkflowTextToSpeechPayload = {
-  autoPlay?: string | null
+  autoPlay?: 'disabled' | 'enabled' | null
   enabled?: boolean | null
   language?: string | null
   voice?: string | null
@@ -2894,7 +2894,7 @@ export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
 }
 
 export type AgentTextToSpeechFeatureConfig = {
-  autoPlay?: string | null
+  autoPlay?: 'disabled' | 'enabled' | null
   enabled?: boolean
   language?: string | null
   voice?: string | null

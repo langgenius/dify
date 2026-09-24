@@ -15357,7 +15357,7 @@ Legacy Chat App model config used only for follow-up question generation.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| autoPlay | string |  | No |
+| autoPlay | string, <br>**Available values:** "disabled", "enabled" |  | No |
 | enabled | boolean |  | No |
 | language | string |  | No |
 | voice | string |  | No |
@@ -25523,7 +25523,7 @@ Query parameters for workflow runs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| autoPlay | string |  | No |
+| autoPlay | string, <br>**Available values:** "disabled", "enabled" |  | No |
 | enabled | boolean |  | No |
 | language | string |  | No |
 | voice | string |  | No |
