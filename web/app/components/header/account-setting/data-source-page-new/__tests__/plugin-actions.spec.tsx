@@ -144,4 +144,16 @@ describe('DataSourcePluginActions', () => {
       }),
     )
   })
+
+  it('identifies the plugin and current version in the version action', () => {
+    renderWithConsoleQuery(<DataSourcePluginActions detail={createPluginDetail()} />, {
+      systemFeatures: { enable_marketplace: true },
+    })
+
+    expect(
+      screen.getByRole('button', {
+        name: 'plugin.detailPanel.switchVersion Data Source Plugin 1.0.0',
+      }),
+    ).toBeInTheDocument()
+  })
 })

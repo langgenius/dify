@@ -17,6 +17,7 @@ import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/us
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
 import { getMarketplaceUrl } from '@/utils/var'
 
@@ -43,6 +44,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
   const { t } = useTranslation(['plugin'])
   const { theme } = useTheme()
   const locale = useLocale()
+  const renderI18nObject = useRenderI18nObject()
   const readmeTriggerId = useId()
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
@@ -65,6 +67,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
     onUpdate,
   })
   const displayVersion = isFromGitHub ? (detail.meta?.version ?? detail.version) : detail.version
+  const pluginLabel = renderI18nObject(detail.declaration.label) || detail.name
 
   const handleVersionSelect = (state: {
     version: string
@@ -92,7 +95,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+    <div className="flex shrink-0 items-center gap-1">
       {!!displayVersion && (
         <PluginVersionPicker
           disabled={!canUpdatePlugin || !isFromMarketplace}
@@ -100,6 +103,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
           onShowChange={versionPicker.setIsShow}
           pluginID={detail.plugin_id}
           currentVersion={detail.version}
+          triggerAccessibleName={`${t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })} ${pluginLabel} ${displayVersion}`}
           onSelect={handleVersionSelect}
           trigger={() => (
             <Badge
