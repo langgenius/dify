@@ -11,6 +11,10 @@ describe('Sidebar', () => {
     expect(screen.getByText('app.newAppFromTemplate.sidebar.Recommended')).toBeInTheDocument()
     expect(screen.getByText('Cat A')).toBeInTheDocument()
     expect(screen.getByText('Cat B')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'app.newAppFromTemplate.sidebar.Recommended' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Cat A' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('notifies callbacks when items are clicked', () => {

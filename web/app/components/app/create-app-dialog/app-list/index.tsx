@@ -256,7 +256,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
         <div className="h-8 w-45"></div>
       </div>
       <div className="relative flex flex-1 overflow-y-auto">
-        {!searchKeywords && (
+        {!templateMode && !searchKeywords && (
           <div className="h-full w-50 p-4">
             <Sidebar
               current={activeCategory}
@@ -268,36 +268,40 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
             />
           </div>
         )}
-        <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
+        <div
+          className={cn(
+            'h-full flex-1 shrink-0 grow overflow-auto p-6 pt-2',
+            !templateMode && 'border-l border-divider-burn',
+            templateMode && !searchKeywords && 'pt-6',
+          )}
+        >
           {searchFilteredList && searchFilteredList.length > 0 && (
             <>
-              <div className="pt-4 pb-1">
-                {searchKeywords ? (
-                  <p className="title-md-semi-bold text-text-tertiary">
-                    {searchFilteredList.length > 1
-                      ? t(($) => $['newApp.foundResults'], {
-                          ns: 'app',
-                          count: searchFilteredList.length,
-                        })
-                      : t(($) => $['newApp.foundResult'], {
-                          ns: 'app',
-                          count: searchFilteredList.length,
-                        })}
-                  </p>
-                ) : (
-                  <div className="flex h-5.5 items-center">
-                    <AppCategoryLabel
-                      category={activeCategory}
-                      className="title-md-semi-bold text-text-primary"
-                    />
-                  </div>
-                )}
-              </div>
-              <div
-                className={cn(
-                  'grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3',
-                )}
-              >
+              {(!templateMode || searchKeywords) && (
+                <div className="pt-4 pb-1">
+                  {searchKeywords ? (
+                    <p className="title-md-semi-bold text-text-tertiary">
+                      {searchFilteredList.length > 1
+                        ? t(($) => $['newApp.foundResults'], {
+                            ns: 'app',
+                            count: searchFilteredList.length,
+                          })
+                        : t(($) => $['newApp.foundResult'], {
+                            ns: 'app',
+                            count: searchFilteredList.length,
+                          })}
+                    </p>
+                  ) : (
+                    <div className="flex h-5.5 items-center">
+                      <AppCategoryLabel
+                        category={activeCategory}
+                        className="title-md-semi-bold text-text-primary"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3">
                 {searchFilteredList.map((app) => (
                   <AppCard
                     key={app.app_id}

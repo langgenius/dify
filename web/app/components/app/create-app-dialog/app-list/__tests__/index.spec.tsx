@@ -111,7 +111,7 @@ const renderApps = (
   }
 }
 const openFirst = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getAllByRole('button', { name: 'app.newApp.useTemplate' })[0]!)
+  await user.click(screen.getAllByRole('button', { name: /^app\.newApp\.useTemplate/ })[0]!)
   return screen.findByRole('dialog')
 }
 
@@ -203,6 +203,9 @@ it('shows only new Agent templates in the Agent roster template picker', () => {
   expect(screen.getByTitle('New Agent')).toBeInTheDocument()
   expect(screen.queryByTitle('Legacy Agent')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'app.typeSelector.all' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Assistant' })).not.toBeInTheDocument()
+  expect(screen.queryByText('app.newAppFromTemplate.byCategories')).not.toBeInTheDocument()
+  expect(screen.queryByText('app.newAppFromTemplate.sidebar.Recommended')).not.toBeInTheDocument()
 })
 
 it('fetches fresh detail by canonical app_id and submits the actual form with an empty initial description', async () => {
@@ -296,5 +299,7 @@ it('supports nullable metadata without inventing a name and requires a name befo
 it('does not expose creation actions without app management permission', () => {
   renderApps(catalog, [])
   expect(screen.getByTitle('Alpha')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'app.newApp.useTemplate' })).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: /^app\.newApp\.useTemplate/ }),
+  ).not.toBeInTheDocument()
 })

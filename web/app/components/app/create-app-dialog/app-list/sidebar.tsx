@@ -70,6 +70,7 @@ function CategoryItem({ category, active, onClick }: CategoryItemProps) {
     <li>
       <button
         type="button"
+        aria-pressed={active}
         className={cn(
           'group flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg border-none bg-transparent p-1 pl-3 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden [&.active]:bg-state-base-active',
           active && 'active',

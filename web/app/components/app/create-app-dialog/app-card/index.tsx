@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
@@ -20,6 +20,7 @@ type AppCardProps = {
 }
 
 const AppCard = ({ app, canCreate, onCreate, onPreview }: AppCardProps) => {
+  const id = useId()
   const { t } = useTranslation(['app', 'explore'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -68,7 +69,11 @@ const AppCard = ({ app, canCreate, onCreate, onPreview }: AppCardProps) => {
         </div>
         <div className="flex grow flex-col gap-1">
           <div className="line-clamp-1">
-            <span className="system-md-semibold text-text-secondary" title={appName}>
+            <span
+              id={`${id}-name`}
+              className="system-md-semibold text-text-secondary"
+              title={appName}
+            >
               {appName}
             </span>
           </div>
@@ -91,15 +96,17 @@ const AppCard = ({ app, canCreate, onCreate, onPreview }: AppCardProps) => {
             )}
           >
             {canCreate && (
-              <Button variant="primary" onClick={() => onCreate()}>
-                <PlusIcon className="size-4" />
-                <span className="text-xs">{t(($) => $['newApp.useTemplate'], { ns: 'app' })}</span>
+              <Button variant="primary" aria-labelledby={`${id}-use ${id}-name`} onClick={onCreate}>
+                <PlusIcon aria-hidden="true" className="size-4" />
+                <span id={`${id}-use`} className="text-xs">
+                  {t(($) => $['newApp.useTemplate'], { ns: 'app' })}
+                </span>
               </Button>
             )}
             {canViewApp && (
-              <Button onClick={handleShowTryAppPanel}>
-                <RiInformation2Line className="size-4" />
-                <span>{t(($) => $['appCard.try'], { ns: 'explore' })}</span>
+              <Button aria-labelledby={`${id}-details ${id}-name`} onClick={handleShowTryAppPanel}>
+                <RiInformation2Line aria-hidden="true" className="size-4" />
+                <span id={`${id}-details`}>{t(($) => $['appCard.try'], { ns: 'explore' })}</span>
               </Button>
             )}
           </div>

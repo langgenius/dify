@@ -42,17 +42,21 @@ describe('AppCard', () => {
     const { rerender } = render(
       <AppCard app={app} canCreate onCreate={vi.fn()} onPreview={vi.fn()} />,
     )
-    expect(screen.getByRole('button', { name: 'app.newApp.useTemplate' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'app.newApp.useTemplate Chat template' }),
+    ).toBeInTheDocument()
 
     rerender(<AppCard app={app} canCreate={false} onCreate={vi.fn()} onPreview={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: 'app.newApp.useTemplate' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /^app\.newApp\.useTemplate/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('creates the template from the primary action', async () => {
     const onCreate = vi.fn()
     const user = userEvent.setup()
     render(<AppCard app={app} canCreate onCreate={onCreate} onPreview={vi.fn()} />)
-    await user.click(screen.getByRole('button', { name: 'app.newApp.useTemplate' }))
+    await user.click(screen.getByRole('button', { name: 'app.newApp.useTemplate Chat template' }))
     expect(onCreate).toHaveBeenCalledOnce()
   })
 
@@ -84,7 +88,7 @@ describe('AppCard', () => {
     const user = userEvent.setup()
     render(<AppCard app={app} canCreate onCreate={vi.fn()} onPreview={openPreview} />)
 
-    await user.click(screen.getByRole('button', { name: 'explore.appCard.try' }))
+    await user.click(screen.getByRole('button', { name: 'explore.appCard.try Chat template' }))
 
     expect(trackEvent).toHaveBeenCalledWith(
       'preview_template',
