@@ -70,6 +70,7 @@ describe.each(['knowledge-base', 'dataset-settings', 'create-document'] as const
             remaining_credits: 0,
             is_unlimited: false,
             is_exhausted: true,
+            model_billing_source: 'legacy_message_credits',
             exhausted_at: null,
             next_credit_reset_date: null,
             pool_type: null,

@@ -100,8 +100,8 @@ type TokenerQuotaPanelProps = {
 }
 
 const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, metering }) => {
-  const { t } = useTranslation()
-  const tipText = t(($) => $['modelProvider.tokenerUsageTip'], { ns: 'common' })
+  const { t } = useTranslation(['modelProvider'])
+  const tipText = t(($) => $['modelProvider.tokenerUsageTip'], { ns: 'modelProvider' })
 
   if (!metering) {
     const isSetupInProgress = Boolean(
@@ -116,16 +116,16 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
     return (
       <div
         role="group"
-        aria-label={t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'common' })}
+        aria-label={t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'modelProvider' })}
         className="flex min-h-16 items-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default px-4 py-3 shadow-xs"
       >
         <div>
           <div className="flex items-center system-xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'common' })}
+            {t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'modelProvider' })}
             <QuotaInfotip tipText={tipText} />
           </div>
           <div role="status" className="mt-1 system-sm-regular text-text-secondary">
-            {t(($) => $[statusMessageKey], { ns: 'common' })}
+            {t(($) => $[statusMessageKey], { ns: 'modelProvider' })}
           </div>
         </div>
       </div>
@@ -149,13 +149,13 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
   return (
     <div
       role="group"
-      aria-label={t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'common' })}
+      aria-label={t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'modelProvider' })}
       className="relative min-h-16 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default px-4 py-3 shadow-xs"
     >
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
         <div className="flex items-center system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'common' })}
+          {t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'modelProvider' })}
           <QuotaInfotip tipText={tipText} />
         </div>
         <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -164,7 +164,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
               {formatUsdMicro(metering.available_usd_micro)}
             </span>
             <span className="system-sm-regular text-text-tertiary">
-              {t(($) => $['modelProvider.tokenerAvailableUsd'], { ns: 'common' })}
+              {t(($) => $['modelProvider.tokenerAvailableUsd'], { ns: 'modelProvider' })}
             </span>
           </div>
           <span aria-hidden className="text-text-quaternary">
@@ -178,7 +178,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
                 </span>
                 <span className="system-sm-regular text-text-tertiary">
                   {t(($) => $['modelProvider.tokenerBilledThisMonth'], {
-                    ns: 'common',
+                    ns: 'modelProvider',
                     date: currentMonth.end_date,
                   })}
                 </span>
@@ -191,7 +191,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
                   {formatDecimalInteger(currentMonth.request_count)}
                 </span>
                 <span className="system-sm-regular text-text-tertiary">
-                  {t(($) => $['modelProvider.tokenerRequestsThisMonth'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.tokenerRequestsThisMonth'], { ns: 'modelProvider' })}
                 </span>
               </div>
             </>
@@ -199,7 +199,9 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
             <div className="flex items-baseline gap-1">
               <span className="system-md-semibold text-text-secondary">—</span>
               <span className="system-sm-regular text-text-tertiary">
-                {t(($) => $['modelProvider.tokenerMonthlyUsageUnavailable'], { ns: 'common' })}
+                {t(($) => $['modelProvider.tokenerMonthlyUsageUnavailable'], {
+                  ns: 'modelProvider',
+                })}
               </span>
             </div>
           )}
@@ -209,7 +211,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
             role="status"
             className="mt-2 border-t border-divider-subtle pt-2 system-sm-regular text-text-secondary"
           >
-            {t(($) => $[entitlementMessageKey], { ns: 'common' })}
+            {t(($) => $[entitlementMessageKey], { ns: 'modelProvider' })}
           </div>
         )}
         {allowance && (
@@ -219,7 +221,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
                 {formatUsdMicro(allowance.amount_usd_micro)}
               </span>
               <span className="system-sm-regular text-text-tertiary">
-                {t(($) => $['modelProvider.tokenerAllowanceTotal'], { ns: 'common' })}
+                {t(($) => $['modelProvider.tokenerAllowanceTotal'], { ns: 'modelProvider' })}
               </span>
             </div>
             <span aria-hidden className="text-text-quaternary">
@@ -230,7 +232,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
                 {formatUsdMicro(allowance.available_usd_micro)}
               </span>
               <span className="system-sm-regular text-text-tertiary">
-                {t(($) => $['modelProvider.tokenerAllowanceRemaining'], { ns: 'common' })}
+                {t(($) => $['modelProvider.tokenerAllowanceRemaining'], { ns: 'modelProvider' })}
               </span>
             </div>
             <span aria-hidden className="text-text-quaternary">
@@ -238,7 +240,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
             </span>
             <span className="system-sm-regular text-text-tertiary">
               {t(($) => $['modelProvider.tokenerAllowancePeriod'], {
-                ns: 'common',
+                ns: 'modelProvider',
                 period: formatUtcAllowancePeriod(allowance.starts_at, allowance.ends_at),
               })}
             </span>
